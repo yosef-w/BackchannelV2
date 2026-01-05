@@ -44,7 +44,7 @@ Backchannel is a mobile application designed to connect applicants and sponsors.
 
 1.  **Start the development server:**
     ```bash
-    npx expo start
+    npx expo start --tunnel --go -c
     ```
     *   Use `--tunnel` if you are on a different network than your device.
     *   Use `-c` to clear the cache if you encounter issues.
