@@ -584,7 +584,7 @@ export function MatchesView({ userType = "sponsor" }: { userType?: "applicant" |
                 <View style={styles.sponsorInfoCard}>
                   <View style={styles.sponsorCardHeader}>
                     <Users size={16} color="#000" />
-                    <Text style={styles.sponsorCardTitle}>Your Sponsor</Text>
+                    <Text style={styles.sponsorCardTitle}>Job Sponsor</Text>
                   </View>
                   <View style={styles.sponsorCardContent}>
                     <Image source={{ uri: selectedJob.sponsorInfo.image }} style={styles.sponsorCardAvatar} />

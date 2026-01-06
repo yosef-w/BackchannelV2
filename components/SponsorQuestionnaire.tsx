@@ -1,24 +1,24 @@
 import { BlurView } from "expo-blur";
-import { ArrowLeft, ArrowRight, Check, Edit3, Mail, Plus, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Check, Edit3, Mail, Plus, RefreshCw, Sparkles, UserCheck, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    Layout,
-    useAnimatedStyle,
-    withTiming,
-    ZoomIn,
+  FadeIn,
+  FadeInDown,
+  Layout,
+  useAnimatedStyle,
+  withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 
 interface SponsorQuestionnaireProps {
@@ -330,7 +330,7 @@ export function SponsorQuestionnaire({ onComplete, onBack }: SponsorQuestionnair
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
             <View style={styles.successContainer}>
               <Animated.View entering={ZoomIn.delay(200).duration(600)} style={styles.successIconBox}>
-                <ShieldCheck color="#000" size={48} />
+                <UserCheck color="#000" size={48} />
               </Animated.View>
               <Animated.Text entering={FadeInDown.delay(400)} style={styles.successTitle}>Verified & Ready</Animated.Text>
               <Animated.Text entering={FadeInDown.delay(600)} style={styles.successSub}>Your professional profile is live. Welcome to the network.</Animated.Text>

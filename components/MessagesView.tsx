@@ -4,30 +4,27 @@ import {
   Award,
   Briefcase,
   CheckCircle,
+  ChevronRight,
+  ClipboardCheck,
+  Clock,
   FileText,
   Lightbulb,
   MapPin,
+  MessageCircle,
   Paperclip,
   Send,
   ShieldCheck,
   Target,
   TrendingUp,
   User,
-  Info,
   UserCheck,
-  AlertCircle,
-  CheckSquare,
-  Square,
-  X,
-  ChevronRight,
-  ClipboardCheck
+  X
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -37,7 +34,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Animated, {
   FadeInDown,
@@ -45,10 +42,7 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
   useAnimatedKeyboard,
-  useAnimatedStyle,
-  withTiming,
-  FadeIn,
-  FadeOut,
+  useAnimatedStyle
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -76,7 +70,10 @@ const mockConversations = [
     linkedin: "linkedin.com/in/sarahchen",
     education: "MBA, Stanford GSB",
     previousCompanies: ["Amazon", "Salesforce"],
-    isHidden: false
+    isHidden: false,
+    applicationStatus: "interview_scheduled" as const,
+    appliedDate: "Jan 2, 2026",
+    nextAction: "Interview on Jan 8 at 2pm PT"
   },
   {
     id: 2,
@@ -96,7 +93,10 @@ const mockConversations = [
     linkedin: "linkedin.com/in/mrodriguez",
     education: "B.S. Computer Science, UT Austin",
     previousCompanies: ["Uber", "Twitter"],
-    isHidden: false
+    isHidden: false,
+    applicationStatus: "reviewing" as const,
+    appliedDate: "Jan 3, 2026",
+    nextAction: "Under review by hiring team"
   },
   {
     id: 3,
@@ -116,7 +116,10 @@ const mockConversations = [
     linkedin: "linkedin.com/in/emilywatson",
     education: "MFA Design, Parsons",
     previousCompanies: ["Apple", "IDEO"],
-    isHidden: false
+    isHidden: false,
+    applicationStatus: "applied" as const,
+    appliedDate: "Jan 4, 2026",
+    nextAction: "Waiting for response"
   },
   {
     id: 4,
@@ -136,7 +139,10 @@ const mockConversations = [
     linkedin: "linkedin.com/in/davidpark",
     education: "PhD Computer Science, MIT",
     previousCompanies: ["Google Brain", "DeepMind"],
-    isHidden: false
+    isHidden: false,
+    applicationStatus: "offer" as const,
+    appliedDate: "Dec 28, 2025",
+    nextAction: "Offer received - respond by Jan 10"
   },
   {
     id: 5,
@@ -216,6 +222,7 @@ interface MessagesViewProps {
 export function MessagesView({ onThreadActiveChange, userType = "sponsor" }: MessagesViewProps) {
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showApplicationDetail, setShowApplicationDetail] = useState(false);
   const [showReferralFlow, setShowReferralFlow] = useState(false);
   const [referralStep, setReferralStep] = useState(1);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -268,10 +275,109 @@ export function MessagesView({ onThreadActiveChange, userType = "sponsor" }: Mes
 
   const canProceedFromStep1 = hasMessaged && feelsConfident && knowsBackground && comfortableAttaching;
 
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      applied: "Applied",
+      reviewing: "Under Review",
+      interview_scheduled: "Interview",
+      offer: "Offer",
+      rejected: "Closed"
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
+
+  const getStatusDotColor = (status: string) => {
+    const colors = {
+      applied: { backgroundColor: "#3B82F6" },
+      reviewing: { backgroundColor: "#F59E0B" },
+      interview_scheduled: { backgroundColor: "#10B981" },
+      offer: { backgroundColor: "#8B5CF6" },
+      rejected: { backgroundColor: "#EF4444" }
+    };
+    return colors[status as keyof typeof colors] || { backgroundColor: "#9CA3AF" };
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    const styles = {
+      applied: { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
+      reviewing: { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" },
+      interview_scheduled: { backgroundColor: "#D1FAE5", borderColor: "#A7F3D0" },
+      offer: { backgroundColor: "#EDE9FE", borderColor: "#DDD6FE" },
+      rejected: { backgroundColor: "#FEE2E2", borderColor: "#FECACA" }
+    };
+    return styles[status as keyof typeof styles] || { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" };
+  };
+
+  const getStatusTextColor = (status: string) => {
+    const colors = {
+      applied: { color: "#1E40AF" },
+      reviewing: { color: "#B45309" },
+      interview_scheduled: { color: "#065F46" },
+      offer: { color: "#5B21B6" },
+      rejected: { color: "#991B1B" }
+    };
+    return colors[status as keyof typeof colors] || { color: "#374151" };
+  };
+
   const openReferral = () => {
     setShowProfileModal(false);
     setReferralStep(1);
     setShowReferralFlow(true);
+  };
+
+  const getApplicationFromConversation = (conv: typeof mockConversations[0]) => {
+    if (!conv.applicationStatus) return null;
+    
+    const statusToTimeline: Record<string, any[]> = {
+      applied: [
+        { stage: "Applied", date: conv.appliedDate || "Recent", completed: true },
+        { stage: "Referred", date: "Pending", completed: false, isReferred: true },
+        { stage: "Screening", date: "Pending", completed: false },
+        { stage: "Interview", date: "TBD", completed: false },
+        { stage: "Decision", date: "TBD", completed: false }
+      ],
+      reviewing: [
+        { stage: "Applied", date: conv.appliedDate || "Recent", completed: true },
+        { stage: "Referred", date: "Completed", completed: true, isReferred: true },
+        { stage: "Screening", date: "In Progress", completed: false },
+        { stage: "Interview", date: "TBD", completed: false },
+        { stage: "Decision", date: "TBD", completed: false }
+      ],
+      interview_scheduled: [
+        { stage: "Applied", date: conv.appliedDate || "Recent", completed: true },
+        { stage: "Referred", date: "Completed", completed: true, isReferred: true },
+        { stage: "Screening", date: "Completed", completed: true },
+        { stage: "Interview", date: "Scheduled", completed: false },
+        { stage: "Decision", date: "TBD", completed: false }
+      ],
+      offer: [
+        { stage: "Applied", date: conv.appliedDate || "Recent", completed: true },
+        { stage: "Referred", date: "Completed", completed: true, isReferred: true },
+        { stage: "Screening", date: "Completed", completed: true },
+        { stage: "Interview", date: "Completed", completed: true },
+        { stage: "Decision", date: "Offer Received", completed: true }
+      ],
+      rejected: [
+        { stage: "Applied", date: conv.appliedDate || "Recent", completed: true },
+        { stage: "Referred", date: "Completed", completed: true, isReferred: true },
+        { stage: "Screening", date: "Completed", completed: true },
+        { stage: "Interview", date: "Completed", completed: true },
+        { stage: "Decision", date: "Closed", completed: true }
+      ]
+    };
+
+    return {
+      jobTitle: conv.appliedRole,
+      company: conv.company,
+      companyLogo: conv.image,
+      status: conv.applicationStatus,
+      appliedDate: conv.appliedDate || "Recent",
+      nextAction: conv.nextAction || "No pending actions",
+      sponsorName: conv.name,
+      sponsorRole: conv.role,
+      sponsorImage: conv.image,
+      timeline: statusToTimeline[conv.applicationStatus] || statusToTimeline.applied
+    };
   };
 
   if (selectedConversation) {
@@ -292,12 +398,16 @@ export function MessagesView({ onThreadActiveChange, userType = "sponsor" }: Mes
                 <Text style={styles.headerRole}>{conversation.role} @ {conversation.company}</Text>
               </View>
             </TouchableOpacity>
-            {userType === "sponsor" && (
+            {userType === "sponsor" ? (
               <TouchableOpacity style={styles.headerReferBtn} onPress={openReferral} activeOpacity={0.7}>
                 <UserCheck color="#000" size={20} />
                 <Text style={styles.headerReferText}>Refer</Text>
               </TouchableOpacity>
-            )}
+            ) : conversation.applicationStatus ? (
+              <TouchableOpacity style={styles.headerStatusBtn} onPress={() => setShowApplicationDetail(true)} activeOpacity={0.7}>
+                <Text style={styles.headerStatusText}>Status</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
           <ScrollView ref={scrollViewRef} style={styles.messagesScroll} contentContainerStyle={styles.messagesContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" onContentSizeChange={() => scrollToBottom(false)}>
             {mockMessages.map((message, index) => (
@@ -509,6 +619,109 @@ export function MessagesView({ onThreadActiveChange, userType = "sponsor" }: Mes
             </Animated.View>
           </View>
         </Modal>
+
+        {/* APPLICATION DETAIL MODAL */}
+        {conversation.applicationStatus && (() => {
+          const applicationData = getApplicationFromConversation(conversation);
+          if (!applicationData) return null;
+          
+          return (
+            <Modal visible={showApplicationDetail} transparent animationType="fade">
+              <View style={styles.modalOverlay}>
+                <TouchableOpacity 
+                  style={StyleSheet.absoluteFill} 
+                  activeOpacity={1} 
+                  onPress={() => setShowApplicationDetail(false)}
+                >
+                  <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+                </TouchableOpacity>
+                
+                <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+                  <View style={styles.modalHandle} />
+                  <TouchableOpacity 
+                    style={styles.modalCloseBtn} 
+                    onPress={() => setShowApplicationDetail(false)}
+                  >
+                    <X color="#000" size={24} />
+                  </TouchableOpacity>
+                  
+                  <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+                    <View style={styles.appDetailHeader}>
+                      <Image source={{ uri: applicationData.companyLogo }} style={styles.appDetailLogo} />
+                      <Text style={styles.appDetailTitle}>{applicationData.jobTitle}</Text>
+                      <Text style={styles.appDetailCompany}>{applicationData.company}</Text>
+                      <View style={styles.statusBadgeBlack}>
+                        <Text style={styles.statusBadgeBlackText}>{getStatusLabel(applicationData.status)}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>APPLICATION TIMELINE</Text>
+                      <View style={styles.timelineDetailContainer}>
+                        {applicationData.timeline.map((stage: any, idx: number) => (
+                          <View key={idx} style={styles.timelineDetailItem}>
+                            <View style={styles.timelineDetailLeft}>
+                              <View style={[
+                                styles.timelineDetailDot, 
+                                stage.completed && styles.timelineDetailDotCompleted,
+                                stage.isReferred && styles.timelineDetailDotReferred,
+                                stage.isReferred && stage.completed && styles.timelineDetailDotReferredCompleted
+                              ]} />
+                              {idx < applicationData.timeline.length - 1 && (
+                                <View style={[
+                                  styles.timelineDetailLine,
+                                  stage.completed && applicationData.timeline[idx + 1].completed && styles.timelineDetailLineCompleted
+                                ]} />
+                              )}
+                            </View>
+                            <View style={styles.timelineDetailRight}>
+                              <Text style={[
+                                styles.timelineDetailStage, 
+                                stage.completed && styles.timelineDetailStageCompleted,
+                                stage.isReferred && stage.completed && styles.timelineDetailStageReferred
+                              ]}>
+                                {stage.stage}
+                              </Text>
+                              <Text style={styles.timelineDetailDate}>{stage.date}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>SPONSOR</Text>
+                      <View style={styles.sponsorCard}>
+                        <Image source={{ uri: applicationData.sponsorImage }} style={styles.sponsorDetailAvatar} />
+                        <View style={styles.sponsorDetailInfo}>
+                          <Text style={styles.sponsorDetailName}>{applicationData.sponsorName}</Text>
+                          <Text style={styles.sponsorDetailRole}>{applicationData.sponsorRole} @ {applicationData.company}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>NEXT STEPS</Text>
+                      <View style={styles.nextActionCard}>
+                        <Clock size={20} color="#000" />
+                        <Text style={styles.nextActionText}>{applicationData.nextAction}</Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity 
+                      style={styles.messageBtn} 
+                      activeOpacity={0.7}
+                      onPress={() => setShowApplicationDetail(false)}
+                    >
+                      <MessageCircle color="#FFF" size={20} />
+                      <Text style={styles.messageBtnText}>Continue Conversation</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </Animated.View>
+              </View>
+            </Modal>
+          );
+        })()}
       </View>
     );
   }
@@ -607,6 +820,11 @@ const styles = StyleSheet.create({
   headerRole: { fontSize: 12, color: "#666" },
   headerReferBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   headerReferText: { fontSize: 13, fontWeight: '700' },
+  headerStatusBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F9F9F9', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#E5E5E5' },
+  headerStatusText: { fontSize: 13, fontWeight: '700', color: '#000' },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, marginTop: 8, alignSelf: 'flex-start', borderWidth: 1 },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
   messagesScroll: { flex: 1, paddingHorizontal: 20 },
   messagesContent: { paddingTop: 20, paddingBottom: 28, gap: 20 },
   messageWrapper: { maxWidth: "85%" },
@@ -695,5 +913,40 @@ const styles = StyleSheet.create({
   successStep: { alignItems: 'center', paddingVertical: 20, width: '100%' },
   successIcon: { marginBottom: 20 },
   successTitle: { fontSize: 22, fontWeight: '800', marginBottom: 10 },
-  successDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 30, paddingHorizontal: 20 }
+  successDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 30, paddingHorizontal: 20 },
+  
+  // Application Detail Modal Styles
+  modalCloseBtn: { position: 'absolute', top: 24, right: 24, zIndex: 10 },
+  modalScroll: { maxHeight: '80%' },
+  appDetailHeader: { alignItems: 'center', marginBottom: 32 },
+  appDetailLogo: { width: 72, height: 72, borderRadius: 18, backgroundColor: '#F9F9F9', marginBottom: 16 },
+  appDetailTitle: { fontSize: 22, fontWeight: '800', color: '#000', textAlign: 'center', marginBottom: 4 },
+  appDetailCompany: { fontSize: 16, color: '#666', fontWeight: '600', marginBottom: 16 },
+  statusBadgeBlack: { backgroundColor: '#000', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
+  statusBadgeBlackText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  detailSection: { marginBottom: 28 },
+  detailSectionTitle: { fontSize: 11, fontWeight: '900', color: '#BBB', letterSpacing: 1.2, marginBottom: 12 },
+  timelineDetailContainer: { backgroundColor: '#F9F9F9', borderRadius: 16, padding: 20 },
+  timelineDetailItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },
+  timelineDetailLeft: { alignItems: 'center', marginRight: 16 },
+  timelineDetailDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#E5E5E5', borderWidth: 3, borderColor: '#FFF' },
+  timelineDetailDotCompleted: { backgroundColor: '#000' },
+  timelineDetailDotReferred: { width: 18, height: 18, borderRadius: 9 },
+  timelineDetailDotReferredCompleted: { backgroundColor: '#000', borderWidth: 4, borderColor: '#F9F9F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+  timelineDetailLine: { width: 2, height: 32, backgroundColor: '#E5E5E5', marginTop: 4 },
+  timelineDetailLineCompleted: { backgroundColor: '#BBB' },
+  timelineDetailRight: { flex: 1, paddingTop: 2 },
+  timelineDetailStage: { fontSize: 15, fontWeight: '700', color: '#999', marginBottom: 2 },
+  timelineDetailStageCompleted: { color: '#000' },
+  timelineDetailStageReferred: { fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+  timelineDetailDate: { fontSize: 13, color: '#BBB', fontWeight: '600' },
+  sponsorCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9F9', borderRadius: 16, padding: 16 },
+  sponsorDetailAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF' },
+  sponsorDetailInfo: { flex: 1, marginLeft: 12 },
+  sponsorDetailName: { fontSize: 16, fontWeight: '800', color: '#000', marginBottom: 2 },
+  sponsorDetailRole: { fontSize: 13, color: '#666', fontWeight: '600' },
+  nextActionCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFF9E6', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#FDE68A' },
+  nextActionText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#000' },
+  messageBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#000', paddingVertical: 16, borderRadius: 16, marginTop: 12 },
+  messageBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
 });

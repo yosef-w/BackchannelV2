@@ -9,6 +9,7 @@ import {
   Search,
   Sparkles,
   Upload,
+  UserCheck,
   X
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
@@ -381,7 +382,7 @@ export function ApplicantQuestionnaire({ onComplete, onBack }: ApplicantQuestion
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
             <View style={styles.successContainer}>
               <Animated.View entering={ZoomIn.delay(200).duration(600)} style={styles.successIconBox}>
-                <Sparkles color="#000" size={48} />
+                <UserCheck color="#000" size={48} />
               </Animated.View>
               <Animated.Text entering={FadeInDown.delay(400)} style={styles.successTitle}>Profile Created</Animated.Text>
               <Animated.Text entering={FadeInDown.delay(600)} style={styles.successSub}>Welcome to BackChannel</Animated.Text>

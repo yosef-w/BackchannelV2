@@ -5,14 +5,17 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  ChevronRight,
   Coffee,
   DollarSign,
+  ExternalLink,
   Globe,
   GraduationCap,
   Info,
   MapPin,
   MessageCircle,
   RefreshCcw,
+  SlidersHorizontal,
   Sparkles,
   TrendingUp,
   Users,
@@ -23,6 +26,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -30,7 +34,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Animated, {
   FadeIn,
@@ -38,6 +42,8 @@ import Animated, {
   FadeInUp,
   FadeOut,
   LinearTransition,
+  SlideInDown,
+  SlideOutDown,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -53,6 +59,19 @@ interface HomeViewProps {
 }
 
 const DECK_SIZE = 10;
+
+const FILTER_OPTS = {
+  applicant: [
+    { id: 'role', label: 'Target Role', options: ['Product', 'Engineering', 'Design', 'Data', 'Sales'] },
+    { id: 'industry', label: 'Industry', options: ['Tech', 'FinTech', 'Health', 'EdTech', 'Media'] },
+    { id: 'goal', label: 'Goal', options: ['Referral', 'Career Advice', 'Resume Review', 'Interview Prep'] }
+  ],
+  sponsor: [
+    { id: 'role', label: 'Role', options: ['Product Manager', 'Software Engineer', 'Designer', 'Data Scientist'] },
+    { id: 'exp', label: 'Experience', options: ['Junior (0-2y)', 'Mid (2-5y)', 'Senior (5-8y)', 'Lead (8y+)'] },
+    { id: 'status', label: 'Status', options: ['Actively Looking', 'Passive', 'Open to Networking'] }
+  ]
+};
 
 const mockProfiles = [
   {
@@ -241,7 +260,7 @@ const mockJobs = [
     location: "San Francisco, CA",
     type: "Full-time",
     salary: "$180k - $240k",
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+    image: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=200&h=200&fit=crop",
     description: "Join our Payments Platform team to build the financial infrastructure for the internet. You'll work on systems processing billions of dollars in transactions.",
     skills: ["TypeScript", "React", "Go", "Kubernetes"],
     benefits: ["Unlimited PTO", "401k Match", "Full Health Coverage", "Remote Flexible"],
@@ -266,12 +285,31 @@ const mockJobs = [
   },
   {
     id: 2,
+    title: "Backend Engineer",
+    company: "Airbnb",
+    location: "Remote",
+    type: "Contract",
+    salary: "$130k - $180k",
+    image: "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=200&h=200&fit=crop",
+    description: "Scale the infrastructure that powers millions of trips. Focus on reliability, performance, and developer experience.",
+    skills: ["Java", "Kafka", "AWS", "Microservices"],
+    benefits: ["Travel Credit", "Remote Work", "Health Stipend", "Flexible Hours"],
+    isSponsored: false,
+    companyDescription: "Airbnb is a global travel platform connecting millions of hosts and guests. Founded in 2008, we've grown to facilitate over 1 billion guest arrivals across 220+ countries. Our engineering culture emphasizes reliability, scale, and user experience — building systems that handle peak travel seasons while maintaining 99.99% uptime.",
+    fullDetails: {
+      responsibilities: "Maintain and scale core backend services. Optimize database queries and service communication. Lead incident response and post-mortems. Improve system observability.",
+      requirements: "4+ years of backend engineering experience. Proficiency in Java or similar JVM languages. Experience with message queues (Kafka) and cloud infrastructure (AWS).",
+      interviewProcess: "Standard process: Recruiter screen, Technical Phone Screen (Coding), Virtual Onsite (System Design + Coding + Culture). Decisions are made quickly."
+    }
+  },
+  {
+    id: 3,
     title: "Product Designer",
     company: "Notion",
     location: "New York, NY",
     type: "Full-time",
     salary: "$140k - $190k",
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
+    image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=200&h=200&fit=crop",
     description: "Help us reimagine how teams collaborate. You'll design experiences that balance power and simplicity for millions of users worldwide.",
     skills: ["Figma", "Prototyping", "User Research", "Design Systems"],
     benefits: ["Equity Package", "Learning Stipend", "Home Office Budget", "Flexible Hours"],
@@ -295,13 +333,32 @@ const mockJobs = [
     }
   },
   {
-    id: 3,
+    id: 4,
+    title: "Machine Learning Engineer",
+    company: "Tesla",
+    location: "Palo Alto, CA",
+    type: "Full-time",
+    salary: "$160k - $220k",
+    image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=200&h=200&fit=crop",
+    description: "Build and deploy neural networks for Autopilot. Work on perception, prediction, and planning for autonomous driving at scale.",
+    skills: ["PyTorch", "C++", "Computer Vision", "Robotics"],
+    benefits: ["Stock Options", "Health Coverage", "401k", "Relocation Assistance"],
+    isSponsored: false,
+    companyDescription: "Tesla's mission is to accelerate the world's transition to sustainable energy. Our AI team works on some of the most challenging real-world robotics problems — building software that can drive millions of vehicles safely. We process billions of miles of driving data and train models on custom supercomputers, pushing the boundaries of what's possible with machine learning.",
+    fullDetails: {
+      responsibilities: "Design and train deep learning models for autonomous driving. Optimize inference for real-time performance. Collaborate with robotics teams on sensor fusion. Analyze fleet data to improve model performance.",
+      requirements: "3+ years ML engineering experience. Strong understanding of neural networks and computer vision. Experience with PyTorch or TensorFlow. C++ proficiency preferred.",
+      interviewProcess: "Technical screen, take-home ML project, onsite technical deep dive, team fit. Expect questions on ML fundamentals, coding, and system design."
+    }
+  },
+  {
+    id: 5,
     title: "Data Scientist",
     company: "Spotify",
     location: "Remote",
     type: "Full-time",
     salary: "$150k - $200k",
-    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800",
+    image: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=200&h=200&fit=crop",
     description: "Use ML to personalize music recommendations for 500M+ users. Build models that understand taste and discover the next big artist.",
     skills: ["Python", "SQL", "Machine Learning", "A/B Testing"],
     benefits: ["Remote First", "Premium Spotify", "Annual Bonus", "Stock Options"],
@@ -322,6 +379,74 @@ const mockJobs = [
       responsibilities: "Build and deploy ML models for recommendation systems. Design and analyze A/B tests. Partner with product to identify opportunities. Communicate insights to leadership.",
       requirements: "3+ years in data science or ML engineering. Strong Python and SQL. Experience with production ML systems. Familiarity with modern ML stack (PyTorch, scikit-learn, etc.).",
       interviewProcess: "SQL + stats screen, ML case study, stakeholder collaboration exercise, final round. Whole process is 2-3 weeks. We're async-first so interviews are flexible."
+    }
+  },
+  {
+    id: 6,
+    title: "Full Stack Developer",
+    company: "Shopify",
+    location: "Toronto, ON",
+    type: "Full-time",
+    salary: "$120k - $170k CAD",
+    image: "https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=200&h=200&fit=crop",
+    description: "Build tools that help millions of merchants run their businesses. Work on features spanning checkout, payments, and analytics.",
+    skills: ["Ruby", "React", "GraphQL", "PostgreSQL"],
+    benefits: ["Remote Flexible", "Learning Fund", "Health Benefits", "Equity"],
+    isSponsored: false,
+    companyDescription: "Shopify powers over 4 million businesses worldwide, from small startups to Fortune 500 companies. We're building commerce infrastructure for the internet — enabling anyone to start, run, and grow a business. Our engineering teams ship code that processes billions in sales annually, and we're known for our merchant-first culture and focus on craft.",
+    fullDetails: {
+      responsibilities: "Build and maintain core commerce features. Write clean, tested Ruby and React code. Participate in code reviews and design discussions. Ship features that impact millions of merchants.",
+      requirements: "2+ years full-stack development experience. Strong with Ruby on Rails and modern JavaScript. Understanding of SQL and API design. E-commerce experience is a plus.",
+      interviewProcess: "Recruiter chat, technical interview (live coding), system design, final round with team. Process takes 2-3 weeks. We value thoughtful problem-solving over speed."
+    }
+  },
+  {
+    id: 7,
+    title: "DevOps Engineer",
+    company: "Datadog",
+    location: "Boston, MA",
+    type: "Full-time",
+    salary: "$140k - $190k",
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=200&h=200&fit=crop",
+    description: "Build and maintain infrastructure for our monitoring platform. Scale systems that ingest trillions of data points daily.",
+    skills: ["Kubernetes", "Terraform", "Python", "AWS"],
+    benefits: ["Unlimited PTO", "Stock Options", "401k Match", "Home Office Setup"],
+    sponsorInfo: {
+      name: "Kevin Liu",
+      role: "Infrastructure Lead",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800",
+      yearsAtCompany: "6 years",
+      canRefer: true,
+      referralNote: "We're looking for engineers who love automation and think about reliability from day one. If you've scaled infrastructure before, let's talk."
+    },
+    backchannelInsights: {
+      dayToDay: "Mix of infrastructure work and automation. On-call rotation with fair compensation. Team is distributed but syncs daily. Focus on reducing toil through better tooling.",
+      teamCulture: "Infrastructure team of 12. We value documentation and knowledge sharing. Weekly demos of automation wins. Strong mentorship for those new to cloud-native tools.",
+      idealCandidate: "Someone who's automated away their previous job. We want engineers who think in systems and love building tools for other engineers."
+    },
+    fullDetails: {
+      responsibilities: "Manage Kubernetes clusters at scale. Build CI/CD pipelines. Implement infrastructure as code. Improve system observability and reliability. Participate in on-call rotation.",
+      requirements: "3+ years DevOps or SRE experience. Strong with Kubernetes and cloud platforms. Experience with Infrastructure as Code (Terraform, Pulumi). Solid scripting skills (Python, Bash).",
+      interviewProcess: "Technical screen (system design + troubleshooting), take-home infrastructure challenge, onsite with team. We focus on real-world scenarios."
+    }
+  },
+  {
+    id: 8,
+    title: "iOS Engineer",
+    company: "Discord",
+    location: "San Francisco, CA",
+    type: "Full-time",
+    salary: "$150k - $210k",
+    image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&h=200&fit=crop",
+    description: "Build features for 150M+ monthly active users. Work on voice, video, and messaging that powers online communities.",
+    skills: ["Swift", "UIKit", "SwiftUI", "Core Audio"],
+    benefits: ["Equity", "Health Coverage", "Unlimited PTO", "Remote Options"],
+    isSponsored: false,
+    companyDescription: "Discord is where millions of people come together to talk, hang out, and have fun. We're building a platform that brings people closer through voice, video, and text — whether they're studying together, playing games, or just catching up. Our iOS app is used by over 50 million people monthly, and we're constantly pushing the boundaries of real-time communication on mobile.",
+    fullDetails: {
+      responsibilities: "Develop new features for the iOS app. Optimize performance for real-time audio and video. Work closely with design and product teams. Write clean, maintainable Swift code. Debug production issues.",
+      requirements: "4+ years iOS development experience. Expert in Swift and iOS SDK. Experience with real-time communication is a plus. Strong understanding of performance optimization and memory management.",
+      interviewProcess: "Phone screen, iOS technical interview (live coding in Swift), system design for mobile, final round. We look for engineers who care about user experience and performance."
     }
   }
 ];
@@ -356,6 +481,28 @@ export function HomeView({ userType }: HomeViewProps) {
   const [progress, setProgress] = useState(1); 
   const [isFlipped, setIsFlipped] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  
+  // Filter State
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
+  
+  // Apply Modal State
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applyStep, setApplyStep] = useState<"select" | "waitlist" | "external">("select");
+  const [pendingJob, setPendingJob] = useState<any>(null);
+
+  const toggleFilter = (category: string, option: string) => {
+    setSelectedFilters(prev => {
+      const current = prev[category] || [];
+      if (current.includes(option)) {
+        return { ...prev, [category]: current.filter(o => o !== option) };
+      } else {
+        return { ...prev, [category]: [...current, option] };
+      }
+    });
+  };
+
+  const activeFilterCount = Object.values(selectedFilters).flat().length;
   
   const swipeX = useSharedValue(0);
   const swipeOpacity = useSharedValue(1);
@@ -398,6 +545,14 @@ export function HomeView({ userType }: HomeViewProps) {
   };
 
   const handleSwipe = (isAccept: boolean) => {
+    // If applicant tries to apply to Non-Sponsored Job, intercept
+    if (userType === 'applicant' && isAccept && 'isSponsored' in currentData && currentData.isSponsored === false) {
+       setPendingJob(currentData);
+       setApplyStep("select");
+       setShowApplyModal(true);
+       return;
+    }
+
     if (isAccept) {
         setShowCelebration(true);
         setTimeout(() => {
@@ -455,13 +610,20 @@ export function HomeView({ userType }: HomeViewProps) {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <Animated.View entering={FadeInDown} style={styles.header}>
-            <View style={styles.progressHeader}>
+          <Animated.View entering={FadeInDown} style={styles.headerRow}>
+            <View style={styles.progressHeaderContainer}>
               <Text style={styles.progressText}>Card {Math.min(progress, DECK_SIZE)} of {DECK_SIZE}</Text>
               <View style={styles.progressTrack}>
                 <Animated.View style={[styles.progressFill, progressBarStyle]} />
               </View>
             </View>
+            <TouchableOpacity 
+              style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]} 
+              onPress={() => setShowFilters(true)}
+              activeOpacity={0.7}
+            >
+              <SlidersHorizontal size={20} color={activeFilterCount > 0 ? "#FFF" : "#000"} />
+            </TouchableOpacity>
           </Animated.View>
 
           {isDeckFinished ? (
@@ -591,50 +753,73 @@ export function HomeView({ userType }: HomeViewProps) {
                         </View>
                       </Animated.View>
 
-                      {/* Back Face - Sponsor Info */}
-                      <Animated.View style={[styles.cardOuter, styles.cardOuterBack, backStyle]}>
-                        <View style={[styles.cardInner, styles.cardInnerBack]}>
-                          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardInfo}>
-                            <View style={styles.backHeader}>
-                              <Users color="#000" size={20} />
-                              <Text style={styles.backTitle}>Your Sponsor</Text>
-                            </View>
-                            
-                            {'sponsorInfo' in currentData && currentData.sponsorInfo && (
-                              <>
-                                <View style={styles.sponsorHeader}>
-                                  <Image source={{ uri: currentData.sponsorInfo.image }} style={styles.sponsorAvatar} />
-                                  <View style={{ flex: 1 }}>
-                                    <Text style={styles.sponsorName}>{currentData.sponsorInfo.name}</Text>
-                                    <Text style={styles.sponsorRole}>{currentData.sponsorInfo.role}</Text>
-                                    <View style={[styles.metaRow, { marginTop: 4 }]}>
-                                      <Calendar size={12} color="#999" />
-                                      <Text style={styles.sponsorYears}>{currentData.sponsorInfo.yearsAtCompany} at company</Text>
+                        {/* Back Face - Sponsor Info */}
+                        <Animated.View style={[styles.cardOuter, styles.cardOuterBack, backStyle]}>
+                          <View style={[styles.cardInner, styles.cardInnerBack]}>
+                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardInfoScrollable}>
+                              {'isSponsored' in currentData && currentData.isSponsored === false ? (
+                                // NON-SPONSORED BACK DESIGN
+                                <>
+                                  <View style={styles.backHeader}>
+                                    <Image source={{ uri: 'image' in currentData ? currentData.image : '' }} style={styles.companyLogoLarge} />
+                                    <Text style={styles.backTitle}>About {'company' in currentData ? currentData.company : 'Company'}</Text>
+                                  </View>
+
+                                  {'companyDescription' in currentData && currentData.companyDescription && (
+                                    <View style={styles.companyDescriptionSection}>
+                                      <Text style={styles.companyDescriptionText} numberOfLines={7}>{currentData.companyDescription}</Text>
                                     </View>
+                                  )}
+                                  
+                                  <View style={styles.noSponsorBanner}>
+                                    <MessageCircle size={16} color="#666" />
+                                    <Text style={styles.noSponsorText}>No active sponsors yet. Join the waitlist to get notified.</Text>
                                   </View>
-                                </View>
-
-                                <View style={styles.insightSection}>
-                                  <Text style={styles.insightLabel}>REFERRAL NOTE</Text>
-                                  <Text style={styles.promptContent}>{currentData.sponsorInfo.referralNote}</Text>
-                                </View>
-
-                                {currentData.sponsorInfo.canRefer && (
-                                  <View style={styles.canReferBadge}>
-                                    <Check size={14} color="#00CB54" />
-                                    <Text style={styles.canReferText}>Can provide direct referral</Text>
+                                </>
+                              ) : (
+                                // SPONSORED BACK DESIGN (Existing)
+                                <>
+                                  <View style={styles.backHeader}>
+                                    <Users color="#000" size={20} />
+                                    <Text style={styles.backTitle}>Job Sponsor</Text>
                                   </View>
-                                )}
-                              </>
-                            )}
+                                  
+                                  {'sponsorInfo' in currentData && currentData.sponsorInfo && (
+                                    <>
+                                      <View style={styles.sponsorHeader}>
+                                        <Image source={{ uri: currentData.sponsorInfo.image }} style={styles.sponsorAvatar} />
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={styles.sponsorName}>{currentData.sponsorInfo.name}</Text>
+                                          <Text style={styles.sponsorRole}>{currentData.sponsorInfo.role}</Text>
+                                          <View style={[styles.metaRow, { marginTop: 4 }]}>
+                                            <Calendar size={12} color="#999" />
+                                            <Text style={styles.sponsorYears}>{currentData.sponsorInfo.yearsAtCompany} at company</Text>
+                                          </View>
+                                        </View>
+                                      </View>
 
+                                      <View style={styles.insightSection}>
+                                        <Text style={styles.insightLabel}>REFERRAL NOTE</Text>
+                                        <Text style={styles.promptContent}>{currentData.sponsorInfo.referralNote}</Text>
+                                      </View>
+
+                                      {currentData.sponsorInfo.canRefer && (
+                                        <View style={styles.canReferBadge}>
+                                          <Check size={14} color="#00CB54" />
+                                          <Text style={styles.canReferText}>Can provide direct referral</Text>
+                                        </View>
+                                      )}
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </ScrollView>
                             <TouchableOpacity style={styles.flipBackBtn} onPress={toggleFlip}>
                               <Text style={styles.flipBackText}>View Job Details</Text>
                             </TouchableOpacity>
-                          </ScrollView>
-                        </View>
-                      </Animated.View>
-                    </>
+                          </View>
+                        </Animated.View>
+                      </>
                   )}
                 </TouchableOpacity>
               </Animated.View>
@@ -711,19 +896,19 @@ export function HomeView({ userType }: HomeViewProps) {
                   </View>
                 )}
                 <View style={styles.bottomNav}>
-                  <TouchableOpacity onPress={() => handleSwipe(false)} style={styles.navBtn}>
-                    <View style={styles.circleBtn}><X color="#000" size={22} /></View>
-                    <Text style={styles.navLabel}>SKIP</Text>
+                  <TouchableOpacity onPress={() => handleSwipe(false)} style={styles.iconBtn} activeOpacity={0.7}>
+                    <X color="#000" size={24} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={toggleMore} style={styles.navBtn}>
-                    <View style={[styles.circleBtn, showMore && styles.activeBtn]}>
-                      <Animated.View style={chevronStyle}><ChevronDown color={showMore ? "#FFF" : "#000"} size={22} /></Animated.View>
-                    </View>
-                    <Text style={styles.navLabel}>{showMore ? "LESS" : "MORE"}</Text>
+                  
+                  <TouchableOpacity onPress={toggleMore} style={[styles.iconBtn, showMore && styles.iconBtnActive]} activeOpacity={0.7}>
+                    <Animated.View style={chevronStyle}>
+                      <ChevronDown color={showMore ? "#FFF" : "#000"} size={24} />
+                    </Animated.View>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleSwipe(true)} style={styles.navBtn}>
-                    <View style={[styles.circleBtn, styles.connectCircle]}><Check color="#FFF" size={22} /></View>
-                    <Text style={styles.navLabel}>{userType === "sponsor" ? "CONNECT" : "APPLY"}</Text>
+                  
+                  <TouchableOpacity onPress={() => handleSwipe(true)} style={styles.primaryActionBtn} activeOpacity={0.8}>
+                    <Text style={styles.primaryActionLabel}>{userType === "sponsor" ? "Connect" : "Apply"}</Text>
+                    <Check color="#FFF" size={20} strokeWidth={2.5} />
                   </TouchableOpacity>
                 </View>
               </Animated.View>
@@ -754,6 +939,170 @@ export function HomeView({ userType }: HomeViewProps) {
               </View>
           </Animated.View>
       )}
+      
+      {/* Apply Action Modal (For Non-Sponsored Jobs) */}
+      <Modal visible={showApplyModal} animationType="none" transparent>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowApplyModal(false)}>
+            <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+          </TouchableOpacity>
+        
+          <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.applyModalContent}>
+            <View style={styles.modalHandle} />
+            
+            <View style={styles.applyModalHeader}>
+              <Text style={styles.applyModalTitle}>
+                {applyStep === "select" ? "How to Apply" : 
+                 applyStep === "waitlist" ? "You're on the list!" : "Redirecting..."}
+              </Text>
+              <TouchableOpacity onPress={() => setShowApplyModal(false)} style={styles.closeBtn}>
+                <X color="#000" size={24} />
+              </TouchableOpacity>
+            </View>
+
+            {applyStep === "select" && (
+              <Text style={styles.applyModalSubtitle}>
+                This role at {pendingJob?.company} doesn't have an active sponsor yet.
+              </Text>
+            )}
+
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              {applyStep === "select" && (
+                <View style={styles.modalOptionsContainer}>
+                  <TouchableOpacity 
+                    style={styles.modalOptionBtn}
+                    onPress={() => setApplyStep("external")}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.modalOptionIcon}>
+                      <ExternalLink color="#000" size={24} />
+                    </View>
+                    <View style={styles.modalOptionContent}>
+                      <Text style={styles.modalOptionTitle}>Apply Directly</Text>
+                      <Text style={styles.modalOptionDesc}>Use our AI Copilot to autofill the company application.</Text>
+                    </View>
+                    <ChevronRight color="#CCC" size={20} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.modalOptionBtn}
+                    onPress={() => setApplyStep("waitlist")}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.modalOptionIcon}>
+                      <Users color="#000" size={24} />
+                    </View>
+                    <View style={styles.modalOptionContent}>
+                      <Text style={styles.modalOptionTitle}>Join Waitlist</Text>
+                      <Text style={styles.modalOptionDesc}>Get notified first when a sponsor becomes available.</Text>
+                    </View>
+                    <ChevronRight color="#CCC" size={20} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {applyStep === "waitlist" && (
+                <View style={styles.successContainer}>
+                  <View style={styles.successCircleLarge}>
+                    <Check color="#FFF" size={40} strokeWidth={3} />
+                  </View>
+                  <Text style={styles.successMessage}>
+                    You are next in line for {pendingJob?.company}. We'll notify you as soon as a sponsor is ready to review referrals.
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.successActionBtn}
+                    onPress={() => {
+                      setShowApplyModal(false);
+                      handleSwipe(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.successActionBtnText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {applyStep === "external" && (
+                <View style={styles.successContainer}>
+                  <View style={[styles.successCircleLarge, { backgroundColor: '#000' }]}>
+                    <Sparkles color="#FFF" size={32} />
+                  </View>
+                  <Text style={styles.successMessage}>
+                    We're sending you to the {pendingJob?.company} career site. Our AI will pop up to help you autocomplete the forms.
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.successActionBtn}
+                    onPress={() => {
+                      setShowApplyModal(false);
+                      handleSwipe(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.successActionBtnText}>Go to Site</Text>
+                    <ExternalLink color="#FFF" size={18} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal visible={showFilters} animationType="slide" transparent>
+        <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Refine Feed</Text>
+              <TouchableOpacity onPress={() => setShowFilters(false)} style={styles.closeModalBtn}>
+                <X color="#000" size={24} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              {(FILTER_OPTS[userType] || []).map((section: any) => (
+                <View key={section.id} style={styles.filterSection}>
+                  <Text style={styles.filterLabel}>{section.label}</Text>
+                  <View style={styles.filterOptionsRow}>
+                    {section.options.map((opt: string) => {
+                       const isSelected = (selectedFilters[section.id] || []).includes(opt);
+                       return (
+                         <TouchableOpacity 
+                           key={opt}
+                           style={[styles.filterChip, isSelected && styles.filterChipSelected]}
+                           onPress={() => toggleFilter(section.id, opt)}
+                           activeOpacity={0.8}
+                         >
+                           <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>{opt}</Text>
+                         </TouchableOpacity>
+                       );
+                    })}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.applyBtn} 
+                onPress={() => {
+                   setShowFilters(false);
+                   setIsLoading(true);
+                   // Simulate reloading stack
+                   setTimeout(() => setIsLoading(false), 600); 
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.applyBtnText}>Show Results</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.clearBtn} 
+                onPress={() => setSelectedFilters({})}
+              >
+                <Text style={styles.clearBtnText}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </Modal>
     </View>
   );
 }
@@ -762,7 +1111,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   safeArea: { flex: 1 },
   scrollContent: { paddingHorizontal: 36, paddingBottom: 100 },
-  header: {marginBottom: 28 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
+  progressHeaderContainer: { flex: 1, marginRight: 20 },
+  filterBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center' },
+  filterBtnActive: { backgroundColor: '#000' },
+  filterBadge: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30', borderWidth: 2, borderColor: '#F5F5F5' },
+
+  // Modal Styles
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 28, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: '#000', letterSpacing: -0.5 },
+  closeModalBtn: { padding: 4, backgroundColor: '#F5F5F5', borderRadius: 20 },
+  modalContent: { padding: 28, paddingBottom: 40 },
+  filterSection: { marginBottom: 32 },
+  filterLabel: { fontSize: 12, fontWeight: '800', color: '#999', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 },
+  filterOptionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE' },
+  filterChipSelected: { backgroundColor: '#000', borderColor: '#000' },
+  filterChipText: { fontSize: 13, fontWeight: '600', color: '#000' },
+  filterChipTextSelected: { color: '#FFF' },
+  modalFooter: { padding: 28, borderTopWidth: 1, borderTopColor: '#F0F0F0', gap: 16 },
+  applyBtn: { backgroundColor: '#000', height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+  applyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  clearBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+  clearBtnText: { color: '#000', fontSize: 14, fontWeight: '600' },
   title: { fontSize: 34, fontWeight: "700", color: "#000", letterSpacing: -1.2 },
   progressHeader: { marginTop: 6 },
   progressText: { fontSize: 12, fontWeight: "700", color: "#BBB", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
@@ -784,6 +1155,7 @@ const styles = StyleSheet.create({
   profileImage: { width: "100%", height: "100%", resizeMode: "cover" },
   infoFloatingBtn: { position: "absolute", top: 12, right: 12, backgroundColor: "rgba(255,255,255,0.8)", padding: 6, borderRadius: 8 },
   cardInfo: { padding: 24 },
+  cardInfoScrollable: { padding: 24, paddingBottom: 80 },
   nameText: { fontSize: 24, fontWeight: "700", color: "#000", marginBottom: 8 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
   metaText: { fontSize: 14, fontWeight: "600", color: "#000" },
@@ -805,13 +1177,12 @@ const styles = StyleSheet.create({
   detailHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   detailTitle: { fontWeight: '800', fontSize: 12, textTransform: 'uppercase', color: '#000', letterSpacing: 0.5 },
   detailBody: { color: '#555', fontSize: 14, lineHeight: 20 },
-  bottomNav: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  navBtn: { alignItems: 'center', gap: 10 },
-  circleBtn: { width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: "#EEE", alignItems: "center", justifyContent: "center", backgroundColor: "#FFF" },
-  connectCircle: { backgroundColor: "#000", borderColor: "#000" },
-  activeBtn: { backgroundColor: "#000", borderColor: "#000" },
-  navLabel: { fontSize: 11, fontWeight: "800", color: "#CCC", letterSpacing: 1.5 },
-  
+  bottomNav: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 },
+  iconBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: "#FFF", borderWidth: 1, borderColor: "#E5E5E5", alignItems: "center", justifyContent: "center" },
+  iconBtnActive: { backgroundColor: "#000", borderColor: "#000" },
+  primaryActionBtn: { flex: 1, height: 56, backgroundColor: "#000", borderRadius: 28, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  primaryActionLabel: { color: "#FFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase" },
+
   // BACK OF CARD (INSIGHTS)
   backHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 },
   backTitle: { fontSize: 20, fontWeight: '700', color: '#000' },
@@ -824,7 +1195,7 @@ const styles = StyleSheet.create({
   promptHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   promptContent: { fontSize: 16, fontWeight: '500', color: '#444', fontStyle: 'italic', lineHeight: 24 },
 
-  flipBackBtn: { marginTop: 12, paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#EEE' },
+  flipBackBtn: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#EEE', backgroundColor: '#FBFBFB' },
   flipBackText: { fontSize: 12, color: '#BBB', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
   
   overlayCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, zIndex: 10000 },
@@ -869,5 +1240,36 @@ const styles = StyleSheet.create({
   skillChip: { backgroundColor: '#F0F0F0', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#E5E5E5' },
   skillChipMore: { backgroundColor: '#000', borderColor: '#000' },
   skillChipText: { fontSize: 12, fontWeight: '700', color: '#000' },
-  skillChipTextWhite: { color: '#FFF' }
+  skillChipTextWhite: { color: '#FFF' },
+  
+  // Non-Sponsored Back Design
+  companyLogoLarge: { width: 56, height: 56, borderRadius: 14, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E5E5E5' },
+  companyDescriptionSection: { marginBottom: 20 },
+  companyDescriptionText: { fontSize: 15, color: '#444', lineHeight: 24, fontWeight: '500' },
+  insightsHeader: { fontSize: 14, fontWeight: '800', color: '#000', marginBottom: 16, letterSpacing: 0.3 },
+  insightContentSmall: { fontSize: 14, fontWeight: '500', color: '#555', lineHeight: 20 },
+  noSponsorBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24, padding: 16, backgroundColor: '#F9F9F9', borderRadius: 12, borderWidth: 1, borderColor: '#EEE' },
+  noSponsorText: { fontSize: 13, color: '#666', fontWeight: '500', flex: 1, lineHeight: 18 },
+
+  // Apply Modal
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalHandle: { width: 40, height: 5, backgroundColor: '#EEE', borderRadius: 3, alignSelf: 'center', marginBottom: 20 },
+  applyModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 28, paddingBottom: 40, maxHeight: '90%' },
+  applyModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  applyModalTitle: { fontSize: 24, fontWeight: '800', color: '#000' },
+  applyModalSubtitle: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 24 },
+  closeBtn: { padding: 4 },
+  
+  modalOptionsContainer: { gap: 12 },
+  modalOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 20, backgroundColor: '#F8F9FB', borderRadius: 16, borderWidth: 1, borderColor: '#EEE' },
+  modalOptionIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E5E5', alignItems: 'center', justifyContent: 'center' },
+  modalOptionContent: { flex: 1 },
+  modalOptionTitle: { fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 4 },
+  modalOptionDesc: { fontSize: 13, color: '#666', lineHeight: 18 },
+  
+  successContainer: { alignItems: 'center', paddingVertical: 32 },
+  successCircleLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  successMessage: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 32, paddingHorizontal: 20 },
+  successActionBtn: { backgroundColor: '#000', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, paddingHorizontal: 32, borderRadius: 18, minWidth: 200 },
+  successActionBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

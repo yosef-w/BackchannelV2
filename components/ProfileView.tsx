@@ -2,31 +2,33 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-  Briefcase,
-  Check,
-  ChevronRight,
-  Edit,
-  Lock,
-  LogOut,
-  MapPin,
-  Plus,
-  Target,
-  Trash2,
-  X
+    Briefcase,
+    Check,
+    ChevronRight,
+    Clock,
+    Edit,
+    Lock,
+    LogOut,
+    MapPin,
+    MessageCircle,
+    Plus,
+    Target,
+    Trash2,
+    X
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, { FadeInUp, SlideInDown, SlideOutDown } from "react-native-reanimated";
 
@@ -43,6 +45,9 @@ interface ApplicantProfile {
   expertise: string[];
   workPreferences: string[];
   desiredRoles: string[];
+  experience: string;
+  education: string;
+  achievements: string;
 }
 
 interface SponsorProfile {
@@ -82,8 +87,12 @@ const AVAILABLE_QUESTIONS = [
 
 export function ProfileView({ userType }: ProfileViewProps) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"profile" | "applications">("profile");
+  const [showApplicationDetail, setShowApplicationDetail] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
+  const [showEditResume, setShowEditResume] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -109,6 +118,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
       ? "Passionate about AI/ML and building products that scale. Looking to join a high-growth startup where I can lead product strategy and make meaningful impact."
       : "Helping the next generation of product leaders break into tech. 10+ years at Google and Stripe, now mentoring at early-stage companies and opening doors for talented PMs."
   );
+
+  // Resume Information State
+  const [experience, setExperience] = useState("Former Product Lead at Spotify. Launched the 'Discover Weekly' feature which grew to 100M MAU in first year. Managed a team of 8 PMs and worked directly with engineering leadership.");
+  const [education, setEducation] = useState("MBA from Stanford GSB (Class of 2020). BS in Computer Science from MIT (GPA 3.9).");
+  const [achievements, setAchievements] = useState("Forbes 30 Under 30 (Consumer Tech). 2 Patents in Recommendation Systems. Speaker at SXSW 2023 on 'The Future of Audio'.");
   
   // Editable tags state
   const [expertise, setExpertise] = useState(
@@ -147,6 +161,129 @@ export function ProfileView({ userType }: ProfileViewProps) {
         { label: "Success", value: "87%" },
       ];
 
+  const mockApplications = [
+    {
+      id: 1,
+      jobTitle: "Senior Product Manager",
+      company: "Google",
+      companyLogo: "https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=200",
+      status: "interview_scheduled" as const,
+      appliedDate: "Jan 2, 2026",
+      nextAction: "Technical interview on Jan 8 at 2 PM",
+      sponsorName: "Sarah Chen",
+      sponsorRole: "VP of Product",
+      sponsorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200",
+      timeline: [
+        { stage: "Applied", date: "Jan 2", completed: true },
+        { stage: "Referred", date: "Jan 2", completed: true, isReferred: true },
+        { stage: "Screening", date: "Jan 3", completed: true },
+        { stage: "Interview", date: "Jan 8", completed: false },
+        { stage: "Decision", date: "TBD", completed: false }
+      ]
+    },
+    {
+      id: 2,
+      jobTitle: "Lead Product Designer",
+      company: "Airbnb",
+      companyLogo: "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200",
+      status: "reviewing" as const,
+      appliedDate: "Jan 3, 2026",
+      nextAction: "Application under review by hiring team",
+      sponsorName: "Michael Rodriguez",
+      sponsorRole: "Design Director",
+      sponsorImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
+      timeline: [
+        { stage: "Applied", date: "Jan 3", completed: true },
+        { stage: "Referred", date: "Jan 3", completed: true, isReferred: true },
+        { stage: "Screening", date: "Pending", completed: false },
+        { stage: "Interview", date: "TBD", completed: false },
+        { stage: "Decision", date: "TBD", completed: false }
+      ]
+    },
+    {
+      id: 3,
+      jobTitle: "Product Marketing Manager",
+      company: "Notion",
+      companyLogo: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=200",
+      status: "applied" as const,
+      appliedDate: "Jan 4, 2026",
+      nextAction: "Waiting for referral confirmation",
+      sponsorName: "Emily Watson",
+      sponsorRole: "Head of Marketing",
+      sponsorImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
+      timeline: [
+        { stage: "Applied", date: "Jan 4", completed: true },
+        { stage: "Referred", date: "Pending", completed: false, isReferred: true },
+        { stage: "Screening", date: "Pending", completed: false },
+        { stage: "Interview", date: "TBD", completed: false },
+        { stage: "Decision", date: "TBD", completed: false }
+      ]
+    },
+    {
+      id: 4,
+      jobTitle: "VP of Product",
+      company: "Stripe",
+      companyLogo: "https://images.unsplash.com/photo-1599658880436-c61792e70672?w=200",
+      status: "offer" as const,
+      appliedDate: "Dec 28, 2025",
+      nextAction: "Offer received - respond by Jan 10",
+      sponsorName: "David Park",
+      sponsorRole: "Chief Product Officer",
+      sponsorImage: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200",
+      timeline: [
+        { stage: "Applied", date: "Dec 28", completed: true },
+        { stage: "Referred", date: "Dec 28", completed: true, isReferred: true },
+        { stage: "Screening", date: "Dec 29", completed: true },
+        { stage: "Interview", date: "Dec 30", completed: true },
+        { stage: "Decision", date: "Jan 2", completed: true }
+      ]
+    }
+  ];
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      applied: "Applied",
+      reviewing: "Under Review",
+      interview_scheduled: "Interview",
+      offer: "Offer",
+      rejected: "Closed"
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
+
+  const getStatusDotColor = (status: string) => {
+    const colors = {
+      applied: { backgroundColor: "#3B82F6" },
+      reviewing: { backgroundColor: "#F59E0B" },
+      interview_scheduled: { backgroundColor: "#10B981" },
+      offer: { backgroundColor: "#8B5CF6" },
+      rejected: { backgroundColor: "#EF4444" }
+    };
+    return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    const styles = {
+      applied: { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
+      reviewing: { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" },
+      interview_scheduled: { backgroundColor: "#D1FAE5", borderColor: "#A7F3D0" },
+      offer: { backgroundColor: "#EDE9FE", borderColor: "#DDD6FE" },
+      rejected: { backgroundColor: "#FEE2E2", borderColor: "#FECACA" }
+    };
+    return styles[status as keyof typeof styles] || { backgroundColor: "#F5F5F5", borderColor: "#E5E5E5" };
+  };
+
+  const getStatusTextColor = (status: string) => {
+    const colors = {
+      applied: { color: "#1E40AF" },
+      reviewing: { color: "#B45309" },
+      interview_scheduled: { color: "#047857" },
+      offer: { color: "#6D28D9" },
+      rejected: { color: "#B91C1C" }
+    };
+    return colors[status as keyof typeof colors] || { color: "#666" };
+  };
+
   const applicantData: ApplicantProfile = {
     name,
     role,
@@ -156,6 +293,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     expertise,
     workPreferences,
     desiredRoles,
+    experience,
+    education,
+    achievements,
   };
 
   const sponsorData: SponsorProfile = {
@@ -203,6 +343,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
         break;
       case "bio":
         setBio(tempValue);
+        break;
+      case "experience":
+        setExperience(tempValue);
+        break;
+      case "education":
+        setEducation(tempValue);
+        break;
+      case "achievements":
+        setAchievements(tempValue);
         break;
     }
     setEditingField(null);
@@ -363,39 +512,34 @@ export function ProfileView({ userType }: ProfileViewProps) {
         ))}
       </View>
 
-      {/* Expertise Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
-        <View style={styles.tagCloud}>
-          {profileData.expertise.map((tag) => (
-            <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Applicant-Specific Sections */}
+      {/* Tab Navigation (Applicants Only) */}
       {userType === "applicant" && (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Work Preferences</Text>
-            <View style={styles.tagCloud}>
-              {applicantData.workPreferences.map((pref) => (
-                <View key={pref} style={styles.preferenceTag}>
-                  <Text style={styles.preferenceText}>{pref}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+        <View style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === "profile" && styles.tabActive]} 
+            onPress={() => setActiveTab("profile")}
+          >
+            <Text style={[styles.tabText, activeTab === "profile" && styles.tabTextActive]}>Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === "applications" && styles.tabActive]} 
+            onPress={() => setActiveTab("applications")}
+          >
+            <Text style={[styles.tabText, activeTab === "applications" && styles.tabTextActive]}>Applications</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
+      {/* Profile Content */}
+      {activeTab === "profile" && (
+        <>
+          {/* Expertise Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Desired Roles</Text>
+            <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
             <View style={styles.tagCloud}>
-              {applicantData.desiredRoles.map((role) => (
-                <View key={role} style={styles.roleTag}>
-                  <Target size={14} color="#FFF" strokeWidth={2.5} />
-                  <Text style={styles.roleTagText}>{role}</Text>
+              {profileData.expertise.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -403,19 +547,114 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </>
       )}
 
-      {/* Sponsor-Specific Sections */}
-      {userType === "sponsor" && (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Companies I Can Refer To</Text>
-            <View style={styles.tagCloud}>
-              {sponsorData.companiesCanReferTo.map((company) => (
-                <View key={company} style={styles.companyTag}>
-                  <Text style={styles.companyText}>{company}</Text>
+      {/* Applications Content */}
+      {activeTab === "applications" && userType === "applicant" && (
+        <View style={styles.applicationsContainer}>
+          <Text style={styles.applicationsTitle}>My Applications</Text>
+          <Text style={styles.applicationsSubtitle}>{mockApplications.length} active applications</Text>
+          
+          {mockApplications.map((app, index) => (
+            <Animated.View key={app.id} entering={FadeInUp.delay(index * 100)}>
+              <TouchableOpacity 
+                style={styles.applicationCard} 
+                onPress={() => {
+                  setSelectedApplication(app);
+                  setShowApplicationDetail(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.appCardHeader}>
+                  <Image source={{ uri: app.companyLogo }} style={styles.companyLogo} />
+                  <View style={styles.appCardInfo}>
+                    <Text style={styles.appJobTitle}>{app.jobTitle}</Text>
+                    <Text style={styles.appCompany}>{app.company}</Text>
+                  </View>
+                  <View style={styles.statusBadgeBlack}>
+                    <Text style={styles.statusBadgeBlackText}>{getStatusLabel(app.status)}</Text>
+                  </View>
                 </View>
-              ))}
-            </View>
-          </View>
+
+                <View style={styles.timelineContainer}>
+                  {app.timeline.map((stage, idx) => (
+                    <View key={idx} style={styles.timelineItem}>
+                      <View style={[
+                        styles.timelineDot, 
+                        stage.completed && styles.timelineDotCompleted,
+                        stage.isReferred && styles.timelineDotReferred,
+                        stage.isReferred && stage.completed && styles.timelineDotReferredCompleted
+                      ]} />
+                      {idx < app.timeline.length - 1 && <View style={styles.timelineLine} />}
+                      <View style={styles.timelineContent}>
+                        <Text style={[
+                          styles.timelineStage, 
+                          stage.completed && styles.timelineStageCompleted,
+                          stage.isReferred && stage.completed && styles.timelineStageReferred
+                        ]}>{stage.stage}</Text>
+                        <Text style={styles.timelineDate}>{stage.date}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.appCardFooter}>
+                  <Image source={{ uri: app.sponsorImage }} style={styles.sponsorAvatar} />
+                  <View style={styles.sponsorInfo}>
+                    <Text style={styles.sponsorLabel}>SPONSORED BY</Text>
+                    <Text style={styles.sponsorName}>{app.sponsorName}</Text>
+                  </View>
+                  <ChevronRight color="#BBB" size={18} />
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
+        </View>
+      )}
+
+      {activeTab === "profile" && (
+        <>
+          {/* Applicant-Specific Sections */}
+          {userType === "applicant" && (
+            <>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Work Preferences</Text>
+                <View style={styles.tagCloud}>
+                  {applicantData.workPreferences.map((pref) => (
+                    <View key={pref} style={styles.preferenceTag}>
+                      <Text style={styles.preferenceText}>{pref}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Desired Roles</Text>
+                <View style={styles.tagCloud}>
+                  {applicantData.desiredRoles.map((role) => (
+                    <View key={role} style={styles.roleTag}>
+                      <Target size={14} color="#FFF" strokeWidth={2.5} />
+                      <Text style={styles.roleTagText}>{role}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Sponsor-Specific Sections */}
+          {userType === "sponsor" && (
+            <>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Companies I Can Refer To</Text>
+                <View style={styles.tagCloud}>
+                  {sponsorData.companiesCanReferTo.map((company) => (
+                    <View key={company} style={styles.companyTag}>
+                      <Text style={styles.companyText}>{company}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
         </>
       )}
 
@@ -424,6 +663,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.settingsGroup}>
           <SettingItem label="Edit Profile Insights" onPress={() => setShowEditInsights(true)} />
+          {userType === "applicant" && (
+            <SettingItem label="Edit Resume Information" onPress={() => setShowEditResume(true)} />
+          )}
           <SettingItem label="Privacy & Security" onPress={() => setShowPrivacySecurity(true)} />
           <SettingItem label="Notifications" onPress={() => setShowNotifications(true)} />
           <SettingItem label="Log Out" color="#000" isLast onPress={handleLogout} />
@@ -468,6 +710,108 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* APPLICATION DETAIL MODAL */}
+      {selectedApplication && (
+        <Modal visible={showApplicationDetail} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity 
+              style={StyleSheet.absoluteFill} 
+              activeOpacity={1} 
+              onPress={() => {
+                setShowApplicationDetail(false);
+                setTimeout(() => setSelectedApplication(null), 300);
+              }}
+            >
+              <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+            </TouchableOpacity>
+            
+            <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+              <View style={styles.modalHandle} />
+              <TouchableOpacity 
+                style={styles.modalCloseBtn} 
+                onPress={() => {
+                  setShowApplicationDetail(false);
+                  setTimeout(() => setSelectedApplication(null), 300);
+                }}
+              >
+                <X color="#000" size={24} />
+              </TouchableOpacity>
+              
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+                <View style={styles.appDetailHeader}>
+                  <Image source={{ uri: selectedApplication.companyLogo }} style={styles.appDetailLogo} />
+                  <Text style={styles.appDetailTitle}>{selectedApplication.jobTitle}</Text>
+                  <Text style={styles.appDetailCompany}>{selectedApplication.company}</Text>
+                  <View style={styles.statusBadgeBlack}>
+                    <Text style={styles.statusBadgeBlackText}>
+                      {getStatusLabel(selectedApplication.status)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionTitle}>APPLICATION TIMELINE</Text>
+                  <View style={styles.timelineDetailContainer}>
+                    {selectedApplication.timeline.map((stage: any, idx: number) => (
+                      <View key={idx} style={styles.timelineDetailItem}>
+                        <View style={styles.timelineDetailLeft}>
+                          <View style={[
+                            styles.timelineDetailDot, 
+                            stage.completed && styles.timelineDetailDotCompleted,
+                            stage.isReferred && styles.timelineDetailDotReferred,
+                            stage.isReferred && stage.completed && styles.timelineDetailDotReferredCompleted
+                          ]} />
+                          {idx < selectedApplication.timeline.length - 1 && (
+                            <View style={[
+                              styles.timelineDetailLine,
+                              stage.completed && selectedApplication.timeline[idx + 1].completed && styles.timelineDetailLineCompleted
+                            ]} />
+                          )}
+                        </View>
+                        <View style={styles.timelineDetailRight}>
+                          <Text style={[
+                            styles.timelineDetailStage, 
+                            stage.completed && styles.timelineDetailStageCompleted,
+                            stage.isReferred && stage.completed && styles.timelineDetailStageReferred
+                          ]}>
+                            {stage.stage}
+                          </Text>
+                          <Text style={styles.timelineDetailDate}>{stage.date}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionTitle}>SPONSOR</Text>
+                  <View style={styles.sponsorCard}>
+                    <Image source={{ uri: selectedApplication.sponsorImage }} style={styles.sponsorDetailAvatar} />
+                    <View style={styles.sponsorDetailInfo}>
+                      <Text style={styles.sponsorDetailName}>{selectedApplication.sponsorName}</Text>
+                      <Text style={styles.sponsorDetailRole}>{selectedApplication.sponsorRole} @ {selectedApplication.company}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionTitle}>NEXT STEPS</Text>
+                  <View style={styles.nextActionCard}>
+                    <Clock size={20} color="#000" />
+                    <Text style={styles.nextActionText}>{selectedApplication.nextAction}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.messageBtn} activeOpacity={0.7}>
+                  <MessageCircle color="#FFF" size={20} />
+                  <Text style={styles.messageBtnText}>Message {selectedApplication.sponsorName}</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
 
       {/* EDIT PROFILE MODAL */}
       <Modal visible={showEditProfile} transparent animationType="fade">
@@ -779,6 +1123,100 @@ export function ProfileView({ userType }: ProfileViewProps) {
         onRemoveInsight={handleRemoveInsight}
         onUpdateInsight={handleUpdateInsight}
       />
+
+      {/* EDIT RESUME MODAL */}
+      <Modal visible={showEditResume} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowEditResume(false)}>
+            <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+          </TouchableOpacity>
+          
+          <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Resume</Text>
+              <TouchableOpacity onPress={() => setShowEditResume(false)}>
+                <X color="#000" size={24} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+              
+              {/* Experience */}
+              <View style={styles.editField}>
+                <Text style={styles.fieldLabel}>EXPERIENCE</Text>
+                {editingField === "experience" ? (
+                  <View style={styles.editColumn}>
+                    <TextInput
+                      style={[styles.fieldInput, styles.bioInput]}
+                      value={tempValue}
+                      onChangeText={setTempValue}
+                      multiline
+                      autoFocus
+                    />
+                    <TouchableOpacity style={[styles.saveBtn, { alignSelf: 'flex-end', marginTop: 8 }]} onPress={() => handleSaveField("experience")}>
+                      <Check color="#FFF" size={18} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("experience", experience)}>
+                    <Text style={styles.fieldText}>{experience}</Text>
+                    <Edit color="#666" size={16} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Education */}
+              <View style={styles.editField}>
+                <Text style={styles.fieldLabel}>EDUCATION</Text>
+                {editingField === "education" ? (
+                  <View style={styles.editColumn}>
+                    <TextInput
+                      style={[styles.fieldInput, styles.bioInput]}
+                      value={tempValue}
+                      onChangeText={setTempValue}
+                      multiline
+                      autoFocus
+                    />
+                    <TouchableOpacity style={[styles.saveBtn, { alignSelf: 'flex-end', marginTop: 8 }]} onPress={() => handleSaveField("education")}>
+                      <Check color="#FFF" size={18} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("education", education)}>
+                    <Text style={styles.fieldText}>{education}</Text>
+                    <Edit color="#666" size={16} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Achievements */}
+              <View style={styles.editField}>
+                <Text style={styles.fieldLabel}>ACHIEVEMENTS</Text>
+                {editingField === "achievements" ? (
+                  <View style={styles.editColumn}>
+                    <TextInput
+                      style={[styles.fieldInput, styles.bioInput]}
+                      value={tempValue}
+                      onChangeText={setTempValue}
+                      multiline
+                      autoFocus
+                    />
+                    <TouchableOpacity style={[styles.saveBtn, { alignSelf: 'flex-end', marginTop: 8 }]} onPress={() => handleSaveField("achievements")}>
+                      <Check color="#FFF" size={18} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("achievements", achievements)}>
+                    <Text style={styles.fieldText}>{achievements}</Text>
+                    <Edit color="#666" size={16} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+            </ScrollView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* PRIVACY & SECURITY MODAL */}
       <SimpleModal
@@ -1853,5 +2291,408 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#000',
+  },
+  
+  // Tab Navigation
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 32,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  tabActive: {
+    backgroundColor: '#FFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#999',
+  },
+  tabTextActive: {
+    color: '#000',
+  },
+  
+  // Applications Section
+  applicationsContainer: {
+    marginBottom: 32,
+  },
+  applicationsTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#000',
+    marginBottom: 4,
+  },
+  applicationsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 24,
+  },
+  applicationCard: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  appCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  companyLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
+  },
+  appCardInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  appJobTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000',
+    marginBottom: 2,
+  },
+  appCompany: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  statusBadgeBlack: {
+    backgroundColor: '#000',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  statusBadgeBlackText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  timelineContainer: {
+    marginBottom: 20,
+    paddingLeft: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    position: 'relative',
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E5E5E5',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    marginTop: 4,
+  },
+  timelineDotCompleted: {
+    backgroundColor: '#000',
+  },
+  timelineDotReferred: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  timelineDotReferredCompleted: {
+    backgroundColor: '#000',
+    borderWidth: 3,
+    borderColor: '#F9F9F9',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 5,
+    top: 18,
+    width: 2,
+    height: 24,
+    backgroundColor: '#E5E5E5',
+  },
+  timelineContent: {
+    marginLeft: 12,
+    marginBottom: 12,
+  },
+  timelineStage: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#999',
+  },
+  timelineStageCompleted: {
+    color: '#000',
+  },
+  timelineStageReferred: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  timelineDate: {
+    fontSize: 12,
+    color: '#BBB',
+    marginTop: 2,
+  },
+  appCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  sponsorAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+  },
+  sponsorInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  sponsorLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#BBB',
+    letterSpacing: 1,
+  },
+  sponsorName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#000',
+  },
+  
+  // Application Detail Modal
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#EEE',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  modalCloseBtn: {
+    position: 'absolute',
+    top: 24,
+    right: 24,
+    zIndex: 10,
+  },
+  appDetailHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  appDetailLogo: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    backgroundColor: '#F9F9F9',
+    marginBottom: 16,
+  },
+  appDetailTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  appDetailCompany: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  detailSection: {
+    marginBottom: 28,
+  },
+  detailSectionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#BBB',
+    letterSpacing: 1.2,
+    marginBottom: 12,
+  },
+  timelineDetailContainer: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 16,
+    padding: 20,
+  },
+  timelineDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  timelineDetailLeft: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  timelineDetailDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#E5E5E5',
+    borderWidth: 3,
+    borderColor: '#FFF',
+  },
+  timelineDetailDotCompleted: {
+    backgroundColor: '#000',
+  },
+  timelineDetailDotReferred: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  timelineDetailDotReferredCompleted: {
+    backgroundColor: '#000',
+    borderWidth: 4,
+    borderColor: '#F9F9F9',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  timelineDetailLine: {
+    width: 2,
+    height: 32,
+    backgroundColor: '#E5E5E5',
+    marginTop: 4,
+  },
+  timelineDetailLineCompleted: {
+    backgroundColor: '#BBB',
+  },
+  timelineDetailRight: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  timelineDetailStage: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#999',
+    marginBottom: 2,
+  },
+  timelineDetailStageCompleted: {
+    color: '#000',
+  },
+  timelineDetailStageReferred: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  timelineDetailDate: {
+    fontSize: 13,
+    color: '#BBB',
+    fontWeight: '600',
+  },
+  sponsorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 16,
+    padding: 16,
+  },
+  sponsorDetailAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFF',
+  },
+  sponsorDetailInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  sponsorDetailName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000',
+    marginBottom: 2,
+  },
+  sponsorDetailRole: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '600',
+  },
+  nextActionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFF9E6',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  nextActionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000',
+  },
+  messageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#000',
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginTop: 12,
+  },
+  messageBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
