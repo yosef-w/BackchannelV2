@@ -664,7 +664,7 @@ export function HomeView({ userType }: HomeViewProps) {
                       {/* Back Face - Insights */}
                       <Animated.View style={[styles.cardOuter, styles.cardOuterBack, backStyle]}>
                         <View style={[styles.cardInner, styles.cardInnerBack]}>
-                          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardInfo}>
+                          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardInfoScrollable}>
                             <View style={styles.backHeader}>
                               <Sparkles color="#000" size={20} />
                               <Text style={styles.backTitle}>Key Insights</Text>
@@ -682,10 +682,10 @@ export function HomeView({ userType }: HomeViewProps) {
                                 <Text style={styles.promptContent}>{prompt.answer}</Text>
                               </View>
                             ))}
-                            <TouchableOpacity style={styles.flipBackBtn} onPress={toggleFlip}>
-                              <Text style={styles.flipBackText}>View Profile</Text>
-                            </TouchableOpacity>
                           </ScrollView>
+                          <TouchableOpacity style={styles.flipBackBtn} onPress={toggleFlip}>
+                            <Text style={styles.flipBackText}>View Profile</Text>
+                          </TouchableOpacity>
                         </View>
                       </Animated.View>
                     </>
@@ -1195,7 +1195,7 @@ const styles = StyleSheet.create({
   promptHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   promptContent: { fontSize: 16, fontWeight: '500', color: '#444', fontStyle: 'italic', lineHeight: 24 },
 
-  flipBackBtn: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#EEE', backgroundColor: '#FBFBFB' },
+  flipBackBtn: { position: 'absolute', bottom: 12, left: 12, right: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#FBFBFB', borderRadius: 16, borderWidth: 1, borderColor: '#EEE' },
   flipBackText: { fontSize: 12, color: '#BBB', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
   
   overlayCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, zIndex: 10000 },

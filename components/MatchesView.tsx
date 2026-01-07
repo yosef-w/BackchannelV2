@@ -267,6 +267,62 @@ const mockSponsors: PotentialSponsor[] = [
   }
 ];
 
+
+const mockPipeline: Match[] = [
+  {
+    id: 101,
+    name: "James Chen",
+    role: "Frontend Developer",
+    company: "Pinterest",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
+    status: "Application Submitted",
+    date: "1 day ago",
+    appliedRole: "Senior Frontend Engineer",
+    experience: "4 Years",
+    skills: ["React", "TypeScript", "Next.js"],
+    insights: { funFact: "Won a national hackathon two years in a row." },
+    prompts: [{ question: "MY WORK STYLE", answer: "I believe in shipping fast and iterating based on user feedback." }]
+  },
+  {
+    id: 102,
+    name: "Elena Rodriguez",
+    role: "Product Designer",
+    company: "Freelance",
+    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
+    status: "Interviewing",
+    date: "1 week ago",
+    appliedRole: "Lead Product Designer",
+    experience: "6 Years",
+    skills: ["Figma", "UI/UX", "Prototyping"],
+    insights: { funFact: "Designed a mobile game played by 1M+ users." },
+    prompts: [{ question: "DESIGN PHILOSOPHY", answer: "Simplicity is the ultimate sophistication." }]
+  },
+  {
+    id: 103,
+    name: "David Kim",
+    role: "Data Analyst",
+    company: "Uber",
+    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
+    status: "Hired",
+    date: "2 weeks ago",
+    appliedRole: "Data Scientist",
+    experience: "3 Years",
+    skills: ["Python", "SQL", "Tableau"],
+    insights: { funFact: "Can solve a Rubik's cube in under 45 seconds." },
+    prompts: [{ question: "MOTIVATION", answer: "Turning raw data into actionable business insights." }]
+  }
+];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "Application Submitted": return "#000";
+    case "Recruiter Screen": return "#000";
+    case "Interviewing": return "#000";
+    case "Hired": return "#000";
+    default: return "#000";
+  }
+};
+
 const QUICK_REPLIES = ["Nice to meet you!", "Great profile!", "Let's chat!", "Impressive skills!"];
 
 export function MatchesView({ userType = "sponsor" }: { userType?: "applicant" | "sponsor" }) {
@@ -337,18 +393,22 @@ export function MatchesView({ userType = "sponsor" }: { userType?: "applicant" |
               </ScrollView>
             </View>
 
-            {/* Activity List */}
+            {/* Active Pipeline */}
             <View style={styles.listSection}>
-              <Text style={styles.listSectionTitle}>All Activity</Text>
-              {mockMatches.map((match, index) => (
-                <Animated.View key={`list-${index}`} entering={FadeInUp.delay(index * 100)} style={styles.listItem}>
-                  <Image source={{ uri: match.image }} style={styles.listImage} />
+              <Text style={styles.listSectionTitle}>Active Pipeline</Text>
+              {mockPipeline.map((item, index) => (
+                <Animated.View key={`pipeline-${index}`} entering={FadeInUp.delay(index * 100)} style={styles.listItem}>
+                  <Image source={{ uri: item.image }} style={styles.listImage} />
                   <View style={styles.listInfo}>
-                    <Text style={styles.listName}>{match.name}</Text>
-                    <Text style={styles.listStatus}>{match.status.toUpperCase()} • {match.date}</Text>
+                    <Text style={styles.listName}>{item.name}</Text>
+                    <Text style={styles.pipelineRoleText}>Referred for {item.appliedRole}</Text>
+                    <View style={styles.statusBadge}>
+                      <View style={styles.statusDot} />
+                      <Text style={styles.statusText}>{item.status}</Text>
+                    </View>
                   </View>
-                  <TouchableOpacity style={styles.iconAction} onPress={() => openProfile(match, "view")}>
-                    <ExternalLink color="#000" size={20} />
+                  <TouchableOpacity style={styles.viewProfileBtn} onPress={() => openProfile(item, "view")}>
+                    <Text style={styles.viewProfileText}>View</Text>
                   </TouchableOpacity>
                 </Animated.View>
               ))}
@@ -838,5 +898,13 @@ const styles = StyleSheet.create({
   replyChipText: { fontWeight: '700', fontSize: 13 },
   inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, backgroundColor: '#F3F4F6', borderRadius: 20, padding: 8 },
   messageInput: { flex: 1, padding: 10, fontSize: 15, maxHeight: 80 },
-  sendBtn: { backgroundColor: '#000', width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }
+  sendBtn: { backgroundColor: '#000', width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+
+  // Active Pipeline Styles
+  pipelineRoleText: { fontSize: 12, color: '#666', fontWeight: '500', marginBottom: 6 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, alignSelf: 'flex-start', borderColor: '#EEE', backgroundColor: '#F5F5F5' },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#000' },
+  statusText: { fontSize: 11, fontWeight: '700', color: '#000' },
+  viewProfileBtn: { backgroundColor: '#000', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
+  viewProfileText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 });
