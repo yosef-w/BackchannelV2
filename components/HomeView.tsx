@@ -51,11 +51,13 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { JobApplicationWebView } from "./JobApplicationWebView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface HomeViewProps {
   userType: "applicant" | "sponsor";
+  onWebViewActiveChange?: (isActive: boolean) => void;
 }
 
 const DECK_SIZE = 10;
@@ -264,6 +266,7 @@ const mockJobs = [
     description: "Join our Payments Platform team to build the financial infrastructure for the internet. You'll work on systems processing billions of dollars in transactions.",
     skills: ["TypeScript", "React", "Go", "Kubernetes"],
     benefits: ["Unlimited PTO", "401k Match", "Full Health Coverage", "Remote Flexible"],
+    applicationUrl: "https://stripe.com/jobs/listing/senior-software-engineer/12345",
     sponsorInfo: {
       name: "Sarah Chen",
       role: "Engineering Manager",
@@ -285,17 +288,18 @@ const mockJobs = [
   },
   {
     id: 2,
-    title: "Backend Engineer",
-    company: "Airbnb",
+    title: "Senior Software Engineer",
+    company: "Toyota",
     location: "Remote",
-    type: "Contract",
+    type: "Full-time",
     salary: "$130k - $180k",
     image: "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=200&h=200&fit=crop",
-    description: "Scale the infrastructure that powers millions of trips. Focus on reliability, performance, and developer experience.",
+    description: "Join Toyota's digital transformation team. Build software that powers the future of mobility and smart manufacturing.",
     skills: ["Java", "Kafka", "AWS", "Microservices"],
     benefits: ["Travel Credit", "Remote Work", "Health Stipend", "Flexible Hours"],
     isSponsored: false,
-    companyDescription: "Airbnb is a global travel platform connecting millions of hosts and guests. Founded in 2008, we've grown to facilitate over 1 billion guest arrivals across 220+ countries. Our engineering culture emphasizes reliability, scale, and user experience — building systems that handle peak travel seasons while maintaining 99.99% uptime.",
+    applicationUrl: "https://careers.toyota.com/us/en/job/10274543/Senior-Software-Engineer",
+    companyDescription: "Toyota is pioneering the future of mobility with innovative technology solutions. Our software engineering team works on cutting-edge projects from autonomous vehicles to smart manufacturing systems.",
     fullDetails: {
       responsibilities: "Maintain and scale core backend services. Optimize database queries and service communication. Lead incident response and post-mortems. Improve system observability.",
       requirements: "4+ years of backend engineering experience. Proficiency in Java or similar JVM languages. Experience with message queues (Kafka) and cloud infrastructure (AWS).",
@@ -313,6 +317,7 @@ const mockJobs = [
     description: "Help us reimagine how teams collaborate. You'll design experiences that balance power and simplicity for millions of users worldwide.",
     skills: ["Figma", "Prototyping", "User Research", "Design Systems"],
     benefits: ["Equity Package", "Learning Stipend", "Home Office Budget", "Flexible Hours"],
+    applicationUrl: "https://notion.so/careers/designer",
     sponsorInfo: {
       name: "Alex Kim",
       role: "Head of Design",
@@ -344,6 +349,7 @@ const mockJobs = [
     skills: ["PyTorch", "C++", "Computer Vision", "Robotics"],
     benefits: ["Stock Options", "Health Coverage", "401k", "Relocation Assistance"],
     isSponsored: false,
+    applicationUrl: "https://www.tesla.com/careers/search/job/249481",
     companyDescription: "Tesla's mission is to accelerate the world's transition to sustainable energy. Our AI team works on some of the most challenging real-world robotics problems — building software that can drive millions of vehicles safely. We process billions of miles of driving data and train models on custom supercomputers, pushing the boundaries of what's possible with machine learning.",
     fullDetails: {
       responsibilities: "Design and train deep learning models for autonomous driving. Optimize inference for real-time performance. Collaborate with robotics teams on sensor fusion. Analyze fleet data to improve model performance.",
@@ -362,6 +368,7 @@ const mockJobs = [
     description: "Use ML to personalize music recommendations for 500M+ users. Build models that understand taste and discover the next big artist.",
     skills: ["Python", "SQL", "Machine Learning", "A/B Testing"],
     benefits: ["Remote First", "Premium Spotify", "Annual Bonus", "Stock Options"],
+    applicationUrl: "https://spotify.com/careers/data-scientist",
     sponsorInfo: {
       name: "Maria Rodriguez",
       role: "Data Science Lead",
@@ -393,6 +400,7 @@ const mockJobs = [
     skills: ["Ruby", "React", "GraphQL", "PostgreSQL"],
     benefits: ["Remote Flexible", "Learning Fund", "Health Benefits", "Equity"],
     isSponsored: false,
+    applicationUrl: "https://www.shopify.com/careers/software-engineers_c96af3a9-82a3-4c6a-9b86-1f7e6b376167",
     companyDescription: "Shopify powers over 4 million businesses worldwide, from small startups to Fortune 500 companies. We're building commerce infrastructure for the internet — enabling anyone to start, run, and grow a business. Our engineering teams ship code that processes billions in sales annually, and we're known for our merchant-first culture and focus on craft.",
     fullDetails: {
       responsibilities: "Build and maintain core commerce features. Write clean, tested Ruby and React code. Participate in code reviews and design discussions. Ship features that impact millions of merchants.",
@@ -411,6 +419,7 @@ const mockJobs = [
     description: "Build and maintain infrastructure for our monitoring platform. Scale systems that ingest trillions of data points daily.",
     skills: ["Kubernetes", "Terraform", "Python", "AWS"],
     benefits: ["Unlimited PTO", "Stock Options", "401k Match", "Home Office Setup"],
+    applicationUrl: "https://datadog.com/careers/devops",
     sponsorInfo: {
       name: "Kevin Liu",
       role: "Infrastructure Lead",
@@ -442,6 +451,7 @@ const mockJobs = [
     skills: ["Swift", "UIKit", "SwiftUI", "Core Audio"],
     benefits: ["Equity", "Health Coverage", "Unlimited PTO", "Remote Options"],
     isSponsored: false,
+    applicationUrl: "https://discord.com/jobs/8112880002",
     companyDescription: "Discord is where millions of people come together to talk, hang out, and have fun. We're building a platform that brings people closer through voice, video, and text — whether they're studying together, playing games, or just catching up. Our iOS app is used by over 50 million people monthly, and we're constantly pushing the boundaries of real-time communication on mobile.",
     fullDetails: {
       responsibilities: "Develop new features for the iOS app. Optimize performance for real-time audio and video. Work closely with design and product teams. Write clean, maintainable Swift code. Debug production issues.",
@@ -473,7 +483,7 @@ const SkeletonCard = () => {
   );
 };
 
-export function HomeView({ userType }: HomeViewProps) {
+export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
   const scrollRef = useRef<ScrollView>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -490,6 +500,15 @@ export function HomeView({ userType }: HomeViewProps) {
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applyStep, setApplyStep] = useState<"select" | "waitlist" | "external">("select");
   const [pendingJob, setPendingJob] = useState<any>(null);
+
+  // WebView State
+  const [showWebView, setShowWebView] = useState(false);
+  const [webViewJob, setWebViewJob] = useState<any>(null);
+
+  // Notify parent when WebView state changes
+  useEffect(() => {
+    onWebViewActiveChange?.(showWebView);
+  }, [showWebView]);
 
   const toggleFilter = (category: string, option: string) => {
     setSelectedFilters(prev => {
@@ -580,6 +599,15 @@ export function HomeView({ userType }: HomeViewProps) {
     }, 400);
   };
 
+  const handleDirectApply = () => {
+    // Close the apply modal
+    setShowApplyModal(false);
+    
+    // Open WebView with the job application URL
+    setWebViewJob(pendingJob);
+    setShowWebView(true);
+  };
+
   const mainAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: swipeX.value }],
     opacity: swipeOpacity.value,
@@ -599,6 +627,23 @@ export function HomeView({ userType }: HomeViewProps) {
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: withTiming(showMore ? '180deg' : '0deg') }]
   }));
+
+  // If WebView is active, show it
+  if (showWebView && webViewJob) {
+    return (
+      <JobApplicationWebView
+        jobUrl={webViewJob.applicationUrl}
+        jobTitle={webViewJob.title}
+        company={webViewJob.company}
+        onClose={() => {
+          setShowWebView(false);
+          setWebViewJob(null);
+          // Mark as applied and continue
+          handleSwipe(true);
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -971,7 +1016,7 @@ export function HomeView({ userType }: HomeViewProps) {
                 <View style={styles.modalOptionsContainer}>
                   <TouchableOpacity 
                     style={styles.modalOptionBtn}
-                    onPress={() => setApplyStep("external")}
+                    onPress={handleDirectApply}
                     activeOpacity={0.7}
                   >
                     <View style={styles.modalOptionIcon}>
@@ -979,7 +1024,7 @@ export function HomeView({ userType }: HomeViewProps) {
                     </View>
                     <View style={styles.modalOptionContent}>
                       <Text style={styles.modalOptionTitle}>Apply Directly</Text>
-                      <Text style={styles.modalOptionDesc}>Use our AI Copilot to autofill the company application.</Text>
+                      <Text style={styles.modalOptionDesc}>Use our autofill feature to complete the company application.</Text>
                     </View>
                     <ChevronRight color="#CCC" size={20} />
                   </TouchableOpacity>

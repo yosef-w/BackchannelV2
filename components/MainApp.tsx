@@ -108,7 +108,7 @@ export function MainApp({ userType }: MainAppProps) {
 
         {/* Main content wrapper */}
         <View style={styles.mainContent}>
-          {activeView === "home" && <HomeView userType={userType} />}
+          {activeView === "home" && <HomeView userType={userType} onWebViewActiveChange={setIsBottomNavHidden} />}
           {activeView === "matches" && <MatchesView userType={userType} />}
           {activeView === "messages" && (
             <MessagesView onThreadActiveChange={setIsBottomNavHidden} userType={userType} />
