@@ -11,6 +11,7 @@ import {
 import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
+import { useOnboardingStore } from "../stores/useOnboardingStore";
 
 interface ModeSelectionProps {
   onSelect: (mode: "applicant" | "sponsor") => void;
@@ -21,10 +22,11 @@ interface ModeSelectionProps {
 
 export function ModeSelection({ onSelect, onBack, onSkipToDashboard, onSkipToApplicantDashboard }: ModeSelectionProps) {
   const [selected, setSelected] = useState<"applicant" | "sponsor" | null>(null);
+  const setUserType = useOnboardingStore((state) => state.setUserType);
 
   const handleSelect = (mode: "applicant" | "sponsor") => {
     setSelected(mode);
-    // Short delay so the user sees the selection color before navigating
+    setUserType(mode);
     setTimeout(() => onSelect(mode), 200);
   };
 

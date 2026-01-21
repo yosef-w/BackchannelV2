@@ -20,6 +20,11 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { useMutation } from "@tanstack/react-query";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { authApi } from "@/lib/auth-api";
 
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
@@ -70,13 +75,65 @@ export function SponsorQuestionnaire({ onComplete, onBack }: SponsorQuestionnair
   const [selectedInsights, setSelectedInsights] = useState<Array<{ question: string; answer: string }>>([]);
   const [showQuestionPicker, setShowQuestionPicker] = useState(false);
 
+  const sponsorData = useOnboardingStore((state) => state.sponsorData);
+  const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
+  const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
+  const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
+
+  const createProfileMutation = useMutation({
+    mutationFn: async () => {
+      return authApi.createProfile({
+        userType: "sponsor",
+        firstName: sponsorData.firstName || "",
+        lastName: sponsorData.lastName || "",
+        email: sponsorData.email || "",
+        password: sponsorData.password || "",
+        profileData: {
+          company: answers[0],
+          jobTitle: answers[1],
+          yearsAtCompany: answers[2],
+          openToReferrals: answers[3],
+          pastReferrals: answers[4],
+          referralBonus: answers[5],
+          insights: selectedInsights,
+          workEmail: answers[7],
+        },
+      });
+    },
+    onSuccess: async (data) => {
+      await setAuthTokens(data.access_token, data.refresh_token);
+      
+      await loadFromProfile({
+        firstName: sponsorData.firstName,
+        lastName: sponsorData.lastName,
+        email: sponsorData.email,
+        profileData: {
+          company: answers[0],
+          jobTitle: answers[1],
+          yearsAtCompany: answers[2],
+          openToReferrals: answers[3],
+          pastReferrals: answers[4],
+          referralBonus: answers[5],
+          insights: selectedInsights,
+          workEmail: answers[7],
+        },
+      });
+      
+      clearOnboardingData();
+      setShowSuccess(true);
+      setTimeout(() => {
+        onComplete();
+      }, 2200);
+    },
+    onError: (error: Error) => {
+      setIsSubmitting(false);
+      alert(`Error: ${error.message}`);
+    },
+  });
+
   const handleFinalSubmit = () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setShowSuccess(true);
-      setTimeout(() => onComplete(), 2200);
-    }, 2000);
+    createProfileMutation.mutate();
   };
 
   const handleNext = () => {

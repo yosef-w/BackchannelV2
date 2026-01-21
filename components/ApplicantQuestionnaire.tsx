@@ -32,6 +32,11 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { useMutation } from "@tanstack/react-query";
+import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { useAuthStore } from "../stores/useAuthStore";
+import { useUserProfileStore } from "../stores/useUserProfileStore";
+import { authApi } from "../lib/auth-api";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -129,6 +134,59 @@ export function ApplicantQuestionnaire({ onComplete, onBack }: ApplicantQuestion
   const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(null);
   const [tempAnswer, setTempAnswer] = useState("");
 
+  const applicantData = useOnboardingStore((state) => state.applicantData);
+  const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
+  const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
+  const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
+
+  const createProfileMutation = useMutation({
+    mutationFn: async () => {
+      return authApi.createProfile({
+        userType: "applicant",
+        firstName: applicantData.firstName || "",
+        lastName: applicantData.lastName || "",
+        email: applicantData.email || "",
+        password: applicantData.password || "",
+        profileData: {
+          targetIndustry: answers[0],
+          currentRole: answers[1],
+          seekingPosition: answers[2],
+          skills: selectedSkills,
+          insights: selectedInsights,
+          resumeUrl: selectedFile,
+        },
+      });
+    },
+    onSuccess: async (data) => {
+      await setAuthTokens(data.access_token, data.refresh_token);
+      
+      await loadFromProfile({
+        firstName: applicantData.firstName,
+        lastName: applicantData.lastName,
+        email: applicantData.email,
+        phone: applicantData.phone,
+        profileData: {
+          targetIndustry: answers[0],
+          currentRole: answers[1],
+          seekingPosition: answers[2],
+          skills: selectedSkills,
+          insights: selectedInsights,
+          resumeUrl: selectedFile,
+        },
+      });
+      
+      clearOnboardingData();
+      setShowSuccess(true);
+      setTimeout(() => {
+        onComplete();
+      }, 2200);
+    },
+    onError: (error: Error) => {
+      setIsSubmitting(false);
+      alert(`Error: ${error.message}`);
+    },
+  });
+
   const filteredSkills = useMemo(() => {
     const selectedIndustry = answers[0] || "Other";
     const industrySkills = SKILLS_BY_INDUSTRY[selectedIndustry] || SKILLS_BY_INDUSTRY.Other;
@@ -137,16 +195,35 @@ export function ApplicantQuestionnaire({ onComplete, onBack }: ApplicantQuestion
       .sort((a, b) => a.localeCompare(b));
   }, [searchQuery, answers]);
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     setIsSubmitting(true);
-    // Simulate processing
-    setTimeout(() => {
-      setIsSubmitting(false);
+    
+    // Skip API call for now - just load data into stores
+    try {
+      await loadFromProfile({
+        firstName: applicantData.firstName,
+        lastName: applicantData.lastName,
+        email: applicantData.email,
+        phone: applicantData.phone,
+        profileData: {
+          targetIndustry: answers[0],
+          currentRole: answers[1],
+          seekingPosition: answers[2],
+          skills: selectedSkills,
+          insights: selectedInsights,
+          resumeUrl: selectedFile,
+        },
+      });
+      
+      clearOnboardingData();
       setShowSuccess(true);
       setTimeout(() => {
         onComplete();
       }, 2200);
-    }, 2000);
+    } catch (error) {
+      setIsSubmitting(false);
+      alert(`Error: ${error}`);
+    }
   };
 
   const handleNext = () => {

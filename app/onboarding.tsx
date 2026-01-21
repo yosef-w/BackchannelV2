@@ -31,6 +31,7 @@ export default function OnboardingScreen() {
       <AuthScreen
         onBack={() => setStep("onboarding")}
         onComplete={() => setStep("questionnaire")}
+        onLoginComplete={() => router.replace({ pathname: "/dashboard", params: { mode: userType } })}
       />
     );
   }

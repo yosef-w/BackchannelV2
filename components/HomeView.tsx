@@ -52,12 +52,17 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { JobApplicationWebView } from "./JobApplicationWebView";
+import { useUserProfileStore } from "../stores/useUserProfileStore";
+import { checkProfileCompleteness } from "../utils/profileCompletion";
+import { ProfileCompletionModal } from "./ProfileCompletionModal";
+import { useRouter } from "expo-router";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface HomeViewProps {
   userType: "applicant" | "sponsor";
   onWebViewActiveChange?: (isActive: boolean) => void;
+  onNavigateToProfile?: () => void;
 }
 
 const DECK_SIZE = 10;
@@ -84,6 +89,9 @@ const mockProfiles = [
     location: "Tokyo, Japan",
     image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800",
     bio: "Minimalist designer focused on financial inclusion. Making complex banking feel like a deep breath.",
+    yearsExperience: "8+ years",
+    skills: ["UI/UX Design", "Design Systems", "Figma", "Product Strategy"],
+    desiredRole: "Chief Design Officer",
     insights: { 
       funFact: "Collects vintage typewriters from the 1920s.", 
       mentality: "The best interface is no interface at all." 
@@ -106,6 +114,9 @@ const mockProfiles = [
     location: "Seattle, WA",
     image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800",
     bio: "Building autonomous reforestation drones. Obsessed with low-level systems and environmental impact.",
+    yearsExperience: "12+ years",
+    skills: ["C++", "Embedded Systems", "Rust", "Robotics"],
+    desiredRole: "VP of Engineering",
     insights: { 
       funFact: "Lived off-grid in a solar-powered van for two years while building his first startup.", 
       mentality: "Efficiency is the only sustainable path forward." 
@@ -128,6 +139,9 @@ const mockProfiles = [
     location: "New York, NY",
     image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800",
     bio: "Investing in the next generation of 'unsexy' software. Logistics, supply chain, and insurance tech.",
+    yearsExperience: "15+ years",
+    skills: ["Venture Capital", "Operations", "B2B SaaS", "Growth Strategy"],
+    desiredRole: "Managing Partner",
     insights: { 
       funFact: "Has run a marathon on every continent (including Antarctica).", 
       mentality: "I bet on the person, not just the deck." 
@@ -150,6 +164,9 @@ const mockProfiles = [
     location: "Los Angeles, CA",
     image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800",
     bio: "Building the future of competitive gaming. Bridging the gap between entertainment and pro sports.",
+    yearsExperience: "6+ years",
+    skills: ["Community Management", "Event Production", "Analytics", "Partnerships"],
+    desiredRole: "VP of Esports",
     insights: { 
       funFact: "Was a top-500 ranked Overwatch player in college.", 
       mentality: "Community is the only moat that lasts." 
@@ -172,6 +189,9 @@ const mockProfiles = [
     location: "Berlin, Germany",
     image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800",
     bio: "White-hat hacker focused on post-quantum cryptography. Making the internet a safer place, one bug at a time.",
+    yearsExperience: "10+ years",
+    skills: ["Cryptography", "Penetration Testing", "Network Security", "Python"],
+    desiredRole: "Chief Security Officer",
     insights: { 
       funFact: "Discovered a critical zero-day exploit in a major browser while on vacation.", 
       mentality: "Trust, but verify. Then verify again." 
@@ -194,6 +214,9 @@ const mockProfiles = [
     location: "Boston, MA",
     image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800",
     bio: "Giving robots a sense of touch. Specialized in haptic feedback and soft robotics.",
+    yearsExperience: "7+ years",
+    skills: ["ROS", "Computer Vision", "Control Systems", "C++"],
+    desiredRole: "Principal Robotics Engineer",
     insights: { 
       funFact: "Builds miniature mechanical watches as a hobby.", 
       mentality: "Hardware is hard, but that's why it's worth it." 
@@ -216,6 +239,9 @@ const mockProfiles = [
     location: "Miami, FL",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800",
     bio: "Championing decentralized governance. Passionate about ownership and creator economies.",
+    yearsExperience: "5+ years",
+    skills: ["Community Building", "Discord", "Tokenomics", "Social Media"],
+    desiredRole: "Chief Community Officer",
     insights: { 
       funFact: "Managed a Discord community of 250,000 members for a viral NFT project.", 
       mentality: "People > Code." 
@@ -238,6 +264,9 @@ const mockProfiles = [
     location: "Cambridge, MA",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800",
     bio: "Using machine learning to accelerate drug discovery. Turning biology into a programmable language.",
+    yearsExperience: "9+ years",
+    skills: ["Python", "Machine Learning", "Genomics", "Data Science"],
+    desiredRole: "Director of Computational Biology",
     insights: { 
       funFact: "Taught himself to code by writing scripts to analyze his own DNA.", 
       mentality: "Data is the most powerful medicine we have." 
@@ -471,19 +500,48 @@ const SkeletonCard = () => {
   return (
     <View style={styles.cardOuter}>
       <View style={styles.cardInner}>
-        <Animated.View style={[styles.imageWrapper, { backgroundColor: '#EEE' }, shimmerStyle]} />
-        <View style={styles.cardInfo}>
-          <Animated.View style={[{ width: '60%', height: 24, backgroundColor: '#EEE', borderRadius: 4, marginBottom: 12 }, shimmerStyle]} />
-          <Animated.View style={[{ width: '40%', height: 16, backgroundColor: '#F5F5F5', borderRadius: 4, marginBottom: 20 }, shimmerStyle]} />
-          <View style={styles.divider} />
-          <Animated.View style={[{ width: '90%', height: 14, backgroundColor: '#F9F9F9', borderRadius: 4, marginBottom: 8 }, shimmerStyle]} />
+        {/* Name Header Shimmer */}
+        <Animated.View style={[{ backgroundColor: '#EEE', height: 24, marginHorizontal: 20, marginTop: 20, marginBottom: 14, borderRadius: 4 }, shimmerStyle]} />
+        
+        {/* Image + Details Row */}
+        <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 20 }}>
+          {/* Square Image Shimmer */}
+          <Animated.View style={[{ backgroundColor: '#EEE', width: 110, height: 110, borderRadius: 16 }, shimmerStyle]} />
+          
+          {/* Details Column */}
+          <View style={{ flex: 1, gap: 8 }}>
+            <Animated.View style={[{ backgroundColor: '#EEE', height: 18, borderRadius: 4 }, shimmerStyle]} />
+            <Animated.View style={[{ backgroundColor: '#EEE', height: 24, width: '60%', borderRadius: 12 }, shimmerStyle]} />
+            <Animated.View style={[{ backgroundColor: '#EEE', height: 16, width: '80%', borderRadius: 4 }, shimmerStyle]} />
+            <Animated.View style={[{ backgroundColor: '#EEE', height: 16, width: '50%', borderRadius: 4 }, shimmerStyle]} />
+          </View>
+        </View>
+
+        {/* About Section Shimmer */}
+        <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
+          <Animated.View style={[{ backgroundColor: '#F5F5F5', height: 14, width: 60, marginBottom: 8, borderRadius: 4 }, shimmerStyle]} />
+          <Animated.View style={[{ backgroundColor: '#F9F9F9', height: 16, marginBottom: 6, borderRadius: 4 }, shimmerStyle]} />
+          <Animated.View style={[{ backgroundColor: '#F9F9F9', height: 16, width: '90%', borderRadius: 4 }, shimmerStyle]} />
+        </View>
+
+        {/* Skills Shimmer */}
+        <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+          <Animated.View style={[{ backgroundColor: '#F5F5F5', height: 14, width: 80, marginBottom: 8, borderRadius: 4 }, shimmerStyle]} />
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            <Animated.View style={[{ backgroundColor: '#F5F5F5', height: 28, width: 80, borderRadius: 14 }, shimmerStyle]} />
+            <Animated.View style={[{ backgroundColor: '#F5F5F5', height: 28, width: 100, borderRadius: 14 }, shimmerStyle]} />
+            <Animated.View style={[{ backgroundColor: '#F5F5F5', height: 28, width: 90, borderRadius: 14 }, shimmerStyle]} />
+            <Animated.View style={[{ backgroundColor: '#F5F5F5', height: 28, width: 70, borderRadius: 14 }, shimmerStyle]} />
+          </View>
         </View>
       </View>
     </View>
   );
 };
 
-export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
+export function HomeView({ userType, onWebViewActiveChange, onNavigateToProfile }: HomeViewProps) {
+  const router = useRouter();
+  const profileData = useUserProfileStore((state) => state.data);
   const scrollRef = useRef<ScrollView>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -491,6 +549,11 @@ export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
   const [progress, setProgress] = useState(1); 
   const [isFlipped, setIsFlipped] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  
+  // Profile completion state
+  const [showProfileCompletionModal, setShowProfileCompletionModal] = useState(false);
+  const [isTester, setIsTester] = useState(false);
+  const profileCompletion = profileData ? checkProfileCompleteness(profileData) : { isComplete: false, percentage: 0, missingFields: [] };
   
   // Filter State
   const [showFilters, setShowFilters] = useState(false);
@@ -564,6 +627,12 @@ export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
   };
 
   const handleSwipe = (isAccept: boolean) => {
+    // Check profile completeness for applicants before any swipe action (unless they're a tester)
+    if (userType === 'applicant' && profileCompletion.percentage < 90 && !isTester) {
+      setShowProfileCompletionModal(true);
+      return;
+    }
+
     // If applicant tries to apply to Non-Sponsored Job, intercept
     if (userType === 'applicant' && isAccept && 'isSponsored' in currentData && currentData.isSponsored === false) {
        setPendingJob(currentData);
@@ -692,32 +761,87 @@ export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
                       {/* Front Face - Profile */}
                       <Animated.View style={[styles.cardOuter, frontStyle]}>
                         <View style={styles.cardInner}>
-                          <View style={styles.imageWrapper}>
-                            <Image source={{ uri: 'image' in currentData ? currentData.image : '' }} style={styles.profileImage} />
-                            <View style={styles.infoFloatingBtn}><Info color="#000" size={16} /></View>
+                          {/* Name Header - Full Width */}
+                          <View style={styles.profileNameHeader}>
+                            <Text style={styles.profileNameTop}>{'name' in currentData ? currentData.name : ''}</Text>
                           </View>
-                          <View style={styles.cardInfo}>
-                            <Text style={styles.nameText}>{'name' in currentData ? currentData.name : ''}</Text>
-                            <View style={styles.metaRow}><Briefcase color="#000" size={14} /><Text style={styles.metaText}>{'role' in currentData ? `${currentData.role} @ ${currentData.company}` : ''}</Text></View>
-                            <View style={styles.metaRow}><MapPin color="#666" size={14} /><Text style={styles.locationText}>{'location' in currentData ? currentData.location : ''}</Text></View>
-                            <View style={styles.divider} />
-                            <Text style={styles.bioText}>{'bio' in currentData ? currentData.bio : ''}</Text>
+
+                          {/* Layout: Image on Left + Details on Right */}
+                          <View style={styles.profileCardTop}>
+                            <Image 
+                              source={{ uri: 'image' in currentData ? currentData.image : '' }} 
+                              style={styles.profileImageSquare} 
+                            />
+                            
+                            <View style={styles.profileInfoColumn}>
+                              <View style={styles.profileRoleRow}>
+                                <Briefcase color="#666" size={13} />
+                                <Text style={styles.profileRole}>{'role' in currentData ? currentData.role : ''}</Text>
+                              </View>
+                              
+                              <View style={styles.profileMetaRow}>
+                                <View style={styles.companyPill}>
+                                  <Text style={styles.companyPillText}>{'company' in currentData ? currentData.company : ''}</Text>
+                                </View>
+                              </View>
+                              
+                              <View style={styles.profileMetaRow}>
+                                <MapPin color="#999" size={11} />
+                                <Text style={styles.profileLocation}>{'location' in currentData ? currentData.location : ''}</Text>
+                              </View>
+                              
+                              {'yearsExperience' in currentData && (
+                                <View style={styles.profileMetaRow}>
+                                  <Calendar color="#999" size={11} />
+                                  <Text style={styles.profileExperience}>{currentData.yearsExperience}</Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+
+                          {/* Content Section */}
+                          <View style={styles.profileCardContent}>
+                            <View style={styles.descriptionSection}>
+                              <Text style={styles.sectionLabelSmall}>ABOUT</Text>
+                              <Text style={styles.descriptionText}>{'bio' in currentData ? currentData.bio : ''}</Text>
+                            </View>
+                            
+                            {'skills' in currentData && currentData.skills && (
+                              <View style={styles.skillsSection}>
+                                <Text style={styles.sectionLabelSmall}>TOP SKILLS</Text>
+                                <View style={styles.skillsRow}>
+                                  {currentData.skills.slice(0, 4).map((skill: string, idx: number) => (
+                                    <View key={idx} style={styles.skillChipSmall}>
+                                      <Text style={styles.skillChipSmallText}>{skill}</Text>
+                                    </View>
+                                  ))}
+                                </View>
+                              </View>
+                            )}
                           </View>
                         </View>
                       </Animated.View>
 
-                      {/* Back Face - Insights */}
+                      {/* Back Face - Insights Only */}
                       <Animated.View style={[styles.cardOuter, styles.cardOuterBack, backStyle]}>
                         <View style={[styles.cardInner, styles.cardInnerBack]}>
                           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardInfoScrollable}>
                             <View style={styles.backHeader}>
-                              <Sparkles color="#000" size={20} />
-                              <Text style={styles.backTitle}>Key Insights</Text>
+                              <Text style={styles.backTitle}>{'name' in currentData ? currentData.name : ''}</Text>
                             </View>
-                            <View style={styles.insightSection}>
-                              <Text style={styles.insightLabel}>QUICK HIT</Text>
-                              <Text style={styles.insightContent}>{'insights' in currentData && currentData.insights ? currentData.insights.funFact : ''}</Text>
-                            </View>
+                            
+                            {/* Quick Hit */}
+                            {'insights' in currentData && currentData.insights && (
+                              <View style={styles.insightSection}>
+                                <View style={styles.insightHeaderRow}>
+                                  <Coffee color="#000" size={16} />
+                                  <Text style={styles.insightSectionLabel}>QUICK HIT</Text>
+                                </View>
+                                <Text style={styles.insightContent}>{currentData.insights.funFact}</Text>
+                              </View>
+                            )}
+                            
+                            {/* Prompts */}
                             {'prompts' in currentData && currentData.prompts?.map((prompt: any, idx: number) => (
                               <View key={idx} style={styles.promptWrapper}>
                                 <View style={styles.promptHeaderRow}>
@@ -729,7 +853,7 @@ export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
                             ))}
                           </ScrollView>
                           <TouchableOpacity style={styles.flipBackBtn} onPress={toggleFlip}>
-                            <Text style={styles.flipBackText}>View Profile</Text>
+                            <Text style={styles.flipBackText}>Back to Profile</Text>
                           </TouchableOpacity>
                         </View>
                       </Animated.View>
@@ -740,57 +864,62 @@ export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
                       {/* Front Face - Job Details */}
                       <Animated.View style={[styles.cardOuter, frontStyle]}>
                         <View style={styles.cardInner}>
-                          <View style={styles.jobCardContent}>
-                            {/* Company Logo & Name Row First */}
-                            <View style={styles.companyInfoRow}>
-                              <Image source={{ uri: 'image' in currentData ? currentData.image : '' }} style={styles.companyLogo} />
-                              <View style={styles.companyDetails}>
-                                <Text style={styles.companyName}>{'company' in currentData ? currentData.company : ''}</Text>
+                          {/* Job Title Header - Full Width */}
+                          <View style={styles.profileNameHeader}>
+                            <Text style={styles.profileNameTop}>{'title' in currentData ? currentData.title : ''}</Text>
+                          </View>
+
+                          {/* Layout: Image on Left + Details on Right */}
+                          <View style={styles.profileCardTop}>
+                            <Image 
+                              source={{ uri: 'image' in currentData ? currentData.image : '' }} 
+                              style={styles.companyImageSquare} 
+                            />
+                            
+                            <View style={styles.profileInfoColumn}>
+                              {/* Company Name */}
+                              <View style={styles.profileMetaRow}>
+                                <View style={styles.companyPill}>
+                                  <Text style={styles.companyPillText}>{'company' in currentData ? currentData.company : ''}</Text>
+                                </View>
                               </View>
-                              <TouchableOpacity style={styles.infoFloatingBtnSmall} onPress={(e) => { e.stopPropagation(); toggleFlip(); }}>
-                                <Info color="#000" size={14} />
-                              </TouchableOpacity>
+                              
+                              {/* Location */}
+                              <View style={styles.profileMetaRow}>
+                                <MapPin color="#999" size={11} />
+                                <Text style={styles.profileLocation}>{'location' in currentData ? currentData.location : ''}</Text>
+                              </View>
+
+                              {/* Salary */}
+                              <View style={styles.profileMetaRow}>
+                                <DollarSign color="#999" size={11} />
+                                <Text style={styles.profileLocation}>{'salary' in currentData ? currentData.salary : ''}</Text>
+                              </View>
+
+                              {/* Job Type */}
+                              <View style={styles.profileMetaRow}>
+                                <Briefcase color="#999" size={11} />
+                                <Text style={styles.profileLocation}>{'type' in currentData ? currentData.type : ''}</Text>
+                              </View>
                             </View>
+                          </View>
 
-                            {/* Job Title Below */}
-                            <Text style={styles.jobTitle} numberOfLines={2}>{'title' in currentData ? currentData.title : ''}</Text>
-
-                            {/* Job Meta Info - Simple Text Lines */}
-                            <View style={styles.jobMetaList}>
-                              <View style={styles.jobMetaLine}>
-                                <MapPin color="#999" size={14} />
-                                <Text style={styles.jobMetaLineText}>{'location' in currentData ? currentData.location : ''}</Text>
-                              </View>
-                              <View style={styles.jobMetaLine}>
-                                <DollarSign color="#999" size={14} />
-                                <Text style={styles.jobMetaLineText}>{'salary' in currentData ? currentData.salary : ''}</Text>
-                              </View>
-                              <View style={styles.jobMetaLine}>
-                                <Briefcase color="#999" size={14} />
-                                <Text style={styles.jobMetaLineText}>{'type' in currentData ? currentData.type : ''}</Text>
-                              </View>
+                          {/* Content Section */}
+                          <View style={styles.profileCardContent}>
+                            <View style={styles.descriptionSection}>
+                              <Text style={styles.sectionLabelSmall}>ABOUT THE ROLE</Text>
+                              <Text style={styles.descriptionText}>{'description' in currentData ? currentData.description : ''}</Text>
                             </View>
-
-                            <View style={styles.divider} />
-
-                            {/* Job Description */}
-                            <Text style={styles.jobDescription} numberOfLines={3}>{'description' in currentData ? currentData.description : ''}</Text>
-
-                            {/* Skills Preview */}
+                            
                             {'skills' in currentData && currentData.skills && (
-                              <View style={styles.skillsPreviewSection}>
-                                <Text style={styles.skillsPreviewLabel}>KEY SKILLS</Text>
+                              <View style={styles.skillsSection}>
+                                <Text style={styles.sectionLabelSmall}>KEY SKILLS</Text>
                                 <View style={styles.skillsRow}>
                                   {currentData.skills.slice(0, 4).map((skill: string, idx: number) => (
-                                    <View key={idx} style={styles.skillChip}>
-                                      <Text style={styles.skillChipText}>{skill}</Text>
+                                    <View key={idx} style={styles.skillChipSmall}>
+                                      <Text style={styles.skillChipSmallText}>{skill}</Text>
                                     </View>
                                   ))}
-                                  {currentData.skills.length > 4 && (
-                                    <View style={[styles.skillChip, styles.skillChipMore]}>
-                                      <Text style={[styles.skillChipText, styles.skillChipTextWhite]}>+{currentData.skills.length - 4}</Text>
-                                    </View>
-                                  )}
                                 </View>
                               </View>
                             )}
@@ -825,27 +954,34 @@ export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
                                 // SPONSORED BACK DESIGN (Existing)
                                 <>
                                   <View style={styles.backHeader}>
-                                    <Users color="#000" size={20} />
-                                    <Text style={styles.backTitle}>Job Sponsor</Text>
+                                    <Text style={styles.backTitle}>{'title' in currentData ? currentData.title : ''}</Text>
                                   </View>
                                   
                                   {'sponsorInfo' in currentData && currentData.sponsorInfo && (
                                     <>
-                                      <View style={styles.sponsorHeader}>
-                                        <Image source={{ uri: currentData.sponsorInfo.image }} style={styles.sponsorAvatar} />
-                                        <View style={{ flex: 1 }}>
-                                          <Text style={styles.sponsorName}>{currentData.sponsorInfo.name}</Text>
-                                          <Text style={styles.sponsorRole}>{currentData.sponsorInfo.role}</Text>
-                                          <View style={[styles.metaRow, { marginTop: 4 }]}>
-                                            <Calendar size={12} color="#999" />
-                                            <Text style={styles.sponsorYears}>{currentData.sponsorInfo.yearsAtCompany} at company</Text>
+                                      {/* Sponsor Info */}
+                                      <View style={styles.insightSection}>
+                                        <View style={styles.insightHeaderRow}>
+                                          <Text style={styles.insightSectionLabel}>JOB SPONSOR</Text>
+                                        </View>
+                                        <View style={styles.sponsorHeader}>
+                                          <Image source={{ uri: currentData.sponsorInfo.image }} style={styles.sponsorAvatar} />
+                                          <View style={{ flex: 1 }}>
+                                            <Text style={styles.sponsorName}>{currentData.sponsorInfo.name}</Text>
+                                            <Text style={styles.sponsorRole}>{currentData.sponsorInfo.role}</Text>
+                                            <View style={[styles.metaRow, { marginTop: 4 }]}>
+                                              <Calendar size={12} color="#999" />
+                                              <Text style={styles.sponsorYears}>{currentData.sponsorInfo.yearsAtCompany} at company</Text>
+                                            </View>
                                           </View>
                                         </View>
                                       </View>
 
                                       <View style={styles.insightSection}>
-                                        <Text style={styles.insightLabel}>REFERRAL NOTE</Text>
-                                        <Text style={styles.promptContent}>{currentData.sponsorInfo.referralNote}</Text>
+                                        <View style={styles.insightHeaderRow}>
+                                          <Text style={styles.insightSectionLabel}>REFERRAL NOTE</Text>
+                                        </View>
+                                        <Text style={styles.insightContent}>{currentData.sponsorInfo.referralNote}</Text>
                                       </View>
 
                                       {currentData.sponsorInfo.canRefer && (
@@ -1148,6 +1284,21 @@ export function HomeView({ userType, onWebViewActiveChange }: HomeViewProps) {
           </SafeAreaView>
         </BlurView>
       </Modal>
+
+      {/* Profile Completion Modal */}
+      <ProfileCompletionModal
+        visible={showProfileCompletionModal}
+        onClose={() => setShowProfileCompletionModal(false)}
+        profileCompletion={profileCompletion}
+        onGoToProfile={() => {
+          setShowProfileCompletionModal(false);
+          onNavigateToProfile?.();
+        }}
+        onTesterMode={() => {
+          setIsTester(true);
+          setShowProfileCompletionModal(false);
+        }}
+      />
     </View>
   );
 }
@@ -1196,15 +1347,362 @@ const styles = StyleSheet.create({
   cardOuterBack: { backgroundColor: "#FBFBFB" },
   cardInner: { backgroundColor: "#FFF", borderRadius: 24, borderWidth: 1, borderColor: "#F0F0F0", overflow: "hidden", height: 460 },
   cardInnerBack: { backgroundColor: "#FBFBFB" },
+  
+  // Layout: Image on Left + Details on Right
+  profileCardTop: {
+    flexDirection: 'row',
+    padding: 20,
+    paddingBottom: 16,
+    gap: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  profileImageSquare: {
+    width: 110,
+    height: 110,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+  },
+  companyImageSquare: {
+    width: 90,
+    height: 90,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+  },
+  profileInfoColumn: {
+    flex: 1,
+    gap: 8,
+    paddingTop: 4,
+  },
+  
+  // Name Header - Full Width Below Image Section
+  profileNameHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  profileNameTop: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#000',
+    letterSpacing: -0.5,
+  },
+  profileRoleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  profileRole: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    flex: 1,
+  },
+  profileMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  companyPill: {
+    backgroundColor: '#000',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  companyPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.3,
+  },
+  profileLocation: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#999',
+  },
+  profileExperience: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#999',
+  },
+  
+  // Content Section
+  profileCardContent: {
+    padding: 20,
+    gap: 16,
+  },
+  descriptionSection: {
+    gap: 8,
+  },
+  sectionLabelSmall: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#999',
+    letterSpacing: 1,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 21,
+    fontWeight: '500',
+  },
+  skillsSection: {
+    gap: 10,
+  },
+  skillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  skillChipSmall: {
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  skillChipSmallText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#000',
+  },
+  
+  // Back Card Insights
+  insightHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  insightSectionLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: 1,
+  },
+  
+  // Legacy styles (keep for backward compatibility)
+  imageWrapperRedesign: { 
+    height: 180, 
+    backgroundColor: "#F9F9F9",
+    position: 'relative',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    paddingTop: 40,
+    background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+  },
+  nameTagCard: {
+    gap: 4,
+  },
+  nameTextCard: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  titleTextCard: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  
+  // Company & Location Badges
+  companyLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  companyBadge: {
+    backgroundColor: '#000',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  companyBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.3,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  locationBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  
+  // Summary Content
+  summaryLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#999',
+    letterSpacing: 1.2,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  mentalityText: {
+    fontSize: 15,
+    color: '#000',
+    lineHeight: 22,
+    fontStyle: 'italic',
+    fontWeight: '600',
+  },
+  
+  // Detail Sections (for back of card)
+  detailSection: {
+    marginBottom: 20,
+  },
+  detailHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  detailSectionLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: 1,
+  },
+  detailSectionText: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 21,
+    fontWeight: '500',
+  },
+  
+  // Legacy styles (keep for backward compatibility)
+  cardHeader: { 
+    flexDirection: 'row',
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+    gap: 14,
+    backgroundColor: '#FAFAFA',
+  },
+  profileImageCompact: { 
+    width: 72, 
+    height: 72, 
+    borderRadius: 16, 
+    backgroundColor: "#F0F0F0",
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  headerTextContainer: { 
+    flex: 1,
+    justifyContent: 'center',
+    gap: 3,
+  },
+  companyTextBold: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#000',
+  },
+  infoFloatingBtnCompact: { 
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  
+  cardContentExpanded: {
+    padding: 20,
+    gap: 18,
+    flex: 1,
+  },
+  sectionContainer: {
+    gap: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#999',
+    letterSpacing: 1,
+  },
+  bioTextExpanded: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  insightPreviewText: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 19,
+    fontStyle: 'italic',
+  },
+  promptPreviewText: {
+    fontSize: 13,
+    color: '#444',
+    lineHeight: 19,
+    fontStyle: 'italic',
+  },
+  tapForMoreBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    marginTop: 'auto',
+  },
+  tapForMoreText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#999',
+    letterSpacing: 0.5,
+  },
+  
+  // Legacy styles (keep for backward compatibility with other parts)
   imageWrapper: { height: 220, backgroundColor: "#F9F9F9" },
   profileImage: { width: "100%", height: "100%", resizeMode: "cover" },
   infoFloatingBtn: { position: "absolute", top: 12, right: 12, backgroundColor: "rgba(255,255,255,0.8)", padding: 6, borderRadius: 8 },
   cardInfo: { padding: 24 },
   cardInfoScrollable: { padding: 24, paddingBottom: 80 },
-  nameText: { fontSize: 24, fontWeight: "700", color: "#000", marginBottom: 8 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
-  metaText: { fontSize: 14, fontWeight: "600", color: "#000" },
-  locationText: { fontSize: 14, color: "#666" },
+  nameText: { fontSize: 18, fontWeight: "800", color: "#000", marginBottom: 2, letterSpacing: -0.3 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 },
+  metaText: { fontSize: 12, fontWeight: "600", color: "#333" },
+  locationText: { fontSize: 12, color: "#666", fontWeight: "500" },
   divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 10 },
   bioText: { fontSize: 15, color: "#444", lineHeight: 22 },
   expandedDetails: { marginBottom: 32, gap: 14 },
@@ -1229,9 +1727,11 @@ const styles = StyleSheet.create({
   primaryActionLabel: { color: "#FFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase" },
 
   // BACK OF CARD (INSIGHTS)
-  backHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 },
-  backTitle: { fontSize: 20, fontWeight: '700', color: '#000' },
+  backHeader: { marginBottom: 20 },
+  backTitle: { fontSize: 22, fontWeight: '800', color: '#000', letterSpacing: -0.5 },
   insightSection: { marginBottom: 24 },
+  insightHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  insightSectionLabel: { fontSize: 11, fontWeight: '800', color: '#AAA', letterSpacing: 1.2 },
   insightLabel: { fontSize: 11, fontWeight: '800', color: '#AAA', marginBottom: 8, letterSpacing: 1.2 },
   insightContent: { fontSize: 16, fontWeight: '600', color: '#000', lineHeight: 24 },
   

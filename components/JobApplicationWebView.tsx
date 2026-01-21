@@ -20,7 +20,7 @@ import Animated, {
   SlideOutDown,
   ZoomIn,
 } from "react-native-reanimated";
-import { mockUserData } from "./mockUserData";
+import { useUserProfileStore } from "../stores/useUserProfileStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -44,9 +44,44 @@ export function JobApplicationWebView({
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
 
-  // Generate the autofill JavaScript that will be injected with enhanced React support
+  const profileData = useUserProfileStore((state) => state.data);
+  const isProfileLoaded = useUserProfileStore((state) => state.isLoaded);
+
   const generateAutofillScript = () => {
-    const userData = mockUserData;
+    if (!isProfileLoaded) {
+      console.warn('Autofill data not loaded yet');
+      return '';
+    }
+    
+    const userData = {
+      personal: {
+        firstName: profileData.personal.firstName,
+        lastName: profileData.personal.lastName,
+        fullName: profileData.personal.fullName,
+        email: profileData.personal.email,
+        phone: profileData.personal.phone,
+        linkedin: profileData.personal.linkedin,
+        portfolio: profileData.personal.portfolio,
+        address: {
+          street: profileData.personal.address.street,
+          city: profileData.personal.address.city,
+          state: profileData.personal.address.state,
+          zip: profileData.personal.address.zip,
+          county: profileData.personal.address.city,
+          country: profileData.personal.address.country,
+        },
+      },
+      professional: {
+        title: profileData.professional.title || profileData.professional.seekingPosition,
+        yearsExperience: profileData.professional.yearsExperience,
+        summary: profileData.professional.summary,
+      },
+      education: {
+        degree: profileData.education.degree,
+        university: profileData.education.university,
+        graduationYear: profileData.education.graduationYear,
+      },
+    };
     
     return `
       (function() {
