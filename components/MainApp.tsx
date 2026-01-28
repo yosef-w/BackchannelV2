@@ -1,27 +1,36 @@
 import * as Haptics from "expo-haptics";
-import { Bell, Briefcase, Home, MessageCircle, Star, User } from "lucide-react-native";
+import {
+    Bell,
+    Briefcase,
+    Home,
+    MessageCircle,
+    Star,
+    User,
+} from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-  Dimensions,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from "react-native-reanimated";
+import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
 import { MatchesView } from "./MatchesView";
 import { MessagesView } from "./MessagesView";
 import { NotificationsView } from "./NotificationsView";
 import { ProfileView } from "./ProfileView";
+import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -29,17 +38,32 @@ interface MainAppProps {
   userType: "applicant" | "sponsor";
 }
 
-type ViewType = "home" | "matches" | "messages" | "jobs" | "profile" | "notifications";
+type ViewType =
+  | "home"
+  | "matches"
+  | "messages"
+  | "jobs"
+  | "profile"
+  | "notifications"
+  | "publicProfile";
 
 const navItems = [
   { id: "home", icon: Home, label: "Feed" },
   { id: "matches", icon: Star, label: "Matches" },
-    { id: "jobs", icon: Briefcase, label: "Jobs", sponsorOnly: true },
+  { id: "jobs", icon: Briefcase, label: "Jobs", sponsorOnly: true },
   { id: "messages", icon: MessageCircle, label: "Inbox" },
   { id: "profile", icon: User, label: "Account" },
 ];
 
-function NavItem({ item, isActive, onPress }: { item: any, isActive: boolean, onPress: () => void }) {
+function NavItem({
+  item,
+  isActive,
+  onPress,
+}: {
+  item: any;
+  isActive: boolean;
+  onPress: () => void;
+}) {
   const scale = useSharedValue(1);
   const Icon = item.icon;
 
@@ -77,7 +101,24 @@ function NavItem({ item, isActive, onPress }: { item: any, isActive: boolean, on
 
 export function MainApp({ userType }: MainAppProps) {
   const [activeView, setActiveView] = useState<ViewType>("home");
+  const [previousView, setPreviousView] = useState<ViewType>("home");
   const [isBottomNavHidden, setIsBottomNavHidden] = useState(false);
+  const [publicProfileData, setPublicProfileData] = useState<any>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    number | null
+  >(null);
+
+  const handleShowPublicProfile = (userData: any) => {
+    setPublicProfileData(userData);
+    setActiveView("publicProfile");
+  };
+
+  const handleViewChange = (newView: ViewType) => {
+    if (newView !== "notifications" && newView !== "publicProfile") {
+      setPreviousView(activeView);
+    }
+    setActiveView(newView);
+  };
 
   const visibleNavItems = navItems.filter((item) => {
     return !item.sponsorOnly || userType === "sponsor";
@@ -87,15 +128,14 @@ export function MainApp({ userType }: MainAppProps) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
-        
         {/* Header Bar */}
         <View style={styles.topBar}>
-          <Text style={styles.appTitle}>BackChannel</Text>
+          <Text style={styles.appTitle}>Backchannel</Text>
           <View style={styles.topBarButtons}>
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setActiveView("notifications");
+                handleViewChange("notifications");
               }}
               activeOpacity={0.7}
               style={styles.headerIconButton}
@@ -108,36 +148,63 @@ export function MainApp({ userType }: MainAppProps) {
 
         {/* Main content wrapper */}
         <View style={styles.mainContent}>
-          {activeView === "home" && <HomeView userType={userType} onWebViewActiveChange={setIsBottomNavHidden} onNavigateToProfile={() => setActiveView("profile")} />}
+          {activeView === "home" && (
+            <HomeView
+              userType={userType}
+              onWebViewActiveChange={setIsBottomNavHidden}
+              onNavigateToProfile={() => setActiveView("profile")}
+            />
+          )}
           {activeView === "matches" && <MatchesView userType={userType} />}
           {activeView === "messages" && (
-            <MessagesView onThreadActiveChange={setIsBottomNavHidden} userType={userType} />
+            <MessagesView
+              onThreadActiveChange={setIsBottomNavHidden}
+              userType={userType}
+              onShowPublicProfile={handleShowPublicProfile}
+              selectedConversationId={selectedConversationId}
+              onConversationChange={setSelectedConversationId}
+            />
           )}
           {activeView === "jobs" && userType === "sponsor" && <JobsView />}
           {activeView === "profile" && <ProfileView userType={userType} />}
           {activeView === "notifications" && (
-            <NotificationsView onBack={() => setActiveView("home")} />
+            <NotificationsView onBack={() => setActiveView(previousView)} />
           )}
+          {activeView === "publicProfile" &&
+            publicProfileData &&
+            (userType === "sponsor" ? (
+              <ApplicantPublicProfileView
+                userData={publicProfileData}
+                onClose={() => setActiveView("messages")}
+              />
+            ) : (
+              <SponsorPublicProfileView
+                userData={publicProfileData}
+                onClose={() => setActiveView("messages")}
+              />
+            ))}
         </View>
 
         {/* Bottom Navigation - Floating Pill Style */}
-        {activeView !== "notifications" && !isBottomNavHidden && (
-          <Animated.View 
-            entering={FadeInDown.duration(600)} 
-            style={styles.navContainer}
-          >
-            <View style={styles.navBar}>
-              {visibleNavItems.map((item) => (
-                <NavItem
-                  key={item.id}
-                  item={item}
-                  isActive={activeView === item.id}
-                  onPress={() => setActiveView(item.id as ViewType)}
-                />
-              ))}
-            </View>
-          </Animated.View>
-        )}
+        {activeView !== "notifications" &&
+          activeView !== "publicProfile" &&
+          !isBottomNavHidden && (
+            <Animated.View
+              entering={FadeInDown.duration(600)}
+              style={styles.navContainer}
+            >
+              <View style={styles.navBar}>
+                {visibleNavItems.map((item) => (
+                  <NavItem
+                    key={item.id}
+                    item={item}
+                    isActive={activeView === item.id}
+                    onPress={() => handleViewChange(item.id as ViewType)}
+                  />
+                ))}
+              </View>
+            </Animated.View>
+          )}
       </SafeAreaView>
     </View>
   );

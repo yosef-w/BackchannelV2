@@ -1,20 +1,20 @@
 import {
-  ArrowLeft,
-  Award,
-  CheckCircle,
-  Heart,
-  MessageCircle,
-  UserPlus,
+    ArrowLeft,
+    Award,
+    CheckCircle,
+    Heart,
+    MessageCircle,
+    UserPlus,
 } from "lucide-react-native";
 import React from "react";
 import {
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 
@@ -126,7 +126,10 @@ export function NotificationsView({ onBack }: NotificationsViewProps) {
               key={notification.id}
               entering={FadeInUp.delay(index * 50).duration(400)}
             >
-              <TouchableOpacity activeOpacity={0.7} style={styles.notificationCardWrapper}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.notificationCardWrapper}
+              >
                 <View
                   style={[
                     styles.notificationCard,
@@ -162,14 +165,20 @@ export function NotificationsView({ onBack }: NotificationsViewProps) {
                     {/* Content */}
                     <View style={styles.textContainer}>
                       <View style={styles.titleRow}>
-                        <Text style={styles.notificationTitle} numberOfLines={1}>
+                        <Text
+                          style={styles.notificationTitle}
+                          numberOfLines={1}
+                        >
                           {notification.title}
                         </Text>
                         <Text style={styles.notificationTime}>
                           {notification.time}
                         </Text>
                       </View>
-                      <Text style={styles.notificationMessage} numberOfLines={2}>
+                      <Text
+                        style={styles.notificationMessage}
+                        numberOfLines={2}
+                      >
                         {notification.message}
                       </Text>
                     </View>
@@ -192,7 +201,7 @@ export function NotificationsView({ onBack }: NotificationsViewProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: "#FAFAFA",
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -211,7 +220,7 @@ const styles = StyleSheet.create({
     gap: 16,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
@@ -225,11 +234,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     borderWidth: 1,
-    borderColor: '#EEE',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#EEE",
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     flex: 1,
@@ -242,7 +251,7 @@ const styles = StyleSheet.create({
   },
   markAllRead: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
     color: "#000",
   },
   notificationsList: {
@@ -260,7 +269,7 @@ const styles = StyleSheet.create({
     position: "relative",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.04,
         shadowRadius: 6,
@@ -275,7 +284,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
@@ -287,10 +296,10 @@ const styles = StyleSheet.create({
   },
   unreadIndicator: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    width: 3,
-    height: "100%",
+    top: -1,
+    left: -1,
+    width: 4,
+    height: "102%",
     backgroundColor: "#000",
     borderTopLeftRadius: 16,
     borderBottomLeftRadius: 16,
@@ -299,6 +308,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 14,
+    paddingLeft: 6,
   },
   imageContainer: {
     position: "relative",
@@ -360,12 +370,12 @@ const styles = StyleSheet.create({
   },
   notificationTime: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: "#999",
   },
   notificationMessage: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: "#666",
     lineHeight: 20,
   },
@@ -376,7 +386,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: "#999",
   },
 });

@@ -1,43 +1,52 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { BlurView } from "expo-blur";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import * as ImagePicker from 'expo-image-picker';
 import {
-    AlertCircle,
-    Briefcase,
-    Camera,
-    Check,
-    ChevronRight,
-    Clock,
-    Edit,
-    ImageIcon,
-    Lock,
-    LogOut,
-    MapPin,
-    MessageCircle,
-    Plus,
-    Target,
-    Trash2,
-    X
+  AlertCircle,
+  Briefcase,
+  Camera,
+  Check,
+  ChevronRight,
+  Clock,
+  Edit,
+  GraduationCap,
+  ImageIcon,
+  Lock,
+  LogOut,
+  MapPin,
+  MessageCircle,
+  Plus,
+  Target,
+  Trash2,
+  X,
 } from "lucide-react-native";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import Animated, { FadeInUp, SlideInDown, SlideOutDown } from "react-native-reanimated";
+import Animated, {
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
+} from "react-native-reanimated";
 import { useAuthStore } from "../stores/useAuthStore";
-import { useUserProfileStore } from "../stores/useUserProfileStore";
+import {
+  EducationEntry,
+  ProfessionalExperience,
+  useUserProfileStore,
+} from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 
 interface ProfileViewProps {
@@ -93,22 +102,38 @@ const AVAILABLE_QUESTIONS = [
 
 export function ProfileView({ userType }: ProfileViewProps) {
   const router = useRouter();
-  
+
   // Store access - must come before any useMemo that depends on it
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const clearUserProfileData = useUserProfileStore((state) => state.clearData);
   const userProfileData = useUserProfileStore((state) => state.data);
   const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
-  const updateProfessional = useUserProfileStore((state) => state.updateProfessional);
+  const updateProfessional = useUserProfileStore(
+    (state) => state.updateProfessional,
+  );
   const updateEducation = useUserProfileStore((state) => state.updateEducation);
-  const updatePreferences = useUserProfileStore((state) => state.updatePreferences);
+  const updatePreferences = useUserProfileStore(
+    (state) => state.updatePreferences,
+  );
   const updateSkills = useUserProfileStore((state) => state.updateSkills);
   const updateInsights = useUserProfileStore((state) => state.updateInsights);
-  const updateCertifications = useUserProfileStore((state) => state.updateCertifications);
+  const updateCertifications = useUserProfileStore(
+    (state) => state.updateCertifications,
+  );
   const updateLanguages = useUserProfileStore((state) => state.updateLanguages);
-  const updateAchievements = useUserProfileStore((state) => state.updateAchievements);
-  
-  const [activeTab, setActiveTab] = useState<"profile" | "applications">("profile");
+  const updateAchievements = useUserProfileStore(
+    (state) => state.updateAchievements,
+  );
+  const updateProfessionalExperiences = useUserProfileStore(
+    (state) => state.updateProfessionalExperiences,
+  );
+  const updateEducationEntries = useUserProfileStore(
+    (state) => state.updateEducationEntries,
+  );
+
+  const [activeTab, setActiveTab] = useState<"profile" | "applications">(
+    "profile",
+  );
   const [showApplicationDetail, setShowApplicationDetail] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -121,18 +146,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
-  
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  
+
   // Editable profile state
   const [name, setName] = useState("Alex Johnson");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState(userType === "applicant" ? "Seeking Product Manager Roles" : "VP of Product");
+  const [role, setRole] = useState(
+    userType === "applicant"
+      ? "Seeking Product Manager Roles"
+      : "VP of Product",
+  );
   const [company, setCompany] = useState("Stripe");
   const [location, setLocation] = useState("San Francisco, CA");
   const [email, setEmail] = useState("alex.johnson@email.com");
@@ -141,31 +170,59 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [bio, setBio] = useState(
     userType === "applicant"
       ? "Passionate about AI/ML and building products that scale. Looking to join a high-growth startup where I can lead product strategy and make meaningful impact."
-      : "Helping the next generation of product leaders break into tech. 10+ years at Google and Stripe, now mentoring at early-stage companies and opening doors for talented PMs."
+      : "Helping the next generation of product leaders break into tech. 10+ years at Google and Stripe, now mentoring at early-stage companies and opening doors for talented PMs.",
   );
 
   // Additional details (optional)
-  const [achievements, setAchievements] = useState("Forbes 30 Under 30 (Consumer Tech). 2 Patents in Recommendation Systems. Speaker at SXSW 2023 on 'The Future of Audio'.");
-  const [certifications, setCertifications] = useState<Array<{ name: string; organization: string; year: string }>>([]);
-  const [languages, setLanguages] = useState<Array<{ language: string; proficiency: string }>>([]);
-  
+  const [achievements, setAchievements] = useState(
+    "Forbes 30 Under 30 (Consumer Tech). 2 Patents in Recommendation Systems. Speaker at SXSW 2023 on 'The Future of Audio'.",
+  );
+  const [certifications, setCertifications] = useState<
+    Array<{ name: string; organization: string; year: string }>
+  >([]);
+  const [languages, setLanguages] = useState<
+    Array<{ language: string; proficiency: string }>
+  >([]);
+
   // Professional fields (required for profile completion)
   const [jobTitle, setJobTitle] = useState("");
   const [yearsExperience, setYearsExperience] = useState("");
   const [summary, setSummary] = useState("");
-  
+
   // Education fields (required for profile completion)
   const [degree, setDegree] = useState("");
   const [major, setMajor] = useState("");
   const [university, setUniversity] = useState("");
   const [graduationYear, setGraduationYear] = useState("");
   const [gpa, setGpa] = useState("");
-  
+
+  // Multiple entries for professional experience and education
+  const [professionalExperiences, setProfessionalExperiences] = useState<
+    ProfessionalExperience[]
+  >([]);
+  const [educationEntries, setEducationEntries] = useState<EducationEntry[]>(
+    [],
+  );
+  const [expandedExperience, setExpandedExperience] = useState<string | null>(
+    null,
+  );
+  const [expandedEducation, setExpandedEducation] = useState<string | null>(
+    null,
+  );
+  const [expandedCertification, setExpandedCertification] = useState<
+    number | null
+  >(null);
+  const [expandedLanguage, setExpandedLanguage] = useState<number | null>(null);
+  const [editingExperience, setEditingExperience] = useState<string | null>(
+    null,
+  );
+  const [editingEducation, setEditingEducation] = useState<string | null>(null);
+
   // Work preferences (required for profile completion)
   const [workAuthorization, setWorkAuthorization] = useState("");
   const [willingToRelocate, setWillingToRelocate] = useState("");
   const [requiresSponsorship, setRequiresSponsorship] = useState("");
-  
+
   // Personal information fields (for edit profile modal)
   const [linkedin, setLinkedin] = useState("");
   const [portfolio, setPortfolio] = useState("");
@@ -174,27 +231,63 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
   const [country, setCountry] = useState("");
-  
+
   // Editable tags state
   const [expertise, setExpertise] = useState(
     userType === "applicant"
-      ? ["React", "Product Strategy", "FinTech", "Early Stage Startups", "Data Analytics", "UX Design"]
-      : ["Product Management", "Engineering Leadership", "Career Growth", "Interview Prep", "Product Strategy", "Team Building"]
+      ? [
+          "React",
+          "Product Strategy",
+          "FinTech",
+          "Early Stage Startups",
+          "Data Analytics",
+          "UX Design",
+        ]
+      : [
+          "Product Management",
+          "Engineering Leadership",
+          "Career Growth",
+          "Interview Prep",
+          "Product Strategy",
+          "Team Building",
+        ],
   );
-  const [workPreferences, setWorkPreferences] = useState(["Remote", "Hybrid OK", "Open-site", "Startup Stage: Series A-C"]);
-  const [desiredRoles, setDesiredRoles] = useState(["Senior Product Manager", "Lead Product Manager", "Director of Product"]);
-  const [companiesCanReferTo, setCompaniesCanReferTo] = useState(["Stripe", "Google", "Meta", "Airbnb", "Notion", "Figma"]);
-  
+  const [workPreferences, setWorkPreferences] = useState([
+    "Remote",
+    "Hybrid OK",
+    "Open-site",
+    "Startup Stage: Series A-C",
+  ]);
+  const [desiredRoles, setDesiredRoles] = useState([
+    "Senior Product Manager",
+    "Lead Product Manager",
+    "Director of Product",
+  ]);
+  const [companiesCanReferTo, setCompaniesCanReferTo] = useState([
+    "Stripe",
+    "Google",
+    "Meta",
+    "Airbnb",
+    "Notion",
+    "Figma",
+  ]);
+
   // Profile insights state
   const [profileInsights, setProfileInsights] = useState<ProfileInsight[]>([
-    { question: "MY SECRET SUPERPOWER", answer: "Turning complex data into simple, actionable stories." },
-    { question: "IF I WASN'T IN TECH", answer: "I'd be a chef. Chemistry you can eat." },
+    {
+      question: "MY SECRET SUPERPOWER",
+      answer: "Turning complex data into simple, actionable stories.",
+    },
+    {
+      question: "IF I WASN'T IN TECH",
+      answer: "I'd be a chef. Chemistry you can eat.",
+    },
   ]);
-  
+
   // Temp states for editing
   const [tempValue, setTempValue] = useState("");
   const [newTag, setNewTag] = useState("");
-  
+
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -208,15 +301,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
     return checkProfileCompleteness(userProfileData);
   }, [userProfileData]);
-  
+
   const hasIncompleteProfile = profileCompletion.percentage < 90;
 
   useEffect(() => {
     // Update profile display when user profile data changes
-    if (userProfileData.personal.email || userProfileData.personal.firstName || userProfileData.personal.fullName) {
+    if (
+      userProfileData.personal.email ||
+      userProfileData.personal.firstName ||
+      userProfileData.personal.fullName
+    ) {
       setFirstName(userProfileData.personal.firstName);
       setLastName(userProfileData.personal.lastName);
-      setName(userProfileData.personal.fullName || `${userProfileData.personal.firstName} ${userProfileData.personal.lastName}`.trim());
+      setName(
+        userProfileData.personal.fullName ||
+          `${userProfileData.personal.firstName} ${userProfileData.personal.lastName}`.trim(),
+      );
       setEmail(userProfileData.personal.email);
       setPhone(userProfileData.personal.phone);
       setProfileImage(userProfileData.personal.profileImage || null);
@@ -227,7 +327,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setState(userProfileData.personal.address.state);
       setZip(userProfileData.personal.address.zip);
       setCountry(userProfileData.personal.address.country);
-      setLocation(`${userProfileData.personal.address.city}${userProfileData.personal.address.state ? ', ' + userProfileData.personal.address.state : ''}`);
+      setLocation(
+        `${userProfileData.personal.address.city}${userProfileData.personal.address.state ? ", " + userProfileData.personal.address.state : ""}`,
+      );
     }
     if (userProfileData.professional.title) {
       setRole(userProfileData.professional.title);
@@ -239,6 +341,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
     if (userProfileData.professional.yearsExperience) {
       setYearsExperience(userProfileData.professional.yearsExperience);
+    }
+    if (
+      userProfileData.professional.experiences &&
+      userProfileData.professional.experiences.length > 0
+    ) {
+      setProfessionalExperiences(userProfileData.professional.experiences);
     }
     if (userProfileData.education.degree) {
       setDegree(userProfileData.education.degree);
@@ -254,6 +362,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
     if (userProfileData.education.gpa) {
       setGpa(userProfileData.education.gpa);
+    }
+    if (
+      userProfileData.education.entries &&
+      userProfileData.education.entries.length > 0
+    ) {
+      setEducationEntries(userProfileData.education.entries);
     }
     if (userProfileData.preferences.workAuthorization) {
       setWorkAuthorization(userProfileData.preferences.workAuthorization);
@@ -271,7 +385,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setProfileInsights(userProfileData.insights);
     }
     // Load additional details if they exist in the store
-    if (userProfileData.certifications && userProfileData.certifications.length > 0) {
+    if (
+      userProfileData.certifications &&
+      userProfileData.certifications.length > 0
+    ) {
       setCertifications(userProfileData.certifications);
     }
     if (userProfileData.languages && userProfileData.languages.length > 0) {
@@ -284,7 +401,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   // Auto-save certifications when they change
   useEffect(() => {
-    if (certifications.length > 0 || (userProfileData.certifications?.length ?? 0) > 0) {
+    if (
+      certifications.length > 0 ||
+      (userProfileData.certifications?.length ?? 0) > 0
+    ) {
       updateCertifications(certifications);
     }
   }, [certifications]);
@@ -296,95 +416,114 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   }, [languages]);
 
-  const stats = userType === "applicant"
-    ? [
-        { label: "Connections", value: "12" },
-        { label: "Referrals", value: "3" },
-        { label: "Applied", value: "8" },
-      ]
-    : [
-        { label: "Network", value: "24" },
-        { label: "Referrals", value: "15" },
-        { label: "Success", value: "87%" },
-      ];
+  const stats =
+    userType === "applicant"
+      ? [
+          { label: "Connections", value: "12" },
+          { label: "Referrals", value: "3" },
+          { label: "Applied", value: "8" },
+        ]
+      : [
+          { label: "Network", value: "24" },
+          { label: "Referrals", value: "15" },
+          { label: "Success", value: "87%" },
+        ];
 
   const mockApplications = [
     {
       id: 1,
       jobTitle: "Senior Product Manager",
       company: "Google",
-      companyLogo: "https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=200",
+      companyLogo:
+        "https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=200",
       status: "interview_scheduled" as const,
       appliedDate: "Jan 2, 2026",
       nextAction: "Technical interview on Jan 8 at 2 PM",
       sponsorName: "Sarah Chen",
       sponsorRole: "VP of Product",
-      sponsorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200",
+      sponsorImage:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200",
       timeline: [
         { stage: "Applied", date: "Jan 2", completed: true },
         { stage: "Referred", date: "Jan 2", completed: true, isReferred: true },
         { stage: "Screening", date: "Jan 3", completed: true },
         { stage: "Interview", date: "Jan 8", completed: false },
-        { stage: "Decision", date: "TBD", completed: false }
-      ]
+        { stage: "Decision", date: "TBD", completed: false },
+      ],
     },
     {
       id: 2,
       jobTitle: "Lead Product Designer",
       company: "Airbnb",
-      companyLogo: "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200",
+      companyLogo:
+        "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200",
       status: "reviewing" as const,
       appliedDate: "Jan 3, 2026",
       nextAction: "Application under review by hiring team",
       sponsorName: "Michael Rodriguez",
       sponsorRole: "Design Director",
-      sponsorImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
+      sponsorImage:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
       timeline: [
         { stage: "Applied", date: "Jan 3", completed: true },
         { stage: "Referred", date: "Jan 3", completed: true, isReferred: true },
         { stage: "Screening", date: "Pending", completed: false },
         { stage: "Interview", date: "TBD", completed: false },
-        { stage: "Decision", date: "TBD", completed: false }
-      ]
+        { stage: "Decision", date: "TBD", completed: false },
+      ],
     },
     {
       id: 3,
       jobTitle: "Product Marketing Manager",
       company: "Notion",
-      companyLogo: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=200",
+      companyLogo:
+        "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=200",
       status: "applied" as const,
       appliedDate: "Jan 4, 2026",
       nextAction: "Waiting for referral confirmation",
       sponsorName: "Emily Watson",
       sponsorRole: "Head of Marketing",
-      sponsorImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
+      sponsorImage:
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
       timeline: [
         { stage: "Applied", date: "Jan 4", completed: true },
-        { stage: "Referred", date: "Pending", completed: false, isReferred: true },
+        {
+          stage: "Referred",
+          date: "Pending",
+          completed: false,
+          isReferred: true,
+        },
         { stage: "Screening", date: "Pending", completed: false },
         { stage: "Interview", date: "TBD", completed: false },
-        { stage: "Decision", date: "TBD", completed: false }
-      ]
+        { stage: "Decision", date: "TBD", completed: false },
+      ],
     },
     {
       id: 4,
       jobTitle: "VP of Product",
       company: "Stripe",
-      companyLogo: "https://images.unsplash.com/photo-1599658880436-c61792e70672?w=200",
+      companyLogo:
+        "https://images.unsplash.com/photo-1599658880436-c61792e70672?w=200",
       status: "offer" as const,
       appliedDate: "Dec 28, 2025",
       nextAction: "Offer received - respond by Jan 10",
       sponsorName: "David Park",
       sponsorRole: "Chief Product Officer",
-      sponsorImage: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200",
+      sponsorImage:
+        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200",
       timeline: [
         { stage: "Applied", date: "Dec 28", completed: true },
-        { stage: "Referred", date: "Dec 28", completed: true, isReferred: true },
+        {
+          stage: "Referred",
+          date: "Dec 28",
+          completed: true,
+          isReferred: true,
+        },
         { stage: "Screening", date: "Dec 29", completed: true },
         { stage: "Interview", date: "Dec 30", completed: true },
-        { stage: "Decision", date: "Jan 2", completed: true }
-      ]
-    }
+        { stage: "Decision", date: "Jan 2", completed: true },
+      ],
+    },
   ];
 
   const getStatusLabel = (status: string) => {
@@ -393,7 +532,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       reviewing: "Under Review",
       interview_scheduled: "Interview",
       offer: "Offer",
-      rejected: "Closed"
+      rejected: "Closed",
     };
     return labels[status as keyof typeof labels] || status;
   };
@@ -404,7 +543,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       reviewing: { backgroundColor: "#F59E0B" },
       interview_scheduled: { backgroundColor: "#10B981" },
       offer: { backgroundColor: "#8B5CF6" },
-      rejected: { backgroundColor: "#EF4444" }
+      rejected: { backgroundColor: "#EF4444" },
     };
     return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
   };
@@ -413,11 +552,19 @@ export function ProfileView({ userType }: ProfileViewProps) {
     const styles = {
       applied: { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
       reviewing: { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" },
-      interview_scheduled: { backgroundColor: "#D1FAE5", borderColor: "#A7F3D0" },
+      interview_scheduled: {
+        backgroundColor: "#D1FAE5",
+        borderColor: "#A7F3D0",
+      },
       offer: { backgroundColor: "#EDE9FE", borderColor: "#DDD6FE" },
-      rejected: { backgroundColor: "#FEE2E2", borderColor: "#FECACA" }
+      rejected: { backgroundColor: "#FEE2E2", borderColor: "#FECACA" },
     };
-    return styles[status as keyof typeof styles] || { backgroundColor: "#F5F5F5", borderColor: "#E5E5E5" };
+    return (
+      styles[status as keyof typeof styles] || {
+        backgroundColor: "#F5F5F5",
+        borderColor: "#E5E5E5",
+      }
+    );
   };
 
   const getStatusTextColor = (status: string) => {
@@ -426,7 +573,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       reviewing: { color: "#B45309" },
       interview_scheduled: { color: "#047857" },
       offer: { color: "#6D28D9" },
-      rejected: { color: "#B91C1C" }
+      rejected: { color: "#B91C1C" },
     };
     return colors[status as keyof typeof colors] || { color: "#666" };
   };
@@ -493,12 +640,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
         break;
       case "location":
         setLocation(tempValue);
-        const [city, state] = tempValue.split(', ');
+        const [city, state] = tempValue.split(", ");
         await updatePersonal({
           address: {
             ...userProfileData.personal.address,
             city: city || tempValue,
-            state: state || '',
+            state: state || "",
           },
         });
         break;
@@ -513,12 +660,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
       case "bio":
         setBio(tempValue);
         await updateProfessional({ summary: tempValue });
-        break;
-      case "experience":
-        setExperience(tempValue);
-        break;
-      case "education":
-        setEducation(tempValue);
         break;
       case "achievements":
         setAchievements(tempValue);
@@ -611,9 +752,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
     setTempValue("");
   };
 
-  const handleAddTag = async (type: "expertise" | "workPreferences" | "desiredRoles" | "companies") => {
+  const handleAddTag = async (
+    type: "expertise" | "workPreferences" | "desiredRoles" | "companies",
+  ) => {
     if (!newTag.trim()) return;
-    
+
     switch (type) {
       case "expertise":
         const newExpertise = [...expertise, newTag.trim()];
@@ -633,7 +776,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
     setNewTag("");
   };
 
-  const handleRemoveTag = async (type: "expertise" | "workPreferences" | "desiredRoles" | "companies", index: number) => {
+  const handleRemoveTag = async (
+    type: "expertise" | "workPreferences" | "desiredRoles" | "companies",
+    index: number,
+  ) => {
     switch (type) {
       case "expertise":
         const updatedExpertise = expertise.filter((_, i) => i !== index);
@@ -647,7 +793,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
         setDesiredRoles(desiredRoles.filter((_, i) => i !== index));
         break;
       case "companies":
-        setCompaniesCanReferTo(companiesCanReferTo.filter((_, i) => i !== index));
+        setCompaniesCanReferTo(
+          companiesCanReferTo.filter((_, i) => i !== index),
+        );
         break;
     }
   };
@@ -675,25 +823,472 @@ export function ProfileView({ userType }: ProfileViewProps) {
     await updateInsights(updated);
   };
 
+  // Handlers for Professional Experiences
+  const handleAddExperience = async () => {
+    const newExperience: ProfessionalExperience = {
+      id: Date.now().toString(),
+      jobTitle: "",
+      company: "",
+      startDate: "",
+      endDate: "",
+      current: false,
+      description: "",
+    };
+    const updated = [...professionalExperiences, newExperience];
+    setProfessionalExperiences(updated);
+    setExpandedExperience(newExperience.id);
+    setEditingExperience(newExperience.id);
+    await updateProfessionalExperiences(updated);
+  };
+
+  const handleUpdateExperience = async (
+    id: string,
+    updates: Partial<ProfessionalExperience>,
+  ) => {
+    const updated = professionalExperiences.map((exp) =>
+      exp.id === id ? { ...exp, ...updates } : exp,
+    );
+    setProfessionalExperiences(updated);
+    await updateProfessionalExperiences(updated);
+  };
+
+  const handleDeleteExperience = async (id: string) => {
+    const updated = professionalExperiences.filter((exp) => exp.id !== id);
+    setProfessionalExperiences(updated);
+    await updateProfessionalExperiences(updated);
+  };
+
+  // Handlers for Education Entries
+  const handleAddEducation = async () => {
+    const newEducation: EducationEntry = {
+      id: Date.now().toString(),
+      degree: "",
+      major: "",
+      university: "",
+      graduationYear: "",
+      gpa: "",
+    };
+    const updated = [...educationEntries, newEducation];
+    setEducationEntries(updated);
+    setExpandedEducation(newEducation.id);
+    setEditingEducation(newEducation.id);
+    await updateEducationEntries(updated);
+  };
+
+  const handleUpdateEducation = async (
+    id: string,
+    updates: Partial<EducationEntry>,
+  ) => {
+    const updated = educationEntries.map((edu) =>
+      edu.id === id ? { ...edu, ...updates } : edu,
+    );
+    setEducationEntries(updated);
+    await updateEducationEntries(updated);
+  };
+
+  const handleDeleteEducation = async (id: string) => {
+    const updated = educationEntries.filter((edu) => edu.id !== id);
+    setEducationEntries(updated);
+    await updateEducationEntries(updated);
+  };
+
+  // Handlers for Certifications
+  const handleAddCertification = () => {
+    const newCert = { name: "", organization: "", year: "" };
+    const updated = [...certifications, newCert];
+    setCertifications(updated);
+    setExpandedCertification(updated.length - 1);
+  };
+
+  const handleUpdateCertification = (
+    index: number,
+    updates: Partial<{ name: string; organization: string; year: string }>,
+  ) => {
+    const updated = certifications.map((cert, i) =>
+      i === index ? { ...cert, ...updates } : cert,
+    );
+    setCertifications(updated);
+  };
+
+  const handleDeleteCertification = (index: number) => {
+    const updated = certifications.filter((_, i) => i !== index);
+    setCertifications(updated);
+    if (expandedCertification === index) {
+      setExpandedCertification(null);
+    }
+  };
+
+  // Handlers for Languages
+  const handleAddLanguage = () => {
+    const newLang = { language: "", proficiency: "" };
+    const updated = [...languages, newLang];
+    setLanguages(updated);
+    setExpandedLanguage(updated.length - 1);
+  };
+
+  const handleUpdateLanguage = (
+    index: number,
+    updates: Partial<{ language: string; proficiency: string }>,
+  ) => {
+    const updated = languages.map((lang, i) =>
+      i === index ? { ...lang, ...updates } : lang,
+    );
+    setLanguages(updated);
+  };
+
+  const handleDeleteLanguage = (index: number) => {
+    const updated = languages.filter((_, i) => i !== index);
+    setLanguages(updated);
+    if (expandedLanguage === index) {
+      setExpandedLanguage(null);
+    }
+  };
+
+  // Render Certification Card
+  const renderCertificationCard = (
+    cert: { name: string; organization: string; year: string },
+    index: number,
+  ) => {
+    const isExpanded = expandedCertification === index;
+
+    // Validation for required fields
+    const isNameMissing = !cert.name?.trim();
+    const isOrgMissing = !cert.organization?.trim();
+    const isYearMissing = !cert.year?.trim();
+    const hasRequiredFields = !isNameMissing && !isOrgMissing && !isYearMissing;
+
+    const handleSaveCertification = async () => {
+      if (!hasRequiredFields) {
+        Alert.alert(
+          "Required Fields Missing",
+          "Please fill in Certification Name, Organization, and Year before saving.",
+          [{ text: "OK" }],
+        );
+        return;
+      }
+      setExpandedCertification(null);
+      await updateCertifications(certifications);
+    };
+
+    return (
+      <View key={index} style={styles.entryCard}>
+        <TouchableOpacity
+          style={styles.entryCardHeader}
+          onPress={() => setExpandedCertification(isExpanded ? null : index)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.entryCardTitle}>
+            <Text style={styles.entryCardMainText}>
+              {cert.name || "New Certification"}
+            </Text>
+            <Text style={styles.entryCardSubText}>
+              {cert.organization || "Organization"}
+              {cert.year && ` • ${cert.year}`}
+            </Text>
+          </View>
+          <View style={styles.entryCardActions}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteCertification(index);
+              }}
+              style={{ padding: 4 }}
+            >
+              <Trash2 size={18} color="#666" />
+            </TouchableOpacity>
+            <ChevronRight
+              color="#666"
+              size={20}
+              style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.entryCardContent}>
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>CERTIFICATION NAME</Text>
+                {isNameMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isNameMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                ]}
+                value={cert.name}
+                onChangeText={(text) =>
+                  handleUpdateCertification(index, { name: text })
+                }
+                placeholder="e.g., AWS Solutions Architect"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>ORGANIZATION</Text>
+                {isOrgMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isOrgMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                ]}
+                value={cert.organization}
+                onChangeText={(text) =>
+                  handleUpdateCertification(index, { organization: text })
+                }
+                placeholder="e.g., Amazon Web Services"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>YEAR OBTAINED</Text>
+                {isYearMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isYearMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                ]}
+                value={cert.year}
+                onChangeText={(text) =>
+                  handleUpdateCertification(index, { year: text })
+                }
+                placeholder="e.g., 2023"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.blackBtn,
+                {
+                  width: "100%",
+                  justifyContent: "center",
+                  borderWidth: 0,
+                  marginTop: 8,
+                },
+              ]}
+              onPress={handleSaveCertification}
+            >
+              <Check color="#FFF" size={18} />
+              <Text style={styles.blackBtnText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Render Language Card
+  const renderLanguageCard = (
+    lang: { language: string; proficiency: string },
+    index: number,
+  ) => {
+    const isExpanded = expandedLanguage === index;
+
+    // Validation for required fields
+    const isLanguageMissing = !lang.language?.trim();
+    const isProficiencyMissing = !lang.proficiency?.trim();
+    const hasRequiredFields = !isLanguageMissing && !isProficiencyMissing;
+
+    const handleSaveLanguage = async () => {
+      if (!hasRequiredFields) {
+        Alert.alert(
+          "Required Fields Missing",
+          "Please fill in Language and Proficiency Level before saving.",
+          [{ text: "OK" }],
+        );
+        return;
+      }
+      setExpandedLanguage(null);
+      await updateLanguages(languages);
+    };
+
+    return (
+      <View key={index} style={styles.entryCard}>
+        <TouchableOpacity
+          style={styles.entryCardHeader}
+          onPress={() => setExpandedLanguage(isExpanded ? null : index)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.entryCardTitle}>
+            <Text style={styles.entryCardMainText}>
+              {lang.language || "New Language"}
+            </Text>
+            <Text style={styles.entryCardSubText}>
+              {lang.proficiency || "Proficiency Level"}
+            </Text>
+          </View>
+          <View style={styles.entryCardActions}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteLanguage(index);
+              }}
+              style={{ padding: 4 }}
+            >
+              <Trash2 size={18} color="#666" />
+            </TouchableOpacity>
+            <ChevronRight
+              color="#666"
+              size={20}
+              style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.entryCardContent}>
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>LANGUAGE</Text>
+                {isLanguageMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isLanguageMissing && {
+                    borderColor: "#FCA5A5",
+                    borderWidth: 2,
+                  },
+                ]}
+                value={lang.language}
+                onChangeText={(text) =>
+                  handleUpdateLanguage(index, { language: text })
+                }
+                placeholder="e.g., Spanish"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>PROFICIENCY LEVEL</Text>
+                {isProficiencyMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isProficiencyMissing && {
+                    borderColor: "#FCA5A5",
+                    borderWidth: 2,
+                  },
+                ]}
+                value={lang.proficiency}
+                onChangeText={(text) =>
+                  handleUpdateLanguage(index, { proficiency: text })
+                }
+                placeholder="e.g., Native, Fluent, Conversational"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.blackBtn,
+                {
+                  width: "100%",
+                  justifyContent: "center",
+                  borderWidth: 0,
+                  marginTop: 8,
+                },
+              ]}
+              onPress={handleSaveLanguage}
+            >
+              <Check color="#FFF" size={18} />
+              <Text style={styles.blackBtnText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const handlePasswordChange = () => {
     setPasswordError("");
-    
+
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       setPasswordError("All fields are required");
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setPasswordError("New passwords don't match");
       return;
     }
-    
+
     if (newPassword.length < 8) {
       setPasswordError("Password must be at least 8 characters");
       return;
     }
-    
+
     // Success - In real app, this would call an API
     setCurrentPassword("");
     setNewPassword("");
@@ -703,17 +1298,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   // Image picker functions
-  const requestPermissions = async (type: 'camera' | 'gallery') => {
-    if (type === 'camera') {
+  const requestPermissions = async (type: "camera" | "gallery") => {
+    if (type === "camera") {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Camera permission is needed to take photos.');
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Camera permission is needed to take photos.",
+        );
         return false;
       }
     } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Gallery permission is needed to select photos.');
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Gallery permission is needed to select photos.",
+        );
         return false;
       }
     }
@@ -721,7 +1323,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const pickImage = async () => {
-    const hasPermission = await requestPermissions('gallery');
+    const hasPermission = await requestPermissions("gallery");
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -737,7 +1339,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const takePhoto = async () => {
-    const hasPermission = await requestPermissions('camera');
+    const hasPermission = await requestPermissions("camera");
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchCameraAsync({
@@ -769,24 +1371,469 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   // Helper to count missing fields by category
-  const getMissingFieldsCount = (category: 'personal' | 'professional') => {
+  const getMissingFieldsCount = (category: "personal" | "professional") => {
     if (!profileCompletion) return 0;
-    return profileCompletion.missingFields.filter(f => {
-      if (category === 'personal') {
-        return f.category === 'Personal Information';
+    return profileCompletion.missingFields.filter((f) => {
+      if (category === "personal") {
+        return f.category === "Personal Information";
       } else {
-        return f.category !== 'Personal Information';
+        return f.category !== "Personal Information";
       }
     }).length;
   };
 
-  const personalMissingCount = getMissingFieldsCount('personal');
-  const professionalMissingCount = getMissingFieldsCount('professional');
+  const personalMissingCount = getMissingFieldsCount("personal");
+  const professionalMissingCount = getMissingFieldsCount("professional");
 
   // Helper to check if a specific field is missing
   const isFieldMissing = (fieldKey: string) => {
     if (!profileCompletion) return false;
-    return profileCompletion.missingFields.some(f => f.field === fieldKey);
+    return profileCompletion.missingFields.some((f) => f.field === fieldKey);
+  };
+
+  // Render Professional Experience Entry Card
+  const renderExperienceCard = (experience: ProfessionalExperience) => {
+    const isExpanded = expandedExperience === experience.id;
+    const isEditing = editingExperience === experience.id;
+
+    // Validation for required fields
+    const isJobTitleMissing = !experience.jobTitle?.trim();
+    const isCompanyMissing = !experience.company?.trim();
+    const isStartDateMissing = !experience.startDate?.trim();
+    const hasRequiredFields =
+      !isJobTitleMissing && !isCompanyMissing && !isStartDateMissing;
+
+    const handleSaveExperience = () => {
+      if (!hasRequiredFields) {
+        Alert.alert(
+          "Required Fields Missing",
+          "Please fill in Job Title, Company, and Start Date before saving.",
+          [{ text: "OK" }],
+        );
+        return;
+      }
+      setExpandedExperience(null);
+    };
+
+    return (
+      <View key={experience.id} style={styles.entryCard}>
+        <TouchableOpacity
+          style={styles.entryCardHeader}
+          onPress={() =>
+            setExpandedExperience(isExpanded ? null : experience.id)
+          }
+          activeOpacity={0.7}
+        >
+          <View style={styles.entryCardTitle}>
+            <Text style={styles.entryCardMainText}>
+              {experience.jobTitle || "New Position"}
+            </Text>
+            <Text style={styles.entryCardSubText}>
+              {experience.company || "Company Name"}
+              {experience.startDate && ` • ${experience.startDate}`}
+              {experience.current && " - Present"}
+              {!experience.current &&
+                experience.endDate &&
+                ` - ${experience.endDate}`}
+            </Text>
+          </View>
+          <View style={styles.entryCardActions}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteExperience(experience.id);
+              }}
+              style={{ padding: 4 }}
+            >
+              <Trash2 size={18} color="#666" />
+            </TouchableOpacity>
+            <ChevronRight
+              color="#666"
+              size={20}
+              style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.entryCardContent}>
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>JOB TITLE</Text>
+                {isJobTitleMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isJobTitleMissing && {
+                    borderColor: "#FCA5A5",
+                    borderWidth: 2,
+                  },
+                ]}
+                value={experience.jobTitle}
+                onChangeText={(text) =>
+                  handleUpdateExperience(experience.id, { jobTitle: text })
+                }
+                placeholder="e.g., Senior Product Manager"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>COMPANY</Text>
+                {isCompanyMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isCompanyMissing && {
+                    borderColor: "#FCA5A5",
+                    borderWidth: 2,
+                  },
+                ]}
+                value={experience.company}
+                onChangeText={(text) =>
+                  handleUpdateExperience(experience.id, { company: text })
+                }
+                placeholder="e.g., Google"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>START DATE</Text>
+                {isStartDateMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isStartDateMissing && {
+                    borderColor: "#FCA5A5",
+                    borderWidth: 2,
+                  },
+                ]}
+                value={experience.startDate}
+                onChangeText={(text) =>
+                  handleUpdateExperience(experience.id, { startDate: text })
+                }
+                placeholder="e.g., Jan 2022"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.checkboxRow}>
+              <Switch
+                value={experience.current}
+                onValueChange={(value) =>
+                  handleUpdateExperience(experience.id, {
+                    current: value,
+                    endDate: value ? "" : experience.endDate,
+                  })
+                }
+                trackColor={{ false: "#E5E5E5", true: "#1E40AF" }}
+                thumbColor="#FFF"
+              />
+              <Text style={styles.checkboxLabel}>I currently work here</Text>
+            </View>
+
+            {!experience.current && (
+              <View style={styles.entryFieldRow}>
+                <Text style={styles.entryFieldLabel}>END DATE</Text>
+                <TextInput
+                  style={styles.entryFieldInput}
+                  value={experience.endDate}
+                  onChangeText={(text) =>
+                    handleUpdateExperience(experience.id, { endDate: text })
+                  }
+                  placeholder="e.g., Dec 2024"
+                  placeholderTextColor="#999"
+                />
+              </View>
+            )}
+
+            <View style={styles.entryFieldRow}>
+              <Text style={styles.entryFieldLabel}>JOB DESCRIPTION</Text>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  { minHeight: 100, textAlignVertical: "top" },
+                ]}
+                value={experience.description}
+                onChangeText={(text) =>
+                  handleUpdateExperience(experience.id, { description: text })
+                }
+                placeholder="Describe your responsibilities and achievements..."
+                placeholderTextColor="#999"
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.blackBtn,
+                {
+                  width: "100%",
+                  justifyContent: "center",
+                  borderWidth: 0,
+                  marginTop: 8,
+                },
+              ]}
+              onPress={handleSaveExperience}
+            >
+              <Check color="#FFF" size={18} />
+              <Text style={styles.blackBtnText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Render Education Entry Card
+  const renderEducationCard = (education: EducationEntry) => {
+    const isExpanded = expandedEducation === education.id;
+
+    // Validation for required fields
+    const isDegreeMissing = !education.degree?.trim();
+    const isUniversityMissing = !education.university?.trim();
+    const isGradYearMissing = !education.graduationYear?.trim();
+    const hasRequiredFields =
+      !isDegreeMissing && !isUniversityMissing && !isGradYearMissing;
+
+    const handleSaveEducation = () => {
+      if (!hasRequiredFields) {
+        Alert.alert(
+          "Required Fields Missing",
+          "Please fill in Degree, University, and Graduation Year before saving.",
+          [{ text: "OK" }],
+        );
+        return;
+      }
+      setExpandedEducation(null);
+    };
+
+    return (
+      <View key={education.id} style={styles.entryCard}>
+        <TouchableOpacity
+          style={styles.entryCardHeader}
+          onPress={() => setExpandedEducation(isExpanded ? null : education.id)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.entryCardTitle}>
+            <Text style={styles.entryCardMainText}>
+              {education.degree || "New Degree"}
+            </Text>
+            <Text style={styles.entryCardSubText}>
+              {education.university || "University Name"}
+              {education.major && ` • ${education.major}`}
+              {education.graduationYear && ` • ${education.graduationYear}`}
+            </Text>
+          </View>
+          <View style={styles.entryCardActions}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteEducation(education.id);
+              }}
+              style={{ padding: 4 }}
+            >
+              <Trash2 size={18} color="#666" />
+            </TouchableOpacity>
+            <ChevronRight
+              color="#666"
+              size={20}
+              style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.entryCardContent}>
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>DEGREE</Text>
+                {isDegreeMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isDegreeMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                ]}
+                value={education.degree}
+                onChangeText={(text) =>
+                  handleUpdateEducation(education.id, { degree: text })
+                }
+                placeholder="e.g., Bachelor of Science, MBA"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <Text style={styles.entryFieldLabel}>MAJOR / FIELD OF STUDY</Text>
+              <TextInput
+                style={styles.entryFieldInput}
+                value={education.major}
+                onChangeText={(text) =>
+                  handleUpdateEducation(education.id, { major: text })
+                }
+                placeholder="e.g., Computer Science"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>UNIVERSITY</Text>
+                {isUniversityMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isUniversityMissing && {
+                    borderColor: "#FCA5A5",
+                    borderWidth: 2,
+                  },
+                ]}
+                value={education.university}
+                onChangeText={(text) =>
+                  handleUpdateEducation(education.id, { university: text })
+                }
+                placeholder="e.g., Stanford University"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Text style={styles.entryFieldLabel}>GRADUATION YEAR</Text>
+                {isGradYearMissing && (
+                  <Text
+                    style={{
+                      color: "#DC2626",
+                      fontSize: 11,
+                      fontWeight: "700",
+                    }}
+                  >
+                    *REQUIRED
+                  </Text>
+                )}
+              </View>
+              <TextInput
+                style={[
+                  styles.entryFieldInput,
+                  isGradYearMissing && {
+                    borderColor: "#FCA5A5",
+                    borderWidth: 2,
+                  },
+                ]}
+                value={education.graduationYear}
+                onChangeText={(text) =>
+                  handleUpdateEducation(education.id, { graduationYear: text })
+                }
+                placeholder="e.g., 2020"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.entryFieldRow}>
+              <Text style={styles.entryFieldLabel}>GPA (OPTIONAL)</Text>
+              <TextInput
+                style={styles.entryFieldInput}
+                value={education.gpa}
+                onChangeText={(text) =>
+                  handleUpdateEducation(education.id, { gpa: text })
+                }
+                placeholder="e.g., 3.9"
+                placeholderTextColor="#999"
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.blackBtn,
+                {
+                  width: "100%",
+                  justifyContent: "center",
+                  borderWidth: 0,
+                  marginTop: 8,
+                },
+              ]}
+              onPress={handleSaveEducation}
+            >
+              <Check color="#FFF" size={18} />
+              <Text style={styles.blackBtnText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
   };
 
   return (
@@ -799,16 +1846,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <View style={styles.profileHeader}>
         <View style={styles.avatarWrapper}>
           <Image
-            source={{ uri: profileImage || "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=200" }}
+            source={{
+              uri:
+                profileImage ||
+                "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=200",
+            }}
             style={styles.avatar}
           />
-          <TouchableOpacity 
-            style={[styles.editFab, isFieldMissing('profileImage') && styles.editFabHighlight]} 
+          <TouchableOpacity
+            style={[
+              styles.editFab,
+              isFieldMissing("profileImage") && styles.editFabHighlight,
+            ]}
             onPress={() => setShowImagePickerModal(true)}
           >
             <Edit color="#FFF" size={14} strokeWidth={2.5} />
           </TouchableOpacity>
-          {isFieldMissing('profileImage') && (
+          {isFieldMissing("profileImage") && (
             <View style={styles.profileImageIndicator}>
               <AlertCircle color="#1E40AF" size={20} />
             </View>
@@ -816,14 +1870,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
 
         <Text style={styles.name}>{profileData.name}</Text>
-        
+
         <View style={styles.infoRow}>
           <Briefcase color="#000" size={14} strokeWidth={2} />
           <Text style={styles.infoText}>
             {userType === "sponsor"
               ? `${sponsorData.role} @ ${sponsorData.company}`
-              : applicantData.role
-            }
+              : applicantData.role}
           </Text>
         </View>
 
@@ -835,12 +1888,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <Text style={styles.bio}>{profileData.bio}</Text>
 
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.blackBtn} onPress={() => setShowEditProfile(true)}>
+          <TouchableOpacity
+            style={styles.blackBtn}
+            onPress={() => setShowEditProfile(true)}
+          >
             <Edit color="#FFF" size={16} />
             <Text style={styles.blackBtnText}>Edit Profile</Text>
             {personalMissingCount > 0 && (
               <View style={styles.buttonBadge}>
-                <Text style={styles.buttonBadgeText}>{personalMissingCount}</Text>
+                <Text style={styles.buttonBadgeText}>
+                  {personalMissingCount}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -868,17 +1926,34 @@ export function ProfileView({ userType }: ProfileViewProps) {
       {/* Tab Navigation (Applicants Only) */}
       {userType === "applicant" && (
         <View style={styles.tabContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === "profile" && styles.tabActive]} 
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "profile" && styles.tabActive]}
             onPress={() => setActiveTab("profile")}
           >
-            <Text style={[styles.tabText, activeTab === "profile" && styles.tabTextActive]}>Profile</Text>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "profile" && styles.tabTextActive,
+              ]}
+            >
+              Profile
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === "applications" && styles.tabActive]} 
+          <TouchableOpacity
+            style={[
+              styles.tab,
+              activeTab === "applications" && styles.tabActive,
+            ]}
             onPress={() => setActiveTab("applications")}
           >
-            <Text style={[styles.tabText, activeTab === "applications" && styles.tabTextActive]}>Applications</Text>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "applications" && styles.tabTextActive,
+              ]}
+            >
+              Applications
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -888,7 +1963,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <>
           {/* Expertise Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
+            <Text style={styles.sectionTitle}>
+              {profileData.expertiseLabel}
+            </Text>
             <View style={styles.tagCloud}>
               {profileData.expertise.map((tag) => (
                 <View key={tag} style={styles.tag}>
@@ -904,12 +1981,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
       {activeTab === "applications" && userType === "applicant" && (
         <View style={styles.applicationsContainer}>
           <Text style={styles.applicationsTitle}>My Applications</Text>
-          <Text style={styles.applicationsSubtitle}>{mockApplications.length} active applications</Text>
-          
+          <Text style={styles.applicationsSubtitle}>
+            {mockApplications.length} active applications
+          </Text>
+
           {mockApplications.map((app, index) => (
             <Animated.View key={app.id} entering={FadeInUp.delay(index * 100)}>
-              <TouchableOpacity 
-                style={styles.applicationCard} 
+              <TouchableOpacity
+                style={styles.applicationCard}
                 onPress={() => {
                   setSelectedApplication(app);
                   setShowApplicationDetail(true);
@@ -917,32 +1996,49 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 activeOpacity={0.7}
               >
                 <View style={styles.appCardHeader}>
-                  <Image source={{ uri: app.companyLogo }} style={styles.companyLogo} />
+                  <Image
+                    source={{ uri: app.companyLogo }}
+                    style={styles.companyLogo}
+                  />
                   <View style={styles.appCardInfo}>
                     <Text style={styles.appJobTitle}>{app.jobTitle}</Text>
                     <Text style={styles.appCompany}>{app.company}</Text>
                   </View>
                   <View style={styles.statusBadgeBlack}>
-                    <Text style={styles.statusBadgeBlackText}>{getStatusLabel(app.status)}</Text>
+                    <Text style={styles.statusBadgeBlackText}>
+                      {getStatusLabel(app.status)}
+                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.timelineContainer}>
                   {app.timeline.map((stage, idx) => (
                     <View key={idx} style={styles.timelineItem}>
-                      <View style={[
-                        styles.timelineDot, 
-                        stage.completed && styles.timelineDotCompleted,
-                        stage.isReferred && styles.timelineDotReferred,
-                        stage.isReferred && stage.completed && styles.timelineDotReferredCompleted
-                      ]} />
-                      {idx < app.timeline.length - 1 && <View style={styles.timelineLine} />}
+                      <View
+                        style={[
+                          styles.timelineDot,
+                          stage.completed && styles.timelineDotCompleted,
+                          stage.isReferred && styles.timelineDotReferred,
+                          stage.isReferred &&
+                            stage.completed &&
+                            styles.timelineDotReferredCompleted,
+                        ]}
+                      />
+                      {idx < app.timeline.length - 1 && (
+                        <View style={styles.timelineLine} />
+                      )}
                       <View style={styles.timelineContent}>
-                        <Text style={[
-                          styles.timelineStage, 
-                          stage.completed && styles.timelineStageCompleted,
-                          stage.isReferred && stage.completed && styles.timelineStageReferred
-                        ]}>{stage.stage}</Text>
+                        <Text
+                          style={[
+                            styles.timelineStage,
+                            stage.completed && styles.timelineStageCompleted,
+                            stage.isReferred &&
+                              stage.completed &&
+                              styles.timelineStageReferred,
+                          ]}
+                        >
+                          {stage.stage}
+                        </Text>
                         <Text style={styles.timelineDate}>{stage.date}</Text>
                       </View>
                     </View>
@@ -950,7 +2046,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
 
                 <View style={styles.appCardFooter}>
-                  <Image source={{ uri: app.sponsorImage }} style={styles.sponsorAvatar} />
+                  <Image
+                    source={{ uri: app.sponsorImage }}
+                    style={styles.sponsorAvatar}
+                  />
                   <View style={styles.sponsorInfo}>
                     <Text style={styles.sponsorLabel}>SPONSORED BY</Text>
                     <Text style={styles.sponsorName}>{app.sponsorName}</Text>
@@ -997,7 +2096,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
           {userType === "sponsor" && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Companies I Can Refer To</Text>
+                <Text style={styles.sectionTitle}>
+                  Companies I Can Refer To
+                </Text>
                 <View style={styles.tagCloud}>
                   {sponsorData.companiesCanReferTo.map((company) => (
                     <View key={company} style={styles.companyTag}>
@@ -1015,50 +2116,82 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.settingsGroup}>
-          <SettingItem label="Edit Profile Insights" onPress={() => setShowEditInsights(true)} />
+          <SettingItem
+            label="Edit Profile Insights"
+            onPress={() => setShowEditInsights(true)}
+          />
           {userType === "applicant" && (
-            <SettingItem 
-              label="Edit Resume Information" 
+            <SettingItem
+              label="Edit Resume Information"
               badgeCount={professionalMissingCount}
-              onPress={() => setShowEditResume(true)} 
+              onPress={() => setShowEditResume(true)}
             />
           )}
-          <SettingItem label="Privacy & Security" onPress={() => setShowPrivacySecurity(true)} />
-          <SettingItem label="Notifications" onPress={() => setShowNotifications(true)} />
-          <SettingItem label="Log Out" color="#000" isLast onPress={handleLogout} />
+          <SettingItem
+            label="Privacy & Security"
+            onPress={() => setShowPrivacySecurity(true)}
+          />
+          <SettingItem
+            label="Notifications"
+            onPress={() => setShowNotifications(true)}
+          />
+          <SettingItem
+            label="Log Out"
+            color="#000"
+            isLast
+            onPress={handleLogout}
+          />
         </View>
       </View>
 
       {/* IMAGE PICKER MODAL */}
       <Modal visible={showImagePickerModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowImagePickerModal(false)}>
-            <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowImagePickerModal(false)}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
           </TouchableOpacity>
-          
-          <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={[styles.modalContent, { paddingBottom: 50 }]}>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={[styles.modalContent, { paddingBottom: 50 }]}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Profile Photo</Text>
               <TouchableOpacity onPress={() => setShowImagePickerModal(false)}>
                 <X color="#000" size={24} />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.modalSubtitle}>
               Choose how you'd like to add your profile photo
             </Text>
 
             <View style={{ gap: 12, marginTop: 12 }}>
-              <TouchableOpacity 
-                style={[styles.blackBtn, { width: '100%', justifyContent: 'center', borderWidth: 0 }]} 
+              <TouchableOpacity
+                style={[
+                  styles.blackBtn,
+                  { width: "100%", justifyContent: "center", borderWidth: 0 },
+                ]}
                 onPress={takePhoto}
               >
                 <Camera color="#FFF" size={18} />
                 <Text style={styles.blackBtnText}>Take Photo</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.whiteBtn, { width: '100%', justifyContent: 'center' }]} 
+
+              <TouchableOpacity
+                style={[
+                  styles.whiteBtn,
+                  { width: "100%", justifyContent: "center" },
+                ]}
                 onPress={pickImage}
               >
                 <ImageIcon color="#000" size={18} />
@@ -1072,33 +2205,52 @@ export function ProfileView({ userType }: ProfileViewProps) {
       {/* LOGOUT CONFIRMATION MODAL */}
       <Modal visible={showLogoutModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowLogoutModal(false)}>
-            <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowLogoutModal(false)}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
           </TouchableOpacity>
-          
-          <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={[styles.modalContent, { paddingBottom: 50 }]}>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={[styles.modalContent, { paddingBottom: 50 }]}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Log Out</Text>
               <TouchableOpacity onPress={() => setShowLogoutModal(false)}>
                 <X color="#000" size={24} />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.modalSubtitle}>
-              Are you sure you want to log out? You'll need to sign in again to access your account.
+              Are you sure you want to log out? You'll need to sign in again to
+              access your account.
             </Text>
 
             <View style={{ gap: 12, marginTop: 12 }}>
-              <TouchableOpacity 
-                style={[styles.blackBtn, { width: '100%', justifyContent: 'center', borderWidth: 0 }]} 
+              <TouchableOpacity
+                style={[
+                  styles.blackBtn,
+                  { width: "100%", justifyContent: "center", borderWidth: 0 },
+                ]}
                 onPress={confirmLogout}
               >
                 <LogOut color="#FFF" size={18} />
                 <Text style={styles.blackBtnText}>Log Out</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.whiteBtn, { width: '100%', justifyContent: 'center' }]} 
+
+              <TouchableOpacity
+                style={[
+                  styles.whiteBtn,
+                  { width: "100%", justifyContent: "center" },
+                ]}
                 onPress={() => setShowLogoutModal(false)}
               >
                 <Text style={styles.whiteBtnText}>Cancel</Text>
@@ -1112,21 +2264,29 @@ export function ProfileView({ userType }: ProfileViewProps) {
       {selectedApplication && (
         <Modal visible={showApplicationDetail} transparent animationType="fade">
           <View style={styles.modalOverlay}>
-            <TouchableOpacity 
-              style={StyleSheet.absoluteFill} 
-              activeOpacity={1} 
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
               onPress={() => {
                 setShowApplicationDetail(false);
                 setTimeout(() => setSelectedApplication(null), 300);
               }}
             >
-              <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+              <BlurView
+                intensity={60}
+                style={StyleSheet.absoluteFill}
+                tint="dark"
+              />
             </TouchableOpacity>
-            
-            <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+
+            <Animated.View
+              entering={SlideInDown}
+              exiting={SlideOutDown}
+              style={styles.modalContent}
+            >
               <View style={styles.modalHandle} />
-              <TouchableOpacity 
-                style={styles.modalCloseBtn} 
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
                 onPress={() => {
                   setShowApplicationDetail(false);
                   setTimeout(() => setSelectedApplication(null), 300);
@@ -1134,12 +2294,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
               >
                 <X color="#000" size={24} />
               </TouchableOpacity>
-              
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.modalScroll}
+              >
                 <View style={styles.appDetailHeader}>
-                  <Image source={{ uri: selectedApplication.companyLogo }} style={styles.appDetailLogo} />
-                  <Text style={styles.appDetailTitle}>{selectedApplication.jobTitle}</Text>
-                  <Text style={styles.appDetailCompany}>{selectedApplication.company}</Text>
+                  <Image
+                    source={{ uri: selectedApplication.companyLogo }}
+                    style={styles.appDetailLogo}
+                  />
+                  <Text style={styles.appDetailTitle}>
+                    {selectedApplication.jobTitle}
+                  </Text>
+                  <Text style={styles.appDetailCompany}>
+                    {selectedApplication.company}
+                  </Text>
                   <View style={styles.statusBadgeBlack}>
                     <Text style={styles.statusBadgeBlackText}>
                       {getStatusLabel(selectedApplication.status)}
@@ -1148,46 +2318,76 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
 
                 <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>APPLICATION TIMELINE</Text>
+                  <Text style={styles.detailSectionTitle}>
+                    APPLICATION TIMELINE
+                  </Text>
                   <View style={styles.timelineDetailContainer}>
-                    {selectedApplication.timeline.map((stage: any, idx: number) => (
-                      <View key={idx} style={styles.timelineDetailItem}>
-                        <View style={styles.timelineDetailLeft}>
-                          <View style={[
-                            styles.timelineDetailDot, 
-                            stage.completed && styles.timelineDetailDotCompleted,
-                            stage.isReferred && styles.timelineDetailDotReferred,
-                            stage.isReferred && stage.completed && styles.timelineDetailDotReferredCompleted
-                          ]} />
-                          {idx < selectedApplication.timeline.length - 1 && (
-                            <View style={[
-                              styles.timelineDetailLine,
-                              stage.completed && selectedApplication.timeline[idx + 1].completed && styles.timelineDetailLineCompleted
-                            ]} />
-                          )}
+                    {selectedApplication.timeline.map(
+                      (stage: any, idx: number) => (
+                        <View key={idx} style={styles.timelineDetailItem}>
+                          <View style={styles.timelineDetailLeft}>
+                            <View
+                              style={[
+                                styles.timelineDetailDot,
+                                stage.completed &&
+                                  styles.timelineDetailDotCompleted,
+                                stage.isReferred &&
+                                  styles.timelineDetailDotReferred,
+                                stage.isReferred &&
+                                  stage.completed &&
+                                  styles.timelineDetailDotReferredCompleted,
+                              ]}
+                            />
+                            {idx < selectedApplication.timeline.length - 1 && (
+                              <View
+                                style={[
+                                  styles.timelineDetailLine,
+                                  stage.completed &&
+                                    selectedApplication.timeline[idx + 1]
+                                      .completed &&
+                                    styles.timelineDetailLineCompleted,
+                                ]}
+                              />
+                            )}
+                          </View>
+                          <View style={styles.timelineDetailRight}>
+                            <Text
+                              style={[
+                                styles.timelineDetailStage,
+                                stage.completed &&
+                                  styles.timelineDetailStageCompleted,
+                                stage.isReferred &&
+                                  stage.completed &&
+                                  styles.timelineDetailStageReferred,
+                              ]}
+                            >
+                              {stage.stage}
+                            </Text>
+                            <Text style={styles.timelineDetailDate}>
+                              {stage.date}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={styles.timelineDetailRight}>
-                          <Text style={[
-                            styles.timelineDetailStage, 
-                            stage.completed && styles.timelineDetailStageCompleted,
-                            stage.isReferred && stage.completed && styles.timelineDetailStageReferred
-                          ]}>
-                            {stage.stage}
-                          </Text>
-                          <Text style={styles.timelineDetailDate}>{stage.date}</Text>
-                        </View>
-                      </View>
-                    ))}
+                      ),
+                    )}
                   </View>
                 </View>
 
                 <View style={styles.detailSection}>
                   <Text style={styles.detailSectionTitle}>SPONSOR</Text>
                   <View style={styles.sponsorCard}>
-                    <Image source={{ uri: selectedApplication.sponsorImage }} style={styles.sponsorDetailAvatar} />
+                    <Image
+                      source={{ uri: selectedApplication.sponsorImage }}
+                      style={styles.sponsorDetailAvatar}
+                    />
                     <View style={styles.sponsorDetailInfo}>
-                      <Text style={styles.sponsorDetailName}>{selectedApplication.sponsorName}</Text>
-                      <Text style={styles.sponsorDetailRole}>{selectedApplication.sponsorRole} @ {selectedApplication.company}</Text>
+                      <Text style={styles.sponsorDetailName}>
+                        {selectedApplication.sponsorName}
+                      </Text>
+                      <Text style={styles.sponsorDetailRole}>
+                        {selectedApplication.sponsorRole} @{" "}
+                        {selectedApplication.company}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -1196,13 +2396,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   <Text style={styles.detailSectionTitle}>NEXT STEPS</Text>
                   <View style={styles.nextActionCard}>
                     <Clock size={20} color="#000" />
-                    <Text style={styles.nextActionText}>{selectedApplication.nextAction}</Text>
+                    <Text style={styles.nextActionText}>
+                      {selectedApplication.nextAction}
+                    </Text>
                   </View>
                 </View>
 
                 <TouchableOpacity style={styles.messageBtn} activeOpacity={0.7}>
                   <MessageCircle color="#FFF" size={20} />
-                  <Text style={styles.messageBtnText}>Message {selectedApplication.sponsorName}</Text>
+                  <Text style={styles.messageBtnText}>
+                    Message {selectedApplication.sponsorName}
+                  </Text>
                 </TouchableOpacity>
               </ScrollView>
             </Animated.View>
@@ -1212,12 +2416,27 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       {/* EDIT PROFILE MODAL */}
       <Modal visible={showEditProfile} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowEditProfile(false)}>
-            <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowEditProfile(false)}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
           </TouchableOpacity>
-          
-          <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={styles.modalContent}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Profile</Text>
               <TouchableOpacity onPress={() => setShowEditProfile(false)}>
@@ -1227,17 +2446,26 @@ export function ProfileView({ userType }: ProfileViewProps) {
             {personalMissingCount > 0 && (
               <View style={styles.modalProgressContainer}>
                 <Text style={styles.modalProgressText}>
-                  {personalMissingCount} field{personalMissingCount !== 1 ? 's' : ''} remaining
+                  {personalMissingCount} field
+                  {personalMissingCount !== 1 ? "s" : ""} remaining
                 </Text>
                 <View style={styles.modalProgressBar}>
-                  <View style={[styles.modalProgressFill, { 
-                    width: `${Math.max(0, 100 - (personalMissingCount / 9 * 100))}%` 
-                  }]} />
+                  <View
+                    style={[
+                      styles.modalProgressFill,
+                      {
+                        width: `${Math.max(0, 100 - (personalMissingCount / 9) * 100)}%`,
+                      },
+                    ]}
+                  />
                 </View>
               </View>
             )}
-            
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.modalScroll}
+            >
               {/* Basic Information Section */}
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLine} />
@@ -1247,7 +2475,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* First Name */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('firstName') && styles.fieldLabelIncomplete]}>FIRST NAME</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("firstName") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  FIRST NAME
+                </Text>
                 {editingField === "firstName" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1256,13 +2491,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("firstName")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("firstName")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("firstName", firstName)}>
-                    <Text style={styles.fieldText}>{firstName || "Not set"}</Text>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("firstName", firstName)}
+                  >
+                    <Text style={styles.fieldText}>
+                      {firstName || "Not set"}
+                    </Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
                 )}
@@ -1270,7 +2513,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Last Name */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('lastName') && styles.fieldLabelIncomplete]}>LAST NAME</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("lastName") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  LAST NAME
+                </Text>
                 {editingField === "lastName" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1279,13 +2529,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("lastName")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("lastName")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("lastName", lastName)}>
-                    <Text style={styles.fieldText}>{lastName || "Not set"}</Text>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("lastName", lastName)}
+                  >
+                    <Text style={styles.fieldText}>
+                      {lastName || "Not set"}
+                    </Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
                 )}
@@ -1302,12 +2560,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("role")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("role")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("role", role)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("role", role)}
+                  >
                     <Text style={styles.fieldText}>{role}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1326,12 +2590,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         onChangeText={setTempValue}
                         autoFocus
                       />
-                      <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("company")}>
+                      <TouchableOpacity
+                        style={styles.saveBtn}
+                        onPress={() => handleSaveField("company")}
+                      >
                         <Check color="#FFF" size={18} />
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("company", company)}>
+                    <TouchableOpacity
+                      style={styles.fieldDisplay}
+                      onPress={() => handleEditField("company", company)}
+                    >
                       <Text style={styles.fieldText}>{company}</Text>
                       <Edit color="#666" size={16} />
                     </TouchableOpacity>
@@ -1350,12 +2620,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("location")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("location")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("location", location)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("location", location)}
+                  >
                     <Text style={styles.fieldText}>{location}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1364,7 +2640,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Email */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('email') && styles.fieldLabelIncomplete]}>EMAIL</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("email") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  EMAIL
+                </Text>
                 {editingField === "email" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1375,12 +2658,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       autoCapitalize="none"
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("email")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("email")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("email", email)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("email", email)}
+                  >
                     <Text style={styles.fieldText}>{email}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1389,7 +2678,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Phone */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('phone') && styles.fieldLabelIncomplete]}>PHONE</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("phone") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  PHONE
+                </Text>
                 {editingField === "phone" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1399,12 +2695,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       keyboardType="phone-pad"
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("phone")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("phone")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("phone", phone)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("phone", phone)}
+                  >
                     <Text style={styles.fieldText}>{phone}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1424,12 +2726,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       numberOfLines={4}
                       autoFocus
                     />
-                    <TouchableOpacity style={[styles.saveBtn, { alignSelf: 'flex-end', marginTop: 8 }]} onPress={() => handleSaveField("bio")}>
+                    <TouchableOpacity
+                      style={[
+                        styles.saveBtn,
+                        { alignSelf: "flex-end", marginTop: 8 },
+                      ]}
+                      onPress={() => handleSaveField("bio")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("bio", bio)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("bio", bio)}
+                  >
                     <Text style={styles.fieldText}>{bio}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1445,7 +2756,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* LinkedIn */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('linkedin') && styles.fieldLabelIncomplete]}>LINKEDIN PROFILE</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("linkedin") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  LINKEDIN PROFILE
+                </Text>
                 {editingField === "linkedin" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1456,13 +2774,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       autoCapitalize="none"
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("linkedin")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("linkedin")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("linkedin", linkedin)}>
-                    <Text style={styles.fieldText}>{linkedin || "Not set"}</Text>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("linkedin", linkedin)}
+                  >
+                    <Text style={styles.fieldText}>
+                      {linkedin || "Not set"}
+                    </Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
                 )}
@@ -1470,7 +2796,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Portfolio */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('portfolio') && styles.fieldLabelIncomplete]}>PORTFOLIO URL</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("portfolio") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  PORTFOLIO URL
+                </Text>
                 {editingField === "portfolio" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1481,13 +2814,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       autoCapitalize="none"
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("portfolio")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("portfolio")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("portfolio", portfolio)}>
-                    <Text style={styles.fieldText}>{portfolio || "Not set"}</Text>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("portfolio", portfolio)}
+                  >
+                    <Text style={styles.fieldText}>
+                      {portfolio || "Not set"}
+                    </Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
                 )}
@@ -1502,7 +2843,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Street */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('street') && styles.fieldLabelIncomplete]}>STREET ADDRESS</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("street") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  STREET ADDRESS
+                </Text>
                 {editingField === "street" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1511,12 +2859,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("street")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("street")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("street", street)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("street", street)}
+                  >
                     <Text style={styles.fieldText}>{street || "Not set"}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1525,7 +2879,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* City */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('city') && styles.fieldLabelIncomplete]}>CITY</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("city") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  CITY
+                </Text>
                 {editingField === "city" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1534,12 +2895,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("city")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("city")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("city", city)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("city", city)}
+                  >
                     <Text style={styles.fieldText}>{city || "Not set"}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1548,7 +2915,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* State */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('state') && styles.fieldLabelIncomplete]}>STATE</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("state") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  STATE
+                </Text>
                 {editingField === "state" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1557,12 +2931,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("state")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("state")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("state", state)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("state", state)}
+                  >
                     <Text style={styles.fieldText}>{state || "Not set"}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1571,7 +2951,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Zip */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('zip') && styles.fieldLabelIncomplete]}>ZIP CODE</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("zip") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  ZIP CODE
+                </Text>
                 {editingField === "zip" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1581,12 +2968,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       keyboardType="numeric"
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("zip")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("zip")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("zip", zip)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("zip", zip)}
+                  >
                     <Text style={styles.fieldText}>{zip || "Not set"}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1595,7 +2988,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Country */}
               <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('country') && styles.fieldLabelIncomplete]}>COUNTRY</Text>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isFieldMissing("country") && styles.fieldLabelIncomplete,
+                  ]}
+                >
+                  COUNTRY
+                </Text>
                 {editingField === "country" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -1604,12 +3004,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("country")}>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={() => handleSaveField("country")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("country", country)}>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() => handleEditField("country", country)}
+                  >
                     <Text style={styles.fieldText}>{country || "Not set"}</Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
@@ -1618,12 +3024,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Expertise Tags */}
               <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>{userType === "applicant" ? "SKILLS & INTERESTS" : "I CAN HELP WITH"}</Text>
+                <Text style={styles.fieldLabel}>
+                  {userType === "applicant"
+                    ? "SKILLS & INTERESTS"
+                    : "I CAN HELP WITH"}
+                </Text>
                 <View style={styles.tagsContainer}>
                   {expertise.map((tag, index) => (
                     <View key={index} style={styles.editableTag}>
                       <Text style={styles.editableTagText}>{tag}</Text>
-                      <TouchableOpacity onPress={() => handleRemoveTag("expertise", index)}>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveTag("expertise", index)}
+                      >
                         <X color="#000" size={14} />
                       </TouchableOpacity>
                     </View>
@@ -1637,7 +3049,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onChangeText={setNewTag}
                     onSubmitEditing={() => handleAddTag("expertise")}
                   />
-                  <TouchableOpacity style={styles.addTagBtn} onPress={() => handleAddTag("expertise")}>
+                  <TouchableOpacity
+                    style={styles.addTagBtn}
+                    onPress={() => handleAddTag("expertise")}
+                  >
                     <Plus color="#FFF" size={18} />
                   </TouchableOpacity>
                 </View>
@@ -1652,7 +3067,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       {workPreferences.map((tag, index) => (
                         <View key={index} style={styles.editableTag}>
                           <Text style={styles.editableTagText}>{tag}</Text>
-                          <TouchableOpacity onPress={() => handleRemoveTag("workPreferences", index)}>
+                          <TouchableOpacity
+                            onPress={() =>
+                              handleRemoveTag("workPreferences", index)
+                            }
+                          >
                             <X color="#000" size={14} />
                           </TouchableOpacity>
                         </View>
@@ -1666,7 +3085,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         onChangeText={setNewTag}
                         onSubmitEditing={() => handleAddTag("workPreferences")}
                       />
-                      <TouchableOpacity style={styles.addTagBtn} onPress={() => handleAddTag("workPreferences")}>
+                      <TouchableOpacity
+                        style={styles.addTagBtn}
+                        onPress={() => handleAddTag("workPreferences")}
+                      >
                         <Plus color="#FFF" size={18} />
                       </TouchableOpacity>
                     </View>
@@ -1678,7 +3100,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       {desiredRoles.map((tag, index) => (
                         <View key={index} style={styles.editableTag}>
                           <Text style={styles.editableTagText}>{tag}</Text>
-                          <TouchableOpacity onPress={() => handleRemoveTag("desiredRoles", index)}>
+                          <TouchableOpacity
+                            onPress={() =>
+                              handleRemoveTag("desiredRoles", index)
+                            }
+                          >
                             <X color="#000" size={14} />
                           </TouchableOpacity>
                         </View>
@@ -1692,7 +3118,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         onChangeText={setNewTag}
                         onSubmitEditing={() => handleAddTag("desiredRoles")}
                       />
-                      <TouchableOpacity style={styles.addTagBtn} onPress={() => handleAddTag("desiredRoles")}>
+                      <TouchableOpacity
+                        style={styles.addTagBtn}
+                        onPress={() => handleAddTag("desiredRoles")}
+                      >
                         <Plus color="#FFF" size={18} />
                       </TouchableOpacity>
                     </View>
@@ -1703,12 +3132,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
               {/* Sponsor-specific fields */}
               {userType === "sponsor" && (
                 <View style={styles.editField}>
-                  <Text style={styles.fieldLabel}>COMPANIES I CAN REFER TO</Text>
+                  <Text style={styles.fieldLabel}>
+                    COMPANIES I CAN REFER TO
+                  </Text>
                   <View style={styles.tagsContainer}>
                     {companiesCanReferTo.map((tag, index) => (
                       <View key={index} style={styles.editableTag}>
                         <Text style={styles.editableTagText}>{tag}</Text>
-                        <TouchableOpacity onPress={() => handleRemoveTag("companies", index)}>
+                        <TouchableOpacity
+                          onPress={() => handleRemoveTag("companies", index)}
+                        >
                           <X color="#000" size={14} />
                         </TouchableOpacity>
                       </View>
@@ -1722,7 +3155,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setNewTag}
                       onSubmitEditing={() => handleAddTag("companies")}
                     />
-                    <TouchableOpacity style={styles.addTagBtn} onPress={() => handleAddTag("companies")}>
+                    <TouchableOpacity
+                      style={styles.addTagBtn}
+                      onPress={() => handleAddTag("companies")}
+                    >
                       <Plus color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
@@ -1745,12 +3181,28 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       {/* EDIT RESUME MODAL */}
       <Modal visible={showEditResume} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowEditResume(false)}>
-            <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalOverlay}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowEditResume(false)}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
           </TouchableOpacity>
-          
-          <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={styles.modalContent}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Resume Information</Text>
               <TouchableOpacity onPress={() => setShowEditResume(false)}>
@@ -1760,98 +3212,57 @@ export function ProfileView({ userType }: ProfileViewProps) {
             {professionalMissingCount > 0 && (
               <View style={styles.modalProgressContainer}>
                 <Text style={styles.modalProgressText}>
-                  {professionalMissingCount} field{professionalMissingCount !== 1 ? 's' : ''} remaining
+                  {professionalMissingCount} field
+                  {professionalMissingCount !== 1 ? "s" : ""} remaining
                 </Text>
                 <View style={styles.modalProgressBar}>
-                  <View style={[styles.modalProgressFill, { 
-                    width: `${Math.max(0, 100 - (professionalMissingCount / 9 * 100))}%` 
-                  }]} />
+                  <View
+                    style={[
+                      styles.modalProgressFill,
+                      {
+                        width: `${Math.max(0, 100 - (professionalMissingCount / 9) * 100)}%`,
+                      },
+                    ]}
+                  />
                 </View>
               </View>
             )}
-            
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
-              
-              {/* Professional Section */}
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.modalScroll}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={{ paddingBottom: 100 }}
+            >
+              {/* Professional Experience Section */}
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>PROFESSIONAL INFORMATION</Text>
+                <Text style={styles.sectionHeaderText}>
+                  PROFESSIONAL EXPERIENCE
+                </Text>
                 <View style={styles.sectionHeaderLine} />
               </View>
 
-              {/* Job Title */}
-              <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('title') && styles.fieldLabelIncomplete]}>CURRENT JOB TITLE</Text>
-                {editingField === "jobTitle" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., Senior Product Manager"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("jobTitle")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("jobTitle", jobTitle)}>
-                    <Text style={styles.fieldText}>{jobTitle || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              {professionalExperiences.length === 0 && (
+                <View style={styles.emptyStateCard}>
+                  <Briefcase size={32} color="#999" />
+                  <Text style={styles.emptyStateText}>
+                    No work experience added yet.{"\n"}
+                    Add your professional experience here.
+                  </Text>
+                </View>
+              )}
 
-              {/* Years of Experience */}
-              <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('yearsExperience') && styles.fieldLabelIncomplete]}>YEARS OF EXPERIENCE</Text>
-                {editingField === "yearsExperience" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., 5-7 years"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("yearsExperience")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("yearsExperience", yearsExperience)}>
-                    <Text style={styles.fieldText}>{yearsExperience || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              {professionalExperiences.map(renderExperienceCard)}
 
-              {/* Professional Summary */}
-              <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('summary') && styles.fieldLabelIncomplete]}>PROFESSIONAL SUMMARY</Text>
-                {editingField === "summary" ? (
-                  <View style={styles.editColumn}>
-                    <TextInput
-                      style={[styles.fieldInput, styles.bioInput]}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="Brief overview of your professional background"
-                      multiline
-                      numberOfLines={4}
-                      autoFocus
-                    />
-                    <TouchableOpacity style={[styles.saveBtn, { alignSelf: 'flex-end', marginTop: 8 }]} onPress={() => handleSaveField("summary")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("summary", summary)}>
-                    <Text style={styles.fieldText}>{summary || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              <TouchableOpacity
+                style={styles.addItemBtn}
+                onPress={handleAddExperience}
+              >
+                <Plus color="#000" size={18} />
+                <Text style={styles.addItemText}>Add Work Experience</Text>
+              </TouchableOpacity>
 
               {/* Education Section */}
               <View style={styles.sectionHeader}>
@@ -1860,206 +3271,25 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <View style={styles.sectionHeaderLine} />
               </View>
 
-              {/* Degree */}
-              <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('degree') && styles.fieldLabelIncomplete]}>DEGREE</Text>
-                {editingField === "degree" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., Bachelor of Science, MBA"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("degree")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("degree", degree)}>
-                    <Text style={styles.fieldText}>{degree || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              {educationEntries.length === 0 && (
+                <View style={styles.emptyStateCard}>
+                  <GraduationCap size={32} color="#999" />
+                  <Text style={styles.emptyStateText}>
+                    No education added yet.{"\n"}
+                    Add your degrees and schools here.
+                  </Text>
+                </View>
+              )}
 
-              {/* Major */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>MAJOR / FIELD OF STUDY</Text>
-                {editingField === "major" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., Computer Science, Business Administration"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("major")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("major", major)}>
-                    <Text style={styles.fieldText}>{major || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              {educationEntries.map(renderEducationCard)}
 
-              {/* University */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>UNIVERSITY</Text>
-                {editingField === "university" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., Stanford University"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("university")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("university", university)}>
-                    <Text style={styles.fieldText}>{university || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Graduation Year */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>GRADUATION YEAR</Text>
-                {editingField === "graduationYear" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., 2020"
-                      keyboardType="numeric"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("graduationYear")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("graduationYear", graduationYear)}>
-                    <Text style={styles.fieldText}>{graduationYear || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* GPA (Optional) */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>GPA (OPTIONAL)</Text>
-                {editingField === "gpa" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., 3.9"
-                      keyboardType="decimal-pad"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("gpa")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("gpa", gpa)}>
-                    <Text style={styles.fieldText}>{gpa || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Work Preferences Section */}
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>WORK PREFERENCES</Text>
-                <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {/* Work Authorization */}
-              <View style={styles.editField}>
-                <Text style={[styles.fieldLabel, isFieldMissing('workAuthorization') && styles.fieldLabelIncomplete]}>WORK AUTHORIZATION</Text>
-                {editingField === "workAuthorization" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., US Citizen, Green Card, H1B"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("workAuthorization")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("workAuthorization", workAuthorization)}>
-                    <Text style={styles.fieldText}>{workAuthorization || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Willing to Relocate */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>WILLING TO RELOCATE?</Text>
-                {editingField === "willingToRelocate" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., Yes, No, For the right opportunity"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("willingToRelocate")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("willingToRelocate", willingToRelocate)}>
-                    <Text style={styles.fieldText}>{willingToRelocate || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Requires Sponsorship */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>REQUIRES VISA SPONSORSHIP?</Text>
-                {editingField === "requiresSponsorship" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="e.g., Yes, No, In the future"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => handleSaveField("requiresSponsorship")}>
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("requiresSponsorship", requiresSponsorship)}>
-                    <Text style={styles.fieldText}>{requiresSponsorship || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              <TouchableOpacity
+                style={styles.addItemBtn}
+                onPress={handleAddEducation}
+              >
+                <Plus color="#000" size={18} />
+                <Text style={styles.addItemText}>Add Education</Text>
+              </TouchableOpacity>
 
               {/* Additional Details Section */}
               <View style={styles.sectionHeader}>
@@ -2071,42 +3301,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
               {/* Certifications & Licenses */}
               <View style={styles.editField}>
                 <Text style={styles.fieldLabel}>CERTIFICATIONS & LICENSES</Text>
-                {certifications.length > 0 && (
-                  <View style={{ gap: 12, marginBottom: 12 }}>
-                    {certifications.map((cert, index) => (
-                      <View key={index} style={styles.certificationCard}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.certificationName}>{cert.name}</Text>
-                          <Text style={styles.certificationOrg}>{cert.organization} • {cert.year}</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => {
-                          setCertifications(certifications.filter((_, i) => i !== index));
-                        }}>
-                          <Trash2 color="#EF4444" size={18} />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
+                {certifications.map((cert, index) =>
+                  renderCertificationCard(cert, index),
                 )}
-                <TouchableOpacity 
-                  style={styles.addItemBtn} 
-                  onPress={() => {
-                    // Simple prompt-based add for now
-                    Alert.prompt(
-                      'Add Certification',
-                      'Enter certification name, organization, and year (comma separated)',
-                      (text) => {
-                        const parts = text.split(',').map(p => p.trim());
-                        if (parts.length === 3) {
-                          setCertifications([...certifications, { 
-                            name: parts[0], 
-                            organization: parts[1], 
-                            year: parts[2] 
-                          }]);
-                        }
-                      }
-                    );
-                  }}
+                <TouchableOpacity
+                  style={styles.addItemBtn}
+                  onPress={handleAddCertification}
                 >
                   <Plus color="#000" size={18} />
                   <Text style={styles.addItemText}>Add Certification</Text>
@@ -2116,40 +3316,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
               {/* Languages */}
               <View style={styles.editField}>
                 <Text style={styles.fieldLabel}>LANGUAGES</Text>
-                {languages.length > 0 && (
-                  <View style={{ gap: 12, marginBottom: 12 }}>
-                    {languages.map((lang, index) => (
-                      <View key={index} style={styles.certificationCard}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.certificationName}>{lang.language}</Text>
-                          <Text style={styles.certificationOrg}>{lang.proficiency}</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => {
-                          setLanguages(languages.filter((_, i) => i !== index));
-                        }}>
-                          <Trash2 color="#EF4444" size={18} />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
+                {languages.map((lang, index) =>
+                  renderLanguageCard(lang, index),
                 )}
-                <TouchableOpacity 
-                  style={styles.addItemBtn} 
-                  onPress={() => {
-                    Alert.prompt(
-                      'Add Language',
-                      'Enter language and proficiency level (comma separated)\nExample: Spanish, Fluent',
-                      (text) => {
-                        const parts = text.split(',').map(p => p.trim());
-                        if (parts.length === 2) {
-                          setLanguages([...languages, { 
-                            language: parts[0], 
-                            proficiency: parts[1] 
-                          }]);
-                        }
-                      }
-                    );
-                  }}
+                <TouchableOpacity
+                  style={styles.addItemBtn}
+                  onPress={handleAddLanguage}
                 >
                   <Plus color="#000" size={18} />
                   <Text style={styles.addItemText}>Add Language</Text>
@@ -2169,18 +3341,30 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       multiline
                       autoFocus
                     />
-                    <TouchableOpacity style={[styles.saveBtn, { alignSelf: 'flex-end', marginTop: 8 }]} onPress={() => handleSaveField("achievements")}>
+                    <TouchableOpacity
+                      style={[
+                        styles.saveBtn,
+                        { alignSelf: "flex-end", marginTop: 8 },
+                      ]}
+                      onPress={() => handleSaveField("achievements")}
+                    >
                       <Check color="#FFF" size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.fieldDisplay} onPress={() => handleEditField("achievements", achievements)}>
-                    <Text style={styles.fieldText}>{achievements || "Not set"}</Text>
+                  <TouchableOpacity
+                    style={styles.fieldDisplay}
+                    onPress={() =>
+                      handleEditField("achievements", achievements)
+                    }
+                  >
+                    <Text style={styles.fieldText}>
+                      {achievements || "Not set"}
+                    </Text>
                     <Edit color="#666" size={16} />
                   </TouchableOpacity>
                 )}
               </View>
-
             </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
@@ -2197,15 +3381,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <View style={styles.privacyRow}>
             <View style={styles.privacyContent}>
               <Text style={styles.privacyLabel}>Profile Visibility</Text>
-              <Text style={styles.privacyDescription}>Who can see your profile</Text>
+              <Text style={styles.privacyDescription}>
+                Who can see your profile
+              </Text>
             </View>
             <Text style={styles.privacyValue}>Public</Text>
           </View>
         </View>
 
         {/* Change Password */}
-        <TouchableOpacity 
-          style={styles.privacyActionCard} 
+        <TouchableOpacity
+          style={styles.privacyActionCard}
           onPress={() => {
             setShowPrivacySecurity(false);
             setTimeout(() => setShowPasswordChange(true), 300);
@@ -2216,7 +3402,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.privacyActionTitle}>Change Password</Text>
-            <Text style={styles.privacyActionSubtitle}>Update your password</Text>
+            <Text style={styles.privacyActionSubtitle}>
+              Update your password
+            </Text>
           </View>
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
@@ -2228,7 +3416,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.privacyActionTitle}>Terms & Conditions</Text>
-            <Text style={styles.privacyActionSubtitle}>Read our terms of service</Text>
+            <Text style={styles.privacyActionSubtitle}>
+              Read our terms of service
+            </Text>
           </View>
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
@@ -2240,7 +3430,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.privacyActionTitle}>Privacy Policy</Text>
-            <Text style={styles.privacyActionSubtitle}>How we handle your data</Text>
+            <Text style={styles.privacyActionSubtitle}>
+              How we handle your data
+            </Text>
           </View>
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
@@ -2252,7 +3444,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.deleteActionTitle}>Delete Account</Text>
-            <Text style={styles.privacyActionSubtitle}>Permanently delete your account and data</Text>
+            <Text style={styles.privacyActionSubtitle}>
+              Permanently delete your account and data
+            </Text>
           </View>
           <ChevronRight color="#666" size={20} />
         </TouchableOpacity>
@@ -2260,25 +3454,42 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       {/* PASSWORD CHANGE MODAL */}
       <Modal visible={showPasswordChange} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowPasswordChange(false)}>
-            <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowPasswordChange(false)}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
           </TouchableOpacity>
-          
-          <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={styles.modalContent}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Change Password</Text>
-              <TouchableOpacity onPress={() => {
-                setShowPasswordChange(false);
-                setPasswordError("");
-                setCurrentPassword("");
-                setNewPassword("");
-                setConfirmPassword("");
-              }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowPasswordChange(false);
+                  setPasswordError("");
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+              >
                 <X color="#000" size={24} />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.modalSubtitle}>
               Choose a strong password with at least 8 characters
             </Text>
@@ -2343,8 +3554,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ) : null}
 
               {/* Update Password Button */}
-              <TouchableOpacity 
-                style={[styles.blackBtn, { width: '100%', justifyContent: 'center', borderWidth: 0, marginTop: 8 }]}
+              <TouchableOpacity
+                style={[
+                  styles.blackBtn,
+                  {
+                    width: "100%",
+                    justifyContent: "center",
+                    borderWidth: 0,
+                    marginTop: 8,
+                  },
+                ]}
                 onPress={handlePasswordChange}
               >
                 <Text style={styles.blackBtnText}>Update Password</Text>
@@ -2362,37 +3581,37 @@ export function ProfileView({ userType }: ProfileViewProps) {
       >
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Email Notifications</Text>
-          <Switch 
-            value={emailNotifications} 
+          <Switch
+            value={emailNotifications}
             onValueChange={setEmailNotifications}
-            trackColor={{ false: '#E5E5E5', true: '#000' }}
+            trackColor={{ false: "#E5E5E5", true: "#000" }}
             thumbColor="#FFF"
           />
         </View>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Push Notifications</Text>
-          <Switch 
-            value={pushNotifications} 
+          <Switch
+            value={pushNotifications}
             onValueChange={setPushNotifications}
-            trackColor={{ false: '#E5E5E5', true: '#000' }}
+            trackColor={{ false: "#E5E5E5", true: "#000" }}
             thumbColor="#FFF"
           />
         </View>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Referral Updates</Text>
-          <Switch 
-            value={referralUpdates} 
+          <Switch
+            value={referralUpdates}
             onValueChange={setReferralUpdates}
-            trackColor={{ false: '#E5E5E5', true: '#000' }}
+            trackColor={{ false: "#E5E5E5", true: "#000" }}
             thumbColor="#FFF"
           />
         </View>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>New Messages</Text>
-          <Switch 
-            value={messageNotifications} 
+          <Switch
+            value={messageNotifications}
             onValueChange={setMessageNotifications}
-            trackColor={{ false: '#E5E5E5', true: '#000' }}
+            trackColor={{ false: "#E5E5E5", true: "#000" }}
             thumbColor="#FFF"
           />
         </View>
@@ -2401,19 +3620,29 @@ export function ProfileView({ userType }: ProfileViewProps) {
   );
 }
 
-function SettingItem({ label, color = "#000", isLast = false, showNotificationDot = false, badgeCount, onPress }: { 
-  label: string; 
-  color?: string; 
-  isLast?: boolean; 
+function SettingItem({
+  label,
+  color = "#000",
+  isLast = false,
+  showNotificationDot = false,
+  badgeCount,
+  onPress,
+}: {
+  label: string;
+  color?: string;
+  isLast?: boolean;
   showNotificationDot?: boolean;
   badgeCount?: number;
-  onPress?: () => void 
+  onPress?: () => void;
 }) {
   return (
-    <TouchableOpacity style={[styles.settingItem, isLast && { borderBottomWidth: 0 }]} onPress={onPress}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <TouchableOpacity
+      style={[styles.settingItem, isLast && { borderBottomWidth: 0 }]}
+      onPress={onPress}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Text style={[styles.settingLabel, { color }]}>{label}</Text>
-        {typeof badgeCount === 'number' && badgeCount > 0 && (
+        {typeof badgeCount === "number" && badgeCount > 0 && (
           <View style={styles.settingBadge}>
             <Text style={styles.settingBadgeText}>{badgeCount}</Text>
           </View>
@@ -2425,13 +3654,13 @@ function SettingItem({ label, color = "#000", isLast = false, showNotificationDo
 }
 
 // Edit Insights Modal Component
-function EditInsightsModal({ 
-  visible, 
-  onClose, 
-  insights, 
-  onAddInsight, 
-  onRemoveInsight, 
-  onUpdateInsight 
+function EditInsightsModal({
+  visible,
+  onClose,
+  insights,
+  onAddInsight,
+  onRemoveInsight,
+  onUpdateInsight,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -2441,7 +3670,9 @@ function EditInsightsModal({
   onUpdateInsight: (index: number, answer: string) => void;
 }) {
   const [showQuestionPicker, setShowQuestionPicker] = useState(false);
-  const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(null);
+  const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(
+    null,
+  );
   const [newAnswer, setNewAnswer] = useState("");
   const [selectedQuestion, setSelectedQuestion] = useState("");
 
@@ -2467,17 +3698,34 @@ function EditInsightsModal({
     }
   };
 
-  const usedQuestions = insights.map(i => i.question);
-  const availableQuestions = AVAILABLE_QUESTIONS.filter(q => !usedQuestions.includes(q));
+  const usedQuestions = insights.map((i) => i.question);
+  const availableQuestions = AVAILABLE_QUESTIONS.filter(
+    (q) => !usedQuestions.includes(q),
+  );
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose}>
-          <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.modalOverlay}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <BlurView
+            intensity={60}
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+          />
         </TouchableOpacity>
-        
-        <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+
+        <Animated.View
+          entering={SlideInDown}
+          exiting={SlideOutDown}
+          style={styles.modalContent}
+        >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Profile Insights</Text>
             <TouchableOpacity onPress={onClose}>
@@ -2485,9 +3733,14 @@ function EditInsightsModal({
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.modalSubtitle}>Add up to 3 fun facts or prompts to showcase your personality</Text>
-          
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+          <Text style={styles.modalSubtitle}>
+            Add up to 3 fun facts or prompts to showcase your personality
+          </Text>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.modalScroll}
+          >
             {/* Existing Insights */}
             {insights.map((insight, index) => (
               <View key={index} style={styles.insightCard}>
@@ -2497,7 +3750,7 @@ function EditInsightsModal({
                     <Trash2 color="#FF3B30" size={18} />
                   </TouchableOpacity>
                 </View>
-                
+
                 {editingInsightIndex === index ? (
                   <View>
                     <TextInput
@@ -2510,8 +3763,8 @@ function EditInsightsModal({
                       autoFocus
                     />
                     <View style={styles.insightActions}>
-                      <TouchableOpacity 
-                        style={styles.cancelBtn} 
+                      <TouchableOpacity
+                        style={styles.cancelBtn}
                         onPress={() => {
                           setEditingInsightIndex(null);
                           setNewAnswer("");
@@ -2519,8 +3772,8 @@ function EditInsightsModal({
                       >
                         <Text style={styles.cancelBtnText}>Cancel</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.saveInsightBtn} 
+                      <TouchableOpacity
+                        style={styles.saveInsightBtn}
                         onPress={() => handleUpdateExisting(index)}
                       >
                         <Text style={styles.saveInsightBtnText}>Save</Text>
@@ -2528,7 +3781,7 @@ function EditInsightsModal({
                     </View>
                   </View>
                 ) : (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => {
                       setEditingInsightIndex(index);
                       setNewAnswer(insight.answer);
@@ -2544,21 +3797,27 @@ function EditInsightsModal({
             {insights.length < 3 && (
               <View style={styles.addInsightSection}>
                 {!selectedQuestion ? (
-                  <TouchableOpacity 
-                    style={styles.selectQuestionBtn} 
+                  <TouchableOpacity
+                    style={styles.selectQuestionBtn}
                     onPress={() => setShowQuestionPicker(!showQuestionPicker)}
                   >
                     <Plus color="#000" size={20} />
-                    <Text style={styles.selectQuestionText}>Select a Question</Text>
+                    <Text style={styles.selectQuestionText}>
+                      Select a Question
+                    </Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.newInsightCard}>
                     <View style={styles.insightCardHeader}>
-                      <Text style={styles.insightQuestion}>{selectedQuestion}</Text>
-                      <TouchableOpacity onPress={() => {
-                        setSelectedQuestion("");
-                        setNewAnswer("");
-                      }}>
+                      <Text style={styles.insightQuestion}>
+                        {selectedQuestion}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSelectedQuestion("");
+                          setNewAnswer("");
+                        }}
+                      >
                         <X color="#666" size={18} />
                       </TouchableOpacity>
                     </View>
@@ -2571,8 +3830,11 @@ function EditInsightsModal({
                       numberOfLines={3}
                       autoFocus
                     />
-                    <TouchableOpacity 
-                      style={[styles.saveInsightBtn, { alignSelf: 'flex-end', marginTop: 12 }]} 
+                    <TouchableOpacity
+                      style={[
+                        styles.saveInsightBtn,
+                        { alignSelf: "flex-end", marginTop: 12 },
+                      ]}
                       onPress={handleSaveNew}
                     >
                       <Text style={styles.saveInsightBtnText}>Add Insight</Text>
@@ -2589,7 +3851,9 @@ function EditInsightsModal({
                         style={styles.questionOption}
                         onPress={() => handleSelectQuestion(question)}
                       >
-                        <Text style={styles.questionOptionText}>{question}</Text>
+                        <Text style={styles.questionOptionText}>
+                          {question}
+                        </Text>
                         <ChevronRight color="#666" size={18} />
                       </TouchableOpacity>
                     ))}
@@ -2605,33 +3869,48 @@ function EditInsightsModal({
 }
 
 // Simple Modal Component
-function SimpleModal({ 
-  visible, 
-  onClose, 
-  title, 
-  children 
-}: { 
-  visible: boolean; 
-  onClose: () => void; 
-  title: string; 
+function SimpleModal({
+  visible,
+  onClose,
+  title,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title: string;
   children: React.ReactNode;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose}>
-          <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <BlurView
+            intensity={60}
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+          />
         </TouchableOpacity>
-        
-        <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.modalContent}>
+
+        <Animated.View
+          entering={SlideInDown}
+          exiting={SlideOutDown}
+          style={styles.modalContent}
+        >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
               <X color="#000" size={24} />
             </TouchableOpacity>
           </View>
-          
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.modalScroll}
+          >
             {children}
           </ScrollView>
         </Animated.View>
@@ -2736,7 +4015,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: "center",
     gap: 8,
-    position: 'relative',
+    position: "relative",
   },
   blackBtnText: {
     color: "#FFF",
@@ -2811,7 +4090,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
   },
-  
+
   // Applicant-Specific Styles
   preferenceTag: {
     paddingHorizontal: 16,
@@ -2838,7 +4117,7 @@ const styles = StyleSheet.create({
     borderColor: "#000",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -2853,7 +4132,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFF",
   },
-  
+
   // Sponsor-Specific Styles
   companyTag: {
     paddingHorizontal: 16,
@@ -2868,7 +4147,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1E40AF",
   },
-  
+
   settingsSection: {
     marginTop: 8,
   },
@@ -2897,503 +4176,503 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#EF4444",
   },
-  
+
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 32,
-    maxHeight: '90%',
+    maxHeight: "90%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   modalTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#000',
+    fontWeight: "800",
+    color: "#000",
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 24,
     lineHeight: 20,
   },
   modalScroll: {
     maxHeight: 500,
   },
-  
+
   // Progress Indicator Styles
   modalProgressContainer: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: "#F0F9FF",
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
   },
   modalProgressText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1E40AF',
+    fontWeight: "700",
+    color: "#1E40AF",
     marginBottom: 8,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   modalProgressBar: {
     height: 4,
-    backgroundColor: '#BFDBFE',
+    backgroundColor: "#BFDBFE",
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   modalProgressFill: {
-    height: '100%',
-    backgroundColor: '#1E40AF',
+    height: "100%",
+    backgroundColor: "#1E40AF",
     borderRadius: 2,
   },
-  
+
   // Badge Styles
   buttonBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: '#1E40AF',
+    backgroundColor: "#1E40AF",
     minWidth: 24,
     height: 24,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 8,
     borderWidth: 2,
-    borderColor: '#FFF',
+    borderColor: "#FFF",
   },
   buttonBadgeText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   settingBadge: {
-    backgroundColor: '#1E40AF',
+    backgroundColor: "#1E40AF",
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 6,
   },
   settingBadgeText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
   },
-  
+
   // Edit Profile Styles
   editField: {
     marginBottom: 24,
-    position: 'relative',
+    position: "relative",
   },
   fieldLabel: {
     fontSize: 11,
-    fontWeight: '900',
-    color: '#999',
+    fontWeight: "900",
+    color: "#999",
     marginBottom: 8,
     letterSpacing: 0.5,
   },
   fieldLabelIncomplete: {
-    color: '#FFFFFF',
-    backgroundColor: '#1E40AF',
+    color: "#FFFFFF",
+    backgroundColor: "#1E40AF",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   fieldDisplay: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: "#F0F0F0",
   },
   fieldText: {
     fontSize: 15,
-    color: '#000',
+    color: "#000",
     flex: 1,
   },
   editRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
-    width: '100%',
+    width: "100%",
   },
   editColumn: {
     gap: 8,
   },
   fieldInput: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     padding: 16,
     borderRadius: 12,
     fontSize: 15,
-    color: '#000',
+    color: "#000",
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
   bioInput: {
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   saveBtn: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     width: 44,
     height: 44,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  
+
   // Section Headers
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 24,
     marginTop: 32,
   },
   sectionHeaderLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#1E40AF',
+    backgroundColor: "#1E40AF",
   },
   sectionHeaderText: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#1E40AF',
+    fontWeight: "800",
+    color: "#1E40AF",
     letterSpacing: 1.2,
     paddingHorizontal: 16,
   },
-  
+
   // Tags Editing
   tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: 12,
   },
   editableTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
   editableTagText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: "600",
+    color: "#000",
   },
   addTagRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   tagInput: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     padding: 12,
     borderRadius: 12,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
   addTagBtn: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     width: 44,
     height: 44,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  
+
   // Insights Modal Styles
   insightCard: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: "#F0F0F0",
   },
   insightCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   insightQuestion: {
     fontSize: 12,
-    fontWeight: '900',
-    color: '#000',
+    fontWeight: "900",
+    color: "#000",
     letterSpacing: 0.5,
     flex: 1,
   },
   insightAnswer: {
     fontSize: 15,
-    color: '#444',
+    color: "#444",
     lineHeight: 22,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   insightInput: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     padding: 12,
     borderRadius: 12,
     fontSize: 15,
-    color: '#000',
+    color: "#000",
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
     minHeight: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   insightActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginTop: 12,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   cancelBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
   },
   cancelBtnText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#666',
+    fontWeight: "700",
+    color: "#666",
   },
   saveInsightBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   saveInsightBtnText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#FFF',
+    fontWeight: "700",
+    color: "#FFF",
   },
   addInsightSection: {
     marginTop: 8,
   },
   selectQuestionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     padding: 16,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderStyle: 'dashed',
+    borderColor: "#E5E5E5",
+    borderStyle: "dashed",
   },
   selectQuestionText: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
   },
   newInsightCard: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: "#F0F0F0",
   },
   questionPicker: {
     marginTop: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    overflow: 'hidden',
+    borderColor: "#F0F0F0",
+    overflow: "hidden",
   },
   questionOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   questionOptionText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
     flex: 1,
   },
-  
+
   // Settings Modal Styles
   settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   settingRowLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: "600",
+    color: "#000",
   },
   settingRowValue: {
     fontSize: 15,
-    color: '#666',
+    color: "#666",
   },
   privacySection: {
     marginBottom: 24,
   },
   privacyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: "#F0F0F0",
   },
   privacyContent: {
     flex: 1,
   },
   privacyLabel: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
     marginBottom: 4,
   },
   privacyDescription: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
   },
   privacyValue: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
-    backgroundColor: '#FFF',
+    fontWeight: "600",
+    color: "#000",
+    backgroundColor: "#FFF",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
   privacyActionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: "#F0F0F0",
   },
   privacyIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
   privacyActionContent: {
     flex: 1,
   },
   privacyActionTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
     marginBottom: 2,
   },
   privacyActionSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
   },
   deleteActionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#000",
     padding: 16,
     borderRadius: 12,
     marginTop: 24,
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: "#333",
   },
   deleteActionTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#FFF',
+    fontWeight: "800",
+    color: "#FFF",
     marginBottom: 2,
     letterSpacing: 0.5,
   },
   passwordInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 56,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: "#F0F0F0",
     gap: 12,
   },
   passwordInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000',
-    fontWeight: '500',
+    color: "#000",
+    fontWeight: "500",
   },
   errorContainer: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: "#FFF5F5",
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFE5E5',
+    borderColor: "#FFE5E5",
   },
   errorText: {
     fontSize: 14,
-    color: '#FF3B30',
-    fontWeight: '600',
-    textAlign: 'center',
+    color: "#FF3B30",
+    fontWeight: "600",
+    textAlign: "center",
   },
   toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   toggleLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: "600",
+    color: "#000",
   },
-  
+
   // Tab Navigation
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F9F9F9',
+    flexDirection: "row",
+    backgroundColor: "#F9F9F9",
     borderRadius: 16,
     padding: 4,
     marginBottom: 32,
@@ -3401,14 +4680,14 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 12,
   },
   tabActive: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
@@ -3420,46 +4699,46 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#999',
+    fontWeight: "700",
+    color: "#999",
   },
   tabTextActive: {
-    color: '#000',
+    color: "#000",
   },
-  
+
   // Applications Section
   applicationsContainer: {
     marginBottom: 32,
   },
   applicationsTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#000',
+    fontWeight: "800",
+    color: "#000",
     marginBottom: 4,
   },
   applicationsSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 24,
   },
   applicationCard: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
   appCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
   },
   companyLogo: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
   },
   appCardInfo: {
     flex: 1,
@@ -3467,14 +4746,14 @@ const styles = StyleSheet.create({
   },
   appJobTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#000',
+    fontWeight: "800",
+    color: "#000",
     marginBottom: 2,
   },
   appCompany: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
   },
   statusDot: {
     width: 8,
@@ -3482,8 +4761,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -3492,39 +4771,39 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   statusBadgeBlack: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
   },
   statusBadgeBlackText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#FFF',
+    fontWeight: "700",
+    color: "#FFF",
   },
   timelineContainer: {
     marginBottom: 20,
     paddingLeft: 8,
   },
   timelineItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    position: 'relative',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    position: "relative",
   },
   timelineDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: "#E5E5E5",
     borderWidth: 2,
-    borderColor: '#FFF',
+    borderColor: "#FFF",
     marginTop: 4,
   },
   timelineDotCompleted: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   timelineDotReferred: {
     width: 14,
@@ -3532,12 +4811,12 @@ const styles = StyleSheet.create({
     borderRadius: 7,
   },
   timelineDotReferredCompleted: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     borderWidth: 3,
-    borderColor: '#F9F9F9',
+    borderColor: "#F9F9F9",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 3,
@@ -3548,12 +4827,12 @@ const styles = StyleSheet.create({
     }),
   },
   timelineLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 5,
     top: 18,
     width: 2,
     height: 24,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: "#E5E5E5",
   },
   timelineContent: {
     marginLeft: 12,
@@ -3561,34 +4840,34 @@ const styles = StyleSheet.create({
   },
   timelineStage: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#999',
+    fontWeight: "700",
+    color: "#999",
   },
   timelineStageCompleted: {
-    color: '#000',
+    color: "#000",
   },
   timelineStageReferred: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.5,
   },
   timelineDate: {
     fontSize: 12,
-    color: '#BBB',
+    color: "#BBB",
     marginTop: 2,
   },
   appCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: "#E5E5E5",
   },
   sponsorAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
   },
   sponsorInfo: {
     flex: 1,
@@ -3596,53 +4875,53 @@ const styles = StyleSheet.create({
   },
   sponsorLabel: {
     fontSize: 9,
-    fontWeight: '900',
-    color: '#BBB',
+    fontWeight: "900",
+    color: "#BBB",
     letterSpacing: 1,
   },
   sponsorName: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
   },
-  
+
   // Application Detail Modal
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: '#EEE',
+    backgroundColor: "#EEE",
     borderRadius: 3,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: 20,
   },
   modalCloseBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: 24,
     right: 24,
     zIndex: 10,
   },
   appDetailHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
   },
   appDetailLogo: {
     width: 72,
     height: 72,
     borderRadius: 18,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     marginBottom: 16,
   },
   appDetailTitle: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#000',
-    textAlign: 'center',
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
     marginBottom: 4,
   },
   appDetailCompany: {
     fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
     marginBottom: 16,
   },
   detailSection: {
@@ -3650,35 +4929,35 @@ const styles = StyleSheet.create({
   },
   detailSectionTitle: {
     fontSize: 11,
-    fontWeight: '900',
-    color: '#BBB',
+    fontWeight: "900",
+    color: "#BBB",
     letterSpacing: 1.2,
     marginBottom: 12,
   },
   timelineDetailContainer: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     borderRadius: 16,
     padding: 20,
   },
   timelineDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: 20,
   },
   timelineDetailLeft: {
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 16,
   },
   timelineDetailDot: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: "#E5E5E5",
     borderWidth: 3,
-    borderColor: '#FFF',
+    borderColor: "#FFF",
   },
   timelineDetailDotCompleted: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   timelineDetailDotReferred: {
     width: 18,
@@ -3686,12 +4965,12 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   timelineDetailDotReferredCompleted: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     borderWidth: 4,
-    borderColor: '#F9F9F9',
+    borderColor: "#F9F9F9",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -3704,11 +4983,11 @@ const styles = StyleSheet.create({
   timelineDetailLine: {
     width: 2,
     height: 32,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: "#E5E5E5",
     marginTop: 4,
   },
   timelineDetailLineCompleted: {
-    backgroundColor: '#BBB',
+    backgroundColor: "#BBB",
   },
   timelineDetailRight: {
     flex: 1,
@@ -3716,27 +4995,27 @@ const styles = StyleSheet.create({
   },
   timelineDetailStage: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#999',
+    fontWeight: "700",
+    color: "#999",
     marginBottom: 2,
   },
   timelineDetailStageCompleted: {
-    color: '#000',
+    color: "#000",
   },
   timelineDetailStageReferred: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.5,
   },
   timelineDetailDate: {
     fontSize: 13,
-    color: '#BBB',
-    fontWeight: '600',
+    color: "#BBB",
+    fontWeight: "600",
   },
   sponsorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
     borderRadius: 16,
     padding: 16,
   },
@@ -3744,7 +5023,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
   },
   sponsorDetailInfo: {
     flex: 1,
@@ -3752,83 +5031,219 @@ const styles = StyleSheet.create({
   },
   sponsorDetailName: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#000',
+    fontWeight: "800",
+    color: "#000",
     marginBottom: 2,
   },
   sponsorDetailRole: {
     fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
   },
   nextActionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-    backgroundColor: '#FFF9E6',
+    backgroundColor: "#FFF9E6",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: "#FDE68A",
   },
   nextActionText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
   },
   messageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     paddingVertical: 16,
     borderRadius: 16,
     marginTop: 12,
   },
   messageBtnText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
-  
+
   // Certifications & Languages Styles
   certificationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
   certificationName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
     marginBottom: 4,
   },
   certificationOrg: {
     fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
   },
   addItemBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     padding: 14,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderStyle: 'dashed',
+    borderColor: "#E5E5E5",
+    borderStyle: "dashed",
   },
   addItemText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    color: "#000",
+  },
+
+  // Experience & Education Entry Card Styles
+  entryCard: {
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  entryCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: "#FFF",
+  },
+  entryCardTitle: {
+    flex: 1,
+    gap: 4,
+  },
+  entryCardMainText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
+  },
+  entryCardSubText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+  },
+  entryCardActions: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
+  entryCardContent: {
+    padding: 16,
+    paddingTop: 8,
+    gap: 16,
+  },
+  entryFieldRow: {
+    gap: 6,
+  },
+  entryFieldLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#666",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  entryFieldInput: {
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: 10,
+    fontSize: 14,
+    color: "#000",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+  },
+  entryFieldDisplay: {
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+  },
+  entryFieldText: {
+    fontSize: 14,
+    color: "#000",
+    lineHeight: 20,
+  },
+  entryFieldPlaceholder: {
+    fontSize: 14,
+    color: "#999",
+  },
+  entrySaveBtn: {
+    backgroundColor: "#000",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  entrySaveBtnText: {
+    color: "#FFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  entryDeleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  entryDeleteBtnText: {
+    color: "#DC2626",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  emptyStateCard: {
+    backgroundColor: "#F9F9F9",
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#E5E5E5",
+    borderStyle: "dashed",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
   },
 });
