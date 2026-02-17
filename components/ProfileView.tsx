@@ -3,7 +3,6 @@ import { BlurView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-  AlertCircle,
   Briefcase,
   Camera,
   Check,
@@ -19,7 +18,7 @@ import {
   Plus,
   Target,
   Trash2,
-  X,
+  X
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -41,6 +40,8 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
 } from "react-native-reanimated";
+import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
+import { ALL_SKILLS } from "../constants/skills";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
   EducationEntry,
@@ -48,6 +49,7 @@ import {
   useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
+import { AutocompleteInput } from "./ui/AutocompleteInput";
 
 interface ProfileViewProps {
   userType: "applicant" | "sponsor";
@@ -287,6 +289,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   // Temp states for editing
   const [tempValue, setTempValue] = useState("");
   const [newTag, setNewTag] = useState("");
+  const [newRoleTag, setNewRoleTag] = useState("");
 
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -550,7 +553,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const getStatusBadgeStyle = (status: string) => {
     const styles = {
-      applied: { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
+      applied: { backgroundColor: "#F9F9F9", borderColor: "#E5E5E5" },
       reviewing: { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" },
       interview_scheduled: {
         backgroundColor: "#D1FAE5",
@@ -569,7 +572,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const getStatusTextColor = (status: string) => {
     const colors = {
-      applied: { color: "#1E40AF" },
+      applied: { color: "#000" },
       reviewing: { color: "#B45309" },
       interview_scheduled: { color: "#047857" },
       offer: { color: "#6D28D9" },
@@ -581,7 +584,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const applicantData: ApplicantProfile = {
     name,
     role,
-    location,
+    location: `${city}${state ? ", " + state : ""}`,
     bio,
     expertiseLabel: "Skills & Interests",
     expertise,
@@ -594,7 +597,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     name,
     role,
     company,
-    location,
+    location: `${city}${state ? ", " + state : ""}`,
     bio,
     expertiseLabel: "I Can Help With",
     expertise,
@@ -607,6 +610,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const profileData = userType === "applicant" ? applicantData : sponsorData;
+
+  const getUserInitials = () => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName.substring(0, 2).toUpperCase();
+    }
+    if (name) {
+      const nameParts = name.trim().split(" ");
+      if (nameParts.length >= 2) {
+        return `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}`.toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    }
+    return null;
+  };
 
   const handleEditField = (field: string, currentValue: string) => {
     setEditingField(field);
@@ -637,17 +657,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         break;
       case "company":
         setCompany(tempValue);
-        break;
-      case "location":
-        setLocation(tempValue);
-        const [city, state] = tempValue.split(", ");
-        await updatePersonal({
-          address: {
-            ...userProfileData.personal.address,
-            city: city || tempValue,
-            state: state || "",
-          },
-        });
         break;
       case "email":
         setEmail(tempValue);
@@ -754,26 +763,56 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const handleAddTag = async (
     type: "expertise" | "workPreferences" | "desiredRoles" | "companies",
+    skillValue?: string,
   ) => {
-    if (!newTag.trim()) return;
+    const valueToAdd = skillValue || newTag.trim();
+    if (!valueToAdd) return;
 
     switch (type) {
       case "expertise":
-        const newExpertise = [...expertise, newTag.trim()];
+        if (expertise.length >= 5) {
+          alert("You can only add up to 5 skills");
+          return;
+        }
+        if (expertise.includes(valueToAdd)) {
+          alert("This skill is already added");
+          setNewTag("");
+          return;
+        }
+        const newExpertise = [...expertise, valueToAdd];
         setExpertise(newExpertise);
         await updateSkills(newExpertise);
         break;
       case "workPreferences":
-        setWorkPreferences([...workPreferences, newTag.trim()]);
+        setWorkPreferences([...workPreferences, valueToAdd]);
         break;
       case "desiredRoles":
-        setDesiredRoles([...desiredRoles, newTag.trim()]);
+        if (desiredRoles.length >= 3) {
+          alert("You can only add up to 3 desired roles");
+          return;
+        }
+        if (desiredRoles.includes(valueToAdd)) {
+          alert("This role is already added");
+          setNewTag("");
+          setNewRoleTag("");
+          return;
+        }
+        setDesiredRoles([...desiredRoles, valueToAdd]);
+        setNewRoleTag("");
         break;
       case "companies":
-        setCompaniesCanReferTo([...companiesCanReferTo, newTag.trim()]);
+        setCompaniesCanReferTo([...companiesCanReferTo, valueToAdd]);
         break;
     }
     setNewTag("");
+  };
+
+  const handleToggleWorkPreference = (preference: string) => {
+    if (workPreferences.includes(preference)) {
+      setWorkPreferences(workPreferences.filter((p) => p !== preference));
+    } else {
+      setWorkPreferences([...workPreferences, preference]);
+    }
   };
 
   const handleRemoveTag = async (
@@ -1568,7 +1607,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     endDate: value ? "" : experience.endDate,
                   })
                 }
-                trackColor={{ false: "#E5E5E5", true: "#1E40AF" }}
+                trackColor={{ false: "#E5E5E5", true: "#000" }}
                 thumbColor="#FFF"
               />
               <Text style={styles.checkboxLabel}>I currently work here</Text>
@@ -1841,18 +1880,25 @@ export function ProfileView({ userType }: ProfileViewProps) {
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="always"
     >
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarWrapper}>
-          <Image
-            source={{
-              uri:
-                profileImage ||
-                "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=200",
-            }}
-            style={styles.avatar}
-          />
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar}>
+              {getUserInitials() ? (
+                <Text style={styles.avatarInitials}>{getUserInitials()}</Text>
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Camera color="#999" size={32} strokeWidth={1.5} />
+                  <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
+                </View>
+              )}
+            </View>
+          )}
           <TouchableOpacity
             style={[
               styles.editFab,
@@ -1862,11 +1908,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           >
             <Edit color="#FFF" size={14} strokeWidth={2.5} />
           </TouchableOpacity>
-          {isFieldMissing("profileImage") && (
-            <View style={styles.profileImageIndicator}>
-              <AlertCircle color="#1E40AF" size={20} />
-            </View>
-          )}
         </View>
 
         <Text style={styles.name}>{profileData.name}</Text>
@@ -2163,6 +2204,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             entering={SlideInDown}
             exiting={SlideOutDown}
             style={[styles.modalContent, { paddingBottom: 50 }]}
+            pointerEvents="auto"
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Profile Photo</Text>
@@ -2221,6 +2263,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             entering={SlideInDown}
             exiting={SlideOutDown}
             style={[styles.modalContent, { paddingBottom: 50 }]}
+            pointerEvents="auto"
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Log Out</Text>
@@ -2283,6 +2326,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               entering={SlideInDown}
               exiting={SlideOutDown}
               style={styles.modalContent}
+              pointerEvents="auto"
             >
               <View style={styles.modalHandle} />
               <TouchableOpacity
@@ -2298,6 +2342,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 style={styles.modalScroll}
+                keyboardShouldPersistTaps="always"
               >
                 <View style={styles.appDetailHeader}>
                   <Image
@@ -2436,6 +2481,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             entering={SlideInDown}
             exiting={SlideOutDown}
             style={styles.modalContent}
+            pointerEvents="auto"
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Profile</Text>
@@ -2465,6 +2511,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             <ScrollView
               showsVerticalScrollIndicator={false}
               style={styles.modalScroll}
+              keyboardShouldPersistTaps="always"
             >
               {/* Basic Information Section */}
               <View style={styles.sectionHeader}>
@@ -2475,14 +2522,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* First Name */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("firstName") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  FIRST NAME
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>FIRST NAME</Text>
+                  {isFieldMissing("firstName") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "firstName" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2513,14 +2558,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Last Name */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("lastName") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  LAST NAME
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>LAST NAME</Text>
+                  {isFieldMissing("lastName") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "lastName" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2609,45 +2652,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
               )}
 
-              {/* Location */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>LOCATION</Text>
-                {editingField === "location" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("location")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("location", location)}
-                  >
-                    <Text style={styles.fieldText}>{location}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
               {/* Email */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("email") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  EMAIL
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>EMAIL</Text>
+                  {isFieldMissing("email") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "email" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2678,14 +2690,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Phone */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("phone") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  PHONE
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>PHONE</Text>
+                  {isFieldMissing("phone") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "phone" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2756,14 +2766,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* LinkedIn */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("linkedin") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  LINKEDIN PROFILE
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>LINKEDIN PROFILE</Text>
+                  {isFieldMissing("linkedin") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "linkedin" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2796,14 +2804,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Portfolio */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("portfolio") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  PORTFOLIO URL
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>PORTFOLIO URL</Text>
+                  {isFieldMissing("portfolio") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "portfolio" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2843,14 +2849,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Street */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("street") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  STREET ADDRESS
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>STREET ADDRESS</Text>
+                  {isFieldMissing("street") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "street" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2879,21 +2883,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* City */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("city") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  CITY
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>CITY</Text>
+                  {isFieldMissing("city") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "city" ? (
                   <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
+                    <AutocompleteInput
                       value={tempValue}
                       onChangeText={setTempValue}
+                      onSelect={(selectedCity) => {
+                        setTempValue(selectedCity);
+                      }}
+                      suggestions={CITY_NAMES_ONLY}
+                      placeholder="e.g., San Francisco"
                       autoFocus
+                      style={styles.fieldInput}
                     />
                     <TouchableOpacity
                       style={styles.saveBtn}
@@ -2915,21 +2922,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* State */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("state") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  STATE
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>STATE</Text>
+                  {isFieldMissing("state") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "state" ? (
                   <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
+                    <AutocompleteInput
                       value={tempValue}
                       onChangeText={setTempValue}
+                      onSelect={(selectedState) => {
+                        setTempValue(selectedState);
+                      }}
+                      suggestions={US_STATES}
+                      placeholder="e.g., California"
                       autoFocus
+                      style={styles.fieldInput}
                     />
                     <TouchableOpacity
                       style={styles.saveBtn}
@@ -2951,14 +2961,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Zip */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("zip") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  ZIP CODE
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>ZIP CODE</Text>
+                  {isFieldMissing("zip") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "zip" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2988,21 +2996,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Country */}
               <View style={styles.editField}>
-                <Text
-                  style={[
-                    styles.fieldLabel,
-                    isFieldMissing("country") && styles.fieldLabelIncomplete,
-                  ]}
-                >
-                  COUNTRY
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>COUNTRY</Text>
+                  {isFieldMissing("country") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "country" ? (
                   <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
+                    <AutocompleteInput
                       value={tempValue}
                       onChangeText={setTempValue}
+                      onSelect={(selectedCountry) => {
+                        setTempValue(selectedCountry);
+                      }}
+                      suggestions={COUNTRIES}
+                      placeholder="e.g., United States"
                       autoFocus
+                      style={styles.fieldInput}
                     />
                     <TouchableOpacity
                       style={styles.saveBtn}
@@ -3026,8 +3037,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <View style={styles.editField}>
                 <Text style={styles.fieldLabel}>
                   {userType === "applicant"
-                    ? "SKILLS & INTERESTS"
-                    : "I CAN HELP WITH"}
+                    ? "SKILLS & INTERESTS (Max 5)"
+                    : "I CAN HELP WITH (Max 5)"}
                 </Text>
                 <View style={styles.tagsContainer}>
                   {expertise.map((tag, index) => (
@@ -3041,21 +3052,26 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     </View>
                   ))}
                 </View>
-                <View style={styles.addTagRow}>
-                  <TextInput
-                    style={styles.tagInput}
-                    placeholder="Add new..."
-                    value={newTag}
-                    onChangeText={setNewTag}
-                    onSubmitEditing={() => handleAddTag("expertise")}
-                  />
-                  <TouchableOpacity
-                    style={styles.addTagBtn}
-                    onPress={() => handleAddTag("expertise")}
-                  >
-                    <Plus color="#FFF" size={18} />
-                  </TouchableOpacity>
-                </View>
+                {expertise.length < 5 && (
+                  <View style={styles.addTagRow}>
+                    <AutocompleteInput
+                      value={newTag}
+                      onChangeText={setNewTag}
+                      onSelect={(selectedSkill) => {
+                        handleAddTag("expertise", selectedSkill);
+                      }}
+                      suggestions={ALL_SKILLS}
+                      placeholder="Add new..."
+                      style={styles.tagInput}
+                    />
+                    <TouchableOpacity
+                      style={styles.addTagBtn}
+                      onPress={() => handleAddTag("expertise")}
+                    >
+                      <Plus color="#FFF" size={18} />
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
               {/* Applicant-specific fields */}
@@ -3063,39 +3079,44 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <>
                   <View style={styles.editField}>
                     <Text style={styles.fieldLabel}>WORK PREFERENCES</Text>
-                    <View style={styles.tagsContainer}>
-                      {workPreferences.map((tag, index) => (
-                        <View key={index} style={styles.editableTag}>
-                          <Text style={styles.editableTagText}>{tag}</Text>
-                          <TouchableOpacity
-                            onPress={() =>
-                              handleRemoveTag("workPreferences", index)
-                            }
+                    <View style={styles.workPreferenceOptions}>
+                      {["Remote", "Hybrid", "On-site"].map((preference) => (
+                        <TouchableOpacity
+                          key={preference}
+                          style={[
+                            styles.workPreferenceOption,
+                            workPreferences.includes(preference) &&
+                              styles.workPreferenceOptionSelected,
+                          ]}
+                          onPress={() => handleToggleWorkPreference(preference)}
+                        >
+                          <View
+                            style={[
+                              styles.workPreferenceCheckbox,
+                              workPreferences.includes(preference) &&
+                                styles.workPreferenceCheckboxSelected,
+                            ]}
                           >
-                            <X color="#000" size={14} />
-                          </TouchableOpacity>
-                        </View>
+                            {workPreferences.includes(preference) && (
+                              <Check color="#FFF" size={16} strokeWidth={3} />
+                            )}
+                          </View>
+                          <Text
+                            style={[
+                              styles.workPreferenceText,
+                              workPreferences.includes(preference) &&
+                                styles.workPreferenceTextSelected,
+                            ]}
+                          >
+                            {preference}
+                          </Text>
+                        </TouchableOpacity>
                       ))}
-                    </View>
-                    <View style={styles.addTagRow}>
-                      <TextInput
-                        style={styles.tagInput}
-                        placeholder="Add preference..."
-                        value={newTag}
-                        onChangeText={setNewTag}
-                        onSubmitEditing={() => handleAddTag("workPreferences")}
-                      />
-                      <TouchableOpacity
-                        style={styles.addTagBtn}
-                        onPress={() => handleAddTag("workPreferences")}
-                      >
-                        <Plus color="#FFF" size={18} />
-                      </TouchableOpacity>
                     </View>
                   </View>
 
                   <View style={styles.editField}>
-                    <Text style={styles.fieldLabel}>DESIRED ROLES</Text>
+                    <Text style={styles.fieldLabel}>DESIRED ROLES (Max 3)</Text>
                     <View style={styles.tagsContainer}>
                       {desiredRoles.map((tag, index) => (
                         <View key={index} style={styles.editableTag}>
@@ -3110,21 +3131,27 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         </View>
                       ))}
                     </View>
-                    <View style={styles.addTagRow}>
-                      <TextInput
-                        style={styles.tagInput}
-                        placeholder="Add role..."
-                        value={newTag}
-                        onChangeText={setNewTag}
-                        onSubmitEditing={() => handleAddTag("desiredRoles")}
-                      />
-                      <TouchableOpacity
-                        style={styles.addTagBtn}
-                        onPress={() => handleAddTag("desiredRoles")}
-                      >
-                        <Plus color="#FFF" size={18} />
-                      </TouchableOpacity>
-                    </View>
+                    {desiredRoles.length < 3 && (
+                      <View style={styles.addTagRow}>
+                        <TextInput
+                          style={styles.tagInput}
+                          placeholder="Add role..."
+                          value={newRoleTag}
+                          onChangeText={setNewRoleTag}
+                          onSubmitEditing={() =>
+                            handleAddTag("desiredRoles", newRoleTag)
+                          }
+                        />
+                        <TouchableOpacity
+                          style={styles.addTagBtn}
+                          onPress={() =>
+                            handleAddTag("desiredRoles", newRoleTag)
+                          }
+                        >
+                          <Plus color="#FFF" size={18} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 </>
               )}
@@ -3202,6 +3229,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             entering={SlideInDown}
             exiting={SlideOutDown}
             style={styles.modalContent}
+            pointerEvents="auto"
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Resume Information</Text>
@@ -3231,7 +3259,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             <ScrollView
               showsVerticalScrollIndicator={false}
               style={styles.modalScroll}
-              keyboardShouldPersistTaps="handled"
+              keyboardShouldPersistTaps="always"
               keyboardDismissMode="on-drag"
               contentContainerStyle={{ paddingBottom: 100 }}
             >
@@ -3474,6 +3502,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             entering={SlideInDown}
             exiting={SlideOutDown}
             style={styles.modalContent}
+            pointerEvents="auto"
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Change Password</Text>
@@ -3725,6 +3754,7 @@ function EditInsightsModal({
           entering={SlideInDown}
           exiting={SlideOutDown}
           style={styles.modalContent}
+          pointerEvents="auto"
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Profile Insights</Text>
@@ -3740,6 +3770,7 @@ function EditInsightsModal({
           <ScrollView
             showsVerticalScrollIndicator={false}
             style={styles.modalScroll}
+            keyboardShouldPersistTaps="always"
           >
             {/* Existing Insights */}
             {insights.map((insight, index) => (
@@ -3899,6 +3930,7 @@ function SimpleModal({
           entering={SlideInDown}
           exiting={SlideOutDown}
           style={styles.modalContent}
+          pointerEvents="auto"
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
@@ -3910,6 +3942,7 @@ function SimpleModal({
           <ScrollView
             showsVerticalScrollIndicator={false}
             style={styles.modalScroll}
+            keyboardShouldPersistTaps="always"
           >
             {children}
           </ScrollView>
@@ -3942,6 +3975,28 @@ const styles = StyleSheet.create({
     height: 110,
     borderRadius: 55,
     backgroundColor: "#F9F9F9",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#E5E5E5",
+  },
+  avatarInitials: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: 1,
+  },
+  avatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  avatarPlaceholderText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   editFab: {
     position: "absolute",
@@ -3957,13 +4012,13 @@ const styles = StyleSheet.create({
     borderColor: "#FFF",
   },
   editFabHighlight: {
-    backgroundColor: "#1E40AF",
+    backgroundColor: "#000",
   },
   profileImageIndicator: {
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#BFDBFE",
+    backgroundColor: "#F9F9F9",
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -4096,14 +4151,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "#F9F9F9",
     borderWidth: 1.5,
-    borderColor: "#BFDBFE",
+    borderColor: "#E5E5E5",
   },
   preferenceText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1E40AF",
+    color: "#666",
   },
   roleTag: {
     flexDirection: "row",
@@ -4138,14 +4193,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "#F9F9F9",
     borderWidth: 1.5,
-    borderColor: "#BFDBFE",
+    borderColor: "#E5E5E5",
   },
   companyText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1E40AF",
+    color: "#666",
   },
 
   settingsSection: {
@@ -4212,7 +4267,7 @@ const styles = StyleSheet.create({
 
   // Progress Indicator Styles
   modalProgressContainer: {
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "#F9F9F9",
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
@@ -4220,20 +4275,20 @@ const styles = StyleSheet.create({
   modalProgressText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#1E40AF",
+    color: "#666",
     marginBottom: 8,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   modalProgressBar: {
     height: 4,
-    backgroundColor: "#BFDBFE",
+    backgroundColor: "#E5E5E5",
     borderRadius: 2,
     overflow: "hidden",
   },
   modalProgressFill: {
     height: "100%",
-    backgroundColor: "#1E40AF",
+    backgroundColor: "#000",
     borderRadius: 2,
   },
 
@@ -4242,7 +4297,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#1E40AF",
+    backgroundColor: "#000",
     minWidth: 24,
     height: 24,
     borderRadius: 12,
@@ -4258,7 +4313,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   settingBadge: {
-    backgroundColor: "#1E40AF",
+    backgroundColor: "#000",
     minWidth: 20,
     height: 20,
     borderRadius: 10,
@@ -4285,12 +4340,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   fieldLabelIncomplete: {
-    color: "#FFFFFF",
-    backgroundColor: "#1E40AF",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: "flex-start",
+    color: "#EF4444",
+  },
+  fieldLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  requiredStar: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#EF4444",
+    lineHeight: 16,
   },
   fieldDisplay: {
     flexDirection: "row",
@@ -4348,12 +4409,12 @@ const styles = StyleSheet.create({
   sectionHeaderLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#1E40AF",
+    backgroundColor: "#E5E5E5",
   },
   sectionHeaderText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#1E40AF",
+    color: "#000",
     letterSpacing: 1.2,
     paddingHorizontal: 16,
   },
@@ -5224,16 +5285,58 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderColor: "#E5E5E5",
-    borderStyle: "dashed",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    gap: 12,
     marginBottom: 16,
   },
   emptyStateText: {
     fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  workPreferenceOptions: {
+    gap: 8,
+    marginTop: 8,
+  },
+  workPreferenceOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#E5E5E5",
+  },
+  workPreferenceOptionSelected: {
+    backgroundColor: "#F9F9F9",
+    borderColor: "#000",
+  },
+  workPreferenceCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#CCC",
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  workPreferenceCheckboxSelected: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  workPreferenceText: {
+    fontSize: 15,
     fontWeight: "600",
     color: "#666",
-    textAlign: "center",
+    flex: 1,
+  },
+  workPreferenceTextSelected: {
+    color: "#000",
+    fontWeight: "700",
   },
   checkboxRow: {
     flexDirection: "row",

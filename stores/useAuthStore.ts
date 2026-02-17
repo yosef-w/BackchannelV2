@@ -1,5 +1,5 @@
-import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
+import { create } from "zustand";
 
 /**
  * 🔑 Secure token storage keys
@@ -36,6 +36,11 @@ export const useAuthStore = create<AuthState>((set) => ({
    */
   setAuthTokens: async (accessToken: string, refreshToken: string) => {
     try {
+      console.log("[Auth] Saving tokens to SecureStore...");
+      console.log(
+        "[Auth] Access token preview:",
+        accessToken.substring(0, 20) + "...",
+      );
       // Persist to SecureStore
       await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
       await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
@@ -46,9 +51,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         refreshToken,
         isAuthenticated: true,
       });
+      console.log("[Auth] Tokens saved successfully");
     } catch (error) {
       // Fail gracefully - update state even if persistence fails
-      console.warn("Failed to persist tokens to SecureStore:", error);
+      console.warn("[Auth] Failed to persist tokens to SecureStore:", error);
       set({
         accessToken,
         refreshToken,
@@ -82,12 +88,18 @@ export const useAuthStore = create<AuthState>((set) => ({
    */
   loadTokens: async () => {
     try {
+      console.log("[Auth] Loading tokens from SecureStore...");
       const [accessToken, refreshToken] = await Promise.all([
         SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
         SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
       ]);
 
       if (accessToken && refreshToken) {
+        console.log("[Auth] Tokens found, setting authenticated state");
+        console.log(
+          "[Auth] Access token preview:",
+          accessToken.substring(0, 20) + "...",
+        );
         set({
           accessToken,
           refreshToken,
@@ -95,6 +107,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           isLoading: false,
         });
       } else {
+        console.log("[Auth] No tokens found in SecureStore");
         set({
           accessToken: null,
           refreshToken: null,
@@ -103,7 +116,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
       }
     } catch (error) {
-      console.warn("Failed to load tokens from SecureStore:", error);
+      console.warn("[Auth] Failed to load tokens from SecureStore:", error);
       // Fail gracefully - set state to logged out
       set({
         accessToken: null,

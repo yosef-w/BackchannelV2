@@ -1,3 +1,5 @@
+import { fetchJobsPack } from "@/lib/api";
+import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
@@ -29,6 +31,7 @@ import {
   Image,
   Modal,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -52,6 +55,7 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { JobApplicationWebView } from "./JobApplicationWebView";
@@ -1185,12 +1189,30 @@ export function HomeView({
 }: HomeViewProps) {
   const router = useRouter();
   const profileData = useUserProfileStore((state) => state.data);
+
+  // Jobs store
+  const jobs = useJobsStore((state) => state.jobs);
+  const jobsLoading = useJobsStore((state) => state.isLoading);
+  const setJobs = useJobsStore((state) => state.setJobs);
+  const setJobsLoading = useJobsStore((state) => state.setLoading);
+  const setJobsError = useJobsStore((state) => state.setError);
+
+  // Navigation state from store
+  const currentProfileIndex = useJobsStore((state) => state.currentIndex);
+  const setCurrentProfileIndex = useJobsStore((state) => state.setCurrentIndex);
+  const progress = useJobsStore((state) => state.progress);
+  const setProgress = useJobsStore((state) => state.setProgress);
+  const resetNavigation = useJobsStore((state) => state.resetNavigation);
+  const lastFetched = useJobsStore((state) => state.lastFetched);
+
   const scrollRef = useRef<ScrollView>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize loading based on whether we already have data
+  const [isLoading, setIsLoading] = useState(() => {
+    return userType === "applicant" ? jobs.length === 0 : false;
+  });
   const [showCelebration, setShowCelebration] = useState(false);
-  const [currentProfileIndex, setCurrentProfileIndex] = useState(0);
-  const [progress, setProgress] = useState(1);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showMore, setShowMore] = useState(false);
 
   // Profile completion state
@@ -1253,18 +1275,76 @@ export function HomeView({
   }));
 
   // Use profiles for sponsors, jobs for applicants
+  const applicantJobs = userType === "applicant" ? jobs : mockJobs;
+
+  console.log("[HomeView] Using jobs:", {
+    userType,
+    apiJobsCount: jobs.length,
+    usingApiJobs: jobs.length > 0,
+    currentIndex: currentProfileIndex,
+  });
+
   const currentData =
     userType === "sponsor"
       ? mockProfiles[currentProfileIndex % mockProfiles.length]
-      : mockJobs[currentProfileIndex % mockJobs.length];
+      : applicantJobs[currentProfileIndex % applicantJobs.length];
   const isDeckFinished = progress > DECK_SIZE;
 
+  // Fetch jobs on mount (only if we don't have recent data)
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
+    const loadJobs = async () => {
+      if (userType === "applicant") {
+        // Check if we already have data and it's recent (within last 5 minutes)
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+        const isCacheValid =
+          lastFetched &&
+          jobs.length > 0 &&
+          Date.now() - new Date(lastFetched).getTime() < CACHE_DURATION;
+
+        if (isCacheValid) {
+          console.log("[HomeView] Using cached jobs, skipping fetch");
+          return;
+        }
+
+        try {
+          console.log("[HomeView] Fetching jobs for applicant...");
+          setJobsLoading(true);
+          const apiJobs = await fetchJobsPack();
+          console.log("[HomeView] Fetched", apiJobs.length, "jobs from API");
+          const transformedJobs = apiJobs.map((job: JobApiResponse) =>
+            transformJobApiResponse(job),
+          );
+          console.log("[HomeView] Transformed jobs:", transformedJobs.length);
+          setJobs(transformedJobs);
+        } catch (err) {
+          console.error("[HomeView] Failed to fetch jobs:", err);
+          setJobsError(
+            err instanceof Error ? err.message : "Failed to fetch jobs",
+          );
+        } finally {
+          setJobsLoading(false);
+        }
+      }
+    };
+
+    loadJobs();
+  }, [userType]);
+
+  // Update local loading state based on store loading and whether we have data
+  useEffect(() => {
+    if (userType === "applicant") {
+      // Only show skeleton if loading and no data, or if data doesn't exist yet
+      const shouldLoad =
+        (jobsLoading && jobs.length === 0) || jobs.length === 0;
+      setIsLoading(shouldLoad);
+    } else {
+      // For sponsors, we use mock data so no loading needed
+      setIsLoading(false);
+    }
+  }, [userType, jobsLoading, jobs.length]);
 
   const toggleFlip = () => {
+    // console.log("[HomeView] toggleFlip called");
     rotateY.value = withTiming(isFlipped ? 0 : 180, { duration: 600 });
     setIsFlipped(!isFlipped);
   };
@@ -1332,8 +1412,8 @@ export function HomeView({
     swipeOpacity.value = withTiming(0, { duration: 300 });
 
     setTimeout(() => {
-      setProgress((prev) => prev + 1);
-      setCurrentProfileIndex((prev) => prev + 1);
+      setProgress(progress + 1);
+      setCurrentProfileIndex(currentProfileIndex + 1);
       swipeX.value = 0;
       swipeOpacity.value = withTiming(1, { duration: 300 });
     }, 400);
@@ -1436,8 +1516,7 @@ export function HomeView({
               <TouchableOpacity
                 style={styles.returnBtn}
                 onPress={() => {
-                  setProgress(1);
-                  setCurrentProfileIndex(0);
+                  resetNavigation();
                 }}
               >
                 <Text style={styles.returnBtnText}>Refresh Deck</Text>
@@ -1448,12 +1527,15 @@ export function HomeView({
           ) : (
             <View>
               <Animated.View style={[styles.cardContainer, mainAnimatedStyle]}>
-                <TouchableOpacity activeOpacity={1} onPress={toggleFlip}>
+                <Pressable onPress={toggleFlip}>
                   {userType === "sponsor" ? (
                     /* SPONSOR VIEW - Profile Cards */
                     <>
                       {/* Front Face - Profile */}
-                      <Animated.View style={[styles.cardOuter, frontStyle]}>
+                      <Animated.View
+                        style={[styles.cardOuter, frontStyle]}
+                        pointerEvents={isFlipped ? "none" : "auto"}
+                      >
                         <View style={styles.cardInner}>
                           {/* Name Header - Full Width */}
                           <View style={styles.profileNameHeader}>
@@ -1596,7 +1678,10 @@ export function HomeView({
                     /* APPLICANT VIEW - Job Cards */
                     <>
                       {/* Front Face - Job Details */}
-                      <Animated.View style={[styles.cardOuter, frontStyle]}>
+                      <Animated.View
+                        style={[styles.cardOuter, frontStyle]}
+                        pointerEvents={isFlipped ? "none" : "auto"}
+                      >
                         <View style={styles.cardInner}>
                           {/* Job Title Header - Full Width */}
                           <View style={styles.profileNameHeader}>
@@ -1669,32 +1754,28 @@ export function HomeView({
                               </Text>
                               <Text style={styles.descriptionText}>
                                 {"description" in currentData
-                                  ? currentData.description
+                                  ? currentData.description.length > 280
+                                    ? currentData.description.substring(
+                                        0,
+                                        280,
+                                      ) + "... "
+                                    : currentData.description + " "
                                   : ""}
+                                <Text
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    setShowDescriptionModal(true);
+                                  }}
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: "600",
+                                    color: "#2563EB",
+                                  }}
+                                >
+                                  View More
+                                </Text>
                               </Text>
                             </View>
-
-                            {"skills" in currentData && currentData.skills && (
-                              <View style={styles.skillsSection}>
-                                <Text style={styles.sectionLabelSmall}>
-                                  KEY SKILLS
-                                </Text>
-                                <View style={styles.skillsRow}>
-                                  {currentData.skills
-                                    .slice(0, 4)
-                                    .map((skill: string, idx: number) => (
-                                      <View
-                                        key={idx}
-                                        style={styles.skillChipSmall}
-                                      >
-                                        <Text style={styles.skillChipSmallText}>
-                                          {skill}
-                                        </Text>
-                                      </View>
-                                    ))}
-                                </View>
-                              </View>
-                            )}
                           </View>
                         </View>
                       </Animated.View>
@@ -1706,6 +1787,7 @@ export function HomeView({
                           styles.cardOuterBack,
                           backStyle,
                         ]}
+                        pointerEvents={isFlipped ? "auto" : "none"}
                       >
                         <View style={[styles.cardInner, styles.cardInnerBack]}>
                           <ScrollView
@@ -1854,7 +1936,7 @@ export function HomeView({
                       </Animated.View>
                     </>
                   )}
-                </TouchableOpacity>
+                </Pressable>
               </Animated.View>
 
               <Animated.View layout={LinearTransition}>
@@ -2120,23 +2202,6 @@ export function HomeView({
                                     {
                                       (currentData.fullDetails as any)
                                         .requirements
-                                    }
-                                  </Text>
-                                </View>
-                              </View>
-
-                              <View style={styles.detailSection}>
-                                <View style={styles.detailSectionHeader}>
-                                  <Calendar size={16} color="#000" />
-                                  <Text style={styles.detailSectionTitle}>
-                                    Interview Process
-                                  </Text>
-                                </View>
-                                <View style={styles.jobDetailCard}>
-                                  <Text style={styles.jobDetailText}>
-                                    {
-                                      (currentData.fullDetails as any)
-                                        .interviewProcess
                                     }
                                   </Text>
                                 </View>
@@ -2488,6 +2553,157 @@ export function HomeView({
           setShowProfileCompletionModal(false);
         }}
       />
+
+      {/* Description Modal */}
+      <Modal
+        visible={showDescriptionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDescriptionModal(false)}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => setShowDescriptionModal(false)}
+        >
+          <BlurView
+            intensity={60}
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+          />
+        </TouchableOpacity>
+
+        <Animated.View
+          entering={SlideInDown}
+          exiting={SlideOutDown}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: "#FFF",
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            paddingTop: 12,
+            paddingBottom: 40,
+            maxHeight: "50%",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 20,
+            elevation: 20,
+          }}
+        >
+          {/* Drag Handle */}
+          <View
+            style={{
+              width: 40,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: "#D1D5DB",
+              alignSelf: "center",
+              marginBottom: 20,
+            }}
+          />
+
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 28,
+              marginBottom: 8,
+            }}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: "#F5F5F5",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Briefcase color="#000" size={20} />
+              </View>
+              <View>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: "800",
+                    color: "#000",
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  About the Role
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "600",
+                    color: "#999",
+                    marginTop: 2,
+                  }}
+                >
+                  {currentData && "company" in currentData
+                    ? currentData.company
+                    : ""}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowDescriptionModal(false)}
+              style={{
+                width: 36,
+                height: 36,
+                backgroundColor: "#F5F5F5",
+                borderRadius: 18,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              activeOpacity={0.7}
+            >
+              <X color="#666" size={18} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Divider */}
+          <View
+            style={{
+              height: 1,
+              backgroundColor: "#F0F0F0",
+              marginHorizontal: 28,
+              marginVertical: 20,
+            }}
+          />
+
+          {/* Content */}
+          <ScrollView
+            style={{ maxHeight: "100%", paddingHorizontal: 28 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                lineHeight: 26,
+                color: "#444",
+                fontWeight: "500",
+                letterSpacing: -0.2,
+              }}
+            >
+              {currentData && "description" in currentData
+                ? currentData.description
+                : ""}
+            </Text>
+          </ScrollView>
+        </Animated.View>
+      </Modal>
     </View>
   );
 }
@@ -2714,6 +2930,7 @@ const styles = StyleSheet.create({
   // Content Section
   profileCardContent: {
     padding: 20,
+    paddingBottom: 24,
     gap: 16,
   },
   descriptionSection: {
