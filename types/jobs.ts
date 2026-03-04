@@ -25,6 +25,34 @@ export interface JobApiResponse {
 }
 
 /**
+ * Browse Jobs Response (SILVER_JOBS table)
+ * Used by sponsors to browse jobs available for sponsoring
+ */
+export interface BrowseJobResponse {
+  JOB_ID: string;
+  TITLE: string;
+  ORGANIZATION: string;
+  FULL_LOCATION: string;
+  DESCRIPTION_TEXT: string;
+  EMPLOYMENT_TYPES: string;
+  IS_REMOTE: boolean;
+  SALARY_ANNUAL_MIN: number | null;
+  SALARY_ANNUAL_MAX: number | null;
+  SALARY_CURRENCY: string | null;
+  EXPERIENCE_LEVEL: string | null;
+  SKILLS: string | null;
+  DATE_POSTED: string;
+}
+
+/**
+ * Browse Jobs API Response Envelope
+ */
+export interface BrowseJobsApiResponse {
+  jobs: BrowseJobResponse[];
+  total_count: number;
+}
+
+/**
  * Internal Job Posting Interface
  * Used throughout the app for displaying jobs
  */

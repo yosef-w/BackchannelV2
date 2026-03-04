@@ -131,6 +131,7 @@ export function ApplicantQuestionnaire({
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
+      console.log("[ApplicantQuestionnaire] Starting registration...");
       return authApi.createProfile({
         userType: "applicant",
         firstName: applicantData.firstName || "",
@@ -143,18 +144,21 @@ export function ApplicantQuestionnaire({
           seekingPosition: answers[2],
           skills: selectedSkills,
           insights: selectedInsights,
-          resumeUrl: selectedFile,
+          resumeUrl: selectedFile || undefined, // Make sure undefined if not set
         },
       });
     },
     onSuccess: async (data) => {
+      console.log("[ApplicantQuestionnaire] Registration successful:", data);
+
+      // Save auth tokens
       await setAuthTokens(data.access_token, data.refresh_token);
 
+      // Load profile data into local store
       await loadFromProfile({
         firstName: applicantData.firstName,
         lastName: applicantData.lastName,
         email: applicantData.email,
-        phone: applicantData.phone,
         profileData: {
           targetIndustry: answers[0],
           currentRole: answers[1],
@@ -165,15 +169,38 @@ export function ApplicantQuestionnaire({
         },
       });
 
+      // Clear onboarding data
       clearOnboardingData();
+
+      // Show success modal
       setShowSuccess(true);
+
+      // Navigate to dashboard after 2.2 seconds
       setTimeout(() => {
+        setIsSubmitting(false);
         onComplete();
       }, 2200);
     },
     onError: (error: Error) => {
+      console.error("[ApplicantQuestionnaire] Registration failed:", error);
       setIsSubmitting(false);
-      alert(`Error: ${error.message}`);
+
+      // Handle specific error cases
+      const errorMessage = error.message.toLowerCase();
+
+      if (
+        errorMessage.includes("email already in use") ||
+        errorMessage.includes("already exists")
+      ) {
+        alert(
+          "This email is already registered.\n\n" +
+            "Please use a different email or go back to login with your existing account.",
+        );
+      } else if (errorMessage.includes("password")) {
+        alert("Password requirements not met.\n\n" + error.message);
+      } else {
+        alert(`Registration failed: ${error.message}`);
+      }
     },
   });
 
@@ -190,33 +217,8 @@ export function ApplicantQuestionnaire({
 
   const handleFinalSubmit = async () => {
     setIsSubmitting(true);
-
-    // Skip API call for now - just load data into stores
-    try {
-      await loadFromProfile({
-        firstName: applicantData.firstName,
-        lastName: applicantData.lastName,
-        email: applicantData.email,
-        phone: applicantData.phone,
-        profileData: {
-          targetIndustry: answers[0],
-          currentRole: answers[1],
-          seekingPosition: answers[2],
-          skills: selectedSkills,
-          insights: selectedInsights,
-          resumeUrl: selectedFile,
-        },
-      });
-
-      clearOnboardingData();
-      setShowSuccess(true);
-      setTimeout(() => {
-        onComplete();
-      }, 2200);
-    } catch (error) {
-      setIsSubmitting(false);
-      alert(`Error: ${error}`);
-    }
+    // Trigger the mutation which calls the real API
+    createProfileMutation.mutate();
   };
 
   const handleNext = () => {

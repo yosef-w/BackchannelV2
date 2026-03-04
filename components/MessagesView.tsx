@@ -43,6 +43,7 @@ import Animated, {
     useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getConversations, getConversationMessages, sendMessage } from "@/lib/api";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -353,9 +354,13 @@ export function MessagesView({
   selectedConversationId: externalSelectedConversationId,
   onConversationChange,
 }: MessagesViewProps) {
+  // Infer current user ID from conversation participants
+  // The "other participant" is everyone else, so current user is the one NOT in otherParticipant
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
   const [selectedConversation, setSelectedConversation] = useState<
-    number | null
-  >(externalSelectedConversationId ?? null);
+    string | null
+  >(externalSelectedConversationId?.toString() ?? null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showApplicationDetail, setShowApplicationDetail] = useState(false);
   const [showReferralFlow, setShowReferralFlow] = useState(false);
@@ -370,10 +375,232 @@ export function MessagesView({
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard();
 
-  const handleConversationSelect = (conversationId: number | null) => {
+  // Real data state
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
+  const [conversationsError, setConversationsError] = useState<string | null>(null);
+
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+  
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Fetch conversations on mount
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setConversationsLoading(true);
+        console.log("[MessagesView] Fetching conversations...");
+        
+        const response = await getConversations();
+        console.log("[MessagesView] Conversations response:", response);
+
+        // Transform UPPERCASE Snowflake fields to our UI format
+        const transformedConversations = response.conversations.map(conv => ({
+          id: conv.CONVERSATION_ID,
+          otherParticipant: {
+            id: conv.APPLICANT_USER_ID, // Will update this based on current user
+            name: conv.APPLICANT_FIRST_NAME || conv.SPONSOR_FIRST_NAME,
+            profileImageUrl: undefined, // Not in API response
+          },
+          lastMessage: undefined, // Not in API response
+          unreadCount: conv.APPLICANT_HAS_UNREAD || conv.SPONSOR_HAS_UNREAD ? 1 : 0,
+          jobContext: {
+            jobId: conv.JOB_ID,
+            jobTitle: conv.TITLE,
+            company: "", // Not in API response
+          },
+          createdAt: new Date().toISOString(),
+        }));
+
+        setConversations(transformedConversations);
+      } catch (err) {
+        console.error("[MessagesView] Failed to fetch conversations:", err);
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch conversations";
+        
+        // If 404, backend might not have implemented endpoint yet or no conversations exist
+        if (errorMessage.includes("Not found") || errorMessage.includes("404")) {
+          console.log("[MessagesView] Conversations endpoint not available or no conversations exist - showing empty state");
+          setConversations([]);
+          setConversationsError(null); // Don't show error for 404, just empty state
+        } else {
+          setConversationsError(errorMessage);
+          // Fall back to mock data on other errors
+          setConversations(mockConversations.map(conv => ({
+            id: String(conv.id),
+            otherParticipant: {
+              id: String(conv.id),
+              name: conv.name,
+              role: conv.role,
+              company: conv.company,
+              profileImageUrl: conv.image,
+            },
+            lastMessage: {
+              content: conv.lastMessage,
+              senderId: String(conv.id),
+              createdAt: new Date().toISOString(),
+              isRead: conv.unread === 0,
+            },
+            unreadCount: conv.unread,
+            jobContext: conv.appliedRole ? {
+              jobId: String(conv.id),
+              jobTitle: conv.appliedRole,
+              company: conv.company,
+            } : undefined,
+            applicationStatus: conv.applicationStatus,
+            createdAt: new Date().toISOString(),
+          })));
+        }
+      } finally {
+        setConversationsLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, []);
+
+  // Fetch messages when conversation is selected
+  useEffect(() => {
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+    const fetchMessages = async () => {
+      if (!selectedConversation) {
+        setMessages([]);
+        return;
+      }
+
+      try {
+        setMessagesLoading(true);
+        setMessagesError(null);
+        console.log("[MessagesView] Fetching messages for conversation:", selectedConversation);
+        
+        const response = await getConversationMessages(selectedConversation, { limit: 100 });
+        console.log("[MessagesView] Messages response:", response);
+
+        // Transform UPPERCASE Snowflake fields to our UI format
+        const transformedMessages = response.messages.map(msg => ({
+          id: msg.MESSAGE_ID,
+          senderId: msg.SENDER_ID,
+          content: msg.BODY,
+          messageType: 'text' as const,
+          isRead: true, // Backend doesn't track per-message read status
+          createdAt: msg.CREATED_AT,
+        }));
+
+        setMessages(transformedMessages);
+        
+        // Infer current user ID from messages
+        if (response.messages && response.messages.length > 0) {
+          // Find current user by checking which sender appears most frequently
+          const senderCounts: Record<string, number> = {};
+          response.messages.forEach(msg => {
+            senderCounts[msg.SENDER_ID] = (senderCounts[msg.SENDER_ID] || 0) + 1;
+          });
+          
+          // Get the conversation to find the other participant
+          const conv = conversations.find(c => c.id === selectedConversation);
+          if (conv) {
+            // Current user is the one NOT in otherParticipant
+            const otherUserId = conv.otherParticipant.id;
+            const allSenders = Object.keys(senderCounts);
+            const inferredCurrentUser = allSenders.find(id => id !== otherUserId) || allSenders[0];
+            if (inferredCurrentUser && !currentUserId) {
+              setCurrentUserId(inferredCurrentUser);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[MessagesView] Failed to fetch messages:", err);
+        setMessagesError(
+          err instanceof Error ? err.message : "Failed to fetch messages"
+        );
+        // Fall back to mock messages on error
+        setMessages(mockMessages.map((msg, idx) => ({
+          id: String(idx + 1),
+          senderId: msg.sender === 'me' ? 'current-user' : 'other',
+          content: msg.text,
+          messageType: 'text' as const,
+          isRead: true,
+          createdAt: new Date().toISOString(),
+        })));
+        if (!currentUserId) {
+          setCurrentUserId('current-user');
+        }
+      } finally {
+        setMessagesLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchMessages();
+
+    // Set up polling for new messages (every 8 seconds)
+    pollingInterval = setInterval(() => {
+      if (selectedConversation) {
+        console.log("[MessagesView] Polling for new messages...");
+        fetchMessages();
+      }
+    }, 8000);
+
+    // Cleanup on unmount or conversation change
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [selectedConversation, conversations]);
+
+  const handleConversationSelect = (conversationId: string | null) => {
     setSelectedConversation(conversationId);
     if (onConversationChange) {
-      onConversationChange(conversationId);
+      onConversationChange(conversationId ? Number(conversationId) : null);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !selectedConversation || sendingMessage) return;
+
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      senderId: currentUserId || 'me',
+      content: messageText.trim(),
+      messageType: 'text' as const,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Optimistically add message to UI
+    setMessages(prev => [...prev, tempMessage]);
+    const messageToSend = messageText.trim();
+    setMessageText("");
+
+    try {
+      setSendingMessage(true);
+      console.log("[MessagesView] Sending message:", messageToSend);
+      
+      const response = await sendMessage(selectedConversation, messageToSend);
+      console.log("[MessagesView] Message sent:", response);
+
+      // Replace temp message with real message from server
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === tempMessage.id 
+            ? { ...tempMessage, id: response.message_id } 
+            : msg
+        )
+      );
+
+      // Scroll to bottom after sending
+      setTimeout(() => scrollToBottom(true), 100);
+    } catch (err) {
+      console.error("[MessagesView] Failed to send message:", err);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      setMessageText(messageToSend); // Restore message text
+      alert("Failed to send message. Please try again.");
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -584,10 +811,23 @@ export function MessagesView({
   };
 
   if (selectedConversation) {
-    const conversation = mockConversations.find(
+    const conversation = conversations.find(
       (c) => c.id === selectedConversation,
     );
-    if (!conversation) return null;
+    
+    if (!conversation) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 16, color: '#666' }}>Conversation not found</Text>
+          <TouchableOpacity 
+            onPress={() => handleConversationSelect(null)}
+            style={{ marginTop: 16, padding: 12, backgroundColor: '#000', borderRadius: 12 }}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '700' }}>Back to Messages</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
 
     return (
       <View style={{ flex: 1 }}>
@@ -605,13 +845,15 @@ export function MessagesView({
               activeOpacity={0.7}
             >
               <Image
-                source={{ uri: conversation.image }}
+                source={{ uri: conversation.otherParticipant.profileImageUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' }}
                 style={styles.headerImage}
               />
               <View style={styles.headerInfo}>
-                <Text style={styles.headerName}>{conversation.name}</Text>
+                <Text style={styles.headerName}>{conversation.otherParticipant.name}</Text>
                 <Text style={styles.headerRole}>
-                  {conversation.role} @ {conversation.company}
+                  {conversation.otherParticipant.role && conversation.otherParticipant.company
+                    ? `${conversation.otherParticipant.role} @ ${conversation.otherParticipant.company}`
+                    : conversation.otherParticipant.role || conversation.otherParticipant.company || ''}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -642,34 +884,68 @@ export function MessagesView({
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollToBottom(false)}
           >
-            {mockMessages.map((message, index) => (
-              <Animated.View
-                key={message.id}
-                entering={FadeInUp.delay(index * 50)}
-                style={[
-                  styles.messageWrapper,
-                  message.sender === "me" ? styles.msgRight : styles.msgLeft,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.bubble,
-                    message.sender === "me"
-                      ? styles.bubbleMe
-                      : styles.bubbleThem,
-                  ]}
-                >
-                  <Text
-                    style={
-                      message.sender === "me" ? styles.txtMe : styles.txtThem
-                    }
+            {messagesLoading ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: '#999', fontSize: 15 }}>Loading messages...</Text>
+              </View>
+            ) : messagesError ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: '#FF3B30', fontSize: 15, marginBottom: 8 }}>
+                  Failed to load messages
+                </Text>
+                <Text style={{ color: '#999', fontSize: 13, textAlign: 'center' }}>
+                  {messagesError}
+                </Text>
+              </View>
+            ) : messages.length === 0 ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: '#999', fontSize: 15 }}>No messages yet</Text>
+                <Text style={{ color: '#BBB', fontSize: 13, marginTop: 8 }}>
+                  Start the conversation!
+                </Text>
+              </View>
+            ) : (
+              messages.map((message, index) => {
+                const isMyMessage = message.senderId === currentUserId;
+                const showTime = index === messages.length - 1 || 
+                  (index < messages.length - 1 && 
+                   new Date(messages[index + 1].createdAt).getTime() - new Date(message.createdAt).getTime() > 300000); // 5 mins
+
+                return (
+                  <Animated.View
+                    key={message.id}
+                    entering={FadeInUp.delay(index * 50)}
+                    style={[
+                      styles.messageWrapper,
+                      isMyMessage ? styles.msgRight : styles.msgLeft,
+                    ]}
                   >
-                    {message.text}
-                  </Text>
-                </View>
-                <Text style={styles.msgTime}>{message.time}</Text>
-              </Animated.View>
-            ))}
+                    <View
+                      style={[
+                        styles.bubble,
+                        isMyMessage ? styles.bubbleMe : styles.bubbleThem,
+                      ]}
+                    >
+                      <Text
+                        style={
+                          isMyMessage ? styles.txtMe : styles.txtThem
+                        }
+                      >
+                        {message.content}
+                      </Text>
+                    </View>
+                    {showTime && (
+                      <Text style={styles.msgTime}>
+                        {new Date(message.createdAt).toLocaleTimeString('en-US', { 
+                          hour: 'numeric', 
+                          minute: '2-digit' 
+                        })}
+                      </Text>
+                    )}
+                  </Animated.View>
+                );
+              })
+            )}
           </ScrollView>
           <View style={styles.inputArea}>
             <TouchableOpacity style={styles.iconBtn}>
@@ -685,11 +961,12 @@ export function MessagesView({
               onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
             />
             <TouchableOpacity
-              style={styles.sendBtn}
-              onPress={() => {
-                setMessageText("");
-                Keyboard.dismiss();
-              }}
+              style={[
+                styles.sendBtn,
+                (!messageText.trim() || sendingMessage) && { opacity: 0.5 },
+              ]}
+              onPress={handleSendMessage}
+              disabled={!messageText.trim() || sendingMessage}
             >
               <Send color="#FFF" size={18} strokeWidth={2.5} />
             </TouchableOpacity>
@@ -757,7 +1034,7 @@ export function MessagesView({
                         user-centric products at {conversation.company}.
                       </Text>
                       <View style={styles.skillsContainer}>
-                        {conversation.skills.map((s, i) => (
+                        {conversation.skills.map((s: string, i: number) => (
                           <View key={i} style={styles.skillChip}>
                             <Text style={styles.skillText}>{s}</Text>
                           </View>
@@ -1053,7 +1330,7 @@ export function MessagesView({
                       <View style={styles.infoSection}>
                         <Text style={styles.infoSectionTitle}>KEY SKILLS</Text>
                         <View style={styles.skillsRow}>
-                          {conversation.skills.map((skill, idx) => (
+                          {conversation.skills.map((skill: string, idx: number) => (
                             <View key={idx} style={styles.skillBadge}>
                               <Text style={styles.skillBadgeText}>{skill}</Text>
                             </View>
@@ -1286,10 +1563,26 @@ export function MessagesView({
     );
   }
 
-  const activeConversations = mockConversations.filter(
+  const activeConversations = conversations.filter(
     (conv) => !conv.isHidden,
   );
-  const hiddenConversations = mockConversations.filter((conv) => conv.isHidden);
+  const hiddenConversations = conversations.filter((conv) => conv.isHidden);
+
+  // Helper function to format time
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <ScrollView
@@ -1301,81 +1594,129 @@ export function MessagesView({
         <Text style={styles.subtitle}>Direct lines to your connections</Text>
       </View>
 
-      {/* Active Messages */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>ACTIVE MESSAGES</Text>
-        <View style={styles.list}>
-          {activeConversations.map((conv, index) => (
-            <Animated.View
-              key={conv.id}
-              entering={FadeInDown.delay(index * 50)}
-            >
-              <TouchableOpacity
-                onPress={() => handleConversationSelect(conv.id)}
-                style={styles.convItem}
-              >
-                <View style={styles.imgWrapper}>
-                  <Image source={{ uri: conv.image }} style={styles.convImg} />
-                  {conv.unread > 0 && <View style={styles.dotIndicator} />}
-                </View>
-                <View style={styles.convMain}>
-                  <View style={styles.convHeader}>
-                    <Text style={styles.convName}>{conv.name}</Text>
-                    <Text style={styles.convTime}>
-                      {conv.time.toUpperCase()}
-                    </Text>
-                  </View>
-                  <Text style={styles.convMsg} numberOfLines={1}>
-                    {conv.lastMessage}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          ))}
+      {conversationsLoading ? (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <Text style={{ color: '#999', fontSize: 15 }}>Loading conversations...</Text>
         </View>
-      </View>
-
-      {/* Hidden Messages */}
-      {hiddenConversations.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>HIDDEN (30+ DAYS INACTIVE)</Text>
-          <View style={styles.list}>
-            {hiddenConversations.map((conv, index) => (
-              <Animated.View
-                key={conv.id}
-                entering={FadeInDown.delay(index * 50)}
-              >
-                <TouchableOpacity
-                  onPress={() => handleConversationSelect(conv.id)}
-                  style={[styles.convItem, styles.convItemHidden]}
-                >
-                  <View style={styles.imgWrapper}>
-                    <Image
-                      source={{ uri: conv.image }}
-                      style={[styles.convImg, styles.convImgHidden]}
-                    />
-                  </View>
-                  <View style={styles.convMain}>
-                    <View style={styles.convHeader}>
-                      <Text style={[styles.convName, styles.convNameHidden]}>
-                        {conv.name}
-                      </Text>
-                      <Text style={styles.convTime}>
-                        {conv.time.toUpperCase()}
-                      </Text>
-                    </View>
-                    <Text
-                      style={[styles.convMsg, styles.convMsgHidden]}
-                      numberOfLines={1}
+      ) : conversationsError ? (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <Text style={{ color: '#FF3B30', fontSize: 15, marginBottom: 8 }}>
+            Failed to load conversations
+          </Text>
+          <Text style={{ color: '#999', fontSize: 13, textAlign: 'center' }}>
+            {conversationsError}
+          </Text>
+        </View>
+      ) : conversations.length === 0 ? (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <MessageCircle size={48} color="#DDD" style={{ marginBottom: 16 }} />
+          <Text style={{ color: '#999', fontSize: 17, fontWeight: '600', marginBottom: 8 }}>
+            No conversations yet
+          </Text>
+          <Text style={{ color: '#BBB', fontSize: 14, textAlign: 'center' }}>
+            Start matching with people to begin conversations!
+          </Text>
+        </View>
+      ) : (
+        <>
+          {/* Active Messages */}
+          {activeConversations.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                ACTIVE MESSAGES ({activeConversations.length})
+              </Text>
+              <View style={styles.list}>
+                {activeConversations.map((conv, index) => (
+                  <Animated.View
+                    key={conv.id}
+                    entering={FadeInDown.delay(index * 50)}
+                  >
+                    <TouchableOpacity
+                      onPress={() => handleConversationSelect(conv.id)}
+                      style={styles.convItem}
                     >
-                      {conv.lastMessage}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
-          </View>
-        </View>
+                      <View style={styles.imgWrapper}>
+                        <Image 
+                          source={{ 
+                            uri: conv.otherParticipant.profileImageUrl || 
+                                 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' 
+                          }} 
+                          style={styles.convImg} 
+                        />
+                        {conv.unreadCount > 0 && <View style={styles.dotIndicator} />}
+                      </View>
+                      <View style={styles.convMain}>
+                        <View style={styles.convHeader}>
+                          <Text style={styles.convName}>
+                            {conv.otherParticipant.name}
+                          </Text>
+                          <Text style={styles.convTime}>
+                            {conv.lastMessage 
+                              ? formatTime(conv.lastMessage.createdAt).toUpperCase()
+                              : 'NEW'}
+                          </Text>
+                        </View>
+                        <Text style={styles.convMsg} numberOfLines={1}>
+                          {conv.lastMessage?.content || 'Start a conversation...'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Hidden Messages */}
+          {hiddenConversations.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                HIDDEN (30+ DAYS INACTIVE) ({hiddenConversations.length})
+              </Text>
+              <View style={styles.list}>
+                {hiddenConversations.map((conv, index) => (
+                  <Animated.View
+                    key={conv.id}
+                    entering={FadeInDown.delay(index * 50)}
+                  >
+                    <TouchableOpacity
+                      onPress={() => handleConversationSelect(conv.id)}
+                      style={[styles.convItem, styles.convItemHidden]}
+                    >
+                      <View style={styles.imgWrapper}>
+                        <Image
+                          source={{ 
+                            uri: conv.otherParticipant.profileImageUrl || 
+                                 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' 
+                          }}
+                          style={[styles.convImg, styles.convImgHidden]}
+                        />
+                      </View>
+                      <View style={styles.convMain}>
+                        <View style={styles.convHeader}>
+                          <Text style={[styles.convName, styles.convNameHidden]}>
+                            {conv.otherParticipant.name}
+                          </Text>
+                          <Text style={styles.convTime}>
+                            {conv.lastMessage 
+                              ? formatTime(conv.lastMessage.createdAt).toUpperCase()
+                              : 'OLD'}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[styles.convMsg, styles.convMsgHidden]}
+                          numberOfLines={1}
+                        >
+                          {conv.lastMessage?.content || 'No messages'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))}
+              </View>
+            </View>
+          )}
+        </>
       )}
     </ScrollView>
   );

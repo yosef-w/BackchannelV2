@@ -1,19 +1,16 @@
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { RevenueCatProvider } from '@/providers/RevenueCatProvider';
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { RevenueCatProvider } from "@/providers/RevenueCatProvider";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import {
-  QueryClient,
-  QueryClientProvider,
-} from '@tanstack/react-query';
-import { useRef, useEffect } from 'react';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { useUserProfileStore } from '@/stores/useUserProfileStore';
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider,
+} from "@react-navigation/native";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef } from "react";
 
 /**
  * Create ONE QueryClient for the entire app.
@@ -37,8 +34,12 @@ export default function RootLayout() {
   }
 
   const loadTokens = useAuthStore((state) => state.loadTokens);
-  const loadUserProfileData = useUserProfileStore((state) => state.loadFromStorage);
-  const fetchFromBackend = useUserProfileStore((state) => state.fetchFromBackend);
+  const loadUserProfileData = useUserProfileStore(
+    (state) => state.loadFromStorage,
+  );
+  const fetchFromBackend = useUserProfileStore(
+    (state) => state.fetchFromBackend,
+  );
   const accessToken = useAuthStore((state) => state.accessToken);
 
   /**
@@ -49,7 +50,7 @@ export default function RootLayout() {
       await loadTokens();
       await loadUserProfileData();
     };
-    
+
     initializeApp();
   }, [loadTokens, loadUserProfileData]);
 
@@ -59,35 +60,24 @@ export default function RootLayout() {
   useEffect(() => {
     if (accessToken) {
       fetchFromBackend().catch((error) => {
-        console.warn('Failed to sync profile from backend, using cached data:', error);
+        console.warn("[Layout] Failed to sync profile from backend:", error);
+        // Don't show error to user - they'll just see cached data or login screen
       });
     }
   }, [accessToken, fetchFromBackend]);
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <RevenueCatProvider>
           <StatusBar style="auto" />
 
           {/* Main navigation stack for BackchannelV2 */}
           <Stack initialRouteName="splash">
-            <Stack.Screen
-              name="splash"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="choose-role"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="onboarding"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="dashboard"
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="splash" options={{ headerShown: false }} />
+            <Stack.Screen name="choose-role" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            <Stack.Screen name="dashboard" options={{ headerShown: false }} />
           </Stack>
         </RevenueCatProvider>
       </ThemeProvider>

@@ -42,6 +42,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
+import { logout, updateGeneralProfile, updateApplicantProfile, updateSponsorProfile } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
   EducationEntry,
@@ -634,69 +635,92 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleSaveField = async (field: string) => {
-    switch (field) {
-      case "firstName":
-        setFirstName(tempValue);
-        setName(`${tempValue} ${lastName}`.trim());
-        await updatePersonal({
-          firstName: tempValue,
-          fullName: `${tempValue} ${lastName}`.trim(),
-        });
-        break;
-      case "lastName":
-        setLastName(tempValue);
-        setName(`${firstName} ${tempValue}`.trim());
-        await updatePersonal({
-          lastName: tempValue,
-          fullName: `${firstName} ${tempValue}`.trim(),
-        });
-        break;
-      case "role":
-        setRole(tempValue);
-        await updateProfessional({ title: tempValue });
-        break;
-      case "company":
-        setCompany(tempValue);
-        break;
-      case "email":
-        setEmail(tempValue);
-        await updatePersonal({ email: tempValue });
-        break;
-      case "phone":
-        setPhone(tempValue);
-        await updatePersonal({ phone: tempValue });
-        break;
-      case "bio":
-        setBio(tempValue);
-        await updateProfessional({ summary: tempValue });
-        break;
-      case "achievements":
-        setAchievements(tempValue);
-        await updateAchievements(tempValue);
-        break;
-      case "jobTitle":
-        setJobTitle(tempValue);
-        await updateProfessional({ title: tempValue });
-        break;
-      case "yearsExperience":
-        setYearsExperience(tempValue);
-        await updateProfessional({ yearsExperience: tempValue });
-        break;
-      case "summary":
-        setSummary(tempValue);
-        await updateProfessional({ summary: tempValue });
-        break;
-      case "degree":
-        setDegree(tempValue);
-        await updateEducation({ degree: tempValue });
-        break;
-      case "major":
-        setMajor(tempValue);
-        await updateEducation({ major: tempValue });
-        break;
-      case "university":
-        setUniversity(tempValue);
-        await updateEducation({ university: tempValue });
+    try {
+      switch (field) {
+        case "firstName":
+          setFirstName(tempValue);
+          setName(`${tempValue} ${lastName}`.trim());
+          await updatePersonal({
+            firstName: tempValue,
+            fullName: `${tempValue} ${lastName}`.trim(),
+          });
+          break;
+        case "lastName":
+          setLastName(tempValue);
+          setName(`${firstName} ${tempValue}`.trim());
+          await updatePersonal({
+            lastName: tempValue,
+            fullName: `${firstName} ${tempValue}`.trim(),
+          });
+          break;
+        case "role":
+          setRole(tempValue);
+          await updateProfessional({ title: tempValue });
+          // API call for role/title - applicant only
+          if (userType === "applicant") {
+            await updateApplicantProfile({ current_role: tempValue });
+          }
+          break;
+        case "company":
+          setCompany(tempValue);
+          // API call for company (sponsor only)
+          if (userType === "sponsor") {
+            await updateSponsorProfile({ company: tempValue });
+          }
+          break;
+        case "email":
+          setEmail(tempValue);
+          await updatePersonal({ email: tempValue });
+          break;
+        case "phone":
+          setPhone(tempValue);
+          await updatePersonal({ phone: tempValue });
+          // API call for phone
+          await updateGeneralProfile({ phone_number: tempValue });
+          break;
+        case "bio":
+          setBio(tempValue);
+          await updateProfessional({ summary: tempValue });
+          // API call for bio
+          await updateGeneralProfile({ bio: tempValue });
+          break;
+        case "achievements":
+          setAchievements(tempValue);
+          await updateAchievements(tempValue);
+          break;
+        case "jobTitle":
+          setJobTitle(tempValue);
+          await updateProfessional({ title: tempValue });
+          // API call for job title - applicant only
+          if (userType === "applicant") {
+            await updateApplicantProfile({ current_role: tempValue });
+          }
+          break;
+        case "yearsExperience":
+          setYearsExperience(tempValue);
+          await updateProfessional({ yearsExperience: tempValue });
+          // API call for years of experience - applicant only
+          if (userType === "applicant") {
+            await updateApplicantProfile({ years_experience: tempValue });
+          }
+          break;
+        case "summary":
+          setSummary(tempValue);
+          await updateProfessional({ summary: tempValue });
+          // API call for summary/bio
+          await updateGeneralProfile({ bio: tempValue });
+          break;
+        case "degree":
+          setDegree(tempValue);
+          await updateEducation({ degree: tempValue });
+          break;
+        case "major":
+          setMajor(tempValue);
+          await updateEducation({ major: tempValue });
+          break;
+        case "university":
+          setUniversity(tempValue);
+          await updateEducation({ university: tempValue });
         break;
       case "graduationYear":
         setGraduationYear(tempValue);
@@ -759,6 +783,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
     setEditingField(null);
     setTempValue("");
+    } catch (error) {
+      console.error("Failed to save field:", error);
+      alert("Failed to save changes. Please try again.");
+    }
   };
 
   const handleAddTag = async (
@@ -840,95 +868,208 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleAddInsight = async (question: string, answer: string) => {
-    if (profileInsights.length >= 3) {
-      alert("You can only have up to 3 profile insights");
-      return;
+    try {
+      if (profileInsights.length >= 3) {
+        alert("You can only have up to 3 profile insights");
+        return;
+      }
+      const newInsights = [...profileInsights, { question, answer }];
+      setProfileInsights(newInsights);
+      await updateInsights(newInsights);
+      // API call to sync with backend - role specific
+      if (userType === "applicant") {
+        await updateApplicantProfile({ insights: newInsights });
+      } else {
+        await updateSponsorProfile({ insights: newInsights });
+      }
+    } catch (error) {
+      console.error("Failed to add insight:", error);
+      alert("Failed to save insight. Please try again.");
     }
-    const newInsights = [...profileInsights, { question, answer }];
-    setProfileInsights(newInsights);
-    await updateInsights(newInsights);
   };
 
   const handleRemoveInsight = async (index: number) => {
-    const updatedInsights = profileInsights.filter((_, i) => i !== index);
-    setProfileInsights(updatedInsights);
-    await updateInsights(updatedInsights);
+    try {
+      const updatedInsights = profileInsights.filter((_, i) => i !== index);
+      setProfileInsights(updatedInsights);
+      await updateInsights(updatedInsights);
+      // API call to sync with backend - role specific
+      if (userType === "applicant") {
+        await updateApplicantProfile({ insights: updatedInsights });
+      } else {
+        await updateSponsorProfile({ insights: updatedInsights });
+      }
+    } catch (error) {
+      console.error("Failed to remove insight:", error);
+      alert("Failed to remove insight. Please try again.");
+    }
   };
 
   const handleUpdateInsight = async (index: number, answer: string) => {
-    const updated = [...profileInsights];
-    updated[index].answer = answer;
-    setProfileInsights(updated);
-    await updateInsights(updated);
+    try {
+      const updated = [...profileInsights];
+      updated[index].answer = answer;
+      setProfileInsights(updated);
+      await updateInsights(updated);
+      // API call to sync with backend - role specific
+      if (userType === "applicant") {
+        await updateApplicantProfile({ insights: updated });
+      } else {
+        await updateSponsorProfile({ insights: updated });
+      }
+    } catch (error) {
+      console.error("Failed to update insight:", error);
+      alert("Failed to save insight. Please try again.");
+    }
   };
 
   // Handlers for Professional Experiences
   const handleAddExperience = async () => {
-    const newExperience: ProfessionalExperience = {
-      id: Date.now().toString(),
-      jobTitle: "",
-      company: "",
-      startDate: "",
-      endDate: "",
-      current: false,
-      description: "",
-    };
-    const updated = [...professionalExperiences, newExperience];
-    setProfessionalExperiences(updated);
-    setExpandedExperience(newExperience.id);
-    setEditingExperience(newExperience.id);
-    await updateProfessionalExperiences(updated);
+    try {
+      const newExperience: ProfessionalExperience = {
+        id: Date.now().toString(),
+        jobTitle: "",
+        company: "",
+        startDate: "",
+        endDate: "",
+        current: false,
+        description: "",
+      };
+      const updated = [...professionalExperiences, newExperience];
+      setProfessionalExperiences(updated);
+      setExpandedExperience(newExperience.id);
+      setEditingExperience(newExperience.id);
+      await updateProfessionalExperiences(updated);
+    } catch (error) {
+      console.error("Failed to add experience:", error);
+      alert("Failed to add experience. Please try again.");
+    }
   };
 
   const handleUpdateExperience = async (
     id: string,
     updates: Partial<ProfessionalExperience>,
   ) => {
-    const updated = professionalExperiences.map((exp) =>
-      exp.id === id ? { ...exp, ...updates } : exp,
-    );
-    setProfessionalExperiences(updated);
-    await updateProfessionalExperiences(updated);
+    try {
+      const updated = professionalExperiences.map((exp) =>
+        exp.id === id ? { ...exp, ...updates } : exp,
+      );
+      setProfessionalExperiences(updated);
+      await updateProfessionalExperiences(updated);
+      
+      // API call to sync with backend - applicant only
+      if (userType === "applicant") {
+        const professional_experiences = updated.map((exp) => ({
+          jobTitle: exp.jobTitle,
+          company: exp.company,
+          startDate: exp.startDate,
+          endDate: exp.current ? undefined : (exp.endDate || undefined),
+          description: exp.description || "",
+          current: exp.current,
+        }));
+        await updateApplicantProfile({ professional_experiences });
+      }
+    } catch (error) {
+      console.error("Failed to update experience:", error);
+      alert("Failed to save experience. Please try again.");
+    }
   };
 
   const handleDeleteExperience = async (id: string) => {
-    const updated = professionalExperiences.filter((exp) => exp.id !== id);
-    setProfessionalExperiences(updated);
-    await updateProfessionalExperiences(updated);
+    try {
+      const updated = professionalExperiences.filter((exp) => exp.id !== id);
+      setProfessionalExperiences(updated);
+      await updateProfessionalExperiences(updated);
+      
+      // API call to sync with backend - applicant only
+      if (userType === "applicant") {
+        const professional_experiences = updated.map((exp) => ({
+          jobTitle: exp.jobTitle,
+          company: exp.company,
+          startDate: exp.startDate,
+          endDate: exp.current ? undefined : (exp.endDate || undefined),
+          description: exp.description || "",
+          current: exp.current,
+        }));
+        await updateApplicantProfile({ professional_experiences });
+      }
+    } catch (error) {
+      console.error("Failed to delete experience:", error);
+      alert("Failed to delete experience. Please try again.");
+    }
   };
 
   // Handlers for Education Entries
   const handleAddEducation = async () => {
-    const newEducation: EducationEntry = {
-      id: Date.now().toString(),
-      degree: "",
-      major: "",
-      university: "",
-      graduationYear: "",
-      gpa: "",
-    };
-    const updated = [...educationEntries, newEducation];
-    setEducationEntries(updated);
-    setExpandedEducation(newEducation.id);
-    setEditingEducation(newEducation.id);
-    await updateEducationEntries(updated);
+    try {
+      const newEducation: EducationEntry = {
+        id: Date.now().toString(),
+        degree: "",
+        major: "",
+        university: "",
+        graduationYear: "",
+        gpa: "",
+      };
+      const updated = [...educationEntries, newEducation];
+      setEducationEntries(updated);
+      setExpandedEducation(newEducation.id);
+      setEditingEducation(newEducation.id);
+      await updateEducationEntries(updated);
+    } catch (error) {
+      console.error("Failed to add education:", error);
+      alert("Failed to add education. Please try again.");
+    }
   };
 
   const handleUpdateEducation = async (
     id: string,
     updates: Partial<EducationEntry>,
   ) => {
-    const updated = educationEntries.map((edu) =>
-      edu.id === id ? { ...edu, ...updates } : edu,
-    );
-    setEducationEntries(updated);
-    await updateEducationEntries(updated);
+    try {
+      const updated = educationEntries.map((edu) =>
+        edu.id === id ? { ...edu, ...updates } : edu,
+      );
+      setEducationEntries(updated);
+      await updateEducationEntries(updated);
+      
+      // API call to sync with backend - applicant only
+      if (userType === "applicant") {
+        const education_entries = updated.map(edu => ({
+          degree: edu.degree,
+          major: edu.major,
+          university: edu.university,
+          graduationYear: edu.graduationYear,
+          gpa: edu.gpa,
+        }));
+        await updateApplicantProfile({ education_entries });
+      }
+    } catch (error) {
+      console.error("Failed to update education:", error);
+      alert("Failed to save education. Please try again.");
+    }
   };
 
   const handleDeleteEducation = async (id: string) => {
-    const updated = educationEntries.filter((edu) => edu.id !== id);
-    setEducationEntries(updated);
-    await updateEducationEntries(updated);
+    try {
+      const updated = educationEntries.filter((edu) => edu.id !== id);
+      setEducationEntries(updated);
+      await updateEducationEntries(updated);
+      
+      // API call to sync with backend - applicant only
+      if (userType === "applicant") {
+        const education_entries = updated.map(edu => ({
+          degree: edu.degree,
+          major: edu.major,
+          university: edu.university,
+          graduationYear: edu.graduationYear,
+          gpa: edu.gpa,
+        }));
+        await updateApplicantProfile({ education_entries });
+      }
+    } catch (error) {
+      console.error("Failed to delete education:", error);
+      alert("Failed to delete education. Please try again.");
+    }
   };
 
   // Handlers for Certifications
@@ -1404,6 +1545,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const confirmLogout = async () => {
     setShowLogoutModal(false);
+    try {
+      // Call backend logout to invalidate session
+      await logout();
+    } catch (error) {
+      console.warn("[ProfileView] Backend logout failed:", error);
+      // Continue with local logout even if backend call fails
+    }
+    // Clear local auth state and user data
     await clearAuth();
     await clearUserProfileData();
     router.replace("/splash");

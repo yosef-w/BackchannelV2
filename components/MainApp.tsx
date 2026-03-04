@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import { useLocalSearchParams } from "expo-router";
 import {
     Bell,
     Briefcase,
@@ -100,6 +101,7 @@ function NavItem({
 }
 
 export function MainApp({ userType }: MainAppProps) {
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [activeView, setActiveView] = useState<ViewType>("home");
   const [previousView, setPreviousView] = useState<ViewType>("home");
   const [isBottomNavHidden, setIsBottomNavHidden] = useState(false);
@@ -107,6 +109,22 @@ export function MainApp({ userType }: MainAppProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<
     number | null
   >(null);
+
+  // Handle initial tab from URL parameter
+  useEffect(() => {
+    if (params.tab) {
+      const validTabs: ViewType[] = [
+        "home",
+        "matches",
+        "jobs",
+        "messages",
+        "profile",
+      ];
+      if (validTabs.includes(params.tab as ViewType)) {
+        setActiveView(params.tab as ViewType);
+      }
+    }
+  }, [params.tab]);
 
   const handleShowPublicProfile = (userData: any) => {
     setPublicProfileData(userData);

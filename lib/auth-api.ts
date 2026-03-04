@@ -106,37 +106,112 @@ export const authApi = {
    * Login with email and password
    */
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>("/api/login/", { email, password }, true); // Skip auth header
+    const response = await api.post<LoginResponse>(
+      "/api/login/",
+      { email, password },
+      true,
+    ); // Skip auth header
     return response;
   },
 
   /**
-   * Register new user account
+   * Register new applicant (used during questionnaire)
    */
   register: async (
     firstName: string,
     lastName: string,
     email: string,
-    password: string
+    password: string,
   ): Promise<RegisterResponse> => {
-    return api.post<RegisterResponse>("/api/register/", {
-      firstName,
-      lastName,
-      email,
-      password,
-    });
+    return api.post<RegisterResponse>(
+      "/api/register/",
+      {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password,
+      },
+      true,
+    ); // Skip auth header for registration
+  },
+
+  /**
+   * Register new sponsor
+   */
+  registerSponsor: async (
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string,
+  ): Promise<RegisterResponse> => {
+    return api.post<RegisterResponse>(
+      "/api/register-sponsor/",
+      {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password,
+      },
+      true,
+    ); // Skip auth header for registration
   },
 
   /**
    * Create complete user profile with onboarding data
-   * For now, skip API call and return mock tokens since backend isn't ready
+   * Maps frontend questionnaire data to backend registration endpoints
    */
-  createProfile: async (data: CreateProfileRequest): Promise<RegisterResponse> => {
-    return {
-      access_token: 'mock_access_token',
-      refresh_token: 'mock_refresh_token',
-      user_type: data.userType,
+  createProfile: async (
+    data: CreateProfileRequest,
+  ): Promise<RegisterResponse> => {
+    // Derive username from email (take part before @)
+    const username = data.email.split("@")[0];
+
+    const basePayload = {
+      username,
+      first_name: data.firstName,
+      last_name: data.lastName,
+      email: data.email,
+      password: data.password,
     };
+
+    if (data.userType === "applicant") {
+      // Call applicant registration endpoint
+      return api.post<RegisterResponse>(
+        "/api/register/",
+        {
+          ...basePayload,
+          role: "Applicant",
+          industry: data.profileData?.targetIndustry,
+          current_role: data.profileData?.currentRole,
+          positions: data.profileData?.seekingPosition
+            ? [data.profileData.seekingPosition]
+            : [],
+          skills: data.profileData?.skills || [],
+          insights: data.profileData?.insights || [],
+        },
+        true,
+      );
+    } else {
+      // Call sponsor registration endpoint
+      return api.post<RegisterResponse>(
+        "/api/register-sponsor/",
+        {
+          ...basePayload,
+          role: "Sponsor",
+          company: data.profileData?.company,
+          job_title: data.profileData?.jobTitle,
+          duration: data.profileData?.yearsAtCompany,
+          open_to_referrals:
+            data.profileData?.openToReferrals === "Yes, absolutely",
+          referral_experience: data.profileData?.pastReferrals === "Frequently",
+          financial_reward:
+            data.profileData?.referralBonus === "Yes" ? "yes" : "no",
+          insights: data.profileData?.insights || [],
+          work_email: data.profileData?.workEmail,
+        },
+        true,
+      );
+    }
   },
 
   /**
@@ -144,6 +219,21 @@ export const authApi = {
    */
   logout: async (): Promise<void> => {
     return api.post<void>("/api/logout/");
+  },
+
+  /**
+   * Refresh access token using refresh token
+   */
+  refreshToken: async (
+    refreshToken: string,
+  ): Promise<{ access_token: string; refresh_token: string }> => {
+    return api.post<{ access_token: string; refresh_token: string }>(
+      "/api/token/refresh/",
+      {
+        refresh: refreshToken,
+      },
+      true,
+    ); // Skip auth header for token refresh
   },
 
   /**
@@ -158,7 +248,7 @@ export const authApi = {
    */
   resetPassword: async (
     token: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<{ message: string }> => {
     return api.post<{ message: string }>("/api/reset-password/", {
       token,
@@ -180,31 +270,32 @@ export const authApi = {
    * - PATCH /api/profile/update/ (basic fields)
    * - PATCH /api/profile/applicant/update/ (applicant-specific)
    * - PATCH /api/profile/sponsor/update/ (sponsor-specific)
-   * 
+   *
    * For now, skip API call since backend isn't ready
    */
-  updateProfile: async (data: UpdateProfileRequest): Promise<ProfileResponse> => {
-    // Return mock response matching actual backend structure
+  updateProfile: async (
+    data: UpdateProfileRequest,
+  ): Promise<ProfileResponse> => {
+    // Return mock response matching ProfileResponse interface
     return {
-      USER_ID: 'mock-user-id',
-      USERNAME: 'user',
-      EMAIL: data.personal?.email || '',
-      IS_ACTIVE: true,
-      CREATED_AT: new Date().toISOString(),
-      LAST_LOGIN: null,
-      PROFILE_ID: 'mock-profile-id',
-      LOCATION: null,
-      IS_JOB_SEEKER: true,
-      IS_SPONSOR: false,
-      PHOTO_URL: null,
-      PHONE_NUMBER: data.personal?.phone || null,
-      FIRST_NAME: data.personal?.firstName || null,
-      LAST_NAME: data.personal?.lastName || null,
-      DATE_OF_BIRTH: null,
-      ROLE_TYPE: null,
-      INTERNATIONAL_CODE: null,
-      PROFILE_CREATED_AT: new Date().toISOString(),
-      PROFILE_UPDATED_AT: new Date().toISOString(),
+      id: "mock-user-id",
+      userType: "applicant",
+      firstName: data.personal?.firstName || "",
+      lastName: data.personal?.lastName || "",
+      email: data.personal?.email || "",
+      phone: data.personal?.phone,
+      linkedin: data.personal?.linkedin,
+      portfolio: data.personal?.portfolio,
+      address: data.personal?.address,
+      professional: data.professional,
+      education: data.education,
+      preferences: data.preferences,
+      demographics: data.demographics,
+      skills: data.skills,
+      insights: data.insights,
+      resumeUrl: data.resumeUrl || undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   },
 };

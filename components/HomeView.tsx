@@ -1,4 +1,9 @@
-import { fetchJobsPack } from "@/lib/api";
+import {
+  fetchJobsPack,
+  fetchProfilesPack,
+  likeJob,
+  likeProfile,
+} from "@/lib/api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
@@ -1197,6 +1202,17 @@ export function HomeView({
   const setJobsLoading = useJobsStore((state) => state.setLoading);
   const setJobsError = useJobsStore((state) => state.setError);
 
+  // Sponsored jobs (for sponsors)
+  const sponsoredJobs = useJobsStore((state) => state.sponsoredJobs);
+  const activeSponsoredJobId = useJobsStore(
+    (state) => state.activeSponsoredJobId,
+  );
+
+  // Profiles state (for sponsors)
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+
   // Navigation state from store
   const currentProfileIndex = useJobsStore((state) => state.currentIndex);
   const setCurrentProfileIndex = useJobsStore((state) => state.setCurrentIndex);
@@ -1276,23 +1292,32 @@ export function HomeView({
 
   // Use profiles for sponsors, jobs for applicants
   const applicantJobs = userType === "applicant" ? jobs : mockJobs;
+  // For sponsors: use real profiles, don't fall back to mock data
+  const sponsorProfiles = userType === "sponsor" ? profiles : mockProfiles;
+  const hasNoApplicants =
+    userType === "sponsor" &&
+    sponsoredJobs.length > 0 &&
+    profiles.length === 0 &&
+    !profilesLoading;
 
-  console.log("[HomeView] Using jobs:", {
+  console.log("[HomeView] Using data:", {
     userType,
     apiJobsCount: jobs.length,
+    apiProfilesCount: profiles.length,
     usingApiJobs: jobs.length > 0,
+    usingApiProfiles: profiles.length > 0,
     currentIndex: currentProfileIndex,
   });
 
   const currentData =
     userType === "sponsor"
-      ? mockProfiles[currentProfileIndex % mockProfiles.length]
+      ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
       : applicantJobs[currentProfileIndex % applicantJobs.length];
   const isDeckFinished = progress > DECK_SIZE;
 
-  // Fetch jobs on mount (only if we don't have recent data)
+  // Fetch jobs/profiles on mount (only if we don't have recent data)
   useEffect(() => {
-    const loadJobs = async () => {
+    const loadData = async () => {
       if (userType === "applicant") {
         // Check if we already have data and it's recent (within last 5 minutes)
         const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -1324,11 +1349,76 @@ export function HomeView({
         } finally {
           setJobsLoading(false);
         }
+      } else if (userType === "sponsor") {
+        // Fetch profiles for sponsors only if they have a sponsored job
+        if (!activeSponsoredJobId) {
+          console.log(
+            "[HomeView] No sponsored jobs yet, skipping profile fetch",
+          );
+          setProfilesLoading(false);
+          return;
+        }
+
+        try {
+          console.log(
+            "[HomeView] Fetching profiles for sponsored job:",
+            activeSponsoredJobId,
+          );
+          setProfilesLoading(true);
+          const response = await fetchProfilesPack(activeSponsoredJobId);
+          console.log(
+            "[HomeView] Profile pack response:",
+            JSON.stringify(response, null, 2),
+          );
+          console.log(
+            "[HomeView] Fetched",
+            response.profiles.length,
+            "profiles from API",
+          );
+          console.log("[HomeView] First profile sample:", response.profiles[0]);
+
+          // Transform API response to match UI expectations
+          const transformedProfiles = response.profiles.map((profile: any) => {
+            // Parse JSON strings
+            const skills = profile.SKILLS ? JSON.parse(profile.SKILLS) : [];
+            const positions = profile.POSITIONS
+              ? JSON.parse(profile.POSITIONS)
+              : [];
+
+            return {
+              ...profile, // Keep all original fields
+              id: profile.USER_ID,
+              name: `${profile.FIRST_NAME} ${profile.LAST_NAME}`.trim(),
+              location: profile.LOCATION || "",
+              skills: skills,
+              desiredRole: positions[0] || "Open to opportunities",
+              bio: profile.REASON || "Looking for new opportunities",
+              image:
+                profile.PHOTO_URL ||
+                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+              company: "", // Applicants don't have company
+            };
+          });
+
+          console.log(
+            "[HomeView] Transformed first profile:",
+            transformedProfiles[0],
+          );
+          setProfiles(transformedProfiles);
+        } catch (err) {
+          console.error("[HomeView] Failed to fetch profiles:", err);
+          setProfilesError(
+            err instanceof Error ? err.message : "Failed to fetch profiles",
+          );
+          // Fall back to mock data on error
+        } finally {
+          setProfilesLoading(false);
+        }
       }
     };
 
-    loadJobs();
-  }, [userType]);
+    loadData();
+  }, [userType, activeSponsoredJobId]); // Re-fetch when sponsored job changes
 
   // Update local loading state based on store loading and whether we have data
   useEffect(() => {
@@ -1338,10 +1428,11 @@ export function HomeView({
         (jobsLoading && jobs.length === 0) || jobs.length === 0;
       setIsLoading(shouldLoad);
     } else {
-      // For sponsors, we use mock data so no loading needed
-      setIsLoading(false);
+      // For sponsors, show loading while fetching profiles
+      const shouldLoad = profilesLoading && profiles.length === 0;
+      setIsLoading(shouldLoad);
     }
-  }, [userType, jobsLoading, jobs.length]);
+  }, [userType, jobsLoading, jobs.length, profilesLoading, profiles.length]);
 
   const toggleFlip = () => {
     // console.log("[HomeView] toggleFlip called");
@@ -1363,7 +1454,7 @@ export function HomeView({
     }
   };
 
-  const handleSwipe = (isAccept: boolean) => {
+  const handleSwipe = async (isAccept: boolean) => {
     // Check profile completeness for applicants before any swipe action (unless they're a tester)
     if (
       userType === "applicant" &&
@@ -1388,6 +1479,55 @@ export function HomeView({
     }
 
     if (isAccept) {
+      // Call like API when accepting
+      try {
+        if (userType === "applicant") {
+          // Applicant liking a job
+          const jobId = currentData?.id;
+          if (jobId) {
+            console.log("[HomeView] Applicant liking job:", jobId);
+            const response = await likeJob(jobId);
+            console.log("[HomeView] Like job response:", response);
+
+            // Show match celebration if mutual like
+            if (response.matched) {
+              console.log("[HomeView] 🎉 It's a match!");
+              // TODO: Show special match modal/animation
+            }
+          } else {
+            console.warn("[HomeView] No job ID found for current data");
+          }
+        } else {
+          // Sponsor liking a profile
+          const applicantUserId = currentData?.USER_ID || currentData?.id;
+          if (applicantUserId) {
+            console.log("[HomeView] Sponsor liking profile:", applicantUserId);
+            console.log(
+              "[HomeView] Active sponsored job:",
+              activeSponsoredJobId,
+            );
+            const response = await likeProfile(
+              String(applicantUserId),
+              activeSponsoredJobId || undefined,
+            );
+            console.log("[HomeView] Like profile response:", response);
+
+            // Show match celebration if mutual like
+            if (response.matched) {
+              console.log("[HomeView] 🎉 It's a match!");
+              // TODO: Show special match modal/animation
+            }
+          } else {
+            console.warn(
+              "[HomeView] No applicant user ID found for current data",
+            );
+          }
+        }
+      } catch (err) {
+        console.error("[HomeView] Failed to record like:", err);
+        // Continue with UI update even if API fails
+      }
+
       setShowCelebration(true);
       setTimeout(() => {
         setShowCelebration(false);
@@ -1522,8 +1662,96 @@ export function HomeView({
                 <Text style={styles.returnBtnText}>Refresh Deck</Text>
               </TouchableOpacity>
             </Animated.View>
+          ) : userType === "sponsor" && sponsoredJobs.length === 0 ? (
+            /* Empty state for sponsors with no sponsored jobs */
+            <Animated.View entering={FadeInUp} style={styles.emptyState}>
+              <View style={styles.emptyIconCircle}>
+                <Briefcase color="#000" size={32} />
+              </View>
+              <Text style={styles.emptyTitle}>Start Your Journey</Text>
+              <Text style={styles.emptySub}>
+                To see applicant profiles, you need to sponsor or create a job
+                first.
+                {"\n\n"}
+                Browse available jobs from our ATS partners or create your own
+                job posting to start connecting with talented candidates.
+              </Text>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                onPress={() => {
+                  console.log("[HomeView] Navigate to jobs board");
+                  router.push("/dashboard?mode=sponsor&tab=jobs");
+                }}
+              >
+                <Briefcase color="#FFF" size={20} />
+                <Text style={styles.primaryBtnText}>Browse Jobs</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          ) : hasNoApplicants ? (
+            /* Empty state for sponsors whose job has no applicant interest yet */
+            <Animated.View entering={FadeInUp} style={styles.emptyState}>
+              <View style={styles.emptyIconCircle}>
+                <Users color="#000" size={32} />
+              </View>
+              <Text style={styles.emptyTitle}>No Applicants Yet</Text>
+              <Text style={styles.emptySub}>
+                Your sponsored job is live, but no applicants have shown
+                interest yet.
+                {"\n\n"}
+                This is normal for new postings! Check back soon as candidates
+                discover your opportunity.
+              </Text>
+              <View style={styles.emptyActionsRow}>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={() => {
+                    console.log("[HomeView] Refresh profiles");
+                    // Force re-fetch
+                    setProfiles([]);
+                    const loadData = async () => {
+                      if (activeSponsoredJobId) {
+                        try {
+                          setProfilesLoading(true);
+                          const response =
+                            await fetchProfilesPack(activeSponsoredJobId);
+                          setProfiles(response.profiles);
+                        } catch (err) {
+                          console.error(
+                            "[HomeView] Failed to fetch profiles:",
+                            err,
+                          );
+                        } finally {
+                          setProfilesLoading(false);
+                        }
+                      }
+                    };
+                    loadData();
+                  }}
+                >
+                  <RefreshCcw color="#000" size={18} />
+                  <Text style={styles.secondaryBtnText}>Refresh</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={() => {
+                    console.log(
+                      "[HomeView] Navigate to jobs board to sponsor more",
+                    );
+                    router.push("/dashboard?mode=sponsor&tab=jobs");
+                  }}
+                >
+                  <Briefcase color="#FFF" size={18} />
+                  <Text style={styles.primaryBtnText}>Sponsor Another Job</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
           ) : isLoading ? (
             <SkeletonCard />
+          ) : !currentData ? (
+            /* Safety check - no data available */
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>Loading...</Text>
+            </View>
           ) : (
             <View>
               <Animated.View style={[styles.cardContainer, mainAnimatedStyle]}>
@@ -3647,6 +3875,45 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   returnBtnText: { color: "#FFF", fontWeight: "700" },
+  primaryBtn: {
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+    flex: 1,
+  },
+  primaryBtnText: {
+    color: "#FFF",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  secondaryBtn: {
+    backgroundColor: "#F5F5F5",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  secondaryBtnText: {
+    color: "#000",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  emptyActionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    paddingHorizontal: 20,
+  },
   sponsorHeader: {
     flexDirection: "row",
     gap: 12,

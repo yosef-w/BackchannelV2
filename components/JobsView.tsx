@@ -1,54 +1,53 @@
-import { fetchJobsPack } from "@/lib/api";
+import { browseJobs, sponsorJob } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
-import type { Job } from "@/types/jobs";
-import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
+import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
-    Award,
-    Briefcase,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    DollarSign,
-    FileText,
-    Lock,
-    MapPin,
-    MessageCircle,
-    MoreHorizontal,
-    Plus,
-    Send,
-    Share,
-    SlidersHorizontal,
-    Sparkles,
-    ThumbsDown,
-    Users,
-    X,
-    Zap,
+  Award,
+  Briefcase,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  FileText,
+  Lock,
+  MapPin,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  Send,
+  Share,
+  SlidersHorizontal,
+  Sparkles,
+  ThumbsDown,
+  Users,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-    FadeOut,
-    SlideInDown,
-    SlideOutDown,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -61,6 +60,39 @@ interface SponsorInfo {
   image: string;
   canRefer: boolean;
 }
+
+// Empty State Component
+const EmptyState = ({
+  icon,
+  title,
+  description,
+  actionText,
+  onAction,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  actionText?: string;
+  onAction?: () => void;
+}) => (
+  <Animated.View
+    entering={FadeIn.duration(400)}
+    style={styles.emptyStateContainer}
+  >
+    <View style={styles.emptyStateIconContainer}>{icon}</View>
+    <Text style={styles.emptyStateTitle}>{title}</Text>
+    <Text style={styles.emptyStateDescription}>{description}</Text>
+    {actionText && onAction && (
+      <TouchableOpacity
+        style={styles.emptyStateButton}
+        onPress={onAction}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.emptyStateButtonText}>{actionText}</Text>
+      </TouchableOpacity>
+    )}
+  </Animated.View>
+);
 
 interface Applicant {
   id: string;
@@ -452,6 +484,8 @@ export function JobsView() {
   const getFilteredJobs = useJobsStore((state) => state.getFilteredJobs);
   const toggleFilter = useJobsStore((state) => state.toggleFilter);
   const storeFilters = useJobsStore((state) => state.filters);
+  const addSponsoredJob = useJobsStore((state) => state.addSponsoredJob);
+  const sponsoredJobs = useJobsStore((state) => state.sponsoredJobs);
 
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewJobDetails, setViewJobDetails] = useState<JobPosting | null>(null);
@@ -469,19 +503,75 @@ export function JobsView() {
 
   // Filter State
   const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState<"browse" | "sponsored">("browse");
+  const [displayLimit, setDisplayLimit] = useState(20);
 
-  // Fetch jobs on mount
+  // Fetch browse jobs on mount (for sponsors)
   useEffect(() => {
     const loadJobs = async () => {
       try {
+        // Skip if we already have jobs (prevents re-fetch on navigation)
+        if (jobs.length > 0) {
+          console.log("[JobsView] Jobs already loaded, skipping fetch");
+          return;
+        }
+
         setLoading(true);
-        const apiJobs = await fetchJobsPack();
-        const transformedJobs = apiJobs.map((job: JobApiResponse) =>
-          transformJobApiResponse(job),
+        console.log("[JobsView] Fetching browse jobs for sponsor...");
+        const response = await browseJobs({ limit: 50 });
+        console.log("[JobsView] Browse response:", response);
+
+        // Transform SILVER_JOBS (browse) response to Job format
+        const transformedJobs: Job[] = response.jobs.map(
+          (job: BrowseJobResponse) => {
+            // Check if this job was already sponsored (check by ATS job ID)
+            const isSponsored = sponsoredJobs.some(
+              (sj) => sj.atsJobId === job.JOB_ID,
+            );
+
+            return {
+              id: job.JOB_ID,
+              title: job.TITLE,
+              company: job.ORGANIZATION,
+              location: job.FULL_LOCATION,
+              locations: [job.FULL_LOCATION],
+              type: job.EMPLOYMENT_TYPES || "Full-time",
+              salary:
+                job.SALARY_ANNUAL_MIN && job.SALARY_ANNUAL_MAX
+                  ? `$${Math.round(job.SALARY_ANNUAL_MIN / 1000)}k - $${Math.round(job.SALARY_ANNUAL_MAX / 1000)}k`
+                  : "Competitive",
+              salaryMin: job.SALARY_ANNUAL_MIN,
+              salaryMax: job.SALARY_ANNUAL_MAX,
+              salaryCurrency: job.SALARY_CURRENCY || "USD",
+              postedAt: new Date(job.DATE_POSTED).toLocaleDateString(),
+              description: job.DESCRIPTION_TEXT || "",
+              summary: job.DESCRIPTION_TEXT?.substring(0, 150) || "",
+              skills: job.SKILLS
+                ? job.SKILLS.split(",").map((s) => s.trim())
+                : [],
+              highlights: [],
+              experienceLevel: job.EXPERIENCE_LEVEL || "Mid-level",
+              workArrangement: job.IS_REMOTE ? "Remote" : "On-site",
+              isRemote: job.IS_REMOTE,
+              url: "",
+              applicants: 0,
+              image:
+                "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+              currentSponsors: [],
+              benefits: [],
+              isSponsored, // Mark based on Zustand store
+            };
+          },
+        );
+
+        console.log("[JobsView] Transformed jobs:", transformedJobs.length);
+        console.log(
+          "[JobsView] Sponsored jobs from store:",
+          sponsoredJobs.length,
         );
         setJobs(transformedJobs);
       } catch (err) {
-        console.error("Failed to fetch jobs:", err);
+        console.error("Failed to fetch browse jobs:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch jobs");
       } finally {
         setLoading(false);
@@ -489,7 +579,7 @@ export function JobsView() {
     };
 
     loadJobs();
-  }, []);
+  }, [sponsoredJobs]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slideWidth = SCREEN_WIDTH - MODAL_PADDING * 2;
@@ -562,6 +652,7 @@ export function JobsView() {
   const [sponsorshipStep, setSponsorshipStep] = useState(1);
   const [relationship, setRelationship] = useState<string | null>(null);
   const [canRefer, setCanRefer] = useState<boolean | null>(null);
+  const [isSponsoring, setIsSponsoring] = useState(false);
 
   // Create Listing Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -608,8 +699,47 @@ export function JobsView() {
     setCanRefer(null);
   };
 
-  const handleConfirmSponsorship = () => {
-    setSponsorshipStep(2);
+  const handleConfirmSponsorship = async () => {
+    if (!selectedJob || !relationship || canRefer === null) {
+      console.error("[JobsView] Missing required sponsorship data");
+      return;
+    }
+
+    try {
+      setIsSponsoring(true);
+      console.log("[JobsView] Sponsoring job:", selectedJob.id);
+      const response = await sponsorJob(selectedJob.id, {
+        relationship,
+        canRefer,
+      });
+      console.log("[JobsView] Sponsorship successful:", response);
+      console.log("[JobsView] New JOB_POSTINGS ID:", response.job_id);
+
+      // Track sponsored job with BOTH IDs:
+      // - jobId: JOB_POSTINGS ID (for API calls like likeProfile)
+      // - atsJobId: SILVER_JOBS ID (for UI tracking/marking as sponsored)
+      addSponsoredJob({
+        jobId: response.job_id, // Use the NEW JOB_POSTINGS ID from backend
+        atsJobId: selectedJob.id, // Store original ATS job ID
+        title: selectedJob.title,
+        company: selectedJob.company,
+      });
+
+      // Update the job to mark it as sponsored
+      const updatedJobs = jobs.map((job) =>
+        job.id === selectedJob.id ? { ...job, isSponsored: true } : job,
+      );
+      setJobs(updatedJobs);
+
+      // Move to success step
+      setSponsorshipStep(2);
+    } catch (err) {
+      console.error("[JobsView] Failed to sponsor job:", err);
+      // You could show an error message to the user here
+      alert("Failed to sponsor job. Please try again.");
+    } finally {
+      setIsSponsoring(false);
+    }
   };
 
   const openCreateModal = () => {
@@ -688,61 +818,255 @@ export function JobsView() {
         </Animated.View>
 
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading jobs...</Text>
-          </View>
+          <Animated.View
+            entering={FadeIn.duration(300)}
+            style={styles.loadingContainer}
+          >
+            <View style={styles.loadingSpinner}>
+              <Sparkles size={32} color="#000" />
+            </View>
+            <Text style={styles.loadingText}>Finding opportunities...</Text>
+          </Animated.View>
         ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>Failed to load jobs</Text>
-            <Text style={styles.errorSubtext}>{error}</Text>
-          </View>
+          <EmptyState
+            icon={<Zap size={40} color="#000" strokeWidth={2.5} />}
+            title="Something went wrong"
+            description="We couldn't load jobs right now. Please try again in a moment."
+            actionText="Retry"
+            onAction={() => {
+              const loadJobs = async () => {
+                try {
+                  setLoading(true);
+                  const response = await browseJobs({ limit: 50 });
+                  const transformedJobs: Job[] = response.jobs.map(
+                    (job: BrowseJobResponse) => ({
+                      id: job.JOB_ID,
+                      title: job.TITLE,
+                      company: job.ORGANIZATION,
+                      location: job.FULL_LOCATION,
+                      locations: [job.FULL_LOCATION],
+                      type: job.EMPLOYMENT_TYPES || "Full-time",
+                      salary:
+                        job.SALARY_ANNUAL_MIN && job.SALARY_ANNUAL_MAX
+                          ? `$${Math.round(job.SALARY_ANNUAL_MIN / 1000)}k - $${Math.round(job.SALARY_ANNUAL_MAX / 1000)}k`
+                          : "Competitive",
+                      salaryMin: job.SALARY_ANNUAL_MIN,
+                      salaryMax: job.SALARY_ANNUAL_MAX,
+                      salaryCurrency: job.SALARY_CURRENCY || "USD",
+                      postedAt: new Date(job.DATE_POSTED).toLocaleDateString(),
+                      description: job.DESCRIPTION_TEXT,
+                      summary: job.DESCRIPTION_TEXT.substring(0, 150) + "...",
+                      requirements: "",
+                      experienceLevel: job.EXPERIENCE_LEVEL || "Not specified",
+                      skills: job.SKILLS
+                        ? job.SKILLS.split(",").map((s) => s.trim())
+                        : [],
+                      highlights: [],
+                      benefits: [],
+                      applicationUrl: "",
+                      companyLogo: "",
+                      isRemote: job.IS_REMOTE || false,
+                      workArrangement: job.IS_REMOTE ? "Remote" : "On-site",
+                      department: "",
+                      url: "",
+                      applicants: 0,
+                      image: "",
+                      currentSponsors: [],
+                      isSponsored: false,
+                    }),
+                  );
+                  setJobs(transformedJobs);
+                } catch (err) {
+                  console.error("Failed to fetch jobs:", err);
+                  setError(
+                    err instanceof Error ? err.message : "Failed to fetch jobs",
+                  );
+                } finally {
+                  setLoading(false);
+                }
+              };
+              loadJobs();
+            }}
+          />
         ) : filteredJobs.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No jobs found</Text>
-            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
-          </View>
+          <EmptyState
+            icon={
+              <SlidersHorizontal size={40} color="#000" strokeWidth={2.5} />
+            }
+            title="No jobs match your filters"
+            description="Try adjusting your search criteria to see more opportunities."
+            actionText="Clear Filters"
+            onAction={() => {
+              // Clear all filters
+              Object.keys(storeFilters).forEach((key) => {
+                const filterKey = key as keyof typeof storeFilters;
+                if (Array.isArray(storeFilters[filterKey])) {
+                  (storeFilters[filterKey] as string[]).forEach((option) => {
+                    toggleFilter(filterKey, option);
+                  });
+                }
+              });
+            }}
+          />
         ) : (
-          filteredJobs
-            .filter((j) => !j.isSponsored)
-            .map((job, index) => (
-              <Animated.View
-                key={job.id}
-                entering={FadeInUp.delay(100 + index * 40).duration(300)}
+          <>
+            {/* Tabs */}
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "browse" && styles.activeTab]}
+                onPress={() => setActiveTab("browse")}
               >
-                <JobCard
-                  job={job}
-                  onSponsor={() => handleOpenModal(job)}
-                  onPress={() => setViewJobDetails(job)}
-                  onMenu={() => setMenuJob(job)}
-                  onApplicantPress={() => handleApplicantPress(job)}
-                />
-              </Animated.View>
-            ))
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "browse" && styles.activeTabText,
+                  ]}
+                >
+                  Browse Jobs
+                </Text>
+                <View
+                  style={[
+                    styles.tabBadge,
+                    activeTab === "browse" && styles.activeTabBadge,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tabBadgeText,
+                      activeTab === "browse" && styles.activeTabBadgeText,
+                    ]}
+                  >
+                    {filteredJobs.filter((j) => !j.isSponsored).length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === "sponsored" && styles.activeTab,
+                ]}
+                onPress={() => setActiveTab("sponsored")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "sponsored" && styles.activeTabText,
+                  ]}
+                >
+                  My Sponsored
+                </Text>
+                <View
+                  style={[
+                    styles.tabBadge,
+                    activeTab === "sponsored" && styles.activeTabBadge,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tabBadgeText,
+                      activeTab === "sponsored" && styles.activeTabBadgeText,
+                    ]}
+                  >
+                    {filteredJobs.filter((j) => j.isSponsored).length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Browse Jobs Tab */}
+            {activeTab === "browse" && (
+              <>
+                {filteredJobs.filter((j) => !j.isSponsored).length === 0 ? (
+                  <EmptyState
+                    icon={
+                      <Briefcase size={40} color="#000" strokeWidth={2.5} />
+                    }
+                    title="No available jobs"
+                    description="Check back soon for new opportunities, or create your own listing."
+                    actionText="Create Listing"
+                    onAction={openCreateModal}
+                  />
+                ) : (
+                  <>
+                    {filteredJobs
+                      .filter((j) => !j.isSponsored)
+                      .slice(0, displayLimit)
+                      .map((job, index) => (
+                        <Animated.View
+                          key={job.id}
+                          entering={FadeInUp.delay(100 + index * 40).duration(
+                            300,
+                          )}
+                        >
+                          <JobCard
+                            job={job}
+                            onSponsor={() => handleOpenModal(job)}
+                            onPress={() => setViewJobDetails(job)}
+                            onMenu={() => setMenuJob(job)}
+                            onApplicantPress={() => handleApplicantPress(job)}
+                          />
+                        </Animated.View>
+                      ))}
+
+                    {/* Load More Button */}
+                    {filteredJobs.filter((j) => !j.isSponsored).length >
+                      displayLimit && (
+                      <TouchableOpacity
+                        style={styles.loadMoreBtn}
+                        onPress={() => setDisplayLimit((prev) => prev + 20)}
+                      >
+                        <Text style={styles.loadMoreText}>Load More Jobs</Text>
+                        <ChevronRight size={16} color="#000" />
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
+            {/* Sponsored Jobs Tab */}
+            {activeTab === "sponsored" && (
+              <>
+                {filteredJobs.filter((j) => j.isSponsored).length === 0 ? (
+                  <Animated.View
+                    entering={FadeIn.duration(400)}
+                    style={styles.simpleEmptyState}
+                  >
+                    <Sparkles size={24} color="#999" strokeWidth={2.5} />
+                    <View style={styles.simpleEmptyTextContainer}>
+                      <Text style={styles.simpleEmptyText}>
+                        You haven't sponsored any jobs yet
+                      </Text>
+                      <Text style={styles.simpleEmptySubtext}>
+                        Sponsor a listing to unlock applicant profiles and get
+                        featured
+                      </Text>
+                    </View>
+                  </Animated.View>
+                ) : (
+                  filteredJobs
+                    .filter((j) => j.isSponsored)
+                    .map((job, index) => (
+                      <Animated.View
+                        key={job.id}
+                        entering={FadeInUp.delay(250 + index * 40).duration(
+                          300,
+                        )}
+                      >
+                        <JobCard
+                          job={job}
+                          isSponsored
+                          onPress={() => setViewJobDetails(job)}
+                          onMenu={() => setMenuJob(job)}
+                          onApplicantPress={() => handleApplicantPress(job)}
+                        />
+                      </Animated.View>
+                    ))
+                )}
+              </>
+            )}
+          </>
         )}
-
-        <Animated.View
-          entering={FadeInDown.delay(200).duration(300)}
-          style={styles.sponsoredHeaderRow}
-        >
-          <Text style={styles.listSectionTitle}>Sponsored Listings</Text>
-        </Animated.View>
-
-        {filteredJobs
-          .filter((j) => j.isSponsored)
-          .map((job, index) => (
-            <Animated.View
-              key={job.id}
-              entering={FadeInUp.delay(250 + index * 40).duration(300)}
-            >
-              <JobCard
-                job={job}
-                isSponsored
-                onPress={() => setViewJobDetails(job)}
-                onMenu={() => setMenuJob(job)}
-                onApplicantPress={() => handleApplicantPress(job)}
-              />
-            </Animated.View>
-          ))}
       </ScrollView>
 
       {/* Sponsorship Modal */}
@@ -869,13 +1193,16 @@ export function JobsView() {
                 <TouchableOpacity
                   style={[
                     styles.confirmBtn,
-                    !isFormComplete && styles.confirmBtnDisabled,
+                    (!isFormComplete || isSponsoring) &&
+                      styles.confirmBtnDisabled,
                   ]}
-                  disabled={!isFormComplete}
+                  disabled={!isFormComplete || isSponsoring}
                   onPress={handleConfirmSponsorship}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.confirmBtnText}>Confirm Sponsorship</Text>
+                  <Text style={styles.confirmBtnText}>
+                    {isSponsoring ? "Sponsoring..." : "Confirm Sponsorship"}
+                  </Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -3259,50 +3586,199 @@ const styles = StyleSheet.create({
   gateBtnSecondary: { paddingVertical: 12, alignItems: "center" },
   gateBtnSecondaryText: { color: "#666", fontSize: 15, fontWeight: "600" },
 
-  // Loading, Error, and Empty States
-  loadingContainer: {
+  // Empty State Styles
+  emptyStateContainer: {
+    backgroundColor: "#FFF",
+    borderRadius: 24,
     padding: 40,
+    marginHorizontal: 4,
+    marginVertical: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  emptyStateIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F8F9FA",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
-  loadingText: {
-    fontSize: 16,
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 12,
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  emptyStateDescription: {
+    fontSize: 15,
     color: "#666",
-    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+    fontWeight: "500",
   },
-  errorContainer: {
-    padding: 40,
+  emptyStateButton: {
+    backgroundColor: "#000",
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 16,
+    minWidth: 160,
+    alignItems: "center",
+  },
+  emptyStateButtonText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+
+  // Loading State Styles
+  loadingContainer: {
+    padding: 60,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFF",
-    borderRadius: 20,
-    marginHorizontal: 20,
+    borderRadius: 24,
+    marginHorizontal: 4,
     marginVertical: 20,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
-  errorText: {
-    fontSize: 18,
-    color: "#000",
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  errorSubtext: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  emptyContainer: {
-    padding: 40,
+  loadingSpinner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F8F9FA",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 20,
   },
-  emptyText: {
-    fontSize: 18,
+  loadingText: {
+    fontSize: 16,
     color: "#000",
     fontWeight: "700",
-    marginBottom: 8,
+    letterSpacing: -0.2,
   },
-  emptySubtext: {
+
+  // Simple Empty State for Sponsored Section
+  simpleEmptyState: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#FAFAFA",
+    padding: 20,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  simpleEmptyTextContainer: {
+    flex: 1,
+  },
+  simpleEmptyText: {
     fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  simpleEmptySubtext: {
+    fontSize: 13,
     color: "#666",
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+
+  // Tabs
+  tabContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#F8F9FA",
+    borderWidth: 1.5,
+    borderColor: "#F0F0F0",
+  },
+  activeTab: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+    letterSpacing: -0.2,
+  },
+  activeTabText: {
+    color: "#FFF",
+  },
+  tabBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: "#E5E5E5",
+    minWidth: 24,
+    alignItems: "center",
+  },
+  activeTabBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  },
+  tabBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#666",
+  },
+  activeTabBadgeText: {
+    color: "#FFF",
+  },
+
+  // Load More Button
+  loadMoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 12,
+    marginTop: 16,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: "#E5E5E5",
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    letterSpacing: -0.2,
   },
 });

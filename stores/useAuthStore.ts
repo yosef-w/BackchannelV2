@@ -20,6 +20,7 @@ interface AuthState {
   setAuthTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   clearAuth: () => Promise<void>;
   loadTokens: () => Promise<void>;
+  refreshAccessToken: () => Promise<boolean>;
 }
 
 /**
@@ -124,6 +125,46 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: false,
         isLoading: false,
       });
+    }
+  },
+
+  /**
+   * Refresh the access token using the refresh token
+   * Returns true if successful, false if refresh fails (user needs to re-login)
+   */
+  refreshAccessToken: async () => {
+    const currentRefreshToken = useAuthStore.getState().refreshToken;
+
+    if (!currentRefreshToken) {
+      console.warn("[Auth] No refresh token available");
+      return false;
+    }
+
+    try {
+      console.log("[Auth] Refreshing access token...");
+      const { authApi } = await import("@/lib/auth-api");
+      const response = await authApi.refreshToken(currentRefreshToken);
+
+      // Check if response has valid tokens
+      if (!response || !response.access_token || !response.refresh_token) {
+        console.error("[Auth] Invalid refresh response - missing tokens");
+        await useAuthStore.getState().clearAuth();
+        return false;
+      }
+
+      // Update tokens with new ones
+      await useAuthStore
+        .getState()
+        .setAuthTokens(response.access_token, response.refresh_token);
+
+      console.log("[Auth] Token refresh successful");
+      return true;
+    } catch (error) {
+      console.error("[Auth] Token refresh failed:", error);
+      // Clear auth state on refresh failure - silently log user out
+      console.log("[Auth] Clearing expired tokens...");
+      await useAuthStore.getState().clearAuth();
+      return false;
     }
   },
 }));

@@ -8,6 +8,15 @@ interface JobsState {
   error: string | null;
   lastFetched: Date | null;
 
+  // Sponsored jobs tracking (for sponsors)
+  sponsoredJobs: Array<{
+    jobId: string; // JOB_POSTINGS ID (from backend response)
+    atsJobId: string; // Original ATS/SILVER_JOBS ID
+    title: string;
+    company: string;
+  }>;
+  activeSponsoredJobId: string | null;
+
   // Navigation state
   currentIndex: number;
   progress: number;
@@ -27,6 +36,15 @@ interface JobsState {
   setJobs: (jobs: Job[]) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
+
+  // Sponsored jobs actions
+  addSponsoredJob: (job: {
+    jobId: string;
+    atsJobId: string;
+    title: string;
+    company: string;
+  }) => void;
+  setActiveSponsoredJobId: (jobId: string | null) => void;
 
   // Navigation actions
   setCurrentIndex: (index: number) => void;
@@ -59,6 +77,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   isLoading: false,
   error: null,
   lastFetched: null,
+  sponsoredJobs: [],
+  activeSponsoredJobId: null,
   currentIndex: 0,
   progress: 1,
   filters: initialFilters,
@@ -74,6 +94,15 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   setError: (error) => set({ error, isLoading: false }),
+
+  // Sponsored jobs actions
+  addSponsoredJob: (job) =>
+    set((state) => ({
+      sponsoredJobs: [...state.sponsoredJobs, job],
+      activeSponsoredJobId: job.jobId, // Set as active when sponsored
+    })),
+
+  setActiveSponsoredJobId: (jobId) => set({ activeSponsoredJobId: jobId }),
 
   // Navigation actions
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
