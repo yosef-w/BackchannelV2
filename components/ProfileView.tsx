@@ -18,7 +18,7 @@ import {
   Plus,
   Target,
   Trash2,
-  X
+  X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -42,7 +42,12 @@ import Animated, {
 } from "react-native-reanimated";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
-import { logout, updateGeneralProfile, updateApplicantProfile, updateSponsorProfile } from "../lib/api";
+import {
+  logout,
+  updateApplicantProfile,
+  updateGeneralProfile,
+  updateSponsorProfile,
+} from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
   EducationEntry,
@@ -721,68 +726,71 @@ export function ProfileView({ userType }: ProfileViewProps) {
         case "university":
           setUniversity(tempValue);
           await updateEducation({ university: tempValue });
-        break;
-      case "graduationYear":
-        setGraduationYear(tempValue);
-        await updateEducation({ graduationYear: tempValue });
-        break;
-      case "gpa":
-        setGpa(tempValue);
-        await updateEducation({ gpa: tempValue });
-        break;
-      case "workAuthorization":
-        setWorkAuthorization(tempValue);
-        await updatePreferences({ workAuthorization: tempValue });
-        break;
-      case "willingToRelocate":
-        setWillingToRelocate(tempValue);
-        await updatePreferences({ willingToRelocate: tempValue });
-        break;
-      case "requiresSponsorship":
-        setRequiresSponsorship(tempValue);
-        await updatePreferences({ requiresSponsorship: tempValue });
-        break;
-      case "linkedin":
-        setLinkedin(tempValue);
-        await updatePersonal({ linkedin: tempValue });
-        break;
-      case "portfolio":
-        setPortfolio(tempValue);
-        await updatePersonal({ portfolio: tempValue });
-        break;
-      case "street":
-        setStreet(tempValue);
-        await updatePersonal({
-          address: { ...userProfileData.personal.address, street: tempValue },
-        });
-        break;
-      case "city":
-        setCity(tempValue);
-        await updatePersonal({
-          address: { ...userProfileData.personal.address, city: tempValue },
-        });
-        break;
-      case "state":
-        setState(tempValue);
-        await updatePersonal({
-          address: { ...userProfileData.personal.address, state: tempValue },
-        });
-        break;
-      case "zip":
-        setZip(tempValue);
-        await updatePersonal({
-          address: { ...userProfileData.personal.address, zip: tempValue },
-        });
-        break;
-      case "country":
-        setCountry(tempValue);
-        await updatePersonal({
-          address: { ...userProfileData.personal.address, country: tempValue },
-        });
-        break;
-    }
-    setEditingField(null);
-    setTempValue("");
+          break;
+        case "graduationYear":
+          setGraduationYear(tempValue);
+          await updateEducation({ graduationYear: tempValue });
+          break;
+        case "gpa":
+          setGpa(tempValue);
+          await updateEducation({ gpa: tempValue });
+          break;
+        case "workAuthorization":
+          setWorkAuthorization(tempValue);
+          await updatePreferences({ workAuthorization: tempValue });
+          break;
+        case "willingToRelocate":
+          setWillingToRelocate(tempValue);
+          await updatePreferences({ willingToRelocate: tempValue });
+          break;
+        case "requiresSponsorship":
+          setRequiresSponsorship(tempValue);
+          await updatePreferences({ requiresSponsorship: tempValue });
+          break;
+        case "linkedin":
+          setLinkedin(tempValue);
+          await updatePersonal({ linkedin: tempValue });
+          break;
+        case "portfolio":
+          setPortfolio(tempValue);
+          await updatePersonal({ portfolio: tempValue });
+          break;
+        case "street":
+          setStreet(tempValue);
+          await updatePersonal({
+            address: { ...userProfileData.personal.address, street: tempValue },
+          });
+          break;
+        case "city":
+          setCity(tempValue);
+          await updatePersonal({
+            address: { ...userProfileData.personal.address, city: tempValue },
+          });
+          break;
+        case "state":
+          setState(tempValue);
+          await updatePersonal({
+            address: { ...userProfileData.personal.address, state: tempValue },
+          });
+          break;
+        case "zip":
+          setZip(tempValue);
+          await updatePersonal({
+            address: { ...userProfileData.personal.address, zip: tempValue },
+          });
+          break;
+        case "country":
+          setCountry(tempValue);
+          await updatePersonal({
+            address: {
+              ...userProfileData.personal.address,
+              country: tempValue,
+            },
+          });
+          break;
+      }
+      setEditingField(null);
+      setTempValue("");
     } catch (error) {
       console.error("Failed to save field:", error);
       alert("Failed to save changes. Please try again.");
@@ -956,14 +964,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
       );
       setProfessionalExperiences(updated);
       await updateProfessionalExperiences(updated);
-      
+
       // API call to sync with backend - applicant only
       if (userType === "applicant") {
         const professional_experiences = updated.map((exp) => ({
           jobTitle: exp.jobTitle,
           company: exp.company,
           startDate: exp.startDate,
-          endDate: exp.current ? undefined : (exp.endDate || undefined),
+          endDate: exp.current ? undefined : exp.endDate || undefined,
           description: exp.description || "",
           current: exp.current,
         }));
@@ -980,14 +988,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
       const updated = professionalExperiences.filter((exp) => exp.id !== id);
       setProfessionalExperiences(updated);
       await updateProfessionalExperiences(updated);
-      
+
       // API call to sync with backend - applicant only
       if (userType === "applicant") {
         const professional_experiences = updated.map((exp) => ({
           jobTitle: exp.jobTitle,
           company: exp.company,
           startDate: exp.startDate,
-          endDate: exp.current ? undefined : (exp.endDate || undefined),
+          endDate: exp.current ? undefined : exp.endDate || undefined,
           description: exp.description || "",
           current: exp.current,
         }));
@@ -1031,10 +1039,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
       );
       setEducationEntries(updated);
       await updateEducationEntries(updated);
-      
+
       // API call to sync with backend - applicant only
       if (userType === "applicant") {
-        const education_entries = updated.map(edu => ({
+        const education_entries = updated.map((edu) => ({
           degree: edu.degree,
           major: edu.major,
           university: edu.university,
@@ -1054,10 +1062,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
       const updated = educationEntries.filter((edu) => edu.id !== id);
       setEducationEntries(updated);
       await updateEducationEntries(updated);
-      
+
       // API call to sync with backend - applicant only
       if (userType === "applicant") {
-        const education_entries = updated.map(edu => ({
+        const education_entries = updated.map((edu) => ({
           degree: edu.degree,
           major: edu.major,
           university: edu.university,

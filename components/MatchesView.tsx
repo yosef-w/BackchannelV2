@@ -1,41 +1,41 @@
-import { getMatches, getSponsorMatches, getLikedJobs } from "@/lib/api";
+import { getLikedJobs, getMatches, getSponsorMatches } from "@/lib/api";
 import { BlurView } from "expo-blur";
 import {
-    Award,
-    Briefcase,
-    CheckCircle,
-    DollarSign,
-    ExternalLink,
-    FileText,
-    Heart,
-    MapPin,
-    MessageCircle,
-    Send,
-    Sparkles,
-    Users,
-    Zap,
+  Award,
+  Briefcase,
+  CheckCircle,
+  DollarSign,
+  ExternalLink,
+  FileText,
+  Heart,
+  MapPin,
+  MessageCircle,
+  Send,
+  Sparkles,
+  Users,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInRight,
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
+  FadeInRight,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -411,7 +411,8 @@ export function MatchesView({
           console.log("[MatchesView] Applicant matches:", response);
 
           // API returns job_matches and profile_matches
-          const matches = response.job_matches || response.profile_matches || [];
+          const matches =
+            response.job_matches || response.profile_matches || [];
 
           // Transform API response to Match interface
           const transformedMatches: Match[] = matches.map((match) => ({
@@ -480,32 +481,38 @@ export function MatchesView({
       try {
         setLikedJobsLoading(true);
         console.log("[MatchesView] Fetching liked jobs for applicant...");
-        
+
         const response = await getLikedJobs();
         console.log("[MatchesView] Liked jobs response:", response);
 
         // API returns array directly or object with liked_jobs
-        const likedJobsArray = Array.isArray(response) ? response : (response.liked_jobs || []);
+        const likedJobsArray = Array.isArray(response)
+          ? response
+          : response.liked_jobs || [];
 
         // Transform API response to JobOpportunity interface
-        const transformedJobs: JobOpportunity[] = likedJobsArray.map((likedJob) => ({
-          id: Number(likedJob.id) || 0,
-          title: likedJob.job_title,
-          company: likedJob.company,
-          location: "Remote", // Not provided by API
-          salary: "Competitive",
-          type: "Full-time",
-          image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200",
-          description: `You liked this position on ${new Date(likedJob.created_at).toLocaleDateString()}`,
-          skills: [],
-          benefits: [],
-          sponsorInfo: {
-            name: "Pending",
-            role: "Sponsor",
-            image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-            canRefer: false,
-          },
-        }));
+        const transformedJobs: JobOpportunity[] = likedJobsArray.map(
+          (likedJob) => ({
+            id: Number(likedJob.id) || 0,
+            title: likedJob.job_title,
+            company: likedJob.company,
+            location: "Remote", // Not provided by API
+            salary: "Competitive",
+            type: "Full-time",
+            image:
+              "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200",
+            description: `You liked this position on ${new Date(likedJob.created_at).toLocaleDateString()}`,
+            skills: [],
+            benefits: [],
+            sponsorInfo: {
+              name: "Pending",
+              role: "Sponsor",
+              image:
+                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+              canRefer: false,
+            },
+          }),
+        );
 
         setLikedJobs(transformedJobs);
       } catch (err) {
@@ -669,7 +676,9 @@ export function MatchesView({
               <View style={styles.sectionHeader}>
                 <View>
                   <Text style={styles.listSectionTitle}>
-                    {likedJobsLoading ? "Loading..." : `Liked Jobs (${likedJobs.length})`}
+                    {likedJobsLoading
+                      ? "Loading..."
+                      : `Liked Jobs (${likedJobs.length})`}
                   </Text>
                 </View>
                 {likedJobs.length > 0 && (
@@ -680,7 +689,13 @@ export function MatchesView({
                 )}
               </View>
               {likedJobsError && (
-                <Text style={{ color: "#FF3B30", marginBottom: 12, paddingHorizontal: 20 }}>
+                <Text
+                  style={{
+                    color: "#FF3B30",
+                    marginBottom: 12,
+                    paddingHorizontal: 20,
+                  }}
+                >
                   {likedJobsError}
                 </Text>
               )}
@@ -718,7 +733,9 @@ export function MatchesView({
                         </Text>
                         <View style={styles.waitingBadge}>
                           <View style={styles.pulsingDot} />
-                          <Text style={styles.waitingText}>Waiting for sponsor...</Text>
+                          <Text style={styles.waitingText}>
+                            Waiting for sponsor...
+                          </Text>
                         </View>
                       </View>
                     </Animated.View>

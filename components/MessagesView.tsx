@@ -1,49 +1,53 @@
+import {
+  getConversationMessages,
+  getConversations,
+  sendMessage,
+} from "@/lib/api";
 import { BlurView } from "expo-blur";
 import {
-    ArrowLeft,
-    Award,
-    Briefcase,
-    Check,
-    CheckCircle,
-    ChevronRight,
-    ClipboardCheck,
-    Clock,
-    FileText,
-    MapPin,
-    MessageCircle,
-    Paperclip,
-    Send,
-    ShieldCheck,
-    User,
-    UserCheck,
-    X
+  ArrowLeft,
+  Award,
+  Briefcase,
+  Check,
+  CheckCircle,
+  ChevronRight,
+  ClipboardCheck,
+  Clock,
+  FileText,
+  MapPin,
+  MessageCircle,
+  Paperclip,
+  Send,
+  ShieldCheck,
+  User,
+  UserCheck,
+  X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
-    Image,
-    Keyboard,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Image,
+  Keyboard,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInDown,
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
-    useAnimatedKeyboard,
-    useAnimatedStyle,
+  FadeInDown,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getConversations, getConversationMessages, sendMessage } from "@/lib/api";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -357,7 +361,7 @@ export function MessagesView({
   // Infer current user ID from conversation participants
   // The "other participant" is everyone else, so current user is the one NOT in otherParticipant
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  
+
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
   >(externalSelectedConversationId?.toString() ?? null);
@@ -378,12 +382,14 @@ export function MessagesView({
   // Real data state
   const [conversations, setConversations] = useState<any[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(true);
-  const [conversationsError, setConversationsError] = useState<string | null>(null);
+  const [conversationsError, setConversationsError] = useState<string | null>(
+    null,
+  );
 
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
-  
+
   const [sendingMessage, setSendingMessage] = useState(false);
 
   // Fetch conversations on mount
@@ -392,12 +398,12 @@ export function MessagesView({
       try {
         setConversationsLoading(true);
         console.log("[MessagesView] Fetching conversations...");
-        
+
         const response = await getConversations();
         console.log("[MessagesView] Conversations response:", response);
 
         // Transform UPPERCASE Snowflake fields to our UI format
-        const transformedConversations = response.conversations.map(conv => ({
+        const transformedConversations = response.conversations.map((conv) => ({
           id: conv.CONVERSATION_ID,
           otherParticipant: {
             id: conv.APPLICANT_USER_ID, // Will update this based on current user
@@ -405,7 +411,8 @@ export function MessagesView({
             profileImageUrl: undefined, // Not in API response
           },
           lastMessage: undefined, // Not in API response
-          unreadCount: conv.APPLICANT_HAS_UNREAD || conv.SPONSOR_HAS_UNREAD ? 1 : 0,
+          unreadCount:
+            conv.APPLICANT_HAS_UNREAD || conv.SPONSOR_HAS_UNREAD ? 1 : 0,
           jobContext: {
             jobId: conv.JOB_ID,
             jobTitle: conv.TITLE,
@@ -417,40 +424,50 @@ export function MessagesView({
         setConversations(transformedConversations);
       } catch (err) {
         console.error("[MessagesView] Failed to fetch conversations:", err);
-        const errorMessage = err instanceof Error ? err.message : "Failed to fetch conversations";
-        
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch conversations";
+
         // If 404, backend might not have implemented endpoint yet or no conversations exist
-        if (errorMessage.includes("Not found") || errorMessage.includes("404")) {
-          console.log("[MessagesView] Conversations endpoint not available or no conversations exist - showing empty state");
+        if (
+          errorMessage.includes("Not found") ||
+          errorMessage.includes("404")
+        ) {
+          console.log(
+            "[MessagesView] Conversations endpoint not available or no conversations exist - showing empty state",
+          );
           setConversations([]);
           setConversationsError(null); // Don't show error for 404, just empty state
         } else {
           setConversationsError(errorMessage);
           // Fall back to mock data on other errors
-          setConversations(mockConversations.map(conv => ({
-            id: String(conv.id),
-            otherParticipant: {
+          setConversations(
+            mockConversations.map((conv) => ({
               id: String(conv.id),
-              name: conv.name,
-              role: conv.role,
-              company: conv.company,
-              profileImageUrl: conv.image,
-            },
-            lastMessage: {
-              content: conv.lastMessage,
-              senderId: String(conv.id),
+              otherParticipant: {
+                id: String(conv.id),
+                name: conv.name,
+                role: conv.role,
+                company: conv.company,
+                profileImageUrl: conv.image,
+              },
+              lastMessage: {
+                content: conv.lastMessage,
+                senderId: String(conv.id),
+                createdAt: new Date().toISOString(),
+                isRead: conv.unread === 0,
+              },
+              unreadCount: conv.unread,
+              jobContext: conv.appliedRole
+                ? {
+                    jobId: String(conv.id),
+                    jobTitle: conv.appliedRole,
+                    company: conv.company,
+                  }
+                : undefined,
+              applicationStatus: conv.applicationStatus,
               createdAt: new Date().toISOString(),
-              isRead: conv.unread === 0,
-            },
-            unreadCount: conv.unread,
-            jobContext: conv.appliedRole ? {
-              jobId: String(conv.id),
-              jobTitle: conv.appliedRole,
-              company: conv.company,
-            } : undefined,
-            applicationStatus: conv.applicationStatus,
-            createdAt: new Date().toISOString(),
-          })));
+            })),
+          );
         }
       } finally {
         setConversationsLoading(false);
@@ -473,38 +490,45 @@ export function MessagesView({
       try {
         setMessagesLoading(true);
         setMessagesError(null);
-        console.log("[MessagesView] Fetching messages for conversation:", selectedConversation);
-        
-        const response = await getConversationMessages(selectedConversation, { limit: 100 });
+        console.log(
+          "[MessagesView] Fetching messages for conversation:",
+          selectedConversation,
+        );
+
+        const response = await getConversationMessages(selectedConversation, {
+          limit: 100,
+        });
         console.log("[MessagesView] Messages response:", response);
 
         // Transform UPPERCASE Snowflake fields to our UI format
-        const transformedMessages = response.messages.map(msg => ({
+        const transformedMessages = response.messages.map((msg) => ({
           id: msg.MESSAGE_ID,
           senderId: msg.SENDER_ID,
           content: msg.BODY,
-          messageType: 'text' as const,
+          messageType: "text" as const,
           isRead: true, // Backend doesn't track per-message read status
           createdAt: msg.CREATED_AT,
         }));
 
         setMessages(transformedMessages);
-        
+
         // Infer current user ID from messages
         if (response.messages && response.messages.length > 0) {
           // Find current user by checking which sender appears most frequently
           const senderCounts: Record<string, number> = {};
-          response.messages.forEach(msg => {
-            senderCounts[msg.SENDER_ID] = (senderCounts[msg.SENDER_ID] || 0) + 1;
+          response.messages.forEach((msg) => {
+            senderCounts[msg.SENDER_ID] =
+              (senderCounts[msg.SENDER_ID] || 0) + 1;
           });
-          
+
           // Get the conversation to find the other participant
-          const conv = conversations.find(c => c.id === selectedConversation);
+          const conv = conversations.find((c) => c.id === selectedConversation);
           if (conv) {
             // Current user is the one NOT in otherParticipant
             const otherUserId = conv.otherParticipant.id;
             const allSenders = Object.keys(senderCounts);
-            const inferredCurrentUser = allSenders.find(id => id !== otherUserId) || allSenders[0];
+            const inferredCurrentUser =
+              allSenders.find((id) => id !== otherUserId) || allSenders[0];
             if (inferredCurrentUser && !currentUserId) {
               setCurrentUserId(inferredCurrentUser);
             }
@@ -513,19 +537,21 @@ export function MessagesView({
       } catch (err) {
         console.error("[MessagesView] Failed to fetch messages:", err);
         setMessagesError(
-          err instanceof Error ? err.message : "Failed to fetch messages"
+          err instanceof Error ? err.message : "Failed to fetch messages",
         );
         // Fall back to mock messages on error
-        setMessages(mockMessages.map((msg, idx) => ({
-          id: String(idx + 1),
-          senderId: msg.sender === 'me' ? 'current-user' : 'other',
-          content: msg.text,
-          messageType: 'text' as const,
-          isRead: true,
-          createdAt: new Date().toISOString(),
-        })));
+        setMessages(
+          mockMessages.map((msg, idx) => ({
+            id: String(idx + 1),
+            senderId: msg.sender === "me" ? "current-user" : "other",
+            content: msg.text,
+            messageType: "text" as const,
+            isRead: true,
+            createdAt: new Date().toISOString(),
+          })),
+        );
         if (!currentUserId) {
-          setCurrentUserId('current-user');
+          setCurrentUserId("current-user");
         }
       } finally {
         setMessagesLoading(false);
@@ -563,32 +589,32 @@ export function MessagesView({
 
     const tempMessage = {
       id: `temp-${Date.now()}`,
-      senderId: currentUserId || 'me',
+      senderId: currentUserId || "me",
       content: messageText.trim(),
-      messageType: 'text' as const,
+      messageType: "text" as const,
       isRead: false,
       createdAt: new Date().toISOString(),
     };
 
     // Optimistically add message to UI
-    setMessages(prev => [...prev, tempMessage]);
+    setMessages((prev) => [...prev, tempMessage]);
     const messageToSend = messageText.trim();
     setMessageText("");
 
     try {
       setSendingMessage(true);
       console.log("[MessagesView] Sending message:", messageToSend);
-      
+
       const response = await sendMessage(selectedConversation, messageToSend);
       console.log("[MessagesView] Message sent:", response);
 
       // Replace temp message with real message from server
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === tempMessage.id 
-            ? { ...tempMessage, id: response.message_id } 
-            : msg
-        )
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessage.id
+            ? { ...tempMessage, id: response.message_id }
+            : msg,
+        ),
       );
 
       // Scroll to bottom after sending
@@ -596,7 +622,7 @@ export function MessagesView({
     } catch (err) {
       console.error("[MessagesView] Failed to send message:", err);
       // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
       setMessageText(messageToSend); // Restore message text
       alert("Failed to send message. Please try again.");
     } finally {
@@ -814,16 +840,32 @@ export function MessagesView({
     const conversation = conversations.find(
       (c) => c.id === selectedConversation,
     );
-    
+
     if (!conversation) {
       return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <Text style={{ fontSize: 16, color: '#666' }}>Conversation not found</Text>
-          <TouchableOpacity 
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <Text style={{ fontSize: 16, color: "#666" }}>
+            Conversation not found
+          </Text>
+          <TouchableOpacity
             onPress={() => handleConversationSelect(null)}
-            style={{ marginTop: 16, padding: 12, backgroundColor: '#000', borderRadius: 12 }}
+            style={{
+              marginTop: 16,
+              padding: 12,
+              backgroundColor: "#000",
+              borderRadius: 12,
+            }}
           >
-            <Text style={{ color: '#FFF', fontWeight: '700' }}>Back to Messages</Text>
+            <Text style={{ color: "#FFF", fontWeight: "700" }}>
+              Back to Messages
+            </Text>
           </TouchableOpacity>
         </View>
       );
@@ -845,15 +887,24 @@ export function MessagesView({
               activeOpacity={0.7}
             >
               <Image
-                source={{ uri: conversation.otherParticipant.profileImageUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' }}
+                source={{
+                  uri:
+                    conversation.otherParticipant.profileImageUrl ||
+                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+                }}
                 style={styles.headerImage}
               />
               <View style={styles.headerInfo}>
-                <Text style={styles.headerName}>{conversation.otherParticipant.name}</Text>
+                <Text style={styles.headerName}>
+                  {conversation.otherParticipant.name}
+                </Text>
                 <Text style={styles.headerRole}>
-                  {conversation.otherParticipant.role && conversation.otherParticipant.company
+                  {conversation.otherParticipant.role &&
+                  conversation.otherParticipant.company
                     ? `${conversation.otherParticipant.role} @ ${conversation.otherParticipant.company}`
-                    : conversation.otherParticipant.role || conversation.otherParticipant.company || ''}
+                    : conversation.otherParticipant.role ||
+                      conversation.otherParticipant.company ||
+                      ""}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -885,31 +936,42 @@ export function MessagesView({
             onContentSizeChange={() => scrollToBottom(false)}
           >
             {messagesLoading ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: '#999', fontSize: 15 }}>Loading messages...</Text>
+              <View style={{ padding: 40, alignItems: "center" }}>
+                <Text style={{ color: "#999", fontSize: 15 }}>
+                  Loading messages...
+                </Text>
               </View>
             ) : messagesError ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: '#FF3B30', fontSize: 15, marginBottom: 8 }}>
+              <View style={{ padding: 40, alignItems: "center" }}>
+                <Text
+                  style={{ color: "#FF3B30", fontSize: 15, marginBottom: 8 }}
+                >
                   Failed to load messages
                 </Text>
-                <Text style={{ color: '#999', fontSize: 13, textAlign: 'center' }}>
+                <Text
+                  style={{ color: "#999", fontSize: 13, textAlign: "center" }}
+                >
                   {messagesError}
                 </Text>
               </View>
             ) : messages.length === 0 ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: '#999', fontSize: 15 }}>No messages yet</Text>
-                <Text style={{ color: '#BBB', fontSize: 13, marginTop: 8 }}>
+              <View style={{ padding: 40, alignItems: "center" }}>
+                <Text style={{ color: "#999", fontSize: 15 }}>
+                  No messages yet
+                </Text>
+                <Text style={{ color: "#BBB", fontSize: 13, marginTop: 8 }}>
                   Start the conversation!
                 </Text>
               </View>
             ) : (
               messages.map((message, index) => {
                 const isMyMessage = message.senderId === currentUserId;
-                const showTime = index === messages.length - 1 || 
-                  (index < messages.length - 1 && 
-                   new Date(messages[index + 1].createdAt).getTime() - new Date(message.createdAt).getTime() > 300000); // 5 mins
+                const showTime =
+                  index === messages.length - 1 ||
+                  (index < messages.length - 1 &&
+                    new Date(messages[index + 1].createdAt).getTime() -
+                      new Date(message.createdAt).getTime() >
+                      300000); // 5 mins
 
                 return (
                   <Animated.View
@@ -926,20 +988,19 @@ export function MessagesView({
                         isMyMessage ? styles.bubbleMe : styles.bubbleThem,
                       ]}
                     >
-                      <Text
-                        style={
-                          isMyMessage ? styles.txtMe : styles.txtThem
-                        }
-                      >
+                      <Text style={isMyMessage ? styles.txtMe : styles.txtThem}>
                         {message.content}
                       </Text>
                     </View>
                     {showTime && (
                       <Text style={styles.msgTime}>
-                        {new Date(message.createdAt).toLocaleTimeString('en-US', { 
-                          hour: 'numeric', 
-                          minute: '2-digit' 
-                        })}
+                        {new Date(message.createdAt).toLocaleTimeString(
+                          "en-US",
+                          {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          },
+                        )}
                       </Text>
                     )}
                   </Animated.View>
@@ -1330,11 +1391,15 @@ export function MessagesView({
                       <View style={styles.infoSection}>
                         <Text style={styles.infoSectionTitle}>KEY SKILLS</Text>
                         <View style={styles.skillsRow}>
-                          {conversation.skills.map((skill: string, idx: number) => (
-                            <View key={idx} style={styles.skillBadge}>
-                              <Text style={styles.skillBadgeText}>{skill}</Text>
-                            </View>
-                          ))}
+                          {conversation.skills.map(
+                            (skill: string, idx: number) => (
+                              <View key={idx} style={styles.skillBadge}>
+                                <Text style={styles.skillBadgeText}>
+                                  {skill}
+                                </Text>
+                              </View>
+                            ),
+                          )}
                         </View>
                       </View>
                     </View>
@@ -1563,9 +1628,7 @@ export function MessagesView({
     );
   }
 
-  const activeConversations = conversations.filter(
-    (conv) => !conv.isHidden,
-  );
+  const activeConversations = conversations.filter((conv) => !conv.isHidden);
   const hiddenConversations = conversations.filter((conv) => conv.isHidden);
 
   // Helper function to format time
@@ -1577,11 +1640,11 @@ export function MessagesView({
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'just now';
+    if (minutes < 1) return "just now";
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   return (
@@ -1595,25 +1658,34 @@ export function MessagesView({
       </View>
 
       {conversationsLoading ? (
-        <View style={{ padding: 40, alignItems: 'center' }}>
-          <Text style={{ color: '#999', fontSize: 15 }}>Loading conversations...</Text>
+        <View style={{ padding: 40, alignItems: "center" }}>
+          <Text style={{ color: "#999", fontSize: 15 }}>
+            Loading conversations...
+          </Text>
         </View>
       ) : conversationsError ? (
-        <View style={{ padding: 40, alignItems: 'center' }}>
-          <Text style={{ color: '#FF3B30', fontSize: 15, marginBottom: 8 }}>
+        <View style={{ padding: 40, alignItems: "center" }}>
+          <Text style={{ color: "#FF3B30", fontSize: 15, marginBottom: 8 }}>
             Failed to load conversations
           </Text>
-          <Text style={{ color: '#999', fontSize: 13, textAlign: 'center' }}>
+          <Text style={{ color: "#999", fontSize: 13, textAlign: "center" }}>
             {conversationsError}
           </Text>
         </View>
       ) : conversations.length === 0 ? (
-        <View style={{ padding: 40, alignItems: 'center' }}>
+        <View style={{ padding: 40, alignItems: "center" }}>
           <MessageCircle size={48} color="#DDD" style={{ marginBottom: 16 }} />
-          <Text style={{ color: '#999', fontSize: 17, fontWeight: '600', marginBottom: 8 }}>
+          <Text
+            style={{
+              color: "#999",
+              fontSize: 17,
+              fontWeight: "600",
+              marginBottom: 8,
+            }}
+          >
             No conversations yet
           </Text>
-          <Text style={{ color: '#BBB', fontSize: 14, textAlign: 'center' }}>
+          <Text style={{ color: "#BBB", fontSize: 14, textAlign: "center" }}>
             Start matching with people to begin conversations!
           </Text>
         </View>
@@ -1636,14 +1708,17 @@ export function MessagesView({
                       style={styles.convItem}
                     >
                       <View style={styles.imgWrapper}>
-                        <Image 
-                          source={{ 
-                            uri: conv.otherParticipant.profileImageUrl || 
-                                 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' 
-                          }} 
-                          style={styles.convImg} 
+                        <Image
+                          source={{
+                            uri:
+                              conv.otherParticipant.profileImageUrl ||
+                              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+                          }}
+                          style={styles.convImg}
                         />
-                        {conv.unreadCount > 0 && <View style={styles.dotIndicator} />}
+                        {conv.unreadCount > 0 && (
+                          <View style={styles.dotIndicator} />
+                        )}
                       </View>
                       <View style={styles.convMain}>
                         <View style={styles.convHeader}>
@@ -1651,13 +1726,16 @@ export function MessagesView({
                             {conv.otherParticipant.name}
                           </Text>
                           <Text style={styles.convTime}>
-                            {conv.lastMessage 
-                              ? formatTime(conv.lastMessage.createdAt).toUpperCase()
-                              : 'NEW'}
+                            {conv.lastMessage
+                              ? formatTime(
+                                  conv.lastMessage.createdAt,
+                                ).toUpperCase()
+                              : "NEW"}
                           </Text>
                         </View>
                         <Text style={styles.convMsg} numberOfLines={1}>
-                          {conv.lastMessage?.content || 'Start a conversation...'}
+                          {conv.lastMessage?.content ||
+                            "Start a conversation..."}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1685,29 +1763,34 @@ export function MessagesView({
                     >
                       <View style={styles.imgWrapper}>
                         <Image
-                          source={{ 
-                            uri: conv.otherParticipant.profileImageUrl || 
-                                 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' 
+                          source={{
+                            uri:
+                              conv.otherParticipant.profileImageUrl ||
+                              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
                           }}
                           style={[styles.convImg, styles.convImgHidden]}
                         />
                       </View>
                       <View style={styles.convMain}>
                         <View style={styles.convHeader}>
-                          <Text style={[styles.convName, styles.convNameHidden]}>
+                          <Text
+                            style={[styles.convName, styles.convNameHidden]}
+                          >
                             {conv.otherParticipant.name}
                           </Text>
                           <Text style={styles.convTime}>
-                            {conv.lastMessage 
-                              ? formatTime(conv.lastMessage.createdAt).toUpperCase()
-                              : 'OLD'}
+                            {conv.lastMessage
+                              ? formatTime(
+                                  conv.lastMessage.createdAt,
+                                ).toUpperCase()
+                              : "OLD"}
                           </Text>
                         </View>
                         <Text
                           style={[styles.convMsg, styles.convMsgHidden]}
                           numberOfLines={1}
                         >
-                          {conv.lastMessage?.content || 'No messages'}
+                          {conv.lastMessage?.content || "No messages"}
                         </Text>
                       </View>
                     </TouchableOpacity>

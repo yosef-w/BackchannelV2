@@ -440,7 +440,7 @@ export async function getSponsorMatches(): Promise<{
 /**
  * 💬 Get Conversations
  * Get all conversations for current user
- * 
+ *
  * Query params:
  * - includeHidden: boolean (default: false)
  * - page: number
@@ -465,14 +465,14 @@ export async function getConversations(): Promise<{
     TITLE: string;
   }>;
 }> {
-  return api.get('/api/messages/conversations/');
+  return api.get("/api/messages/conversations/");
 }
 
 /**
  * 💬 Get Conversation Messages
  * Get message history for a conversation
  * Backend returns UPPERCASE field names from Snowflake
- * 
+ *
  * Query params:
  * - conversation_id: uuid (required)
  * - limit: number (optional, default 50, max 200)
@@ -481,7 +481,7 @@ export async function getConversationMessages(
   conversationId: string,
   params?: {
     limit?: number;
-  }
+  },
 ): Promise<{
   messages: Array<{
     MESSAGE_ID: string;
@@ -494,9 +494,9 @@ export async function getConversationMessages(
   }>;
 }> {
   const queryParams = new URLSearchParams();
-  queryParams.append('conversation_id', conversationId);
+  queryParams.append("conversation_id", conversationId);
   if (params?.limit) {
-    queryParams.append('limit', String(params.limit));
+    queryParams.append("limit", String(params.limit));
   }
 
   return api.get(`/api/messages/history/?${queryParams.toString()}`);
@@ -505,18 +505,18 @@ export async function getConversationMessages(
 /**
  * 💬 Send Message
  * Send a message in a conversation
- * 
+ *
  * Body:
  * - conversation_id: string (required)
  * - body: string (required, 1-2000 characters)
  */
 export async function sendMessage(
   conversationId: string,
-  body: string
+  body: string,
 ): Promise<{
   message_id: string;
 }> {
-  return api.post('/api/messages/send/', {
+  return api.post("/api/messages/send/", {
     conversation_id: conversationId,
     body,
   });
@@ -525,16 +525,16 @@ export async function sendMessage(
 /**
  * 💬 Get or Create Conversation
  * Get or create a conversation between matched users
- * 
+ *
  * Body:
  * - job_id: string (required)
  * - participant_user_id: string (required)
- * 
+ *
  * Note: Users must be matched for the job
  */
 export async function getOrCreateConversation(
   jobId: string,
-  participantUserId: string
+  participantUserId: string,
 ): Promise<{
   conversation_id: string;
   job_id: string;
@@ -542,7 +542,7 @@ export async function getOrCreateConversation(
   sponsor_user_id: string;
   status: string;
 }> {
-  return api.post('/api/messages/conversations/get-or-create/', {
+  return api.post("/api/messages/conversations/get-or-create/", {
     job_id: jobId,
     participant_user_id: participantUserId,
   });
@@ -551,16 +551,14 @@ export async function getOrCreateConversation(
 /**
  * 💬 Unmatch Users
  * Unmatch users (closes the conversation)
- * 
+ *
  * Body:
  * - conversation_id: string (required)
  */
-export async function unmatchConversation(
-  conversationId: string
-): Promise<{
+export async function unmatchConversation(conversationId: string): Promise<{
   status: string;
 }> {
-  return api.post('/api/messages/unmatch/', {
+  return api.post("/api/messages/unmatch/", {
     conversation_id: conversationId,
   });
 }
@@ -573,7 +571,7 @@ export async function unmatchConversation(
  * 👤 Get Full Profile
  * Get full profile for the authenticated user
  * Uses GET /api/profile/
- * 
+ *
  * Returns UPPERCASE field names from Snowflake
  * Includes role-specific profile data
  */
@@ -585,7 +583,7 @@ export async function getProfile(): Promise<{
   LOCATION: string;
   PHOTO_URL: string | null;
   PHONE_NUMBER: string | null;
-  ROLE_TYPE: 'Applicant' | 'Sponsor';
+  ROLE_TYPE: "Applicant" | "Sponsor";
   IS_JOB_SEEKER: boolean;
   IS_SPONSOR: boolean;
   LINKED_IN: string | null;
@@ -610,14 +608,14 @@ export async function getProfile(): Promise<{
     OPEN_TO_REFERRALS: boolean;
   };
 }> {
-  return api.get('/api/profile/');
+  return api.get("/api/profile/");
 }
 
 /**
  * 👤 Get Basic Profile
  * Get basic user info for the authenticated user
  * Uses GET /api/profile/basic/
- * 
+ *
  * Returns subset of profile fields (USER_ID, EMAIL, FIRST_NAME, LAST_NAME, PHOTO_URL)
  */
 export async function getBasicProfile(): Promise<{
@@ -627,14 +625,14 @@ export async function getBasicProfile(): Promise<{
   LAST_NAME: string;
   PHOTO_URL: string | null;
 }> {
-  return api.get('/api/profile/basic/');
+  return api.get("/api/profile/basic/");
 }
 
 /**
  * 👤 Update General Profile
  * Update general profile fields (both applicant and sponsor)
  * Uses PATCH /api/profile/update/
- * 
+ *
  * Supported fields:
  * - location: string
  * - photo_url: string
@@ -672,14 +670,14 @@ export async function updateGeneralProfile(updates: {
   message: string;
   updated_fields: string[];
 }> {
-  return api.patch('/api/profile/update/', updates);
+  return api.patch("/api/profile/update/", updates);
 }
 
 /**
  * 👤 Update Applicant Profile
  * Update applicant-specific fields (includes insights, education, experience, etc.)
  * Uses PATCH /api/profile/applicant/update/
- * 
+ *
  * Supported fields:
  * - industry: string
  * - range: number (alias for range_miles)
@@ -750,14 +748,14 @@ export async function updateApplicantProfile(updates: {
   message: string;
   updated_fields: string[];
 }> {
-  return api.patch('/api/profile/applicant/update/', updates);
+  return api.patch("/api/profile/applicant/update/", updates);
 }
 
 /**
  * 👤 Update Sponsor Profile
  * Update sponsor-specific fields (includes insights)
  * Uses PATCH /api/profile/sponsor/update/
- * 
+ *
  * Supported fields:
  * - company: string
  * - job_title: string
@@ -790,24 +788,24 @@ export async function updateSponsorProfile(updates: {
   message: string;
   updated_fields: string[];
 }> {
-  return api.patch('/api/profile/sponsor/update/', updates);
+  return api.patch("/api/profile/sponsor/update/", updates);
 }
 
 /**
  * 👤 Get Public Profile
  * View another user's public profile
  * Uses GET /api/profiles/<user_id>/public/
- * 
+ *
  * Returns UPPERCASE field names from Snowflake
  * Excludes private fields (email, phone, street, zip)
- * 
+ *
  * @param userId - The user ID to fetch profile for
  */
 export async function getPublicProfile(userId: string): Promise<{
   USER_ID: string;
   FIRST_NAME: string;
   LAST_NAME: string;
-  ROLE_TYPE: 'Applicant' | 'Sponsor';
+  ROLE_TYPE: "Applicant" | "Sponsor";
   PHOTO_URL: string | null;
   LOCATION: string | null;
   BIO: string | null;
@@ -878,7 +876,7 @@ export async function getPublicProfile(userId: string): Promise<{
  * 🔔 Get Notifications
  * List notifications for the authenticated user (newest first, paginated)
  * Backend returns UPPERCASE field names from Snowflake
- * 
+ *
  * Query params:
  * - limit: number (optional, default 20)
  * - offset: number (optional, default 0)
@@ -892,7 +890,7 @@ export async function getNotifications(params?: {
   notifications: Array<{
     NOTIFICATION_ID: string;
     USER_ID: string;
-    TYPE: 'match' | 'message' | 'referral' | 'connection' | 'profile_update';
+    TYPE: "match" | "message" | "referral" | "connection" | "profile_update";
     TITLE: string;
     BODY: string;
     IS_READ: boolean;
@@ -905,18 +903,20 @@ export async function getNotifications(params?: {
 }> {
   const queryParams = new URLSearchParams();
   if (params?.limit !== undefined) {
-    queryParams.append('limit', String(params.limit));
+    queryParams.append("limit", String(params.limit));
   }
   if (params?.offset !== undefined) {
-    queryParams.append('offset', String(params.offset));
+    queryParams.append("offset", String(params.offset));
   }
   if (params?.unread_only !== undefined) {
-    queryParams.append('unread_only', String(params.unread_only));
+    queryParams.append("unread_only", String(params.unread_only));
   }
 
   const queryString = queryParams.toString();
-  const endpoint = queryString ? `/api/notifications/?${queryString}` : '/api/notifications/';
-  
+  const endpoint = queryString
+    ? `/api/notifications/?${queryString}`
+    : "/api/notifications/";
+
   return api.get(endpoint);
 }
 
@@ -927,18 +927,16 @@ export async function getNotifications(params?: {
 export async function getUnreadNotificationCount(): Promise<{
   unread_count: number;
 }> {
-  return api.get('/api/notifications/unread-count/');
+  return api.get("/api/notifications/unread-count/");
 }
 
 /**
  * 🔔 Mark Notification as Read
  * Mark a single notification as read
- * 
+ *
  * @param notificationId - The UUID of the notification to mark as read
  */
-export async function markNotificationAsRead(
-  notificationId: string
-): Promise<{
+export async function markNotificationAsRead(notificationId: string): Promise<{
   message: string;
 }> {
   return api.patch(`/api/notifications/${notificationId}/read/`);
@@ -952,5 +950,5 @@ export async function markAllNotificationsAsRead(): Promise<{
   message: string;
   marked_count: number;
 }> {
-  return api.patch('/api/notifications/read-all/');
+  return api.patch("/api/notifications/read-all/");
 }

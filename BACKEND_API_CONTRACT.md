@@ -17,98 +17,111 @@ Error responses use: `{"error": "message"}`
 These endpoints are implemented in [lib/api.ts](lib/api.ts) and [lib/auth-api.ts](lib/auth-api.ts) and match the backend specification exactly:
 
 #### 🔐 Authentication (4 endpoints)
-| Endpoint | Method | Function | File | Status |
-|----------|--------|----------|------|--------|
-| `/api/login/` | POST | `authApi.login(email, password)` | auth-api.ts | ✅ Verified - Returns tokens + user info |
-| `/api/register/` | POST | `authApi.register()` | auth-api.ts | ✅ Verified - Applicant registration |
-| `/api/register-sponsor/` | POST | `authApi.register()` | auth-api.ts | ✅ Verified - Sponsor registration |
-| `/api/forgot-password/` | POST | `authApi.forgotPassword(email)` | auth-api.ts | ✅ Verified - Returns reset token |
-| `/api/token/refresh/` | POST | Auto in `ApiClient` | api.ts | ✅ Verified - Auto-refreshes on 401 |
+
+| Endpoint                 | Method | Function                         | File        | Status                                   |
+| ------------------------ | ------ | -------------------------------- | ----------- | ---------------------------------------- |
+| `/api/login/`            | POST   | `authApi.login(email, password)` | auth-api.ts | ✅ Verified - Returns tokens + user info |
+| `/api/register/`         | POST   | `authApi.register()`             | auth-api.ts | ✅ Verified - Applicant registration     |
+| `/api/register-sponsor/` | POST   | `authApi.register()`             | auth-api.ts | ✅ Verified - Sponsor registration       |
+| `/api/forgot-password/`  | POST   | `authApi.forgotPassword(email)`  | auth-api.ts | ✅ Verified - Returns reset token        |
+| `/api/token/refresh/`    | POST   | Auto in `ApiClient`              | api.ts      | ✅ Verified - Auto-refreshes on 401      |
 
 #### 💼 Jobs & Feed (3 endpoints)
-| Endpoint | Method | Function | Status |
-|----------|--------|----------|--------|
-| `/api/jobs/pack/` | GET | `fetchJobsPack()` | ✅ Verified - Returns ATS + sponsored jobs mixed |
-| `/api/jobs/browse/` | GET | `browseJobs(filters?)` | ✅ Verified - Sponsor browsing with filters |
-| `/api/jobs/<jobId>/sponsor/` | POST | `sponsorJob(jobId, data)` | ✅ Verified - Sponsor an ATS job |
-| `/api/profiles/pack/` | GET | `fetchProfilesPack(jobId?)` | ✅ Verified - Sponsor viewing applicant profiles |
+
+| Endpoint                     | Method | Function                    | Status                                           |
+| ---------------------------- | ------ | --------------------------- | ------------------------------------------------ |
+| `/api/jobs/pack/`            | GET    | `fetchJobsPack()`           | ✅ Verified - Returns ATS + sponsored jobs mixed |
+| `/api/jobs/browse/`          | GET    | `browseJobs(filters?)`      | ✅ Verified - Sponsor browsing with filters      |
+| `/api/jobs/<jobId>/sponsor/` | POST   | `sponsorJob(jobId, data)`   | ✅ Verified - Sponsor an ATS job                 |
+| `/api/profiles/pack/`        | GET    | `fetchProfilesPack(jobId?)` | ✅ Verified - Sponsor viewing applicant profiles |
 
 #### 🤝 Matching & Likes (4 endpoints)
-| Endpoint | Method | Function | Status |
-|----------|--------|----------|--------|
-| `/api/jobs/like/` | POST | `likeJob(jobId)` | ✅ Verified - Applicant likes job, may trigger match |
-| `/api/likes/jobs/` | GET | `getLikedJobs()` | ✅ Verified - View applicant's liked jobs |
-| `/api/profiles/like/` | POST | `likeProfile(applicantUserId, jobId?)` | ✅ Verified - Sponsor likes applicant, may trigger match |
-| `/api/matches/` | GET | `getMatches()` | ✅ Verified - Get applicant's matches |
-| `/api/matches/sponsor/` | GET | `getSponsorMatches()` | ✅ Verified - Get sponsor's matches |
+
+| Endpoint                | Method | Function                               | Status                                                   |
+| ----------------------- | ------ | -------------------------------------- | -------------------------------------------------------- |
+| `/api/jobs/like/`       | POST   | `likeJob(jobId)`                       | ✅ Verified - Applicant likes job, may trigger match     |
+| `/api/likes/jobs/`      | GET    | `getLikedJobs()`                       | ✅ Verified - View applicant's liked jobs                |
+| `/api/profiles/like/`   | POST   | `likeProfile(applicantUserId, jobId?)` | ✅ Verified - Sponsor likes applicant, may trigger match |
+| `/api/matches/`         | GET    | `getMatches()`                         | ✅ Verified - Get applicant's matches                    |
+| `/api/matches/sponsor/` | GET    | `getSponsorMatches()`                  | ✅ Verified - Get sponsor's matches                      |
 
 #### 💬 Messaging (5 endpoints)
-| Endpoint | Method | Function | Status |
-|----------|--------|----------|--------|
-| `/api/messages/conversations/` | GET | `getConversations()` | ✅ Verified - Returns UPPERCASE Snowflake fields |
-| `/api/messages/history/` | GET | `getConversationMessages(conversationId, {limit?})` | ✅ Verified - Query param: `conversation_id`, `limit` (default 50, max 200) |
-| `/api/messages/send/` | POST | `sendMessage(conversationId, body)` | ✅ Verified - Body: `{conversation_id, body}`, Returns: `{message_id}` |
-| `/api/messages/conversations/get-or-create/` | POST | `getOrCreateConversation(jobId, participantUserId)` | ✅ Verified - Requires match, Body: `{job_id, participant_user_id}` |
-| `/api/messages/unmatch/` | POST | `unmatchConversation(conversationId)` | ✅ Verified - Body: `{conversation_id}`, Returns: `{status: "CLOSED"}` |
+
+| Endpoint                                     | Method | Function                                            | Status                                                                      |
+| -------------------------------------------- | ------ | --------------------------------------------------- | --------------------------------------------------------------------------- |
+| `/api/messages/conversations/`               | GET    | `getConversations()`                                | ✅ Verified - Returns UPPERCASE Snowflake fields                            |
+| `/api/messages/history/`                     | GET    | `getConversationMessages(conversationId, {limit?})` | ✅ Verified - Query param: `conversation_id`, `limit` (default 50, max 200) |
+| `/api/messages/send/`                        | POST   | `sendMessage(conversationId, body)`                 | ✅ Verified - Body: `{conversation_id, body}`, Returns: `{message_id}`      |
+| `/api/messages/conversations/get-or-create/` | POST   | `getOrCreateConversation(jobId, participantUserId)` | ✅ Verified - Requires match, Body: `{job_id, participant_user_id}`         |
+| `/api/messages/unmatch/`                     | POST   | `unmatchConversation(conversationId)`               | ✅ Verified - Body: `{conversation_id}`, Returns: `{status: "CLOSED"}`      |
 
 #### 👤 Profile Management (6 endpoints)
-| Endpoint | Method | Function | Status |
-|----------|--------|----------|--------|
-| `/api/profile/` | GET | `getProfile()` | ✅ Verified - Returns full profile with UPPERCASE fields + role-specific `applicant_profile` OR `sponsor_profile` |
-| `/api/profile/basic/` | GET | `getBasicProfile()` | ✅ Verified - Returns subset: USER_ID, EMAIL, FIRST_NAME, LAST_NAME, PHOTO_URL |
-| `/api/profile/update/` | PATCH | `updateGeneralProfile(updates)` | ✅ Verified - 15 fields (location, phone_number, bio, address components, etc.) |
-| `/api/profile/applicant/update/` | PATCH | `updateApplicantProfile(updates)` | ✅ Verified - 20+ fields including insights, professional_experiences, education_entries |
-| `/api/profile/sponsor/update/` | PATCH | `updateSponsorProfile(updates)` | ✅ Verified - 11 fields including insights, companies_can_refer_to |
-| `/api/profiles/<userId>/public/` | GET | `getPublicProfile(userId)` | ✅ Verified - Returns public profile (excludes email, phone, street, zip) |
+
+| Endpoint                         | Method | Function                          | Status                                                                                                            |
+| -------------------------------- | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `/api/profile/`                  | GET    | `getProfile()`                    | ✅ Verified - Returns full profile with UPPERCASE fields + role-specific `applicant_profile` OR `sponsor_profile` |
+| `/api/profile/basic/`            | GET    | `getBasicProfile()`               | ✅ Verified - Returns subset: USER_ID, EMAIL, FIRST_NAME, LAST_NAME, PHOTO_URL                                    |
+| `/api/profile/update/`           | PATCH  | `updateGeneralProfile(updates)`   | ✅ Verified - 15 fields (location, phone_number, bio, address components, etc.)                                   |
+| `/api/profile/applicant/update/` | PATCH  | `updateApplicantProfile(updates)` | ✅ Verified - 20+ fields including insights, professional_experiences, education_entries                          |
+| `/api/profile/sponsor/update/`   | PATCH  | `updateSponsorProfile(updates)`   | ✅ Verified - 11 fields including insights, companies_can_refer_to                                                |
+| `/api/profiles/<userId>/public/` | GET    | `getPublicProfile(userId)`        | ✅ Verified - Returns public profile (excludes email, phone, street, zip)                                         |
 
 #### 🚪 Session Management (1 endpoint)
-| Endpoint | Method | Function | Status |
-|----------|--------|----------|--------|
-| `/api/logout/` | POST | `logout()` | ✅ Verified - Session cleanup |
+
+| Endpoint       | Method | Function   | Status                        |
+| -------------- | ------ | ---------- | ----------------------------- |
+| `/api/logout/` | POST   | `logout()` | ✅ Verified - Session cleanup |
 
 #### 🔔 Notifications (4 endpoints)
-| Endpoint | Method | Function | Status |
-|----------|--------|----------|--------|
-| `/api/notifications/` | GET | `getNotifications(params?)` | ✅ Verified - Paginated, filterable by unread_only |
-| `/api/notifications/unread-count/` | GET | `getUnreadNotificationCount()` | ✅ Verified - Returns badge count |
-| `/api/notifications/<id>/read/` | PATCH | `markNotificationAsRead(notificationId)` | ✅ Verified - Mark single notification |
-| `/api/notifications/read-all/` | PATCH | `markAllNotificationsAsRead()` | ✅ Verified - Bulk mark read with count |
+
+| Endpoint                           | Method | Function                                 | Status                                             |
+| ---------------------------------- | ------ | ---------------------------------------- | -------------------------------------------------- |
+| `/api/notifications/`              | GET    | `getNotifications(params?)`              | ✅ Verified - Paginated, filterable by unread_only |
+| `/api/notifications/unread-count/` | GET    | `getUnreadNotificationCount()`           | ✅ Verified - Returns badge count                  |
+| `/api/notifications/<id>/read/`    | PATCH  | `markNotificationAsRead(notificationId)` | ✅ Verified - Mark single notification             |
+| `/api/notifications/read-all/`     | PATCH  | `markAllNotificationsAsRead()`           | ✅ Verified - Bulk mark read with count            |
 
 ### ⚠️ Core Endpoints NOT Yet Wired (4 endpoints)
 
 These are essential for core app functionality and should be prioritized:
 
 #### 🤝 Referrals (4 endpoints) - **PRIORITY HIGH**
-| Endpoint | Method | Purpose | Impact |
-|----------|--------|---------|--------|
-| `/api/referrals/submit/` | POST | Submit referral for matched applicant | Core value prop |
-| `/api/referrals/` | GET | List referrals (role-aware) | Referral pipeline view |
-| `/api/referrals/<id>/` | GET | Get referral details | Detailed status |
-| `/api/referrals/<id>/withdraw/` | PATCH | Withdraw referral (sponsor only) | Pipeline management |
+
+| Endpoint                        | Method | Purpose                               | Impact                 |
+| ------------------------------- | ------ | ------------------------------------- | ---------------------- |
+| `/api/referrals/submit/`        | POST   | Submit referral for matched applicant | Core value prop        |
+| `/api/referrals/`               | GET    | List referrals (role-aware)           | Referral pipeline view |
+| `/api/referrals/<id>/`          | GET    | Get referral details                  | Detailed status        |
+| `/api/referrals/<id>/withdraw/` | PATCH  | Withdraw referral (sponsor only)      | Pipeline management    |
 
 ### 🔧 Key Implementation Notes
 
 **UPPERCASE Convention:**
+
 - Snowflake returns UPPERCASE column names (`USER_ID`, `FIRST_NAME`, `MESSAGE_ID`, etc.)
 - All response types in lib/api.ts match this convention
 - Components are responsible for transforming to UI-friendly names
 
 **VARIANT Fields:**
+
 - Complex fields (SKILLS, INSIGHTS, PROFESSIONAL_EXPERIENCES) are VARIANT columns
 - May be returned as JSON strings - use `JSON.parse()` if needed
 - See `_parseVariant()` helper in stores/useUserProfileStore.ts
 
 **Field Name Convention:**
+
 - Request bodies use **snake_case**: `phone_number`, `current_role`, `years_experience`
 - Response fields use **UPPERCASE**: `PHONE_NUMBER`, `CURRENT_ROLE`, `YEARS_EXPERIENCE`
 
 **Messaging Behavior:**
+
 - `getConversations()` returns all conversations (no pagination params)
 - `getConversationMessages()` uses query param `conversation_id` (not path param)
 - `sendMessage()` returns only `{message_id}` (not full message object)
 - Messages sent via HTTP are also broadcast to WebSocket connections
 
 **Profile Behavior:**
+
 - Three separate PATCH endpoints (general, applicant, sponsor)
 - Updates return `{message, updated_fields}` not full profile
 - `getProfile()` includes either `applicant_profile` OR `sponsor_profile` based on role
@@ -135,29 +148,32 @@ These are essential for core app functionality and should be prioritized:
 ## Authentication
 
 ### POST `/api/register/`
+
 Register a new applicant.
+
 - **Auth**: None
 - **Rate limit**: 10/hour
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| email | string | yes | Valid email format |
-| password | string | yes | Min 8 characters |
-| first_name | string | yes | Also accepts `firstName` |
-| last_name | string | yes | Also accepts `lastName` |
-| role | string | yes | Must be `"Applicant"` |
-| username | string | no | Auto-derived from email if omitted |
-| phone_number | string | no | Also accepts `phone` |
-| international_code | string | no | Default: `"+1"` |
-| dob | string | no | Also accepts `dateOfBirth` |
-| location | string | no | |
-| industry | string | no | |
-| range | integer | no | Search radius in miles |
-| reason | string | no | |
-| positions | array | no | List of position strings |
-| skills | array | no | List of skill strings |
+| Field              | Type    | Required | Notes                              |
+| ------------------ | ------- | -------- | ---------------------------------- |
+| email              | string  | yes      | Valid email format                 |
+| password           | string  | yes      | Min 8 characters                   |
+| first_name         | string  | yes      | Also accepts `firstName`           |
+| last_name          | string  | yes      | Also accepts `lastName`            |
+| role               | string  | yes      | Must be `"Applicant"`              |
+| username           | string  | no       | Auto-derived from email if omitted |
+| phone_number       | string  | no       | Also accepts `phone`               |
+| international_code | string  | no       | Default: `"+1"`                    |
+| dob                | string  | no       | Also accepts `dateOfBirth`         |
+| location           | string  | no       |                                    |
+| industry           | string  | no       |                                    |
+| range              | integer | no       | Search radius in miles             |
+| reason             | string  | no       |                                    |
+| positions          | array   | no       | List of position strings           |
+| skills             | array   | no       | List of skill strings              |
 
 **Response (201):**
+
 ```json
 {
   "user_id": "uuid",
@@ -174,33 +190,36 @@ Register a new applicant.
 ---
 
 ### POST `/api/register-sponsor/`
+
 Register a new sponsor.
+
 - **Auth**: None
 - **Rate limit**: 10/hour
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| email | string | yes | Valid email format |
-| password | string | yes | Min 8 characters |
-| first_name | string | yes | |
-| last_name | string | yes | |
-| role | string | yes | Must be `"Sponsor"` |
-| username | string | no | Auto-derived from email if omitted |
-| phone_number | string | no | |
-| international_code | string | no | Default: `"+1"` |
-| dob | string | no | |
-| location | string | no | |
-| company | string | no | |
-| job_title | string | no | |
-| work_email | string | no | |
-| linked_in | string | no | |
-| duration | string | no | e.g., `"3-5 years"` |
-| financial_reward | string | no | `"yes"` converts to true |
-| referral_eligible | string | no | `"yes"` converts to true |
-| referral_experience | boolean | no | Default: false |
-| open_to_referrals | boolean | no | Default: true |
+| Field               | Type    | Required | Notes                              |
+| ------------------- | ------- | -------- | ---------------------------------- |
+| email               | string  | yes      | Valid email format                 |
+| password            | string  | yes      | Min 8 characters                   |
+| first_name          | string  | yes      |                                    |
+| last_name           | string  | yes      |                                    |
+| role                | string  | yes      | Must be `"Sponsor"`                |
+| username            | string  | no       | Auto-derived from email if omitted |
+| phone_number        | string  | no       |                                    |
+| international_code  | string  | no       | Default: `"+1"`                    |
+| dob                 | string  | no       |                                    |
+| location            | string  | no       |                                    |
+| company             | string  | no       |                                    |
+| job_title           | string  | no       |                                    |
+| work_email          | string  | no       |                                    |
+| linked_in           | string  | no       |                                    |
+| duration            | string  | no       | e.g., `"3-5 years"`                |
+| financial_reward    | string  | no       | `"yes"` converts to true           |
+| referral_eligible   | string  | no       | `"yes"` converts to true           |
+| referral_experience | boolean | no       | Default: false                     |
+| open_to_referrals   | boolean | no       | Default: true                      |
 
 **Response (201):**
+
 ```json
 {
   "user_id": "uuid",
@@ -216,16 +235,19 @@ Register a new sponsor.
 ---
 
 ### POST `/api/login/`
+
 Authenticate and receive JWT tokens.
+
 - **Auth**: None
 - **Rate limit**: 10/min
 
-| Field | Type | Required |
-|-------|------|----------|
-| email | string | yes |
-| password | string | yes |
+| Field    | Type   | Required |
+| -------- | ------ | -------- |
+| email    | string | yes      |
+| password | string | yes      |
 
 **Response (200):**
+
 ```json
 {
   "user_id": "uuid",
@@ -238,7 +260,9 @@ Authenticate and receive JWT tokens.
 ---
 
 ### POST `/api/logout/`
+
 Log out (client should discard tokens).
+
 - **Auth**: Required
 
 **Response (200):** `{"message": "Logged out successfully"}`
@@ -246,54 +270,64 @@ Log out (client should discard tokens).
 ---
 
 ### POST `/api/forgot-password/`
+
 Request a password reset token.
+
 - **Auth**: None
 - **Rate limit**: 5/hour
 
-| Field | Type | Required |
-|-------|------|----------|
-| email | string | yes |
+| Field | Type   | Required |
+| ----- | ------ | -------- |
+| email | string | yes      |
 
 **Response (200):**
+
 ```json
 {
   "message": "If an account with that email exists, a password reset link has been sent.",
   "reset_token": "jwt-token"
 }
 ```
+
 Note: `reset_token` only included if email exists (anti-enumeration). Token expires in 15 minutes.
 
 ---
 
 ### POST `/api/reset-password/`
+
 Reset password with a token.
+
 - **Auth**: None
 - **Rate limit**: 5/hour
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| token | string | yes | From forgot-password |
-| newPassword | string | yes | Min 8 chars. Also accepts `new_password` |
+| Field       | Type   | Required | Notes                                    |
+| ----------- | ------ | -------- | ---------------------------------------- |
+| token       | string | yes      | From forgot-password                     |
+| newPassword | string | yes      | Min 8 chars. Also accepts `new_password` |
 
 **Response (200):** `{"message": "Password has been reset successfully."}`
 
 ---
 
 ### POST `/api/profile/change-password/`
+
 Change password while logged in.
+
 - **Auth**: Required
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| old_password | string | yes | Also accepts `oldPassword` |
-| new_password | string | yes | Min 8 chars. Also accepts `newPassword` |
+| Field        | Type   | Required | Notes                                   |
+| ------------ | ------ | -------- | --------------------------------------- |
+| old_password | string | yes      | Also accepts `oldPassword`              |
+| new_password | string | yes      | Min 8 chars. Also accepts `newPassword` |
 
 **Response (200):** `{"message": "Password changed successfully."}`
 
 ---
 
 ### POST `/api/profile/deactivate/`
+
 Deactivate account.
+
 - **Auth**: Required
 
 **Response (200):** `{"message": "Account deactivated successfully."}`
@@ -301,12 +335,14 @@ Deactivate account.
 ---
 
 ### POST `/api/token/refresh/`
+
 Refresh an expired access token (SimpleJWT).
+
 - **Auth**: None
 
-| Field | Type | Required |
-|-------|------|----------|
-| refresh | string | yes |
+| Field   | Type   | Required |
+| ------- | ------ | -------- |
+| refresh | string | yes      |
 
 **Response (200):** `{"access": "new-jwt-access-token"}`
 
@@ -315,10 +351,13 @@ Refresh an expired access token (SimpleJWT).
 ## Profiles
 
 ### GET `/api/profile/`
+
 Get full profile for the authenticated user.
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "USER_ID": "uuid",
@@ -354,12 +393,15 @@ Get full profile for the authenticated user.
   }
 }
 ```
+
 Note: Only one of `applicant_profile` / `sponsor_profile` is present based on role.
 
 ---
 
 ### GET `/api/profile/basic/`
+
 Get basic user info.
+
 - **Auth**: Required
 
 **Response (200):** Subset of profile fields (USER_ID, EMAIL, FIRST_NAME, LAST_NAME, PHOTO_URL).
@@ -367,28 +409,31 @@ Get basic user info.
 ---
 
 ### PATCH `/api/profile/update/`
+
 Update general profile fields (both roles).
+
 - **Auth**: Required
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| location | string | no | Display-friendly location string |
-| photo_url | string | no | |
-| phone_number | string | no | |
-| first_name | string | no | |
-| last_name | string | no | |
-| international_code | string | no | |
-| linked_in | string | no | |
-| portfolio_url | string | no | |
-| date_of_birth | string | no | |
-| bio | string | no | Max 2000 chars |
-| street | string | no | Granular address component |
-| city | string | no | Granular address component |
-| state | string | no | Granular address component |
-| zip | string | no | Granular address component |
-| country | string | no | Granular address component |
+| Field              | Type   | Required | Notes                            |
+| ------------------ | ------ | -------- | -------------------------------- |
+| location           | string | no       | Display-friendly location string |
+| photo_url          | string | no       |                                  |
+| phone_number       | string | no       |                                  |
+| first_name         | string | no       |                                  |
+| last_name          | string | no       |                                  |
+| international_code | string | no       |                                  |
+| linked_in          | string | no       |                                  |
+| portfolio_url      | string | no       |                                  |
+| date_of_birth      | string | no       |                                  |
+| bio                | string | no       | Max 2000 chars                   |
+| street             | string | no       | Granular address component       |
+| city               | string | no       | Granular address component       |
+| state              | string | no       | Granular address component       |
+| zip                | string | no       | Granular address component       |
+| country            | string | no       | Granular address component       |
 
 **Response (200):**
+
 ```json
 {
   "message": "Profile updated successfully",
@@ -399,33 +444,36 @@ Update general profile fields (both roles).
 ---
 
 ### PATCH `/api/profile/applicant/update/`
+
 Update applicant-specific fields.
+
 - **Auth**: Required
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| industry | string | no | |
-| range | integer | no | Alias for range_miles |
-| range_miles | integer | no | |
-| reason | string | no | |
-| positions | array | no | JSON array of strings |
-| skills | array | no | JSON array of strings |
-| resume_data | object | no | JSON object |
-| current_role | string | no | e.g. "Senior Backend Engineer" |
-| years_experience | string | no | e.g. "5-8" |
-| work_authorization | string | no | e.g. "US Citizen" |
-| willing_to_relocate | string | no | e.g. "Yes" |
-| requires_sponsorship | string | no | e.g. "No" |
-| achievements | string | no | Free text, max 2000 chars |
-| desired_roles | array | no | JSON array of strings |
-| work_preferences | array | no | JSON array of strings (e.g. ["Remote", "Hybrid"]) |
-| professional_experiences | array | no | JSON array of `{jobTitle, company, startDate, endDate, current, description}` |
-| education_entries | array | no | JSON array of `{degree, major, university, graduationYear, gpa}` |
-| certifications | array | no | JSON array of `{name, organization, year}` |
-| languages | array | no | JSON array of `{language, proficiency}` |
-| insights | array | no | JSON array of `{question, answer}` |
+| Field                    | Type    | Required | Notes                                                                         |
+| ------------------------ | ------- | -------- | ----------------------------------------------------------------------------- |
+| industry                 | string  | no       |                                                                               |
+| range                    | integer | no       | Alias for range_miles                                                         |
+| range_miles              | integer | no       |                                                                               |
+| reason                   | string  | no       |                                                                               |
+| positions                | array   | no       | JSON array of strings                                                         |
+| skills                   | array   | no       | JSON array of strings                                                         |
+| resume_data              | object  | no       | JSON object                                                                   |
+| current_role             | string  | no       | e.g. "Senior Backend Engineer"                                                |
+| years_experience         | string  | no       | e.g. "5-8"                                                                    |
+| work_authorization       | string  | no       | e.g. "US Citizen"                                                             |
+| willing_to_relocate      | string  | no       | e.g. "Yes"                                                                    |
+| requires_sponsorship     | string  | no       | e.g. "No"                                                                     |
+| achievements             | string  | no       | Free text, max 2000 chars                                                     |
+| desired_roles            | array   | no       | JSON array of strings                                                         |
+| work_preferences         | array   | no       | JSON array of strings (e.g. ["Remote", "Hybrid"])                             |
+| professional_experiences | array   | no       | JSON array of `{jobTitle, company, startDate, endDate, current, description}` |
+| education_entries        | array   | no       | JSON array of `{degree, major, university, graduationYear, gpa}`              |
+| certifications           | array   | no       | JSON array of `{name, organization, year}`                                    |
+| languages                | array   | no       | JSON array of `{language, proficiency}`                                       |
+| insights                 | array   | no       | JSON array of `{question, answer}`                                            |
 
 **Response (200):**
+
 ```json
 {
   "message": "Applicant profile updated successfully",
@@ -436,24 +484,27 @@ Update applicant-specific fields.
 ---
 
 ### PATCH `/api/profile/sponsor/update/`
+
 Update sponsor-specific fields.
+
 - **Auth**: Required
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| company | string | no | |
-| job_title | string | no | |
-| work_email | string | no | |
-| linked_in | string | no | |
-| duration | string | no | |
-| financial_reward | bool | no | Accepts `"yes"/"no"`, `true/false` |
-| referral_eligible | bool | no | |
-| referral_experience | bool | no | |
-| open_to_referrals | bool | no | |
-| companies_can_refer_to | array | no | JSON array of company name strings |
-| insights | array | no | JSON array of `{question, answer}` |
+| Field                  | Type   | Required | Notes                              |
+| ---------------------- | ------ | -------- | ---------------------------------- |
+| company                | string | no       |                                    |
+| job_title              | string | no       |                                    |
+| work_email             | string | no       |                                    |
+| linked_in              | string | no       |                                    |
+| duration               | string | no       |                                    |
+| financial_reward       | bool   | no       | Accepts `"yes"/"no"`, `true/false` |
+| referral_eligible      | bool   | no       |                                    |
+| referral_experience    | bool   | no       |                                    |
+| open_to_referrals      | bool   | no       |                                    |
+| companies_can_refer_to | array  | no       | JSON array of company name strings |
+| insights               | array  | no       | JSON array of `{question, answer}` |
 
 **Response (200):**
+
 ```json
 {
   "message": "Sponsor profile updated successfully",
@@ -464,10 +515,13 @@ Update sponsor-specific fields.
 ---
 
 ### GET `/api/profiles/<user_id>/public/`
+
 Get another user's public profile. Excludes private fields (email, phone, street, zip).
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "USER_ID": "uuid",
@@ -488,11 +542,11 @@ Get another user's public profile. Excludes private fields (email, phone, street
     "YEARS_EXPERIENCE": "string",
     "SKILLS": ["string"],
     "POSITIONS": ["string"],
-    "PROFESSIONAL_EXPERIENCES": [{"jobTitle": "...", "company": "..."}],
-    "EDUCATION_ENTRIES": [{"degree": "...", "university": "..."}],
-    "CERTIFICATIONS": [{"name": "...", "organization": "..."}],
-    "LANGUAGES": [{"language": "...", "proficiency": "..."}],
-    "INSIGHTS": [{"question": "...", "answer": "..."}]
+    "PROFESSIONAL_EXPERIENCES": [{ "jobTitle": "...", "company": "..." }],
+    "EDUCATION_ENTRIES": [{ "degree": "...", "university": "..." }],
+    "CERTIFICATIONS": [{ "name": "...", "organization": "..." }],
+    "LANGUAGES": [{ "language": "...", "proficiency": "..." }],
+    "INSIGHTS": [{ "question": "...", "answer": "..." }]
   }
 }
 ```
@@ -502,11 +556,14 @@ Get another user's public profile. Excludes private fields (email, phone, street
 ---
 
 ### GET `/api/profiles/pack/?job_id=<uuid>`
+
 Get a pack of applicant profiles for a sponsor's job.
+
 - **Auth**: Required
 - **Query**: `job_id` (required)
 
 **Response (200):**
+
 ```json
 {
   "profiles": [
@@ -531,10 +588,13 @@ Get a pack of applicant profiles for a sponsor's job.
 ## Jobs
 
 ### GET `/api/jobs/pack/`
+
 Get a pack of unseen jobs for the applicant feed (ATS + sponsored mixed).
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "jobs": [
@@ -570,37 +630,48 @@ Get a pack of unseen jobs for the applicant feed (ATS + sponsored mixed).
 ---
 
 ### GET `/api/ats/jobs/`
+
 List ATS jobs with optional filters.
+
 - **Auth**: Required
 - **Query**: `title`, `location`, `remote`, `organization`, `limit` (all optional)
 
 ---
 
 ### GET `/api/ats/jobs/<int:job_id>/`
+
 Get ATS job detail.
+
 - **Auth**: Required
 
 ---
 
 ### GET `/api/jobs/`
+
 List sponsored jobs with optional filters.
+
 - **Auth**: Required
 - **Query**: `title`, `location`, `remote`, `company`, `limit` (all optional)
 
 ---
 
 ### GET `/api/jobs/<str:job_id>/`
+
 Get sponsored job detail (includes sponsor profile info).
+
 - **Auth**: Required
 
 ---
 
 ### GET `/api/jobs/browse/`
+
 Browse SILVER_JOBS for sponsorship (sponsor use).
+
 - **Auth**: Required
 - **Query**: `title`, `location`, `remote`, `limit` (all optional)
 
 **Response (200):**
+
 ```json
 {
   "jobs": [
@@ -627,15 +698,18 @@ Browse SILVER_JOBS for sponsorship (sponsor use).
 ---
 
 ### POST `/api/jobs/<str:job_id>/sponsor/`
+
 Sponsor an ATS job (creates a JOB_POSTINGS entry).
+
 - **Auth**: Required
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| relationship | string | no | e.g., `"Hiring Manager"` |
-| canRefer | boolean | no | Also accepts `can_refer` |
+| Field        | Type    | Required | Notes                    |
+| ------------ | ------- | -------- | ------------------------ |
+| relationship | string  | no       | e.g., `"Hiring Manager"` |
+| canRefer     | boolean | no       | Also accepts `can_refer` |
 
 **Response (201):**
+
 ```json
 {
   "job_id": "uuid",
@@ -651,24 +725,27 @@ Sponsor an ATS job (creates a JOB_POSTINGS entry).
 ---
 
 ### POST `/api/jobs/create/`
+
 Create a new sponsored job from scratch.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| title | string | yes |
-| company | string | yes |
-| location | string | no |
-| description | string | no |
-| salary_min | float | no |
-| salary_max | float | no |
-| salary_currency | string | no |
-| requirements | string | no |
-| experience_level | string | no |
-| employment_type | string | no |
-| remote_option | boolean | no |
+| Field            | Type    | Required |
+| ---------------- | ------- | -------- |
+| title            | string  | yes      |
+| company          | string  | yes      |
+| location         | string  | no       |
+| description      | string  | no       |
+| salary_min       | float   | no       |
+| salary_max       | float   | no       |
+| salary_currency  | string  | no       |
+| requirements     | string  | no       |
+| experience_level | string  | no       |
+| employment_type  | string  | no       |
+| remote_option    | boolean | no       |
 
 **Response (201):**
+
 ```json
 {
   "job_id": "uuid",
@@ -682,10 +759,13 @@ Create a new sponsored job from scratch.
 ---
 
 ### POST `/api/jobs/<str:job_id>/apply/`
+
 Apply to a job (sponsored or ATS).
+
 - **Auth**: Required
 
 **Response (201):**
+
 ```json
 {
   "application_id": "uuid",
@@ -696,19 +776,23 @@ Apply to a job (sponsored or ATS).
   "message": "Application submitted successfully"
 }
 ```
+
 Note: For ATS jobs, creates a waitlist entry. For sponsored jobs, creates a like and may trigger a match.
 
 ---
 
 ### POST `/api/jobs/waitlist/`
+
 Join waitlist for an ATS job.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| job_id | string | yes |
+| Field  | Type   | Required |
+| ------ | ------ | -------- |
+| job_id | string | yes      |
 
 **Response (201):**
+
 ```json
 {
   "waitlist_id": "uuid",
@@ -724,15 +808,18 @@ Join waitlist for an ATS job.
 ## Likes & Matching
 
 ### POST `/api/jobs/like/`
+
 Applicant likes a job. May trigger a match.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| job_id | string | yes |
-| notes | string | no |
+| Field  | Type   | Required |
+| ------ | ------ | -------- |
+| job_id | string | yes      |
+| notes  | string | no       |
 
 **Response (200):**
+
 ```json
 {
   "like_id": "uuid",
@@ -744,7 +831,9 @@ Applicant likes a job. May trigger a match.
 ---
 
 ### GET `/api/likes/jobs/`
+
 Get all jobs liked by the authenticated applicant.
+
 - **Auth**: Required
 
 **Response (200):** Array of liked job objects with descriptions and sponsor info.
@@ -752,15 +841,18 @@ Get all jobs liked by the authenticated applicant.
 ---
 
 ### POST `/api/profiles/like/`
+
 Sponsor likes an applicant for a job. May trigger a match.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| applicant_user_id | string | yes |
-| job_id | string | yes |
+| Field             | Type   | Required |
+| ----------------- | ------ | -------- |
+| applicant_user_id | string | yes      |
+| job_id            | string | yes      |
 
 **Response (200):**
+
 ```json
 {
   "job_id": "uuid",
@@ -772,10 +864,13 @@ Sponsor likes an applicant for a job. May trigger a match.
 ---
 
 ### GET `/api/jobs/<str:job_id>/likes/applicants/`
+
 Get applicants who liked a sponsor's job (includes enriched profile fields).
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "job_id": "uuid",
@@ -796,10 +891,13 @@ Get applicants who liked a sponsor's job (includes enriched profile fields).
 ---
 
 ### GET `/api/matches/`
+
 Get matches for an applicant.
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "job_matches": [
@@ -821,10 +919,13 @@ Get matches for an applicant.
 ---
 
 ### GET `/api/matches/sponsor/`
+
 Get matches for a sponsor.
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "matches": [
@@ -847,27 +948,31 @@ Get matches for a sponsor.
 ## Feed Actions
 
 ### POST `/api/jobs/feed/record/`
+
 Record applicant's action on a job in the feed.
+
 - **Auth**: Required
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| job_id | number | yes | Must be numeric ATS job ID |
-| action | string | yes | `"viewed"`, `"passed"`, or `"liked"` |
+| Field  | Type   | Required | Notes                                |
+| ------ | ------ | -------- | ------------------------------------ |
+| job_id | number | yes      | Must be numeric ATS job ID           |
+| action | string | yes      | `"viewed"`, `"passed"`, or `"liked"` |
 
 **Response (201):** `{"message": "Recorded"}`
 
 ---
 
 ### POST `/api/profiles/feed/record/`
+
 Record sponsor's action on an applicant profile in the feed.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| job_id | string | yes |
-| applicant_user_id | string | yes |
-| action | string | yes |
+| Field             | Type   | Required |
+| ----------------- | ------ | -------- |
+| job_id            | string | yes      |
+| applicant_user_id | string | yes      |
+| action            | string | yes      |
 
 **Response (201):** `{"message": "Recorded"}`
 
@@ -876,15 +981,18 @@ Record sponsor's action on an applicant profile in the feed.
 ## Messaging
 
 ### POST `/api/messages/conversations/get-or-create/`
+
 Get or create a conversation between matched users.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| job_id | string | yes |
-| participant_user_id | string | yes |
+| Field               | Type   | Required |
+| ------------------- | ------ | -------- |
+| job_id              | string | yes      |
+| participant_user_id | string | yes      |
 
 **Response (200):**
+
 ```json
 {
   "conversation_id": "uuid",
@@ -894,15 +1002,19 @@ Get or create a conversation between matched users.
   "status": "ACTIVE"
 }
 ```
+
 Note: Users must be matched for the job.
 
 ---
 
 ### GET `/api/messages/conversations/`
+
 List all conversations for the authenticated user.
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "conversations": [
@@ -925,24 +1037,29 @@ List all conversations for the authenticated user.
 ---
 
 ### POST `/api/messages/send/`
+
 Send a message in a conversation.
+
 - **Auth**: Required
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| conversation_id | string | yes | |
-| body | string | yes | 1-2000 characters |
+| Field           | Type   | Required | Notes             |
+| --------------- | ------ | -------- | ----------------- |
+| conversation_id | string | yes      |                   |
+| body            | string | yes      | 1-2000 characters |
 
 **Response (201):** `{"message_id": "uuid"}`
 
 ---
 
 ### GET `/api/messages/history/?conversation_id=<uuid>`
+
 Get message history for a conversation.
+
 - **Auth**: Required
 - **Query**: `conversation_id` (required), `limit` (optional, default 50, max 200)
 
 **Response (200):**
+
 ```json
 {
   "messages": [
@@ -962,12 +1079,14 @@ Get message history for a conversation.
 ---
 
 ### POST `/api/messages/unmatch/`
+
 Unmatch users (closes the conversation).
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| conversation_id | string | yes |
+| Field           | Type   | Required |
+| --------------- | ------ | -------- |
+| conversation_id | string | yes      |
 
 **Response (200):** `{"status": "CLOSED"}`
 
@@ -976,12 +1095,15 @@ Unmatch users (closes the conversation).
 ## Documents & Resume
 
 ### POST `/api/upload/image/`
+
 Upload a profile image.
+
 - **Auth**: Required
 - **Content-Type**: `multipart/form-data`
 - **Field**: `image` (file, max 10MB, jpeg/png/gif/webp)
 
 **Response (201):**
+
 ```json
 {
   "image_id": "uuid",
@@ -996,12 +1118,15 @@ Upload a profile image.
 ---
 
 ### POST `/api/upload/file/`
+
 Upload a file (image or PDF).
+
 - **Auth**: Required
 - **Content-Type**: `multipart/form-data`
 - **Field**: `file` (file, max 10MB images / 25MB PDFs)
 
 **Response (201):**
+
 ```json
 {
   "document_id": "uuid",
@@ -1017,12 +1142,15 @@ Upload a file (image or PDF).
 ---
 
 ### POST `/api/upload-and-parse/`
+
 Upload and parse a file in one step (extracts text, stores in profile).
+
 - **Auth**: Required
 - **Content-Type**: `multipart/form-data`
 - **Field**: `file` (file)
 
 **Response (201):**
+
 ```json
 {
   "document_id": "uuid",
@@ -1039,15 +1167,18 @@ Upload and parse a file in one step (extracts text, stores in profile).
 ---
 
 ### POST `/api/parse/document/`
+
 Parse a previously uploaded document.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| file_id | string | yes |
-| file_type | string | no |
+| Field     | Type   | Required |
+| --------- | ------ | -------- |
+| file_id   | string | yes      |
+| file_type | string | no       |
 
 **Response (200):**
+
 ```json
 {
   "file_id": "uuid",
@@ -1061,23 +1192,28 @@ Parse a previously uploaded document.
 ---
 
 ### POST `/api/resume/`
+
 Save resume data (JSON) to applicant profile.
+
 - **Auth**: Required
 
-| Field | Type | Required |
-|-------|------|----------|
-| resume_data | object | yes |
+| Field       | Type   | Required |
+| ----------- | ------ | -------- |
+| resume_data | object | yes      |
 
 **Response (200):** `{"message": "Resume data saved successfully", "user_id": "uuid"}`
 
 ---
 
 ### PATCH `/api/resume/update/`
+
 Update specific resume fields.
+
 - **Auth**: Required
 - **Body**: Any fields to merge into resume_data
 
 **Response (200):**
+
 ```json
 {
   "message": "Resume data updated successfully",
@@ -1089,10 +1225,13 @@ Update specific resume fields.
 ---
 
 ### GET `/api/resume/extracted-text/`
+
 Get extracted resume text.
+
 - **Auth**: Required
 
 **Response (200):**
+
 ```json
 {
   "extracted_resume_text": "string | null",
@@ -1113,13 +1252,14 @@ List notifications for the authenticated user (newest first, paginated).
 
 **Query Parameters:**
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `limit` | int | 20 | Page size |
-| `offset` | int | 0 | Offset for pagination |
-| `unread_only` | bool | false | If true, only return unread notifications |
+| Param         | Type | Default | Description                               |
+| ------------- | ---- | ------- | ----------------------------------------- |
+| `limit`       | int  | 20      | Page size                                 |
+| `offset`      | int  | 0       | Offset for pagination                     |
+| `unread_only` | bool | false   | If true, only return unread notifications |
 
 **Response (200):**
+
 ```json
 {
   "notifications": [
@@ -1147,6 +1287,7 @@ Returns the unread notification count (for badge display).
 **Auth:** Bearer token required
 
 **Response (200):**
+
 ```json
 {
   "unread_count": 3
@@ -1160,6 +1301,7 @@ Mark a single notification as read.
 **Auth:** Bearer token required
 
 **Response (200):**
+
 ```json
 {
   "message": "Notification marked as read"
@@ -1175,6 +1317,7 @@ Mark all unread notifications as read for the authenticated user.
 **Auth:** Bearer token required
 
 **Response (200):**
+
 ```json
 {
   "message": "All notifications marked as read",
@@ -1186,10 +1329,10 @@ Mark all unread notifications as read for the authenticated user.
 
 Notifications are automatically created by the backend when:
 
-| Event | Notification Type | Recipients |
-|-------|------------------|------------|
-| Mutual match (applicant ↔ sponsor) | `match` | Both users |
-| New message sent | `message` | Conversation recipient |
+| Event                              | Notification Type | Recipients             |
+| ---------------------------------- | ----------------- | ---------------------- |
+| Mutual match (applicant ↔ sponsor) | `match`           | Both users             |
+| New message sent                   | `message`         | Conversation recipient |
 
 Additional types (`referral`, `connection`, `profile_update`) are defined in the schema but not yet wired.
 
@@ -1222,6 +1365,7 @@ Sponsor submits a referral for a matched applicant. Requires an existing match (
 **Auth:** Bearer token required (sponsor role only)
 
 **Request body:**
+
 ```json
 {
   "applicant_user_id": "uuid",
@@ -1237,11 +1381,13 @@ Sponsor submits a referral for a matched applicant. Requires an existing match (
 ```
 
 **Validation chain:**
+
 1. Caller must have `ROLE_TYPE = 'Sponsor'` (403 otherwise)
 2. A MATCHED like must exist for this sponsor/applicant/job (403 otherwise)
 3. No active referral may exist for the same trio (400 otherwise)
 
 **Response (201):**
+
 ```json
 {
   "referral_id": "uuid",
@@ -1260,12 +1406,13 @@ List referrals for the authenticated user. Role-aware: sponsors see referrals th
 
 **Query Parameters:**
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `limit` | int | 20 | Page size |
-| `offset` | int | 0 | Offset for pagination |
+| Param    | Type | Default | Description           |
+| -------- | ---- | ------- | --------------------- |
+| `limit`  | int  | 20      | Page size             |
+| `offset` | int  | 0       | Offset for pagination |
 
 **Response (200):**
+
 ```json
 {
   "referrals": [
@@ -1299,6 +1446,7 @@ Sponsor withdraws a referral. Only the submitting sponsor can withdraw.
 **Auth:** Bearer token required (submitting sponsor only)
 
 **Response (200):**
+
 ```json
 {
   "message": "Referral withdrawn",
@@ -1313,9 +1461,9 @@ Sponsor withdraws a referral. Only the submitting sponsor can withdraw.
 
 Only statuses we can definitively track are used:
 
-| Status | Meaning |
-|--------|---------|
-| `REFERRED` | Sponsor submitted the referral |
+| Status      | Meaning                                 |
+| ----------- | --------------------------------------- |
+| `REFERRED`  | Sponsor submitted the referral          |
 | `WITHDRAWN` | Sponsor or system withdrew the referral |
 
 Richer statuses (Interviewing, Offered, Accepted, Rejected) will be added when ATS integration provides reliable data.
@@ -1331,6 +1479,7 @@ Register a device token for push notification delivery. Call on login after obta
 **Auth:** Required (JWT)
 
 **Request body:**
+
 ```json
 {
   "device_token": "fcm-token-from-mobile-app",
@@ -1341,6 +1490,7 @@ Register a device token for push notification delivery. Call on login after obta
 `platform` must be one of: `ios`, `android`, `expo`.
 
 **Response (200):**
+
 ```json
 {
   "token_id": "uuid",
@@ -1357,6 +1507,7 @@ Deactivate a device token (e.g. on logout). The token is not deleted, just marke
 **Auth:** Required (JWT)
 
 **Request body:**
+
 ```json
 {
   "device_token": "fcm-token-from-mobile-app"
@@ -1364,6 +1515,7 @@ Deactivate a device token (e.g. on logout). The token is not deleted, just marke
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Device unregistered"
@@ -1403,15 +1555,18 @@ Establishes a real-time WebSocket connection for a conversation. The JWT access 
 **Server:** Daphne ASGI (same host and port as the REST API).
 
 **Close codes:**
+
 - `4001` — Missing or invalid JWT token
 - `4003` — Authenticated user is not a participant in the conversation
 
 **Client sends (to send a message):**
+
 ```json
-{"type": "chat.message", "body": "Hello!"}
+{ "type": "chat.message", "body": "Hello!" }
 ```
 
 **Server broadcasts (to all connected participants):**
+
 ```json
 {
   "type": "chat.message",
@@ -1423,8 +1578,9 @@ Establishes a real-time WebSocket connection for a conversation. The JWT access 
 ```
 
 **Server sends (on error):**
+
 ```json
-{"type": "error", "message": "Conversation is closed"}
+{ "type": "error", "message": "Conversation is closed" }
 ```
 
 Messages sent via the HTTP REST endpoint (`POST /api/messages/send/`) are also broadcast to connected WebSocket clients on the same conversation, keeping both transports in sync.
@@ -1437,35 +1593,35 @@ Messages sent via the HTTP REST endpoint (`POST /api/messages/send/`) are also b
 
 ### Applicant Questionnaire
 
-| Step | Frontend Field | Backend Registration Field | Status |
-|------|---------------|---------------------------|--------|
-| - | firstName | `first_name` / `firstName` | Ready |
-| - | lastName | `last_name` / `lastName` | Ready |
-| - | email | `email` | Ready |
-| - | password | `password` | Ready |
-| 1 | targetIndustry | `industry` | Ready |
-| 2 | currentRole | `current_role` | Ready — Migration 003 |
-| 3 | seekingPosition | `positions` (array) | Ready (store as `["Senior Product Lead"]`) |
-| 4 | skills | `skills` (array) | Ready |
-| 5 | insights | `insights` (array) | Ready — Migration 003 |
-| 6 | resumeUrl | *Not in registration* | **Separate flow** — call `POST /api/upload-and-parse/` after registration |
+| Step | Frontend Field  | Backend Registration Field | Status                                                                    |
+| ---- | --------------- | -------------------------- | ------------------------------------------------------------------------- |
+| -    | firstName       | `first_name` / `firstName` | Ready                                                                     |
+| -    | lastName        | `last_name` / `lastName`   | Ready                                                                     |
+| -    | email           | `email`                    | Ready                                                                     |
+| -    | password        | `password`                 | Ready                                                                     |
+| 1    | targetIndustry  | `industry`                 | Ready                                                                     |
+| 2    | currentRole     | `current_role`             | Ready — Migration 003                                                     |
+| 3    | seekingPosition | `positions` (array)        | Ready (store as `["Senior Product Lead"]`)                                |
+| 4    | skills          | `skills` (array)           | Ready                                                                     |
+| 5    | insights        | `insights` (array)         | Ready — Migration 003                                                     |
+| 6    | resumeUrl       | _Not in registration_      | **Separate flow** — call `POST /api/upload-and-parse/` after registration |
 
 ### Sponsor Questionnaire
 
-| Step | Frontend Field | Backend Registration Field | Status |
-|------|---------------|---------------------------|--------|
-| - | firstName | `first_name` | Ready |
-| - | lastName | `last_name` | Ready |
-| - | email | `email` | Ready |
-| - | password | `password` | Ready |
-| 1 | company | `company` | Ready |
-| 2 | jobTitle | `job_title` | Ready |
-| 3 | yearsAtCompany | `duration` | Ready (send as `"3-5 years"`) |
-| 4 | openToReferrals | `open_to_referrals` | Ready (convert `"Yes, absolutely"` → `true`) |
-| 5 | pastReferrals | `referral_experience` | Ready (convert `"Frequently"` → `true`) |
-| 6 | referralBonus | `financial_reward` | Ready (convert `"Yes"` → `"yes"`) |
-| 7 | insights | `insights` (array) | Ready — Migration 003 |
-| 8 | workEmail | `work_email` | Ready |
+| Step | Frontend Field  | Backend Registration Field | Status                                       |
+| ---- | --------------- | -------------------------- | -------------------------------------------- |
+| -    | firstName       | `first_name`               | Ready                                        |
+| -    | lastName        | `last_name`                | Ready                                        |
+| -    | email           | `email`                    | Ready                                        |
+| -    | password        | `password`                 | Ready                                        |
+| 1    | company         | `company`                  | Ready                                        |
+| 2    | jobTitle        | `job_title`                | Ready                                        |
+| 3    | yearsAtCompany  | `duration`                 | Ready (send as `"3-5 years"`)                |
+| 4    | openToReferrals | `open_to_referrals`        | Ready (convert `"Yes, absolutely"` → `true`) |
+| 5    | pastReferrals   | `referral_experience`      | Ready (convert `"Frequently"` → `true`)      |
+| 6    | referralBonus   | `financial_reward`         | Ready (convert `"Yes"` → `"yes"`)            |
+| 7    | insights        | `insights` (array)         | Ready — Migration 003                        |
+| 8    | workEmail       | `work_email`               | Ready                                        |
 
 ### All Questionnaire Gaps Closed
 
@@ -1517,70 +1673,70 @@ HTTP Request                 WebSocket Connection
 
 ### Views (HTTP layer)
 
-| File | Domain | Endpoints |
-|------|--------|-----------|
-| `views_auth.py` | Authentication | login, register, password reset, change password, deactivate |
-| `views_profiles.py` | Profiles | get/update user, applicant, sponsor profiles; profile packs |
-| `views_jobs.py` | Jobs | ATS jobs, sponsored jobs, job pack, browse, sponsor, create, apply, waitlist, feed actions |
-| `views_matching.py` | Matching | likes (job + profile), matches (applicant + sponsor), applicant likes per job |
-| `views_messaging.py` | Messaging | conversations, messages, history, unmatch |
-| `views_documents.py` | Documents | image upload, file upload, parse, resume management |
-| `views_notifications.py` | Notifications | list, unread count, mark read, mark all read |
-| `views_referrals.py` | Referrals | submit, list, detail, withdraw |
-| `views_devices.py` | Devices | device token registration/unregistration for push notifications |
-| `views_helpers.py` | Shared utilities | `respond()` (Result→Response), `parse_pagination()` |
-| `views.py` | Re-export shim | Imports all view functions so `urls.py` has a single import source |
+| File                     | Domain           | Endpoints                                                                                  |
+| ------------------------ | ---------------- | ------------------------------------------------------------------------------------------ |
+| `views_auth.py`          | Authentication   | login, register, password reset, change password, deactivate                               |
+| `views_profiles.py`      | Profiles         | get/update user, applicant, sponsor profiles; profile packs                                |
+| `views_jobs.py`          | Jobs             | ATS jobs, sponsored jobs, job pack, browse, sponsor, create, apply, waitlist, feed actions |
+| `views_matching.py`      | Matching         | likes (job + profile), matches (applicant + sponsor), applicant likes per job              |
+| `views_messaging.py`     | Messaging        | conversations, messages, history, unmatch                                                  |
+| `views_documents.py`     | Documents        | image upload, file upload, parse, resume management                                        |
+| `views_notifications.py` | Notifications    | list, unread count, mark read, mark all read                                               |
+| `views_referrals.py`     | Referrals        | submit, list, detail, withdraw                                                             |
+| `views_devices.py`       | Devices          | device token registration/unregistration for push notifications                            |
+| `views_helpers.py`       | Shared utilities | `respond()` (Result→Response), `parse_pagination()`                                        |
+| `views.py`               | Re-export shim   | Imports all view functions so `urls.py` has a single import source                         |
 
 ### WebSocket layer
 
-| File | Purpose |
-|------|---------|
+| File           | Purpose                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------- |
 | `consumers.py` | `ChatConsumer` — WebSocket handler for real-time messaging (connect, send/receive, disconnect) |
-| `ws_auth.py` | `JWTAuthMiddleware` — validates JWT from query string, attaches `SnowflakeUser` to ASGI scope |
-| `routing.py` | WebSocket URL patterns (`ws/chat/<conversation_id>/`) |
+| `ws_auth.py`   | `JWTAuthMiddleware` — validates JWT from query string, attaches `SnowflakeUser` to ASGI scope  |
+| `routing.py`   | WebSocket URL patterns (`ws/chat/<conversation_id>/`)                                          |
 
 ### Services (business logic)
 
-| File | Responsibilities |
-|------|-----------------|
-| `services/auth.py` | Password hashing, reset token generation/validation, account deactivation |
-| `services/profiles.py` | Profile field validation, update orchestration, profile pack assembly |
-| `services/jobs.py` | Job pack building (ATS + sponsored mix), browse filtering, sponsorship flow, application logic |
-| `services/matching.py` | Like/match detection, mutual-match checks, match listing with enrichment |
-| `services/messaging.py` | Conversation creation with match verification, message sending, unread flag management, WebSocket broadcast |
-| `services/documents.py` | File validation, Snowflake stage upload, document parsing, resume text extraction |
-| `services/notifications.py` | Notification creation with preference gating, read/unread management |
-| `services/referrals.py` | Referral submission with match validation, role-aware listing, withdrawal |
-| `services/push.py` | FCM push notification delivery via `firebase-admin` SDK. Lazy-init, best-effort (never raises), auto-deactivates stale tokens |
+| File                        | Responsibilities                                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `services/auth.py`          | Password hashing, reset token generation/validation, account deactivation                                                     |
+| `services/profiles.py`      | Profile field validation, update orchestration, profile pack assembly                                                         |
+| `services/jobs.py`          | Job pack building (ATS + sponsored mix), browse filtering, sponsorship flow, application logic                                |
+| `services/matching.py`      | Like/match detection, mutual-match checks, match listing with enrichment                                                      |
+| `services/messaging.py`     | Conversation creation with match verification, message sending, unread flag management, WebSocket broadcast                   |
+| `services/documents.py`     | File validation, Snowflake stage upload, document parsing, resume text extraction                                             |
+| `services/notifications.py` | Notification creation with preference gating, read/unread management                                                          |
+| `services/referrals.py`     | Referral submission with match validation, role-aware listing, withdrawal                                                     |
+| `services/push.py`          | FCM push notification delivery via `firebase-admin` SDK. Lazy-init, best-effort (never raises), auto-deactivates stale tokens |
 
 ### Queries (data access)
 
-| File | Tables Accessed |
-|------|----------------|
-| `queries/users.py` | USERS |
-| `queries/profiles.py` | USER_PROFILES, APPLICANT_PROFILES, SPONSOR_PROFILES |
-| `queries/jobs.py` | SILVER_JOBS (RAW_ATS), JOB_POSTINGS, JOB_FEED_HISTORY, WAITLIST |
-| `queries/likes.py` | LIKES (job + profile) |
-| `queries/messaging.py` | CONVERSATIONS, MESSAGES |
-| `queries/documents.py` | Snowflake stages for file storage |
-| `queries/notifications.py` | NOTIFICATIONS |
-| `queries/referrals.py` | REFERRALS |
-| `queries/devices.py` | DEVICE_TOKENS |
-| `queries/shared.py` | Common utilities (execute_query, sanitize_for_json) |
+| File                       | Tables Accessed                                                 |
+| -------------------------- | --------------------------------------------------------------- |
+| `queries/users.py`         | USERS                                                           |
+| `queries/profiles.py`      | USER_PROFILES, APPLICANT_PROFILES, SPONSOR_PROFILES             |
+| `queries/jobs.py`          | SILVER_JOBS (RAW_ATS), JOB_POSTINGS, JOB_FEED_HISTORY, WAITLIST |
+| `queries/likes.py`         | LIKES (job + profile)                                           |
+| `queries/messaging.py`     | CONVERSATIONS, MESSAGES                                         |
+| `queries/documents.py`     | Snowflake stages for file storage                               |
+| `queries/notifications.py` | NOTIFICATIONS                                                   |
+| `queries/referrals.py`     | REFERRALS                                                       |
+| `queries/devices.py`       | DEVICE_TOKENS                                                   |
+| `queries/shared.py`        | Common utilities (execute_query, sanitize_for_json)             |
 
 ### Cross-cutting
 
-| File | Purpose |
-|------|---------|
-| `cache.py` | Redis caching helpers (`cached_query`, `invalidate`) with TTL constants |
-| `constants.py` | Centralised magic numbers (pagination defaults, file size limits, token expiry, rate limits) |
-| `middleware.py` | JSON error middleware (catches unhandled exceptions, returns structured JSON in production) |
-| `throttles.py` | DRF rate limiting classes (login, registration, password reset) |
-| `custom_jwt.py` | JWT authentication against Snowflake USERS table |
-| `backends.py` | Custom authentication backend for Snowflake |
-| `serializers.py` | DRF serializers for input validation on auth endpoints |
-| `snowflake_utils.py` | Snowflake connection management with thread-local connection pooling |
-| `snowflake_user.py` | Minimal user model for DRF compatibility |
+| File                 | Purpose                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `cache.py`           | Redis caching helpers (`cached_query`, `invalidate`) with TTL constants                      |
+| `constants.py`       | Centralised magic numbers (pagination defaults, file size limits, token expiry, rate limits) |
+| `middleware.py`      | JSON error middleware (catches unhandled exceptions, returns structured JSON in production)  |
+| `throttles.py`       | DRF rate limiting classes (login, registration, password reset)                              |
+| `custom_jwt.py`      | JWT authentication against Snowflake USERS table                                             |
+| `backends.py`        | Custom authentication backend for Snowflake                                                  |
+| `serializers.py`     | DRF serializers for input validation on auth endpoints                                       |
+| `snowflake_utils.py` | Snowflake connection management with thread-local connection pooling                         |
+| `snowflake_user.py`  | Minimal user model for DRF compatibility                                                     |
 
 ---
 
@@ -1603,17 +1759,20 @@ HTTP Request                 WebSocket Connection
 - **Coverage matrix:** `scripts/test_coverage_report.py` — unified runner that executes unit and/or integration tests and generates `docs/TEST_COVERAGE_MATRIX.md` mapping every endpoint to its test status.
 
 For local development with Redis (optional):
+
 ```bash
 docker-compose up        # starts Django + Redis
 docker-compose down      # stops both
 ```
 
 Run everything and generate the coverage report:
+
 ```bash
 python scripts/test_coverage_report.py --all
 ```
 
 Or run selectively:
+
 ```bash
 python scripts/test_coverage_report.py --unit            # unit tests only
 python scripts/test_coverage_report.py --integration     # integration tests only (Docker)
@@ -1621,6 +1780,7 @@ python scripts/test_coverage_report.py --report-only     # regenerate from cache
 ```
 
 Run specific integration test sections for fast iteration:
+
 ```bash
 ./scripts/integration_test.sh --section documents                       # just document pipeline
 ./scripts/integration_test.sh --skip-build --keep --section profiles    # reuse container
@@ -1630,6 +1790,7 @@ Run specific integration test sections for fast iteration:
 Available sections: `health`, `auth`, `profiles`, `jobs`, `matching`, `messaging`, `notifications`, `referrals`, `documents`, `unmatch`, `infra`, `account`. Dependencies are auto-resolved (e.g., `messaging` pulls in `matching` → `jobs`; `referrals` pulls in `matching` → `jobs`).
 
 Integration test file structure:
+
 ```
 scripts/
   integration_test.sh          # orchestrator: config, arg parsing, Docker, main()
@@ -1667,8 +1828,8 @@ This architecture was established through a systematic refactoring:
 7. **Redis caching** — Added `django-redis` with optional `REDIS_URL` env var (falls back to FileBasedCache). Created `cache.py` with `cached_query`/`invalidate` helpers. Instrumented 8 hot-path queries with caching at the query layer and added cache invalidation at the service layer. Integration tests now spin up a Redis container alongside Django on a shared Docker network.
 8. **WebSocket messaging** — Added Django Channels with `channels-redis` for real-time chat. Created `ChatConsumer`, `JWTAuthMiddleware` (query-string token auth), and `routing.py`. Replaced Gunicorn with Daphne (ASGI server) to serve both HTTP and WebSocket on the same port. HTTP `send_message` also broadcasts to the channel group so both transports stay in sync. Redis DB 1 is used for the channel layer (DB 0 for caching).
 9. **Snowflake connection pooling** — Replaced per-query connection creation in `snowflake_utils.py` with thread-local pooling via `threading.local()`. Each Snowflake connection previously incurred ~4-6s of TLS handshake + authentication; now only the first query per thread pays that cost. Includes `SELECT 1` health check before reuse, transparent reconnect on `DatabaseError`, and proper cursor cleanup. Benchmarked at ~18x throughput improvement on multi-query workloads.
-11. **FCM push notifications** — Added Firebase Cloud Messaging delivery to the existing notification system. When `create_notification()` fires, it now also sends a push to all registered devices for that user. New `DEVICE_TOKENS` table (Migration 006), `queries/devices.py`, `services/push.py`, and `views_devices.py` (register/unregister endpoints). Firebase SDK is lazily initialized and gracefully degrades when credentials are absent. Stale tokens are auto-deactivated on FCM rejection.
-10. **Demo data seeder** — Added `python manage.py seed_demo_data` management command that populates Snowflake with rich, realistic synthetic data covering every display path: applicants (varied profile completeness), sponsors, sponsored jobs, likes, matches, conversations with message threads, and referrals. Supports `--round2` for additive second batch, `--force` for wipe-and-reseed, `--clean` for removal. All demo users namespaced by `@demo.backchannel.app`.
+10. **FCM push notifications** — Added Firebase Cloud Messaging delivery to the existing notification system. When `create_notification()` fires, it now also sends a push to all registered devices for that user. New `DEVICE_TOKENS` table (Migration 006), `queries/devices.py`, `services/push.py`, and `views_devices.py` (register/unregister endpoints). Firebase SDK is lazily initialized and gracefully degrades when credentials are absent. Stale tokens are auto-deactivated on FCM rejection.
+11. **Demo data seeder** — Added `python manage.py seed_demo_data` management command that populates Snowflake with rich, realistic synthetic data covering every display path: applicants (varied profile completeness), sponsors, sponsored jobs, likes, matches, conversations with message threads, and referrals. Supports `--round2` for additive second batch, `--force` for wipe-and-reseed, `--clean` for removal. All demo users namespaced by `@demo.backchannel.app`.
 
 ---
 
@@ -1677,15 +1838,18 @@ This architecture was established through a systematic refactoring:
 **Connect:** `ws://<host>/ws/chat/<conversation_id>/?token=<jwt_access_token>`
 
 Close codes:
+
 - `4001` — Missing or invalid JWT token
 - `4003` — User is not a participant in the conversation
 
 **Client sends (to send a message):**
+
 ```json
-{"type": "chat.message", "body": "Hello!"}
+{ "type": "chat.message", "body": "Hello!" }
 ```
 
 **Server broadcasts (new message to all participants):**
+
 ```json
 {
   "type": "chat.message",
@@ -1697,8 +1861,9 @@ Close codes:
 ```
 
 **Server sends (on error):**
+
 ```json
-{"type": "error", "message": "Conversation is closed"}
+{ "type": "error", "message": "Conversation is closed" }
 ```
 
 Messages sent via the HTTP REST endpoint (`POST /api/messages/send/`) are also broadcast to connected WebSocket clients on the same conversation.
@@ -1711,37 +1876,37 @@ See [FRONTEND_BACKEND_GAP_AUDIT.md](FRONTEND_BACKEND_GAP_AUDIT.md) for the full 
 
 ### Phase 1 — Beta Launch (Feature Gaps)
 
-| Priority | Item | Effort | Status |
-|----------|------|--------|--------|
-| **P0** | Rich profile schema (bio, address, work history, education, certifications, languages, achievements, work preferences) | Large | **Done** — Migration 003 + 21 new columns across 3 tables |
-| **P0** | Referral submission flow | Medium | **Done** — Migration 005 + 4 endpoints, match validation, notification trigger, withdraw |
-| **P1** | Public profile endpoint | Small | **Done** — `GET /api/profiles/<id>/public/` with privacy filtering |
-| **P1** | Insights storage (questionnaire personality data) | Small | **Done** — VARIANT column on both profile tables, wired through registration + updates |
-| **P1** | Notifications system | Medium | **Done** — Migration 004 + 4 endpoints, match/message triggers, preference gating |
+| Priority | Item                                                                                                                   | Effort | Status                                                                                   |
+| -------- | ---------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------- |
+| **P0**   | Rich profile schema (bio, address, work history, education, certifications, languages, achievements, work preferences) | Large  | **Done** — Migration 003 + 21 new columns across 3 tables                                |
+| **P0**   | Referral submission flow                                                                                               | Medium | **Done** — Migration 005 + 4 endpoints, match validation, notification trigger, withdraw |
+| **P1**   | Public profile endpoint                                                                                                | Small  | **Done** — `GET /api/profiles/<id>/public/` with privacy filtering                       |
+| **P1**   | Insights storage (questionnaire personality data)                                                                      | Small  | **Done** — VARIANT column on both profile tables, wired through registration + updates   |
+| **P1**   | Notifications system                                                                                                   | Medium | **Done** — Migration 004 + 4 endpoints, match/message triggers, preference gating        |
 
 **Phase 1 is complete.** All feature gaps for beta launch have been closed.
 
 ### Phase 2 — Post-Beta (Infrastructure)
 
-| Priority | Item | Effort | Why |
-|----------|------|--------|-----|
-| **High** | ~~Add Redis caching layer~~ | Small | **Done** — `django-redis` + `cache.py` utility module. 8 hot-path queries cached (sponsor info, user basic, unread counts, job lookups, public profiles). Graceful fallback to FileBasedCache when Redis unavailable. |
-| **High** | Introduce Postgres for transactional data | Large | Snowflake is an OLAP warehouse, not designed for the high-frequency small read/write pattern of swiping and messaging. Standard pattern: Postgres for the app (OLTP), Snowflake for analytics (OLAP). The isolated query layer makes this migration manageable. |
-| **Medium** | ~~WebSocket support for messaging~~ | Medium | **Done** — Django Channels + `channels-redis` + Daphne ASGI server. `ChatConsumer` with JWT auth middleware, per-conversation channel groups, HTTP→WebSocket broadcast bridge. `ws/chat/<conversation_id>/?token=<jwt>` |
-| **Medium** | S3/R2 for file storage with CDN | Small-Medium | Snowflake stages are meant for data loading, not general-purpose file serving. Profile images and documents at scale need a proper object store with CDN. |
-| **Medium** | Background job processing (Celery) | Medium | Resume parsing, notification dispatch, and match computation could run asynchronously instead of blocking the HTTP request. |
-| **Low** | ~~Connection pooling for Snowflake~~ | Small | **Done** — Thread-local connection pooling in `snowflake_utils.py`. Connections are reused within the same thread, eliminating ~4-6s of TLS handshake + Snowflake auth overhead per query. Health check before reuse with transparent reconnect on stale connections. Benchmarked at ~18x improvement on seed workload (28 min → 91s). |
+| Priority   | Item                                      | Effort       | Why                                                                                                                                                                                                                                                                                                                                    |
+| ---------- | ----------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **High**   | ~~Add Redis caching layer~~               | Small        | **Done** — `django-redis` + `cache.py` utility module. 8 hot-path queries cached (sponsor info, user basic, unread counts, job lookups, public profiles). Graceful fallback to FileBasedCache when Redis unavailable.                                                                                                                  |
+| **High**   | Introduce Postgres for transactional data | Large        | Snowflake is an OLAP warehouse, not designed for the high-frequency small read/write pattern of swiping and messaging. Standard pattern: Postgres for the app (OLTP), Snowflake for analytics (OLAP). The isolated query layer makes this migration manageable.                                                                        |
+| **Medium** | ~~WebSocket support for messaging~~       | Medium       | **Done** — Django Channels + `channels-redis` + Daphne ASGI server. `ChatConsumer` with JWT auth middleware, per-conversation channel groups, HTTP→WebSocket broadcast bridge. `ws/chat/<conversation_id>/?token=<jwt>`                                                                                                                |
+| **Medium** | S3/R2 for file storage with CDN           | Small-Medium | Snowflake stages are meant for data loading, not general-purpose file serving. Profile images and documents at scale need a proper object store with CDN.                                                                                                                                                                              |
+| **Medium** | Background job processing (Celery)        | Medium       | Resume parsing, notification dispatch, and match computation could run asynchronously instead of blocking the HTTP request.                                                                                                                                                                                                            |
+| **Low**    | ~~Connection pooling for Snowflake~~      | Small        | **Done** — Thread-local connection pooling in `snowflake_utils.py`. Connections are reused within the same thread, eliminating ~4-6s of TLS handshake + Snowflake auth overhead per query. Health check before reuse with transparent reconnect on stale connections. Benchmarked at ~18x improvement on seed workload (28 min → 91s). |
 
 ### Phase 3 — Growth (Deferred)
 
-| Item | Notes |
-|------|-------|
-| Application status tracking (Applied → Referred → Interview → Decision) | Deferred until ATS integration is available; low value without real pipeline data |
-| Email verification (sponsor) | Currently faked with setTimeout |
-| LinkedIn OAuth | Alternate auth method |
-| Chat file attachments | Nice-to-have for messaging |
-| ~~Notification preferences storage~~ | **Closed** — `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES`, exposed via `PATCH /api/profile/update/` |
-| Subscription/payment verification | RevenueCat handles client-side; may need server-side receipt validation |
+| Item                                                                    | Notes                                                                                                        |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Application status tracking (Applied → Referred → Interview → Decision) | Deferred until ATS integration is available; low value without real pipeline data                            |
+| Email verification (sponsor)                                            | Currently faked with setTimeout                                                                              |
+| LinkedIn OAuth                                                          | Alternate auth method                                                                                        |
+| Chat file attachments                                                   | Nice-to-have for messaging                                                                                   |
+| ~~Notification preferences storage~~                                    | **Closed** — `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES`, exposed via `PATCH /api/profile/update/` |
+| Subscription/payment verification                                       | RevenueCat handles client-side; may need server-side receipt validation                                      |
 
 ### Architecture North Star
 
@@ -1835,6 +2000,7 @@ createProfile: async (data: CreateProfileRequest): Promise<RegisterResponse> => 
 ```
 
 **Response (201):**
+
 ```json
 {
   "user_id": "uuid",
@@ -1930,11 +2096,14 @@ if (response.status === 401 && !skipAuth) {
   const refreshToken = useAuthStore.getState().refreshToken;
   if (refreshToken) {
     try {
-      const refreshResponse = await fetch(`${this.baseUrl}/api/token/refresh/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: refreshToken }),
-      });
+      const refreshResponse = await fetch(
+        `${this.baseUrl}/api/token/refresh/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh: refreshToken }),
+        },
+      );
 
       if (refreshResponse.ok) {
         const { access } = await refreshResponse.json();
@@ -1944,24 +2113,26 @@ if (response.status === 401 && !skipAuth) {
           ...options,
           headers: {
             ...options.headers,
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${access}`,
           },
         };
         const retryResponse = await fetch(url, retryConfig);
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json().catch(() => ({}));
-          throw new Error(errorData?.detail || `API Error: ${retryResponse.status}`);
+          throw new Error(
+            errorData?.detail || `API Error: ${retryResponse.status}`,
+          );
         }
         return retryResponse.json();
       } else {
         // Refresh failed — force logout
         await useAuthStore.getState().clearAuth();
-        throw new Error('Session expired. Please log in again.');
+        throw new Error("Session expired. Please log in again.");
       }
     } catch (refreshError) {
       await useAuthStore.getState().clearAuth();
-      throw new Error('Session expired. Please log in again.');
+      throw new Error("Session expired. Please log in again.");
     }
   }
 }
@@ -1985,50 +2156,60 @@ const sponProfile = p.sponsor_profile || {};
 
 const autofillData: AutofillData = {
   personal: {
-    firstName: p.FIRST_NAME || '',
-    lastName: p.LAST_NAME || '',
-    fullName: [p.FIRST_NAME, p.LAST_NAME].filter(Boolean).join(' '),
-    email: p.EMAIL || '',
-    phone: p.PHONE_NUMBER || '',
-    linkedin: p.LINKED_IN || '',
-    portfolio: p.PORTFOLIO_URL || '',
+    firstName: p.FIRST_NAME || "",
+    lastName: p.LAST_NAME || "",
+    fullName: [p.FIRST_NAME, p.LAST_NAME].filter(Boolean).join(" "),
+    email: p.EMAIL || "",
+    phone: p.PHONE_NUMBER || "",
+    linkedin: p.LINKED_IN || "",
+    portfolio: p.PORTFOLIO_URL || "",
     profileImage: p.PHOTO_URL || undefined,
     address: {
-      street: p.STREET || '',
-      city: p.CITY || p.LOCATION?.split(',')[0]?.trim() || '',
-      state: p.STATE || p.LOCATION?.split(',')[1]?.trim() || '',
-      zip: p.ZIP || '',
-      country: p.COUNTRY || '',
+      street: p.STREET || "",
+      city: p.CITY || p.LOCATION?.split(",")[0]?.trim() || "",
+      state: p.STATE || p.LOCATION?.split(",")[1]?.trim() || "",
+      zip: p.ZIP || "",
+      country: p.COUNTRY || "",
     },
   },
   professional: {
-    title: isApplicant ? (appProfile.CURRENT_ROLE || '') : (sponProfile.JOB_TITLE || ''),
-    currentRole: appProfile.CURRENT_ROLE || '',
-    yearsExperience: String(appProfile.YEARS_EXPERIENCE || ''),
-    summary: appProfile.ACHIEVEMENTS || p.BIO || '',
-    desiredSalary: '',
-    availableStartDate: '',
-    targetIndustry: appProfile.INDUSTRY || '',
-    seekingPosition: Array.isArray(appProfile.POSITIONS) ? appProfile.POSITIONS[0] || '' : '',
+    title: isApplicant
+      ? appProfile.CURRENT_ROLE || ""
+      : sponProfile.JOB_TITLE || "",
+    currentRole: appProfile.CURRENT_ROLE || "",
+    yearsExperience: String(appProfile.YEARS_EXPERIENCE || ""),
+    summary: appProfile.ACHIEVEMENTS || p.BIO || "",
+    desiredSalary: "",
+    availableStartDate: "",
+    targetIndustry: appProfile.INDUSTRY || "",
+    seekingPosition: Array.isArray(appProfile.POSITIONS)
+      ? appProfile.POSITIONS[0] || ""
+      : "",
     experiences: _parseVariant(appProfile.PROFESSIONAL_EXPERIENCES) || [],
   },
   education: {
-    degree: '', major: '', university: '', graduationYear: '', gpa: '',
+    degree: "",
+    major: "",
+    university: "",
+    graduationYear: "",
+    gpa: "",
     entries: _parseVariant(appProfile.EDUCATION_ENTRIES) || [],
   },
   preferences: {
-    workAuthorization: appProfile.WORK_AUTHORIZATION || '',
-    willingToRelocate: String(appProfile.WILLING_TO_RELOCATE || ''),
-    requiresSponsorship: String(appProfile.REQUIRES_SPONSORSHIP || ''),
-    securityClearance: '',
+    workAuthorization: appProfile.WORK_AUTHORIZATION || "",
+    willingToRelocate: String(appProfile.WILLING_TO_RELOCATE || ""),
+    requiresSponsorship: String(appProfile.REQUIRES_SPONSORSHIP || ""),
+    securityClearance: "",
   },
-  demographics: { gender: '', ethnicity: '', veteran: '', disability: '' },
+  demographics: { gender: "", ethnicity: "", veteran: "", disability: "" },
   skills: _parseVariant(appProfile.SKILLS) || [],
-  insights: _parseVariant(isApplicant ? appProfile.INSIGHTS : sponProfile.INSIGHTS) || [],
+  insights:
+    _parseVariant(isApplicant ? appProfile.INSIGHTS : sponProfile.INSIGHTS) ||
+    [],
   resumeUrl: p.PHOTO_URL || null,
   certifications: _parseVariant(appProfile.CERTIFICATIONS) || [],
   languages: _parseVariant(appProfile.LANGUAGES) || [],
-  achievements: appProfile.ACHIEVEMENTS || '',
+  achievements: appProfile.ACHIEVEMENTS || "",
 };
 ```
 
@@ -2037,8 +2218,12 @@ Add this helper at the top of the file for parsing VARIANT fields:
 ```typescript
 function _parseVariant(value: any): any {
   if (value == null) return null;
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
   }
   return value;
 }
@@ -2058,92 +2243,128 @@ Add these functions below the existing `fetchJobsPack`:
 // ── Feed Actions ──
 
 export async function likeJob(jobId: string | number): Promise<any> {
-  return api.post('/api/jobs/like/', { job_id: jobId });
+  return api.post("/api/jobs/like/", { job_id: jobId });
 }
 
-export async function likeProfile(profileUserId: string, jobId: string): Promise<any> {
-  return api.post('/api/profiles/like/', {
+export async function likeProfile(
+  profileUserId: string,
+  jobId: string,
+): Promise<any> {
+  return api.post("/api/profiles/like/", {
     applicant_user_id: profileUserId,
     job_id: jobId,
   });
 }
 
-export async function recordJobFeed(jobId: number, action: string): Promise<any> {
-  return api.post('/api/jobs/feed/record/', { job_id: jobId, action });
+export async function recordJobFeed(
+  jobId: number,
+  action: string,
+): Promise<any> {
+  return api.post("/api/jobs/feed/record/", { job_id: jobId, action });
 }
 
-export async function recordProfileFeed(profileUserId: string, action: string): Promise<any> {
-  return api.post('/api/profiles/feed/record/', { profile_user_id: profileUserId, action });
+export async function recordProfileFeed(
+  profileUserId: string,
+  action: string,
+): Promise<any> {
+  return api.post("/api/profiles/feed/record/", {
+    profile_user_id: profileUserId,
+    action,
+  });
 }
 
 export async function fetchProfilePack(jobId?: string): Promise<any> {
-  const qs = jobId ? `?job_id=${jobId}` : '';
+  const qs = jobId ? `?job_id=${jobId}` : "";
   return api.get(`/api/profiles/pack/${qs}`);
 }
 
 // ── Matches ──
 
 export async function fetchMatches(): Promise<any> {
-  return api.get('/api/matches/');
+  return api.get("/api/matches/");
 }
 
 export async function fetchSponsorMatches(): Promise<any> {
-  return api.get('/api/matches/sponsor/');
+  return api.get("/api/matches/sponsor/");
 }
 
 export async function fetchLikedJobs(): Promise<any> {
-  return api.get('/api/likes/jobs/');
+  return api.get("/api/likes/jobs/");
 }
 
 // ── Messages ──
 
 export async function fetchConversations(): Promise<any> {
-  return api.get('/api/messages/conversations/');
+  return api.get("/api/messages/conversations/");
 }
 
-export async function fetchMessageHistory(conversationId: string): Promise<any> {
+export async function fetchMessageHistory(
+  conversationId: string,
+): Promise<any> {
   return api.get(`/api/messages/history/?conversation_id=${conversationId}`);
 }
 
-export async function sendMessage(conversationId: string, body: string): Promise<any> {
-  return api.post('/api/messages/send/', { conversation_id: conversationId, body });
+export async function sendMessage(
+  conversationId: string,
+  body: string,
+): Promise<any> {
+  return api.post("/api/messages/send/", {
+    conversation_id: conversationId,
+    body,
+  });
 }
 
-export async function getOrCreateConversation(otherUserId: string): Promise<any> {
-  return api.post('/api/messages/conversations/get-or-create/', {
+export async function getOrCreateConversation(
+  otherUserId: string,
+): Promise<any> {
+  return api.post("/api/messages/conversations/get-or-create/", {
     other_user_id: otherUserId,
   });
 }
 
-export async function unmatchConversation(conversationId: string): Promise<any> {
-  return api.post('/api/messages/unmatch/', { conversation_id: conversationId });
+export async function unmatchConversation(
+  conversationId: string,
+): Promise<any> {
+  return api.post("/api/messages/unmatch/", {
+    conversation_id: conversationId,
+  });
 }
 
 // ── Notifications ──
 
-export async function fetchNotifications(unreadOnly = false, limit = 20, offset = 0): Promise<any> {
-  return api.get(`/api/notifications/?unread_only=${unreadOnly}&limit=${limit}&offset=${offset}`);
+export async function fetchNotifications(
+  unreadOnly = false,
+  limit = 20,
+  offset = 0,
+): Promise<any> {
+  return api.get(
+    `/api/notifications/?unread_only=${unreadOnly}&limit=${limit}&offset=${offset}`,
+  );
 }
 
 export async function fetchUnreadCount(): Promise<any> {
-  return api.get('/api/notifications/unread-count/');
+  return api.get("/api/notifications/unread-count/");
 }
 
-export async function markNotificationRead(notificationId: string): Promise<any> {
+export async function markNotificationRead(
+  notificationId: string,
+): Promise<any> {
   return api.patch(`/api/notifications/${notificationId}/read/`);
 }
 
 export async function markAllNotificationsRead(): Promise<any> {
-  return api.patch('/api/notifications/read-all/');
+  return api.patch("/api/notifications/read-all/");
 }
 
 // ── Referrals ──
 
 export async function submitReferral(
-  applicantUserId: string, jobId: string, note: string,
-  confidenceChecks: Record<string, boolean>
+  applicantUserId: string,
+  jobId: string,
+  note: string,
+  confidenceChecks: Record<string, boolean>,
 ): Promise<any> {
-  return api.post('/api/referrals/submit/', {
+  return api.post("/api/referrals/submit/", {
     applicant_user_id: applicantUserId,
     job_id: jobId,
     referral_note: note,
@@ -2152,7 +2373,7 @@ export async function submitReferral(
 }
 
 export async function fetchReferrals(): Promise<any> {
-  return api.get('/api/referrals/');
+  return api.get("/api/referrals/");
 }
 
 // ── Jobs (Sponsor) ──
@@ -2173,15 +2394,18 @@ export async function fetchPublicProfile(userId: string): Promise<any> {
 
 // ── Profile Actions ──
 
-export async function changePassword(oldPassword: string, newPassword: string): Promise<any> {
-  return api.post('/api/profile/change-password/', {
+export async function changePassword(
+  oldPassword: string,
+  newPassword: string,
+): Promise<any> {
+  return api.post("/api/profile/change-password/", {
     old_password: oldPassword,
     new_password: newPassword,
   });
 }
 
 export async function deactivateAccount(): Promise<any> {
-  return api.post('/api/profile/deactivate/');
+  return api.post("/api/profile/deactivate/");
 }
 ```
 
@@ -2196,46 +2420,46 @@ export async function deactivateAccount(): Promise<any> {
 For swipe actions, find where the right-swipe handler fires and add:
 
 ```typescript
-import { likeJob, recordJobFeed } from '@/lib/api';
+import { likeJob, recordJobFeed } from "@/lib/api";
 
 // On swipe right (like):
 await likeJob(job.JOB_ID || job.id);
-await recordJobFeed(job.JOB_ID || job.id, 'liked');
+await recordJobFeed(job.JOB_ID || job.id, "liked");
 
 // On swipe left (pass):
-await recordJobFeed(job.JOB_ID || job.id, 'passed');
+await recordJobFeed(job.JOB_ID || job.id, "passed");
 ```
 
 **Sponsor feed (profiles):** Replace `mockProfiles` with a real fetch:
 
 ```typescript
-import { fetchProfilePack, likeProfile, recordProfileFeed } from '@/lib/api';
+import { fetchProfilePack, likeProfile, recordProfileFeed } from "@/lib/api";
 
 // Replace mockProfiles usage:
 const profiles = await fetchProfilePack(selectedJobId);
 
 // On swipe right:
 await likeProfile(profile.USER_ID, selectedJobId);
-await recordProfileFeed(profile.USER_ID, 'liked');
+await recordProfileFeed(profile.USER_ID, "liked");
 
 // On swipe left:
-await recordProfileFeed(profile.USER_ID, 'passed');
+await recordProfileFeed(profile.USER_ID, "passed");
 ```
 
 **Profile card field mapping** (backend → frontend):
 
-| Backend Field | Frontend Field |
-|---------------|---------------|
-| `USER_ID` | `id` |
-| `FIRST_NAME` + `LAST_NAME` | `name` |
-| `CURRENT_ROLE` | `role` |
-| `INDUSTRY` | `company` (or map from sponsor profile) |
-| `LOCATION` | `location` |
-| `PHOTO_URL` | `image` |
-| `BIO` | `bio` |
-| `YEARS_EXPERIENCE` | `yearsExperience` |
-| `SKILLS` (VARIANT) | `skills[]` — may need `JSON.parse()` |
-| `INSIGHTS` (VARIANT) | `insights` — may need `JSON.parse()` |
+| Backend Field              | Frontend Field                          |
+| -------------------------- | --------------------------------------- |
+| `USER_ID`                  | `id`                                    |
+| `FIRST_NAME` + `LAST_NAME` | `name`                                  |
+| `CURRENT_ROLE`             | `role`                                  |
+| `INDUSTRY`                 | `company` (or map from sponsor profile) |
+| `LOCATION`                 | `location`                              |
+| `PHOTO_URL`                | `image`                                 |
+| `BIO`                      | `bio`                                   |
+| `YEARS_EXPERIENCE`         | `yearsExperience`                       |
+| `SKILLS` (VARIANT)         | `skills[]` — may need `JSON.parse()`    |
+| `INSIGHTS` (VARIANT)       | `insights` — may need `JSON.parse()`    |
 
 ---
 
@@ -2246,7 +2470,12 @@ await recordProfileFeed(profile.USER_ID, 'passed');
 Replace `mockMatches` with real API calls:
 
 ```typescript
-import { fetchMatches, fetchSponsorMatches, fetchReferrals, fetchLikedJobs } from '@/lib/api';
+import {
+  fetchMatches,
+  fetchSponsorMatches,
+  fetchReferrals,
+  fetchLikedJobs,
+} from "@/lib/api";
 
 // Applicant:
 const matchesResponse = await fetchMatches();
@@ -2263,17 +2492,17 @@ const referralsResponse = await fetchReferrals();
 
 **Match object fields** (backend returns):
 
-| Backend Field | Frontend Field |
-|---------------|---------------|
-| `MATCH_ID` | `id` |
-| `JOB_ID` | `jobId` |
-| `JOB_TITLE` | `jobTitle` |
-| `COMPANY` | `company` |
-| `APPLICANT_USER_ID` | `applicantId` |
-| `SPONSOR_USER_ID` | `sponsorId` |
+| Backend Field             | Frontend Field       |
+| ------------------------- | -------------------- |
+| `MATCH_ID`                | `id`                 |
+| `JOB_ID`                  | `jobId`              |
+| `JOB_TITLE`               | `jobTitle`           |
+| `COMPANY`                 | `company`            |
+| `APPLICANT_USER_ID`       | `applicantId`        |
+| `SPONSOR_USER_ID`         | `sponsorId`          |
 | `FIRST_NAME`, `LAST_NAME` | `name` (concatenate) |
-| `PHOTO_URL` | `image` |
-| `MATCHED_AT` | `matchedAt` |
+| `PHOTO_URL`               | `image`              |
+| `MATCHED_AT`              | `matchedAt`          |
 
 ---
 
@@ -2285,9 +2514,12 @@ Replace `mockConversations` and `mockMessages`:
 
 ```typescript
 import {
-  fetchConversations, fetchMessageHistory, sendMessage,
-  getOrCreateConversation, unmatchConversation
-} from '@/lib/api';
+  fetchConversations,
+  fetchMessageHistory,
+  sendMessage,
+  getOrCreateConversation,
+  unmatchConversation,
+} from "@/lib/api";
 
 // Load inbox:
 const convResponse = await fetchConversations();
@@ -2304,25 +2536,25 @@ await sendMessage(conversationId, messageText);
 
 **Conversation object fields:**
 
-| Backend Field | Frontend Field |
-|---------------|---------------|
-| `CONVERSATION_ID` | `id` |
-| `APPLICANT_USER_ID` | `applicantId` |
-| `SPONSOR_USER_ID` | `sponsorId` |
-| `OTHER_FIRST_NAME` + `OTHER_LAST_NAME` | `name` |
-| `OTHER_PHOTO_URL` | `image` |
-| `LAST_MESSAGE_BODY` | `lastMessage` |
-| `LAST_MESSAGE_AT` | `time` |
-| `UNREAD_COUNT` | `unread` |
+| Backend Field                          | Frontend Field |
+| -------------------------------------- | -------------- |
+| `CONVERSATION_ID`                      | `id`           |
+| `APPLICANT_USER_ID`                    | `applicantId`  |
+| `SPONSOR_USER_ID`                      | `sponsorId`    |
+| `OTHER_FIRST_NAME` + `OTHER_LAST_NAME` | `name`         |
+| `OTHER_PHOTO_URL`                      | `image`        |
+| `LAST_MESSAGE_BODY`                    | `lastMessage`  |
+| `LAST_MESSAGE_AT`                      | `time`         |
+| `UNREAD_COUNT`                         | `unread`       |
 
 **Message object fields:**
 
-| Backend Field | Frontend Field |
-|---------------|---------------|
-| `MESSAGE_ID` | `id` |
-| `SENDER_USER_ID` | `senderId` |
-| `BODY` | `body` / `text` |
-| `SENT_AT` | `timestamp` |
+| Backend Field    | Frontend Field  |
+| ---------------- | --------------- |
+| `MESSAGE_ID`     | `id`            |
+| `SENDER_USER_ID` | `senderId`      |
+| `BODY`           | `body` / `text` |
+| `SENT_AT`        | `timestamp`     |
 
 #### WebSocket Integration
 
@@ -2334,17 +2566,19 @@ const ws = new WebSocket(wsUrl);
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
-  if (data.type === 'chat.message') {
+  if (data.type === "chat.message") {
     // Append to messages list:
     // data.message_id, data.body, data.sender_user_id, data.sent_at
   }
 };
 
 // Send via WebSocket (faster than HTTP):
-ws.send(JSON.stringify({
-  type: 'chat.message',
-  body: messageText,
-}));
+ws.send(
+  JSON.stringify({
+    type: "chat.message",
+    body: messageText,
+  }),
+);
 ```
 
 Close codes: `4001` = auth failed, `4003` = not a participant, `4004` = conversation not found.
@@ -2359,9 +2593,11 @@ Replace `mockNotifications`:
 
 ```typescript
 import {
-  fetchNotifications, fetchUnreadCount,
-  markNotificationRead, markAllNotificationsRead
-} from '@/lib/api';
+  fetchNotifications,
+  fetchUnreadCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "@/lib/api";
 
 // Load notifications:
 const notifResponse = await fetchNotifications(false, 20, 0);
@@ -2380,17 +2616,17 @@ await markAllNotificationsRead();
 
 **Notification object fields:**
 
-| Backend Field | Frontend Field |
-|---------------|---------------|
-| `NOTIFICATION_ID` | `id` |
-| `TYPE` | `type` (match, message, referral) |
-| `TITLE` | `title` |
-| `BODY` | `body` / `description` |
-| `IS_READ` | `read` |
-| `CREATED_AT` | `time` |
-| `RELATED_USER_ID` | `relatedUserId` |
-| `RELATED_JOB_ID` | `relatedJobId` |
-| `RELATED_CONVERSATION_ID` | `relatedConversationId` |
+| Backend Field             | Frontend Field                    |
+| ------------------------- | --------------------------------- |
+| `NOTIFICATION_ID`         | `id`                              |
+| `TYPE`                    | `type` (match, message, referral) |
+| `TITLE`                   | `title`                           |
+| `BODY`                    | `body` / `description`            |
+| `IS_READ`                 | `read`                            |
+| `CREATED_AT`              | `time`                            |
+| `RELATED_USER_ID`         | `relatedUserId`                   |
+| `RELATED_JOB_ID`          | `relatedJobId`                    |
+| `RELATED_CONVERSATION_ID` | `relatedConversationId`           |
 
 ---
 
@@ -2399,8 +2635,8 @@ await markAllNotificationsRead();
 **File:** `components/ProfileView.tsx`
 
 ```typescript
-import { changePassword, deactivateAccount } from '@/lib/api';
-import { authApi } from '@/lib/auth-api';
+import { changePassword, deactivateAccount } from "@/lib/api";
+import { authApi } from "@/lib/auth-api";
 
 // Change password modal:
 await changePassword(currentPassword, newPassword);
@@ -2411,7 +2647,7 @@ await useAuthStore.getState().clearAuth();
 // Navigate to login
 
 // Notification preferences:
-await api.patch('/api/profile/update/', {
+await api.patch("/api/profile/update/", {
   notification_preferences: {
     match: matchEnabled,
     message: messageEnabled,
@@ -2429,7 +2665,7 @@ await api.patch('/api/profile/update/', {
 Replace `mockJobs` for sponsor browse:
 
 ```typescript
-import { browseJobs, sponsorJob } from '@/lib/api';
+import { browseJobs, sponsorJob } from "@/lib/api";
 
 // Browse ATS jobs:
 const browsedJobs = await browseJobs(20, 0);
@@ -2444,6 +2680,7 @@ await sponsorJob(jobId);
 ## Testing Checklist
 
 ### Phase 1
+
 - [ ] Create new applicant account through questionnaire
 - [ ] Create new sponsor account through questionnaire
 - [ ] Login with created account
@@ -2452,6 +2689,7 @@ await sponsorJob(jobId);
 - [ ] Token refresh works (wait 24h or manually expire)
 
 ### Phase 2
+
 - [ ] Applicant sees real job cards in feed
 - [ ] Sponsor sees real profile cards in feed
 - [ ] Swipe right creates a like (check via `GET /api/likes/jobs/`)
@@ -2465,7 +2703,9 @@ await sponsorJob(jobId);
 - [ ] Referral submission from Messages works (sponsor only)
 
 ### Data Available for Testing
+
 The backend has seeded demo data in Snowflake. You can login with any of these accounts (password for all: `DemoPass123!`):
+
 - `sarah.chen@demo.backchannel.app` (applicant — ML engineer)
 - `marcus.johnson@demo.backchannel.app` (applicant — backend eng)
 - `elena.rodriguez@demo.backchannel.app` (applicant — fullstack)
@@ -2536,82 +2776,82 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 ### Security
 
-| ID | File | Lines | Issue |
-|----|------|-------|-------|
-| M-1 | `services/auth.py` | 61-76, 111-122 | **Role parameter is user-controlled.** Either registration endpoint can create either role. Separate endpoints are meaningless. |
-| M-2 | `custom_jwt.py` | 40 | **Exception details leaked.** `f'Token validation failed: {str(e)}'` exposes Snowflake errors to clients. |
-| M-3 | `views_auth.py` | 44 | **Logout is a no-op.** Returns 200 but never blacklists the JWT. Token remains valid until expiry. |
-| M-4 | `settings.py` | 51 | **Placeholder CORS origin.** `https://your-frontend-domain.com` — if registered by an attacker, allows cross-origin requests with credentials. |
-| M-5 | `settings.py` | 246 | **Throttle config is dead.** Rates are defined but `DEFAULT_THROTTLE_CLASSES` is empty. No throttling is applied by default. |
-| M-6 | `Dockerfile` | — | **Container runs as root.** No `USER` directive. Code execution → full root privileges in container. |
-| M-7 | `ws_auth.py` | 40 | **JWT in WebSocket URL query string.** Appears in server/proxy logs and browser history. |
-| M-8 | `consumers.py` | 62 | **No WebSocket payload size limit.** Malicious client can send multi-megabyte JSON bodies. |
-| M-9 | `views_documents.py` | 11 | **Raw query functions re-exported from view module.** `extract_text_from_document` and `update_applicant_resume_text` are importable from views with no auth wrapping. |
+| ID  | File                 | Lines          | Issue                                                                                                                                                                  |
+| --- | -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M-1 | `services/auth.py`   | 61-76, 111-122 | **Role parameter is user-controlled.** Either registration endpoint can create either role. Separate endpoints are meaningless.                                        |
+| M-2 | `custom_jwt.py`      | 40             | **Exception details leaked.** `f'Token validation failed: {str(e)}'` exposes Snowflake errors to clients.                                                              |
+| M-3 | `views_auth.py`      | 44             | **Logout is a no-op.** Returns 200 but never blacklists the JWT. Token remains valid until expiry.                                                                     |
+| M-4 | `settings.py`        | 51             | **Placeholder CORS origin.** `https://your-frontend-domain.com` — if registered by an attacker, allows cross-origin requests with credentials.                         |
+| M-5 | `settings.py`        | 246            | **Throttle config is dead.** Rates are defined but `DEFAULT_THROTTLE_CLASSES` is empty. No throttling is applied by default.                                           |
+| M-6 | `Dockerfile`         | —              | **Container runs as root.** No `USER` directive. Code execution → full root privileges in container.                                                                   |
+| M-7 | `ws_auth.py`         | 40             | **JWT in WebSocket URL query string.** Appears in server/proxy logs and browser history.                                                                               |
+| M-8 | `consumers.py`       | 62             | **No WebSocket payload size limit.** Malicious client can send multi-megabyte JSON bodies.                                                                             |
+| M-9 | `views_documents.py` | 11             | **Raw query functions re-exported from view module.** `extract_text_from_document` and `update_applicant_resume_text` are importable from views with no auth wrapping. |
 
 ### Data Integrity / Race Conditions
 
-| ID | File | Lines | Issue |
-|----|------|-------|-------|
-| M-10 | `services/auth.py` | 50-57 | **Non-atomic multi-table registration.** Three separate INSERTs with no transaction. Partial failure leaves orphaned rows. |
-| M-11 | `services/matching.py` | 96-99, 120-131 | **TOCTOU race in like operations.** Check-then-insert pattern allows duplicate likes under concurrency. |
-| M-12 | `services/jobs.py` | 367-369, 394-396 | **TOCTOU race in apply/waitlist.** Same check-then-insert pattern. |
-| M-13 | `services/messaging.py` | 52-57 | **TOCTOU race in get_or_create_conversation.** Concurrent requests can create duplicate conversations. |
+| ID   | File                    | Lines            | Issue                                                                                                                      |
+| ---- | ----------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| M-10 | `services/auth.py`      | 50-57            | **Non-atomic multi-table registration.** Three separate INSERTs with no transaction. Partial failure leaves orphaned rows. |
+| M-11 | `services/matching.py`  | 96-99, 120-131   | **TOCTOU race in like operations.** Check-then-insert pattern allows duplicate likes under concurrency.                    |
+| M-12 | `services/jobs.py`      | 367-369, 394-396 | **TOCTOU race in apply/waitlist.** Same check-then-insert pattern.                                                         |
+| M-13 | `services/messaging.py` | 52-57            | **TOCTOU race in get_or_create_conversation.** Concurrent requests can create duplicate conversations.                     |
 
 ### Missing Ownership Checks (Query Layer)
 
-| ID | File | Function | Issue |
-|----|------|----------|-------|
-| M-14 | `queries/likes.py` | `set_matched` | Updates by `LIKE_ID` only — no user ownership filter. |
-| M-15 | `queries/messaging.py` | `close_conversation` | Updates by `CONVERSATION_ID` only — no participant check. |
-| M-16 | `queries/referrals.py` | `withdraw_referral` | Updates by `REFERRAL_ID` only — no `SPONSOR_ID` filter. |
-| M-17 | `queries/notifications.py` | `mark_read` | Updates by `NOTIFICATION_ID` only — no `USER_ID` filter. |
-| M-18 | `queries/documents.py` | `mark_file_parsed` | Updates by `FILE_ID` only — no `USER_ID` filter. |
-| M-19 | `services/profiles.py` | `get_profile_pack` | Doesn't verify the caller (sponsor) owns the `job_id`. |
-| M-20 | `services/matching.py` | `like_job` | No role check — a sponsor can call the applicant-only like endpoint. |
+| ID   | File                       | Function             | Issue                                                                |
+| ---- | -------------------------- | -------------------- | -------------------------------------------------------------------- |
+| M-14 | `queries/likes.py`         | `set_matched`        | Updates by `LIKE_ID` only — no user ownership filter.                |
+| M-15 | `queries/messaging.py`     | `close_conversation` | Updates by `CONVERSATION_ID` only — no participant check.            |
+| M-16 | `queries/referrals.py`     | `withdraw_referral`  | Updates by `REFERRAL_ID` only — no `SPONSOR_ID` filter.              |
+| M-17 | `queries/notifications.py` | `mark_read`          | Updates by `NOTIFICATION_ID` only — no `USER_ID` filter.             |
+| M-18 | `queries/documents.py`     | `mark_file_parsed`   | Updates by `FILE_ID` only — no `USER_ID` filter.                     |
+| M-19 | `services/profiles.py`     | `get_profile_pack`   | Doesn't verify the caller (sponsor) owns the `job_id`.               |
+| M-20 | `services/matching.py`     | `like_job`           | No role check — a sponsor can call the applicant-only like endpoint. |
 
 ### Observability
 
-| ID | File | Lines | Issue |
-|----|------|-------|-------|
-| M-21 | `services/auth.py` | 238 | `except Exception: pass` — device cleanup failure has zero logging. |
-| M-22 | `services/messaging.py` | 102 | `except Exception: pass` — notification failure has zero logging. |
-| M-23 | `services/matching.py` | 86 | `except Exception: pass` — match notification failure has zero logging. |
-| M-24 | `services/referrals.py` | 50 | `except Exception: pass` — referral notification failure has zero logging. |
-| M-25 | `settings.py` | 256-273 | **DEBUG-level file logging in production** with no rotation. Unbounded `debug.log` can leak sensitive data. |
+| ID   | File                    | Lines   | Issue                                                                                                       |
+| ---- | ----------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| M-21 | `services/auth.py`      | 238     | `except Exception: pass` — device cleanup failure has zero logging.                                         |
+| M-22 | `services/messaging.py` | 102     | `except Exception: pass` — notification failure has zero logging.                                           |
+| M-23 | `services/matching.py`  | 86      | `except Exception: pass` — match notification failure has zero logging.                                     |
+| M-24 | `services/referrals.py` | 50      | `except Exception: pass` — referral notification failure has zero logging.                                  |
+| M-25 | `settings.py`           | 256-273 | **DEBUG-level file logging in production** with no rotation. Unbounded `debug.log` can leak sensitive data. |
 
 ### Performance
 
-| ID | File | Lines | Issue |
-|----|------|-------|-------|
-| M-26 | `services/jobs.py` | 200-206 | **N+1 query pattern.** `format_job_for_ui` issues a separate Snowflake query per job for sponsor info (up to 10 extra round-trips). |
-| M-27 | `snowflake_utils.py` | 42-49 | **No connection timeout.** If Snowflake is unreachable, `connect()` blocks for 60-120+ seconds, tying up workers. |
+| ID   | File                 | Lines   | Issue                                                                                                                               |
+| ---- | -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| M-26 | `services/jobs.py`   | 200-206 | **N+1 query pattern.** `format_job_for_ui` issues a separate Snowflake query per job for sponsor info (up to 10 extra round-trips). |
+| M-27 | `snowflake_utils.py` | 42-49   | **No connection timeout.** If Snowflake is unreachable, `connect()` blocks for 60-120+ seconds, tying up workers.                   |
 
 ---
 
 ## LOW (20) — Nice to Have
 
-| ID | File | Issue |
-|----|------|-------|
-| L-1 | `services/auth.py:23` | `datetime.utcnow()` is deprecated since Python 3.12. Use `datetime.now(timezone.utc)`. |
-| L-2 | `settings.py` | Missing production security headers: `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_CONTENT_TYPE_NOSNIFF`. |
-| L-3 | `settings.py:74` | Access token lifetime is 24 hours (industry standard: 15-60 min). Refresh token rotation is disabled. |
-| L-4 | `settings.py:124` | SQLite as Django default DB — unsuitable for multi-process Daphne deployment if any Django feature uses it. |
-| L-5 | `cache.py:40` | `cached_query` cannot cache legitimate `None`/falsy results — uses `None` as cache-miss sentinel. |
-| L-6 | `snowflake_utils.py:29` | `SELECT 1` health check on every connection reuse doubles query latency. Consider time-based staleness. |
-| L-7 | `snowflake_utils.py` | Thread-local pool has no lifecycle management. No `request_finished` signal to close connections. |
-| L-8 | `custom_jwt.py:38` | Broad `except Exception` transforms Snowflake outages into 401s instead of 503s. |
-| L-9 | `snowflake_user.py:8-9` | `is_active` and `is_authenticated` hardcoded to `True` — object is a snapshot, can't reflect deactivation. |
-| L-10 | `consumers.py` | No WebSocket-level rate limiting (REST endpoints have DRF throttles, WS has nothing). |
-| L-11 | `urls.py:35` | Django admin panel exposed in production at `/admin/`. No useful models but exposes a brute-forceable login. |
-| L-12 | `urls.py:30` | Health check is shallow (just returns OK). Consider adding Snowflake/Redis liveness checks. |
-| L-13 | — | No `.dockerignore` — `.git/`, `.env`, `debug.log` copied into Docker image. |
-| L-14 | `docker-compose.yml` | Redis has no authentication and is bound to host port 6379. |
-| L-15 | `queries/referrals.py:63-77` | `LIMIT`/`OFFSET` via f-string with `int()` cast — not parameterized. |
-| L-16 | `queries/devices.py:58` | `deactivate_token` without `user_id` deactivates globally. Intentional for FCM rejection but worth noting. |
-| L-17 | `queries/likes.py:180` | `get_applicants_who_liked_job` has no sponsor ownership filter. |
-| L-18 | `services/profiles.py:179` | `get_public_profile` accepts `requesting_user_id` but ignores it. |
-| L-19 | `services/profiles.py:238` | `record_job_feed` rejects UUID job IDs (sponsored jobs) — only accepts numeric ATS IDs. |
-| L-20 | `services/messaging.py:69` | `str(body).strip()` converts `None` to the string `"None"`. |
+| ID   | File                         | Issue                                                                                                                                                            |
+| ---- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L-1  | `services/auth.py:23`        | `datetime.utcnow()` is deprecated since Python 3.12. Use `datetime.now(timezone.utc)`.                                                                           |
+| L-2  | `settings.py`                | Missing production security headers: `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_CONTENT_TYPE_NOSNIFF`. |
+| L-3  | `settings.py:74`             | Access token lifetime is 24 hours (industry standard: 15-60 min). Refresh token rotation is disabled.                                                            |
+| L-4  | `settings.py:124`            | SQLite as Django default DB — unsuitable for multi-process Daphne deployment if any Django feature uses it.                                                      |
+| L-5  | `cache.py:40`                | `cached_query` cannot cache legitimate `None`/falsy results — uses `None` as cache-miss sentinel.                                                                |
+| L-6  | `snowflake_utils.py:29`      | `SELECT 1` health check on every connection reuse doubles query latency. Consider time-based staleness.                                                          |
+| L-7  | `snowflake_utils.py`         | Thread-local pool has no lifecycle management. No `request_finished` signal to close connections.                                                                |
+| L-8  | `custom_jwt.py:38`           | Broad `except Exception` transforms Snowflake outages into 401s instead of 503s.                                                                                 |
+| L-9  | `snowflake_user.py:8-9`      | `is_active` and `is_authenticated` hardcoded to `True` — object is a snapshot, can't reflect deactivation.                                                       |
+| L-10 | `consumers.py`               | No WebSocket-level rate limiting (REST endpoints have DRF throttles, WS has nothing).                                                                            |
+| L-11 | `urls.py:35`                 | Django admin panel exposed in production at `/admin/`. No useful models but exposes a brute-forceable login.                                                     |
+| L-12 | `urls.py:30`                 | Health check is shallow (just returns OK). Consider adding Snowflake/Redis liveness checks.                                                                      |
+| L-13 | —                            | No `.dockerignore` — `.git/`, `.env`, `debug.log` copied into Docker image.                                                                                      |
+| L-14 | `docker-compose.yml`         | Redis has no authentication and is bound to host port 6379.                                                                                                      |
+| L-15 | `queries/referrals.py:63-77` | `LIMIT`/`OFFSET` via f-string with `int()` cast — not parameterized.                                                                                             |
+| L-16 | `queries/devices.py:58`      | `deactivate_token` without `user_id` deactivates globally. Intentional for FCM rejection but worth noting.                                                       |
+| L-17 | `queries/likes.py:180`       | `get_applicants_who_liked_job` has no sponsor ownership filter.                                                                                                  |
+| L-18 | `services/profiles.py:179`   | `get_public_profile` accepts `requesting_user_id` but ignores it.                                                                                                |
+| L-19 | `services/profiles.py:238`   | `record_job_feed` rejects UUID job IDs (sponsored jobs) — only accepts numeric ATS IDs.                                                                          |
+| L-20 | `services/messaging.py:69`   | `str(body).strip()` converts `None` to the string `"None"`.                                                                                                      |
 
 ---
 
@@ -2649,13 +2889,13 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 ### Screens with No API Needed (Pure UI) — 5 screens
 
-| # | Screen | File | Notes |
-|---|--------|------|-------|
-| 1 | Splash Screen | `components/SplashScreen.tsx` | Tap "Get Connected" → navigate |
-| 2 | Role Selection | `components/ModeSelection.tsx` | Select Applicant/Sponsor |
-| 3 | Onboarding Slides | `components/Onboarding.tsx` | 3 info slides |
-| 17 | ProfileCompletionModal | `components/ProfileCompletionModal.tsx` | Shows missing fields |
-| 18 | ProfileCompletionBanner | `components/ProfileCompletionBanner.tsx` | Inline completion % |
+| #   | Screen                  | File                                     | Notes                          |
+| --- | ----------------------- | ---------------------------------------- | ------------------------------ |
+| 1   | Splash Screen           | `components/SplashScreen.tsx`            | Tap "Get Connected" → navigate |
+| 2   | Role Selection          | `components/ModeSelection.tsx`           | Select Applicant/Sponsor       |
+| 3   | Onboarding Slides       | `components/Onboarding.tsx`              | 3 info slides                  |
+| 17  | ProfileCompletionModal  | `components/ProfileCompletionModal.tsx`  | Shows missing fields           |
+| 18  | ProfileCompletionBanner | `components/ProfileCompletionBanner.tsx` | Inline completion %            |
 
 ---
 
@@ -2663,13 +2903,13 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/AuthScreen.tsx`
 
-| Need | Backend Endpoint | Wired? |
-|------|-----------------|--------|
-| Login | `POST /api/login/` | Yes — `authApi.login()` |
-| Forgot password | `POST /api/forgot-password/` | Yes — `authApi.forgotPassword()` |
-| Register (applicant) | `POST /api/register/` | Defined in `authApi.register()` but NOT called from UI — deferred to questionnaire |
-| Register (sponsor) | `POST /api/register-sponsor/` | Defined but NOT called from UI |
-| LinkedIn OAuth | None | Button exists, nothing wired anywhere |
+| Need                 | Backend Endpoint              | Wired?                                                                             |
+| -------------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
+| Login                | `POST /api/login/`            | Yes — `authApi.login()`                                                            |
+| Forgot password      | `POST /api/forgot-password/`  | Yes — `authApi.forgotPassword()`                                                   |
+| Register (applicant) | `POST /api/register/`         | Defined in `authApi.register()` but NOT called from UI — deferred to questionnaire |
+| Register (sponsor)   | `POST /api/register-sponsor/` | Defined but NOT called from UI                                                     |
+| LinkedIn OAuth       | None                          | Button exists, nothing wired anywhere                                              |
 
 ---
 
@@ -2677,18 +2917,18 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/ApplicantQuestionnaire.tsx`
 
-| Step | Field | Backend Registration Field | Status |
-|------|-------|---------------------------|--------|
-| - | firstName | `first_name` | Ready |
-| - | lastName | `last_name` | Ready |
-| - | email | `email` | Ready |
-| - | password | `password` | Ready |
-| 1 | targetIndustry | `industry` | Ready |
-| 2 | currentRole | `current_role` | Ready — `CURRENT_ROLE VARCHAR(200)` added in Migration 003 |
-| 3 | seekingPosition | `positions` (array) | Ready |
-| 4 | skills | `skills` (array) | Ready |
-| 5 | insights | `insights` (array) | Ready — `INSIGHTS VARIANT` added in Migration 003 |
-| 6 | resumeUrl | `POST /api/upload-and-parse/` | Separate post-registration flow (backend ready) |
+| Step | Field           | Backend Registration Field    | Status                                                     |
+| ---- | --------------- | ----------------------------- | ---------------------------------------------------------- |
+| -    | firstName       | `first_name`                  | Ready                                                      |
+| -    | lastName        | `last_name`                   | Ready                                                      |
+| -    | email           | `email`                       | Ready                                                      |
+| -    | password        | `password`                    | Ready                                                      |
+| 1    | targetIndustry  | `industry`                    | Ready                                                      |
+| 2    | currentRole     | `current_role`                | Ready — `CURRENT_ROLE VARCHAR(200)` added in Migration 003 |
+| 3    | seekingPosition | `positions` (array)           | Ready                                                      |
+| 4    | skills          | `skills` (array)              | Ready                                                      |
+| 5    | insights        | `insights` (array)            | Ready — `INSIGHTS VARIANT` added in Migration 003          |
+| 6    | resumeUrl       | `POST /api/upload-and-parse/` | Separate post-registration flow (backend ready)            |
 
 **Note:** `authApi.createProfile()` currently returns mock tokens — does not call real API.
 
@@ -2698,22 +2938,23 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/SponsorQuestionnaire.tsx`
 
-| Step | Field | Backend Registration Field | Status |
-|------|-------|---------------------------|--------|
-| - | firstName | `first_name` | Ready |
-| - | lastName | `last_name` | Ready |
-| - | email | `email` | Ready |
-| - | password | `password` | Ready |
-| 1 | company | `company` | Ready |
-| 2 | jobTitle | `job_title` | Ready |
-| 3 | yearsAtCompany | `duration` | Ready |
-| 4 | openToReferrals | `open_to_referrals` | Ready |
-| 5 | pastReferrals | `referral_experience` | Ready |
-| 6 | referralBonus | `financial_reward` | Ready |
-| 7 | insights | `insights` (array) | Ready — `INSIGHTS VARIANT` added in Migration 003 |
-| 8 | workEmail | `work_email` | Ready |
+| Step | Field           | Backend Registration Field | Status                                            |
+| ---- | --------------- | -------------------------- | ------------------------------------------------- |
+| -    | firstName       | `first_name`               | Ready                                             |
+| -    | lastName        | `last_name`                | Ready                                             |
+| -    | email           | `email`                    | Ready                                             |
+| -    | password        | `password`                 | Ready                                             |
+| 1    | company         | `company`                  | Ready                                             |
+| 2    | jobTitle        | `job_title`                | Ready                                             |
+| 3    | yearsAtCompany  | `duration`                 | Ready                                             |
+| 4    | openToReferrals | `open_to_referrals`        | Ready                                             |
+| 5    | pastReferrals   | `referral_experience`      | Ready                                             |
+| 6    | referralBonus   | `financial_reward`         | Ready                                             |
+| 7    | insights        | `insights` (array)         | Ready — `INSIGHTS VARIANT` added in Migration 003 |
+| 8    | workEmail       | `work_email`               | Ready                                             |
 
 **Additional gap:** Email verification flow (send link, check status) is simulated with `setTimeout(6000)`. No backend endpoints exist:
+
 - `POST /api/verify/email/send/` — missing
 - `GET /api/verify/email/status/` — missing
 
@@ -2723,16 +2964,17 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/HomeView.tsx`
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
-| Job cards (applicant) | `GET /api/jobs/pack/` | **Wired, working** |
-| Profile cards (sponsor browsing applicants) | `GET /api/profiles/pack/` | Backend exists, **frontend uses mock data** |
-| Like a job (applicant swipe right) | `POST /api/jobs/like/` | Backend exists, **not wired** |
-| Like a profile (sponsor swipe right) | `POST /api/profiles/like/` | Backend exists, **not wired** |
-| Record feed action | `POST /api/jobs/feed/record/`, `POST /api/profiles/feed/record/` | Backend exists, **not wired** |
-| Filter profiles | N/A | Local UI filtering on loaded data |
+| Need                                        | Backend Endpoint                                                 | Status                                      |
+| ------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------- |
+| Job cards (applicant)                       | `GET /api/jobs/pack/`                                            | **Wired, working**                          |
+| Profile cards (sponsor browsing applicants) | `GET /api/profiles/pack/`                                        | Backend exists, **frontend uses mock data** |
+| Like a job (applicant swipe right)          | `POST /api/jobs/like/`                                           | Backend exists, **not wired**               |
+| Like a profile (sponsor swipe right)        | `POST /api/profiles/like/`                                       | Backend exists, **not wired**               |
+| Record feed action                          | `POST /api/jobs/feed/record/`, `POST /api/profiles/feed/record/` | Backend exists, **not wired**               |
+| Filter profiles                             | N/A                                                              | Local UI filtering on loaded data           |
 
 **Modals within HomeView:**
+
 - Filter Modal — multi-select filters (local UI, no API)
 - Profile Detail Expanded View — displays already-loaded profile data
 - Job Detail Modal — displays already-loaded job data, includes description, skills, benefits, sponsor info, responsibilities, requirements, interview process
@@ -2747,16 +2989,17 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/MatchesView.tsx`
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
-| Applicant matches (jobs) | `GET /api/matches/` | Backend exists, **frontend uses mock data** |
-| Sponsor matches (applicants) | `GET /api/matches/sponsor/` | Backend exists, **frontend uses mock data** |
-| Referral pipeline status | `POST /api/referrals/submit/`, `GET /api/referrals/`, `GET /api/referrals/<id>/`, `PATCH /api/referrals/<id>/withdraw/` | Ready — Migration 005; REFERRED/WITHDRAWN statuses tracked |
-| Recommended sponsors | None | **GAP** — no sponsor recommendation endpoint |
-| Send message from modal | `POST /api/messages/send/` | Backend exists |
-| Show interest in job | `POST /api/jobs/like/` | Backend exists |
+| Need                         | Backend Endpoint                                                                                                        | Status                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Applicant matches (jobs)     | `GET /api/matches/`                                                                                                     | Backend exists, **frontend uses mock data**                |
+| Sponsor matches (applicants) | `GET /api/matches/sponsor/`                                                                                             | Backend exists, **frontend uses mock data**                |
+| Referral pipeline status     | `POST /api/referrals/submit/`, `GET /api/referrals/`, `GET /api/referrals/<id>/`, `PATCH /api/referrals/<id>/withdraw/` | Ready — Migration 005; REFERRED/WITHDRAWN statuses tracked |
+| Recommended sponsors         | None                                                                                                                    | **GAP** — no sponsor recommendation endpoint               |
+| Send message from modal      | `POST /api/messages/send/`                                                                                              | Backend exists                                             |
+| Show interest in job         | `POST /api/jobs/like/`                                                                                                  | Backend exists                                             |
 
 **Modals:**
+
 - Applicant Profile Modal — 2-page swipeable (bio+skills → insights), message input with quick replies
 - Job Details Modal — full job info, "Show Interest" button
 - Sponsor Profile Modal — 2-page swipeable (bio → insights), message input with quick replies
@@ -2767,15 +3010,15 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/MessagesView.tsx`
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
-| List conversations | `GET /api/messages/conversations/` | Backend exists, **frontend uses mock data** |
-| Load messages | `GET /api/messages/history/` | Backend exists, **frontend uses mock data** |
-| Send message | `POST /api/messages/send/` | Backend exists, **frontend uses mock data** |
+| Need                           | Backend Endpoint                        | Status                                                                          |
+| ------------------------------ | --------------------------------------- | ------------------------------------------------------------------------------- |
+| List conversations             | `GET /api/messages/conversations/`      | Backend exists, **frontend uses mock data**                                     |
+| Load messages                  | `GET /api/messages/history/`            | Backend exists, **frontend uses mock data**                                     |
+| Send message                   | `POST /api/messages/send/`              | Backend exists, **frontend uses mock data**                                     |
 | Real-time messages (WebSocket) | `ws://<host>/ws/chat/<id>/?token=<jwt>` | **Backend ready** — Django Channels; HTTP messages also broadcast to WS clients |
-| Unmatch | `POST /api/messages/unmatch/` | Backend exists |
-| Hide/archive conversation | None | **GAP** — no hide endpoint |
-| File attachments in chat | None | **GAP** — no attachment upload for conversations |
+| Unmatch                        | `POST /api/messages/unmatch/`           | Backend exists                                                                  |
+| Hide/archive conversation      | None                                    | **GAP** — no hide endpoint                                                      |
+| File attachments in chat       | None                                    | **GAP** — no attachment upload for conversations                                |
 
 **Conversation fields expected by frontend:**
 `id, name, role, company, image, lastMessage, time, unread, appliedRole, experience, skills[], location, email, phone, linkedin, education, previousCompanies[], bio, workPreferences[], desiredRoles[], companiesCanReferTo[], prompts[], isHidden, applicationStatus, appliedDate, nextAction`
@@ -2801,12 +3044,12 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/JobsView.tsx`
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
-| Browse ATS jobs | `GET /api/jobs/browse/` | Backend exists |
-| Sponsor a job | `POST /api/jobs/{id}/sponsor/` | Backend exists |
-| Job pack for feed | `GET /api/jobs/pack/` | **Wired, working** |
-| Apply (opens WebView) | External URL | N/A |
+| Need                  | Backend Endpoint               | Status             |
+| --------------------- | ------------------------------ | ------------------ |
+| Browse ATS jobs       | `GET /api/jobs/browse/`        | Backend exists     |
+| Sponsor a job         | `POST /api/jobs/{id}/sponsor/` | Backend exists     |
+| Job pack for feed     | `GET /api/jobs/pack/`          | **Wired, working** |
+| Apply (opens WebView) | External URL                   | N/A                |
 
 ---
 
@@ -2814,8 +3057,8 @@ These accounts have pre-existing likes, matches, conversations, messages, and re
 
 **File:** `components/JobApplicationWebView.tsx`
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
+| Need                      | Backend Endpoint                 | Status                                                                      |
+| ------------------------- | -------------------------------- | --------------------------------------------------------------------------- |
 | Generate autofill answers | `POST /api/v1/autofill/generate` | **Wired** — uses different URL prefix (`/api/v1/`), likely separate service |
 
 Sends `AutofillRequest` containing full user profile + scraped form fields + job context. Receives field answers with confidence scores, suggestions, cover letter draft.
@@ -2828,55 +3071,56 @@ Sends `AutofillRequest` containing full user profile + scraped form fields + job
 
 **Working endpoints:**
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
-| Get profile | `GET /api/profile/` | **Wired** (via `_layout.tsx fetchFromBackend`) |
-| Update general profile | `PATCH /api/profile/update/` | Backend exists, **frontend returns mock response** |
-| Update applicant fields | `PATCH /api/profile/applicant/update/` | Backend exists |
-| Update sponsor fields | `PATCH /api/profile/sponsor/update/` | Backend exists |
-| Change password | `POST /api/profile/change-password/` | Backend exists |
-| Deactivate account | `POST /api/profile/deactivate/` | Backend exists |
-| Upload profile image | `POST /api/upload/image/` | Backend exists |
-| Upload/parse resume | `POST /api/upload-and-parse/` | Backend exists |
-| Logout | `POST /api/logout/` | Backend exists |
+| Need                    | Backend Endpoint                       | Status                                             |
+| ----------------------- | -------------------------------------- | -------------------------------------------------- |
+| Get profile             | `GET /api/profile/`                    | **Wired** (via `_layout.tsx fetchFromBackend`)     |
+| Update general profile  | `PATCH /api/profile/update/`           | Backend exists, **frontend returns mock response** |
+| Update applicant fields | `PATCH /api/profile/applicant/update/` | Backend exists                                     |
+| Update sponsor fields   | `PATCH /api/profile/sponsor/update/`   | Backend exists                                     |
+| Change password         | `POST /api/profile/change-password/`   | Backend exists                                     |
+| Deactivate account      | `POST /api/profile/deactivate/`        | Backend exists                                     |
+| Upload profile image    | `POST /api/upload/image/`              | Backend exists                                     |
+| Upload/parse resume     | `POST /api/upload-and-parse/`          | Backend exists                                     |
+| Logout                  | `POST /api/logout/`                    | Backend exists                                     |
 
 **Profile fields the frontend can edit vs backend schema support:**
 
-| Frontend Field | Backend Column | Status |
-|----------------|---------------|--------|
-| firstName | `FIRST_NAME` on `USER_PROFILES` | Ready |
-| lastName | `LAST_NAME` on `USER_PROFILES` | Ready |
-| email | `EMAIL` on `USERS` | Ready (read-only via profile) |
-| phone | `PHONE_NUMBER` on `USER_PROFILES` | Ready |
-| profileImage | `PHOTO_URL` on `USER_PROFILES` | Ready |
-| linkedin | `LINKED_IN` on `USER_PROFILES` | Ready |
-| portfolio | `PORTFOLIO_URL` on `USER_PROFILES` | Ready |
-| location (single) | `LOCATION` on `USER_PROFILES` | Ready |
-| dateOfBirth | `DATE_OF_BIRTH` on `USER_PROFILES` | Ready |
-| bio | `BIO` on `USER_PROFILES` | Ready — Migration 003 |
-| street, city, state, zip, country | `STREET`, `CITY`, `STATE`, `ZIP`, `COUNTRY` on `USER_PROFILES` | Ready — Migration 003 |
-| jobTitle (applicant context) | `CURRENT_ROLE` on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| yearsExperience | `YEARS_EXPERIENCE` on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| summary | `ACHIEVEMENTS` on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| professionalExperiences[] | `PROFESSIONAL_EXPERIENCES` VARIANT on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| educationEntries[] | `EDUCATION_ENTRIES` VARIANT on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| certifications[] | `CERTIFICATIONS` VARIANT on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| languages[] | `LANGUAGES` VARIANT on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| achievements | `ACHIEVEMENTS` on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| workPreferences[] | `WORK_PREFERENCES` VARIANT on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| desiredRoles[] | `DESIRED_ROLES` VARIANT on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| workAuthorization | `WORK_AUTHORIZATION` on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| willingToRelocate | `WILLING_TO_RELOCATE` on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| requiresSponsorship | `REQUIRES_SPONSORSHIP` on `APPLICANT_PROFILES` | Ready — Migration 003 |
-| insights / profileInsights[] | `INSIGHTS` VARIANT on `APPLICANT_PROFILES` / `SPONSOR_PROFILES` | Ready — Migration 003 |
-| **notification preferences** (4 toggles) | `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES` | Ready — Migration 004; updated via `PATCH /api/profile/update/` |
-| skills / expertise[] | `SKILLS` on `APPLICANT_PROFILES` | Ready |
-| industry | `INDUSTRY` on `APPLICANT_PROFILES` | Ready |
-| positions | `POSITIONS` on `APPLICANT_PROFILES` | Ready |
-| company (sponsor) | `COMPANY` on `SPONSOR_PROFILES` | Ready |
-| jobTitle (sponsor) | `JOB_TITLE` on `SPONSOR_PROFILES` | Ready |
+| Frontend Field                           | Backend Column                                                  | Status                                                          |
+| ---------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------- |
+| firstName                                | `FIRST_NAME` on `USER_PROFILES`                                 | Ready                                                           |
+| lastName                                 | `LAST_NAME` on `USER_PROFILES`                                  | Ready                                                           |
+| email                                    | `EMAIL` on `USERS`                                              | Ready (read-only via profile)                                   |
+| phone                                    | `PHONE_NUMBER` on `USER_PROFILES`                               | Ready                                                           |
+| profileImage                             | `PHOTO_URL` on `USER_PROFILES`                                  | Ready                                                           |
+| linkedin                                 | `LINKED_IN` on `USER_PROFILES`                                  | Ready                                                           |
+| portfolio                                | `PORTFOLIO_URL` on `USER_PROFILES`                              | Ready                                                           |
+| location (single)                        | `LOCATION` on `USER_PROFILES`                                   | Ready                                                           |
+| dateOfBirth                              | `DATE_OF_BIRTH` on `USER_PROFILES`                              | Ready                                                           |
+| bio                                      | `BIO` on `USER_PROFILES`                                        | Ready — Migration 003                                           |
+| street, city, state, zip, country        | `STREET`, `CITY`, `STATE`, `ZIP`, `COUNTRY` on `USER_PROFILES`  | Ready — Migration 003                                           |
+| jobTitle (applicant context)             | `CURRENT_ROLE` on `APPLICANT_PROFILES`                          | Ready — Migration 003                                           |
+| yearsExperience                          | `YEARS_EXPERIENCE` on `APPLICANT_PROFILES`                      | Ready — Migration 003                                           |
+| summary                                  | `ACHIEVEMENTS` on `APPLICANT_PROFILES`                          | Ready — Migration 003                                           |
+| professionalExperiences[]                | `PROFESSIONAL_EXPERIENCES` VARIANT on `APPLICANT_PROFILES`      | Ready — Migration 003                                           |
+| educationEntries[]                       | `EDUCATION_ENTRIES` VARIANT on `APPLICANT_PROFILES`             | Ready — Migration 003                                           |
+| certifications[]                         | `CERTIFICATIONS` VARIANT on `APPLICANT_PROFILES`                | Ready — Migration 003                                           |
+| languages[]                              | `LANGUAGES` VARIANT on `APPLICANT_PROFILES`                     | Ready — Migration 003                                           |
+| achievements                             | `ACHIEVEMENTS` on `APPLICANT_PROFILES`                          | Ready — Migration 003                                           |
+| workPreferences[]                        | `WORK_PREFERENCES` VARIANT on `APPLICANT_PROFILES`              | Ready — Migration 003                                           |
+| desiredRoles[]                           | `DESIRED_ROLES` VARIANT on `APPLICANT_PROFILES`                 | Ready — Migration 003                                           |
+| workAuthorization                        | `WORK_AUTHORIZATION` on `APPLICANT_PROFILES`                    | Ready — Migration 003                                           |
+| willingToRelocate                        | `WILLING_TO_RELOCATE` on `APPLICANT_PROFILES`                   | Ready — Migration 003                                           |
+| requiresSponsorship                      | `REQUIRES_SPONSORSHIP` on `APPLICANT_PROFILES`                  | Ready — Migration 003                                           |
+| insights / profileInsights[]             | `INSIGHTS` VARIANT on `APPLICANT_PROFILES` / `SPONSOR_PROFILES` | Ready — Migration 003                                           |
+| **notification preferences** (4 toggles) | `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES`           | Ready — Migration 004; updated via `PATCH /api/profile/update/` |
+| skills / expertise[]                     | `SKILLS` on `APPLICANT_PROFILES`                                | Ready                                                           |
+| industry                                 | `INDUSTRY` on `APPLICANT_PROFILES`                              | Ready                                                           |
+| positions                                | `POSITIONS` on `APPLICANT_PROFILES`                             | Ready                                                           |
+| company (sponsor)                        | `COMPANY` on `SPONSOR_PROFILES`                                 | Ready                                                           |
+| jobTitle (sponsor)                       | `JOB_TITLE` on `SPONSOR_PROFILES`                               | Ready                                                           |
 
 **Modals:**
+
 - Edit Profile Modal — full form (all fields above — backend ready)
 - Edit Insights Modal — personality prompts (backend ready — `INSIGHTS` VARIANT column)
 - Edit Resume Modal — upload/manage resume (backend ready)
@@ -2894,12 +3138,12 @@ Sends `AutofillRequest` containing full user profile + scraped form fields + job
 
 **File:** `components/NotificationsView.tsx`
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
-| Fetch notifications | `GET /api/notifications/` | **Implemented** — paginated, filterable by unread_only |
-| Unread badge count | `GET /api/notifications/unread-count/` | **Implemented** |
-| Mark all read | `PATCH /api/notifications/read-all/` | **Implemented** |
-| Mark single read | `PATCH /api/notifications/<id>/read/` | **Implemented** |
+| Need                | Backend Endpoint                       | Status                                                 |
+| ------------------- | -------------------------------------- | ------------------------------------------------------ |
+| Fetch notifications | `GET /api/notifications/`              | **Implemented** — paginated, filterable by unread_only |
+| Unread badge count  | `GET /api/notifications/unread-count/` | **Implemented**                                        |
+| Mark all read       | `PATCH /api/notifications/read-all/`   | **Implemented**                                        |
+| Mark single read    | `PATCH /api/notifications/<id>/read/`  | **Implemented**                                        |
 
 **Notification types:** match, message (wired to triggers), referral, connection, profile_update (defined in schema, triggers TBD).
 
@@ -2909,8 +3153,8 @@ Sends `AutofillRequest` containing full user profile + scraped form fields + job
 
 **Files:** `components/ApplicantPublicProfileView.tsx`, `components/SponsorPublicProfileView.tsx`
 
-| Need | Backend Endpoint | Status |
-|------|-----------------|--------|
+| Need                         | Backend Endpoint                 | Status                                                                            |
+| ---------------------------- | -------------------------------- | --------------------------------------------------------------------------------- |
 | Fetch another user's profile | `GET /api/profiles/{id}/public/` | **Implemented** — returns public-safe fields (excludes email, phone, street, zip) |
 
 **Applicant public profile displays:** avatar, name, role, company, location, bio, LinkedIn, stats (connections, referrals, response rate), skills, work preferences, desired roles
@@ -2928,12 +3172,12 @@ Appears to be a duplicate of `ApplicantPublicProfileView.tsx`. Not imported anyw
 
 ### Other: Stores & State
 
-| Store | File | Syncs to Backend? |
-|-------|------|-------------------|
-| `useAuthStore` | `stores/useAuthStore.ts` | No — tokens come from backend |
-| `useOnboardingStore` | `stores/useOnboardingStore.ts` | No — cleared after profile creation |
+| Store                 | File                            | Syncs to Backend?                                                              |
+| --------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
+| `useAuthStore`        | `stores/useAuthStore.ts`        | No — tokens come from backend                                                  |
+| `useOnboardingStore`  | `stores/useOnboardingStore.ts`  | No — cleared after profile creation                                            |
 | `useUserProfileStore` | `stores/useUserProfileStore.ts` | Yes — debounced 2s sync to `PATCH /api/profile/update/` (**currently mocked**) |
-| `useJobsStore` | `stores/useJobsStore.ts` | No — fetched fresh from API |
+| `useJobsStore`        | `stores/useJobsStore.ts`        | No — fetched fresh from API                                                    |
 
 ### Other: RevenueCat / Subscriptions
 
@@ -2947,49 +3191,49 @@ May need `POST /api/subscriptions/verify/` for server-side receipt validation.
 
 ### P0 — Critical (Core Product Features)
 
-| Gap | Why | Effort | Status |
-|-----|-----|--------|--------|
-| ~~**Rich profile schema**~~ (bio, address, experiences, education, certifications, languages, achievements, workPreferences, desiredRoles, work authorization) | Profile cards are the heart of the swipe experience. | Large | **Closed** — Migration 003, 21 columns, full CRUD + integration tests |
-| ~~**Referral submission flow**~~ | The entire point of BackChannel — sponsors formally refer applicants. 3-step vetting flow in UI has zero backend support. | Medium | **Closed** — Migration 005, 4 endpoints (submit, list, detail, withdraw), match validation, notification trigger |
+| Gap                                                                                                                                                            | Why                                                                                                                       | Effort | Status                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
+| ~~**Rich profile schema**~~ (bio, address, experiences, education, certifications, languages, achievements, workPreferences, desiredRoles, work authorization) | Profile cards are the heart of the swipe experience.                                                                      | Large  | **Closed** — Migration 003, 21 columns, full CRUD + integration tests                                            |
+| ~~**Referral submission flow**~~                                                                                                                               | The entire point of BackChannel — sponsors formally refer applicants. 3-step vetting flow in UI has zero backend support. | Medium | **Closed** — Migration 005, 4 endpoints (submit, list, detail, withdraw), match validation, notification trigger |
 
 ### P1 — High (Expected for Beta)
 
-| Gap | Why | Effort | Status |
-|-----|-----|--------|--------|
+| Gap                                 | Why                                                                            | Effort | Status                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------ |
 | ~~**Application status tracking**~~ | Users need to see where they stand (Applied → Referred → Interview → Decision) | Medium | **Deferred** — Moved to Phase 3; low value without ATS integration to provide real pipeline data |
-| ~~**Public profile endpoint**~~ | Every profile tap in feed/matches/messages needs to fetch another user's data | Small | **Closed** — `GET /api/profiles/<id>/public/` with privacy filtering |
-| ~~**Notifications system**~~ | Expected in any matching/messaging app | Medium | **Closed** — 4 endpoints, match/message triggers, preferences, Migration 004 |
-| ~~**Insights storage**~~ | Questionnaire personality data is currently thrown away on submit | Small | **Closed** — VARIANT column on both profile tables, wired through registration + updates |
+| ~~**Public profile endpoint**~~     | Every profile tap in feed/matches/messages needs to fetch another user's data  | Small  | **Closed** — `GET /api/profiles/<id>/public/` with privacy filtering                             |
+| ~~**Notifications system**~~        | Expected in any matching/messaging app                                         | Medium | **Closed** — 4 endpoints, match/message triggers, preferences, Migration 004                     |
+| ~~**Insights storage**~~            | Questionnaire personality data is currently thrown away on submit              | Small  | **Closed** — VARIANT column on both profile tables, wired through registration + updates         |
 
 ### P2 — Medium (Important but Deferrable)
 
-| Gap | Why | Effort |
-|-----|-----|--------|
-| **Email verification (sponsor)** | Currently faked with setTimeout | Medium — email service integration |
-| **Conversation hiding** | UX feature for old threads | Small — boolean flag + filter |
-| **Frontend wiring** (connecting mock screens to existing APIs) | Matches, Messages, Profile updates all have backend support but aren't wired | Frontend-only work |
+| Gap                                                            | Why                                                                          | Effort                             |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------- |
+| **Email verification (sponsor)**                               | Currently faked with setTimeout                                              | Medium — email service integration |
+| **Conversation hiding**                                        | UX feature for old threads                                                   | Small — boolean flag + filter      |
+| **Frontend wiring** (connecting mock screens to existing APIs) | Matches, Messages, Profile updates all have backend support but aren't wired | Frontend-only work                 |
 
 ### P3 — Low (Post-Beta)
 
-| Gap | Why | Effort | Status |
-|-----|-----|--------|--------|
-| Chat file attachments | Nice-to-have | Small-Medium | Open |
-| LinkedIn OAuth | Alternate auth method | Medium | Open |
-| ~~Notification preferences storage~~ | Toggles exist, no persistence | Small | **Closed** — `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES` |
-| ~~Granular address fields~~ | Street, city, state, zip, country on USER_PROFILES | Small | **Closed** — included in Migration 003 |
-| Subscription verification | RevenueCat handles client-side | Medium | Open |
+| Gap                                  | Why                                                | Effort       | Status                                                             |
+| ------------------------------------ | -------------------------------------------------- | ------------ | ------------------------------------------------------------------ |
+| Chat file attachments                | Nice-to-have                                       | Small-Medium | Open                                                               |
+| LinkedIn OAuth                       | Alternate auth method                              | Medium       | Open                                                               |
+| ~~Notification preferences storage~~ | Toggles exist, no persistence                      | Small        | **Closed** — `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES` |
+| ~~Granular address fields~~          | Street, city, state, zip, country on USER_PROFILES | Small        | **Closed** — included in Migration 003                             |
+| Subscription verification            | RevenueCat handles client-side                     | Medium       | Open                                                               |
 
 ---
 
 ## APIs Currently Wired End-to-End (Frontend → Backend)
 
-| Endpoint | Method | Frontend Location |
-|----------|--------|-------------------|
-| `/api/login/` | POST | `AuthScreen.tsx` via `authApi.login()` |
-| `/api/forgot-password/` | POST | `AuthScreen.tsx` forgot password modal |
-| `/api/profile/` | GET | `_layout.tsx` via `fetchFromBackend()` |
-| `/api/jobs/pack/` | GET | `HomeView.tsx`, `JobsView.tsx` via `useJobsStore.fetchJobsPack()` |
-| `/api/v1/autofill/generate` | POST | `JobApplicationWebView.tsx` (may be separate service) |
+| Endpoint                    | Method | Frontend Location                                                 |
+| --------------------------- | ------ | ----------------------------------------------------------------- |
+| `/api/login/`               | POST   | `AuthScreen.tsx` via `authApi.login()`                            |
+| `/api/forgot-password/`     | POST   | `AuthScreen.tsx` forgot password modal                            |
+| `/api/profile/`             | GET    | `_layout.tsx` via `fetchFromBackend()`                            |
+| `/api/jobs/pack/`           | GET    | `HomeView.tsx`, `JobsView.tsx` via `useJobsStore.fetchJobsPack()` |
+| `/api/v1/autofill/generate` | POST   | `JobApplicationWebView.tsx` (may be separate service)             |
 
 **That's 5 out of 55+ backend endpoints actually connected to the frontend.**
 
@@ -3033,6 +3277,7 @@ These are type-level placeholders and are not gaps for beta — the UI does not 
 ## Confidence Assessment
 
 **What was verified:**
+
 - All 25 component files and 6 app route files individually accounted for
 - Both API client files (`lib/api.ts`, `lib/auth-api.ts`) read in full — every endpoint definition checked
 - All 3 Zustand stores with potential API surface checked for hidden API calls
@@ -3040,6 +3285,7 @@ These are type-level placeholders and are not gaps for beta — the UI does not 
 - Key gaps (referral flow, application timeline, rich profile fields) confirmed via direct grep in source files
 
 **Known unknowns:**
+
 - The frontend engineer has unpushed local changes that could add screens, API calls, or change data flows
 - Components like `HomeView.tsx` (~3900 lines) and `ProfileView.tsx` (~5300 lines) were thoroughly sampled via targeted grep but not read line-by-line in their entirety — there may be minor data needs buried deep in conditional rendering paths
 - The autofill endpoint (`/api/v1/autofill/generate`) appears to be a separate service; its backend status is unknown
