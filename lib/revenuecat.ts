@@ -11,6 +11,12 @@ export const REVENUECAT_API_KEY =
 let didConfigure = false;
 
 export function configureRevenueCat(): void {
+  // DISABLED FOR MOCK DATA VERSION - Skip RevenueCat initialization
+  console.log('[RevenueCat] Skipped configuration for mock data version');
+  didConfigure = true;
+  return;
+
+  /* Original implementation - commented out for mock version
   if (!REVENUECAT_API_KEY) {
     throw new Error(
       'Missing RevenueCat API key. Set EXPO_PUBLIC_REVENUECAT_API_KEY or update REVENUECAT_API_KEY.'
@@ -27,6 +33,7 @@ export function configureRevenueCat(): void {
     Purchases.configure({ apiKey: REVENUECAT_API_KEY });
     didConfigure = true;
   }
+  */
 }
 
 export function hasProEntitlement(customerInfo: CustomerInfo | null | undefined): boolean {

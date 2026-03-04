@@ -75,6 +75,13 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
   const refresh = useCallback(async () => {
     try {
       setLastError(null);
+      
+      // Skip API calls for mock data version (RevenueCat is disabled)
+      if (!Purchases.isConfigured || !Purchases.isConfigured()) {
+        console.log('[RevenueCat] Skipped refresh - not configured');
+        return;
+      }
+      
       const [freshCustomerInfo, freshOfferings] = await Promise.all([
         Purchases.getCustomerInfo(),
         Purchases.getOfferings(),
@@ -99,15 +106,18 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
 
         await refresh();
 
-        const listener = (info: CustomerInfo) => {
-          setCustomerInfo(info);
-        };
+        // Only add listener if RevenueCat is actually configured
+        if (Purchases.isConfigured && Purchases.isConfigured()) {
+          const listener = (info: CustomerInfo) => {
+            setCustomerInfo(info);
+          };
 
-        Purchases.addCustomerInfoUpdateListener(listener);
+          Purchases.addCustomerInfoUpdateListener(listener);
 
-        return () => {
-          Purchases.removeCustomerInfoUpdateListener(listener);
-        };
+          return () => {
+            Purchases.removeCustomerInfoUpdateListener(listener);
+          };
+        }
       } catch (e) {
         if (!isMounted) return;
         setLastError(normalizeError(e));
