@@ -146,16 +146,16 @@ export const useAuthStore = create<AuthState>((set) => ({
       const response = await authApi.refreshToken(currentRefreshToken);
 
       // Check if response has valid tokens
-      if (!response || !response.access_token || !response.refresh_token) {
+      if (!response || !response.access) {
         console.error("[Auth] Invalid refresh response - missing tokens");
         await useAuthStore.getState().clearAuth();
         return false;
       }
 
-      // Update tokens with new ones
+      // Backend only returns a new access token — keep the existing refresh token
       await useAuthStore
         .getState()
-        .setAuthTokens(response.access_token, response.refresh_token);
+        .setAuthTokens(response.access, currentRefreshToken);
 
       console.log("[Auth] Token refresh successful");
       return true;

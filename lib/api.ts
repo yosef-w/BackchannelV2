@@ -334,6 +334,28 @@ export async function getLikedJobs(): Promise<
 }
 
 /**
+ * 💙 Get Interested Sponsors (Applicant)
+ * Get sponsors who have liked this applicant's profile but have not yet matched.
+ * One-sided interest from sponsor side — the applicant can "like back" to match.
+ * Backend endpoint: GET /api/likes/profiles/received/
+ */
+export async function getInterestedSponsors(): Promise<
+  Array<{
+    LIKE_ID: string;
+    LIKED_AT: string;
+    SPONSOR_USER_ID: string;
+    SPONSOR_FIRST_NAME: string;
+    SPONSOR_LAST_NAME: string;
+    SPONSOR_PHOTO_URL: string | null;
+    SPONSOR_JOB_TITLE: string | null;
+    SPONSOR_COMPANY: string | null;
+    JOB_ID?: string;
+  }>
+> {
+  return api.get("/api/likes/profiles/received/");
+}
+
+/**
  * 💙 Like a Profile (Sponsor swipe right)
  * Record sponsor's interest in an applicant profile
  */
@@ -780,6 +802,7 @@ export async function updateSponsorProfile(updates: {
   referral_experience?: boolean;
   open_to_referrals?: boolean;
   companies_can_refer_to?: string[];
+  skills?: string[];
   insights?: Array<{
     question: string;
     answer: string;

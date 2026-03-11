@@ -2053,7 +2053,7 @@ export function JobsView() {
                 <View style={styles.jobSection}>
                   <Text style={styles.jobSectionTitle}>Required Skills</Text>
                   <View style={styles.skillsContainer}>
-                    {viewJobDetails.skills.map((skill, i) => (
+                    {(viewJobDetails.skills || []).map((skill, i) => (
                       <View key={i} style={styles.skillChip}>
                         <Text style={styles.skillText}>{skill}</Text>
                       </View>
@@ -2417,11 +2417,13 @@ export function JobsView() {
                         {selectedApplicantForMessage.company}.
                       </Text>
                       <View style={styles.skillsContainer}>
-                        {selectedApplicantForMessage.skills.map((s, i) => (
-                          <View key={i} style={styles.skillChip}>
-                            <Text style={styles.skillText}>{s}</Text>
-                          </View>
-                        ))}
+                        {(selectedApplicantForMessage.skills || []).map(
+                          (s, i) => (
+                            <View key={i} style={styles.skillChip}>
+                              <Text style={styles.skillText}>{s}</Text>
+                            </View>
+                          ),
+                        )}
                       </View>
                       <View style={styles.statsRow}>
                         <View style={styles.statItem}>

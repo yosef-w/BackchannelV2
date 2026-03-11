@@ -344,6 +344,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setRole(userProfileData.professional.title);
       setJobTitle(userProfileData.professional.title);
     }
+    if (userProfileData.professional.company) {
+      setCompany(userProfileData.professional.company);
+    }
     if (userProfileData.professional.summary) {
       setBio(userProfileData.professional.summary);
       setSummary(userProfileData.professional.summary);
@@ -649,6 +652,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             firstName: tempValue,
             fullName: `${tempValue} ${lastName}`.trim(),
           });
+          await updateGeneralProfile({ first_name: tempValue });
           break;
         case "lastName":
           setLastName(tempValue);
@@ -657,26 +661,25 @@ export function ProfileView({ userType }: ProfileViewProps) {
             lastName: tempValue,
             fullName: `${firstName} ${tempValue}`.trim(),
           });
+          await updateGeneralProfile({ last_name: tempValue });
           break;
         case "role":
           setRole(tempValue);
           await updateProfessional({ title: tempValue });
-          // API call for role/title - applicant only
           if (userType === "applicant") {
             await updateApplicantProfile({ current_role: tempValue });
+          } else {
+            await updateSponsorProfile({ job_title: tempValue });
           }
           break;
         case "company":
           setCompany(tempValue);
-          // API call for company (sponsor only)
+          await updateProfessional({ company: tempValue });
           if (userType === "sponsor") {
             await updateSponsorProfile({ company: tempValue });
           }
           break;
-        case "email":
-          setEmail(tempValue);
-          await updatePersonal({ email: tempValue });
-          break;
+        // email is read-only — changes require a dedicated change-email flow with verification
         case "phone":
           setPhone(tempValue);
           await updatePersonal({ phone: tempValue });
@@ -692,13 +695,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
         case "achievements":
           setAchievements(tempValue);
           await updateAchievements(tempValue);
+          if (userType === "applicant") {
+            await updateApplicantProfile({ achievements: tempValue });
+          }
           break;
         case "jobTitle":
           setJobTitle(tempValue);
           await updateProfessional({ title: tempValue });
-          // API call for job title - applicant only
           if (userType === "applicant") {
             await updateApplicantProfile({ current_role: tempValue });
+          } else {
+            await updateSponsorProfile({ job_title: tempValue });
           }
           break;
         case "yearsExperience":
@@ -738,46 +745,61 @@ export function ProfileView({ userType }: ProfileViewProps) {
         case "workAuthorization":
           setWorkAuthorization(tempValue);
           await updatePreferences({ workAuthorization: tempValue });
+          if (userType === "applicant") {
+            await updateApplicantProfile({ work_authorization: tempValue });
+          }
           break;
         case "willingToRelocate":
           setWillingToRelocate(tempValue);
           await updatePreferences({ willingToRelocate: tempValue });
+          if (userType === "applicant") {
+            await updateApplicantProfile({ willing_to_relocate: tempValue });
+          }
           break;
         case "requiresSponsorship":
           setRequiresSponsorship(tempValue);
           await updatePreferences({ requiresSponsorship: tempValue });
+          if (userType === "applicant") {
+            await updateApplicantProfile({ requires_sponsorship: tempValue });
+          }
           break;
         case "linkedin":
           setLinkedin(tempValue);
           await updatePersonal({ linkedin: tempValue });
+          await updateGeneralProfile({ linked_in: tempValue });
           break;
         case "portfolio":
           setPortfolio(tempValue);
           await updatePersonal({ portfolio: tempValue });
+          await updateGeneralProfile({ portfolio_url: tempValue });
           break;
         case "street":
           setStreet(tempValue);
           await updatePersonal({
             address: { ...userProfileData.personal.address, street: tempValue },
           });
+          await updateGeneralProfile({ street: tempValue });
           break;
         case "city":
           setCity(tempValue);
           await updatePersonal({
             address: { ...userProfileData.personal.address, city: tempValue },
           });
+          await updateGeneralProfile({ city: tempValue });
           break;
         case "state":
           setState(tempValue);
           await updatePersonal({
             address: { ...userProfileData.personal.address, state: tempValue },
           });
+          await updateGeneralProfile({ state: tempValue });
           break;
         case "zip":
           setZip(tempValue);
           await updatePersonal({
             address: { ...userProfileData.personal.address, zip: tempValue },
           });
+          await updateGeneralProfile({ zip: tempValue });
           break;
         case "country":
           setCountry(tempValue);
@@ -787,6 +809,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               country: tempValue,
             },
           });
+          await updateGeneralProfile({ country: tempValue });
           break;
       }
       setEditingField(null);
@@ -818,11 +841,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
         const newExpertise = [...expertise, valueToAdd];
         setExpertise(newExpertise);
         await updateSkills(newExpertise);
+        if (userType === "applicant") {
+          await updateApplicantProfile({ skills: newExpertise });
+        } else {
+          await updateSponsorProfile({ skills: newExpertise });
+        }
         break;
-      case "workPreferences":
-        setWorkPreferences([...workPreferences, valueToAdd]);
+      case "workPreferences": {
+        const newWorkPreferences = [...workPreferences, valueToAdd];
+        setWorkPreferences(newWorkPreferences);
+        if (userType === "applicant") {
+          await updateApplicantProfile({
+            work_preferences: newWorkPreferences,
+          });
+        }
         break;
-      case "desiredRoles":
+      }
+      case "desiredRoles": {
         if (desiredRoles.length >= 3) {
           alert("You can only add up to 3 desired roles");
           return;
@@ -833,21 +868,33 @@ export function ProfileView({ userType }: ProfileViewProps) {
           setNewRoleTag("");
           return;
         }
-        setDesiredRoles([...desiredRoles, valueToAdd]);
+        const newDesiredRoles = [...desiredRoles, valueToAdd];
+        setDesiredRoles(newDesiredRoles);
         setNewRoleTag("");
+        if (userType === "applicant") {
+          await updateApplicantProfile({ desired_roles: newDesiredRoles });
+        }
         break;
-      case "companies":
-        setCompaniesCanReferTo([...companiesCanReferTo, valueToAdd]);
+      }
+      case "companies": {
+        const newCompanies = [...companiesCanReferTo, valueToAdd];
+        setCompaniesCanReferTo(newCompanies);
+        if (userType === "sponsor") {
+          await updateSponsorProfile({ companies_can_refer_to: newCompanies });
+        }
         break;
+      }
     }
     setNewTag("");
   };
 
-  const handleToggleWorkPreference = (preference: string) => {
-    if (workPreferences.includes(preference)) {
-      setWorkPreferences(workPreferences.filter((p) => p !== preference));
-    } else {
-      setWorkPreferences([...workPreferences, preference]);
+  const handleToggleWorkPreference = async (preference: string) => {
+    const updated = workPreferences.includes(preference)
+      ? workPreferences.filter((p) => p !== preference)
+      : [...workPreferences, preference];
+    setWorkPreferences(updated);
+    if (userType === "applicant") {
+      await updateApplicantProfile({ work_preferences: updated });
     }
   };
 
@@ -856,22 +903,45 @@ export function ProfileView({ userType }: ProfileViewProps) {
     index: number,
   ) => {
     switch (type) {
-      case "expertise":
+      case "expertise": {
         const updatedExpertise = expertise.filter((_, i) => i !== index);
         setExpertise(updatedExpertise);
         await updateSkills(updatedExpertise);
+        if (userType === "applicant") {
+          await updateApplicantProfile({ skills: updatedExpertise });
+        } else {
+          await updateSponsorProfile({ skills: updatedExpertise });
+        }
         break;
-      case "workPreferences":
-        setWorkPreferences(workPreferences.filter((_, i) => i !== index));
+      }
+      case "workPreferences": {
+        const updatedWorkPrefs = workPreferences.filter((_, i) => i !== index);
+        setWorkPreferences(updatedWorkPrefs);
+        if (userType === "applicant") {
+          await updateApplicantProfile({ work_preferences: updatedWorkPrefs });
+        }
         break;
-      case "desiredRoles":
-        setDesiredRoles(desiredRoles.filter((_, i) => i !== index));
+      }
+      case "desiredRoles": {
+        const updatedRoles = desiredRoles.filter((_, i) => i !== index);
+        setDesiredRoles(updatedRoles);
+        if (userType === "applicant") {
+          await updateApplicantProfile({ desired_roles: updatedRoles });
+        }
         break;
-      case "companies":
-        setCompaniesCanReferTo(
-          companiesCanReferTo.filter((_, i) => i !== index),
+      }
+      case "companies": {
+        const updatedCompanies = companiesCanReferTo.filter(
+          (_, i) => i !== index,
         );
+        setCompaniesCanReferTo(updatedCompanies);
+        if (userType === "sponsor") {
+          await updateSponsorProfile({
+            companies_can_refer_to: updatedCompanies,
+          });
+        }
         break;
+      }
     }
   };
 
@@ -915,8 +985,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const handleUpdateInsight = async (index: number, answer: string) => {
     try {
-      const updated = [...profileInsights];
-      updated[index].answer = answer;
+      const updated = profileInsights.map((insight, i) =>
+        i === index ? { ...insight, answer } : insight,
+      );
       setProfileInsights(updated);
       await updateInsights(updated);
       // API call to sync with backend - role specific
@@ -1544,6 +1615,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const handleImageSelected = (uri: string) => {
     setProfileImage(uri);
     updatePersonal({ profileImage: uri });
+    updateGeneralProfile({ photo_url: uri }).catch((err) =>
+      console.error("[ProfileView] Failed to save profile photo:", err),
+    );
     setShowImagePickerModal(false);
   };
 
@@ -2657,7 +2731,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     style={[
                       styles.modalProgressFill,
                       {
-                        width: `${Math.max(0, 100 - (personalMissingCount / 9) * 100)}%`,
+                        width: `${Math.max(0, 100 - (personalMissingCount / 15) * 100)}%`,
                       },
                     ]}
                   />
@@ -2751,7 +2825,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Role */}
               <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>ROLE</Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>ROLE</Text>
+                  {isFieldMissing("role") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "role" ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -2781,7 +2860,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               {/* Company (Sponsors only) */}
               {userType === "sponsor" && (
                 <View style={styles.editField}>
-                  <Text style={styles.fieldLabel}>COMPANY</Text>
+                  <View style={styles.fieldLabelRow}>
+                    <Text style={styles.fieldLabel}>COMPANY</Text>
+                    {!company && <Text style={styles.requiredStar}>*</Text>}
+                  </View>
                   {editingField === "company" ? (
                     <View style={styles.editRow}>
                       <TextInput
@@ -2809,40 +2891,26 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
               )}
 
-              {/* Email */}
+              {/* Email — read-only (tied to auth account, requires dedicated change-email flow) */}
               <View style={styles.editField}>
                 <View style={styles.fieldLabelRow}>
                   <Text style={styles.fieldLabel}>EMAIL</Text>
-                  {isFieldMissing("email") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
                 </View>
-                {editingField === "email" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("email")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("email", email)}
-                  >
-                    <Text style={styles.fieldText}>{email}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
+                <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
+                  <Text style={styles.fieldText}>{email}</Text>
+                  <Lock color="#999" size={16} />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: "#999",
+                    marginTop: 4,
+                    fontStyle: "italic",
+                  }}
+                >
+                  Email cannot be changed here. Contact support to update your
+                  email.
+                </Text>
               </View>
 
               {/* Phone */}
@@ -2882,7 +2950,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Bio */}
               <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>BIO</Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>BIO</Text>
+                  {isFieldMissing("bio") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 {editingField === "bio" ? (
                   <View style={styles.editColumn}>
                     <TextInput
@@ -3192,11 +3265,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {/* Expertise Tags */}
               <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>
-                  {userType === "applicant"
-                    ? "SKILLS & INTERESTS (Max 5)"
-                    : "I CAN HELP WITH (Max 5)"}
-                </Text>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>
+                    {userType === "applicant"
+                      ? "SKILLS & INTERESTS (Max 5)"
+                      : "I CAN HELP WITH (Max 5)"}
+                  </Text>
+                  {isFieldMissing("skills") && (
+                    <Text style={styles.requiredStar}>*</Text>
+                  )}
+                </View>
                 <View style={styles.tagsContainer}>
                   {expertise.map((tag, index) => (
                     <View key={index} style={styles.editableTag}>

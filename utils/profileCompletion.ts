@@ -28,8 +28,10 @@ export function checkProfileCompleteness(
   const personalChecks = [
     { key: "firstName", label: "First Name", value: data.personal.firstName },
     { key: "lastName", label: "Last Name", value: data.personal.lastName },
+    { key: "role", label: "Role / Title", value: data.professional.title },
     { key: "email", label: "Email", value: data.personal.email },
     { key: "phone", label: "Phone Number", value: data.personal.phone },
+    { key: "bio", label: "Bio", value: data.professional.summary },
     {
       key: "profileImage",
       label: "Profile Photo",

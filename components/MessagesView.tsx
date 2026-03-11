@@ -1,8 +1,10 @@
 import {
+  getBasicProfile,
   getConversationMessages,
   getConversations,
   sendMessage,
 } from "@/lib/api";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { BlurView } from "expo-blur";
 import {
   ArrowLeft,
@@ -349,6 +351,8 @@ interface MessagesViewProps {
   onShowPublicProfile?: (userData: any) => void;
   selectedConversationId?: number | null;
   onConversationChange?: (conversationId: number | null) => void;
+  pendingJobId?: string | null;
+  onPendingJobConsumed?: () => void;
 }
 
 export function MessagesView({
@@ -357,9 +361,10 @@ export function MessagesView({
   onShowPublicProfile,
   selectedConversationId: externalSelectedConversationId,
   onConversationChange,
+  pendingJobId,
+  onPendingJobConsumed,
 }: MessagesViewProps) {
-  // Infer current user ID from conversation participants
-  // The "other participant" is everyone else, so current user is the one NOT in otherParticipant
+  // Store current user ID from profile API to determine which participant to show
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [selectedConversation, setSelectedConversation] = useState<
@@ -391,10 +396,30 @@ export function MessagesView({
   const [messagesError, setMessagesError] = useState<string | null>(null);
 
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
+
+  // Fetch current user profile to get USER_ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const profile = await getBasicProfile();
+        console.log("[MessagesView] Current user profile:", profile);
+        setCurrentUserId(profile.USER_ID);
+      } catch (err) {
+        console.error("[MessagesView] Failed to fetch current user:", err);
+      }
+    };
+    fetchCurrentUser();
+  }, []);
 
   // Fetch conversations on mount
   useEffect(() => {
     const fetchConversations = async () => {
+      if (!currentUserId) {
+        console.log("[MessagesView] Waiting for current user ID...");
+        return;
+      }
+
       try {
         setConversationsLoading(true);
         console.log("[MessagesView] Fetching conversations...");
@@ -403,23 +428,86 @@ export function MessagesView({
         console.log("[MessagesView] Conversations response:", response);
 
         // Transform UPPERCASE Snowflake fields to our UI format
-        const transformedConversations = response.conversations.map((conv) => ({
-          id: conv.CONVERSATION_ID,
-          otherParticipant: {
-            id: conv.APPLICANT_USER_ID, // Will update this based on current user
-            name: conv.APPLICANT_FIRST_NAME || conv.SPONSOR_FIRST_NAME,
-            profileImageUrl: undefined, // Not in API response
-          },
-          lastMessage: undefined, // Not in API response
-          unreadCount:
-            conv.APPLICANT_HAS_UNREAD || conv.SPONSOR_HAS_UNREAD ? 1 : 0,
-          jobContext: {
-            jobId: conv.JOB_ID,
-            jobTitle: conv.TITLE,
-            company: "", // Not in API response
-          },
-          createdAt: new Date().toISOString(),
-        }));
+        // Determine which participant is "the other person" based on current user ID
+        const transformedConversations = response.conversations.map((conv) => {
+          const c = conv as any; // backend returns richer fields than typed stub
+          const isCurrentUserApplicant = c.APPLICANT_USER_ID === currentUserId;
+
+          // Show the OTHER person's info
+          const otherPersonFirstName = isCurrentUserApplicant
+            ? c.SPONSOR_FIRST_NAME
+            : c.APPLICANT_FIRST_NAME;
+          const otherPersonLastName = isCurrentUserApplicant
+            ? c.SPONSOR_LAST_NAME
+            : c.APPLICANT_LAST_NAME;
+          const otherPersonPhoto = isCurrentUserApplicant
+            ? c.SPONSOR_PHOTO_URL
+            : c.APPLICANT_PHOTO_URL;
+          const otherPersonId = isCurrentUserApplicant
+            ? c.SPONSOR_USER_ID
+            : c.APPLICANT_USER_ID;
+          const otherPersonRole = isCurrentUserApplicant
+            ? c.SPONSOR_JOB_TITLE
+            : c.APPLICANT_POSITIONS
+              ? (() => {
+                  try {
+                    const arr = JSON.parse(c.APPLICANT_POSITIONS);
+                    return Array.isArray(arr) && arr.length
+                      ? arr[0]
+                      : "Job Seeker";
+                  } catch {
+                    return "Job Seeker";
+                  }
+                })()
+              : "Job Seeker";
+          const otherPersonCompany = isCurrentUserApplicant
+            ? c.SPONSOR_COMPANY
+            : "";
+
+          return {
+            id: c.CONVERSATION_ID,
+            name:
+              `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
+              "Unknown",
+            role: otherPersonRole || "Unknown Role",
+            company: otherPersonCompany || c.COMPANY || "Unknown Company",
+            profileImageUrl: otherPersonPhoto,
+            skills: c.SKILLS
+              ? Array.isArray(c.SKILLS)
+                ? c.SKILLS
+                : [c.SKILLS]
+              : [],
+            experience: c.YEARS_EXPERIENCE
+              ? `${c.YEARS_EXPERIENCE} years`
+              : "N/A",
+            otherParticipant: {
+              id: otherPersonId,
+              name:
+                `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
+                "Unknown",
+              profileImageUrl: otherPersonPhoto,
+            },
+            lastMessage: c.LAST_BODY
+              ? {
+                  content: c.LAST_BODY,
+                  senderId: "",
+                  createdAt: c.LAST_AT || new Date().toISOString(),
+                  isRead: true,
+                }
+              : undefined,
+            unreadCount:
+              (isCurrentUserApplicant && c.APPLICANT_HAS_UNREAD) ||
+              (!isCurrentUserApplicant && c.SPONSOR_HAS_UNREAD)
+                ? 1
+                : 0,
+            jobContext: {
+              jobId: c.JOB_ID,
+              jobTitle: c.TITLE,
+              company: c.COMPANY || "",
+            },
+            createdAt: new Date().toISOString(),
+          };
+        });
 
         setConversations(transformedConversations);
       } catch (err) {
@@ -475,12 +563,127 @@ export function MessagesView({
     };
 
     fetchConversations();
-  }, []);
+  }, [currentUserId]);
+
+  // WebSocket connection for real-time messaging
+  useEffect(() => {
+    if (!selectedConversation) {
+      return;
+    }
+
+    let ws: WebSocket | null = null;
+    const accessToken = useAuthStore.getState().accessToken;
+
+    if (accessToken) {
+      try {
+        // Connect to WebSocket for real-time messages
+        const wsUrl = `wss://oyster-app-4pg5w.ondigitalocean.app/ws/chat/${selectedConversation}/?token=${accessToken}`;
+        console.log("[MessagesView] Connecting to WebSocket:", wsUrl);
+
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          console.log("[MessagesView] WebSocket connected");
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("[MessagesView] WebSocket message received:", data);
+
+            if (data.type === "chat.message") {
+              // Add new message to the list in real-time, reconciling any optimistic temp message
+              const newMessage = {
+                id: data.message_id,
+                serverId: data.message_id,
+                senderId: data.sender_user_id,
+                content: data.body,
+                messageType: "text" as const,
+                isRead: true,
+                createdAt: data.created_at,
+              };
+
+              setMessages((prev) => {
+                // If already have this message by serverId or id, keep as-is
+                if (
+                  prev.some(
+                    (msg) =>
+                      msg.serverId === newMessage.id ||
+                      msg.id === newMessage.id,
+                  )
+                ) {
+                  return prev;
+                }
+
+                // If we have an optimistic temp message from same sender/content, replace it in-place
+                const tempIndex = prev.findIndex(
+                  (msg) =>
+                    msg.id.startsWith("temp-") &&
+                    msg.senderId === newMessage.senderId &&
+                    msg.content === newMessage.content,
+                );
+                if (tempIndex >= 0) {
+                  const updated = [...prev];
+                  updated[tempIndex] = {
+                    ...updated[tempIndex],
+                    serverId: newMessage.id,
+                    createdAt: newMessage.createdAt,
+                    isRead: true,
+                  };
+                  return updated;
+                }
+
+                return [...prev, newMessage];
+              });
+
+              // Scroll to bottom when new message arrives
+              setTimeout(() => scrollToBottom(true), 100);
+            } else if (data.type === "error") {
+              console.error("[MessagesView] WebSocket error:", data.message);
+            }
+          } catch (err) {
+            console.error(
+              "[MessagesView] Failed to parse WebSocket message:",
+              err,
+            );
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error("[MessagesView] WebSocket error:", error);
+        };
+
+        ws.onclose = (event) => {
+          console.log(
+            "[MessagesView] WebSocket closed:",
+            event.code,
+            event.reason,
+          );
+          if (event.code === 4001) {
+            console.error(
+              "[MessagesView] WebSocket auth failed - invalid token",
+            );
+          } else if (event.code === 4003) {
+            console.error(
+              "[MessagesView] WebSocket rejected - not a participant",
+            );
+          }
+        };
+      } catch (err) {
+        console.error("[MessagesView] Failed to connect to WebSocket:", err);
+      }
+    }
+
+    return () => {
+      if (ws) {
+        console.log("[MessagesView] Closing WebSocket connection");
+        ws.close();
+      }
+    };
+  }, [selectedConversation]);
 
   // Fetch messages when conversation is selected
   useEffect(() => {
-    let pollingInterval: ReturnType<typeof setInterval> | null = null;
-
     const fetchMessages = async () => {
       if (!selectedConversation) {
         setMessages([]);
@@ -503,7 +706,12 @@ export function MessagesView({
         // Transform UPPERCASE Snowflake fields to our UI format
         const transformedMessages = response.messages.map((msg) => ({
           id: msg.MESSAGE_ID,
-          senderId: msg.SENDER_ID,
+          serverId: msg.MESSAGE_ID,
+          // Backend returns SENDER_USER_ID from Snowflake; SENDER_ID is a fallback for older schema
+          senderId:
+            (msg as any).SENDER_USER_ID ||
+            (msg as any).SENDER_ID ||
+            msg.SENDER_ID,
           content: msg.BODY,
           messageType: "text" as const,
           isRead: true, // Backend doesn't track per-message read status
@@ -558,24 +766,14 @@ export function MessagesView({
       }
     };
 
-    // Initial fetch
+    // Initial fetch only; WebSocket handles live updates and removes flicker
     fetchMessages();
 
-    // Set up polling for new messages (every 8 seconds)
-    pollingInterval = setInterval(() => {
-      if (selectedConversation) {
-        console.log("[MessagesView] Polling for new messages...");
-        fetchMessages();
-      }
-    }, 8000);
-
-    // Cleanup on unmount or conversation change
+    // No polling to avoid UI flicker; rely on WebSocket for real-time updates
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
+      /* no interval to clear */
     };
-  }, [selectedConversation, conversations]);
+  }, [selectedConversation]);
 
   const handleConversationSelect = (conversationId: string | null) => {
     setSelectedConversation(conversationId);
@@ -583,6 +781,18 @@ export function MessagesView({
       onConversationChange(conversationId ? Number(conversationId) : null);
     }
   };
+
+  // Auto-navigate to a conversation thread when coming from Matches tab via pendingJobId
+  useEffect(() => {
+    if (!pendingJobId || conversations.length === 0) return;
+    const conv = conversations.find(
+      (c) => c.jobContext?.jobId === pendingJobId,
+    );
+    if (conv) {
+      handleConversationSelect(conv.id);
+      onPendingJobConsumed?.();
+    }
+  }, [pendingJobId, conversations]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedConversation || sendingMessage) return;
@@ -608,14 +818,30 @@ export function MessagesView({
       const response = await sendMessage(selectedConversation, messageToSend);
       console.log("[MessagesView] Message sent:", response);
 
-      // Replace temp message with real message from server
-      setMessages((prev) =>
-        prev.map((msg) =>
+      // Reconcile temp message: stamp serverId, keep stable id to avoid flicker
+      setMessages((prev) => {
+        // Only drop the temp if a DIFFERENT, separate entry already has this server ID.
+        // Do NOT treat the temp itself as a reason to remove it — the WebSocket reconciler
+        // may have already stamped serverId onto the temp, and we must not delete it.
+        const existsAsSeparateEntry = prev.some(
+          (m) =>
+            m.id !== tempMessage.id &&
+            (m.serverId === response.message_id ||
+              m.id === response.message_id),
+        );
+
+        if (existsAsSeparateEntry) {
+          // A fully separate entry exists; drop the now-redundant temp
+          return prev.filter((m) => m.id !== tempMessage.id);
+        }
+
+        // Keep the temp, just ensure serverId is stamped (WebSocket may have done this already)
+        return prev.map((msg) =>
           msg.id === tempMessage.id
-            ? { ...tempMessage, id: response.message_id }
+            ? { ...msg, serverId: response.message_id, isRead: true }
             : msg,
-        ),
-      );
+        );
+      });
 
       // Scroll to bottom after sending
       setTimeout(() => scrollToBottom(true), 100);
@@ -836,6 +1062,58 @@ export function MessagesView({
     };
   };
 
+  // Day header formatter for message thread dividers
+  const formatDayHeader = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const todayDate = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const yesterdayDate = new Date(todayDate);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const msgDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+    );
+    const timeStr = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    if (msgDate.getTime() === todayDate.getTime()) {
+      return `Today · ${timeStr}`;
+    } else if (msgDate.getTime() === yesterdayDate.getTime()) {
+      return `Yesterday · ${timeStr}`;
+    } else {
+      const sameYear = date.getFullYear() === now.getFullYear();
+      const dateStr = date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        ...(sameYear ? {} : { year: "numeric" }),
+      });
+      return `${dateStr} · ${timeStr}`;
+    }
+  };
+
+  // Helper function to format time
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
   if (selectedConversation) {
     const conversation = conversations.find(
       (c) => c.id === selectedConversation,
@@ -965,45 +1243,67 @@ export function MessagesView({
               </View>
             ) : (
               messages.map((message, index) => {
-                const isMyMessage = message.senderId === currentUserId;
-                const showTime =
-                  index === messages.length - 1 ||
-                  (index < messages.length - 1 &&
-                    new Date(messages[index + 1].createdAt).getTime() -
-                      new Date(message.createdAt).getTime() >
-                      300000); // 5 mins
+                // A message is mine if:
+                //  1. sender matches the resolved currentUserId
+                //  2. it is still an unreconciled optimistic temp (senderId may be "me" or real ID)
+                //  3. senderId is literally "me" (fallback before currentUserId loaded)
+                const isMyMessage = currentUserId
+                  ? message.senderId === currentUserId ||
+                    message.senderId === "me" ||
+                    (message.id.startsWith("temp-") && !message.serverId)
+                  : message.id.startsWith("temp-") || message.senderId === "me";
+                const prevMessage = index > 0 ? messages[index - 1] : null;
+                const isFirstOfDay =
+                  !prevMessage ||
+                  new Date(message.createdAt).toDateString() !==
+                    new Date(prevMessage.createdAt).toDateString();
+                const isTapped = tappedMessageId === message.id;
 
                 return (
-                  <Animated.View
-                    key={message.id}
-                    entering={FadeInUp.delay(index * 50)}
-                    style={[
-                      styles.messageWrapper,
-                      isMyMessage ? styles.msgRight : styles.msgLeft,
-                    ]}
-                  >
-                    <View
+                  <React.Fragment key={message.id}>
+                    {isFirstOfDay && (
+                      <View style={styles.dayHeader}>
+                        <Text style={styles.dayHeaderText}>
+                          {formatDayHeader(message.createdAt)}
+                        </Text>
+                      </View>
+                    )}
+                    <Animated.View
+                      entering={FadeInUp.delay(index * 50)}
                       style={[
-                        styles.bubble,
-                        isMyMessage ? styles.bubbleMe : styles.bubbleThem,
+                        styles.messageWrapper,
+                        isMyMessage ? styles.msgRight : styles.msgLeft,
                       ]}
                     >
-                      <Text style={isMyMessage ? styles.txtMe : styles.txtThem}>
-                        {message.content}
-                      </Text>
-                    </View>
-                    {showTime && (
-                      <Text style={styles.msgTime}>
-                        {new Date(message.createdAt).toLocaleTimeString(
-                          "en-US",
-                          {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          },
-                        )}
-                      </Text>
-                    )}
-                  </Animated.View>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() =>
+                          setTappedMessageId(isTapped ? null : message.id)
+                        }
+                        style={[
+                          styles.bubble,
+                          isMyMessage ? styles.bubbleMe : styles.bubbleThem,
+                        ]}
+                      >
+                        <Text
+                          style={isMyMessage ? styles.txtMe : styles.txtThem}
+                        >
+                          {message.content}
+                        </Text>
+                      </TouchableOpacity>
+                      {isTapped && (
+                        <Text style={styles.msgTime}>
+                          {new Date(message.createdAt).toLocaleTimeString(
+                            "en-US",
+                            {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </Text>
+                      )}
+                    </Animated.View>
+                  </React.Fragment>
                 );
               })
             )}
@@ -1095,11 +1395,13 @@ export function MessagesView({
                         user-centric products at {conversation.company}.
                       </Text>
                       <View style={styles.skillsContainer}>
-                        {conversation.skills.map((s: string, i: number) => (
-                          <View key={i} style={styles.skillChip}>
-                            <Text style={styles.skillText}>{s}</Text>
-                          </View>
-                        ))}
+                        {(conversation.skills || []).map(
+                          (s: string, i: number) => (
+                            <View key={i} style={styles.skillChip}>
+                              <Text style={styles.skillText}>{s}</Text>
+                            </View>
+                          ),
+                        )}
                       </View>
                       <View style={styles.statsRow}>
                         <View style={styles.statItem}>
@@ -1391,7 +1693,7 @@ export function MessagesView({
                       <View style={styles.infoSection}>
                         <Text style={styles.infoSectionTitle}>KEY SKILLS</Text>
                         <View style={styles.skillsRow}>
-                          {conversation.skills.map(
+                          {(conversation.skills || []).map(
                             (skill: string, idx: number) => (
                               <View key={idx} style={styles.skillBadge}>
                                 <Text style={styles.skillBadgeText}>
@@ -1630,22 +1932,6 @@ export function MessagesView({
 
   const activeConversations = conversations.filter((conv) => !conv.isHidden);
   const hiddenConversations = conversations.filter((conv) => conv.isHidden);
-
-  // Helper function to format time
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
 
   return (
     <ScrollView
@@ -1931,6 +2217,15 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontWeight: "600",
     alignSelf: "flex-end",
+  },
+  dayHeader: {
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  dayHeaderText: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
   },
   inputArea: {
     flexDirection: "row",

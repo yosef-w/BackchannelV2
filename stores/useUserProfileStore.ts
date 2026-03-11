@@ -40,6 +40,7 @@ export interface AutofillData {
   };
   professional: {
     title: string;
+    company: string;
     currentRole: string;
     yearsExperience: string;
     summary: string;
@@ -142,6 +143,7 @@ const defaultData: AutofillData = {
   },
   professional: {
     title: "",
+    company: "",
     currentRole: "",
     yearsExperience: "",
     summary: "",
@@ -399,6 +401,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           profileData.jobTitle ||
           profileData.profileData?.seekingPosition ||
           "",
+        company: profileData.company || profileData.profileData?.company || "",
         currentRole: profileData.profileData?.currentRole || "",
         yearsExperience: profileData.yearsExperience || "",
         summary:
@@ -486,63 +489,96 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       const userType = (profile as any).IS_SPONSOR ? "sponsor" : "applicant";
       useOnboardingStore.getState().setUserType(userType);
 
+      // Preserve all locally-stored data so fields not returned by the backend
+      // (insights, skills, address details, linkedin, portfolio, etc.) are not wiped.
+      const existing = get().data;
+
+      // Skills: prefer backend value if present, fall back to local
+      const backendSkills: string[] =
+        (profile as any).applicant_profile?.SKILLS ||
+        (profile as any).sponsor_profile?.SKILLS ||
+        [];
+      const mergedSkills =
+        backendSkills.length > 0 ? backendSkills : existing.skills;
+
+      // Insights: GET /api/profile/ does not return INSIGHTS yet (backend gap —
+      // see BACKEND_CHANGES_NEEDED.md #4). Preserve local value until the backend
+      // starts returning this field.
+      const backendInsights: Array<{ question: string; answer: string }> =
+        (profile as any).applicant_profile?.INSIGHTS ||
+        (profile as any).sponsor_profile?.INSIGHTS ||
+        [];
+      const mergedInsights =
+        backendInsights.length > 0 ? backendInsights : existing.insights;
+
       const autofillData: AutofillData = {
         personal: {
-          firstName: (profile as any).FIRST_NAME || "",
-          lastName: (profile as any).LAST_NAME || "",
+          firstName: (profile as any).FIRST_NAME || existing.personal.firstName,
+          lastName: (profile as any).LAST_NAME || existing.personal.lastName,
           fullName:
             (profile as any).FIRST_NAME && (profile as any).LAST_NAME
               ? `${(profile as any).FIRST_NAME} ${(profile as any).LAST_NAME}`
-              : "",
-          email: (profile as any).EMAIL || "",
-          phone: (profile as any).PHONE_NUMBER || "",
-          linkedin: "",
-          portfolio: "",
+              : existing.personal.fullName,
+          email: (profile as any).EMAIL || existing.personal.email,
+          phone: (profile as any).PHONE_NUMBER || existing.personal.phone,
+          linkedin: (profile as any).LINKED_IN || existing.personal.linkedin,
+          portfolio:
+            (profile as any).PORTFOLIO_URL || existing.personal.portfolio,
           address: {
-            street: "",
-            city: (profile as any).LOCATION?.split(",")[0]?.trim() || "",
-            state: (profile as any).LOCATION?.split(",")[1]?.trim() || "",
-            zip: "",
-            country: "",
+            street: existing.personal.address?.street || "",
+            city:
+              (profile as any).LOCATION?.split(",")[0]?.trim() ||
+              existing.personal.address?.city ||
+              "",
+            state:
+              (profile as any).LOCATION?.split(",")[1]?.trim() ||
+              existing.personal.address?.state ||
+              "",
+            zip: existing.personal.address?.zip || "",
+            country: existing.personal.address?.country || "",
           },
         },
         professional: {
-          title: (profile as any).ROLE_TYPE || "",
-          currentRole: "",
-          yearsExperience: "",
-          summary: "",
-          desiredSalary: "",
-          availableStartDate: "",
-          targetIndustry: "",
-          seekingPosition: "",
-          experiences: [],
+          // Use the actual job title fields — ROLE_TYPE is "Applicant"/"Sponsor" enum, not a title
+          title:
+            userType === "sponsor"
+              ? (profile as any).sponsor_profile?.JOB_TITLE ||
+                existing.professional.title
+              : (profile as any).applicant_profile?.CURRENT_ROLE ||
+                existing.professional.title,
+          // Company is returned in sponsor_profile.COMPANY
+          company:
+            (profile as any).sponsor_profile?.COMPANY ||
+            existing.professional.company ||
+            "",
+          currentRole:
+            (profile as any).applicant_profile?.CURRENT_ROLE ||
+            existing.professional.currentRole,
+          yearsExperience: existing.professional.yearsExperience,
+          // BIO is saved via PATCH but not yet returned by GET /api/profile/.
+          // Falls back to existing local value; will auto-populate once backend
+          // starts returning the field (BACKEND_CHANGES_NEEDED.md #5).
+          summary: (profile as any).BIO || existing.professional.summary,
+          desiredSalary: existing.professional.desiredSalary,
+          availableStartDate: existing.professional.availableStartDate,
+          targetIndustry:
+            (profile as any).applicant_profile?.INDUSTRY ||
+            existing.professional.targetIndustry,
+          seekingPosition: existing.professional.seekingPosition,
+          experiences: existing.professional.experiences,
         },
-        education: {
-          degree: "",
-          major: "",
-          university: "",
-          graduationYear: "",
-          gpa: "",
-          entries: [],
-        },
-        preferences: {
-          workAuthorization: "",
-          willingToRelocate: "",
-          requiresSponsorship: "",
-          securityClearance: "",
-        },
-        demographics: {
-          gender: "",
-          ethnicity: "",
-          veteran: "",
-          disability: "",
-        },
-        skills: [],
-        insights: [],
-        resumeUrl: (profile as any).PHOTO_URL || null,
-        certifications: [],
-        languages: [],
-        achievements: "",
+        education: existing.education,
+        preferences: existing.preferences,
+        demographics: existing.demographics,
+        skills: mergedSkills,
+        insights: mergedInsights,
+        resumeUrl:
+          (profile as any).PHOTO_URL !== undefined
+            ? (profile as any).PHOTO_URL
+            : existing.resumeUrl,
+        certifications: existing.certifications,
+        languages: existing.languages,
+        achievements: existing.achievements,
       };
 
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });

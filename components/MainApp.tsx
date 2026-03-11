@@ -109,6 +109,14 @@ export function MainApp({ userType }: MainAppProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<
     number | null
   >(null);
+  const [pendingMessageJobId, setPendingMessageJobId] = useState<string | null>(
+    null,
+  );
+
+  const handleNavigateToMessages = (jobId: string) => {
+    setPendingMessageJobId(jobId || null);
+    setActiveView("messages");
+  };
 
   // Handle initial tab from URL parameter
   useEffect(() => {
@@ -173,7 +181,12 @@ export function MainApp({ userType }: MainAppProps) {
               onNavigateToProfile={() => setActiveView("profile")}
             />
           )}
-          {activeView === "matches" && <MatchesView userType={userType} />}
+          {activeView === "matches" && (
+            <MatchesView
+              userType={userType}
+              onNavigateToMessages={handleNavigateToMessages}
+            />
+          )}
           {activeView === "messages" && (
             <MessagesView
               onThreadActiveChange={setIsBottomNavHidden}
@@ -181,6 +194,8 @@ export function MainApp({ userType }: MainAppProps) {
               onShowPublicProfile={handleShowPublicProfile}
               selectedConversationId={selectedConversationId}
               onConversationChange={setSelectedConversationId}
+              pendingJobId={pendingMessageJobId}
+              onPendingJobConsumed={() => setPendingMessageJobId(null)}
             />
           )}
           {activeView === "jobs" && userType === "sponsor" && <JobsView />}
