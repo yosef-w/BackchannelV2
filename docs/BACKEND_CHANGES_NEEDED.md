@@ -212,15 +212,15 @@ The following already use `cached_query` correctly: `user_basic:`, `pub_profile:
 
 ### What is NOT cached (the gaps)
 
-| File | Function | Tables JOINed | Called from |
-|---|---|---|---|
-| `queries/likes.py` | `get_job_matches_for_user` | 5 | `GET /api/matches/` (applicant) |
-| `queries/likes.py` | `get_liked_jobs_for_user` | 4 | `GET /api/likes/jobs/` |
-| `queries/likes.py` | `get_sponsor_matches` | 4 | `GET /api/matches/sponsor/` |
-| `queries/likes.py` | `get_applicants_who_liked_job` | 3 | `GET /api/jobs/<id>/likes/applicants/` |
-| `queries/messaging.py` | `list_conversations_for_user` | **7 + window function** | `GET /api/messages/conversations/` |
-| `queries/messaging.py` | `get_messages` | 2 | `GET /api/messages/history/` |
-| `queries/profile.py` | `get_profile_data` + `get_applicant_profile`/`get_sponsor_profile` | multiple | `GET /api/profile/` |
+| File                   | Function                                                           | Tables JOINed           | Called from                            |
+| ---------------------- | ------------------------------------------------------------------ | ----------------------- | -------------------------------------- |
+| `queries/likes.py`     | `get_job_matches_for_user`                                         | 5                       | `GET /api/matches/` (applicant)        |
+| `queries/likes.py`     | `get_liked_jobs_for_user`                                          | 4                       | `GET /api/likes/jobs/`                 |
+| `queries/likes.py`     | `get_sponsor_matches`                                              | 4                       | `GET /api/matches/sponsor/`            |
+| `queries/likes.py`     | `get_applicants_who_liked_job`                                     | 3                       | `GET /api/jobs/<id>/likes/applicants/` |
+| `queries/messaging.py` | `list_conversations_for_user`                                      | **7 + window function** | `GET /api/messages/conversations/`     |
+| `queries/messaging.py` | `get_messages`                                                     | 2                       | `GET /api/messages/history/`           |
+| `queries/profile.py`   | `get_profile_data` + `get_applicant_profile`/`get_sponsor_profile` | multiple                | `GET /api/profile/`                    |
 
 ---
 
@@ -452,12 +452,12 @@ invalidate(f"user_basic:{user_id}", f"pub_profile:{user_id}", f"full_profile:{us
 
 ### Expected impact
 
-| Screen | Before (every load hits Snowflake) | After (Redis cache hit) |
-|---|---|---|
-| Matches screen open | ~300–600 ms (5-table JOIN) | **< 5 ms** |
-| Messages inbox open | ~500–900 ms (7-table JOIN + window fn) | **< 5 ms** |
-| Profile screen open | ~300–500 ms (3 sequential queries) | **< 5 ms** |
-| Profile update (PATCH) | unchanged — writes always go to DB | unchanged |
-| New match / new message | unchanged — writes + invalidation | unchanged |
+| Screen                  | Before (every load hits Snowflake)     | After (Redis cache hit) |
+| ----------------------- | -------------------------------------- | ----------------------- |
+| Matches screen open     | ~300–600 ms (5-table JOIN)             | **< 5 ms**              |
+| Messages inbox open     | ~500–900 ms (7-table JOIN + window fn) | **< 5 ms**              |
+| Profile screen open     | ~300–500 ms (3 sequential queries)     | **< 5 ms**              |
+| Profile update (PATCH)  | unchanged — writes always go to DB     | unchanged               |
+| New match / new message | unchanged — writes + invalidation      | unchanged               |
 
 Cache misses (first load after a write or after TTL expires) still hit Snowflake at the same speed as today. Every subsequent request within the TTL window is served from Redis in under 5 ms.
