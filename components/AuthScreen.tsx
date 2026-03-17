@@ -1,27 +1,26 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-  Alert,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useMutation } from "@tanstack/react-query";
+import { authApi, LoginResponse } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
-import { authApi, LoginResponse } from "../lib/auth-api";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -29,9 +28,16 @@ interface AuthScreenProps {
   onComplete: () => void;
   onLoginComplete?: () => void; // Separate handler for login to skip questionnaire
   onBack: () => void;
+  /** Passed from onboarding.tsx so AuthScreen never relies solely on the Zustand store */
+  userType?: "applicant" | "sponsor";
 }
 
-export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenProps) {
+export function AuthScreen({
+  onComplete,
+  onLoginComplete,
+  onBack,
+  userType: propUserType,
+}: AuthScreenProps) {
   const [isLogin, setIsLogin] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -42,10 +48,17 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
 
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
-  const userType = useOnboardingStore((state) => state.userType);
+  const storeUserType = useOnboardingStore((state) => state.userType);
+  // Prefer the prop (set from URL params by onboarding.tsx) over the store value,
+  // so sign-up works correctly even if the Zustand store was reset mid-flow.
+  const userType = propUserType ?? storeUserType;
   const setUserType = useOnboardingStore((state) => state.setUserType);
-  const updateApplicantData = useOnboardingStore((state) => state.updateApplicantData);
-  const updateSponsorData = useOnboardingStore((state) => state.updateSponsorData);
+  const updateApplicantData = useOnboardingStore(
+    (state) => state.updateApplicantData,
+  );
+  const updateSponsorData = useOnboardingStore(
+    (state) => state.updateSponsorData,
+  );
   const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
 
   const loginMutation = useMutation<LoginResponse, Error>({
@@ -55,24 +68,24 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
     onSuccess: async (data) => {
       // Store real tokens from backend
       await setAuthTokens(data.access_token, data.refresh_token);
-      
+
       // Backend doesn't return profile info in login response
       // Just store the email, profile data will be loaded from cache or fetched later
       updatePersonal({
         email: data.email,
-        firstName: '',
-        lastName: '',
-        fullName: '',
-        phone: '',
+        firstName: "",
+        lastName: "",
+        fullName: "",
+        phone: "",
         address: {
-          city: '',
-          state: '',
-          street: '',
-          zip: '',
-          country: '',
+          city: "",
+          state: "",
+          street: "",
+          zip: "",
+          country: "",
         },
       });
-      
+
       // Use onLoginComplete if provided (skips questionnaire), otherwise onComplete
       if (onLoginComplete) {
         onLoginComplete();
@@ -105,14 +118,42 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
       }
       loginMutation.mutate();
     } else {
-      const authData = { firstName, lastName, email, password };
-      
-      if (userType === "applicant") {
-        updateApplicantData(authData);
-      } else if (userType === "sponsor") {
-        updateSponsorData(authData);
+      // Validate all registration fields before proceeding
+      if (!firstName.trim()) {
+        Alert.alert("Missing Field", "Please enter your first name.");
+        return;
       }
-      
+      if (!lastName.trim()) {
+        Alert.alert("Missing Field", "Please enter your last name.");
+        return;
+      }
+      if (!email.trim()) {
+        Alert.alert("Missing Field", "Please enter your email address.");
+        return;
+      }
+      if (!password || password.length < 8) {
+        Alert.alert(
+          "Password Too Short",
+          "Password must be at least 8 characters.",
+        );
+        return;
+      }
+
+      const authData = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+      };
+
+      // Save to the correct store slice — default to applicant if userType is
+      // somehow still null (belt-and-suspenders after the onboarding.tsx useEffect fix).
+      if (userType === "sponsor") {
+        updateSponsorData(authData);
+      } else {
+        updateApplicantData(authData);
+      }
+
       onComplete();
     }
   };
@@ -141,7 +182,6 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
-
         {/* Navigation */}
         <View style={styles.topNav}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -162,7 +202,6 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
               entering={FadeInDown.duration(600)}
               style={styles.content}
             >
-
               {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.title}>
@@ -175,18 +214,7 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                 </Text>
               </View>
 
-              {/* Social Login */}
-              <TouchableOpacity activeOpacity={0.7} style={styles.socialButton}>
-                <FontAwesome
-                  name="linkedin-square"
-                  size={24}
-                  color="#000"
-                />
-                <Text style={styles.socialButtonText}>
-                  Continue with LinkedIn
-                </Text>
-              </TouchableOpacity>
-
+              {/* Divider */}
               <View style={styles.divider}>
                 <View style={styles.line} />
                 <Text style={styles.dividerText}>or</Text>
@@ -200,11 +228,7 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>First Name</Text>
                       <View style={styles.inputWrapper}>
-                        <User
-                          color="#AAA"
-                          size={18}
-                          style={styles.inputIcon}
-                        />
+                        <User color="#AAA" size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="First Name"
                           placeholderTextColor="#BBB"
@@ -218,11 +242,7 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>Last Name</Text>
                       <View style={styles.inputWrapper}>
-                        <User
-                          color="#AAA"
-                          size={18}
-                          style={styles.inputIcon}
-                        />
+                        <User color="#AAA" size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="Last Name"
                           placeholderTextColor="#BBB"
@@ -238,11 +258,7 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email Address</Text>
                   <View style={styles.inputWrapper}>
-                    <Mail
-                      color="#AAA"
-                      size={18}
-                      style={styles.inputIcon}
-                    />
+                    <Mail color="#AAA" size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email"
                       placeholderTextColor="#BBB"
@@ -258,11 +274,7 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Password</Text>
                   <View style={styles.inputWrapper}>
-                    <Lock
-                      color="#AAA"
-                      size={18}
-                      style={styles.inputIcon}
-                    />
+                    <Lock color="#AAA" size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Password"
                       placeholderTextColor="#BBB"
@@ -275,10 +287,11 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                 </View>
 
                 {isLogin && (
-                  <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotBtn}>
-                    <Text style={styles.forgotText}>
-                      Forgot password?
-                    </Text>
+                  <TouchableOpacity
+                    onPress={handleForgotPassword}
+                    style={styles.forgotBtn}
+                  >
+                    <Text style={styles.forgotText}>Forgot password?</Text>
                   </TouchableOpacity>
                 )}
 
@@ -317,19 +330,18 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                   </Text>
                 </Text>
               </TouchableOpacity>
-
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
 
         {showForgotPasswordModal && (
           <View style={styles.modalOverlay}>
-            <TouchableOpacity 
-              style={StyleSheet.absoluteFill} 
-              activeOpacity={1} 
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
               onPress={handleCloseForgotPasswordModal}
             />
-            <Animated.View 
+            <Animated.View
               entering={FadeInDown.duration(300)}
               style={styles.modalContent}
             >
@@ -337,7 +349,8 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                 <>
                   <Text style={styles.modalTitle}>Reset Password</Text>
                   <Text style={styles.modalSubtitle}>
-                    Enter your email and we'll send you a link to reset your password.
+                    Enter your email and we'll send you a link to reset your
+                    password.
                   </Text>
 
                   <View style={styles.modalInputWrapper}>
@@ -358,13 +371,15 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                     disabled={forgotPasswordMutation.isPending}
                     style={[
                       styles.modalButton,
-                      forgotPasswordMutation.isPending && { opacity: 0.7 }
+                      forgotPasswordMutation.isPending && { opacity: 0.7 },
                     ]}
                   >
                     {forgotPasswordMutation.isPending ? (
                       <ActivityIndicator color="#FFF" />
                     ) : (
-                      <Text style={styles.modalButtonText}>Send Reset Link</Text>
+                      <Text style={styles.modalButtonText}>
+                        Send Reset Link
+                      </Text>
                     )}
                   </TouchableOpacity>
 
@@ -383,7 +398,9 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
                   <Text style={styles.modalTitle}>Check Your Email</Text>
                   <Text style={styles.modalSubtitle}>
                     We've sent a password reset link to{"\n"}
-                    <Text style={styles.emailHighlight}>{forgotPasswordEmail}</Text>
+                    <Text style={styles.emailHighlight}>
+                      {forgotPasswordEmail}
+                    </Text>
                   </Text>
 
                   <TouchableOpacity
@@ -401,7 +418,6 @@ export function AuthScreen({ onComplete, onLoginComplete, onBack }: AuthScreenPr
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {

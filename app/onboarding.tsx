@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ApplicantQuestionnaire } from "../components/ApplicantQuestionnaire";
 import { AuthScreen } from "../components/AuthScreen";
 import { Onboarding } from "../components/Onboarding";
 import { SponsorQuestionnaire } from "../components/SponsorQuestionnaire";
+import { useOnboardingStore } from "../stores/useOnboardingStore";
 
 type UserType = "applicant" | "sponsor";
 type Step = "onboarding" | "auth" | "questionnaire";
@@ -13,6 +14,15 @@ export default function OnboardingScreen() {
   const userType: UserType = useMemo(() => {
     return params.mode === "sponsor" ? "sponsor" : "applicant";
   }, [params.mode]);
+
+  // Keep the Zustand store in sync with the URL-param userType.
+  // ModeSelection normally sets this, but navigating directly to /onboarding
+  // (or a hot reload) can leave the store's userType as null — which causes
+  // AuthScreen to skip saving the auth fields, sending empty data to the API.
+  const setUserType = useOnboardingStore((state) => state.setUserType);
+  useEffect(() => {
+    setUserType(userType);
+  }, [userType]);
 
   const [step, setStep] = useState<Step>("onboarding");
 
@@ -29,9 +39,12 @@ export default function OnboardingScreen() {
   if (step === "auth") {
     return (
       <AuthScreen
+        userType={userType}
         onBack={() => setStep("onboarding")}
         onComplete={() => setStep("questionnaire")}
-        onLoginComplete={() => router.replace({ pathname: "/dashboard", params: { mode: userType } })}
+        onLoginComplete={() =>
+          router.replace({ pathname: "/dashboard", params: { mode: userType } })
+        }
       />
     );
   }

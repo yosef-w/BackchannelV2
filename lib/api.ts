@@ -8,31 +8,59 @@ export const API_BASE_URL = "https://oyster-app-4pg5w.ondigitalocean.app";
  */
 class ApiClient {
   private baseUrl: string;
-  private isRefreshing: boolean = false;
+  private isRefreshing = false;
+
+  /**
+   * Queue of requests that arrived while a token refresh was already in
+   * progress.  Each entry holds the resolve/reject of a Promise that will be
+   * settled once the single in-flight refresh completes (or fails), so every
+   * waiting request is replayed with the new token rather than being dropped
+   * or causing a second refresh call.
+   */
+  private refreshQueue: Array<{
+    resolve: (newToken: string) => void;
+    reject: (err: Error) => void;
+  }> = [];
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
   }
 
-  /**
-   * Get auth headers with current access token
-   */
   private getAuthHeaders(): HeadersInit {
     const token = useAuthStore.getState().accessToken;
-
-    console.log("[API] Auth token exists:", !!token);
-    if (token) {
-      console.log("[API] Token preview:", token.substring(0, 20) + "...");
-    }
-
     return {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
   }
 
+  /** Park a request until the in-progress refresh resolves. */
+  private waitForRefresh(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.refreshQueue.push({ resolve, reject });
+    });
+  }
+
+  /** Replay all queued requests with the freshly issued access token. */
+  private drainRefreshQueue(newToken: string) {
+    this.refreshQueue.forEach(({ resolve }) => resolve(newToken));
+    this.refreshQueue = [];
+  }
+
+  /** Reject all queued requests when the refresh has permanently failed. */
+  private rejectRefreshQueue(err: Error) {
+    this.refreshQueue.forEach(({ reject }) => reject(err));
+    this.refreshQueue = [];
+  }
+
   /**
-   * Generic fetch wrapper with auth
+   * Core fetch wrapper with automatic auth-header injection and transparent
+   * token-refresh on 401 responses.
+   *
+   * Concurrency guarantee: if multiple requests receive a 401 simultaneously,
+   * only the first one triggers a refresh.  The rest are queued and replayed
+   * with the new token once the single refresh call resolves, so we never make
+   * redundant refresh requests and no caller is silently dropped.
    */
   private async request<T>(
     endpoint: string,
@@ -40,8 +68,6 @@ class ApiClient {
     skipAuth = false,
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-
-    console.log(`[API] Requesting: ${endpoint}`);
 
     const config: RequestInit = {
       ...options,
@@ -53,85 +79,43 @@ class ApiClient {
       },
     };
 
-    console.log(`[API] Request headers:`, config.headers);
-
     const response = await fetch(url, config);
 
-    console.log(
-      `[API] Response from ${endpoint}:`,
-      response.status,
-      response.statusText,
-    );
-
-    // Handle 401 Unauthorized - attempt token refresh
+    // ── 401 Unauthorized ─────────────────────────────────────────────────────
     if (
       response.status === 401 &&
       !skipAuth &&
-      !endpoint.includes("/token/refresh/") &&
-      !this.isRefreshing
+      !endpoint.includes("/token/refresh/")
     ) {
-      console.log("[API] Received 401, attempting token refresh...");
+      // A refresh is already in flight — queue this request and wait.
+      if (this.isRefreshing) {
+        const newToken = await this.waitForRefresh();
+        return this.retryWithToken<T>(url, options, newToken);
+      }
+
+      // This is the first request to see the 401; it owns the refresh.
       this.isRefreshing = true;
-
       try {
-        const refreshSuccess = await useAuthStore
-          .getState()
-          .refreshAccessToken();
-
-        if (refreshSuccess) {
-          // Retry the original request with new token
-          console.log("[API] Token refreshed, retrying request...");
-          const retryConfig: RequestInit = {
-            ...options,
-            headers: {
-              ...options.headers,
-              ...this.getAuthHeaders(), // Get new token
-            },
-          };
-          const retryResponse = await fetch(url, retryConfig);
-
-          if (!retryResponse.ok) {
-            const errorData = await retryResponse.json().catch(() => ({}));
-            console.error(`[API] Retry failed for ${endpoint}:`, errorData);
-            const errorMessage =
-              errorData?.error ||
-              errorData?.detail ||
-              errorData?.message ||
-              `API Error: ${retryResponse.status}`;
-            throw new Error(errorMessage);
-          }
-
-          return retryResponse.json();
+        const refreshed = await useAuthStore.getState().refreshAccessToken();
+        if (refreshed) {
+          const newToken = useAuthStore.getState().accessToken!;
+          this.drainRefreshQueue(newToken);
+          return this.retryWithToken<T>(url, options, newToken);
         } else {
-          // Refresh failed, user needs to re-login
-          // Don't throw - let the app handle navigation silently
-          console.log(
-            "[API] Token refresh failed, session expired - returning empty response",
-          );
-          return {} as T; // Return empty object instead of throwing
+          // Both tokens are expired. clearAuth() was already called inside
+          // refreshAccessToken, which will drive navigation to the login screen.
+          const err = new Error("Session expired. Please log in again.");
+          this.rejectRefreshQueue(err);
+          throw err;
         }
       } finally {
         this.isRefreshing = false;
       }
     }
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-
-      // For authentication errors, log but don't throw to avoid error overlays
-      if (
-        response.status === 401 &&
-        (errorData?.code === "token_not_valid" ||
-          errorData?.detail?.includes("Token is invalid"))
-      ) {
-        console.log(
-          `[API] Authentication failed for ${endpoint} - session expired`,
-        );
-        return {} as T; // Return empty object, let auth state handle redirect
-      }
-
-      console.error(`[API] Error from ${endpoint}:`, errorData);
-      // Backend can return error in 'error' or 'detail' field
       const errorMessage =
         errorData?.error ||
         errorData?.detail ||
@@ -143,6 +127,33 @@ class ApiClient {
     return response.json();
   }
 
+  /** Retry a request using an explicit Bearer token (called after a refresh). */
+  private async retryWithToken<T>(
+    url: string,
+    options: RequestInit,
+    token: string,
+  ): Promise<T> {
+    const retryConfig: RequestInit = {
+      ...options,
+      headers: {
+        ...options.headers,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+    const retryResponse = await fetch(url, retryConfig);
+    if (!retryResponse.ok) {
+      const errorData = await retryResponse.json().catch(() => ({}));
+      const errorMessage =
+        errorData?.error ||
+        errorData?.detail ||
+        errorData?.message ||
+        `API Error: ${retryResponse.status}`;
+      throw new Error(errorMessage);
+    }
+    return retryResponse.json();
+  }
+
   /**
    * GET request
    */
@@ -152,17 +163,20 @@ class ApiClient {
 
   /**
    * POST request
+   * Pass an AbortSignal to cancel in-flight requests (e.g. user hits Cancel).
    */
   async post<T>(
     endpoint: string,
     data?: unknown,
     skipAuth = false,
+    signal?: AbortSignal,
   ): Promise<T> {
     return this.request<T>(
       endpoint,
       {
         method: "POST",
         body: data ? JSON.stringify(data) : undefined,
+        signal,
       },
       skipAuth,
     );
@@ -251,6 +265,10 @@ export async function browseJobs(filters?: {
 /**
  * ⚡ Sponsor a Job
  * Sponsor an ATS job (creates a JOB_POSTINGS entry)
+ *
+ * Body:
+ * - relationship: string (e.g. "Hiring Manager", "Recruiter")
+ * - canRefer: boolean
  */
 export async function sponsorJob(
   jobId: string,
@@ -268,6 +286,88 @@ export async function sponsorJob(
   expires_at: string;
 }> {
   return api.post(`/api/jobs/${jobId}/sponsor/`, data);
+}
+
+/**
+ * 📋 Get My Jobs (Sponsor)
+ * Return all jobs owned by the authenticated sponsor (active and inactive)
+ * Uses GET /api/jobs/mine/
+ */
+export async function getMyJobs(): Promise<{
+  jobs: Array<{
+    JOB_ID: string;
+    SPONSOR_ID: string;
+    TITLE: string;
+    COMPANY: string;
+    LOCATION: string;
+    DESCRIPTION: string;
+    SALARY_MIN: number | null;
+    SALARY_MAX: number | null;
+    SALARY_CURRENCY: string | null;
+    REQUIREMENTS: string;
+    EXPERIENCE_LEVEL: string | null;
+    EMPLOYMENT_TYPE: string | null;
+    REMOTE_OPTION: boolean;
+    CREATED_AT: string;
+    EXPIRES_AT: string;
+    IS_ACTIVE: boolean;
+    RELATIONSHIP: string | null;
+    CAN_REFER: boolean;
+    LOGO_URL: string | null;
+  }>;
+  total_count: number;
+}> {
+  return api.get("/api/jobs/mine/");
+}
+
+// ============================================================
+// ⏳ WAITLIST ENDPOINTS
+// ============================================================
+
+/**
+ * ⏳ Join Job Waitlist
+ * Add the authenticated user to the waitlist for an ATS job
+ * Uses POST /api/jobs/waitlist/
+ *
+ * When a sponsor eventually sponsors that job, waitlisted users are
+ * automatically notified and is_now_sponsored / sponsored_job_id will be
+ * populated in GET /api/jobs/waitlist/mine/
+ */
+export async function joinWaitlist(jobId: string): Promise<{
+  waitlist_id: string;
+  user_id: string;
+  job_id: string;
+  status: "ACTIVE";
+  message: string;
+}> {
+  return api.post("/api/jobs/waitlist/", { job_id: jobId });
+}
+
+/**
+ * ⏳ Get Waitlisted Jobs
+ * Return all jobs the authenticated user has waitlisted, with live sponsorship
+ * status. If is_now_sponsored is true the job has been picked up by a sponsor
+ * and sponsored_job_id holds the new sponsored job UUID to deep-link into.
+ * Uses GET /api/jobs/waitlist/mine/
+ */
+export async function getWaitlistedJobs(): Promise<{
+  jobs: Array<{
+    waitlist_id: string;
+    job_id: string;
+    status: string;
+    waitlisted_at: string;
+    title: string;
+    organization: string;
+    location: string;
+    employment_type: string | null;
+    is_remote: boolean;
+    experience_level: string | null;
+    is_now_sponsored: boolean;
+    sponsored_job_id: string | null;
+  }>;
+  total_count: number;
+}> {
+  return api.get("/api/jobs/waitlist/mine/");
 }
 
 /**
@@ -298,11 +398,9 @@ export async function logout(): Promise<void> {
  * Record applicant's interest in a job
  */
 export async function likeJob(jobId: string): Promise<{
-  id: string;
-  job_id: string;
-  user_id: string;
-  created_at: string;
+  like_id: string;
   matched: boolean;
+  message: string;
 }> {
   return api.post(`/api/jobs/like/`, { job_id: jobId });
 }
@@ -363,12 +461,9 @@ export async function likeProfile(
   applicantUserId: string,
   jobId?: string,
 ): Promise<{
-  id: string;
-  applicant_user_id: string;
-  sponsor_user_id: string;
-  job_id?: string;
-  created_at: string;
+  like_id: string;
   matched: boolean;
+  message: string;
 }> {
   const payload: { applicant_user_id: string; job_id?: string } = {
     applicant_user_id: applicantUserId,
@@ -642,9 +737,11 @@ export async function getProfile(): Promise<{
  */
 export async function getBasicProfile(): Promise<{
   USER_ID: string;
+  USERNAME: string;
   EMAIL: string;
   FIRST_NAME: string;
   LAST_NAME: string;
+  ROLE_TYPE: string;
   PHOTO_URL: string | null;
 }> {
   return api.get("/api/profile/basic/");
@@ -974,4 +1071,470 @@ export async function markAllNotificationsAsRead(): Promise<{
   marked_count: number;
 }> {
   return api.patch("/api/notifications/read-all/");
+}
+
+// ============================================================
+// 📄 RESUME ENDPOINTS
+// ============================================================
+
+/**
+ * 📄 Save Resume JSON
+ * Persist a structured resume data object for the authenticated user.
+ * Uses POST /api/resume/
+ *
+ * This does NOT extract or classify — it just stores the JSON blob.
+ * Call uploadAndParseResume to extract text, then classifyResume to
+ * populate the applicant profile fields automatically.
+ */
+export async function addResume(resumeData: object): Promise<{
+  message: string;
+}> {
+  return api.post("/api/resume/", { resume_data: resumeData });
+}
+
+/**
+ * 📄 Update Resume Fields
+ * Merge partial fields into the stored resume_data object.
+ * Uses PATCH /api/resume/update/
+ */
+export async function updateResumeField(data: object): Promise<{
+  message: string;
+  updated_fields: string[];
+  resume_data: any;
+}> {
+  return api.patch("/api/resume/update/", data);
+}
+
+/**
+ * 📄 Get Extracted Resume Text
+ * Return the raw text extracted from the user's last uploaded resume file.
+ * Uses GET /api/resume/extracted-text/
+ */
+export async function getExtractedResumeText(): Promise<{
+  extracted_resume_text: string | null;
+  updated_at: string | null;
+  message: string;
+}> {
+  return api.get("/api/resume/extracted-text/");
+}
+
+/**
+ * 📄 Classify Resume into Profile Fields
+ * Ask the AI to read the stored extracted resume text and auto-populate
+ * applicant profile fields (skills, positions, experience, education, etc.).
+ * Uses POST /api/resume/classify/
+ *
+ * Call this after uploadAndParseResume so extracted text is already stored.
+ */
+export async function classifyResume(signal?: AbortSignal): Promise<{
+  classified_data: any;
+  applicant_fields_updated: string[];
+  user_fields_updated: string[];
+  message: string;
+}> {
+  return api.post("/api/resume/classify/", undefined, false, signal);
+}
+
+// ============================================================
+// 📁 FILE & IMAGE UPLOAD ENDPOINTS
+// ============================================================
+
+/**
+ * 🖼️ Upload Profile Image
+ * Upload a profile photo to DigitalOcean Spaces CDN.
+ * Uses POST /api/upload/image/ (multipart, field name: "image")
+ *
+ * After a successful upload, call updateGeneralProfile({ photo_url: cdn_url })
+ * to persist the new URL on the user's profile.
+ *
+ * Usage:
+ *   const form = new FormData();
+ *   form.append("image", { uri, name: "photo.jpg", type: "image/jpeg" } as any);
+ *   const { cdn_url } = await uploadProfileImage(form);
+ *   await updateGeneralProfile({ photo_url: cdn_url });
+ */
+export async function uploadProfileImage(formData: FormData): Promise<{
+  image_id: string;
+  cdn_url: string; // always returned — DigitalOcean Spaces public CDN URL
+  filename: string;
+  file_size: number;
+  content_type: string;
+  message: string;
+}> {
+  // Multipart upload — must NOT send Content-Type: application/json,
+  // so we bypass the ApiClient and call fetch directly.
+  const token = useAuthStore.getState().accessToken;
+  const response = await fetch(`${API_BASE_URL}/api/upload/image/`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData?.error ||
+        errorData?.detail ||
+        `Image upload failed: ${response.status}`,
+    );
+  }
+  return response.json();
+}
+
+/**
+ * 📄 Upload & Parse Resume File
+ * Upload a resume file (PDF/DOCX), extract its text, and store it in one step.
+ * Uses POST /api/upload-and-parse/ (multipart, field name: "file")
+ *
+ * After this succeeds, call classifyResume() to auto-populate applicant
+ * profile fields from the extracted text.
+ *
+ * Usage:
+ *   const form = new FormData();
+ *   form.append("file", { uri, name: "resume.pdf", type: "application/pdf" } as any);
+ *   await uploadAndParseResume(form);
+ *   await classifyResume();
+ */
+export async function uploadAndParseResume(
+  formData: FormData,
+  signal?: AbortSignal,
+): Promise<{
+  message: string;
+  extracted_text: string | null; // null when Snowflake Cortex fails to parse
+  parsing_error?: string | null; // present on parse failure
+}> {
+  // Multipart upload — must NOT send Content-Type: application/json.
+  const token = useAuthStore.getState().accessToken;
+  const response = await fetch(`${API_BASE_URL}/api/upload-and-parse/`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+    signal,
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData?.error ||
+        errorData?.detail ||
+        `Resume upload failed: ${response.status}`,
+    );
+  }
+  return response.json();
+}
+
+// ============================================================
+// 🔐 AUTH — ACCOUNT MANAGEMENT
+// ============================================================
+
+/**
+ * 🔐 Change Password
+ * Change password for the authenticated user.
+ * Uses POST /api/profile/change-password/
+ *
+ * Backend accepts both old_password/new_password (snake_case)
+ * and oldPassword/newPassword (camelCase).
+ */
+export async function changePassword(
+  oldPassword: string,
+  newPassword: string,
+): Promise<{ message: string }> {
+  return api.post("/api/profile/change-password/", {
+    old_password: oldPassword,
+    new_password: newPassword,
+  });
+}
+
+/**
+ * 🔐 Deactivate Account
+ * Permanently deactivate the authenticated user's account.
+ * Uses POST /api/profile/deactivate/
+ */
+export async function deactivateAccount(): Promise<{ message: string }> {
+  return api.post("/api/profile/deactivate/");
+}
+
+// ============================================================
+// 📊 FEED TRACKING ENDPOINTS
+// ============================================================
+
+/**
+ * 📊 Record Job Feed Action
+ * Track that the user saw / liked / passed on a job card.
+ * Uses POST /api/jobs/feed/record/
+ *
+ * @param jobId  - ID of the job card that was acted on
+ * @param action - "liked" | "passed" | "seen"
+ */
+export async function recordJobFeedAction(
+  jobId: string,
+  action: string,
+): Promise<{ message: string }> {
+  return api.post("/api/jobs/feed/record/", { job_id: jobId, action });
+}
+
+/**
+ * 📊 Record Profile Feed Action
+ * Track that the sponsor saw / liked / passed on a profile card.
+ * Uses POST /api/profiles/feed/record/
+ *
+ * @param jobId           - Sponsor's active job context
+ * @param applicantUserId - Profile that was acted on
+ * @param action          - "liked" | "passed" | "seen"
+ */
+export async function recordProfileFeedAction(
+  jobId: string,
+  applicantUserId: string,
+  action: string,
+): Promise<{ message: string }> {
+  return api.post("/api/profiles/feed/record/", {
+    job_id: jobId,
+    applicant_user_id: applicantUserId,
+    action,
+  });
+}
+
+// ============================================================
+// 💼 JOB MANAGEMENT
+// ============================================================
+
+/**
+ * 💼 Apply to a Job (Applicant)
+ * Submit an application for a sponsored job.
+ * Uses POST /api/jobs/<job_id>/apply/
+ */
+export async function applyToJob(jobId: string): Promise<{
+  application_id: string;
+  job_id: string;
+  job_title: string;
+  company: string;
+  matched: boolean;
+  message: string;
+}> {
+  return api.post(`/api/jobs/${jobId}/apply/`);
+}
+
+/**
+ * 💼 Create Job (Sponsor)
+ * Create a new sponsored job posting.
+ * Uses POST /api/jobs/create/
+ */
+export async function createJob(data: {
+  title: string;
+  company: string;
+  location?: string;
+  description?: string;
+  salary_min?: number;
+  salary_max?: number;
+  salary_currency?: string;
+  requirements?: string;
+  experience_level?: string;
+  employment_type?: string;
+  remote_option?: boolean;
+  relationship?: string;
+  can_refer?: boolean;
+}): Promise<{
+  job_id: string;
+  title: string;
+  company: string;
+  message: string;
+  expires_at: string;
+}> {
+  return api.post("/api/jobs/create/", data);
+}
+
+/**
+ * 💼 Update Job (Sponsor)
+ * Edit a sponsored job posting the authenticated sponsor owns.
+ * Uses PATCH /api/jobs/<job_id>/edit/
+ */
+export async function updateJob(
+  jobId: string,
+  data: {
+    title?: string;
+    company?: string;
+    location?: string;
+    description?: string;
+    salary_min?: number;
+    salary_max?: number;
+    requirements?: string;
+    experience_level?: string;
+    employment_type?: string;
+    remote_option?: boolean;
+  },
+): Promise<{ message: string; updated_fields: string[] }> {
+  return api.patch(`/api/jobs/${jobId}/edit/`, data);
+}
+
+/**
+ * 💼 Deactivate Job (Sponsor)
+ * Deactivate a sponsored job posting (hides it from the applicant feed).
+ * Uses POST /api/jobs/<job_id>/deactivate/
+ */
+export async function deactivateJob(jobId: string): Promise<{
+  message: string;
+}> {
+  return api.post(`/api/jobs/${jobId}/deactivate/`);
+}
+
+/**
+ * 👥 Get Applicants Who Liked a Job (Sponsor)
+ * Returns all applicant profiles who liked a specific sponsored job.
+ * Uses GET /api/jobs/<job_id>/likes/applicants/
+ */
+export async function getJobApplicantsLikes(jobId: string): Promise<{
+  job_id: string;
+  applicants: Array<{
+    LIKE_ID: string;
+    USER_ID: string;
+    FIRST_NAME: string;
+    LAST_NAME: string;
+    PHOTO_URL: string | null;
+    LOCATION: string | null;
+    SKILLS: string[];
+    POSITIONS: string[];
+    INDUSTRY: string;
+    RESUME_DATA: any;
+    LIKED_AT: string;
+  }>;
+  total_count: number;
+}> {
+  return api.get(`/api/jobs/${jobId}/likes/applicants/`);
+}
+
+// ============================================================
+// 🔔 DEVICE TOKEN ENDPOINTS (Push Notifications)
+// ============================================================
+
+/**
+ * 🔔 Register Device Token
+ * Register a push notification device token for the authenticated user.
+ * Uses POST /api/devices/register/
+ *
+ * @param token    - Expo / APNs / FCM push token
+ * @param platform - "ios" | "android" | "web"
+ */
+export async function registerDevice(
+  token: string,
+  platform: "ios" | "android" | "web",
+): Promise<{ message: string }> {
+  return api.post("/api/devices/register/", { token, platform });
+}
+
+/**
+ * 🔔 Unregister Device Token
+ * Remove a push notification device token (on logout / app uninstall).
+ * Uses DELETE /api/devices/unregister/
+ */
+export async function unregisterDevice(
+  _token: string,
+): Promise<{ message: string }> {
+  return api.delete("/api/devices/unregister/");
+}
+
+// ============================================================
+// 🤝 REFERRAL ENDPOINTS
+// ============================================================
+
+/**
+ * 🤝 Submit Referral (Sponsor)
+ * Sponsor submits a referral for an applicant they matched with.
+ * Uses POST /api/referrals/submit/
+ */
+export async function submitReferral(data: {
+  applicant_user_id: string;
+  job_id: string;
+  confidence_checks?: Record<string, boolean>;
+  referral_note?: string;
+}): Promise<{
+  referral_id: string;
+  status: string;
+  message: string;
+}> {
+  return api.post("/api/referrals/submit/", data);
+}
+
+/**
+ * 🤝 List Referrals
+ * Get all referrals for the authenticated user.
+ * Uses GET /api/referrals/
+ */
+export async function listReferrals(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  referrals: Array<{
+    REFERRAL_ID: string;
+    JOB_ID: string;
+    APPLICANT_USER_ID: string;
+    SPONSOR_USER_ID: string;
+    STATUS: string;
+    CONFIDENCE_CHECKS: Record<string, boolean> | null;
+    REFERRAL_NOTE: string | null;
+    CREATED_AT: string;
+    UPDATED_AT: string;
+    SPONSOR_FIRST_NAME: string | null;
+    SPONSOR_LAST_NAME: string | null;
+    APPLICANT_FIRST_NAME: string | null;
+    APPLICANT_LAST_NAME: string | null;
+    JOB_TITLE: string | null;
+    JOB_COMPANY: string | null;
+  }>;
+  total_count: number;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit !== undefined)
+    queryParams.append("limit", String(params.limit));
+  if (params?.offset !== undefined)
+    queryParams.append("offset", String(params.offset));
+  const qs = queryParams.toString();
+  return api.get(qs ? `/api/referrals/?${qs}` : "/api/referrals/");
+}
+
+/**
+ * 🤝 Get Referral Detail
+ * Get full details for a single referral by ID.
+ * Uses GET /api/referrals/<referral_id>/
+ */
+export async function getReferralDetail(referralId: string): Promise<{
+  REFERRAL_ID: string;
+  JOB_ID: string;
+  APPLICANT_USER_ID: string;
+  SPONSOR_USER_ID: string;
+  STATUS: string;
+  CONFIDENCE_CHECKS: Record<string, boolean> | null;
+  REFERRAL_NOTE: string | null;
+  CREATED_AT: string;
+  UPDATED_AT: string;
+  SPONSOR_FIRST_NAME: string | null;
+  SPONSOR_LAST_NAME: string | null;
+  APPLICANT_FIRST_NAME: string | null;
+  APPLICANT_LAST_NAME: string | null;
+  JOB_TITLE: string | null;
+  JOB_COMPANY: string | null;
+}> {
+  return api.get(`/api/referrals/${referralId}/`);
+}
+
+/**
+ * 🤝 Withdraw Referral (Sponsor)
+ * Withdraw a previously submitted referral.
+ * Uses DELETE /api/referrals/<referral_id>/withdraw/
+ */
+export async function withdrawReferral(referralId: string): Promise<{
+  message: string;
+}> {
+  return api.delete(`/api/referrals/${referralId}/withdraw/`);
+}
+
+/**
+ * 👤 Update User Profile (General Fields)
+ * PATCH /api/profile/update/
+ * Accepted fields: first_name, last_name, phone_number, linked_in, portfolio_url,
+ *                  bio, street, city, state, zip, country, location, photo_url,
+ *                  date_of_birth, international_code, notification_preferences
+ */
+export async function updateUserProfile(data: Record<string, any>): Promise<{
+  message: string;
+  updated_fields: string[];
+}> {
+  return api.patch("/api/profile/update/", data);
 }

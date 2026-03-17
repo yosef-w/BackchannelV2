@@ -1107,13 +1107,15 @@ Upload a profile image.
 ```json
 {
   "image_id": "uuid",
-  "stage_path": "string",
+  "cdn_url": "https://backchannel-media.nyc3.cdn.digitaloceanspaces.com/images/profiles/<user_id>/<timestamp>_photo.jpg",
   "filename": "string",
   "file_size": 12345,
   "content_type": "image/jpeg",
   "message": "Image uploaded successfully"
 }
 ```
+
+> **Note:** Images are stored on DigitalOcean Spaces with `ACL: public-read`. `cdn_url` is always present and publicly reachable. Use this URL with `PATCH /api/profile/update/ { photo_url: cdn_url }` to persist it.
 
 ---
 

@@ -1,14 +1,17 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { BlurView } from "expo-blur";
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
+  AlertCircle,
   Briefcase,
   Camera,
   Check,
+  CheckCircle2,
   ChevronRight,
   Clock,
   Edit,
+  FileText,
   GraduationCap,
   ImageIcon,
   Lock,
@@ -16,12 +19,16 @@ import {
   MapPin,
   MessageCircle,
   Plus,
+  RefreshCw,
   Target,
   Trash2,
+  Upload,
   X,
+  Zap,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -43,10 +50,15 @@ import Animated, {
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
+  changePassword,
+  classifyResume,
+  getExtractedResumeText,
   logout,
   updateApplicantProfile,
   updateGeneralProfile,
   updateSponsorProfile,
+  uploadAndParseResume,
+  uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
@@ -138,6 +150,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const updateEducationEntries = useUserProfileStore(
     (state) => state.updateEducationEntries,
   );
+  const fetchFromBackend = useUserProfileStore(
+    (state) => state.fetchFromBackend,
+  );
 
   const [activeTab, setActiveTab] = useState<"profile" | "applications">(
     "profile",
@@ -154,6 +169,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
+
+  // Resume upload state
+  const [resumeUploadStep, setResumeUploadStep] = useState<
+    "idle" | "uploading" | "analyzing" | "done" | "error"
+  >("idle");
+  const [resumeFieldsUpdated, setResumeFieldsUpdated] = useState<string[]>([]);
+  const [resumeLastUpdated, setResumeLastUpdated] = useState<string | null>(
+    null,
+  );
+  const [resumeUploadError, setResumeUploadError] = useState<string | null>(
+    null,
+  );
+  const [resumeElapsedSecs, setResumeElapsedSecs] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -232,7 +262,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [requiresSponsorship, setRequiresSponsorship] = useState("");
 
   // Personal information fields (for edit profile modal)
-  const [linkedin, setLinkedin] = useState("");
   const [portfolio, setPortfolio] = useState("");
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
@@ -260,17 +289,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
           "Team Building",
         ],
   );
-  const [workPreferences, setWorkPreferences] = useState([
-    "Remote",
-    "Hybrid OK",
-    "Open-site",
-    "Startup Stage: Series A-C",
-  ]);
-  const [desiredRoles, setDesiredRoles] = useState([
-    "Senior Product Manager",
-    "Lead Product Manager",
-    "Director of Product",
-  ]);
+  const [workPreferences, setWorkPreferences] = useState<string[]>([]);
+  const [desiredRoles, setDesiredRoles] = useState<string[]>([]);
   const [companiesCanReferTo, setCompaniesCanReferTo] = useState([
     "Stripe",
     "Google",
@@ -329,7 +349,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setEmail(userProfileData.personal.email);
       setPhone(userProfileData.personal.phone);
       setProfileImage(userProfileData.personal.profileImage || null);
-      setLinkedin(userProfileData.personal.linkedin);
       setPortfolio(userProfileData.personal.portfolio);
       setStreet(userProfileData.personal.address.street);
       setCity(userProfileData.personal.address.city);
@@ -396,6 +415,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (userProfileData.insights.length > 0) {
       setProfileInsights(userProfileData.insights);
     }
+    // Load work preferences from store
+    if (
+      userProfileData.workPreferences &&
+      userProfileData.workPreferences.length > 0
+    ) {
+      setWorkPreferences(userProfileData.workPreferences);
+    }
+    // Load desired roles from store — prefer explicit desiredRoles, fall back to seekingPosition
+    if (
+      userProfileData.desiredRoles &&
+      userProfileData.desiredRoles.length > 0
+    ) {
+      setDesiredRoles(userProfileData.desiredRoles);
+    } else if (userProfileData.professional.seekingPosition) {
+      setDesiredRoles([userProfileData.professional.seekingPosition]);
+    }
     // Load additional details if they exist in the store
     if (
       userProfileData.certifications &&
@@ -427,6 +462,37 @@ export function ProfileView({ userType }: ProfileViewProps) {
       updateLanguages(languages);
     }
   }, [languages]);
+
+  // Load existing resume status on mount (applicant only)
+  useEffect(() => {
+    if (userType !== "applicant") return;
+    console.log(
+      "[Resume] 🔍 Fetching existing resume status (GET /api/resume/extracted-text/)...",
+    );
+    getExtractedResumeText()
+      .then((r) => {
+        console.log(
+          "[Resume] ✅ Resume status response:",
+          JSON.stringify(r, null, 2),
+        );
+        if (r.updated_at) setResumeLastUpdated(r.updated_at);
+        if (!r.extracted_resume_text) {
+          console.log(
+            "[Resume] ℹ️ No resume text on file yet — user hasn't uploaded a resume.",
+          );
+        } else {
+          console.log(
+            "[Resume] ℹ️ Existing resume text length:",
+            r.extracted_resume_text.length,
+            "chars. Last updated:",
+            r.updated_at,
+          );
+        }
+      })
+      .catch((err) => {
+        console.warn("[Resume] ⚠️ Could not fetch resume status:", err);
+      });
+  }, [userType]);
 
   const stats =
     userType === "applicant"
@@ -762,11 +828,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           if (userType === "applicant") {
             await updateApplicantProfile({ requires_sponsorship: tempValue });
           }
-          break;
-        case "linkedin":
-          setLinkedin(tempValue);
-          await updatePersonal({ linkedin: tempValue });
-          await updateGeneralProfile({ linked_in: tempValue });
           break;
         case "portfolio":
           setPortfolio(tempValue);
@@ -1227,6 +1288,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
       }
       setExpandedCertification(null);
       await updateCertifications(certifications);
+      if (userType === "applicant") {
+        await updateApplicantProfile({ certifications });
+      }
     };
 
     return (
@@ -1403,6 +1467,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
       }
       setExpandedLanguage(null);
       await updateLanguages(languages);
+      if (userType === "applicant") {
+        await updateApplicantProfile({ languages });
+      }
     };
 
     return (
@@ -1529,7 +1596,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     );
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     setPasswordError("");
 
     // Validation
@@ -1548,12 +1615,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
       return;
     }
 
-    // Success - In real app, this would call an API
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setShowPasswordChange(false);
-    // Show success message or toast
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswordChange(false);
+      Alert.alert("Success", "Password changed successfully.");
+    } catch (err: any) {
+      setPasswordError(
+        err?.message || "Failed to change password. Please try again.",
+      );
+    }
   };
 
   // Image picker functions
@@ -1612,13 +1685,309 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
-  const handleImageSelected = (uri: string) => {
+  const handleImageSelected = async (uri: string) => {
+    // Show local preview immediately so the UI feels responsive
     setProfileImage(uri);
     updatePersonal({ profileImage: uri });
-    updateGeneralProfile({ photo_url: uri }).catch((err) =>
-      console.error("[ProfileView] Failed to save profile photo:", err),
-    );
     setShowImagePickerModal(false);
+    try {
+      console.log("[ProfileImage] 📤 Starting upload — local URI:", uri);
+      const form = new FormData();
+      form.append("image", {
+        uri,
+        name: "photo.jpg",
+        type: "image/jpeg",
+      } as any);
+      // POST /api/upload/image/ → DigitalOcean Spaces CDN, always returns cdn_url
+      const uploadResult = await uploadProfileImage(form);
+      console.log(
+        "[ProfileImage] ✅ Upload success — full response:",
+        JSON.stringify(uploadResult, null, 2),
+      );
+      const { cdn_url } = uploadResult;
+      // Persist CDN URL to the DB and replace local preview with the permanent URL
+      const patchResult = await updateGeneralProfile({ photo_url: cdn_url });
+      console.log(
+        "[ProfileImage] ✅ Profile PATCH success — updated_fields:",
+        patchResult.updated_fields,
+        "cdn_url saved:",
+        cdn_url,
+      );
+      updatePersonal({ profileImage: cdn_url });
+      setProfileImage(cdn_url);
+    } catch (err) {
+      console.error("[ProfileImage] ❌ Failed to upload profile photo:", err);
+    }
+  };
+
+  // ── Resume helpers ──────────────────────────────────────────────────────────
+
+  /** Stop the elapsed-seconds ticker and clean up the ref. */
+  const stopElapsedTimer = () => {
+    if (elapsedTimerRef.current) {
+      clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = null;
+    }
+  };
+
+  /** Cancel an in-progress resume upload/classify and return to idle. */
+  const cancelResumeUpload = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    stopElapsedTimer();
+    setResumeElapsedSecs(0);
+    setResumeUploadStep("idle");
+  };
+
+  const formatRelativeTime = (isoString: string): string => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const formatFieldName = (field: string): string =>
+    field.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const handleResumeUpload = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/pdf",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) {
+        console.log("[Resume] ℹ️ File picker cancelled or no file selected.");
+        return;
+      }
+
+      const file = result.assets[0];
+      console.log("[Resume] 📄 File selected:", {
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        uri: file.uri,
+      });
+
+      // Fresh abort controller for this upload session
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      // Start elapsed-seconds ticker
+      setResumeElapsedSecs(0);
+      elapsedTimerRef.current = setInterval(() => {
+        setResumeElapsedSecs((s) => s + 1);
+      }, 1000);
+
+      // Wraps any promise with a hard timeout so the UI never spins forever.
+      const withTimeout = <T,>(
+        promise: Promise<T>,
+        ms: number,
+        label: string,
+      ): Promise<T> =>
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `${label} is taking too long (>${ms / 1000}s). The server may be busy — please try again.`,
+                  ),
+                ),
+              ms,
+            ),
+          ),
+        ]);
+
+      setResumeUploadStep("uploading");
+      setResumeUploadError(null);
+
+      const form = new FormData();
+      form.append("file", {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType || "application/pdf",
+      } as any);
+      console.log("[Resume] 📤 Uploading to POST /api/upload-and-parse/ ...");
+      // 60s timeout for upload + Snowflake text extraction
+      const parseResult = await withTimeout(
+        uploadAndParseResume(form, controller.signal),
+        60_000,
+        "Resume upload",
+      );
+      console.log("[Resume] ✅ Upload+parse response:", {
+        message: parseResult.message,
+        parsing_error: parseResult.parsing_error,
+        extracted_text_length: parseResult.extracted_text?.length ?? 0,
+        extracted_text_preview: parseResult.extracted_text?.slice(0, 200),
+      });
+
+      // The backend returns HTTP 201 even when Snowflake Cortex fails to extract
+      // text (extracted_text will be null). Catch this here so we show a clear
+      // error rather than a confusing "no resume text" message from classifyResume.
+      if (!parseResult.extracted_text) {
+        console.error(
+          "[Resume] ❌ Text extraction failed — extracted_text is null. parsing_error:",
+          parseResult.parsing_error,
+        );
+        throw new Error(
+          "Resume uploaded but text extraction failed. Please try a PDF with selectable (non-scanned) text.",
+        );
+      }
+
+      setResumeUploadStep("analyzing");
+      console.log("[Resume] 🤖 Calling POST /api/resume/classify/ ...");
+      // 120s timeout for AI classification (Snowflake Cortex can be slow)
+      const classifyResult = await withTimeout(
+        classifyResume(controller.signal),
+        120_000,
+        "AI analysis",
+      );
+      console.log("[Resume] ✅ Classify response:", {
+        message: classifyResult.message,
+        applicant_fields_updated: classifyResult.applicant_fields_updated,
+        user_fields_updated: classifyResult.user_fields_updated,
+        classified_data: classifyResult.classified_data,
+      });
+
+      stopElapsedTimer();
+      setResumeElapsedSecs(0);
+      abortControllerRef.current = null;
+
+      const allUpdated = [
+        ...(classifyResult.applicant_fields_updated || []),
+        ...(classifyResult.user_fields_updated || []),
+      ];
+      console.log("[Resume] ✅ Total fields populated by AI:", allUpdated);
+      setResumeFieldsUpdated(allUpdated);
+      setResumeUploadStep("done");
+      setResumeLastUpdated(new Date().toISOString());
+
+      // Refresh the store so AI-updated fields appear immediately
+      console.log(
+        "[Resume] 🔄 Refreshing profile from backend to reflect AI-updated fields...",
+      );
+      await fetchFromBackend();
+      console.log("[Resume] ✅ Profile refresh complete.");
+
+      // ── DISPLAY STATE SNAPSHOT ───────────────────────────────────────────
+      // What the UI will actually render after the refresh
+      const { data: stored } = useUserProfileStore.getState();
+      console.log("[Resume] 🖥️ DISPLAY STATE — what the UI will show:");
+      console.log(
+        "[Resume]   👤 Identity:",
+        JSON.stringify(
+          {
+            firstName: stored.personal.firstName,
+            lastName: stored.personal.lastName,
+            email: stored.personal.email,
+            phone: stored.personal.phone,
+            portfolio: stored.personal.portfolio,
+            profileImage: stored.personal.profileImage,
+            city: stored.personal.address?.city,
+            state: stored.personal.address?.state,
+          },
+          null,
+          2,
+        ),
+      );
+      console.log(
+        "[Resume]   💼 Professional summary:",
+        JSON.stringify(
+          {
+            currentRole: stored.professional.currentRole,
+            title: stored.professional.title,
+            yearsExperience: stored.professional.yearsExperience,
+            targetIndustry: stored.professional.targetIndustry,
+            bio: stored.professional.summary,
+            achievements: stored.achievements,
+          },
+          null,
+          2,
+        ),
+      );
+      console.log(
+        "[Resume]   🏢 Work experiences (" +
+          stored.professional.experiences.length +
+          " entries):",
+        JSON.stringify(
+          stored.professional.experiences.map((e: any, i: number) => ({
+            "#": i + 1,
+            jobTitle: e.jobTitle,
+            company: e.company,
+            startDate: e.startDate,
+            endDate: e.endDate,
+            current: e.current,
+            description:
+              e.description?.slice(0, 80) +
+              (e.description?.length > 80 ? "..." : ""),
+          })),
+          null,
+          2,
+        ),
+      );
+      console.log(
+        "[Resume]   🎓 Education entries (" +
+          stored.education.entries.length +
+          " entries):",
+        JSON.stringify(
+          stored.education.entries.map((e: any, i: number) => ({
+            "#": i + 1,
+            degree: e.degree,
+            major: e.major,
+            university: e.university,
+            graduationYear: e.graduationYear,
+            gpa: e.gpa,
+          })),
+          null,
+          2,
+        ),
+      );
+      console.log(
+        "[Resume]   🛠️ Skills (" + stored.skills.length + " items):",
+        stored.skills,
+      );
+      console.log(
+        "[Resume]   📜 Certifications (" +
+          stored.certifications.length +
+          " entries):",
+        JSON.stringify(stored.certifications, null, 2),
+      );
+      console.log(
+        "[Resume]   🗣️ Languages (" + stored.languages.length + " entries):",
+        JSON.stringify(stored.languages, null, 2),
+      );
+      // ─────────────────────────────────────────────────────────────────────
+    } catch (err: any) {
+      stopElapsedTimer();
+      setResumeElapsedSecs(0);
+      abortControllerRef.current = null;
+
+      // User pressed Cancel — abort silently, return to idle
+      if (err?.name === "AbortError") {
+        console.log("[Resume] ℹ️ Upload cancelled by user.");
+        setResumeUploadStep("idle");
+        return;
+      }
+
+      console.error(
+        "[Resume] ❌ Resume upload pipeline failed:",
+        err?.message,
+        err,
+      );
+      setResumeUploadStep("error");
+      setResumeUploadError(err?.message || "Upload failed. Please try again.");
+    }
   };
 
   const handleLogout = () => {
@@ -2174,10 +2543,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.whiteBtn}>
-            <FontAwesome name="linkedin-square" size={20} color="#000" />
-            <Text style={styles.whiteBtnText}>LinkedIn</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -2382,6 +2747,184 @@ export function ProfileView({ userType }: ProfileViewProps) {
             </>
           )}
         </>
+      )}
+
+      {/* Resume Upload Section — Applicant Only */}
+      {userType === "applicant" && (
+        <View style={styles.resumeSection}>
+          {/* Header */}
+          <View style={styles.resumeSectionHeader}>
+            <View style={styles.resumeHeaderLeft}>
+              <FileText size={20} color="#000" strokeWidth={2} />
+              <Text style={styles.resumeSectionTitle}>Resume</Text>
+            </View>
+            <View style={styles.aiBadge}>
+              <Zap size={12} color="#FFF" fill="#FFF" />
+              <Text style={styles.aiBadgeText}>AI</Text>
+            </View>
+          </View>
+
+          <Text style={styles.resumeSectionSubtitle}>
+            Upload your resume and AI will auto-fill your profile
+          </Text>
+
+          {/* Status line: show when already uploaded and idle */}
+          {resumeLastUpdated && resumeUploadStep === "idle" && (
+            <View style={styles.resumeStatusRow}>
+              <CheckCircle2 size={14} color="#16A34A" strokeWidth={2.5} />
+              <Text style={styles.resumeStatusText}>
+                Last uploaded {formatRelativeTime(resumeLastUpdated)}
+              </Text>
+            </View>
+          )}
+
+          {/* Idle state — upload button */}
+          {resumeUploadStep === "idle" && (
+            <TouchableOpacity
+              style={styles.resumeUploadBtn}
+              onPress={handleResumeUpload}
+              activeOpacity={0.75}
+            >
+              <Upload size={18} color="#FFF" strokeWidth={2} />
+              <Text style={styles.resumeUploadBtnText}>
+                {resumeLastUpdated ? "Re-upload Resume" : "Upload Resume"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Uploading state */}
+          {resumeUploadStep === "uploading" && (
+            <View style={styles.resumeProgressCard}>
+              <View style={styles.resumeProgressRow}>
+                <ActivityIndicator color="#000" size="small" />
+                <View style={styles.resumeProgressTextCol}>
+                  <Text style={styles.resumeProgressTitle}>
+                    Uploading your resume...
+                  </Text>
+                  <Text style={styles.resumeProgressSub}>
+                    {resumeElapsedSecs < 6
+                      ? "Reading your file..."
+                      : resumeElapsedSecs < 20
+                        ? "Extracting text..."
+                        : "Taking a bit longer than usual..."}
+                  </Text>
+                </View>
+                <Text style={styles.resumeElapsedText}>
+                  {resumeElapsedSecs}s
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.resumeCancelBtn}
+                onPress={cancelResumeUpload}
+                activeOpacity={0.7}
+              >
+                <X size={12} color="#666" strokeWidth={2.5} />
+                <Text style={styles.resumeCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Analyzing state */}
+          {resumeUploadStep === "analyzing" && (
+            <View style={styles.resumeProgressCard}>
+              <View style={styles.resumeProgressRow}>
+                <ActivityIndicator color="#000" size="small" />
+                <View style={styles.resumeProgressTextCol}>
+                  <Text style={styles.resumeProgressTitle}>
+                    AI is analyzing your resume...
+                  </Text>
+                  <Text style={styles.resumeProgressSub}>
+                    {resumeElapsedSecs < 10
+                      ? "Auto-filling your profile..."
+                      : resumeElapsedSecs < 30
+                        ? "Classifying your experience..."
+                        : resumeElapsedSecs < 60
+                          ? "Almost done..."
+                          : "Hang tight, deep analysis takes a moment..."}
+                  </Text>
+                </View>
+                <Text style={styles.resumeElapsedText}>
+                  {resumeElapsedSecs}s
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.resumeCancelBtn}
+                onPress={cancelResumeUpload}
+                activeOpacity={0.7}
+              >
+                <X size={12} color="#666" strokeWidth={2.5} />
+                <Text style={styles.resumeCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Done state */}
+          {resumeUploadStep === "done" && (
+            <Animated.View
+              entering={FadeInUp.duration(400)}
+              style={styles.resumeSuccessCard}
+            >
+              <View style={styles.resumeSuccessHeader}>
+                <CheckCircle2 size={20} color="#16A34A" strokeWidth={2.5} />
+                <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
+              </View>
+              {resumeFieldsUpdated.length > 0 && (
+                <>
+                  <Text style={styles.resumeSuccessSubtitle}>
+                    AI filled in {resumeFieldsUpdated.length} field
+                    {resumeFieldsUpdated.length !== 1 ? "s" : ""}:
+                  </Text>
+                  <View style={styles.resumeUpdatedFields}>
+                    {resumeFieldsUpdated.map((field) => (
+                      <View key={field} style={styles.resumeFieldPill}>
+                        <Text style={styles.resumeFieldPillText}>
+                          {formatFieldName(field)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+              <TouchableOpacity
+                style={styles.resumeUploadAgainBtn}
+                onPress={() => setResumeUploadStep("idle")}
+              >
+                <RefreshCw size={14} color="#666" strokeWidth={2} />
+                <Text style={styles.resumeUploadAgainText}>Upload again</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {/* Error state */}
+          {resumeUploadStep === "error" && (
+            <View style={styles.resumeErrorCard}>
+              <AlertCircle size={18} color="#DC2626" strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.resumeErrorTitle}>Upload Failed</Text>
+                <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.resumeRetryBtn}
+                onPress={() => setResumeUploadStep("idle")}
+              >
+                <Text style={styles.resumeRetryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Divider + manual edit link */}
+          <View style={styles.resumeDivider} />
+          <TouchableOpacity
+            style={styles.resumeManualLink}
+            onPress={() => setShowEditResume(true)}
+          >
+            <Edit size={14} color="#666" strokeWidth={2} />
+            <Text style={styles.resumeManualLinkText}>
+              Edit resume details manually
+            </Text>
+            <ChevronRight size={14} color="#BBB" />
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Settings List */}
@@ -2994,44 +3537,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <View style={styles.sectionHeaderLine} />
               </View>
 
-              {/* LinkedIn */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>LINKEDIN PROFILE</Text>
-                  {isFieldMissing("linkedin") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "linkedin" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="https://linkedin.com/in/username"
-                      autoCapitalize="none"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("linkedin")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("linkedin", linkedin)}
-                  >
-                    <Text style={styles.fieldText}>
-                      {linkedin || "Not set"}
-                    </Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
               {/* Portfolio */}
               <View style={styles.editField}>
                 <View style={styles.fieldLabelRow}>
@@ -3517,7 +4022,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
               )}
 
-              {professionalExperiences.map(renderExperienceCard)}
+              {professionalExperiences.map((exp, idx) => {
+                const card = renderExperienceCard(exp);
+                if (!card) return null;
+                return React.cloneElement(card, {
+                  key: exp.id || `exp-${idx}`,
+                });
+              })}
 
               <TouchableOpacity
                 style={styles.addItemBtn}
@@ -3544,7 +4055,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
               )}
 
-              {educationEntries.map(renderEducationCard)}
+              {educationEntries.map((entry, idx) => {
+                const card = renderEducationCard(entry);
+                if (!card) return null;
+                return React.cloneElement(card, {
+                  key: entry.id || `edu-${idx}`,
+                });
+              })}
 
               <TouchableOpacity
                 style={styles.addItemBtn}
@@ -5583,5 +6100,232 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#000",
+  },
+
+  // ── Resume Upload Section ─────────────────────────────────────────────────
+  resumeSection: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  resumeSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  resumeHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  resumeSectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+  },
+  aiBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#000",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  aiBadgeText: {
+    color: "#FFF",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  resumeSectionSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  resumeStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  resumeStatusText: {
+    fontSize: 12,
+    color: "#16A34A",
+    fontWeight: "700",
+  },
+  resumeUploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#000",
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  resumeUploadBtnText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  resumeProgressCard: {
+    flexDirection: "column",
+    gap: 12,
+    backgroundColor: "#F9F9F9",
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+  },
+  resumeProgressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  resumeProgressTextCol: {
+    flex: 1,
+    gap: 4,
+  },
+  resumeProgressTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  resumeProgressSub: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "600",
+  },
+  resumeElapsedText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#BBB",
+    minWidth: 28,
+    textAlign: "right",
+  },
+  resumeCancelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#DDD",
+    backgroundColor: "#FFF",
+  },
+  resumeCancelText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666",
+  },
+  resumeSuccessCard: {
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    borderRadius: 14,
+    padding: 16,
+    gap: 10,
+  },
+  resumeSuccessHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  resumeSuccessTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#15803D",
+  },
+  resumeSuccessSubtitle: {
+    fontSize: 13,
+    color: "#374151",
+    fontWeight: "600",
+  },
+  resumeUpdatedFields: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  resumeFieldPill: {
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  resumeFieldPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#15803D",
+  },
+  resumeUploadAgainBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingTop: 4,
+  },
+  resumeUploadAgainText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+  },
+  resumeErrorCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    borderRadius: 14,
+    padding: 14,
+  },
+  resumeErrorTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#DC2626",
+    marginBottom: 2,
+  },
+  resumeErrorSub: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+  },
+  resumeRetryBtn: {
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  resumeRetryText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  resumeDivider: {
+    height: 1,
+    backgroundColor: "#F0F0F0",
+    marginVertical: 14,
+  },
+  resumeManualLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  resumeManualLinkText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
   },
 });

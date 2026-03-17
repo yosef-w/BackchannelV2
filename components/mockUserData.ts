@@ -13,7 +13,6 @@ export interface UserData {
       zip: string;
       country: string;
     };
-    linkedin: string;
     portfolio: string;
     website: string;
   };
@@ -65,26 +64,37 @@ export const mockUserData: UserData = {
       city: "San Francisco",
       state: "CA",
       zip: "94102",
-      country: "United States"
+      country: "United States",
     },
-    linkedin: "linkedin.com/in/jordanmitchell",
     portfolio: "jordanmitchell.dev",
-    website: "https://jordanmitchell.dev"
+    website: "https://jordanmitchell.dev",
   },
   professional: {
     title: "Senior Software Engineer",
     yearsExperience: 6,
-    summary: "Experienced software engineer specializing in full-stack development with expertise in React, Node.js, and cloud infrastructure. Passionate about building scalable applications and leading technical initiatives.",
-    skills: ["JavaScript", "TypeScript", "React", "Node.js", "Python", "AWS", "Docker", "Kubernetes", "GraphQL", "PostgreSQL"],
+    summary:
+      "Experienced software engineer specializing in full-stack development with expertise in React, Node.js, and cloud infrastructure. Passionate about building scalable applications and leading technical initiatives.",
+    skills: [
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Node.js",
+      "Python",
+      "AWS",
+      "Docker",
+      "Kubernetes",
+      "GraphQL",
+      "PostgreSQL",
+    ],
     desiredSalary: "$150,000 - $180,000",
-    availableStartDate: "30 days"
+    availableStartDate: "30 days",
   },
   education: {
     degree: "Bachelor of Science",
     major: "Computer Science",
     university: "University of California, Berkeley",
     graduationYear: "2018",
-    gpa: "3.7"
+    gpa: "3.7",
   },
   workExperience: [
     {
@@ -92,26 +102,28 @@ export const mockUserData: UserData = {
       title: "Senior Software Engineer",
       startDate: "2021-06",
       endDate: "Present",
-      description: "Led development of microservices architecture serving 2M+ users. Mentored team of 5 engineers and reduced API response time by 40%."
+      description:
+        "Led development of microservices architecture serving 2M+ users. Mentored team of 5 engineers and reduced API response time by 40%.",
     },
     {
       company: "StartupXYZ",
       title: "Software Engineer",
       startDate: "2018-08",
       endDate: "2021-05",
-      description: "Built core features for SaaS platform using React and Node.js. Implemented CI/CD pipeline and automated testing infrastructure."
-    }
+      description:
+        "Built core features for SaaS platform using React and Node.js. Implemented CI/CD pipeline and automated testing infrastructure.",
+    },
   ],
   demographics: {
     gender: "Prefer not to say",
     ethnicity: "Prefer not to say",
     veteran: "No",
-    disability: "No"
+    disability: "No",
   },
   preferences: {
     willingToRelocate: "Yes",
     workAuthorization: "US Citizen",
     securityClearance: "None",
-    requiresSponsorship: "No"
-  }
+    requiresSponsorship: "No",
+  },
 };

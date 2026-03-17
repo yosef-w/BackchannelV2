@@ -461,3 +461,210 @@ invalidate(f"user_basic:{user_id}", f"pub_profile:{user_id}", f"full_profile:{us
 | New match / new message | unchanged — writes + invalidation      | unchanged               |
 
 Cache misses (first load after a write or after TTL expires) still hit Snowflake at the same speed as today. Every subsequent request within the TTL window is served from Redis in under 5 ms.
+
+---
+
+---
+
+# Phase 2 — New Endpoints
+
+> The items below are **net-new backend work** not yet present anywhere in the codebase. Each entry includes the full contract the frontend will consume so it can be implemented and tested independently.
+
+---
+
+## P2-1. Add `DELETE /api/jobs/<job_id>/unsponsor/` — Permanently Remove a Sponsored Job
+
+### Context
+
+`POST /api/jobs/<job_id>/deactivate/` already exists and sets `IS_ACTIVE = FALSE`, but it has two problems for the "unsponsor" use-case:
+
+1. The job row is **never deleted**, so `check_already_sponsored` (which has no `IS_ACTIVE` filter) will permanently block the sponsor from re-sponsoring the same ATS listing — even after they "removed" it.
+2. The job still appears in `GET /api/jobs/mine/` because `get_jobs_by_sponsor` also has no `IS_ACTIVE` filter.
+
+A dedicated unsponsor endpoint should **hard-delete** the `JOB_POSTINGS` row (or soft-delete with a new `IS_UNSPONSORED` flag if hard-delete is undesirable for audit purposes), so the sponsor can freely re-sponsor the listing later.
+
+### Endpoint
+
+```
+DELETE /api/jobs/<str:job_id>/unsponsor/
+```
+
+- **Auth:** Bearer token required (sponsor only)
+- **URL param:** `job_id` — the `JOB_POSTINGS` UUID (returned as `job_id` when sponsoring, or as `JOB_ID` in `GET /api/jobs/mine/`)
+- **Body:** none
+
+### Response
+
+**200 — success:**
+
+```json
+{
+  "job_id": "uuid",
+  "message": "Job successfully unsponsored"
+}
+```
+
+**404 — not found or not owned by caller:**
+
+```json
+{ "detail": "Job not found or you do not own it" }
+```
+
+**400 — job has active applicant matches (optional guard — see notes):**
+
+```json
+{
+  "detail": "Cannot unsponsor a job with active matches. Deactivate it instead."
+}
+```
+
+### Suggested implementation
+
+**`bc_microservices/queries/jobs.py`** — add:
+
+```python
+def delete_sponsored_job(job_id, sponsor_id):
+    """Hard-delete a sponsored job owned by this sponsor.
+    Only callable if the caller owns the row."""
+    q = """
+    DELETE FROM BACKCHANNEL_DEV.JOBS.JOB_POSTINGS
+    WHERE JOB_ID = %s AND SPONSOR_ID = %s
+    """
+    execute_query(q, (job_id, sponsor_id))
+```
+
+**`bc_microservices/services/jobs.py`** — add:
+
+```python
+def unsponsor_job(sponsor_id, job_id):
+    """Permanently remove a sponsored job owned by the sponsor."""
+    if not jobs_q.is_job_owned_by_sponsor(job_id, sponsor_id):
+        return Result.not_found("Job not found or you do not own it")
+
+    # Optional: block if active matches exist to protect applicant conversations
+    # active_matches = likes_q.count_active_likes_for_job(job_id)
+    # if active_matches > 0:
+    #     return Result.bad_request("Cannot unsponsor a job with active matches. Deactivate it instead.")
+
+    jobs_q.delete_sponsored_job(job_id, sponsor_id)
+    invalidate(
+        f"job_active:{job_id}",
+        f"sp_job:{job_id}",
+        f"job_owner:{job_id}:{sponsor_id}",
+        f"sponsor_matches:{sponsor_id}",
+    )
+    return Result.success({"job_id": job_id, "message": "Job successfully unsponsored"})
+```
+
+**`bc_microservices/views_jobs.py`** — add:
+
+```python
+@extend_schema(
+    summary="Unsponsor (permanently remove) a sponsored job",
+    tags=["Jobs"],
+    parameters=[
+        OpenApiParameter(
+            name="job_id", type=str, required=True,
+            location=OpenApiParameter.PATH,
+            description="JOB_POSTINGS UUID to remove"
+        ),
+    ],
+    request=None,
+    responses={
+        200: inline_serializer(
+            name="UnsponsorJobResponse",
+            fields={
+                "job_id": serializers.CharField(),
+                "message": serializers.CharField(),
+            },
+        ),
+        404: OpenApiResponse(description="Job not found or not owned by caller"),
+    },
+)
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def unsponsor_job(request, job_id):
+    return _respond(jobs_svc.unsponsor_job(request.user.id, job_id))
+```
+
+**`django_bc/urls.py`** — add the route **before** the catch-all `<str:job_id>/` pattern:
+
+```python
+path('api/jobs/<str:job_id>/unsponsor/', unsponsor_job, name='unsponsor_job'),
+```
+
+**`bc_microservices/views.py`** — add to imports:
+
+```python
+from .views_jobs import (
+    ...
+    unsponsor_job,
+)
+```
+
+### Important notes for implementation
+
+- **Route ordering matters:** In `urls.py`, `unsponsor/` must be declared **before** `<str:job_id>/` (the generic sponsored job detail), otherwise Django will route `DELETE /api/jobs/<id>/unsponsor/` to `get_sponsored_job_detail` instead.
+- **`check_already_sponsored` fix:** After the hard-delete, `check_already_sponsored` will correctly return `None` for that `(silver_job_id, sponsor_id)` pair, allowing the sponsor to re-sponsor the same listing in the future.
+- **Cascade consideration:** If `JOB_POSTINGS` rows are referenced by `LIKES`, `CONVERSATIONS`, or `JOB_WAITLIST` with foreign keys, decide whether to cascade-delete those child rows or block the delete. The deactivate endpoint today does not deal with this, so a consistent policy should be chosen (recommend cascade on `JOB_WAITLIST`, block if active `LIKES/CONVERSATIONS` exist).
+- **`get_jobs_by_sponsor` after deletion:** Once the row is hard-deleted, `GET /api/jobs/mine/` will naturally no longer return it — no query change needed.
+
+### Frontend
+
+`lib/api.ts` will need a new `unsponsorJob` function (not yet present):
+
+```typescript
+export async function unsponsorJob(jobId: string): Promise<any> {
+  return api.delete(`/api/jobs/${jobId}/unsponsor/`);
+}
+```
+
+This will be wired to a "Remove" / "Unsponsor" action in the **My Sponsored** tab's job card menu once the endpoint is live.
+
+---
+
+## 9. Add `work_preferences` to `POST /api/register/` — Applicant Registration
+
+**File:** `bc_microservices/views/views_auth.py` (or wherever the `/api/register/` handler lives)
+**Table:** `APPLICANT_PROFILES`
+
+**Change:** Accept a `work_preferences` field (array of strings) in the applicant registration endpoint, mirroring its existing support in `PATCH /api/profile/applicant/update/`.
+
+**Why:** The sign-up questionnaire now includes a "What are your work preferences?" step (multi-select chips: Remote, Hybrid, On-site, Full-time, Part-time, Contract, etc.). The frontend submits the selection as `work_preferences` in the registration payload, but the current `/api/register/` handler ignores it. The field is then lost — it does not appear on the Profile page until the user manually edits it after sign-up.
+
+**Expected request body field (alongside existing registration fields):**
+
+```json
+{
+  "username": "...",
+  "email": "...",
+  "password": "...",
+  "role": "Applicant",
+  "industry": "Technology",
+  "current_role": "Software Engineer",
+  "positions": "Senior Product Lead",
+  "skills": ["React", "Product Strategy"],
+  "insights": [{ "question": "MY SECRET SUPERPOWER", "answer": "..." }],
+  "work_preferences": ["Remote", "Hybrid", "Full-time"]
+}
+```
+
+**Storage:** Save `work_preferences` to `APPLICANT_PROFILES.WORK_PREFERENCES` (VARIANT column, same pattern as `SKILLS` and `INSIGHTS`).
+
+**Frontend:** Already wired. `ApplicantQuestionnaire.tsx` includes `work_preferences` in the registration payload. `lib/auth-api.ts` passes it through as `work_preferences`. Until this is deployed, the field is silently ignored by the backend — the user must add work preferences manually via the Edit Profile modal after sign-up.
+
+**Also needed — expose in `GET /api/profile/` response:**
+
+Once saved, add `WORK_PREFERENCES` to the `applicant_profile` sub-object returned by `GET /api/profile/` so it survives logout/login cycles:
+
+```json
+{
+  "applicant_profile": {
+    "INDUSTRY": "...",
+    "SKILLS": [...],
+    "WORK_PREFERENCES": ["Remote", "Hybrid"]
+  }
+}
+```
+
+The frontend `fetchFromBackend` in `useUserProfileStore.ts` already reads `applicant_profile.WORK_PREFERENCES` and will pick this up automatically once returned.

@@ -59,7 +59,6 @@ export interface UserData {
     fullName: string;
     email: string;
     phone: string;
-    linkedin?: string;
     portfolio?: string;
     address: {
       street: string;

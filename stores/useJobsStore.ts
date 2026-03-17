@@ -17,6 +17,10 @@ interface JobsState {
   }>;
   activeSponsoredJobId: string | null;
 
+  // My Jobs — backend-fetched sponsored jobs (persists across sessions)
+  myJobs: Job[];
+  isMyJobsLoading: boolean;
+
   // Navigation state
   currentIndex: number;
   progress: number;
@@ -45,6 +49,10 @@ interface JobsState {
     company: string;
   }) => void;
   setActiveSponsoredJobId: (jobId: string | null) => void;
+
+  // My Jobs actions
+  setMyJobs: (jobs: Job[]) => void;
+  setMyJobsLoading: (loading: boolean) => void;
 
   // Navigation actions
   setCurrentIndex: (index: number) => void;
@@ -79,6 +87,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   lastFetched: null,
   sponsoredJobs: [],
   activeSponsoredJobId: null,
+  myJobs: [],
+  isMyJobsLoading: false,
   currentIndex: 0,
   progress: 1,
   filters: initialFilters,
@@ -103,6 +113,10 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     })),
 
   setActiveSponsoredJobId: (jobId) => set({ activeSponsoredJobId: jobId }),
+
+  setMyJobs: (myJobs) => set({ myJobs }),
+
+  setMyJobsLoading: (isMyJobsLoading) => set({ isMyJobsLoading }),
 
   // Navigation actions
   setCurrentIndex: (currentIndex) => set({ currentIndex }),

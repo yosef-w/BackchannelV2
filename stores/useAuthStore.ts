@@ -1,11 +1,40 @@
 import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 
-/**
- * 🔑 Secure token storage keys
- */
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
+
+/**
+ * Base URL used for direct token refresh calls.
+ * Defined here to avoid a circular dependency: useAuthStore → authApi → api → useAuthStore.
+ */
+const API_BASE_URL = "https://oyster-app-4pg5w.ondigitalocean.app";
+
+/**
+ * Decode the `exp` claim from a JWT without any external library.
+ * Returns null when the token has no expiry or is malformed.
+ */
+function getTokenExpiry(token: string): number | null {
+  try {
+    const payloadB64 = token.split(".")[1];
+    if (!payloadB64) return null;
+    const base64 = payloadB64.replace(/-/g, "+").replace(/_/g, "/");
+    const { exp } = JSON.parse(atob(base64));
+    return typeof exp === "number" ? exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns true when the access token has expired or will expire within 30 seconds.
+ * The 30-second buffer allows proactive refresh before the first API call fails.
+ */
+function isTokenExpired(token: string): boolean {
+  const exp = getTokenExpiry(token);
+  if (exp === null) return false; // no expiry claim → treat as permanently valid
+  return Date.now() >= (exp - 30) * 1000;
+}
 
 /**
  * 🛡️ Auth state interface
@@ -33,92 +62,84 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   /**
-   * Save tokens to Zustand + SecureStore
+   * Persist tokens to SecureStore and update Zustand state.
    */
   setAuthTokens: async (accessToken: string, refreshToken: string) => {
     try {
-      console.log("[Auth] Saving tokens to SecureStore...");
-      console.log(
-        "[Auth] Access token preview:",
-        accessToken.substring(0, 20) + "...",
-      );
-      // Persist to SecureStore
       await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
       await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
-
-      // Update Zustand state
-      set({
-        accessToken,
-        refreshToken,
-        isAuthenticated: true,
-      });
-      console.log("[Auth] Tokens saved successfully");
     } catch (error) {
-      // Fail gracefully - update state even if persistence fails
-      console.warn("[Auth] Failed to persist tokens to SecureStore:", error);
-      set({
-        accessToken,
-        refreshToken,
-        isAuthenticated: true,
-      });
+      // Fail gracefully — state is always updated even if persistence fails.
+      console.warn("[Auth] Failed to persist tokens:", error);
     }
+    set({ accessToken, refreshToken, isAuthenticated: true });
   },
 
   /**
-   * Clear all auth data
+   * Clear all auth data from SecureStore and Zustand.
    */
   clearAuth: async () => {
     try {
-      // Remove from SecureStore
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
     } catch (error) {
-      console.warn("Failed to clear tokens from SecureStore:", error);
+      console.warn("[Auth] Failed to clear tokens:", error);
     }
-
-    // Always clear Zustand state
-    set({
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
-    });
+    set({ accessToken: null, refreshToken: null, isAuthenticated: false });
   },
 
   /**
-   * Load tokens from SecureStore on app startup
+   * Load persisted tokens on app startup.
+   *
+   * If the stored access token has expired (or will expire within 30 s) the
+   * store silently attempts a refresh *before* marking the user as
+   * authenticated.  This means the very first API call after startup always
+   * has a valid token and never triggers a reactive 401 flow.
    */
   loadTokens: async () => {
     try {
-      console.log("[Auth] Loading tokens from SecureStore...");
       const [accessToken, refreshToken] = await Promise.all([
         SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
         SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
       ]);
 
-      if (accessToken && refreshToken) {
-        console.log("[Auth] Tokens found, setting authenticated state");
-        console.log(
-          "[Auth] Access token preview:",
-          accessToken.substring(0, 20) + "...",
-        );
-        set({
-          accessToken,
-          refreshToken,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      } else {
-        console.log("[Auth] No tokens found in SecureStore");
+      if (!accessToken || !refreshToken) {
         set({
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
         });
+        return;
       }
+
+      if (isTokenExpired(accessToken)) {
+        // Stage the refresh token so refreshAccessToken() can read it from state.
+        set({ refreshToken });
+        const refreshed = await useAuthStore.getState().refreshAccessToken();
+        if (!refreshed) {
+          // Both tokens are expired — the user must log in again.
+          set({
+            accessToken: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return;
+        }
+        // setAuthTokens was already called inside refreshAccessToken.
+        set({ isLoading: false });
+        return;
+      }
+
+      set({
+        accessToken,
+        refreshToken,
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch (error) {
-      console.warn("[Auth] Failed to load tokens from SecureStore:", error);
-      // Fail gracefully - set state to logged out
+      console.warn("[Auth] Failed to load tokens:", error);
       set({
         accessToken: null,
         refreshToken: null,
@@ -129,40 +150,44 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   /**
-   * Refresh the access token using the refresh token
-   * Returns true if successful, false if refresh fails (user needs to re-login)
+   * Silently refresh the access token using the stored refresh token.
+   *
+   * Uses a plain fetch() call directly against the API so we avoid a circular
+   * dependency (useAuthStore → authApi → ApiClient → useAuthStore).
+   *
+   * Returns true on success; returns false and clears auth if the session has
+   * fully expired.
    */
   refreshAccessToken: async () => {
-    const currentRefreshToken = useAuthStore.getState().refreshToken;
+    const { refreshToken } = useAuthStore.getState();
 
-    if (!currentRefreshToken) {
-      console.warn("[Auth] No refresh token available");
+    if (!refreshToken) {
       return false;
     }
 
     try {
-      console.log("[Auth] Refreshing access token...");
-      const { authApi } = await import("@/lib/auth-api");
-      const response = await authApi.refreshToken(currentRefreshToken);
+      const response = await fetch(`${API_BASE_URL}/api/token/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
 
-      // Check if response has valid tokens
-      if (!response || !response.access) {
-        console.error("[Auth] Invalid refresh response - missing tokens");
+      if (!response.ok) {
         await useAuthStore.getState().clearAuth();
         return false;
       }
 
-      // Backend only returns a new access token — keep the existing refresh token
-      await useAuthStore
-        .getState()
-        .setAuthTokens(response.access, currentRefreshToken);
+      const data = await response.json();
+      if (!data?.access) {
+        await useAuthStore.getState().clearAuth();
+        return false;
+      }
 
-      console.log("[Auth] Token refresh successful");
+      // Backend only returns a new access token — reuse the existing refresh token.
+      await useAuthStore.getState().setAuthTokens(data.access, refreshToken);
       return true;
     } catch (error) {
-      console.error("[Auth] Token refresh failed:", error);
-      // Clear auth state on refresh failure - silently log user out
-      console.log("[Auth] Clearing expired tokens...");
+      console.warn("[Auth] Token refresh failed:", error);
       await useAuthStore.getState().clearAuth();
       return false;
     }

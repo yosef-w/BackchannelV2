@@ -1,4 +1,3 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Briefcase, ChevronLeft, MapPin, Target } from "lucide-react-native";
 import React from "react";
 import {
@@ -63,13 +62,6 @@ export function ApplicantPublicProfileView({
           </View>
 
           <Text style={styles.bio}>{userData.bio}</Text>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.whiteBtn}>
-              <FontAwesome name="linkedin-square" size={20} color="#000" />
-              <Text style={styles.whiteBtnText}>LinkedIn</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Stats Grid */}

@@ -1,7 +1,17 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { Briefcase, ChevronLeft, MapPin, Target } from "lucide-react-native";
-import React from "react";
+import { getPublicProfile } from "@/lib/api";
 import {
+    Award,
+    Briefcase,
+    ChevronLeft,
+    Globe,
+    GraduationCap,
+    MapPin,
+    Sparkles,
+    Target,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
     Image,
     Platform,
     ScrollView,
@@ -18,11 +28,59 @@ interface ApplicantPublicProfileViewProps {
   onClose: () => void;
 }
 
+const parseVariant = (v: any): any[] => {
+  if (!v) return [];
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v) || [];
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(v) ? v : [];
+};
+
 export function ApplicantPublicProfileView({
   userData,
   onClose,
 }: ApplicantPublicProfileViewProps) {
-  // Mock stats - in a real app, these would come from userData
+  const [fullProfile, setFullProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Fetch full profile on mount using the other participant's ID
+  useEffect(() => {
+    const userId =
+      userData?.otherParticipant?.id || userData?.USER_ID || userData?.userId;
+    if (!userId) return;
+
+    setLoadingProfile(true);
+    getPublicProfile(String(userId))
+      .then((pub) => setFullProfile(pub))
+      .catch((err) =>
+        console.warn(
+          "[ApplicantPublicProfileView] Failed to fetch profile:",
+          err,
+        ),
+      )
+      .finally(() => setLoadingProfile(false));
+  }, [userData?.otherParticipant?.id, userData?.USER_ID, userData?.userId]);
+
+  // Parsed resume sections from full profile
+  const ap = (fullProfile as any)?.applicant_profile || {};
+  const experiences = parseVariant(ap.PROFESSIONAL_EXPERIENCES);
+  const educationEntries = parseVariant(ap.EDUCATION_ENTRIES);
+  const certifications = parseVariant(ap.CERTIFICATIONS);
+  const languages = parseVariant(ap.LANGUAGES);
+  const achievements: string = ap.ACHIEVEMENTS || "";
+
+  // Merge skills — prefer full profile data if available
+  const skills: string[] = parseVariant(ap.SKILLS).length
+    ? parseVariant(ap.SKILLS)
+    : Array.isArray(userData?.skills)
+      ? userData.skills
+      : [];
+
+  // Stats
   const stats = [
     { label: "Connections", value: "42" },
     { label: "Referrals", value: "8" },
@@ -44,7 +102,10 @@ export function ApplicantPublicProfileView({
             <ChevronLeft color="#000" size={28} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.avatarWrapper}>
-            <Image source={{ uri: userData.image }} style={styles.avatar} />
+            <Image
+              source={{ uri: userData.profileImageUrl || userData.image }}
+              style={styles.avatar}
+            />
           </View>
 
           <Text style={styles.name}>{userData.name}</Text>
@@ -63,13 +124,6 @@ export function ApplicantPublicProfileView({
           </View>
 
           <Text style={styles.bio}>{userData.bio}</Text>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.whiteBtn}>
-              <FontAwesome name="linkedin-square" size={20} color="#000" />
-              <Text style={styles.whiteBtnText}>LinkedIn</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Stats Grid */}
@@ -86,12 +140,20 @@ export function ApplicantPublicProfileView({
           ))}
         </View>
 
+        {/* Loading state */}
+        {loadingProfile && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#000" size="small" />
+            <Text style={styles.loadingText}>Loading profile details...</Text>
+          </View>
+        )}
+
         {/* Skills & Interests */}
-        {userData.skills && userData.skills.length > 0 && (
+        {skills.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>SKILLS & INTERESTS</Text>
             <View style={styles.tagCloud}>
-              {userData.skills.map((skill: string, idx: number) => (
+              {skills.map((skill: string, idx: number) => (
                 <View key={idx} style={styles.tag}>
                   <Text style={styles.tagText}>{skill}</Text>
                 </View>
@@ -128,6 +190,122 @@ export function ApplicantPublicProfileView({
             </View>
           </View>
         )}
+
+        {/* ── Resume-derived sections (lazy-loaded) ── */}
+
+        {/* Professional Experience */}
+        {experiences.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.resumeSectionHeader}>
+              <Briefcase size={15} color="#000" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>PROFESSIONAL EXPERIENCE</Text>
+            </View>
+            {experiences.map((exp: any, idx: number) => (
+              <View key={idx} style={styles.resumeCard}>
+                <View style={styles.resumeCardRow}>
+                  <Text style={styles.resumeCardTitle}>{exp.jobTitle}</Text>
+                  <Text style={styles.resumeCardDate}>
+                    {exp.startDate}
+                    {exp.current
+                      ? " – Present"
+                      : exp.endDate
+                        ? ` – ${exp.endDate}`
+                        : ""}
+                  </Text>
+                </View>
+                <Text style={styles.resumeCardSubtitle}>{exp.company}</Text>
+                {exp.description ? (
+                  <Text style={styles.resumeCardBody}>{exp.description}</Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Education */}
+        {educationEntries.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.resumeSectionHeader}>
+              <GraduationCap size={15} color="#000" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>EDUCATION</Text>
+            </View>
+            {educationEntries.map((edu: any, idx: number) => (
+              <View key={idx} style={styles.resumeCard}>
+                <Text style={styles.resumeCardTitle}>
+                  {edu.degree}
+                  {edu.major ? ` in ${edu.major}` : ""}
+                </Text>
+                <Text style={styles.resumeCardSubtitle}>{edu.university}</Text>
+                <View style={styles.resumeCardFooterRow}>
+                  {edu.graduationYear ? (
+                    <Text style={styles.resumeCardDate}>
+                      Class of {edu.graduationYear}
+                    </Text>
+                  ) : null}
+                  {edu.gpa ? (
+                    <Text style={styles.resumeCardDate}>GPA: {edu.gpa}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Certifications */}
+        {certifications.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.resumeSectionHeader}>
+              <Award size={15} color="#000" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>CERTIFICATIONS</Text>
+            </View>
+            <View style={styles.tagCloud}>
+              {certifications.map((cert: any, idx: number) => (
+                <View key={idx} style={styles.certBadge}>
+                  <Text style={styles.certName}>{cert.name}</Text>
+                  {cert.organization || cert.year ? (
+                    <Text style={styles.certSub}>
+                      {cert.organization}
+                      {cert.year ? ` • ${cert.year}` : ""}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Languages */}
+        {languages.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.resumeSectionHeader}>
+              <Globe size={15} color="#000" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>LANGUAGES</Text>
+            </View>
+            <View style={styles.tagCloud}>
+              {languages.map((lang: any, idx: number) => (
+                <View key={idx} style={styles.langBadge}>
+                  <Text style={styles.langName}>{lang.language}</Text>
+                  {lang.proficiency ? (
+                    <Text style={styles.langSub}>{lang.proficiency}</Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Achievements */}
+        {achievements ? (
+          <View style={styles.section}>
+            <View style={styles.resumeSectionHeader}>
+              <Sparkles size={15} color="#000" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>ACHIEVEMENTS & AWARDS</Text>
+            </View>
+            <View style={styles.achievementsCard}>
+              <Text style={styles.achievementsText}>{achievements}</Text>
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -244,6 +422,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
     letterSpacing: 1,
   },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "600",
+  },
   section: {
     marginBottom: 32,
   },
@@ -299,5 +490,109 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#FFF",
+  },
+  // ── Resume section styles ──
+  resumeSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  resumeCard: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  resumeCardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 4,
+  },
+  resumeCardTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#000",
+    flex: 1,
+    marginRight: 8,
+  },
+  resumeCardDate: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#999",
+  },
+  resumeCardSubtitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#444",
+    marginBottom: 6,
+  },
+  resumeCardBody: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  resumeCardFooterRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  certBadge: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    marginBottom: 4,
+  },
+  certName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  certSub: {
+    fontSize: 12,
+    color: "#888",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  langBadge: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  langName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  langSub: {
+    fontSize: 12,
+    color: "#888",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  achievementsCard: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  achievementsText: {
+    fontSize: 14,
+    color: "#444",
+    lineHeight: 22,
+    fontWeight: "500",
   },
 });

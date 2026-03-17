@@ -38,11 +38,6 @@ export function checkProfileCompleteness(
       value: data.personal.profileImage,
     },
     {
-      key: "linkedin",
-      label: "LinkedIn Profile",
-      value: data.personal.linkedin,
-    },
-    {
       key: "portfolio",
       label: "Portfolio URL",
       value: data.personal.portfolio,

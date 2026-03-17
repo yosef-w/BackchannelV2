@@ -33,7 +33,6 @@ export interface UpdateProfileRequest {
     lastName?: string;
     email?: string;
     phone?: string;
-    linkedin?: string;
     portfolio?: string;
     address?: {
       street?: string;
@@ -84,7 +83,6 @@ export interface ProfileResponse {
   lastName: string;
   email: string;
   phone?: string;
-  linkedin?: string;
   portfolio?: string;
   address?: any;
   professional?: any;
@@ -188,6 +186,7 @@ export const authApi = {
             : [],
           skills: data.profileData?.skills || [],
           insights: data.profileData?.insights || [],
+          work_preferences: data.profileData?.workPreferences || [],
         },
         true,
       );
@@ -264,36 +263,89 @@ export const authApi = {
 
   /**
    * Update user profile (partial update)
-   * Backend endpoints:
-   * - PATCH /api/profile/update/ (basic fields)
-   * - PATCH /api/profile/applicant/update/ (applicant-specific)
-   * - PATCH /api/profile/sponsor/update/ (sponsor-specific)
-   *
-   * For now, skip API call since backend isn't ready
+   * Routes to the correct backend endpoint(s) based on user role:
+   *   - PATCH /api/profile/update/            → general fields (name, phone, bio, address…)
+   *   - PATCH /api/profile/applicant/update/  → applicant-specific fields
+   *   - PATCH /api/profile/sponsor/update/    → sponsor-specific fields
    */
-  updateProfile: async (
-    data: UpdateProfileRequest,
-  ): Promise<ProfileResponse> => {
-    // Return mock response matching ProfileResponse interface
-    return {
-      id: "mock-user-id",
-      userType: "applicant",
-      firstName: data.personal?.firstName || "",
-      lastName: data.personal?.lastName || "",
-      email: data.personal?.email || "",
-      phone: data.personal?.phone,
-      linkedin: data.personal?.linkedin,
-      portfolio: data.personal?.portfolio,
-      address: data.personal?.address,
-      professional: data.professional,
-      education: data.education,
-      preferences: data.preferences,
-      demographics: data.demographics,
-      skills: data.skills,
-      insights: data.insights,
-      resumeUrl: data.resumeUrl || undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  updateProfile: async (data: any): Promise<{ message: string }> => {
+    // ── 1. Build the general-user-profile payload ─────────────────────────
+    const basePayload: Record<string, any> = {};
+    if (data.personal?.firstName)
+      basePayload.first_name = data.personal.firstName;
+    if (data.personal?.lastName) basePayload.last_name = data.personal.lastName;
+    if (data.personal?.phone) basePayload.phone_number = data.personal.phone;
+    if (data.personal?.portfolio)
+      basePayload.portfolio_url = data.personal.portfolio;
+    if (data.personal?.address?.street)
+      basePayload.street = data.personal.address.street;
+    if (data.personal?.address?.city)
+      basePayload.city = data.personal.address.city;
+    if (data.personal?.address?.state)
+      basePayload.state = data.personal.address.state;
+    if (data.personal?.address?.zip)
+      basePayload.zip = data.personal.address.zip;
+    if (data.personal?.address?.country)
+      basePayload.country = data.personal.address.country;
+    if (data.professional?.summary) basePayload.bio = data.professional.summary;
+
+    // ── 2. Determine user type from the onboarding store ─────────────────
+    const { useOnboardingStore } = await import("../stores/useOnboardingStore");
+    const userType = useOnboardingStore.getState().userType; // "applicant" | "sponsor" | null
+
+    // ── 3. Build the role-specific payload ────────────────────────────────
+    const rolePayload: Record<string, any> = {};
+
+    if (userType === "sponsor") {
+      if (data.professional?.company)
+        rolePayload.company = data.professional.company;
+      if (data.professional?.title)
+        rolePayload.job_title = data.professional.title;
+      if (data.insights?.length) rolePayload.insights = data.insights;
+    } else {
+      // Default to applicant
+      if (data.skills?.length) rolePayload.skills = data.skills;
+      if (data.insights?.length) rolePayload.insights = data.insights;
+      if (data.professional?.currentRole)
+        rolePayload.current_role = data.professional.currentRole;
+      if (data.professional?.targetIndustry)
+        rolePayload.industry = data.professional.targetIndustry;
+      if (data.professional?.seekingPosition)
+        rolePayload.positions = [data.professional.seekingPosition];
+      if (data.professional?.yearsExperience)
+        rolePayload.years_experience = data.professional.yearsExperience;
+      if (data.achievements) rolePayload.achievements = data.achievements;
+      if (data.professional?.experiences?.length)
+        rolePayload.professional_experiences = data.professional.experiences;
+      if (data.education?.entries?.length)
+        rolePayload.education_entries = data.education.entries;
+      if (data.certifications?.length)
+        rolePayload.certifications = data.certifications;
+      if (data.languages?.length) rolePayload.languages = data.languages;
+      if (data.preferences?.workAuthorization)
+        rolePayload.work_authorization = data.preferences.workAuthorization;
+      if (data.preferences?.willingToRelocate)
+        rolePayload.willing_to_relocate = data.preferences.willingToRelocate;
+      if (data.preferences?.requiresSponsorship)
+        rolePayload.requires_sponsorship = data.preferences.requiresSponsorship;
+    }
+
+    // ── 4. Fire the PATCH requests in parallel ────────────────────────────
+    const calls: Promise<any>[] = [];
+    if (Object.keys(basePayload).length > 0) {
+      calls.push(api.patch("/api/profile/update/", basePayload));
+    }
+    if (Object.keys(rolePayload).length > 0) {
+      const roleEndpoint =
+        userType === "sponsor"
+          ? "/api/profile/sponsor/update/"
+          : "/api/profile/applicant/update/";
+      calls.push(api.patch(roleEndpoint, rolePayload));
+    }
+    if (calls.length > 0) {
+      await Promise.all(calls);
+    }
+
+    return { message: "Profile updated successfully" };
   },
 };

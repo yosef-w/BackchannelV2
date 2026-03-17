@@ -6,6 +6,7 @@ import {
     ArrowRight,
     Check,
     ChevronRight,
+    FileText,
     Plus,
     Search,
     Sparkles,
@@ -34,6 +35,7 @@ import Animated, {
     ZoomIn,
 } from "react-native-reanimated";
 import { SKILLS_BY_INDUSTRY } from "../constants/skills";
+import { classifyResume, uploadAndParseResume } from "../lib/api";
 import { authApi } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
@@ -63,6 +65,19 @@ interface ApplicantQuestionnaireProps {
   onComplete: () => void;
   onBack: () => void;
 }
+
+const WORK_PREFERENCE_OPTIONS = [
+  "Remote",
+  "Hybrid",
+  "On-site",
+  "Full-time",
+  "Part-time",
+  "Contract",
+  "Open to Relocation",
+  "Startup Stage",
+  "Enterprise",
+  "Series A–C",
+];
 
 const questions = [
   {
@@ -97,7 +112,13 @@ const questions = [
     type: "insights",
     subtitle: "Pick 2-3 questions and share what makes you unique",
   },
-  { id: 6, question: "Upload your professional resume", type: "file" },
+  {
+    id: 6,
+    question: "What are your work preferences?",
+    type: "workPreferences",
+    subtitle: "Select all that apply",
+  },
+  { id: 7, question: "Upload your professional resume", type: "file" },
 ];
 
 export function ApplicantQuestionnaire({
@@ -107,6 +128,12 @@ export function ApplicantQuestionnaire({
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFileAsset, setSelectedFileAsset] = useState<{
+    name: string;
+    uri: string;
+    mimeType: string;
+    size: number;
+  } | null>(null);
 
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,13 +151,34 @@ export function ApplicantQuestionnaire({
   );
   const [tempAnswer, setTempAnswer] = useState("");
 
+  // Work preferences state
+  const [selectedWorkPreferences, setSelectedWorkPreferences] = useState<
+    string[]
+  >([]);
+
   const applicantData = useOnboardingStore((state) => state.applicantData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
+  const fetchFromBackend = useUserProfileStore(
+    (state) => state.fetchFromBackend,
+  );
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
+      // Pre-flight guard — catch missing auth data before hitting the network.
+      // This should never fire after the AuthScreen validation fix, but acts as
+      // a safety net in case of unexpected state loss.
+      if (
+        !applicantData.firstName?.trim() ||
+        !applicantData.lastName?.trim() ||
+        !applicantData.email?.trim() ||
+        !applicantData.password
+      ) {
+        throw new Error(
+          "Account details are missing. Please go back to the sign-up step and re-enter your name, email, and password.",
+        );
+      }
       console.log("[ApplicantQuestionnaire] Starting registration...");
       return authApi.createProfile({
         userType: "applicant",
@@ -144,7 +192,8 @@ export function ApplicantQuestionnaire({
           seekingPosition: answers[2],
           skills: selectedSkills,
           insights: selectedInsights,
-          resumeUrl: selectedFile || undefined, // Make sure undefined if not set
+          workPreferences: selectedWorkPreferences,
+          resumeUrl: undefined, // Uploaded separately after account creation via API
         },
       });
     },
@@ -165,12 +214,39 @@ export function ApplicantQuestionnaire({
           seekingPosition: answers[2],
           skills: selectedSkills,
           insights: selectedInsights,
-          resumeUrl: selectedFile,
+          workPreferences: selectedWorkPreferences,
+          resumeUrl: undefined, // Uploaded separately
         },
       });
 
       // Clear onboarding data
       clearOnboardingData();
+
+      // Fire resume upload in the background — don't block the success flow
+      if (selectedFileAsset) {
+        const form = new FormData();
+        // Backend endpoint POST /api/upload-and-parse/ expects field name "file"
+        // (same as ProfileView's upload flow — NOT "resume")
+        form.append("file", {
+          uri: selectedFileAsset.uri,
+          name: selectedFileAsset.name,
+          type: selectedFileAsset.mimeType,
+        } as any);
+        uploadAndParseResume(form)
+          .then(() => classifyResume())
+          .then(() => {
+            // Refresh the store so AI-populated fields (experiences, education,
+            // skills, etc.) are available in "Edit Resume Information" without
+            // requiring the user to re-open the app.
+            return fetchFromBackend();
+          })
+          .catch((err) =>
+            console.warn(
+              "[Questionnaire] Background resume upload failed:",
+              err,
+            ),
+          );
+      }
 
       // Show success modal
       setShowSuccess(true);
@@ -252,8 +328,15 @@ export function ApplicantQuestionnaire({
         ],
       });
       if (!result.canceled && result.assets[0]) {
-        setSelectedFile(result.assets[0].name);
-        setAnswers({ ...answers, [currentQuestion]: result.assets[0].uri });
+        const asset = result.assets[0];
+        setSelectedFileAsset({
+          name: asset.name,
+          uri: asset.uri,
+          mimeType: asset.mimeType || "application/pdf",
+          size: asset.size || 0,
+        });
+        setSelectedFile(asset.name);
+        setAnswers({ ...answers, [currentQuestion]: asset.uri });
       }
     } catch (error) {
       console.error(error);
@@ -268,6 +351,7 @@ export function ApplicantQuestionnaire({
   const isSkillsScreen = question.type === "skills";
   const isTextScreen = question.type === "text";
   const isInsightsScreen = question.type === "insights";
+  const isWorkPreferencesScreen = question.type === "workPreferences";
   const canContinue = isSkillsScreen
     ? selectedSkills.length > 0 && selectedSkills.length <= 5
     : isTextScreen
@@ -276,7 +360,9 @@ export function ApplicantQuestionnaire({
         ? selectedInsights.length >= 2 &&
           selectedInsights.length <= 3 &&
           selectedInsights.every((i) => i.answer.trim().length > 0)
-        : true;
+        : isWorkPreferencesScreen
+          ? true // Optional — no minimum required
+          : true;
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: withTiming(`${progress}%`, { duration: 400 }),
@@ -522,28 +608,129 @@ export function ApplicantQuestionnaire({
                 </View>
               )}
 
+              {question.type === "workPreferences" && (
+                <View>
+                  {question.subtitle && (
+                    <Text style={styles.insightsSubtitle}>
+                      {question.subtitle}
+                    </Text>
+                  )}
+                  <View style={styles.skillsGrid}>
+                    {WORK_PREFERENCE_OPTIONS.map((option) => {
+                      const isSelected =
+                        selectedWorkPreferences.includes(option);
+                      return (
+                        <TouchableOpacity
+                          key={option}
+                          onPress={() => {
+                            setSelectedWorkPreferences(
+                              isSelected
+                                ? selectedWorkPreferences.filter(
+                                    (p) => p !== option,
+                                  )
+                                : [...selectedWorkPreferences, option],
+                            );
+                          }}
+                          style={[
+                            styles.skillItem,
+                            isSelected && styles.skillItemSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.skillText,
+                              isSelected && styles.textWhite,
+                            ]}
+                          >
+                            {option}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.selectionCount}>
+                    {selectedWorkPreferences.length} selected
+                  </Text>
+                </View>
+              )}
+
               {question.type === "file" && (
-                <TouchableOpacity
-                  onPress={handleFilePick}
-                  style={[
-                    styles.fileContainer,
-                    selectedFile && styles.fileContainerActive,
-                  ]}
-                >
-                  <Upload
-                    color={selectedFile ? "#000" : "#AAA"}
-                    size={32}
-                    strokeWidth={1.5}
-                  />
-                  <Text
-                    style={[styles.fileTitle, selectedFile && styles.textBold]}
-                  >
-                    {selectedFile || "Select document"}
-                  </Text>
-                  <Text style={styles.fileSubtitle}>
-                    PDF or Word (max. 10MB)
-                  </Text>
-                </TouchableOpacity>
+                <>
+                  {!selectedFileAsset ? (
+                    <TouchableOpacity
+                      onPress={handleFilePick}
+                      style={styles.fileContainer}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.fileUploadIconWrap}>
+                        <Upload color="#000" size={28} strokeWidth={2} />
+                      </View>
+                      <Text style={styles.fileTitle}>
+                        Tap to upload your resume
+                      </Text>
+                      <Text style={styles.fileSubtitle}>
+                        PDF or Word · Max 10 MB
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Animated.View entering={FadeInDown.duration(400)}>
+                      <View style={styles.fileConfirmCard}>
+                        <View style={styles.fileIconCircle}>
+                          <FileText color="#FFF" size={26} strokeWidth={1.5} />
+                        </View>
+                        <View style={styles.fileConfirmInfo}>
+                          <Text
+                            style={styles.fileConfirmName}
+                            numberOfLines={2}
+                            ellipsizeMode="middle"
+                          >
+                            {selectedFileAsset.name}
+                          </Text>
+                          <Text style={styles.fileConfirmMeta}>
+                            {selectedFileAsset.size > 0
+                              ? (selectedFileAsset.size < 1024 * 1024
+                                  ? `${(selectedFileAsset.size / 1024).toFixed(0)} KB`
+                                  : `${(selectedFileAsset.size / (1024 * 1024)).toFixed(1)} MB`) +
+                                " · "
+                              : ""}
+                            {selectedFileAsset.mimeType?.includes("pdf")
+                              ? "PDF"
+                              : "Word Document"}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.fileRemoveBtn}
+                          onPress={() => {
+                            setSelectedFileAsset(null);
+                            setSelectedFile(null);
+                            setAnswers({
+                              ...answers,
+                              [currentQuestion]: undefined,
+                            });
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <X size={16} color="#666" strokeWidth={2.5} />
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.fileReadyRow}>
+                        <View style={styles.fileReadyCheck}>
+                          <Check size={12} color="#FFF" strokeWidth={3} />
+                        </View>
+                        <Text style={styles.fileReadyText}>
+                          Ready to submit
+                        </Text>
+                        <TouchableOpacity
+                          onPress={handleFilePick}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.fileChangeLink}>Change file</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </Animated.View>
+                  )}
+                </>
               )}
             </Animated.View>
           </View>
@@ -656,18 +843,91 @@ const styles = StyleSheet.create({
   },
   textInput: { fontSize: 18, color: "#000", fontWeight: "500" },
   fileContainer: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderStyle: "dashed",
     borderColor: "#DDD",
     borderRadius: 20,
-    padding: 40,
+    paddingVertical: 44,
+    paddingHorizontal: 28,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FAFAFA",
   },
-  fileContainerActive: { borderColor: "#000", backgroundColor: "#FFF" },
-  fileTitle: { fontSize: 16, color: "#000", marginTop: 16, marginBottom: 4 },
-  fileSubtitle: { fontSize: 13, color: "#AAA" },
+  fileUploadIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  fileTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  fileSubtitle: { fontSize: 13, color: "#AAA", textAlign: "center" },
+  fileConfirmCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+  },
+  fileIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  fileConfirmInfo: { flex: 1, gap: 4 },
+  fileConfirmName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+    lineHeight: 20,
+  },
+  fileConfirmMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  fileRemoveBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#EFEFEF",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  fileReadyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 14,
+    paddingHorizontal: 2,
+  },
+  fileReadyCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fileReadyText: { flex: 1, fontSize: 13, fontWeight: "600", color: "#000" },
+  fileChangeLink: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+    textDecorationLine: "underline",
+  },
   searchWrapper: {
     flexDirection: "row",
     alignItems: "center",

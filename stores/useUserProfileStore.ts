@@ -1,5 +1,10 @@
-import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
+
+// NOTE: Profile cache is stored in AsyncStorage (not SecureStore) because
+// SecureStore has a 2 KB per-value limit, which a full resume-classified
+// profile easily exceeds. Auth tokens stay in SecureStore since those are
+// small and genuinely secret.
 
 export interface ProfessionalExperience {
   id: string;
@@ -27,7 +32,6 @@ export interface AutofillData {
     fullName: string;
     email: string;
     phone: string;
-    linkedin: string;
     portfolio: string;
     profileImage?: string; // URI or URL to profile image
     address: {
@@ -72,6 +76,8 @@ export interface AutofillData {
   };
   skills: string[];
   insights: Array<{ question: string; answer: string }>;
+  workPreferences: string[];
+  desiredRoles: string[];
   resumeUrl: string | null;
   certifications: Array<{ name: string; organization: string; year: string }>;
   languages: Array<{ language: string; proficiency: string }>;
@@ -131,7 +137,6 @@ const defaultData: AutofillData = {
     fullName: "",
     email: "",
     phone: "",
-    linkedin: "",
     portfolio: "",
     address: {
       street: "",
@@ -175,6 +180,8 @@ const defaultData: AutofillData = {
   },
   skills: [],
   insights: [],
+  workPreferences: [],
+  desiredRoles: [],
   resumeUrl: null,
   certifications: [],
   languages: [],
@@ -201,7 +208,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -215,7 +222,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -229,7 +236,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -243,7 +250,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -257,7 +264,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -271,7 +278,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -285,7 +292,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -299,7 +306,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -313,7 +320,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -327,7 +334,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -341,7 +348,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save certifications data:", error);
     }
@@ -355,7 +362,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save languages data:", error);
     }
@@ -369,7 +376,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: newData, needsSync: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(newData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
       console.warn("Failed to save achievements data:", error);
     }
@@ -386,7 +393,6 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim(),
         email: profileData.email || "",
         phone: profileData.phone || "",
-        linkedin: profileData.linkedin || "",
         portfolio: profileData.portfolio || "",
         address: {
           street: profileData.address?.street || "",
@@ -404,10 +410,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         company: profileData.company || profileData.profileData?.company || "",
         currentRole: profileData.profileData?.currentRole || "",
         yearsExperience: profileData.yearsExperience || "",
-        summary:
-          profileData.bio ||
-          profileData.profileData?.insights?.[0]?.answer ||
-          "",
+        summary: profileData.bio || "",
         desiredSalary: profileData.desiredSalary || "",
         availableStartDate: profileData.availableStartDate || "",
         targetIndustry: profileData.profileData?.targetIndustry || "",
@@ -437,6 +440,10 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       },
       skills: profileData.profileData?.skills || [],
       insights: profileData.profileData?.insights || [],
+      workPreferences: profileData.profileData?.workPreferences || [],
+      desiredRoles: profileData.profileData?.seekingPosition
+        ? [profileData.profileData.seekingPosition]
+        : profileData.profileData?.desiredRoles || [],
       resumeUrl: profileData.profileData?.resumeUrl || null,
       certifications: profileData.certifications || [],
       languages: profileData.languages || [],
@@ -446,7 +453,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     set({ data: autofillData, isLoaded: true });
 
     try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(autofillData));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(autofillData));
     } catch (error) {
       console.warn("Failed to save autofill data:", error);
     }
@@ -490,14 +497,28 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       useOnboardingStore.getState().setUserType(userType);
 
       // Preserve all locally-stored data so fields not returned by the backend
-      // (insights, skills, address details, linkedin, portfolio, etc.) are not wiped.
+      // (insights, skills, address details, portfolio, etc.) are not wiped.
       const existing = get().data;
 
+      // Helper: parse Snowflake VARIANT columns that may arrive as JSON strings
+      const parseVariant = (v: any): any[] => {
+        if (!v) return [];
+        if (typeof v === "string") {
+          try {
+            const parsed = JSON.parse(v);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+        return Array.isArray(v) ? v : [];
+      };
+
       // Skills: prefer backend value if present, fall back to local
-      const backendSkills: string[] =
+      const backendSkills: string[] = parseVariant(
         (profile as any).applicant_profile?.SKILLS ||
-        (profile as any).sponsor_profile?.SKILLS ||
-        [];
+          (profile as any).sponsor_profile?.SKILLS,
+      );
       const mergedSkills =
         backendSkills.length > 0 ? backendSkills : existing.skills;
 
@@ -505,11 +526,186 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // see BACKEND_CHANGES_NEEDED.md #4). Preserve local value until the backend
       // starts returning this field.
       const backendInsights: Array<{ question: string; answer: string }> =
-        (profile as any).applicant_profile?.INSIGHTS ||
-        (profile as any).sponsor_profile?.INSIGHTS ||
-        [];
+        parseVariant(
+          (profile as any).applicant_profile?.INSIGHTS ||
+            (profile as any).sponsor_profile?.INSIGHTS,
+        );
       const mergedInsights =
         backendInsights.length > 0 ? backendInsights : existing.insights;
+
+      // Resume-derived fields: GET /api/profile/ may return these once the backend
+      // is updated to expose them (VARIANT columns on APPLICANT_PROFILES).
+      // Defensively map them so they populate automatically once available.
+      // ── RAW API RESPONSE DIAGNOSTIC ──────────────────────────────────────
+      console.log(
+        "[StoreSync] 📡 Raw GET /api/profile/ applicant_profile fields:",
+        JSON.stringify(
+          {
+            CURRENT_ROLE: (profile as any).applicant_profile?.CURRENT_ROLE,
+            YEARS_EXPERIENCE: (profile as any).applicant_profile
+              ?.YEARS_EXPERIENCE,
+            INDUSTRY: (profile as any).applicant_profile?.INDUSTRY,
+            SKILLS: (profile as any).applicant_profile?.SKILLS,
+            PROFESSIONAL_EXPERIENCES: (profile as any).applicant_profile
+              ?.PROFESSIONAL_EXPERIENCES,
+            EDUCATION_ENTRIES: (profile as any).applicant_profile
+              ?.EDUCATION_ENTRIES,
+            CERTIFICATIONS: (profile as any).applicant_profile?.CERTIFICATIONS,
+            LANGUAGES: (profile as any).applicant_profile?.LANGUAGES,
+            ACHIEVEMENTS: (profile as any).applicant_profile?.ACHIEVEMENTS,
+          },
+          null,
+          2,
+        ),
+      );
+      console.log(
+        "[StoreSync] 📡 Raw GET /api/profile/ user fields:",
+        JSON.stringify(
+          {
+            FIRST_NAME: (profile as any).FIRST_NAME,
+            LAST_NAME: (profile as any).LAST_NAME,
+            BIO: (profile as any).BIO,
+            PHOTO_URL: (profile as any).PHOTO_URL,
+            PORTFOLIO_URL: (profile as any).PORTFOLIO_URL,
+            PHONE_NUMBER: (profile as any).PHONE_NUMBER,
+            LOCATION: (profile as any).LOCATION,
+          },
+          null,
+          2,
+        ),
+      );
+      // ─────────────────────────────────────────────────────────────────────
+
+      const backendExperiences = parseVariant(
+        (profile as any).applicant_profile?.PROFESSIONAL_EXPERIENCES,
+      );
+      const backendEducationEntries = parseVariant(
+        (profile as any).applicant_profile?.EDUCATION_ENTRIES,
+      );
+      const backendCertifications = parseVariant(
+        (profile as any).applicant_profile?.CERTIFICATIONS,
+      );
+      const backendLanguages = parseVariant(
+        (profile as any).applicant_profile?.LANGUAGES,
+      );
+      const backendAchievements: string =
+        (profile as any).applicant_profile?.ACHIEVEMENTS ||
+        (profile as any).ACHIEVEMENTS ||
+        "";
+
+      // ── FIELD RESOLUTION DIAGNOSTIC ──────────────────────────────────────
+      console.log(
+        "[StoreSync] 🔀 Field resolution (backend vs fallback):",
+        JSON.stringify(
+          {
+            experiences: {
+              source:
+                backendExperiences.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
+              count:
+                backendExperiences.length > 0
+                  ? backendExperiences.length
+                  : existing.professional.experiences.length,
+              value:
+                backendExperiences.length > 0
+                  ? backendExperiences
+                  : existing.professional.experiences,
+            },
+            education: {
+              source:
+                backendEducationEntries.length > 0
+                  ? "BACKEND"
+                  : "LOCAL_FALLBACK",
+              count:
+                backendEducationEntries.length > 0
+                  ? backendEducationEntries.length
+                  : existing.education.entries.length,
+              value:
+                backendEducationEntries.length > 0
+                  ? backendEducationEntries
+                  : existing.education.entries,
+            },
+            certifications: {
+              source:
+                backendCertifications.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
+              count:
+                backendCertifications.length > 0
+                  ? backendCertifications.length
+                  : existing.certifications.length,
+              value:
+                backendCertifications.length > 0
+                  ? backendCertifications
+                  : existing.certifications,
+            },
+            languages: {
+              source:
+                backendLanguages.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
+              count:
+                backendLanguages.length > 0
+                  ? backendLanguages.length
+                  : existing.languages.length,
+              value:
+                backendLanguages.length > 0
+                  ? backendLanguages
+                  : existing.languages,
+            },
+            skills: {
+              source: backendSkills.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
+              count: (backendSkills.length > 0
+                ? backendSkills
+                : existing.skills
+              ).length,
+            },
+            achievements: {
+              source: backendAchievements ? "BACKEND" : "LOCAL_FALLBACK",
+              value: backendAchievements || existing.achievements,
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      // ─────────────────────────────────────────────────────────────────────
+
+      // ── FIELD SHAPE NORMALIZERS ───────────────────────────────────────────
+      // The AI classify endpoint stores experiences/education with different
+      // key names than our ProfessionalExperience / EducationEntry interfaces.
+      // Map them here so the edit modals and autofill always see the right keys.
+
+      /**
+       * Backend shape: { title, company, dates, description }
+       * Our interface:  { id, jobTitle, company, startDate, endDate, current, description }
+       * "dates" is a combined string like "2022 – Present" or "2019 – 2022".
+       */
+      const mapExperience = (raw: any, idx: number) => {
+        const datesStr: string = raw.dates || "";
+        const parts = datesStr.split(/\s*[\u2013\u2014-]\s*/); // en-dash, em-dash, or hyphen
+        const startDate = parts[0]?.trim() || "";
+        const endRaw = parts[1]?.trim() || "";
+        const isCurrent = /present/i.test(endRaw);
+        return {
+          id: raw.id || `exp-${idx}`,
+          jobTitle: raw.jobTitle || raw.title || "", // backend sends "title"
+          company: raw.company || "",
+          startDate,
+          endDate: isCurrent ? "" : endRaw,
+          current: isCurrent,
+          description: raw.description || "",
+        };
+      };
+
+      /**
+       * Backend shape: { degree, school, year }
+       * Our interface:  { id, degree, major, university, graduationYear, gpa }
+       */
+      const mapEducation = (raw: any, idx: number) => ({
+        id: raw.id || `edu-${idx}`,
+        degree: raw.degree || "",
+        major: raw.major || "",
+        university: raw.university || raw.school || "", // backend sends "school"
+        graduationYear: raw.graduationYear || raw.year || "", // backend sends "year"
+        gpa: raw.gpa || "",
+      });
+      // ─────────────────────────────────────────────────────────────────────
 
       const autofillData: AutofillData = {
         personal: {
@@ -521,9 +717,10 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
               : existing.personal.fullName,
           email: (profile as any).EMAIL || existing.personal.email,
           phone: (profile as any).PHONE_NUMBER || existing.personal.phone,
-          linkedin: (profile as any).LINKED_IN || existing.personal.linkedin,
           portfolio:
             (profile as any).PORTFOLIO_URL || existing.personal.portfolio,
+          profileImage:
+            (profile as any).PHOTO_URL || existing.personal.profileImage,
           address: {
             street: existing.personal.address?.street || "",
             city:
@@ -554,7 +751,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           currentRole:
             (profile as any).applicant_profile?.CURRENT_ROLE ||
             existing.professional.currentRole,
-          yearsExperience: existing.professional.yearsExperience,
+          yearsExperience:
+            (profile as any).applicant_profile?.YEARS_EXPERIENCE ||
+            existing.professional.yearsExperience,
           // BIO is saved via PATCH but not yet returned by GET /api/profile/.
           // Falls back to existing local value; will auto-populate once backend
           // starts returning the field (BACKEND_CHANGES_NEEDED.md #5).
@@ -565,29 +764,47 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
             (profile as any).applicant_profile?.INDUSTRY ||
             existing.professional.targetIndustry,
           seekingPosition: existing.professional.seekingPosition,
-          experiences: existing.professional.experiences,
+          experiences:
+            backendExperiences.length > 0
+              ? backendExperiences.map(mapExperience)
+              : existing.professional.experiences,
         },
-        education: existing.education,
+        education: {
+          ...existing.education,
+          entries:
+            backendEducationEntries.length > 0
+              ? backendEducationEntries.map(mapEducation)
+              : existing.education.entries,
+        },
         preferences: existing.preferences,
         demographics: existing.demographics,
         skills: mergedSkills,
         insights: mergedInsights,
-        resumeUrl:
-          (profile as any).PHOTO_URL !== undefined
-            ? (profile as any).PHOTO_URL
-            : existing.resumeUrl,
-        certifications: existing.certifications,
-        languages: existing.languages,
-        achievements: existing.achievements,
+        workPreferences:
+          parseVariant((profile as any).applicant_profile?.WORK_PREFERENCES)
+            .length > 0
+            ? parseVariant((profile as any).applicant_profile?.WORK_PREFERENCES)
+            : existing.workPreferences || [],
+        desiredRoles:
+          parseVariant((profile as any).applicant_profile?.DESIRED_ROLES)
+            .length > 0
+            ? parseVariant((profile as any).applicant_profile?.DESIRED_ROLES)
+            : existing.desiredRoles || [],
+        // resumeUrl is not returned by GET /api/profile/ — preserve local value
+        resumeUrl: existing.resumeUrl,
+        certifications:
+          backendCertifications.length > 0
+            ? backendCertifications
+            : existing.certifications,
+        languages:
+          backendLanguages.length > 0 ? backendLanguages : existing.languages,
+        achievements: backendAchievements || existing.achievements,
       };
 
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });
 
       try {
-        await SecureStore.setItemAsync(
-          STORAGE_KEY,
-          JSON.stringify(autofillData),
-        );
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(autofillData));
       } catch (error) {
         console.warn("Failed to save fetched profile locally:", error);
       }
@@ -599,7 +816,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
   loadFromStorage: async () => {
     try {
-      const stored = await SecureStore.getItemAsync(STORAGE_KEY);
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const data = JSON.parse(stored);
         set({ data, isLoaded: true });
@@ -611,7 +828,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
   clearData: async () => {
     try {
-      await SecureStore.deleteItemAsync(STORAGE_KEY);
+      await AsyncStorage.removeItem(STORAGE_KEY);
     } catch (error) {
       console.warn("Failed to clear autofill data:", error);
     }

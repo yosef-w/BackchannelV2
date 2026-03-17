@@ -1,6 +1,8 @@
 import {
   fetchJobsPack,
   fetchProfilesPack,
+  getPublicProfile,
+  joinWaitlist,
   likeJob,
   likeProfile,
 } from "@/lib/api";
@@ -32,6 +34,7 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Modal,
@@ -1212,6 +1215,11 @@ export function HomeView({
   const [profiles, setProfiles] = useState<any[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profilesError, setProfilesError] = useState<string | null>(null);
+  // Cache of lazily-fetched full profiles keyed by USER_ID
+  const [fullProfileCache, setFullProfileCache] = useState<Record<string, any>>(
+    {},
+  );
+  const [fullProfileLoading, setFullProfileLoading] = useState(false);
 
   // Navigation state from store
   const currentProfileIndex = useJobsStore((state) => state.currentIndex);
@@ -1251,10 +1259,19 @@ export function HomeView({
     "select" | "waitlist" | "external"
   >("select");
   const [pendingJob, setPendingJob] = useState<any>(null);
+  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
+  const [waitlistedJobIds, setWaitlistedJobIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
 
   // WebView State
   const [showWebView, setShowWebView] = useState(false);
   const [webViewJob, setWebViewJob] = useState<any>(null);
+
+  // Confirmation modal after closing the external apply WebView
+  const [showApplyConfirmModal, setShowApplyConfirmModal] = useState(false);
+  const [applyConfirmJob, setApplyConfirmJob] = useState<any>(null);
 
   // Notify parent when WebView state changes
   useEffect(() => {
@@ -1448,6 +1465,43 @@ export function HomeView({
         () => scrollRef.current?.scrollTo({ y: 380, animated: true }),
         80,
       );
+
+      // For sponsors viewing real API profiles: lazy-load full details on expand
+      if (userType === "sponsor") {
+        const userId = currentData?.USER_ID;
+        if (userId && !fullProfileCache[userId] && !fullProfileLoading) {
+          setFullProfileLoading(true);
+          getPublicProfile(String(userId))
+            .then((pub) => {
+              const ap = (pub as any).applicant_profile || {};
+              const parseV = (v: any): any[] => {
+                if (!v) return [];
+                if (typeof v === "string") {
+                  try {
+                    return JSON.parse(v) || [];
+                  } catch {
+                    return [];
+                  }
+                }
+                return Array.isArray(v) ? v : [];
+              };
+              setFullProfileCache((prev) => ({
+                ...prev,
+                [userId]: {
+                  experiences: parseV(ap.PROFESSIONAL_EXPERIENCES),
+                  education: parseV(ap.EDUCATION_ENTRIES),
+                  certifications: parseV(ap.CERTIFICATIONS),
+                  languages: parseV(ap.LANGUAGES),
+                  achievements: ap.ACHIEVEMENTS || "",
+                },
+              }));
+            })
+            .catch(() => {
+              // Silently fail — fullDetails section stays empty
+            })
+            .finally(() => setFullProfileLoading(false));
+        }
+      }
     } else {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
       setTimeout(() => setShowMore(false), 300);
@@ -1472,6 +1526,11 @@ export function HomeView({
       "isSponsored" in currentData &&
       currentData.isSponsored === false
     ) {
+      // Already waitlisted — skip silently and advance the deck
+      if (waitlistedJobIds.has(String(currentData.id))) {
+        setCurrentProfileIndex(currentProfileIndex + 1);
+        return;
+      }
       setPendingJob(currentData);
       setApplyStep("select");
       setShowApplyModal(true);
@@ -1488,6 +1547,9 @@ export function HomeView({
             console.log("[HomeView] Applicant liking job:", jobId);
             const response = await likeJob(jobId);
             console.log("[HomeView] Like job response:", response);
+
+            // Mark sponsored job as applied
+            setAppliedJobIds((prev) => new Set([...prev, String(jobId)]));
 
             // Show match celebration if mutual like
             if (response.matched) {
@@ -1568,6 +1630,34 @@ export function HomeView({
     setShowWebView(true);
   };
 
+  const handleJoinWaitlist = async () => {
+    setIsJoiningWaitlist(true);
+    try {
+      if (pendingJob?.id) {
+        await joinWaitlist(String(pendingJob.id));
+      }
+    } catch (err) {
+      console.error("[HomeView] Failed to join waitlist:", err);
+      // Still show success UI — the user's intent is clear
+    } finally {
+      setIsJoiningWaitlist(false);
+      setApplyStep("waitlist");
+      // Mark this job as waitlisted so the card is visually disabled
+      if (pendingJob?.id) {
+        setWaitlistedJobIds(
+          (prev) => new Set([...prev, String(pendingJob.id)]),
+        );
+      }
+    }
+  };
+
+  const handleWaitlistDone = () => {
+    setShowApplyModal(false);
+    setPendingJob(null);
+    // Advance the deck so the waitlisted card moves to the back
+    setCurrentProfileIndex(currentProfileIndex + 1);
+  };
+
   const mainAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: swipeX.value }],
     opacity: swipeOpacity.value,
@@ -1600,9 +1690,10 @@ export function HomeView({
         company={webViewJob.company}
         onClose={() => {
           setShowWebView(false);
+          // Store the job for the confirmation modal, then show it
+          setApplyConfirmJob(webViewJob);
           setWebViewJob(null);
-          // Mark as applied and continue
-          handleSwipe(true);
+          setShowApplyConfirmModal(true);
         }}
       />
     );
@@ -1911,6 +2002,41 @@ export function HomeView({
                         pointerEvents={isFlipped ? "none" : "auto"}
                       >
                         <View style={styles.cardInner}>
+                          {/* Status overlay: waitlisted or applied */}
+                          {"id" in currentData &&
+                            (waitlistedJobIds.has(String(currentData.id)) ||
+                              appliedJobIds.has(String(currentData.id))) && (
+                              <View
+                                style={styles.waitlistedOverlay}
+                                pointerEvents="none"
+                              >
+                                {waitlistedJobIds.has(
+                                  String(currentData.id),
+                                ) ? (
+                                  <View style={styles.waitlistedBadge}>
+                                    <Check
+                                      color="#FFF"
+                                      size={14}
+                                      strokeWidth={3}
+                                    />
+                                    <Text style={styles.waitlistedBadgeText}>
+                                      Waitlisted
+                                    </Text>
+                                  </View>
+                                ) : (
+                                  <View style={styles.appliedBadge}>
+                                    <Check
+                                      color="#FFF"
+                                      size={14}
+                                      strokeWidth={3}
+                                    />
+                                    <Text style={styles.appliedBadgeText}>
+                                      Applied
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                            )}
                           {/* Job Title Header - Full Width */}
                           <View style={styles.profileNameHeader}>
                             <Text style={styles.profileNameTop}>
@@ -2172,228 +2298,230 @@ export function HomeView({
                   <View style={styles.expandedDetails}>
                     {userType === "sponsor" ? (
                       /* Sponsor More Details - Profile */
-                      <>
-                        {"fullDetails" in currentData &&
-                          currentData.fullDetails && (
-                            <>
-                              {/* Professional Experience */}
-                              {"experiences" in currentData.fullDetails &&
-                                Array.isArray(
-                                  currentData.fullDetails.experiences,
-                                ) &&
-                                currentData.fullDetails.experiences.length >
-                                  0 && (
-                                  <>
-                                    <View style={styles.detailSection}>
-                                      <View style={styles.detailSectionHeader}>
-                                        <Briefcase size={16} color="#000" />
-                                        <Text style={styles.detailSectionTitle}>
-                                          Professional Experience
+                      (() => {
+                        // Merge cached full profile (real API) with mock fullDetails
+                        const userId = currentData?.USER_ID;
+                        const cached = userId ? fullProfileCache[userId] : null;
+                        const fd =
+                          cached ||
+                          ("fullDetails" in currentData
+                            ? currentData.fullDetails
+                            : null);
+
+                        if (fullProfileLoading && !fd) {
+                          return (
+                            <View
+                              style={{
+                                alignItems: "center",
+                                paddingVertical: 24,
+                              }}
+                            >
+                              <ActivityIndicator color="#000" />
+                              <Text
+                                style={{
+                                  marginTop: 8,
+                                  color: "#999",
+                                  fontSize: 13,
+                                  fontWeight: "600",
+                                }}
+                              >
+                                Loading profile details...
+                              </Text>
+                            </View>
+                          );
+                        }
+
+                        if (!fd) {
+                          return (
+                            <View
+                              style={{
+                                alignItems: "center",
+                                paddingVertical: 24,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  color: "#BBB",
+                                  fontSize: 13,
+                                  fontWeight: "600",
+                                }}
+                              >
+                                No additional details available
+                              </Text>
+                            </View>
+                          );
+                        }
+
+                        return (
+                          <>
+                            {/* Professional Experience */}
+                            {Array.isArray(fd.experiences) &&
+                              fd.experiences.length > 0 && (
+                                <View style={styles.detailSection}>
+                                  <View style={styles.detailSectionHeader}>
+                                    <Briefcase size={16} color="#000" />
+                                    <Text style={styles.detailSectionTitle}>
+                                      Professional Experience
+                                    </Text>
+                                  </View>
+                                  {fd.experiences.map(
+                                    (exp: any, idx: number) => (
+                                      <View
+                                        key={idx}
+                                        style={styles.experienceCard}
+                                      >
+                                        <View style={styles.experienceHeader}>
+                                          <Text style={styles.experienceTitle}>
+                                            {exp.jobTitle}
+                                          </Text>
+                                          <Text style={styles.experienceDates}>
+                                            {exp.startDate}
+                                            {exp.current
+                                              ? " - Present"
+                                              : exp.endDate
+                                                ? ` - ${exp.endDate}`
+                                                : ""}
+                                          </Text>
+                                        </View>
+                                        <Text style={styles.experienceCompany}>
+                                          {exp.company}
                                         </Text>
-                                      </View>
-                                      {currentData.fullDetails.experiences.map(
-                                        (exp: any, idx: number) => (
-                                          <View
-                                            key={idx}
-                                            style={styles.experienceCard}
+                                        {exp.description ? (
+                                          <Text
+                                            style={styles.experienceDescription}
                                           >
-                                            <View
-                                              style={styles.experienceHeader}
-                                            >
-                                              <Text
-                                                style={styles.experienceTitle}
-                                              >
-                                                {exp.jobTitle}
-                                              </Text>
-                                              <Text
-                                                style={styles.experienceDates}
-                                              >
-                                                {exp.startDate}
-                                                {exp.current
-                                                  ? " - Present"
-                                                  : exp.endDate
-                                                    ? ` - ${exp.endDate}`
-                                                    : ""}
-                                              </Text>
-                                            </View>
-                                            <Text
-                                              style={styles.experienceCompany}
-                                            >
-                                              {exp.company}
-                                            </Text>
-                                            {exp.description && (
-                                              <Text
-                                                style={
-                                                  styles.experienceDescription
-                                                }
-                                              >
-                                                {exp.description}
-                                              </Text>
-                                            )}
-                                          </View>
-                                        ),
-                                      )}
-                                    </View>
-                                  </>
-                                )}
+                                            {exp.description}
+                                          </Text>
+                                        ) : null}
+                                      </View>
+                                    ),
+                                  )}
+                                </View>
+                              )}
 
-                              {/* Education */}
-                              {"education" in currentData.fullDetails &&
-                                Array.isArray(
-                                  currentData.fullDetails.education,
-                                ) &&
-                                currentData.fullDetails.education.length >
-                                  0 && (
-                                  <>
-                                    <View style={styles.detailSection}>
-                                      <View style={styles.detailSectionHeader}>
-                                        <GraduationCap size={16} color="#000" />
-                                        <Text style={styles.detailSectionTitle}>
-                                          Education
-                                        </Text>
-                                      </View>
-                                      {currentData.fullDetails.education.map(
-                                        (edu: any, idx: number) => (
-                                          <View
-                                            key={idx}
-                                            style={styles.educationCard}
-                                          >
-                                            <Text
-                                              style={styles.educationDegree}
-                                            >
-                                              {edu.degree} in {edu.major}
-                                            </Text>
-                                            <Text
-                                              style={styles.educationSchool}
-                                            >
-                                              {edu.university}
-                                            </Text>
-                                            <View
-                                              style={styles.educationFooter}
-                                            >
-                                              <Text
-                                                style={styles.educationYear}
-                                              >
-                                                Class of {edu.graduationYear}
-                                              </Text>
-                                              {edu.gpa && (
-                                                <Text
-                                                  style={styles.educationGpa}
-                                                >
-                                                  GPA: {edu.gpa}
-                                                </Text>
-                                              )}
-                                            </View>
-                                          </View>
-                                        ),
-                                      )}
-                                    </View>
-                                  </>
-                                )}
-
-                              {/* Certifications */}
-                              {"certifications" in currentData.fullDetails &&
-                                Array.isArray(
-                                  currentData.fullDetails.certifications,
-                                ) &&
-                                currentData.fullDetails.certifications.length >
-                                  0 && (
-                                  <>
-                                    <View style={styles.detailSection}>
-                                      <View style={styles.detailSectionHeader}>
-                                        <Award size={16} color="#000" />
-                                        <Text style={styles.detailSectionTitle}>
-                                          Certifications
-                                        </Text>
-                                      </View>
-                                      <View style={styles.certificationsGrid}>
-                                        {currentData.fullDetails.certifications.map(
-                                          (cert: any, idx: number) => (
-                                            <View
-                                              key={idx}
-                                              style={styles.certificationBadge}
-                                            >
-                                              <Text
-                                                style={styles.certificationName}
-                                              >
-                                                {cert.name}
-                                              </Text>
-                                              <Text
-                                                style={
-                                                  styles.certificationDetails
-                                                }
-                                              >
-                                                {cert.organization} •{" "}
-                                                {cert.year}
-                                              </Text>
-                                            </View>
-                                          ),
-                                        )}
-                                      </View>
-                                    </View>
-                                  </>
-                                )}
-
-                              {/* Languages */}
-                              {"languages" in currentData.fullDetails &&
-                                Array.isArray(
-                                  currentData.fullDetails.languages,
-                                ) &&
-                                currentData.fullDetails.languages.length >
-                                  0 && (
-                                  <>
-                                    <View style={styles.detailSection}>
-                                      <View style={styles.detailSectionHeader}>
-                                        <Globe size={16} color="#000" />
-                                        <Text style={styles.detailSectionTitle}>
-                                          Languages
-                                        </Text>
-                                      </View>
-                                      <View style={styles.languagesGrid}>
-                                        {currentData.fullDetails.languages.map(
-                                          (lang: any, idx: number) => (
-                                            <View
-                                              key={idx}
-                                              style={styles.languageBadge}
-                                            >
-                                              <Text style={styles.languageName}>
-                                                {lang.language}
-                                              </Text>
-                                              <Text
-                                                style={
-                                                  styles.languageProficiency
-                                                }
-                                              >
-                                                {lang.proficiency}
-                                              </Text>
-                                            </View>
-                                          ),
-                                        )}
-                                      </View>
-                                    </View>
-                                  </>
-                                )}
-
-                              {/* Achievements */}
-                              {"achievements" in currentData.fullDetails &&
-                                currentData.fullDetails.achievements && (
-                                  <>
-                                    <View style={styles.detailSection}>
-                                      <View style={styles.detailSectionHeader}>
-                                        <Sparkles size={16} color="#000" />
-                                        <Text style={styles.detailSectionTitle}>
-                                          Achievements & Awards
-                                        </Text>
-                                      </View>
-                                      <Text style={styles.achievementsText}>
-                                        {currentData.fullDetails.achievements}
+                            {/* Education */}
+                            {Array.isArray(fd.education) &&
+                              fd.education.length > 0 && (
+                                <View style={styles.detailSection}>
+                                  <View style={styles.detailSectionHeader}>
+                                    <GraduationCap size={16} color="#000" />
+                                    <Text style={styles.detailSectionTitle}>
+                                      Education
+                                    </Text>
+                                  </View>
+                                  {fd.education.map((edu: any, idx: number) => (
+                                    <View
+                                      key={idx}
+                                      style={styles.educationCard}
+                                    >
+                                      <Text style={styles.educationDegree}>
+                                        {edu.degree}
+                                        {edu.major ? ` in ${edu.major}` : ""}
                                       </Text>
+                                      <Text style={styles.educationSchool}>
+                                        {edu.university}
+                                      </Text>
+                                      <View style={styles.educationFooter}>
+                                        {edu.graduationYear ? (
+                                          <Text style={styles.educationYear}>
+                                            Class of {edu.graduationYear}
+                                          </Text>
+                                        ) : null}
+                                        {edu.gpa ? (
+                                          <Text style={styles.educationGpa}>
+                                            GPA: {edu.gpa}
+                                          </Text>
+                                        ) : null}
+                                      </View>
                                     </View>
-                                  </>
-                                )}
-                            </>
-                          )}
-                      </>
+                                  ))}
+                                </View>
+                              )}
+
+                            {/* Certifications */}
+                            {Array.isArray(fd.certifications) &&
+                              fd.certifications.length > 0 && (
+                                <View style={styles.detailSection}>
+                                  <View style={styles.detailSectionHeader}>
+                                    <Award size={16} color="#000" />
+                                    <Text style={styles.detailSectionTitle}>
+                                      Certifications
+                                    </Text>
+                                  </View>
+                                  <View style={styles.certificationsGrid}>
+                                    {fd.certifications.map(
+                                      (cert: any, idx: number) => (
+                                        <View
+                                          key={idx}
+                                          style={styles.certificationBadge}
+                                        >
+                                          <Text
+                                            style={styles.certificationName}
+                                          >
+                                            {cert.name}
+                                          </Text>
+                                          <Text
+                                            style={styles.certificationDetails}
+                                          >
+                                            {cert.organization}
+                                            {cert.year ? ` • ${cert.year}` : ""}
+                                          </Text>
+                                        </View>
+                                      ),
+                                    )}
+                                  </View>
+                                </View>
+                              )}
+
+                            {/* Languages */}
+                            {Array.isArray(fd.languages) &&
+                              fd.languages.length > 0 && (
+                                <View style={styles.detailSection}>
+                                  <View style={styles.detailSectionHeader}>
+                                    <Globe size={16} color="#000" />
+                                    <Text style={styles.detailSectionTitle}>
+                                      Languages
+                                    </Text>
+                                  </View>
+                                  <View style={styles.languagesGrid}>
+                                    {fd.languages.map(
+                                      (lang: any, idx: number) => (
+                                        <View
+                                          key={idx}
+                                          style={styles.languageBadge}
+                                        >
+                                          <Text style={styles.languageName}>
+                                            {lang.language}
+                                          </Text>
+                                          <Text
+                                            style={styles.languageProficiency}
+                                          >
+                                            {lang.proficiency}
+                                          </Text>
+                                        </View>
+                                      ),
+                                    )}
+                                  </View>
+                                </View>
+                              )}
+
+                            {/* Achievements */}
+                            {fd.achievements ? (
+                              <View style={styles.detailSection}>
+                                <View style={styles.detailSectionHeader}>
+                                  <Sparkles size={16} color="#000" />
+                                  <Text style={styles.detailSectionTitle}>
+                                    Achievements & Awards
+                                  </Text>
+                                </View>
+                                <Text style={styles.achievementsText}>
+                                  {fd.achievements}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </>
+                        );
+                      })()
                     ) : (
                       /* Applicant More Details - Job */
                       <>
@@ -2624,8 +2752,12 @@ export function HomeView({
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.modalOptionBtn}
-                    onPress={() => setApplyStep("waitlist")}
+                    style={[
+                      styles.modalOptionBtn,
+                      isJoiningWaitlist && { opacity: 0.6 },
+                    ]}
+                    onPress={handleJoinWaitlist}
+                    disabled={isJoiningWaitlist}
                     activeOpacity={0.7}
                   >
                     <View style={styles.modalOptionIcon}>
@@ -2637,7 +2769,11 @@ export function HomeView({
                         Get notified first when a sponsor becomes available.
                       </Text>
                     </View>
-                    <ChevronRight color="#CCC" size={20} />
+                    {isJoiningWaitlist ? (
+                      <ActivityIndicator size="small" color="#999" />
+                    ) : (
+                      <ChevronRight color="#CCC" size={20} />
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
@@ -2653,10 +2789,7 @@ export function HomeView({
                   </Text>
                   <TouchableOpacity
                     style={styles.successActionBtn}
-                    onPress={() => {
-                      setShowApplyModal(false);
-                      handleSwipe(true);
-                    }}
+                    onPress={handleWaitlistDone}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.successActionBtnText}>Done</Text>
@@ -2692,6 +2825,64 @@ export function HomeView({
                 </View>
               )}
             </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Did-you-apply confirmation modal (shown when user closes the external WebView) */}
+      <Modal visible={showApplyConfirmModal} transparent animationType="slide">
+        <View style={styles.applyConfirmOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              setShowApplyConfirmModal(false);
+              setApplyConfirmJob(null);
+            }}
+          />
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={styles.applyConfirmSheet}
+          >
+            <View style={styles.modalHandle} />
+            <View style={styles.applyConfirmIconCircle}>
+              <Briefcase color="#FFF" size={28} />
+            </View>
+            <Text style={styles.applyConfirmTitle}>Did you apply?</Text>
+            <Text style={styles.applyConfirmSubtitle}>
+              Did you complete your application at{" "}
+              {applyConfirmJob?.company ?? "the company site"}?
+            </Text>
+            <View style={styles.applyConfirmActions}>
+              <TouchableOpacity
+                style={styles.applyConfirmNo}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setShowApplyConfirmModal(false);
+                  setApplyConfirmJob(null);
+                }}
+              >
+                <Text style={styles.applyConfirmNoText}>Not yet</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.applyConfirmYes}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (applyConfirmJob?.id) {
+                    setAppliedJobIds(
+                      (prev) => new Set([...prev, String(applyConfirmJob.id)]),
+                    );
+                  }
+                  setShowApplyConfirmModal(false);
+                  setApplyConfirmJob(null);
+                  // Advance the deck
+                  setCurrentProfileIndex(currentProfileIndex + 1);
+                }}
+              >
+                <Text style={styles.applyConfirmYesText}>Yes, I applied!</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         </View>
       </Modal>
@@ -3075,6 +3266,115 @@ const styles = StyleSheet.create({
     height: 460,
   },
   cardInnerBack: { backgroundColor: "#FBFBFB" },
+
+  // Waitlisted overlay
+  waitlistedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    zIndex: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  waitlistedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#000",
+    borderRadius: 100,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  waitlistedBadgeText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  appliedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#000",
+    borderRadius: 100,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  appliedBadgeText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  // Did-you-apply confirmation modal
+  applyConfirmOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  applyConfirmSheet: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    padding: 28,
+    paddingBottom: 40,
+    alignItems: "center",
+    gap: 12,
+  },
+  applyConfirmIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  applyConfirmTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+  },
+  applyConfirmSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 4,
+  },
+  applyConfirmActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+    width: "100%",
+  },
+  applyConfirmNo: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "#E5E5E5",
+    alignItems: "center",
+  },
+  applyConfirmNoText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#555",
+  },
+  applyConfirmYes: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 18,
+    backgroundColor: "#000",
+    alignItems: "center",
+  },
+  applyConfirmYesText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFF",
+  },
 
   // Layout: Image on Left + Details on Right
   profileCardTop: {

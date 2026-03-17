@@ -76,6 +76,7 @@ export interface Job {
   workArrangement: string;
   isRemote: boolean;
   url: string;
+  requirements?: string; // Raw requirements text (displayed when no skills chips available)
   // Required for UI
   applicants: number;
   image: string;

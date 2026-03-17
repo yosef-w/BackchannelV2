@@ -1,44 +1,46 @@
 import {
-  getInterestedSponsors,
-  getLikedJobs,
-  getMatches,
-  getPublicProfile,
-  getSponsorMatches,
+    getInterestedSponsors,
+    getLikedJobs,
+    getMatches,
+    getPublicProfile,
+    getSponsorMatches,
+    getWaitlistedJobs,
 } from "@/lib/api";
 import { BlurView } from "expo-blur";
 import {
-  Award,
-  Briefcase,
-  CheckCircle,
-  DollarSign,
-  Heart,
-  MapPin,
-  MessageCircle,
-  Sparkles,
-  Users,
-  Zap,
+    Award,
+    Briefcase,
+    CheckCircle,
+    Clock,
+    DollarSign,
+    Heart,
+    MapPin,
+    MessageCircle,
+    Sparkles,
+    Users,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInRight,
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
+    FadeInRight,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -237,6 +239,21 @@ interface InterestedSponsor {
   jobId?: string;
 }
 
+interface WaitlistedJob {
+  waitlist_id: string;
+  job_id: string;
+  status: string;
+  waitlisted_at: string;
+  title: string;
+  organization: string;
+  location: string;
+  employment_type: string | null;
+  is_remote: boolean;
+  experience_level: string | null;
+  is_now_sponsored: boolean;
+  sponsored_job_id: string | null;
+}
+
 const mockPipeline: Match[] = [
   {
     id: 101,
@@ -376,6 +393,15 @@ export function MatchesView({
   const [likedJobs, setLikedJobs] = useState<JobOpportunity[]>([]);
   const [likedJobsLoading, setLikedJobsLoading] = useState(false);
   const [likedJobsError, setLikedJobsError] = useState<string | null>(null);
+
+  // Waitlisted jobs state (for applicants)
+  const [waitlistedJobs, setWaitlistedJobs] = useState<WaitlistedJob[]>([]);
+  const [waitlistedJobsLoading, setWaitlistedJobsLoading] = useState(false);
+  const [waitlistedJobsError, setWaitlistedJobsError] = useState<string | null>(
+    null,
+  );
+  const [selectedWaitlistedJob, setSelectedWaitlistedJob] =
+    useState<WaitlistedJob | null>(null);
 
   // Fetch matches on mount
   useEffect(() => {
@@ -604,6 +630,30 @@ export function MatchesView({
     fetchInterestedSponsors();
   }, [userType]);
 
+  // Fetch waitlisted jobs for applicants
+  useEffect(() => {
+    const fetchWaitlistedJobs = async () => {
+      if (userType !== "applicant") return;
+
+      try {
+        setWaitlistedJobsLoading(true);
+        const response = await getWaitlistedJobs();
+        setWaitlistedJobs(response.jobs);
+      } catch (err) {
+        console.error("[MatchesView] Failed to fetch waitlisted jobs:", err);
+        setWaitlistedJobsError(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch waitlisted jobs",
+        );
+      } finally {
+        setWaitlistedJobsLoading(false);
+      }
+    };
+
+    fetchWaitlistedJobs();
+  }, [userType]);
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
     setActiveSlide(slide);
@@ -650,6 +700,7 @@ export function MatchesView({
     setSelectedJob(null);
     setSelectedInterestedSponsor(null);
     setInterestedSponsorProfile(null);
+    setSelectedWaitlistedJob(null);
     setMessage("");
   };
 
@@ -866,6 +917,148 @@ export function MatchesView({
                               <View style={styles.pulsingDot} />
                               <Text style={styles.waitingText}>
                                 Awaiting sponsor...
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            {/* Waitlisted Jobs — jobs the applicant joined the waitlist for */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <View>
+                  <Text style={styles.listSectionTitle}>
+                    {waitlistedJobsLoading
+                      ? "Loading..."
+                      : `Waitlisted (${waitlistedJobs.length})`}
+                  </Text>
+                  <Text style={styles.sectionSubtitle}>
+                    You’ll be notified when a sponsor signs on
+                  </Text>
+                </View>
+                {waitlistedJobs.some((j) => j.is_now_sponsored) && (
+                  <View
+                    style={[
+                      styles.pendingBadge,
+                      { backgroundColor: "#F0FFF4", borderColor: "#BBF7D0" },
+                    ]}
+                  >
+                    <Sparkles size={12} color="#00CB54" />
+                    <Text style={[styles.pendingText, { color: "#00CB54" }]}>
+                      Sponsored!
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {waitlistedJobsError && (
+                <Text
+                  style={{
+                    color: "#FF3B30",
+                    marginBottom: 12,
+                    paddingHorizontal: 20,
+                  }}
+                >
+                  {waitlistedJobsError}
+                </Text>
+              )}
+
+              {!waitlistedJobsLoading && waitlistedJobs.length === 0 ? (
+                <View style={styles.emptyLikedSection}>
+                  <View style={styles.emptyIconContainer}>
+                    <Clock size={32} color="#CCC" />
+                  </View>
+                  <Text style={styles.emptyLikedTitle}>No Waitlisted Jobs</Text>
+                  <Text style={styles.emptyLikedText}>
+                    Join a waitlist when you see a job without a sponsor —
+                    you’ll be notified the moment one signs on.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalScrollContent}
+                  style={styles.horizontalScroll}
+                >
+                  {waitlistedJobs.map((job, index) => (
+                    <Animated.View
+                      key={job.waitlist_id}
+                      entering={FadeInRight.delay(index * 100)}
+                      style={[
+                        styles.likedJobCard,
+                        job.is_now_sponsored &&
+                          styles.waitlistedJobCardSponsored,
+                      ]}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={0.88}
+                        onPress={() => setSelectedWaitlistedJob(job)}
+                      >
+                        <View style={styles.jobCardInfo}>
+                          <View
+                            style={[
+                              styles.likedJobInitial,
+                              job.is_now_sponsored && {
+                                backgroundColor: "#00CB54",
+                              },
+                            ]}
+                          >
+                            <Text style={styles.likedJobInitialText}>
+                              {(job.organization || "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={styles.jobCardTitle} numberOfLines={2}>
+                            {job.title}
+                          </Text>
+                          <Text style={styles.jobCardCompany}>
+                            {job.organization}
+                          </Text>
+                          {!!job.location && (
+                            <Text
+                              style={styles.likedJobLocation}
+                              numberOfLines={1}
+                            >
+                              {job.location}
+                            </Text>
+                          )}
+                          {job.is_now_sponsored ? (
+                            <View
+                              style={[
+                                styles.waitingBadge,
+                                styles.waitingBadgeSponsored,
+                              ]}
+                            >
+                              <CheckCircle size={10} color="#00CB54" />
+                              <Text
+                                style={[
+                                  styles.waitingText,
+                                  { color: "#00CB54" },
+                                ]}
+                              >
+                                Now Sponsored!
+                              </Text>
+                            </View>
+                          ) : (
+                            <View
+                              style={[
+                                styles.waitingBadge,
+                                styles.waitingBadgeWaitlist,
+                              ]}
+                            >
+                              <Clock size={10} color="#D97706" />
+                              <Text
+                                style={[
+                                  styles.waitingText,
+                                  { color: "#D97706" },
+                                ]}
+                              >
+                                Waiting for sponsor
                               </Text>
                             </View>
                           )}
@@ -1656,6 +1849,168 @@ export function MatchesView({
                     </TouchableOpacity>
                   </>
                 )}
+              </ScrollView>
+            )}
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Waitlisted Job Detail Modal */}
+      <Modal visible={!!selectedWaitlistedJob} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setSelectedWaitlistedJob(null)}
+          >
+            <BlurView
+              intensity={30}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={[styles.modalContent, { maxHeight: "65%" }]}
+          >
+            <View style={styles.modalHandle} />
+            {selectedWaitlistedJob && (
+              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+                {/* Hero */}
+                <View style={styles.jobModalHero}>
+                  <View
+                    style={[
+                      styles.jobModalHeroInitial,
+                      selectedWaitlistedJob.is_now_sponsored && {
+                        backgroundColor: "#00CB54",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.jobModalHeroInitialText}>
+                      {(selectedWaitlistedJob.organization ||
+                        "?")[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.jobModalHeroTitle}>
+                    {selectedWaitlistedJob.title}
+                  </Text>
+                  <Text style={styles.jobModalHeroCompany}>
+                    {selectedWaitlistedJob.organization}
+                  </Text>
+                  {!!selectedWaitlistedJob.location && (
+                    <View style={styles.jobModalLocationRow}>
+                      <MapPin size={13} color="#999" />
+                      <Text style={styles.jobModalLocationText}>
+                        {selectedWaitlistedJob.location}
+                      </Text>
+                      {selectedWaitlistedJob.is_remote && (
+                        <View style={styles.jobRemoteBadge}>
+                          <Text style={styles.jobRemoteText}>Remote</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Status banner */}
+                {selectedWaitlistedJob.is_now_sponsored ? (
+                  <View
+                    style={{
+                      backgroundColor: "#F0FFF4",
+                      borderWidth: 1,
+                      borderColor: "#BBF7D0",
+                      borderRadius: 18,
+                      padding: 18,
+                      marginBottom: 20,
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: 14,
+                    }}
+                  >
+                    <CheckCircle size={22} color="#00CB54" />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: "800",
+                          color: "#00CB54",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Now Sponsored!
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: "#555",
+                          lineHeight: 19,
+                          fontWeight: "500",
+                        }}
+                      >
+                        A sponsor has picked up this role. Head back to your
+                        feed to connect with them directly.
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      backgroundColor: "#FFFBEB",
+                      borderWidth: 1,
+                      borderColor: "#FDE68A",
+                      borderRadius: 18,
+                      padding: 18,
+                      marginBottom: 20,
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: 14,
+                    }}
+                  >
+                    <Clock size={22} color="#D97706" />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: "800",
+                          color: "#D97706",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Waiting for a Sponsor
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: "#555",
+                          lineHeight: 19,
+                          fontWeight: "500",
+                        }}
+                      >
+                        We’ll notify you as soon as someone sponsors this role.
+                        Keep an eye on your notifications.
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Waitlist date */}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: "#BBB",
+                    textAlign: "center",
+                    marginBottom: 28,
+                  }}
+                >
+                  Waitlisted{" "}
+                  {getRelativeTime(selectedWaitlistedJob.waitlisted_at)}
+                </Text>
               </ScrollView>
             )}
           </Animated.View>
@@ -2498,5 +2853,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     color: "#FFF",
+  },
+  // Waitlisted Jobs
+  waitlistedJobCardSponsored: {
+    borderColor: "#BBF7D0",
+    backgroundColor: "#F0FFF4",
+  },
+  waitingBadgeWaitlist: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
+  },
+  waitingBadgeSponsored: {
+    backgroundColor: "#F0FFF4",
+    borderColor: "#BBF7D0",
   },
 });
