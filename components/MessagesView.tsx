@@ -1,53 +1,57 @@
 import {
-    getBasicProfile,
-    getConversationMessages,
-    getConversations,
-    sendMessage,
+  getBasicProfile,
+  getConversationMessages,
+  getConversations,
+  getPublicProfile,
+  sendMessage,
+  submitReferral,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { BlurView } from "expo-blur";
 import {
-    ArrowLeft,
-    Award,
-    Briefcase,
-    Check,
-    CheckCircle,
-    ChevronRight,
-    ClipboardCheck,
-    Clock,
-    FileText,
-    MapPin,
-    MessageCircle,
-    Paperclip,
-    Send,
-    ShieldCheck,
-    User,
-    UserCheck,
-    X,
+  ArrowLeft,
+  Award,
+  Briefcase,
+  Check,
+  CheckCircle,
+  ChevronRight,
+  ClipboardCheck,
+  Clock,
+  FileText,
+  MapPin,
+  MessageCircle,
+  Paperclip,
+  Send,
+  ShieldCheck,
+  User,
+  UserCheck,
+  X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
-    Image,
-    Keyboard,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Keyboard,
+  Linking,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInDown,
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
-    useAnimatedKeyboard,
-    useAnimatedStyle,
+  FadeInDown,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -55,295 +59,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
-// --- MOCK DATA ---
-const mockConversations = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    role: "Senior PM",
-    company: "Google",
-    image: "https://images.unsplash.com/photo-1563132337-f159f484226c?w=200",
-    lastMessage: "I'd be happy to refer you! Let me know when you apply.",
-    time: "2m ago",
-    unread: 2,
-    appliedRole: "Lead Product Strategist",
-    experience: "8+ Years",
-    skills: ["Product Vision", "Agile", "SQL"],
-    location: "San Francisco, CA",
-    email: "sarah.chen@gmail.com",
-    phone: "+1 (415) 555-0123",
-    education: "MBA, Stanford GSB",
-    previousCompanies: ["Amazon", "Salesforce"],
-    bio: "Product leader passionate about building products that scale. Focused on fintech and enterprise SaaS. Love mentoring emerging PMs and helping teams ship with confidence.",
-    workPreferences: ["Remote Flexible", "Startup", "High Growth"],
-    desiredRoles: ["VP Product", "Chief Product Officer", "Head of Product"],
-    companiesCanReferTo: ["Google", "Amazon", "Salesforce"],
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer:
-          "Being the 'No' person in product meetings—keeping us focused on what matters.",
-      },
-      {
-        question: "THE PROJECT I'M MOST PROUD OF",
-        answer:
-          "A micro-loan app that helped 50k+ small businesses in SE Asia.",
-      },
-    ],
-    isHidden: false,
-    applicationStatus: "interview_scheduled" as const,
-    appliedDate: "Jan 2, 2026",
-    nextAction: "Interview on Jan 8 at 2pm PT",
-  },
-  {
-    id: 2,
-    name: "Michael Rodriguez",
-    role: "SWE",
-    company: "Meta",
-    image: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?w=200",
-    lastMessage: "Thanks for connecting! Looking forward to chatting.",
-    time: "1h ago",
-    unread: 0,
-    appliedRole: "Full Stack Lead",
-    experience: "5 Years",
-    skills: ["React", "Node.js", "System Design"],
-    location: "Austin, TX",
-    email: "m.rodriguez@email.com",
-    phone: "+1 (512) 555-0198",
-    education: "B.S. Computer Science, UT Austin",
-    previousCompanies: ["Uber", "Twitter"],
-    bio: "Full-stack engineer who loves building scalable systems. Passionate about developer tools and platform engineering. Always learning, always shipping.",
-    workPreferences: ["Hybrid", "Tech Company", "Innovation"],
-    desiredRoles: [
-      "Staff Engineer",
-      "Principal Engineer",
-      "Engineering Manager",
-    ],
-    companiesCanReferTo: ["Meta", "Uber", "Twitter"],
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer:
-          "Optimizing systems—I once reduced API latency by 80% with a single refactor.",
-      },
-      {
-        question: "THE PROJECT I'M MOST PROUD OF",
-        answer:
-          "Building a real-time streaming platform that now handles 50M+ events/day.",
-      },
-    ],
-    isHidden: false,
-    applicationStatus: "reviewing" as const,
-    appliedDate: "Jan 3, 2026",
-    nextAction: "Under review by hiring team",
-  },
-  {
-    id: 3,
-    name: "Emily Watson",
-    role: "UX Lead",
-    company: "Airbnb",
-    image: "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=200",
-    lastMessage: "Here's the link to the application portal...",
-    time: "3h ago",
-    unread: 0,
-    appliedRole: "Principal Designer",
-    experience: "10+ Years",
-    skills: ["Figma", "Design Systems", "User Research"],
-    location: "Brooklyn, NY",
-    email: "emily.w@design.co",
-    phone: "+1 (718) 555-0142",
-    education: "MFA Design, Parsons",
-    previousCompanies: ["Apple", "IDEO"],
-    companiesCanReferTo: ["Airbnb", "Apple", "IDEO"],
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer:
-          "Creating design systems that actually get used—not just admired in Figma.",
-      },
-      {
-        question: "THE PROJECT I'M MOST PROUD OF",
-        answer:
-          "A redesign that increased user satisfaction by 40% while reducing support tickets.",
-      },
-    ],
-    isHidden: false,
-    applicationStatus: "applied" as const,
-    appliedDate: "Jan 4, 2026",
-    nextAction: "Waiting for response",
-  },
-  {
-    id: 4,
-    name: "David Park",
-    role: "Data Scientist",
-    company: "Netflix",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
-    lastMessage: "Your background in ML is exactly what our team needs.",
-    time: "5h ago",
-    unread: 1,
-    appliedRole: "Senior AI Engineer",
-    experience: "6 Years",
-    skills: ["Python", "PyTorch", "BigQuery"],
-    location: "Los Gatos, CA",
-    email: "dpark@ml.ai",
-    phone: "+1 (408) 555-0176",
-    education: "PhD Computer Science, MIT",
-    previousCompanies: ["Google Brain", "DeepMind"],
-    companiesCanReferTo: ["Netflix", "Google", "DeepMind"],
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer:
-          "Translating complex ML models into production systems that actually ship.",
-      },
-      {
-        question: "THE PROJECT I'M MOST PROUD OF",
-        answer:
-          "A recommendation algorithm that increased engagement by 25% across 100M+ users.",
-      },
-    ],
-    isHidden: false,
-    applicationStatus: "offer" as const,
-    appliedDate: "Dec 28, 2025",
-    nextAction: "Offer received - respond by Jan 10",
-  },
-  {
-    id: 5,
-    name: "Jessica Velez",
-    role: "Recruiter",
-    company: "Stripe",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-    lastMessage: "Are you free for a quick sync tomorrow morning?",
-    time: "Yesterday",
-    unread: 0,
-    appliedRole: "Technical Program Manager",
-    experience: "4 Years",
-    skills: ["Operations", "Strategy", "Public Speaking"],
-    location: "Remote",
-    email: "jvelez@stripe.com",
-    phone: "+1 (555) 123-4567",
-    education: "B.A. Business, UC Berkeley",
-    previousCompanies: ["Dropbox", "Zoom"],
-    companiesCanReferTo: ["Stripe", "Dropbox", "Zoom"],
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer:
-          "Unblocking teams—I'm the person who makes impossible timelines possible.",
-      },
-      {
-        question: "THE PROJECT I'M MOST PROUD OF",
-        answer:
-          "Leading a cross-functional launch that shipped 3 weeks early with zero bugs.",
-      },
-    ],
-    isHidden: false,
-  },
-  {
-    id: 6,
-    name: "Marcus Thorne",
-    role: "Head of Engineering",
-    company: "Scale AI",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
-    lastMessage: "Let's skip the screening and go straight to tech.",
-    time: "2d ago",
-    unread: 0,
-    appliedRole: "Staff Engineer",
-    experience: "12+ Years",
-    skills: ["Infrastructure", "Go", "Kubernetes"],
-    location: "Seattle, WA",
-    email: "marcus.t@scaleai.com",
-    phone: "+1 (206) 555-0199",
-    education: "M.S. Computer Science, Stanford",
-    previousCompanies: ["AWS", "Docker"],
-    companiesCanReferTo: ["Scale AI", "AWS", "Docker"],
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer:
-          "Building engineering cultures where people actually want to work late.",
-      },
-      {
-        question: "THE PROJECT I'M MOST PROUD OF",
-        answer:
-          "Scaling infrastructure from 1M to 100M users without a single outage.",
-      },
-    ],
-    isHidden: true,
-  },
-  {
-    id: 7,
-    name: "Sonia Gupta",
-    role: "Product Designer",
-    company: "Uber",
-    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200",
-    lastMessage: "I loved your portfolio piece on the fintech app!",
-    time: "3d ago",
-    unread: 0,
-    appliedRole: "Senior UX Designer",
-    experience: "7 Years",
-    skills: ["Prototyping", "A/B Testing", "Mobile Design"],
-    location: "London, UK",
-    email: "sonia.g@uber.com",
-    phone: "+44 20 7123 4567",
-    education: "B.Des Industrial Design, NID",
-    previousCompanies: ["Spotify", "Airbnb"],
-    companiesCanReferTo: ["Uber", "Spotify", "Airbnb"],
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer:
-          "Making complex features feel simple—like they were always meant to be that way.",
-      },
-      {
-        question: "THE PROJECT I'M MOST PROUD OF",
-        answer:
-          "A mobile redesign that won a Webby and became a case study at design schools.",
-      },
-    ],
-    isHidden: true,
-  },
-];
-
-const mockMessages = [
-  {
-    id: 1,
-    text: "Hi! I saw you're looking for referrals at Google. I'd love to help!",
-    sender: "them",
-    time: "10:30 AM",
-  },
-  {
-    id: 2,
-    text: "That would be amazing! Thank you so much.",
-    sender: "me",
-    time: "10:32 AM",
-  },
-  {
-    id: 3,
-    text: "No problem! Can you send me your resume?",
-    sender: "them",
-    time: "10:33 AM",
-  },
-  {
-    id: 4,
-    text: "Of course! Just sent it over.",
-    sender: "me",
-    time: "10:35 AM",
-  },
-  {
-    id: 5,
-    text: "I'd be happy to refer you! Let me know when you apply.",
-    sender: "them",
-    time: "10:36 AM",
-  },
-];
-
 interface MessagesViewProps {
   onThreadActiveChange?: (isThreadActive: boolean) => void;
   userType?: "applicant" | "sponsor";
   onShowPublicProfile?: (userData: any) => void;
-  selectedConversationId?: number | null;
-  onConversationChange?: (conversationId: number | null) => void;
+  selectedConversationId?: string | null;
+  onConversationChange?: (conversationId: string | null) => void;
   pendingJobId?: string | null;
   onPendingJobConsumed?: () => void;
 }
@@ -362,7 +83,7 @@ export function MessagesView({
 
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
-  >(externalSelectedConversationId?.toString() ?? null);
+  >(externalSelectedConversationId ?? null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showApplicationDetail, setShowApplicationDetail] = useState(false);
   const [showReferralFlow, setShowReferralFlow] = useState(false);
@@ -373,6 +94,8 @@ export function MessagesView({
   const [feelsConfident, setFeelsConfident] = useState(false);
   const [knowsBackground, setKnowsBackground] = useState(false);
   const [comfortableAttaching, setComfortableAttaching] = useState(false);
+  const [referralSubmitting, setReferralSubmitting] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard();
@@ -383,6 +106,8 @@ export function MessagesView({
   const [conversationsError, setConversationsError] = useState<string | null>(
     null,
   );
+  const [conversationsTotalCount, setConversationsTotalCount] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -390,6 +115,10 @@ export function MessagesView({
 
   const [sendingMessage, setSendingMessage] = useState(false);
   const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
+
+  // Referral flow — full public profile of the applicant being referred
+  const [referralProfile, setReferralProfile] = useState<any>(null);
+  const [referralProfileLoading, setReferralProfileLoading] = useState(false);
 
   // Fetch current user profile to get USER_ID
   useEffect(() => {
@@ -417,10 +146,14 @@ export function MessagesView({
         setConversationsLoading(true);
         console.log("[MessagesView] Fetching conversations...");
 
-        const response = await getConversations();
+        const response = await getConversations({ limit: 20, offset: 0 });
         console.log("[MessagesView] Conversations response:", response);
 
-        // Transform UPPERCASE Snowflake fields to our UI format
+        setConversationsTotalCount(
+          response.total_count ?? response.conversations.length,
+        );
+
+        // Transform UPPERCASE PostgreSQL fields to our UI format
         // Determine which participant is "the other person" based on current user ID
         const transformedConversations = response.conversations.map((conv) => {
           const c = conv as any; // backend returns richer fields than typed stub
@@ -479,6 +212,8 @@ export function MessagesView({
                 `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
                 "Unknown",
               profileImageUrl: otherPersonPhoto,
+              role: otherPersonRole || undefined,
+              company: otherPersonCompany || undefined,
             },
             lastMessage: c.LAST_BODY
               ? {
@@ -520,35 +255,6 @@ export function MessagesView({
           setConversationsError(null); // Don't show error for 404, just empty state
         } else {
           setConversationsError(errorMessage);
-          // Fall back to mock data on other errors
-          setConversations(
-            mockConversations.map((conv) => ({
-              id: String(conv.id),
-              otherParticipant: {
-                id: String(conv.id),
-                name: conv.name,
-                role: conv.role,
-                company: conv.company,
-                profileImageUrl: conv.image,
-              },
-              lastMessage: {
-                content: conv.lastMessage,
-                senderId: String(conv.id),
-                createdAt: new Date().toISOString(),
-                isRead: conv.unread === 0,
-              },
-              unreadCount: conv.unread,
-              jobContext: conv.appliedRole
-                ? {
-                    jobId: String(conv.id),
-                    jobTitle: conv.appliedRole,
-                    company: conv.company,
-                  }
-                : undefined,
-              applicationStatus: conv.applicationStatus,
-              createdAt: new Date().toISOString(),
-            })),
-          );
         }
       } finally {
         setConversationsLoading(false);
@@ -558,7 +264,94 @@ export function MessagesView({
     fetchConversations();
   }, [currentUserId]);
 
-  // WebSocket connection for real-time messaging
+  // Build a transformed conversation object from raw API response (shared by initial fetch + load more)
+  const transformConversation = (c: any) => {
+    const isCurrentUserApplicant = c.APPLICANT_USER_ID === currentUserId;
+    const otherPersonFirstName = isCurrentUserApplicant
+      ? c.SPONSOR_FIRST_NAME
+      : c.APPLICANT_FIRST_NAME;
+    const otherPersonLastName = isCurrentUserApplicant
+      ? c.SPONSOR_LAST_NAME
+      : c.APPLICANT_LAST_NAME;
+    const otherPersonPhoto = isCurrentUserApplicant
+      ? c.SPONSOR_PHOTO_URL
+      : c.APPLICANT_PHOTO_URL;
+    const otherPersonId = isCurrentUserApplicant
+      ? c.SPONSOR_USER_ID
+      : c.APPLICANT_USER_ID;
+    const otherPersonRole = isCurrentUserApplicant
+      ? c.SPONSOR_JOB_TITLE
+      : c.APPLICANT_POSITIONS
+        ? (() => {
+            try {
+              const arr = JSON.parse(c.APPLICANT_POSITIONS);
+              return Array.isArray(arr) && arr.length ? arr[0] : "Job Seeker";
+            } catch {
+              return "Job Seeker";
+            }
+          })()
+        : "Job Seeker";
+    const otherPersonCompany = isCurrentUserApplicant ? c.SPONSOR_COMPANY : "";
+    return {
+      id: c.CONVERSATION_ID,
+      name:
+        `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
+        "Unknown",
+      role: otherPersonRole || "Unknown Role",
+      company: otherPersonCompany || c.COMPANY || "Unknown Company",
+      profileImageUrl: otherPersonPhoto,
+      skills: c.SKILLS ? (Array.isArray(c.SKILLS) ? c.SKILLS : [c.SKILLS]) : [],
+      experience: c.YEARS_EXPERIENCE ? `${c.YEARS_EXPERIENCE} years` : "N/A",
+      otherParticipant: {
+        id: otherPersonId,
+        name:
+          `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
+          "Unknown",
+        profileImageUrl: otherPersonPhoto,
+        role: otherPersonRole || undefined,
+        company: otherPersonCompany || undefined,
+      },
+      lastMessage: c.LAST_BODY
+        ? {
+            content: c.LAST_BODY,
+            senderId: "",
+            createdAt: c.LAST_AT || new Date().toISOString(),
+            isRead: true,
+          }
+        : undefined,
+      unreadCount:
+        (isCurrentUserApplicant && c.APPLICANT_HAS_UNREAD) ||
+        (!isCurrentUserApplicant && c.SPONSOR_HAS_UNREAD)
+          ? 1
+          : 0,
+      jobContext: {
+        jobId: c.JOB_ID,
+        jobTitle: c.TITLE,
+        company: c.COMPANY || "",
+      },
+      createdAt: new Date().toISOString(),
+    };
+  };
+
+  const loadMoreConversations = async () => {
+    if (isLoadingMore || conversations.length >= conversationsTotalCount)
+      return;
+    try {
+      setIsLoadingMore(true);
+      const response = await getConversations({
+        limit: 20,
+        offset: conversations.length,
+      });
+      const more = response.conversations.map((conv) =>
+        transformConversation(conv as any),
+      );
+      setConversations((prev) => [...prev, ...more]);
+    } catch (err) {
+      console.error("[MessagesView] Failed to load more conversations:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
   useEffect(() => {
     if (!selectedConversation) {
       return;
@@ -696,7 +489,7 @@ export function MessagesView({
         });
         console.log("[MessagesView] Messages response:", response);
 
-        // Transform UPPERCASE Snowflake fields to our UI format
+        // Transform UPPERCASE PostgreSQL fields to our UI format
         const transformedMessages = response.messages.map((msg) => ({
           id: msg.MESSAGE_ID,
           serverId: msg.MESSAGE_ID,
@@ -740,20 +533,6 @@ export function MessagesView({
         setMessagesError(
           err instanceof Error ? err.message : "Failed to fetch messages",
         );
-        // Fall back to mock messages on error
-        setMessages(
-          mockMessages.map((msg, idx) => ({
-            id: String(idx + 1),
-            senderId: msg.sender === "me" ? "current-user" : "other",
-            content: msg.text,
-            messageType: "text" as const,
-            isRead: true,
-            createdAt: new Date().toISOString(),
-          })),
-        );
-        if (!currentUserId) {
-          setCurrentUserId("current-user");
-        }
       } finally {
         setMessagesLoading(false);
       }
@@ -771,7 +550,7 @@ export function MessagesView({
   const handleConversationSelect = (conversationId: string | null) => {
     setSelectedConversation(conversationId);
     if (onConversationChange) {
-      onConversationChange(conversationId ? Number(conversationId) : null);
+      onConversationChange(conversationId ?? null);
     }
   };
 
@@ -887,7 +666,29 @@ export function MessagesView({
     setFeelsConfident(false);
     setKnowsBackground(false);
     setComfortableAttaching(false);
+    setReferralError(null);
+    setReferralSubmitting(false);
+    setReferralProfile(null);
   };
+
+  // Fetch the applicant's full public profile when the referral flow opens so
+  // the Step 2 review card can show rich, real data.
+  useEffect(() => {
+    if (!showReferralFlow) {
+      setReferralProfile(null);
+      return;
+    }
+    const conv = conversations.find((c) => c.id === selectedConversation);
+    const applicantId = conv?.otherParticipant?.id;
+    if (!applicantId) return;
+    setReferralProfileLoading(true);
+    getPublicProfile(String(applicantId))
+      .then((profile) => setReferralProfile(profile))
+      .catch((err) =>
+        console.warn("[MessagesView] Failed to fetch referral profile:", err),
+      )
+      .finally(() => setReferralProfileLoading(false));
+  }, [showReferralFlow]);
 
   const canProceedFromStep1 =
     hasMessaged && feelsConfident && knowsBackground && comfortableAttaching;
@@ -952,9 +753,7 @@ export function MessagesView({
     setShowReferralFlow(true);
   };
 
-  const getApplicationFromConversation = (
-    conv: (typeof mockConversations)[0],
-  ) => {
+  const getApplicationFromConversation = (conv: any) => {
     if (!conv.applicationStatus) return null;
 
     const statusToTimeline: Record<string, any[]> = {
@@ -1113,6 +912,19 @@ export function MessagesView({
     );
 
     if (!conversation) {
+      // Conversations are still fetching — show a loading state so we don't flash
+      // a false "not found" message while the async fetch completes after a
+      // re-mount (e.g. navigating back from the public profile view).
+      if (conversationsLoading) {
+        return (
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <ActivityIndicator size="large" color="#000" />
+          </View>
+        );
+      }
+
       return (
         <View
           style={{
@@ -1327,8 +1139,13 @@ export function MessagesView({
           </View>
         </Animated.View>
 
-        {/* PROFILE MODAL */}
-        <Modal visible={showProfileModal} transparent animationType="none">
+        {/* PROFILE MODAL — content branches on userType:
+              sponsor = viewing applicant (skills, resume, referral button)
+              applicant = viewing sponsor (title/company, job context, no resume/referral)
+              Using animationType="slide" lets React Native handle the
+              show/hide animation natively, avoiding the Reanimated
+              SlideInDown/SlideOutDown ghost-overlay freeze. */}
+        <Modal visible={showProfileModal} transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <TouchableOpacity
               style={StyleSheet.absoluteFill}
@@ -1341,161 +1158,373 @@ export function MessagesView({
                 tint="dark"
               />
             </TouchableOpacity>
-            <Animated.View
-              entering={SlideInDown}
-              exiting={SlideOutDown}
-              style={styles.modalContent}
-            >
+            <View style={styles.modalContent}>
               <View style={styles.modalHandle} />
               <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                <View style={styles.jobRefTag}>
-                  <Text style={styles.jobRefLabel}>INTERESTED IN</Text>
-                  <View style={styles.jobRefBadge}>
-                    <Briefcase size={12} color="#000" />
-                    <Text style={styles.jobRefText}>
-                      {conversation.appliedRole}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.swipableContainer}>
-                  <ScrollView
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
-                  >
-                    <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                      <View style={styles.infoCardHeader}>
-                        <Image
-                          source={{ uri: conversation.image }}
-                          style={styles.modalAvatar}
-                        />
-                        <View>
-                          <Text style={styles.modalName}>
-                            {conversation.name}
-                          </Text>
-                          <View style={styles.locationRow}>
-                            <MapPin size={12} color="#AAA" />
-                            <Text style={styles.locationText}>
-                              New York, NY
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                      <Text style={styles.bioText} numberOfLines={3}>
-                        Senior {conversation.role} with a focus on scaling
-                        user-centric products at {conversation.company}.
-                      </Text>
-                      <View style={styles.skillsContainer}>
-                        {(conversation.skills || []).map(
-                          (s: string, i: number) => (
-                            <View key={i} style={styles.skillChip}>
-                              <Text style={styles.skillText}>{s}</Text>
-                            </View>
-                          ),
-                        )}
-                      </View>
-                      <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                          <Award size={14} color="#000" />
-                          <Text style={styles.statLabel}>
-                            {conversation.experience}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.resumeBtn}
-                          activeOpacity={0.7}
-                        >
-                          <FileText size={14} color="#FFF" />
-                          <Text style={styles.resumeBtnText}>View Resume</Text>
-                        </TouchableOpacity>
+                {userType === "sponsor" ? (
+                  /* ── SPONSOR is viewing an APPLICANT'S profile ── */
+                  <>
+                    <View style={styles.jobRefTag}>
+                      <Text style={styles.jobRefLabel}>INTERESTED IN</Text>
+                      <View style={styles.jobRefBadge}>
+                        <Briefcase size={12} color="#000" />
+                        <Text style={styles.jobRefText}>
+                          {conversation.jobContext?.jobTitle ||
+                            conversation.appliedRole ||
+                            ""}
+                        </Text>
                       </View>
                     </View>
-                    <View
-                      style={[
-                        styles.infoCard,
-                        {
-                          width: CARD_WIDTH,
-                          backgroundColor: "#F9F9F9",
-                          borderWidth: 1,
-                          borderColor: "#F0F0F0",
-                        },
-                      ]}
-                    >
-                      <ScrollView showsVerticalScrollIndicator={false}>
-                        {conversation.prompts?.map(
-                          (prompt: any, idx: number) => (
-                            <View key={idx} style={styles.promptCardInModal}>
-                              <View style={styles.promptIconRowInModal}>
-                                <View style={styles.promptIconCircle}>
-                                  {idx === 0 ? (
-                                    <Check size={14} color="#000" />
-                                  ) : (
-                                    <Award size={14} color="#000" />
-                                  )}
-                                </View>
-                                <Text style={styles.promptQuestionInModal}>
-                                  {prompt.question}
+                    <View style={styles.swipableContainer}>
+                      <ScrollView
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={16}
+                      >
+                        {/* Page 1 — Applicant overview */}
+                        <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
+                          <View style={styles.infoCardHeader}>
+                            <Image
+                              source={{
+                                uri: conversation.otherParticipant
+                                  .profileImageUrl,
+                              }}
+                              style={styles.modalAvatar}
+                            />
+                            <View>
+                              <Text style={styles.modalName}>
+                                {conversation.otherParticipant.name}
+                              </Text>
+                              <View style={styles.locationRow}>
+                                <MapPin size={12} color="#AAA" />
+                                <Text style={styles.locationText}>
+                                  {conversation.otherParticipant.role ||
+                                    "Job Seeker"}
                                 </Text>
                               </View>
-                              <Text style={styles.promptAnswerInModal}>
-                                {prompt.answer}
+                            </View>
+                          </View>
+                          <Text style={styles.bioText} numberOfLines={3}>
+                            {conversation.otherParticipant.role
+                              ? `${conversation.otherParticipant.role} seeking new opportunities and looking for a warm referral.`
+                              : "Experienced professional seeking a referral opportunity."}
+                          </Text>
+                          <View style={styles.skillsContainer}>
+                            {(conversation.skills || []).map(
+                              (s: string, i: number) => (
+                                <View key={i} style={styles.skillChip}>
+                                  <Text style={styles.skillText}>{s}</Text>
+                                </View>
+                              ),
+                            )}
+                          </View>
+                          <View style={styles.statsRow}>
+                            <View style={styles.statItem}>
+                              <Award size={14} color="#000" />
+                              <Text style={styles.statLabel}>
+                                {conversation.experience || "N/A"}
                               </Text>
                             </View>
-                          ),
-                        )}
+                            <TouchableOpacity
+                              style={styles.resumeBtn}
+                              activeOpacity={0.7}
+                            >
+                              <FileText size={14} color="#FFF" />
+                              <Text style={styles.resumeBtnText}>
+                                View Resume
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        {/* Page 2 — Key Insights */}
+                        <View
+                          style={[
+                            styles.infoCard,
+                            {
+                              width: CARD_WIDTH,
+                              backgroundColor: "#F9F9F9",
+                              borderWidth: 1,
+                              borderColor: "#F0F0F0",
+                            },
+                          ]}
+                        >
+                          <ScrollView showsVerticalScrollIndicator={false}>
+                            {conversation.prompts?.map(
+                              (prompt: any, idx: number) => (
+                                <View
+                                  key={idx}
+                                  style={styles.promptCardInModal}
+                                >
+                                  <View style={styles.promptIconRowInModal}>
+                                    <View style={styles.promptIconCircle}>
+                                      {idx === 0 ? (
+                                        <Check size={14} color="#000" />
+                                      ) : (
+                                        <Award size={14} color="#000" />
+                                      )}
+                                    </View>
+                                    <Text style={styles.promptQuestionInModal}>
+                                      {prompt.question}
+                                    </Text>
+                                  </View>
+                                  <Text style={styles.promptAnswerInModal}>
+                                    {prompt.answer}
+                                  </Text>
+                                </View>
+                              ),
+                            )}
+                          </ScrollView>
+                        </View>
                       </ScrollView>
+                      <View style={styles.pagination}>
+                        <View
+                          style={[
+                            styles.dot,
+                            activeSlide === 0
+                              ? styles.dotActive
+                              : styles.dotInactive,
+                          ]}
+                        />
+                        <View
+                          style={[
+                            styles.dot,
+                            activeSlide === 1
+                              ? styles.dotActive
+                              : styles.dotInactive,
+                          ]}
+                        />
+                      </View>
                     </View>
-                  </ScrollView>
-                  <View style={styles.pagination}>
-                    <View
-                      style={[
-                        styles.dot,
-                        activeSlide === 0
-                          ? styles.dotActive
-                          : styles.dotInactive,
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.dot,
-                        activeSlide === 1
-                          ? styles.dotActive
-                          : styles.dotInactive,
-                      ]}
-                    />
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={styles.fullProfileBtn}
-                  onPress={() => {
-                    setShowProfileModal(false);
-                    if (onShowPublicProfile) {
-                      onShowPublicProfile(conversation);
-                    }
-                  }}
-                >
-                  <User color="#FFF" size={18} />
-                  <Text style={styles.fullProfileBtnText}>
-                    View Full Profile
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.referFromModalBtn}
-                  onPress={openReferral}
-                >
-                  <UserCheck color="#000" size={18} />
-                  <Text style={styles.referFromModalBtnText}>
-                    Provide Referral
-                  </Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.fullProfileBtn}
+                      onPress={() => {
+                        setShowProfileModal(false);
+                        if (onShowPublicProfile) {
+                          onShowPublicProfile(conversation);
+                        }
+                      }}
+                    >
+                      <User color="#FFF" size={18} />
+                      <Text style={styles.fullProfileBtnText}>
+                        View Full Profile
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.referFromModalBtn}
+                      onPress={openReferral}
+                    >
+                      <UserCheck color="#000" size={18} />
+                      <Text style={styles.referFromModalBtnText}>
+                        Provide Referral
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  /* ── APPLICANT is viewing a SPONSOR'S profile ── */
+                  <>
+                    <View style={styles.jobRefTag}>
+                      <Text style={styles.jobRefLabel}>CONNECTED ON</Text>
+                      <View style={styles.jobRefBadge}>
+                        <Briefcase size={12} color="#000" />
+                        <Text style={styles.jobRefText}>
+                          {conversation.jobContext?.jobTitle ||
+                            conversation.appliedRole ||
+                            ""}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.swipableContainer}>
+                      <ScrollView
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={16}
+                      >
+                        {/* Page 1 — Sponsor overview */}
+                        <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
+                          <View style={styles.infoCardHeader}>
+                            <Image
+                              source={{
+                                uri:
+                                  conversation.otherParticipant
+                                    .profileImageUrl ||
+                                  "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200",
+                              }}
+                              style={styles.modalAvatar}
+                            />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.modalName}>
+                                {conversation.otherParticipant.name}
+                              </Text>
+                              {(conversation.otherParticipant.role ||
+                                conversation.otherParticipant.company) && (
+                                <Text
+                                  style={styles.sponsorTitleText}
+                                  numberOfLines={1}
+                                >
+                                  {[
+                                    conversation.otherParticipant.role,
+                                    conversation.otherParticipant.company,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" @ ")}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+
+                          {/* Referring for row */}
+                          <View style={styles.sponsorReferringRow}>
+                            <View style={styles.sponsorReferringIcon}>
+                              <Briefcase size={14} color="#000" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.sponsorReferringLabel}>
+                                Referring for
+                              </Text>
+                              <Text
+                                style={styles.sponsorReferringValue}
+                                numberOfLines={1}
+                              >
+                                {conversation.jobContext?.jobTitle ||
+                                  "Open Position"}
+                                {conversation.jobContext?.company
+                                  ? ` at ${conversation.jobContext.company}`
+                                  : ""}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Status badges */}
+                          <View style={styles.sponsorBadgeRow}>
+                            <View style={styles.sponsorOpenBadge}>
+                              <ShieldCheck size={13} color="#059669" />
+                              <Text style={styles.sponsorOpenBadgeText}>
+                                Open to Referrals
+                              </Text>
+                            </View>
+                            <View style={styles.sponsorMatchBadge}>
+                              <Check size={13} color="#000" />
+                              <Text style={styles.sponsorMatchBadgeText}>
+                                Active Match
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Text style={styles.sponsorTipText}>
+                            Tap "View Full Profile" to see{" "}
+                            {conversation.otherParticipant.name?.split(
+                              " ",
+                            )[0] ?? "their"}{" "}
+                            background, referral history, and key insights.
+                          </Text>
+                        </View>
+
+                        {/* Page 2 — Key Insights */}
+                        <View
+                          style={[
+                            styles.infoCard,
+                            {
+                              width: CARD_WIDTH,
+                              backgroundColor: "#F9F9F9",
+                              borderWidth: 1,
+                              borderColor: "#F0F0F0",
+                            },
+                          ]}
+                        >
+                          {conversation.prompts?.length ? (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                              {conversation.prompts.map(
+                                (prompt: any, idx: number) => (
+                                  <View
+                                    key={idx}
+                                    style={styles.promptCardInModal}
+                                  >
+                                    <View style={styles.promptIconRowInModal}>
+                                      <View style={styles.promptIconCircle}>
+                                        {idx === 0 ? (
+                                          <Check size={14} color="#000" />
+                                        ) : (
+                                          <Award size={14} color="#000" />
+                                        )}
+                                      </View>
+                                      <Text
+                                        style={styles.promptQuestionInModal}
+                                      >
+                                        {prompt.question}
+                                      </Text>
+                                    </View>
+                                    <Text style={styles.promptAnswerInModal}>
+                                      {prompt.answer}
+                                    </Text>
+                                  </View>
+                                ),
+                              )}
+                            </ScrollView>
+                          ) : (
+                            <View style={styles.sponsorInsightsEmpty}>
+                              <View style={styles.sponsorInsightsIconCircle}>
+                                <Award size={22} color="#000" />
+                              </View>
+                              <Text style={styles.sponsorInsightsEmptyTitle}>
+                                Key Insights
+                              </Text>
+                              <Text style={styles.sponsorInsightsEmptyText}>
+                                View{" "}
+                                {conversation.otherParticipant.name?.split(
+                                  " ",
+                                )[0] ?? "their"}{" "}
+                                full profile to see their background,
+                                motivations, and referral experience.
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </ScrollView>
+                      <View style={styles.pagination}>
+                        <View
+                          style={[
+                            styles.dot,
+                            activeSlide === 0
+                              ? styles.dotActive
+                              : styles.dotInactive,
+                          ]}
+                        />
+                        <View
+                          style={[
+                            styles.dot,
+                            activeSlide === 1
+                              ? styles.dotActive
+                              : styles.dotInactive,
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Applicant only gets View Full Profile — no resume or referral button */}
+                    <TouchableOpacity
+                      style={styles.fullProfileBtn}
+                      onPress={() => {
+                        setShowProfileModal(false);
+                        if (onShowPublicProfile) {
+                          onShowPublicProfile(conversation);
+                        }
+                      }}
+                    >
+                      <User color="#FFF" size={18} />
+                      <Text style={styles.fullProfileBtnText}>
+                        View Full Profile
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </ScrollView>
-            </Animated.View>
+            </View>
           </View>
         </Modal>
-
-        {/* REFERRAL FLOW MODAL */}
         <Modal visible={showReferralFlow} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <TouchableOpacity
@@ -1531,8 +1560,9 @@ export function MessagesView({
                 <Animated.View entering={FadeInUp} style={styles.stepContent}>
                   <Text style={styles.stepSubtitle}>Confidence Check</Text>
                   <Text style={styles.stepDesc}>
-                    Before referring {conversation.name}, please confirm your
-                    due diligence:
+                    Before referring{" "}
+                    {conversation.otherParticipant?.name || conversation.name},
+                    please confirm your due diligence:
                   </Text>
                   <View style={styles.vettingList}>
                     <TouchableOpacity
@@ -1621,80 +1651,269 @@ export function MessagesView({
               {referralStep === 2 && (
                 <Animated.View entering={FadeInUp} style={styles.stepContent}>
                   <Text style={styles.stepSubtitle}>Review & Confirm</Text>
+                  <Text style={styles.stepDesc}>
+                    Use the applicant's information below to enter their details
+                    into your company's ATS or job portal. Copy the relevant
+                    fields carefully to ensure the referral is submitted
+                    successfully on their behalf.
+                  </Text>
                   <ScrollView
                     style={styles.summaryScroll}
                     showsVerticalScrollIndicator={false}
                   >
-                    <View style={styles.candidateInfoCard}>
-                      <View style={styles.candidateHeader}>
-                        <Image
-                          source={{ uri: conversation.image }}
-                          style={styles.candidateAvatar}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.candidateName}>
-                            {conversation.name}
-                          </Text>
-                          <Text style={styles.candidateRole}>
-                            {conversation.role} @ {conversation.company}
+                    {referralProfileLoading ? (
+                      <View style={styles.referralProfileLoading}>
+                        <ActivityIndicator size="large" color="#000" />
+                        <Text style={styles.referralProfileLoadingText}>
+                          Loading candidate details…
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.candidateInfoCard}>
+                        {/* ── ATS hint banner ── */}
+                        <View style={styles.atsBanner}>
+                          <FileText size={13} color="#1E40AF" strokeWidth={2} />
+                          <Text style={styles.atsBannerText}>
+                            Enter these details into your ATS portal when
+                            submitting the referral.
                           </Text>
                         </View>
-                      </View>
-                      <View style={styles.infoSection}>
-                        <Text style={styles.infoSectionTitle}>
-                          APPLYING FOR
-                        </Text>
-                        <Text style={styles.infoSectionValue}>
-                          {conversation.appliedRole}
-                        </Text>
-                      </View>
-                      <View style={styles.infoSection}>
-                        <Text style={styles.infoSectionTitle}>
-                          CONTACT INFORMATION
-                        </Text>
-                        <Text style={styles.infoSectionValue}>
-                          {conversation.email}
-                        </Text>
-                        <Text style={styles.infoSectionValue}>
-                          {conversation.phone}
-                        </Text>
-                      </View>
-                      <View style={styles.infoSection}>
-                        <Text style={styles.infoSectionTitle}>LOCATION</Text>
-                        <Text style={styles.infoSectionValue}>
-                          {conversation.location}
-                        </Text>
-                      </View>
-                      <View style={styles.infoSection}>
-                        <Text style={styles.infoSectionTitle}>EXPERIENCE</Text>
-                        <Text style={styles.infoSectionValue}>
-                          {conversation.experience} in industry
-                        </Text>
-                        <Text style={styles.infoSectionValue}>
-                          Previous: {conversation.previousCompanies.join(", ")}
-                        </Text>
-                      </View>
-                      <View style={styles.infoSection}>
-                        <Text style={styles.infoSectionTitle}>EDUCATION</Text>
-                        <Text style={styles.infoSectionValue}>
-                          {conversation.education}
-                        </Text>
-                      </View>
-                      <View style={styles.infoSection}>
-                        <Text style={styles.infoSectionTitle}>KEY SKILLS</Text>
-                        <View style={styles.skillsRow}>
-                          {(conversation.skills || []).map(
-                            (skill: string, idx: number) => (
-                              <View key={idx} style={styles.skillBadge}>
-                                <Text style={styles.skillBadgeText}>
-                                  {skill}
-                                </Text>
-                              </View>
-                            ),
+
+                        {/* ── Header: avatar + name + current role ── */}
+                        <View style={styles.candidateHeader}>
+                          {referralProfile?.PHOTO_URL ||
+                          conversation.profileImageUrl ? (
+                            <Image
+                              source={{
+                                uri:
+                                  referralProfile?.PHOTO_URL ||
+                                  conversation.profileImageUrl,
+                              }}
+                              style={styles.candidateAvatar}
+                            />
+                          ) : (
+                            <View
+                              style={[
+                                styles.candidateAvatar,
+                                styles.candidateAvatarFallback,
+                              ]}
+                            >
+                              <User color="#999" size={24} />
+                            </View>
                           )}
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.candidateName}>
+                              {referralProfile
+                                ? `${referralProfile.FIRST_NAME || ""} ${referralProfile.LAST_NAME || ""}`.trim()
+                                : conversation.otherParticipant?.name ||
+                                  conversation.name}
+                            </Text>
+                            <Text style={styles.candidateRole}>
+                              {referralProfile?.applicant_profile
+                                ?.CURRENT_ROLE ||
+                                conversation.otherParticipant?.role ||
+                                conversation.role ||
+                                ""}
+                            </Text>
+                          </View>
                         </View>
+
+                        {/* ── Applying For ── */}
+                        <View style={styles.infoSection}>
+                          <Text style={styles.infoSectionTitle}>
+                            APPLYING FOR
+                          </Text>
+                          <Text style={styles.infoSectionValue}>
+                            {conversation.jobContext?.jobTitle || "—"}
+                          </Text>
+                          {conversation.jobContext?.company ? (
+                            <Text
+                              style={[
+                                styles.infoSectionValue,
+                                { color: "#666" },
+                              ]}
+                            >
+                              {conversation.jobContext.company}
+                            </Text>
+                          ) : null}
+                        </View>
+
+                        {/* ── Professional Summary ── */}
+                        {referralProfile?.BIO ? (
+                          <View style={styles.infoSection}>
+                            <Text style={styles.infoSectionTitle}>
+                              PROFESSIONAL SUMMARY
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoSectionValue,
+                                { lineHeight: 20, color: "#444" },
+                              ]}
+                            >
+                              {referralProfile.BIO}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {/* ── Location ── */}
+                        {[referralProfile?.CITY, referralProfile?.STATE]
+                          .filter(Boolean)
+                          .join(", ") ? (
+                          <View style={styles.infoSection}>
+                            <Text style={styles.infoSectionTitle}>
+                              LOCATION
+                            </Text>
+                            <Text style={styles.infoSectionValue}>
+                              {[referralProfile?.CITY, referralProfile?.STATE]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {/* ── Experience ── */}
+                        <View style={styles.infoSection}>
+                          <Text style={styles.infoSectionTitle}>
+                            EXPERIENCE
+                          </Text>
+                          {referralProfile?.applicant_profile
+                            ?.YEARS_EXPERIENCE ? (
+                            <Text style={styles.infoSectionValue}>
+                              {
+                                referralProfile.applicant_profile
+                                  .YEARS_EXPERIENCE
+                              }{" "}
+                              years in industry
+                            </Text>
+                          ) : conversation.experience &&
+                            conversation.experience !== "N/A" ? (
+                            <Text style={styles.infoSectionValue}>
+                              {conversation.experience} in industry
+                            </Text>
+                          ) : null}
+                          {(
+                            referralProfile?.applicant_profile
+                              ?.PROFESSIONAL_EXPERIENCES || []
+                          )
+                            .slice(0, 2)
+                            .map((exp: any, idx: number) => (
+                              <Text key={idx} style={styles.infoSectionValue}>
+                                {exp.jobTitle} @ {exp.company}
+                                {exp.current
+                                  ? " (Current)"
+                                  : exp.endDate
+                                    ? ` · ${exp.endDate}`
+                                    : ""}
+                              </Text>
+                            ))}
+                        </View>
+
+                        {/* ── Education ── */}
+                        {(
+                          referralProfile?.applicant_profile
+                            ?.EDUCATION_ENTRIES || []
+                        ).length > 0 ? (
+                          <View style={styles.infoSection}>
+                            <Text style={styles.infoSectionTitle}>
+                              EDUCATION
+                            </Text>
+                            {(
+                              referralProfile.applicant_profile
+                                .EDUCATION_ENTRIES as any[]
+                            )
+                              .slice(0, 2)
+                              .map((edu: any, idx: number) => (
+                                <Text key={idx} style={styles.infoSectionValue}>
+                                  {[edu.degree, edu.major]
+                                    .filter(Boolean)
+                                    .join(" in ")}
+                                  {edu.university ? ` — ${edu.university}` : ""}
+                                </Text>
+                              ))}
+                          </View>
+                        ) : null}
+
+                        {/* ── Key Skills ── */}
+                        {(
+                          referralProfile?.applicant_profile?.SKILLS ||
+                          conversation.skills ||
+                          []
+                        ).length > 0 ? (
+                          <View style={styles.infoSection}>
+                            <Text style={styles.infoSectionTitle}>
+                              KEY SKILLS
+                            </Text>
+                            <View style={styles.skillsRow}>
+                              {(
+                                referralProfile?.applicant_profile?.SKILLS ||
+                                conversation.skills ||
+                                []
+                              ).map((skill: string, idx: number) => (
+                                <View key={idx} style={styles.skillBadge}>
+                                  <Text style={styles.skillBadgeText}>
+                                    {skill}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        ) : null}
+
+                        {/* ── Industry ── */}
+                        {referralProfile?.applicant_profile?.INDUSTRY ? (
+                          <View style={styles.infoSection}>
+                            <Text style={styles.infoSectionTitle}>
+                              INDUSTRY
+                            </Text>
+                            <Text style={styles.infoSectionValue}>
+                              {referralProfile.applicant_profile.INDUSTRY}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {/* ── LinkedIn (tappable) ── */}
+                        {referralProfile?.LINKED_IN ? (
+                          <View style={styles.infoSection}>
+                            <Text style={styles.infoSectionTitle}>
+                              LINKEDIN
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() =>
+                                Linking.openURL(
+                                  referralProfile.LINKED_IN,
+                                ).catch(() => {})
+                              }
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.infoSectionLink}>
+                                {referralProfile.LINKED_IN}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : null}
+
+                        {/* ── Portfolio ── */}
+                        {referralProfile?.PORTFOLIO_URL ? (
+                          <View style={styles.infoSection}>
+                            <Text style={styles.infoSectionTitle}>
+                              PORTFOLIO
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() =>
+                                Linking.openURL(
+                                  referralProfile.PORTFOLIO_URL,
+                                ).catch(() => {})
+                              }
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.infoSectionLink}>
+                                {referralProfile.PORTFOLIO_URL}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : null}
                       </View>
-                    </View>
+                    )}
                     <View style={styles.finalChecklist}>
                       <Text style={styles.checklistTitle}>
                         Final Confirmation
@@ -1713,15 +1932,84 @@ export function MessagesView({
                       </View>
                     </View>
                   </ScrollView>
+                  {/* Inline error — shown if submission fails */}
+                  {referralError && (
+                    <View style={styles.referralErrorBox}>
+                      <Text style={styles.referralErrorText}>
+                        {referralError}
+                      </Text>
+                    </View>
+                  )}
                   <TouchableOpacity
-                    style={styles.confirmBtn}
-                    onPress={() => setReferralStep(3)}
+                    style={[
+                      styles.confirmBtn,
+                      referralSubmitting && { opacity: 0.65 },
+                    ]}
+                    onPress={async () => {
+                      const applicantUserId = conversation.otherParticipant?.id;
+                      const jobId = conversation.jobContext?.jobId;
+
+                      if (!applicantUserId || !jobId) {
+                        setReferralError(
+                          "Missing applicant or job information. Please try again.",
+                        );
+                        return;
+                      }
+
+                      setReferralSubmitting(true);
+                      setReferralError(null);
+                      try {
+                        await submitReferral({
+                          applicant_user_id: applicantUserId,
+                          job_id: jobId,
+                          confidence_checks: {
+                            has_messaged: hasMessaged,
+                            feels_confident: feelsConfident,
+                            knows_background: knowsBackground,
+                            comfortable_attaching: comfortableAttaching,
+                          },
+                        });
+                        // Submission succeeded — move to success step
+                        setReferralStep(3);
+                      } catch (err) {
+                        const msg =
+                          err instanceof Error ? err.message : String(err);
+                        if (
+                          msg.includes("400") ||
+                          msg.toLowerCase().includes("already")
+                        ) {
+                          setReferralError(
+                            "A referral already exists for this applicant and role.",
+                          );
+                        } else if (
+                          msg.includes("403") ||
+                          msg.toLowerCase().includes("match")
+                        ) {
+                          setReferralError(
+                            "You must be matched with this applicant to refer them.",
+                          );
+                        } else {
+                          setReferralError(
+                            "Failed to submit referral. Please try again.",
+                          );
+                        }
+                      } finally {
+                        setReferralSubmitting(false);
+                      }
+                    }}
+                    disabled={referralSubmitting}
                     activeOpacity={0.7}
                   >
-                    <ClipboardCheck color="#FFF" size={20} />
-                    <Text style={styles.primaryBtnText}>
-                      Submit Formal Referral
-                    </Text>
+                    {referralSubmitting ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <>
+                        <ClipboardCheck color="#FFF" size={20} />
+                        <Text style={styles.primaryBtnText}>
+                          Submit Formal Referral
+                        </Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 </Animated.View>
               )}
@@ -1732,8 +2020,13 @@ export function MessagesView({
                   </View>
                   <Text style={styles.successTitle}>Referral Submitted!</Text>
                   <Text style={styles.successDesc}>
-                    You have successfully referred {conversation.name} for the{" "}
-                    {conversation.appliedRole} position.
+                    You have successfully referred{" "}
+                    {referralProfile
+                      ? `${referralProfile.FIRST_NAME || ""} ${referralProfile.LAST_NAME || ""}`.trim()
+                      : conversation.otherParticipant?.name ||
+                        conversation.name}{" "}
+                    for the {conversation.jobContext?.jobTitle || "this"}{" "}
+                    position.
                   </Text>
                   <TouchableOpacity
                     style={styles.primaryBtn}
@@ -2075,6 +2368,20 @@ export function MessagesView({
               </View>
             </View>
           )}
+
+          {/* Load More */}
+          {conversations.length < conversationsTotalCount && (
+            <TouchableOpacity
+              style={styles.loadMoreBtn}
+              onPress={loadMoreConversations}
+              disabled={isLoadingMore}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.loadMoreText}>
+                {isLoadingMore ? "Loading..." : "Load More Conversations"}
+              </Text>
+            </TouchableOpacity>
+          )}
         </>
       )}
     </ScrollView>
@@ -2097,6 +2404,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   list: { gap: 4 },
+  loadMoreBtn: {
+    marginVertical: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    alignItems: "center" as const,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: "#374151",
+  },
   convItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -2416,6 +2736,112 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   referFromModalBtnText: { color: "#000", fontSize: 16, fontWeight: "800" },
+
+  /* ── Sponsor profile (applicant view) ── */
+  sponsorTitleText: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+    fontWeight: "500",
+  },
+  sponsorReferringRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+    gap: 10,
+  },
+  sponsorReferringIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "#E8E8E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sponsorReferringLabel: {
+    fontSize: 11,
+    color: "#888",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  sponsorReferringValue: {
+    fontSize: 14,
+    color: "#111",
+    fontWeight: "700",
+    marginTop: 1,
+  },
+  sponsorBadgeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  sponsorOpenBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#ECFDF5",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  sponsorOpenBadgeText: {
+    fontSize: 12,
+    color: "#059669",
+    fontWeight: "700",
+  },
+  sponsorMatchBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  sponsorMatchBadgeText: {
+    fontSize: 12,
+    color: "#222",
+    fontWeight: "700",
+  },
+  sponsorTipText: {
+    fontSize: 12,
+    color: "#999",
+    lineHeight: 18,
+    marginTop: 14,
+    textAlign: "center",
+  },
+  sponsorInsightsEmpty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 10,
+  },
+  sponsorInsightsIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#EDEDED",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  sponsorInsightsEmptyTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#111",
+  },
+  sponsorInsightsEmptyText: {
+    fontSize: 13,
+    color: "#888",
+    textAlign: "center",
+    lineHeight: 19,
+  },
+
   referralFlowContainer: {
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
@@ -2503,6 +2929,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   infoSectionValue: { fontSize: 15, color: "#000", marginBottom: 4 },
+  infoSectionLink: {
+    fontSize: 14,
+    color: "#1E40AF",
+    textDecorationLine: "underline",
+    marginBottom: 4,
+  },
+  atsBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#EFF6FF",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  atsBannerText: {
+    fontSize: 12,
+    color: "#1E40AF",
+    flex: 1,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
   skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   skillBadge: {
     backgroundColor: "#FFF",
@@ -2672,4 +3122,37 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   messageBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+
+  // Referral flow
+  referralProfileLoading: {
+    paddingVertical: 40,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  referralProfileLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "400" as const,
+  },
+  candidateAvatarFallback: {
+    backgroundColor: "#E0E0E0",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  referralErrorBox: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  referralErrorText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#DC2626",
+    lineHeight: 18,
+  },
 });

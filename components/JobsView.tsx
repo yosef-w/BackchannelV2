@@ -1,4 +1,4 @@
-import { browseJobs, getMyJobs, sponsorJob } from "@/lib/api";
+import { browseJobs, getMyJobs, sponsorJob, unsponsorJob } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
@@ -21,12 +21,15 @@ import {
     SlidersHorizontal,
     Sparkles,
     ThumbsDown,
+    Trash2,
     Users,
     X,
     Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+    ActivityIndicator,
+    Alert,
     Dimensions,
     Image,
     KeyboardAvoidingView,
@@ -509,10 +512,12 @@ export function JobsView() {
   const isMyJobsLoading = useJobsStore((state) => state.isMyJobsLoading);
   const setMyJobs = useJobsStore((state) => state.setMyJobs);
   const setMyJobsLoading = useJobsStore((state) => state.setMyJobsLoading);
+  const removeMyJob = useJobsStore((state) => state.removeMyJob);
 
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewJobDetails, setViewJobDetails] = useState<JobPosting | null>(null);
   const [menuJob, setMenuJob] = useState<JobPosting | null>(null);
+  const [isUnsponsoringId, setIsUnsponsoringId] = useState<string | null>(null);
 
   const [selectedApplicantJob, setSelectedApplicantJob] =
     useState<JobPosting | null>(null);
@@ -600,6 +605,19 @@ export function JobsView() {
     };
 
     loadJobs();
+  }, []); // Run once on mount — isSponsored flags are synced by the effect below
+
+  // Sync isSponsored flags on browse jobs whenever sponsoredJobs changes
+  // (e.g. after initMyJobs populates sponsoredJobs, or after sponsor/unsponsor).
+  // This is a lightweight in-memory update — no API call.
+  useEffect(() => {
+    if (jobs.length === 0) return;
+    setJobs(
+      jobs.map((job) => ({
+        ...job,
+        isSponsored: sponsoredJobs.some((sj) => sj.atsJobId === job.id),
+      })),
+    );
   }, [sponsoredJobs]);
 
   // Shared helper — fetch sponsor's own jobs and update store
@@ -649,17 +667,36 @@ export function JobsView() {
     }
   };
 
+  const handleUnsponsor = async (job: JobPosting) => {
+    setMenuJob(null);
+    setIsUnsponsoringId(job.id);
+    // Optimistic remove from store so the list updates immediately
+    removeMyJob(job.id);
+    try {
+      await unsponsorJob(job.id);
+    } catch (err) {
+      console.error("[JobsView] Failed to unsponsor job:", err);
+      // Revert by re-fetching the real list from backend
+      refreshMyJobs(false);
+      Alert.alert("Error", "Failed to remove sponsorship. Please try again.");
+    } finally {
+      setIsUnsponsoringId(null);
+    }
+  };
+
   // Fetch real sponsored jobs from backend whenever the "My Sponsored" tab is opened
   useEffect(() => {
     if (activeTab !== "sponsored") return;
     refreshMyJobs();
   }, [activeTab]);
 
-  // Pre-populate sponsoredJobs store on mount from backend — persists across app restarts
+  // Pre-populate both sponsoredJobs (for green borders) AND myJobs (for tab count)
+  // on mount so the badge reflects reality before the user ever clicks the tab.
   useEffect(() => {
-    const prefetchSponsoredIds = async () => {
+    const initMyJobs = async () => {
       try {
         const response = await getMyJobs();
+        // Populate sponsoredJobs for green border tracking in browse tab
         response.jobs.forEach((j: any) => {
           if (j.REFERENCE_JOB_ID) {
             addSponsoredJob({
@@ -670,11 +707,47 @@ export function JobsView() {
             });
           }
         });
+        // Also transform and store as myJobs so the badge count is correct immediately
+        const transformed: Job[] = response.jobs.map((j: any) => ({
+          id: j.JOB_ID,
+          title: j.TITLE,
+          company: j.COMPANY,
+          location: j.LOCATION,
+          locations: [j.LOCATION],
+          type: j.EMPLOYMENT_TYPE || "Full-time",
+          salary:
+            j.SALARY_MIN && j.SALARY_MAX
+              ? `$${Math.round(j.SALARY_MIN / 1000)}k – $${Math.round(j.SALARY_MAX / 1000)}k`
+              : "Competitive",
+          salaryMin: j.SALARY_MIN ?? undefined,
+          salaryMax: j.SALARY_MAX ?? undefined,
+          salaryCurrency: j.SALARY_CURRENCY || "USD",
+          postedAt: j.CREATED_AT
+            ? new Date(j.CREATED_AT).toLocaleDateString()
+            : "",
+          description: j.DESCRIPTION || "",
+          summary: j.DESCRIPTION?.substring(0, 150) || "",
+          skills: parseSkillsField(j.REQUIREMENTS),
+          requirements: j.REQUIREMENTS || "",
+          highlights: [],
+          experienceLevel: j.EXPERIENCE_LEVEL || "Mid-level",
+          workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
+          isRemote: j.REMOTE_OPTION,
+          url: "",
+          applicants: 0,
+          image:
+            j.LOGO_URL ||
+            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+          currentSponsors: [],
+          benefits: [],
+          isSponsored: true,
+        }));
+        setMyJobs(transformed);
       } catch {
-        // silent fail — sponsoredJobs will be populated on next tab visit
+        // silent fail — will be corrected when user opens the tab
       }
     };
-    prefetchSponsoredIds();
+    initMyJobs();
   }, []);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -2062,21 +2135,40 @@ export function JobsView() {
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.menuOptionCard}
-                onPress={() => setMenuJob(null)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.menuIconContainer}>
-                  <ThumbsDown size={18} color="#666" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.menuOptionTitle}>Not Interested</Text>
-                  <Text style={styles.menuOptionDesc}>
-                    Hide this job from your feed
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              {activeTab === "sponsored" && menuJob ? (
+                <TouchableOpacity
+                  style={styles.menuOptionCard}
+                  onPress={() => handleUnsponsor(menuJob)}
+                  disabled={isUnsponsoringId === menuJob?.id}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.menuIconContainer}>
+                    <Trash2 size={18} color="#000" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
+                    <Text style={styles.menuOptionDesc}>
+                      Remove this listing from your sponsored jobs
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.menuOptionCard}
+                  onPress={() => setMenuJob(null)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.menuIconContainer}>
+                    <ThumbsDown size={18} color="#666" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuOptionTitle}>Not Interested</Text>
+                    <Text style={styles.menuOptionDesc}>
+                      Hide this job from your feed
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
             </View>
           </Animated.View>
         </View>
@@ -2250,17 +2342,78 @@ export function JobsView() {
 
                 {/* Action Button */}
                 {viewJobDetails.isSponsored ? (
-                  <View style={styles.unsponsorBtnContainer}>
-                    <View style={styles.unsponsorBtn}>
-                      <Check color="#16a34a" size={18} strokeWidth={3} />
-                      <Text style={styles.unsponsorBtnText}>
-                        Already Sponsoring
-                      </Text>
-                    </View>
-                    <Text style={styles.unsponsorBtnSubtext}>
-                      Unsponsor coming soon
-                    </Text>
-                  </View>
+                  (() => {
+                    // Browse-tab jobs have id = ATS/SILVER_JOBS ID → match via atsJobId.
+                    // My Sponsored tab jobs have id = JOB_POSTINGS ID → match via jobId.
+                    // Fall back to viewJobDetails.id directly — for myJobs it IS
+                    // already the JOB_POSTINGS ID the API expects.
+                    const sponsoredEntry = sponsoredJobs.find(
+                      (sj) =>
+                        sj.atsJobId === viewJobDetails.id ||
+                        sj.jobId === viewJobDetails.id,
+                    );
+                    const jobPostingsId =
+                      sponsoredEntry?.jobId ?? viewJobDetails.id;
+                    const isBusy = isUnsponsoringId === jobPostingsId;
+                    return (
+                      <View style={styles.unsponsorBtnContainer}>
+                        <View style={styles.unsponsorBtn}>
+                          <Check color="#16a34a" size={18} strokeWidth={3} />
+                          <Text style={styles.unsponsorBtnText}>
+                            Already Sponsoring
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={[
+                            styles.unsponsorActiveBtn,
+                            (!jobPostingsId || isBusy) && { opacity: 0.4 },
+                          ]}
+                          activeOpacity={0.7}
+                          disabled={!jobPostingsId || isBusy}
+                          onPress={() => {
+                            if (!jobPostingsId || isBusy) return;
+                            setIsUnsponsoringId(jobPostingsId);
+                            // Optimistic updates
+                            removeMyJob(jobPostingsId);
+                            // setJobs MUST receive an array, not a callback —
+                            // the store action does set({ jobs }) directly.
+                            setJobs(
+                              jobs.map((j) =>
+                                j.id === viewJobDetails.id
+                                  ? { ...j, isSponsored: false }
+                                  : j,
+                              ),
+                            );
+                            setViewJobDetails(null);
+                            unsponsorJob(jobPostingsId)
+                              .catch((err) => {
+                                console.error(
+                                  "[JobsView] Failed to unsponsor:",
+                                  err,
+                                );
+                                refreshMyJobs(false);
+                                Alert.alert(
+                                  "Error",
+                                  "Failed to remove sponsorship. Please try again.",
+                                );
+                              })
+                              .finally(() => setIsUnsponsoringId(null));
+                          }}
+                        >
+                          {isBusy ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                          ) : (
+                            <>
+                              <Trash2 size={15} color="#FFF" />
+                              <Text style={styles.unsponsorActiveBtnText}>
+                                Remove Sponsorship
+                              </Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })()
                 ) : (
                   <TouchableOpacity
                     style={styles.applyBtnLarge}
@@ -2842,7 +2995,7 @@ function JobCard({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFA" },
+  container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 20 },
   header: { marginBottom: 24, paddingHorizontal: 4 },
   title: { fontSize: 32, fontWeight: "800", color: "#000", letterSpacing: -1 },
@@ -3528,9 +3681,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   unsponsorBtn: {
-    backgroundColor: "#f0fdf4",
-    borderWidth: 1.5,
-    borderColor: "#bbf7d0",
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
     paddingVertical: 16,
     borderRadius: 18,
     flexDirection: "row",
@@ -3540,7 +3693,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   unsponsorBtnText: {
-    color: "#16a34a",
+    color: "#000",
     fontSize: 16,
     fontWeight: "800" as const,
   },
@@ -3548,6 +3701,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     fontWeight: "500" as const,
+  },
+  unsponsorActiveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#000",
+    borderRadius: 18,
+    paddingVertical: 16,
+    width: "100%",
+  },
+  unsponsorActiveBtnText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700" as const,
   },
 
   // Applicant Modal

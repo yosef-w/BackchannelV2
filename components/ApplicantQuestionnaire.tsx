@@ -201,7 +201,7 @@ export function ApplicantQuestionnaire({
       console.log("[ApplicantQuestionnaire] Registration successful:", data);
 
       // Save auth tokens
-      await setAuthTokens(data.access_token, data.refresh_token);
+      await setAuthTokens(data.access_token, data.refresh_token, "Applicant");
 
       // Load profile data into local store
       await loadFromProfile({

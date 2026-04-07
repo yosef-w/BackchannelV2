@@ -11,15 +11,23 @@ export default function DashboardScreen() {
   const params = useLocalSearchParams<{ mode?: string }>();
   const profileData = useUserProfileStore((state) => state.data);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  // role is set at login/registration (PR #19) and persisted to SecureStore.
+  // It is the fastest and most reliable source of truth — available immediately
+  // on mount, before the profile fetch completes.
+  const role = useAuthStore((state) => state.role);
 
   const userType: UserType = useMemo(() => {
-    // First try to get from profile data (IS_SPONSOR field)
+    // 1. Prefer the role stored at login time (PR #19 — fastest, no async dependency)
+    if (role) {
+      return role === "Sponsor" ? "sponsor" : "applicant";
+    }
+    // 2. Fall back to the IS_SPONSOR flag on the loaded profile
     if (profileData && "IS_SPONSOR" in profileData) {
       return profileData.IS_SPONSOR ? "sponsor" : "applicant";
     }
-    // Fallback to URL param
+    // 3. Last resort: URL param set by onboarding flow
     return params.mode === "sponsor" ? "sponsor" : "applicant";
-  }, [params.mode, profileData]);
+  }, [role, params.mode, profileData]);
 
   // Redirect to splash if not authenticated (e.g., after token expiry)
   useEffect(() => {

@@ -3,6 +3,7 @@ import { create } from "zustand";
 
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
+const ROLE_KEY = "user_role";
 
 /**
  * Base URL used for direct token refresh calls.
@@ -42,11 +43,30 @@ function isTokenExpired(token: string): boolean {
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
+  /** Role returned by the login endpoint (PR #19). Null until first login. */
+  role: "Applicant" | "Sponsor" | null;
+  /**
+   * Expo push token registered with the backend for this device.
+   * Set after a successful registerDevice() call; cleared on logout.
+   * Not persisted to SecureStore — re-registered on every app launch.
+   */
+  deviceToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 
   // Actions
-  setAuthTokens: (accessToken: string, refreshToken: string) => Promise<void>;
+  /**
+   * Persist tokens and optionally the user role.
+   * Pass `role` at login/registration; omit it during silent token refreshes
+   * so the stored role is preserved.
+   */
+  setAuthTokens: (
+    accessToken: string,
+    refreshToken: string,
+    role?: "Applicant" | "Sponsor",
+  ) => Promise<void>;
+  /** Store the Expo push token after a successful registerDevice() call. */
+  setDeviceToken: (token: string | null) => void;
   clearAuth: () => Promise<void>;
   loadTokens: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
@@ -58,21 +78,42 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
+  role: null,
+  deviceToken: null,
   isAuthenticated: false,
   isLoading: true,
 
   /**
-   * Persist tokens to SecureStore and update Zustand state.
+   * Persist tokens (and optionally role) to SecureStore and update Zustand state.
+   * When called during a silent token refresh, `role` is omitted so the existing
+   * stored role is not overwritten.
    */
-  setAuthTokens: async (accessToken: string, refreshToken: string) => {
+  setAuthTokens: async (
+    accessToken: string,
+    refreshToken: string,
+    role?: "Applicant" | "Sponsor",
+  ) => {
     try {
       await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
       await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+      if (role !== undefined) {
+        await SecureStore.setItemAsync(ROLE_KEY, role);
+      }
     } catch (error) {
       // Fail gracefully — state is always updated even if persistence fails.
       console.warn("[Auth] Failed to persist tokens:", error);
     }
-    set({ accessToken, refreshToken, isAuthenticated: true });
+    set({
+      accessToken,
+      refreshToken,
+      isAuthenticated: true,
+      ...(role !== undefined ? { role } : {}),
+    });
+  },
+
+  /** Update the stored Expo push token (called after registerDevice succeeds). */
+  setDeviceToken: (token: string | null) => {
+    set({ deviceToken: token });
   },
 
   /**
@@ -82,10 +123,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(ROLE_KEY);
     } catch (error) {
       console.warn("[Auth] Failed to clear tokens:", error);
     }
-    set({ accessToken: null, refreshToken: null, isAuthenticated: false });
+    set({
+      accessToken: null,
+      refreshToken: null,
+      role: null,
+      deviceToken: null,
+      isAuthenticated: false,
+    });
   },
 
   /**
@@ -98,15 +146,23 @@ export const useAuthStore = create<AuthState>((set) => ({
    */
   loadTokens: async () => {
     try {
-      const [accessToken, refreshToken] = await Promise.all([
+      const [accessToken, refreshToken, storedRole] = await Promise.all([
         SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
         SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+        SecureStore.getItemAsync(ROLE_KEY),
       ]);
+
+      // Validate the stored role string against the union type.
+      const role: "Applicant" | "Sponsor" | null =
+        storedRole === "Applicant" || storedRole === "Sponsor"
+          ? storedRole
+          : null;
 
       if (!accessToken || !refreshToken) {
         set({
           accessToken: null,
           refreshToken: null,
+          role: null,
           isAuthenticated: false,
           isLoading: false,
         });
@@ -114,20 +170,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       if (isTokenExpired(accessToken)) {
-        // Stage the refresh token so refreshAccessToken() can read it from state.
-        set({ refreshToken });
+        // Stage the refresh token + role so refreshAccessToken() can read them.
+        set({ refreshToken, role });
         const refreshed = await useAuthStore.getState().refreshAccessToken();
         if (!refreshed) {
           // Both tokens are expired — the user must log in again.
           set({
             accessToken: null,
             refreshToken: null,
+            role: null,
             isAuthenticated: false,
             isLoading: false,
           });
           return;
         }
-        // setAuthTokens was already called inside refreshAccessToken.
+        // setAuthTokens was already called inside refreshAccessToken; role already in state.
         set({ isLoading: false });
         return;
       }
@@ -135,6 +192,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({
         accessToken,
         refreshToken,
+        role,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -143,6 +201,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({
         accessToken: null,
         refreshToken: null,
+        role: null,
         isAuthenticated: false,
         isLoading: false,
       });

@@ -80,11 +80,47 @@ export function ApplicantPublicProfileView({
       ? userData.skills
       : [];
 
-  // Stats
-  const stats = [
-    { label: "Connections", value: "42" },
-    { label: "Referrals", value: "8" },
-    { label: "Response", value: "98%" },
+  // ── Display values — prefer full API data; fall back to conversation fields ──
+  const displayName = fullProfile
+    ? `${fullProfile.FIRST_NAME || ""} ${fullProfile.LAST_NAME || ""}`.trim()
+    : userData?.otherParticipant?.name || userData?.name || "";
+
+  const photoUrl =
+    fullProfile?.PHOTO_URL ||
+    userData?.otherParticipant?.profileImageUrl ||
+    userData?.profileImageUrl;
+
+  const currentRole =
+    ap.CURRENT_ROLE || userData?.otherParticipant?.role || userData?.role || "";
+
+  const currentCompany =
+    (experiences[0] as any)?.company ||
+    userData?.otherParticipant?.company ||
+    userData?.company ||
+    "";
+
+  const locationStr = [fullProfile?.CITY, fullProfile?.STATE]
+    .filter(Boolean)
+    .join(", ");
+
+  const bio = fullProfile?.BIO || "";
+
+  // Desired roles from applicant_profile positions
+  const desiredRoles: string[] = parseVariant(ap.POSITIONS);
+
+  // Insights / questionnaire answers
+  const insights: Array<{ question: string; answer: string }> =
+    ap.INSIGHTS || [];
+
+  // Context from the conversation (the job this match is based on)
+  const matchedJobTitle =
+    userData?.jobContext?.jobTitle || userData?.appliedRole;
+  const matchedJobCompany = userData?.jobContext?.company || "";
+
+  // Real stats from full profile (2 cells match SponsorPublicProfileView layout)
+  const profileStats = [
+    { label: "YRS EXP.", value: ap.YEARS_EXPERIENCE || "—" },
+    { label: "SKILLS", value: skills.length > 0 ? String(skills.length) : "—" },
   ];
 
   return (
@@ -102,51 +138,81 @@ export function ApplicantPublicProfileView({
             <ChevronLeft color="#000" size={28} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: userData.profileImageUrl || userData.image }}
-              style={styles.avatar}
-            />
+            {photoUrl ? (
+              <Image source={{ uri: photoUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarInitials}>
+                  {displayName ? displayName.charAt(0).toUpperCase() : "?"}
+                </Text>
+              </View>
+            )}
           </View>
 
-          <Text style={styles.name}>{userData.name}</Text>
+          <Text style={styles.name}>{displayName || "—"}</Text>
 
-          <View style={styles.infoRow}>
-            <Briefcase color="#000" size={14} strokeWidth={2} />
-            <Text style={styles.infoText}>
-              {userData.role}
-              {userData.company && ` @ ${userData.company}`}
-            </Text>
-          </View>
+          {currentRole || currentCompany ? (
+            <View style={styles.infoRow}>
+              <Briefcase color="#000" size={14} strokeWidth={2} />
+              <Text style={styles.infoText}>
+                {currentRole}
+                {currentCompany ? ` @ ${currentCompany}` : ""}
+              </Text>
+            </View>
+          ) : null}
 
-          <View style={styles.infoRow}>
-            <MapPin color="#BBB" size={14} strokeWidth={2} />
-            <Text style={styles.locationText}>{userData.location}</Text>
-          </View>
+          {locationStr ? (
+            <View style={styles.infoRow}>
+              <MapPin color="#BBB" size={14} strokeWidth={2} />
+              <Text style={styles.locationText}>{locationStr}</Text>
+            </View>
+          ) : null}
 
-          <Text style={styles.bio}>{userData.bio}</Text>
+          {bio ? <Text style={styles.bio}>{bio}</Text> : null}
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          {stats.map((stat, index) => (
-            <Animated.View
-              key={stat.label}
-              entering={FadeInUp.delay(index * 100).duration(400)}
-              style={styles.statBox}
-            >
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label.toUpperCase()}</Text>
-            </Animated.View>
-          ))}
-        </View>
-
-        {/* Loading state */}
-        {loadingProfile && (
+        {/* Stats Grid — shown once profile has loaded */}
+        {!loadingProfile ? (
+          <View style={styles.statsGrid}>
+            {profileStats.map((stat, index) => (
+              <React.Fragment key={stat.label}>
+                {index > 0 && <View style={styles.statDivider} />}
+                <Animated.View
+                  entering={FadeInUp.delay(index * 100).duration(400)}
+                  style={styles.statBox}
+                >
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </Animated.View>
+              </React.Fragment>
+            ))}
+          </View>
+        ) : (
           <View style={styles.loadingRow}>
             <ActivityIndicator color="#000" size="small" />
-            <Text style={styles.loadingText}>Loading profile details...</Text>
+            <Text style={styles.loadingText}>Loading profile details…</Text>
           </View>
         )}
+
+        {/* Connected Via — the job this match is based on */}
+        {matchedJobTitle ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>CONNECTED VIA</Text>
+            <View style={styles.connectedCard}>
+              <View style={styles.connectedIconCircle}>
+                <Briefcase size={16} color="#000" strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.connectedJobTitle}>{matchedJobTitle}</Text>
+                {matchedJobCompany ? (
+                  <Text style={styles.connectedCompany}>
+                    {matchedJobCompany}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {/* Skills & Interests */}
         {skills.length > 0 && (
@@ -162,26 +228,12 @@ export function ApplicantPublicProfileView({
           </View>
         )}
 
-        {/* Work Preferences */}
-        {userData.workPreferences && userData.workPreferences.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>WORK PREFERENCES</Text>
-            <View style={styles.tagCloud}>
-              {userData.workPreferences.map((pref: string, idx: number) => (
-                <View key={idx} style={styles.preferenceTag}>
-                  <Text style={styles.preferenceText}>{pref}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
         {/* Desired Roles */}
-        {userData.desiredRoles && userData.desiredRoles.length > 0 && (
+        {desiredRoles.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>DESIRED ROLES</Text>
             <View style={styles.tagCloud}>
-              {userData.desiredRoles.map((role: string, idx: number) => (
+              {desiredRoles.map((role: string, idx: number) => (
                 <View key={idx} style={styles.roleTag}>
                   <Target size={14} color="#FFF" strokeWidth={2.5} />
                   <Text style={styles.roleTagText}>{role}</Text>
@@ -271,6 +323,24 @@ export function ApplicantPublicProfileView({
                 </View>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Key Insights */}
+        {insights.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.resumeSectionHeader}>
+              <Sparkles size={15} color="#000" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>KEY INSIGHTS</Text>
+            </View>
+            {insights.map(
+              (insight: { question: string; answer: string }, idx: number) => (
+                <View key={idx} style={styles.resumeCard}>
+                  <Text style={styles.resumeCardTitle}>{insight.question}</Text>
+                  <Text style={styles.resumeCardBody}>{insight.answer}</Text>
+                </View>
+              ),
+            )}
           </View>
         )}
 
@@ -594,5 +664,56 @@ const styles = StyleSheet.create({
     color: "#444",
     lineHeight: 22,
     fontWeight: "500",
+  },
+
+  // ── Avatar fallback ─────────────────────────────────────────────────────────
+  avatarFallback: {
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#EDEDED",
+  },
+  avatarInitials: {
+    fontSize: 40,
+    fontWeight: "800" as const,
+    color: "#000",
+  },
+
+  // ── Stats divider ──────────────────────────────────────────────────────────────
+  statDivider: {
+    width: 1,
+    backgroundColor: "#E8E8E8",
+    marginVertical: 4,
+    alignSelf: "stretch" as const,
+  },
+
+  // ── Connected Via card ─────────────────────────────────────────────────────
+  connectedCard: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 18,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  connectedIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#EDEDED",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  connectedJobTitle: {
+    fontSize: 15,
+    fontWeight: "800" as const,
+    color: "#000",
+  },
+  connectedCompany: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: "#666",
+    marginTop: 2,
   },
 });

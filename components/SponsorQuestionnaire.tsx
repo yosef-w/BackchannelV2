@@ -8,10 +8,8 @@ import {
     ArrowLeft,
     ArrowRight,
     Check,
-    Edit3,
     Mail,
     Plus,
-    RefreshCw,
     Sparkles,
     UserCheck,
     X,
@@ -118,10 +116,6 @@ export function SponsorQuestionnaire({
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
 
-  // UI & Verification States
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-  const [resendStatus, setResendStatus] = useState<"idle" | "sent">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -161,7 +155,7 @@ export function SponsorQuestionnaire({
       console.log("[SponsorQuestionnaire] Registration successful:", data);
 
       // Save auth tokens
-      await setAuthTokens(data.access_token, data.refresh_token);
+      await setAuthTokens(data.access_token, data.refresh_token, "Sponsor");
 
       // Load profile data into local store
       await loadFromProfile({
@@ -224,35 +218,11 @@ export function SponsorQuestionnaire({
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      setIsVerifying(true);
-      // Simulate verification completion
-      setTimeout(() => {
-        setIsVerifying(false);
-        handleFinalSubmit();
-      }, 6000);
+      handleFinalSubmit();
     }
-  };
-
-  const handleResend = () => {
-    setIsResending(true);
-    setTimeout(() => {
-      setIsResending(false);
-      setResendStatus("sent");
-      setTimeout(() => setResendStatus("idle"), 3000);
-    }, 1500);
-  };
-
-  const handleChangeEmail = () => {
-    setIsVerifying(false);
-    // Question 8 is index 7 (8th question - email verification)
-    setCurrentQuestion(7);
   };
 
   const handleBack = () => {
-    if (isVerifying) {
-      setIsVerifying(false);
-      return;
-    }
     if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1);
     else onBack();
   };
@@ -304,264 +274,190 @@ export function SponsorQuestionnaire({
           >
             <Text style={styles.questionText}>{question.question}</Text>
 
-            {!isVerifying ? (
-              <>
-                {question.type === "insights" ? (
-                  <View>
-                    {question.subtitle && (
-                      <Text style={styles.insightsSubtitle}>
-                        {question.subtitle}
-                      </Text>
-                    )}
-
-                    {/* Display selected insights */}
-                    {selectedInsights.map((insight, index) => (
-                      <Animated.View
-                        key={index}
-                        entering={FadeInDown.delay(index * 100)}
-                        style={styles.insightCard}
-                      >
-                        <View style={styles.insightCardHeader}>
-                          <View style={styles.insightQuestionBadge}>
-                            <Sparkles size={12} color="#000" />
-                            <Text style={styles.insightQuestion}>
-                              {insight.question}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            onPress={() => {
-                              setSelectedInsights(
-                                selectedInsights.filter((_, i) => i !== index),
-                              );
-                            }}
-                            style={styles.removeInsightBtn}
-                          >
-                            <X size={16} color="#999" />
-                          </TouchableOpacity>
-                        </View>
-
-                        <TextInput
-                          placeholder="Share your answer..."
-                          placeholderTextColor="#BBB"
-                          value={insight.answer}
-                          onChangeText={(text) => {
-                            const updated = [...selectedInsights];
-                            updated[index].answer = text;
-                            setSelectedInsights(updated);
-                          }}
-                          multiline
-                          style={styles.insightAnswerInput}
-                          maxLength={200}
-                        />
-                        <Text style={styles.charCount}>
-                          {insight.answer.length}/200
-                        </Text>
-                      </Animated.View>
-                    ))}
-
-                    {/* Add new insight button */}
-                    {selectedInsights.length < 3 && (
-                      <TouchableOpacity
-                        onPress={() =>
-                          setShowQuestionPicker(!showQuestionPicker)
-                        }
-                        style={styles.addInsightBtn}
-                      >
-                        <Plus size={20} color="#000" />
-                        <Text style={styles.addInsightText}>
-                          {selectedInsights.length === 0
-                            ? "Choose your first question"
-                            : `Add question (${selectedInsights.length}/3)`}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Question picker */}
-                    {showQuestionPicker && (
-                      <Animated.View
-                        entering={FadeInDown}
-                        style={styles.questionPickerContainer}
-                      >
-                        <Text style={styles.pickerTitle}>
-                          Choose a question
-                        </Text>
-                        <ScrollView
-                          style={styles.questionsList}
-                          nestedScrollEnabled
-                        >
-                          {AVAILABLE_QUESTIONS.filter(
-                            (q) =>
-                              !selectedInsights.some(
-                                (insight) => insight.question === q,
-                              ),
-                          ).map((q) => (
-                            <TouchableOpacity
-                              key={q}
-                              onPress={() => {
-                                setSelectedInsights([
-                                  ...selectedInsights,
-                                  { question: q, answer: "" },
-                                ]);
-                                setShowQuestionPicker(false);
-                              }}
-                              style={styles.questionOption}
-                            >
-                              <Text style={styles.questionOptionText}>{q}</Text>
-                              <Plus size={18} color="#000" />
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </Animated.View>
-                    )}
-
-                    <Text style={styles.insightsHelper}>
-                      💡 These help candidates understand your mentorship style
-                      and what it's like to work with you
-                    </Text>
-                  </View>
-                ) : question.type === "text" || question.type === "email" ? (
-                  <View style={styles.inputWrapper}>
-                    {question.type === "email" && (
-                      <Mail
-                        color="#AAA"
-                        size={20}
-                        style={{ marginRight: 12 }}
-                      />
-                    )}
-                    <TextInput
-                      placeholder={question.placeholder}
-                      placeholderTextColor="#BBB"
-                      value={answers[currentQuestion] || ""}
-                      onChangeText={(v) =>
-                        setAnswers({ ...answers, [currentQuestion]: v })
-                      }
-                      style={styles.textInput}
-                      autoFocus
-                      keyboardType={
-                        question.type === "email" ? "email-address" : "default"
-                      }
-                      autoCapitalize="none"
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.optionsContainer}>
-                    {question.options?.map((option) => {
-                      const isSelected = answers[currentQuestion] === option;
-                      return (
-                        <TouchableOpacity
-                          key={option}
-                          onPress={() =>
-                            setAnswers({
-                              ...answers,
-                              [currentQuestion]: option,
-                            })
-                          }
-                          style={[
-                            styles.optionCard,
-                            isSelected && styles.optionCardSelected,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.optionText,
-                              isSelected && styles.textWhite,
-                            ]}
-                          >
-                            {option}
-                          </Text>
-                          {isSelected && <Check color="#FFF" size={20} />}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-              </>
-            ) : (
-              /* VERIFICATION STATUS DASHBOARD */
-              <Animated.View
-                entering={FadeInDown.delay(200)}
-                style={styles.verificationCard}
-              >
-                <View style={styles.mailCircle}>
-                  <Mail color="#000" size={32} />
-                </View>
-                <Text style={styles.sentToText}>Link sent to:</Text>
-                <Text style={styles.emailDisplay}>{answers[7]}</Text>
-
-                <View style={styles.statusBadge}>
-                  <ActivityIndicator
-                    size="small"
-                    color="#666"
-                    style={{ transform: [{ scale: 0.8 }] }}
-                  />
-                  <Text style={styles.statusText}>
-                    Awaiting verification...
+            {question.type === "insights" ? (
+              <View>
+                {question.subtitle && (
+                  <Text style={styles.insightsSubtitle}>
+                    {question.subtitle}
                   </Text>
-                </View>
+                )}
 
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    onPress={handleResend}
-                    disabled={isResending}
-                    style={styles.subBtn}
+                {/* Display selected insights */}
+                {selectedInsights.map((insight, index) => (
+                  <Animated.View
+                    key={index}
+                    entering={FadeInDown.delay(index * 100)}
+                    style={styles.insightCard}
                   >
-                    {isResending ? (
-                      <ActivityIndicator size="small" color="#000" />
-                    ) : (
-                      <>
-                        <RefreshCw
-                          size={14}
-                          color={resendStatus === "sent" ? "#4BB543" : "#000"}
-                        />
-                        <Text
-                          style={[
-                            styles.subBtnText,
-                            resendStatus === "sent" && { color: "#4BB543" },
-                          ]}
-                        >
-                          {resendStatus === "sent" ? "Sent!" : "Resend"}
+                    <View style={styles.insightCardHeader}>
+                      <View style={styles.insightQuestionBadge}>
+                        <Sparkles size={12} color="#000" />
+                        <Text style={styles.insightQuestion}>
+                          {insight.question}
                         </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSelectedInsights(
+                            selectedInsights.filter((_, i) => i !== index),
+                          );
+                        }}
+                        style={styles.removeInsightBtn}
+                      >
+                        <X size={16} color="#999" />
+                      </TouchableOpacity>
+                    </View>
 
-                  <View style={styles.verticalDivider} />
+                    <TextInput
+                      placeholder="Share your answer..."
+                      placeholderTextColor="#BBB"
+                      value={insight.answer}
+                      onChangeText={(text) => {
+                        const updated = [...selectedInsights];
+                        updated[index].answer = text;
+                        setSelectedInsights(updated);
+                      }}
+                      multiline
+                      style={styles.insightAnswerInput}
+                      maxLength={200}
+                    />
+                    <Text style={styles.charCount}>
+                      {insight.answer.length}/200
+                    </Text>
+                  </Animated.View>
+                ))}
 
+                {/* Add new insight button */}
+                {selectedInsights.length < 3 && (
                   <TouchableOpacity
-                    onPress={handleChangeEmail}
-                    style={styles.subBtn}
+                    onPress={() => setShowQuestionPicker(!showQuestionPicker)}
+                    style={styles.addInsightBtn}
                   >
-                    <Edit3 size={14} color="#000" />
-                    <Text style={styles.subBtnText}>Change</Text>
+                    <Plus size={20} color="#000" />
+                    <Text style={styles.addInsightText}>
+                      {selectedInsights.length === 0
+                        ? "Choose your first question"
+                        : `Add question (${selectedInsights.length}/3)`}
+                    </Text>
                   </TouchableOpacity>
-                </View>
-              </Animated.View>
+                )}
+
+                {/* Question picker */}
+                {showQuestionPicker && (
+                  <Animated.View
+                    entering={FadeInDown}
+                    style={styles.questionPickerContainer}
+                  >
+                    <Text style={styles.pickerTitle}>Choose a question</Text>
+                    <ScrollView
+                      style={styles.questionsList}
+                      nestedScrollEnabled
+                    >
+                      {AVAILABLE_QUESTIONS.filter(
+                        (q) =>
+                          !selectedInsights.some(
+                            (insight) => insight.question === q,
+                          ),
+                      ).map((q) => (
+                        <TouchableOpacity
+                          key={q}
+                          onPress={() => {
+                            setSelectedInsights([
+                              ...selectedInsights,
+                              { question: q, answer: "" },
+                            ]);
+                            setShowQuestionPicker(false);
+                          }}
+                          style={styles.questionOption}
+                        >
+                          <Text style={styles.questionOptionText}>{q}</Text>
+                          <Plus size={18} color="#000" />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </Animated.View>
+                )}
+
+                <Text style={styles.insightsHelper}>
+                  💡 These help candidates understand your mentorship style and
+                  what it's like to work with you
+                </Text>
+              </View>
+            ) : question.type === "text" || question.type === "email" ? (
+              <View style={styles.inputWrapper}>
+                {question.type === "email" && (
+                  <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                )}
+                <TextInput
+                  placeholder={question.placeholder}
+                  placeholderTextColor="#BBB"
+                  value={answers[currentQuestion] || ""}
+                  onChangeText={(v) =>
+                    setAnswers({ ...answers, [currentQuestion]: v })
+                  }
+                  style={styles.textInput}
+                  autoFocus
+                  keyboardType={
+                    question.type === "email" ? "email-address" : "default"
+                  }
+                  autoCapitalize="none"
+                />
+              </View>
+            ) : (
+              <View style={styles.optionsContainer}>
+                {question.options?.map((option) => {
+                  const isSelected = answers[currentQuestion] === option;
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      onPress={() =>
+                        setAnswers({
+                          ...answers,
+                          [currentQuestion]: option,
+                        })
+                      }
+                      style={[
+                        styles.optionCard,
+                        isSelected && styles.optionCardSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          isSelected && styles.textWhite,
+                        ]}
+                      >
+                        {option}
+                      </Text>
+                      {isSelected && <Check color="#FFF" size={20} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
           </Animated.View>
         </ScrollView>
 
         <View style={styles.footer}>
-          {!isVerifying && (
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={!canContinue || isSubmitting}
-              style={[
-                styles.nextButton,
-                (!canContinue || isSubmitting) && styles.nextButtonDisabled,
-              ]}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <>
-                  <Text style={styles.nextButtonText}>
-                    {isLastQuestion ? "Verify & Complete" : "Continue"}
-                  </Text>
-                  <ArrowRight color="#FFF" size={20} />
-                </>
-              )}
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={handleNext}
+            disabled={!canContinue || isSubmitting}
+            style={[
+              styles.nextButton,
+              (!canContinue || isSubmitting) && styles.nextButtonDisabled,
+            ]}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Text style={styles.nextButtonText}>
+                  {isLastQuestion ? "Complete Profile" : "Continue"}
+                </Text>
+                <ArrowRight color="#FFF" size={20} />
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
@@ -648,62 +544,6 @@ const styles = StyleSheet.create({
     height: 64,
   },
   textInput: { flex: 1, fontSize: 18, color: "#000", fontWeight: "500" },
-
-  // Verification Dashboard Styles
-  verificationCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 24,
-    padding: 32,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  mailCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  sentToText: {
-    fontSize: 14,
-    color: "#999",
-    marginBottom: 4,
-    fontWeight: "500",
-  },
-  emailDisplay: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 24,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    marginBottom: 32,
-  },
-  statusText: { fontSize: 13, color: "#666", fontWeight: "600", marginLeft: 4 },
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    justifyContent: "space-evenly",
-  },
-  subBtn: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
-  subBtnText: { fontSize: 14, fontWeight: "700", color: "#000" },
-  verticalDivider: { width: 1, height: 20, backgroundColor: "#EEE" },
 
   // Insights styles
   insightsSubtitle: {

@@ -1,16 +1,35 @@
 # Backend Changes Needed
 
+> **Database migration (PR #25, April 2026):** The backend has migrated from **Snowflake** (OLTP) to **PostgreSQL**. All SQL patches in this document have been updated to use plain PostgreSQL table names and `psycopg2` cursor patterns. Snowflake is now used **only** for the Cortex AI pipeline (resume parsing, autofill). The `execute_query()` helper now wraps `psycopg2` instead of `snowflake-connector-python`, but its call signature is identical — no other call sites need changes.
+
+---
+
+## ✅ Recently Resolved
+
+| Item     | Description                                                      | Resolved in                                                        |
+| -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| ~~2~~    | `GET /api/likes/profiles/received/`                              | PR #16                                                             |
+| ~~3~~    | `skills` field in `PATCH /api/profile/sponsor/update/`           | PR #16                                                             |
+| ~~4~~    | `INSIGHTS` in `GET /api/profile/` response                       | Migration 003                                                      |
+| ~~5~~    | `BIO`, `CURRENT_ROLE`, `COUNTRY` in `GET /api/profile/` response | Migration 003                                                      |
+| ~~6~~    | `POST /api/auth/change-email/` stub                              | PR #16 (501 stub; full flow still needed — see updated item below) |
+| ~~P2-1~~ | `DELETE /api/jobs/<id>/unsponsor/` endpoint                      | PR #17                                                             |
+| ~~8~~    | Wire `unsponsorJob()` to sponsor UI                              | Done — `JobsView.tsx` `handleUnsponsor`                            |
+| ~~10~~   | Read `role` from login response in auth store                    | Done — `AuthScreen.tsx` line 70, `useAuthStore`                    |
+| ~~11~~   | `MessagesView` conversations pagination                          | Done — `loadMoreConversations` + Load More button                  |
+| ~~12~~   | Show `relevance_score` badge on job cards                        | Done — `HomeView.tsx` `relevancePill`                              |
+
 ---
 
 ## 1. Expose `SPONSOR_USER_ID` in `GET /api/matches/`
 
 **File:** `bc_microservices/queries/likes.py` → `get_job_matches_for_user`
 
-**Change:** Add `j.SPONSOR_ID AS SPONSOR_USER_ID` to the SELECT.
+**Change:** Add `j.sponsor_id AS "SPONSOR_USER_ID"` to the SELECT.
 
 ```sql
 -- Add this line to the SELECT in get_job_matches_for_user:
-j.SPONSOR_ID AS SPONSOR_USER_ID,
+j.sponsor_id AS "SPONSOR_USER_ID",
 ```
 
 **Why:** `j.SPONSOR_ID` is already used in the JOIN condition but is never returned in the response. Without it, the frontend cannot call `GET /api/profiles/<userId>/public/` to load the sponsor's bio, location, tenure, referral details, and Key Insights (Q&A from onboarding).
@@ -26,163 +45,61 @@ Until this is deployed, the modal shows only the basic fields already on the mat
 
 ---
 
-## 2. Add `GET /api/likes/profiles/received/` — Sponsors Who Liked the Applicant
+## ~~2. Add `GET /api/likes/profiles/received/` — Sponsors Who Liked the Applicant~~ ✅ RESOLVED (PR #16)
 
-**File:** `bc_microservices/views/views_matching.py` (new view) + `bc_microservices/urls.py` (new route)
-
-**Change:** Create a new authenticated GET endpoint that returns a list of sponsor profile-likes directed at the currently authenticated applicant where no mutual match exists yet (i.e. one-sided sponsor interest).
-
-**Suggested query** (`bc_microservices/queries/likes.py`):
+> **This endpoint has been deployed.** `getInterestedSponsors()` in `lib/api.ts` is already wired and working. The "Interested in You" section in `MatchesView` is live. No backend work required.
+>
+> The PostgreSQL query backing this endpoint (for reference):
 
 ```sql
 SELECT
-    pl.LIKE_ID,
-    pl.LIKED_AT,
-    pl.SPONSOR_USER_ID,
-    pl.JOB_ID,
-    u.FIRST_NAME        AS SPONSOR_FIRST_NAME,
-    u.LAST_NAME         AS SPONSOR_LAST_NAME,
-    u.PHOTO_URL         AS SPONSOR_PHOTO_URL,
-    sp.JOB_TITLE        AS SPONSOR_JOB_TITLE,
-    sp.COMPANY          AS SPONSOR_COMPANY
-FROM PROFILE_LIKES pl
-JOIN USERS u         ON u.USER_ID = pl.SPONSOR_USER_ID
-JOIN SPONSOR_PROFILES sp ON sp.USER_ID = pl.SPONSOR_USER_ID
-WHERE pl.APPLICANT_USER_ID = :applicant_user_id
-  AND pl.LIKE_ID NOT IN (
-      SELECT LIKE_ID FROM MATCHES
-  )
-ORDER BY pl.LIKED_AT DESC
+    pl.like_id        AS "LIKE_ID",
+    pl.liked_at       AS "LIKED_AT",
+    pl.sponsor_user_id AS "SPONSOR_USER_ID",
+    pl.job_id         AS "JOB_ID",
+    u.first_name      AS "SPONSOR_FIRST_NAME",
+    u.last_name       AS "SPONSOR_LAST_NAME",
+    u.photo_url       AS "SPONSOR_PHOTO_URL",
+    sp.job_title      AS "SPONSOR_JOB_TITLE",
+    sp.company        AS "SPONSOR_COMPANY"
+FROM profile_likes pl
+JOIN users u              ON u.user_id = pl.sponsor_user_id
+JOIN sponsor_profiles sp  ON sp.user_id = pl.sponsor_user_id
+WHERE pl.applicant_user_id = %s
+  AND pl.like_id NOT IN (SELECT like_id FROM matches)
+ORDER BY pl.liked_at DESC
 ```
-
-**Expected response (200):**
-
-```json
-[
-  {
-    "LIKE_ID": "uuid",
-    "LIKED_AT": "2026-03-01T12:00:00Z",
-    "SPONSOR_USER_ID": "uuid",
-    "JOB_ID": "uuid",
-    "SPONSOR_FIRST_NAME": "Emily",
-    "SPONSOR_LAST_NAME": "Rodriguez",
-    "SPONSOR_PHOTO_URL": "https://...",
-    "SPONSOR_JOB_TITLE": "VP of Engineering",
-    "SPONSOR_COMPANY": "Stripe"
-  }
-]
-```
-
-**Why:** The "Interested in You" section in `MatchesView` surfaces sponsors who have already swiped right on an applicant but haven't yet been reciprocated. This is a high-signal, high-intent signal for the applicant — they should be prompted to view the sponsor's profile and potentially match. The frontend (`getInterestedSponsors()` in `lib/api.ts`) is already wired and ready to consume this endpoint.
-
-**Frontend behaviour once deployed:**
-
-- `MatchesView` fetches this list on mount (applicant view only).
 
 ---
 
-## 3. Add `skills` field to `PATCH /api/profile/sponsor/update/`
+## ~~3. Add `skills` field to `PATCH /api/profile/sponsor/update/`~~ ✅ RESOLVED (PR #16)
 
-**File:** `bc_microservices/views/views_profile.py` → sponsor profile update handler
-**Table:** `SPONSOR_PROFILES` (or wherever sponsor skills are stored)
-
-**Change:** Accept a `skills` field (array of strings) in the sponsor profile update endpoint, mirroring the existing `skills` field in `PATCH /api/profile/applicant/update/`.
-
-**Why:** The "I Can Help With" section on the sponsor's edit profile screen allows them to add/remove skill/expertise tags. These are saved locally and sent to the backend via `updateSponsorProfile({ skills })`. Without this field being accepted, sponsor expertise tags are lost on the next app launch.
-
-**Expected request body field:**
-
-```json
-{ "skills": ["Fundraising", "B2B Sales", "Product Strategy"] }
-```
-
-**Frontend:** Already wired. `handleAddTag("expertise")` and `handleRemoveTag("expertise")` in `ProfileView.tsx` call `updateSponsorProfile({ skills })` for sponsor users.
+> **The `skills` field is now accepted** by `PATCH /api/profile/sponsor/update/`. Sponsor expertise tags persist correctly across sessions. No backend work required.
 
 ---
 
-## 4. Add `INSIGHTS` to `GET /api/profile/` response
+## ~~4. Add `INSIGHTS` to `GET /api/profile/` response~~ ✅ RESOLVED (Migration 003)
 
-**File:** `bc_microservices/views/views_profiles.py` → handler for `GET /api/profile/`
-
-**Change:** Include the user's insights array in the response, nested under the role-specific sub-object (`applicant_profile` or `sponsor_profile`).
-
-**Why:** `GET /api/profile/` currently returns `applicant_profile` and `sponsor_profile` sub-objects but omits `INSIGHTS` from both. On every login, the frontend calls this endpoint and rebuilds local state from the response. Because INSIGHTS is missing, any insights the user saved (via `PATCH /api/profile/applicant/update/` or `PATCH /api/profile/sponsor/update/`) are invisible after a logout/login cycle.
-
-The frontend has a short-term workaround (preserving the locally cached value when the backend doesn't return insights), but this breaks if the user logs in on a new device or clears app storage.
-
-**Expected change to response shape:**
-
-```json
-{
-  "applicant_profile": {
-    "INDUSTRY": "...",
-    "SKILLS": [...],
-    "INSIGHTS": [{ "question": "...", "answer": "..." }]
-  }
-}
-```
-
-```json
-{
-  "sponsor_profile": {
-    "COMPANY": "...",
-    "JOB_TITLE": "...",
-    "INSIGHTS": [{ "question": "...", "answer": "..." }]
-  }
-}
-```
-
-**Frontend:** `fetchFromBackend` in `stores/useUserProfileStore.ts` already reads `(profile as any).applicant_profile?.INSIGHTS` and `(profile as any).sponsor_profile?.INSIGHTS` — it will pick this up automatically once the backend returns the field.
-
-- Each result is displayed as a tappable card in the **"Interested in You"** section.
-- Tapping opens a full profile modal that also calls `GET /api/profiles/<SPONSOR_USER_ID>/public/` to show bio, referral capabilities, and Key Insights.
-- Until the endpoint is live the section silently shows an empty state (no error banner).
+> **`INSIGHTS` is now returned** in both `applicant_profile` and `sponsor_profile` sub-objects. `fetchFromBackend` in `useUserProfileStore.ts` reads it automatically. No backend work required.
 
 ---
 
-## 5. Add `BIO`, `CURRENT_ROLE` (applicant), and address fields to `GET /api/profile/` response
+## ~~5. Add `BIO`, `CURRENT_ROLE` (applicant), and address fields to `GET /api/profile/` response~~ ✅ RESOLVED (Migration 003)
 
-**File:** `bc_microservices/views/views_profiles.py` → handler for `GET /api/profile/`
-
-**Change:** Include the following fields in the top-level response object:
-
-| Field     | Source          | Currently missing?                                   |
-| --------- | --------------- | ---------------------------------------------------- |
-| `BIO`     | `USERS.BIO`     | ✅ Missing                                           |
-| `STREET`  | `USERS.STREET`  | ✅ Missing (intentionally private — skip if desired) |
-| `ZIP`     | `USERS.ZIP`     | ✅ Missing (intentionally private — skip if desired) |
-| `COUNTRY` | `USERS.COUNTRY` | ✅ Missing                                           |
-
-And inside `applicant_profile`:
-
-| Field          | Source                            | Currently missing? |
-| -------------- | --------------------------------- | ------------------ |
-| `CURRENT_ROLE` | `APPLICANT_PROFILES.CURRENT_ROLE` | ✅ Missing         |
-
-**Why:** After a user logs out and logs back in, `clearData()` wipes the local SecureStore cache. On the next login, `GET /api/profile/` is the only source of truth. Fields not returned here are lost. Specifically:
-
-- `BIO` — user edits bio via `PATCH /api/profile/update/ { bio }`, but it's never returned by GET so it always reverts to blank after logout.
-- `CURRENT_ROLE` (applicant) — user edits their role via `PATCH /api/profile/applicant/update/ { current_role }`, but it's not in the GET response, so it reverts after logout.
-- Address fields — `street`, `zip`, `country` are accepted by PATCH but not returned by GET.
-
-**Note:** `COMPANY` and `JOB_TITLE` for sponsors ARE already in the `sponsor_profile` sub-object — the frontend reads them correctly. No change needed there.
-
-**Frontend:** `fetchFromBackend` in `stores/useUserProfileStore.ts` already has the reading logic for all these fields with fallback patterns — it will pick them up automatically once the backend returns them.
+> **These fields are now returned** by `GET /api/profile/`. `BIO`, `CURRENT_ROLE`, `COUNTRY` survive logout/login cycles. `fetchFromBackend` in `useUserProfileStore.ts` reads them automatically. No backend work required.
 
 ---
 
-## 6. Add `POST /api/auth/change-email/` — Email Change with Verification
+## 6. Complete `POST /api/auth/change-email/` — Email Change with Verification
 
-**Why:** Email is the user's login credential and cannot be changed via a simple profile PATCH. The edit profile modal now shows email as **read-only** (lock icon) because `PATCH /api/profile/update/` does not (and should not) accept an `email` field.
+> **501 stub deployed (PR #16).** The route exists and returns HTTP 501. The full transactional email flow still needs implementing.
 
-To enable email changes, a dedicated flow is needed:
+**Why:** Email is the user's login credential and cannot be changed via a simple profile PATCH. The edit profile modal shows email as **read-only** (lock icon). To enable email changes, the stub needs the following implementation:
 
 1. User submits new email → `POST /api/auth/change-email/ { new_email, current_password }` (password required to confirm identity)
-2. Backend sends a verification link to the **new** email address
-3. User clicks link → backend updates the email on the auth account
+2. Backend sends a verification link to the **new** email address via the existing transactional email service (same SendGrid/SES integration used for password reset — PR #21)
+3. User clicks link → backend updates the email on the PostgreSQL `users` table
 4. Frontend's next `GET /api/profile/` returns the new email automatically
-
-**Suggested endpoint:** `POST /api/auth/change-email/`
 
 **Request body:**
 
@@ -196,15 +113,15 @@ To enable email changes, a dedicated flow is needed:
 { "message": "Verification email sent to newemail@example.com" }
 ```
 
-**Frontend:** The email field is currently locked with a "Contact support" note. Once this endpoint exists, replace that with a "Change Email" button that opens a dedicated modal with the above flow.
+**Frontend:** Once the endpoint returns 200 (not 501), replace the "Contact support" lock icon on the email field with a "Change Email" button that opens a dedicated modal.
 
 ---
 
-## 7. Add Redis Caching to `likes.py` and `messaging.py` — Critical Performance Gap
+## 7. Add Redis Caching to `likes.py` and `messaging.py` — Performance Gap
 
 ### Root cause of latency
 
-The backend uses **Snowflake** as the database — a cloud data warehouse that has inherently higher per-query latency than a local Postgres instance (typically 100–500 ms per round-trip). The app already has Redis configured and a `cached_query` helper that works correctly. However, the three most-called screens — **Matches**, **Messages**, and **Profile GET** — bypass Redis entirely and hit Snowflake on every single request.
+The backend migrated to **PostgreSQL** (PR #25), which is significantly faster than Snowflake for OLTP queries. However, the three most-called screens — **Matches**, **Messages**, and **Profile GET** — still bypass Redis entirely and hit PostgreSQL on every single request. With complex multi-table JOINs, this adds 50–200 ms of unnecessary latency per screen load. The app already has Redis configured and a `cached_query` helper that works correctly.
 
 ### What IS cached (for reference)
 
@@ -238,83 +155,88 @@ Replace the four read functions with cached versions:
 def get_liked_jobs_for_user(user_id):
     def _fetch():
         q = """
-        SELECT l.LIKE_ID, l.CREATED_AT AS liked_at, l.NOTES, l.STATUS,
-               j.JOB_ID, j.TITLE, j.COMPANY, j.LOCATION, j.REMOTE_OPTION,
-               j.SALARY_MIN, j.SALARY_MAX, j.SALARY_CURRENCY, j.EXPERIENCE_LEVEL,
-               j.DESCRIPTION,
-               sp_up.FIRST_NAME AS SPONSOR_FIRST_NAME,
-               sp_up.LAST_NAME  AS SPONSOR_LAST_NAME,
-               sp_up.PHOTO_URL  AS SPONSOR_PHOTO_URL,
-               sp.JOB_TITLE     AS SPONSOR_JOB_TITLE
-        FROM BACKCHANNEL_DEV.MATCHING.LIKES l
-        JOIN BACKCHANNEL_DEV.JOBS.JOB_POSTINGS j ON l.JOB_ID = j.JOB_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.USER_PROFILES sp_up ON sp_up.USER_ID = j.SPONSOR_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.SPONSOR_PROFILES sp ON sp.USER_ID = j.SPONSOR_ID
-        WHERE l.USER_ID = %s AND l.STATUS IN ('ACTIVE', 'MATCHED')
-        ORDER BY l.CREATED_AT DESC
+        SELECT l.like_id, l.created_at AS liked_at, l.notes, l.status,
+               j.job_id, j.title, j.company, j.location, j.remote_option,
+               j.salary_min, j.salary_max, j.salary_currency, j.experience_level,
+               j.description,
+               sp_up.first_name AS "SPONSOR_FIRST_NAME",
+               sp_up.last_name  AS "SPONSOR_LAST_NAME",
+               sp_up.photo_url  AS "SPONSOR_PHOTO_URL",
+               sp.job_title     AS "SPONSOR_JOB_TITLE"
+        FROM likes l
+        JOIN job_postings j        ON l.job_id = j.job_id
+        LEFT JOIN user_profiles sp_up ON sp_up.user_id = j.sponsor_id
+        LEFT JOIN sponsor_profiles sp ON sp.user_id = j.sponsor_id
+        WHERE l.user_id = %s AND l.status IN ('ACTIVE', 'MATCHED')
+        ORDER BY l.created_at DESC
         """
-        df = execute_query(q, (user_id,))
-        return df.to_dict('records') if df is not None and not df.empty else []
+        with get_cursor() as cur:
+            cur.execute(q, (user_id,))
+            return cur.fetchall()
     return cached_query(f"liked_jobs:{user_id}", TTL_MEDIUM, _fetch)
 
 
 def get_job_matches_for_user(user_id):
     def _fetch():
         q = """
-        SELECT l.LIKE_ID, l.CREATED_AT AS matched_at,
-               j.JOB_ID, j.TITLE, j.COMPANY, j.LOCATION,
-               u.USERNAME  AS sponsor_username, u.EMAIL AS sponsor_email,
-               sp_up.FIRST_NAME AS SPONSOR_FIRST_NAME,
-               sp_up.LAST_NAME  AS SPONSOR_LAST_NAME,
-               sp_up.PHOTO_URL  AS SPONSOR_PHOTO_URL,
-               sp.JOB_TITLE     AS SPONSOR_JOB_TITLE,
-               sp.COMPANY       AS SPONSOR_COMPANY
-        FROM BACKCHANNEL_DEV.MATCHING.LIKES l
-        JOIN BACKCHANNEL_DEV.JOBS.JOB_POSTINGS j ON l.JOB_ID = j.JOB_ID
-        JOIN BACKCHANNEL_DEV.USER_INFORMATION.USERS u ON j.SPONSOR_ID = u.USER_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.USER_PROFILES sp_up ON sp_up.USER_ID = j.SPONSOR_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.SPONSOR_PROFILES sp ON sp.USER_ID = j.SPONSOR_ID
-        WHERE l.USER_ID = %s AND l.STATUS = 'MATCHED'
-        ORDER BY l.CREATED_AT DESC
+        SELECT l.like_id, l.created_at AS matched_at,
+               j.job_id, j.title, j.company, j.location,
+               u.username  AS sponsor_username, u.email AS sponsor_email,
+               sp_up.first_name AS "SPONSOR_FIRST_NAME",
+               sp_up.last_name  AS "SPONSOR_LAST_NAME",
+               sp_up.photo_url  AS "SPONSOR_PHOTO_URL",
+               sp.job_title     AS "SPONSOR_JOB_TITLE",
+               sp.company       AS "SPONSOR_COMPANY",
+               j.sponsor_id     AS "SPONSOR_USER_ID"
+        FROM likes l
+        JOIN job_postings j        ON l.job_id = j.job_id
+        JOIN users u               ON j.sponsor_id = u.user_id
+        LEFT JOIN user_profiles sp_up ON sp_up.user_id = j.sponsor_id
+        LEFT JOIN sponsor_profiles sp ON sp.user_id = j.sponsor_id
+        WHERE l.user_id = %s AND l.status = 'MATCHED'
+        ORDER BY l.created_at DESC
         """
-        df = execute_query(q, (user_id,))
-        return df.to_dict('records') if df is not None and not df.empty else []
+        with get_cursor() as cur:
+            cur.execute(q, (user_id,))
+            return cur.fetchall()
     return cached_query(f"matches:{user_id}", TTL_MEDIUM, _fetch)
 
 
 def get_sponsor_matches(sponsor_id):
     def _fetch():
         q = """
-        SELECT l.LIKE_ID, l.CREATED_AT AS matched_at, l.USER_ID AS applicant_user_id,
-               j.JOB_ID, j.TITLE, j.COMPANY, j.LOCATION,
-               up.FIRST_NAME, up.LAST_NAME, up.PHOTO_URL, up.LOCATION AS APPLICANT_LOCATION,
-               ap.SKILLS, ap.POSITIONS, ap.INDUSTRY, ap.RESUME_DATA
-        FROM BACKCHANNEL_DEV.MATCHING.LIKES l
-        JOIN BACKCHANNEL_DEV.JOBS.JOB_POSTINGS j ON l.JOB_ID = j.JOB_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.USER_PROFILES up ON up.USER_ID = l.USER_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.APPLICANT_PROFILES ap ON ap.USER_ID = l.USER_ID
-        WHERE j.SPONSOR_ID = %s AND l.STATUS = 'MATCHED'
-        ORDER BY l.CREATED_AT DESC
+        SELECT l.like_id, l.created_at AS matched_at, l.user_id AS applicant_user_id,
+               j.job_id, j.title, j.company, j.location,
+               up.first_name, up.last_name, up.photo_url, up.location AS applicant_location,
+               ap.skills::text, ap.positions::text, ap.industry, ap.resume_data::text
+        FROM likes l
+        JOIN job_postings j         ON l.job_id = j.job_id
+        LEFT JOIN user_profiles up  ON up.user_id = l.user_id
+        LEFT JOIN applicant_profiles ap ON ap.user_id = l.user_id
+        WHERE j.sponsor_id = %s AND l.status = 'MATCHED'
+        ORDER BY l.created_at DESC
         """
-        df = execute_query(q, (sponsor_id,))
-        return df.to_dict('records') if df is not None and not df.empty else []
+        with get_cursor() as cur:
+            cur.execute(q, (sponsor_id,))
+            return cur.fetchall()
     return cached_query(f"sponsor_matches:{sponsor_id}", TTL_MEDIUM, _fetch)
 
 
 def get_applicants_who_liked_job(job_id):
     def _fetch():
         q = """
-        SELECT l.USER_ID AS APPLICANT_USER_ID, l.CREATED_AT AS LIKED_AT, l.STATUS,
-               up.FIRST_NAME, up.LAST_NAME, up.LOCATION, up.ROLE_TYPE, up.PHOTO_URL,
-               ap.SKILLS, ap.POSITIONS, ap.INDUSTRY, ap.RESUME_DATA
-        FROM BACKCHANNEL_DEV.MATCHING.LIKES l
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.USER_PROFILES up ON up.USER_ID = l.USER_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.APPLICANT_PROFILES ap ON ap.USER_ID = l.USER_ID
-        WHERE l.JOB_ID = %s AND l.STATUS IN ('ACTIVE','MATCHED')
-        ORDER BY l.CREATED_AT DESC
+        SELECT l.user_id AS "APPLICANT_USER_ID", l.created_at AS "LIKED_AT", l.status,
+               up.first_name, up.last_name, up.location, up.role_type, up.photo_url,
+               ap.skills::text, ap.positions::text, ap.industry, ap.resume_data::text
+        FROM likes l
+        LEFT JOIN user_profiles up  ON up.user_id = l.user_id
+        LEFT JOIN applicant_profiles ap ON ap.user_id = l.user_id
+        WHERE l.job_id = %s AND l.status IN ('ACTIVE', 'MATCHED')
+        ORDER BY l.created_at DESC
         """
-        df = execute_query(q, (job_id,))
-        return df.to_dict('records') if df is not None and not df.empty else []
+        with get_cursor() as cur:
+            cur.execute(q, (job_id,))
+            return cur.fetchall()
     return cached_query(f"job_likes:{job_id}", TTL_SHORT, _fetch)
 ```
 
@@ -325,7 +247,8 @@ def create_job_like(user_id, job_id, notes=''):
     """Insert a new ACTIVE like for a job. Returns the new like_id."""
     like_id = str(uuid.uuid4())
     q = """..."""  # keep existing SQL
-    execute_query(q, (like_id, user_id, job_id, notes))
+    with get_cursor() as cur:
+        cur.execute(q, (like_id, user_id, job_id, notes))
     # Invalidate so the next read reflects the new like
     invalidate(f"liked_jobs:{user_id}", f"job_likes:{job_id}")
     return like_id
@@ -333,9 +256,10 @@ def create_job_like(user_id, job_id, notes=''):
 
 def set_matched(*like_ids):
     """Update one or more likes to MATCHED status."""
-    q = "UPDATE BACKCHANNEL_DEV.MATCHING.LIKES SET STATUS = 'MATCHED' WHERE LIKE_ID = %s"
-    for lid in like_ids:
-        execute_query(q, (lid,))
+    q = "UPDATE likes SET status = 'MATCHED' WHERE like_id = %s"
+    with get_cursor() as cur:
+        for lid in like_ids:
+            cur.execute(q, (lid,))
     # NOTE: The view layer that calls set_matched should also call:
     #   invalidate(f"matches:{applicant_user_id}", f"sponsor_matches:{sponsor_id}")
     # because set_matched doesn't have those IDs available here.
@@ -359,39 +283,44 @@ def list_conversations_for_user(user_id):
     def _fetch():
         q = """
         SELECT
-          c.CONVERSATION_ID, c.JOB_ID, c.APPLICANT_USER_ID, c.SPONSOR_USER_ID, c.STATUS,
-          c.APPLICANT_HAS_UNREAD, c.SPONSOR_HAS_UNREAD,
-          j.TITLE, j.COMPANY,
-          last_msg.BODY AS LAST_BODY, last_msg.CREATED_AT AS LAST_AT,
-          app_up.FIRST_NAME AS APPLICANT_FIRST_NAME,
-          app_up.LAST_NAME  AS APPLICANT_LAST_NAME,
-          app_up.PHOTO_URL  AS APPLICANT_PHOTO_URL,
-          ap.POSITIONS       AS APPLICANT_POSITIONS,
-          spon_up.FIRST_NAME AS SPONSOR_FIRST_NAME,
-          spon_up.LAST_NAME  AS SPONSOR_LAST_NAME,
-          spon_up.PHOTO_URL  AS SPONSOR_PHOTO_URL,
-          sp.JOB_TITLE       AS SPONSOR_JOB_TITLE,
-          sp.COMPANY         AS SPONSOR_COMPANY
-        FROM BACKCHANNEL_DEV.MESSAGING.CONVERSATIONS c
-        JOIN BACKCHANNEL_DEV.JOBS.JOB_POSTINGS j ON j.JOB_ID = c.JOB_ID
-        LEFT JOIN (
-          SELECT CONVERSATION_ID, BODY, CREATED_AT,
-                 ROW_NUMBER() OVER (PARTITION BY CONVERSATION_ID ORDER BY CREATED_AT DESC) AS rn
-          FROM BACKCHANNEL_DEV.MESSAGING.MESSAGES
-        ) last_msg ON last_msg.CONVERSATION_ID = c.CONVERSATION_ID AND last_msg.rn = 1
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.USER_PROFILES app_up ON app_up.USER_ID = c.APPLICANT_USER_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.APPLICANT_PROFILES ap ON ap.USER_ID = c.APPLICANT_USER_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.USER_PROFILES spon_up ON spon_up.USER_ID = c.SPONSOR_USER_ID
-        LEFT JOIN BACKCHANNEL_DEV.USER_INFORMATION.SPONSOR_PROFILES sp ON sp.USER_ID = c.SPONSOR_USER_ID
-        WHERE c.APPLICANT_USER_ID = %s OR c.SPONSOR_USER_ID = %s
-        ORDER BY last_msg.CREATED_AT DESC NULLS LAST
+          c.conversation_id, c.job_id, c.applicant_user_id, c.sponsor_user_id, c.status,
+          c.applicant_has_unread, c.sponsor_has_unread,
+          j.title, j.company,
+          last_msg.body AS last_body, last_msg.created_at AS last_at,
+          app_up.first_name AS "APPLICANT_FIRST_NAME",
+          app_up.last_name  AS "APPLICANT_LAST_NAME",
+          app_up.photo_url  AS "APPLICANT_PHOTO_URL",
+          ap.positions::text AS applicant_positions,
+          spon_up.first_name AS "SPONSOR_FIRST_NAME",
+          spon_up.last_name  AS "SPONSOR_LAST_NAME",
+          spon_up.photo_url  AS "SPONSOR_PHOTO_URL",
+          sp.job_title       AS "SPONSOR_JOB_TITLE",
+          sp.company         AS "SPONSOR_COMPANY"
+        FROM conversations c
+        JOIN job_postings j ON j.job_id = c.job_id
+        LEFT JOIN LATERAL (
+          SELECT body, created_at
+          FROM messages m
+          WHERE m.conversation_id = c.conversation_id
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) last_msg ON true
+        LEFT JOIN user_profiles app_up    ON app_up.user_id = c.applicant_user_id
+        LEFT JOIN applicant_profiles ap   ON ap.user_id = c.applicant_user_id
+        LEFT JOIN user_profiles spon_up   ON spon_up.user_id = c.sponsor_user_id
+        LEFT JOIN sponsor_profiles sp     ON sp.user_id = c.sponsor_user_id
+        WHERE c.applicant_user_id = %s OR c.sponsor_user_id = %s
+        ORDER BY last_msg.created_at DESC NULLS LAST
         """
-        df = execute_query(q, (user_id, user_id))
-        return df.to_dict('records') if df is not None and not df.empty else []
+        with get_cursor() as cur:
+            cur.execute(q, (user_id, user_id))
+            return cur.fetchall()
     return cached_query(f"conversations:{user_id}", TTL_SHORT, _fetch)
 ```
 
-Add invalidation to the write functions. The `insert_message` and `clear_unread` functions need the other participant's ID. The cleanest approach is to call `get_conversation_detail` (which is already there) to look up both participants, then invalidate both:
+> **PostgreSQL note:** The `LATERAL` subquery replaces the Snowflake `ROW_NUMBER()` window function subquery. Both return the most recent message per conversation; `LATERAL` is idiomatic PostgreSQL and avoids materialising all messages.
+
+Add invalidation to the write functions:
 
 ```python
 def insert_message(conversation_id, sender_user_id, body):
@@ -401,13 +330,13 @@ def insert_message(conversation_id, sender_user_id, body):
     detail = get_conversation_detail(conversation_id)
     if detail:
         invalidate(
-            f"conversations:{detail['APPLICANT_USER_ID']}",
-            f"conversations:{detail['SPONSOR_USER_ID']}",
+            f"conversations:{detail['applicant_user_id']}",
+            f"conversations:{detail['sponsor_user_id']}",
         )
 
 
 def clear_unread(conversation_id, user_id):
-    execute_query("""...""", (user_id, user_id, conversation_id))  # keep existing SQL
+    # ... keep existing SQL ...
     # Invalidate so the unread badge clears immediately
     invalidate(f"conversations:{user_id}")
 ```
@@ -416,7 +345,7 @@ def clear_unread(conversation_id, user_id):
 
 ### Patch 3 — Full Profile GET (Profile Screen, `queries/profile.py`)
 
-The `GET /api/profile/` endpoint runs **3 sequential Snowflake queries** per request. Add a single cached key for the full profile data:
+The `GET /api/profile/` endpoint runs **3 sequential PostgreSQL queries** per request. Add a single cached key for the full profile data:
 
 ```python
 from ..cache import cached_query, invalidate, TTL_LONG
@@ -426,7 +355,7 @@ def get_full_profile(user_id):
     def _fetch():
         user_row     = get_user_row(user_id)          # existing function
         profile_data = get_profile_data(user_id)       # existing function
-        role         = profile_data.get("ROLE_TYPE") if profile_data else None
+        role         = profile_data.get("role_type") if profile_data else None
         if role == "Applicant":
             role_profile = get_applicant_profile(user_id)
         else:
@@ -441,7 +370,7 @@ def get_full_profile(user_id):
 
 Then in the view for `GET /api/profile/`, call `get_full_profile(user_id)` instead of the three separate functions.
 
-**Invalidation** — already handled: both `invalidate_user_cache` calls in the existing profile update views already clear `user_basic:` and `pub_profile:`. Add `full_profile:{user_id}` to those same invalidation calls:
+**Invalidation** — add `full_profile:{user_id}` to the same calls that already clear `user_basic:` and `pub_profile:`:
 
 ```python
 # In the profile update view (wherever invalidate_user_cache is called):
@@ -452,181 +381,40 @@ invalidate(f"user_basic:{user_id}", f"pub_profile:{user_id}", f"full_profile:{us
 
 ### Expected impact
 
-| Screen                  | Before (every load hits Snowflake)     | After (Redis cache hit) |
-| ----------------------- | -------------------------------------- | ----------------------- |
-| Matches screen open     | ~300–600 ms (5-table JOIN)             | **< 5 ms**              |
-| Messages inbox open     | ~500–900 ms (7-table JOIN + window fn) | **< 5 ms**              |
-| Profile screen open     | ~300–500 ms (3 sequential queries)     | **< 5 ms**              |
-| Profile update (PATCH)  | unchanged — writes always go to DB     | unchanged               |
-| New match / new message | unchanged — writes + invalidation      | unchanged               |
+| Screen                  | Before (uncached PostgreSQL query)           | After (Redis cache hit) |
+| ----------------------- | -------------------------------------------- | ----------------------- |
+| Matches screen open     | ~50–150 ms (5-table JOIN)                    | **< 5 ms**              |
+| Messages inbox open     | ~80–200 ms (7-table JOIN + LATERAL subquery) | **< 5 ms**              |
+| Profile screen open     | ~50–120 ms (3 sequential queries)            | **< 5 ms**              |
+| Profile update (PATCH)  | unchanged — writes always go to DB           | unchanged               |
+| New match / new message | unchanged — writes + invalidation            | unchanged               |
 
-Cache misses (first load after a write or after TTL expires) still hit Snowflake at the same speed as today. Every subsequent request within the TTL window is served from Redis in under 5 ms.
-
----
+Cache misses (first load after a write or after TTL expires) still hit PostgreSQL at the same speed as today. Every subsequent request within the TTL window is served from Redis in under 5 ms.
 
 ---
 
 # Phase 2 — New Endpoints
 
-> The items below are **net-new backend work** not yet present anywhere in the codebase. Each entry includes the full contract the frontend will consume so it can be implemented and tested independently.
+> Items marked ✅ have been deployed. Items without a status marker are still pending.
 
 ---
 
-## P2-1. Add `DELETE /api/jobs/<job_id>/unsponsor/` — Permanently Remove a Sponsored Job
+## ~~P2-1. Add `DELETE /api/jobs/<job_id>/unsponsor/`~~ ✅ RESOLVED (PR #17)
 
-### Context
+> **Deployed.** `unsponsorJob(jobId)` in `lib/api.ts` has been added and calls `DELETE /api/jobs/<id>/unsponsor/`. The endpoint is live. `handleUnsponsor` in `JobsView.tsx` calls `unsponsorJob(job.id)`, does an optimistic removal via `removeMyJob`, and re-fetches on error.
 
-`POST /api/jobs/<job_id>/deactivate/` already exists and sets `IS_ACTIVE = FALSE`, but it has two problems for the "unsponsor" use-case:
+---
 
-1. The job row is **never deleted**, so `check_already_sponsored` (which has no `IS_ACTIVE` filter) will permanently block the sponsor from re-sponsoring the same ATS listing — even after they "removed" it.
-2. The job still appears in `GET /api/jobs/mine/` because `get_jobs_by_sponsor` also has no `IS_ACTIVE` filter.
+## ~~8. Wire `unsponsorJob()` to Sponsor UI~~ ✅ DONE
 
-A dedicated unsponsor endpoint should **hard-delete** the `JOB_POSTINGS` row (or soft-delete with a new `IS_UNSPONSORED` flag if hard-delete is undesirable for audit purposes), so the sponsor can freely re-sponsor the listing later.
-
-### Endpoint
-
-```
-DELETE /api/jobs/<str:job_id>/unsponsor/
-```
-
-- **Auth:** Bearer token required (sponsor only)
-- **URL param:** `job_id` — the `JOB_POSTINGS` UUID (returned as `job_id` when sponsoring, or as `JOB_ID` in `GET /api/jobs/mine/`)
-- **Body:** none
-
-### Response
-
-**200 — success:**
-
-```json
-{
-  "job_id": "uuid",
-  "message": "Job successfully unsponsored"
-}
-```
-
-**404 — not found or not owned by caller:**
-
-```json
-{ "detail": "Job not found or you do not own it" }
-```
-
-**400 — job has active applicant matches (optional guard — see notes):**
-
-```json
-{
-  "detail": "Cannot unsponsor a job with active matches. Deactivate it instead."
-}
-```
-
-### Suggested implementation
-
-**`bc_microservices/queries/jobs.py`** — add:
-
-```python
-def delete_sponsored_job(job_id, sponsor_id):
-    """Hard-delete a sponsored job owned by this sponsor.
-    Only callable if the caller owns the row."""
-    q = """
-    DELETE FROM BACKCHANNEL_DEV.JOBS.JOB_POSTINGS
-    WHERE JOB_ID = %s AND SPONSOR_ID = %s
-    """
-    execute_query(q, (job_id, sponsor_id))
-```
-
-**`bc_microservices/services/jobs.py`** — add:
-
-```python
-def unsponsor_job(sponsor_id, job_id):
-    """Permanently remove a sponsored job owned by the sponsor."""
-    if not jobs_q.is_job_owned_by_sponsor(job_id, sponsor_id):
-        return Result.not_found("Job not found or you do not own it")
-
-    # Optional: block if active matches exist to protect applicant conversations
-    # active_matches = likes_q.count_active_likes_for_job(job_id)
-    # if active_matches > 0:
-    #     return Result.bad_request("Cannot unsponsor a job with active matches. Deactivate it instead.")
-
-    jobs_q.delete_sponsored_job(job_id, sponsor_id)
-    invalidate(
-        f"job_active:{job_id}",
-        f"sp_job:{job_id}",
-        f"job_owner:{job_id}:{sponsor_id}",
-        f"sponsor_matches:{sponsor_id}",
-    )
-    return Result.success({"job_id": job_id, "message": "Job successfully unsponsored"})
-```
-
-**`bc_microservices/views_jobs.py`** — add:
-
-```python
-@extend_schema(
-    summary="Unsponsor (permanently remove) a sponsored job",
-    tags=["Jobs"],
-    parameters=[
-        OpenApiParameter(
-            name="job_id", type=str, required=True,
-            location=OpenApiParameter.PATH,
-            description="JOB_POSTINGS UUID to remove"
-        ),
-    ],
-    request=None,
-    responses={
-        200: inline_serializer(
-            name="UnsponsorJobResponse",
-            fields={
-                "job_id": serializers.CharField(),
-                "message": serializers.CharField(),
-            },
-        ),
-        404: OpenApiResponse(description="Job not found or not owned by caller"),
-    },
-)
-@api_view(['DELETE'])
-@permission_classes([permissions.IsAuthenticated])
-def unsponsor_job(request, job_id):
-    return _respond(jobs_svc.unsponsor_job(request.user.id, job_id))
-```
-
-**`django_bc/urls.py`** — add the route **before** the catch-all `<str:job_id>/` pattern:
-
-```python
-path('api/jobs/<str:job_id>/unsponsor/', unsponsor_job, name='unsponsor_job'),
-```
-
-**`bc_microservices/views.py`** — add to imports:
-
-```python
-from .views_jobs import (
-    ...
-    unsponsor_job,
-)
-```
-
-### Important notes for implementation
-
-- **Route ordering matters:** In `urls.py`, `unsponsor/` must be declared **before** `<str:job_id>/` (the generic sponsored job detail), otherwise Django will route `DELETE /api/jobs/<id>/unsponsor/` to `get_sponsored_job_detail` instead.
-- **`check_already_sponsored` fix:** After the hard-delete, `check_already_sponsored` will correctly return `None` for that `(silver_job_id, sponsor_id)` pair, allowing the sponsor to re-sponsor the same listing in the future.
-- **Cascade consideration:** If `JOB_POSTINGS` rows are referenced by `LIKES`, `CONVERSATIONS`, or `JOB_WAITLIST` with foreign keys, decide whether to cascade-delete those child rows or block the delete. The deactivate endpoint today does not deal with this, so a consistent policy should be chosen (recommend cascade on `JOB_WAITLIST`, block if active `LIKES/CONVERSATIONS` exist).
-- **`get_jobs_by_sponsor` after deletion:** Once the row is hard-deleted, `GET /api/jobs/mine/` will naturally no longer return it — no query change needed.
-
-### Frontend
-
-`lib/api.ts` will need a new `unsponsorJob` function (not yet present):
-
-```typescript
-export async function unsponsorJob(jobId: string): Promise<any> {
-  return api.delete(`/api/jobs/${jobId}/unsponsor/`);
-}
-```
-
-This will be wired to a "Remove" / "Unsponsor" action in the **My Sponsored** tab's job card menu once the endpoint is live.
+> **Completed.** `handleUnsponsor` in `components/JobsView.tsx` calls `unsponsorJob(job.id)` when a sponsor taps the remove action on a sponsored job card. The job is optimistically removed from the `useJobsStore` state immediately; if the API call fails, `refreshMyJobs` reverts the list and shows an error alert. No further work required.
 
 ---
 
 ## 9. Add `work_preferences` to `POST /api/register/` — Applicant Registration
 
-**File:** `bc_microservices/views/views_auth.py` (or wherever the `/api/register/` handler lives)
-**Table:** `APPLICANT_PROFILES`
+**File:** `bc_microservices/views/views_auth.py` (or wherever the `/api/register/` handler lives)  
+**Table:** `applicant_profiles` (PostgreSQL — `JSONB` column, same pattern as `skills` and `insights`)
 
 **Change:** Accept a `work_preferences` field (array of strings) in the applicant registration endpoint, mirroring its existing support in `PATCH /api/profile/applicant/update/`.
 
@@ -649,7 +437,7 @@ This will be wired to a "Remove" / "Unsponsor" action in the **My Sponsored** ta
 }
 ```
 
-**Storage:** Save `work_preferences` to `APPLICANT_PROFILES.WORK_PREFERENCES` (VARIANT column, same pattern as `SKILLS` and `INSIGHTS`).
+**Storage:** Save `work_preferences` to `applicant_profiles.work_preferences` (JSONB, same pattern as `skills` and `insights`).
 
 **Frontend:** Already wired. `ApplicantQuestionnaire.tsx` includes `work_preferences` in the registration payload. `lib/auth-api.ts` passes it through as `work_preferences`. Until this is deployed, the field is silently ignored by the backend — the user must add work preferences manually via the Edit Profile modal after sign-up.
 
@@ -668,3 +456,263 @@ Once saved, add `WORK_PREFERENCES` to the `applicant_profile` sub-object returne
 ```
 
 The frontend `fetchFromBackend` in `useUserProfileStore.ts` already reads `applicant_profile.WORK_PREFERENCES` and will pick this up automatically once returned.
+
+---
+
+## ~~10. Use `role` from Login Response in Auth Store (PR #19)~~ ✅ DONE
+
+> **Completed.** `AuthScreen.tsx` calls `setAuthTokens(data.access_token, data.refresh_token, data.role)` — the role from the login response is persisted to `SecureStore` (key `"user_role"`) and stored in `useAuthStore.role`. `useAuthStore.loadTokens` restores it on app restart. Role determination no longer requires a subsequent `GET /api/profile/` call. No further work required.
+
+---
+
+## ~~11. Implement Pagination in `MessagesView` Conversations List (PR #22)~~ ✅ DONE
+
+> **Completed.** `MessagesView.tsx` fetches `getConversations({ limit: 20, offset: 0 })` on mount, tracks `conversationsTotalCount` from `response.total_count`, and renders a "Load More Conversations" button when `conversations.length < conversationsTotalCount`. `loadMoreConversations` fetches the next page using `offset: conversations.length` and appends results. No further work required.
+
+---
+
+## ~~12. Display `relevance_score` in Job Cards (Optional Enhancement, PR #24)~~ ✅ DONE
+
+> **Completed.** `HomeView.tsx` renders a `relevancePill` badge on job swipe cards whenever `currentData.relevanceScore > 0`. The badge shows `"XX% Match"` using `Math.round(relevanceScore * 100)` — displayed in green (≥ 70%) or amber (< 70%). The pill only renders when a non-zero score is present, so it degrades gracefully if the backend doesn't return one. No further work required.
+
+---
+
+## 🚀 Backend Handoff — Remaining Blockers
+
+> These are the **only two items** blocking full app functionality. Both require backend-side changes; the frontend is already wired and waiting. Detailed specs appear earlier in this file at the section numbers noted below.
+
+---
+
+### Blocker 1 — `SPONSOR_USER_ID` missing from `GET /api/matches/`
+
+**See full spec: §1 in this file**
+
+**What's broken for users:**
+When an applicant taps a job match and opens the "Key Insights" modal (page 2), the sponsor profile section is empty. The frontend needs the sponsor's user ID to fetch the sponsor's public profile — but the matches response doesn't include it.
+
+**What to change:**
+In the SQL query inside `get_job_matches_for_user`, add one column to the SELECT:
+
+```sql
+j.sponsor_id AS "SPONSOR_USER_ID"
+```
+
+This field already exists on the `jobs` table — it just isn't being returned. The frontend already reads `match.SPONSOR_USER_ID` and will pick it up automatically once the field is present.
+
+**Endpoint:** `GET /api/matches/`
+**Field to add:** `"SPONSOR_USER_ID": <integer>` on each match object
+
+---
+
+### Blocker 2 — `work_preferences` ignored by `POST /api/register/`
+
+**See full spec: §9 in this file**
+
+**What's broken for users:**
+During onboarding, applicants select their work preferences (remote/hybrid/on-site, location, salary range, etc.). These are sent in the `work_preferences` field of the registration payload — but the backend currently ignores the field, so the preferences are silently dropped and the user's profile is incomplete after sign-up.
+
+**What to change:**
+
+1. In `POST /api/register/`, read `work_preferences` from the request body and save it to `applicant_profiles.work_preferences` (JSONB column — already exists on the model).
+2. In `GET /api/profile/`, include the saved value as `"WORK_PREFERENCES"` in the `applicant_profile` nested object.
+
+The frontend `fetchFromBackend` in `useUserProfileStore.ts` already reads `applicant_profile.WORK_PREFERENCES` and will display the data automatically once it's returned.
+
+**Endpoints affected:**
+
+- `POST /api/register/` — must persist `work_preferences`
+- `GET /api/profile/` — must return `"WORK_PREFERENCES"` inside `applicant_profile`
+
+---
+
+## 🔮 Optional — Future Enhancements
+
+> These are **not ship blockers** — the app works without them — but they would replace placeholder UI with real user data and meaningfully improve the experience. Both require new backend endpoints.
+
+---
+
+### Optional A — Real Application Tracking for "My Applications" Tab
+
+**Affects:** `components/ProfileView.tsx` — Applications tab (applicants only)
+
+**What's showing now:**
+The "My Applications" tab in the applicant's profile shows 4 hardcoded fake applications (Google, Airbnb, Notion, Stripe) with fabricated dates, statuses, and sponsor names. Every user sees the same mock data.
+
+**What users expect:**
+A live list of the jobs they've actually applied to, the current status of each application (applied → screening → interview → offer), and which sponsor referred them.
+
+**What to build:**
+A `GET /api/applications/` endpoint (noted in `BACKEND_API_CONTRACT.md` as `DOES NOT EXIST`) that returns the authenticated user's applications with:
+
+```json
+{
+  "applications": [
+    {
+      "APPLICATION_ID": 42,
+      "JOB_ID": 7,
+      "JOB_TITLE": "Senior Product Manager",
+      "COMPANY": "Acme Corp",
+      "COMPANY_LOGO_URL": "https://...",
+      "STATUS": "interview_scheduled",
+      "APPLIED_DATE": "2026-01-02T14:00:00Z",
+      "NEXT_ACTION": "Technical interview on Jan 8 at 2 PM",
+      "SPONSOR_FIRST_NAME": "Sarah",
+      "SPONSOR_LAST_NAME": "Chen",
+      "SPONSOR_ROLE": "VP of Product",
+      "SPONSOR_PHOTO_URL": "https://...",
+      "TIMELINE": [
+        { "stage": "Applied", "date": "Jan 2", "completed": true },
+        {
+          "stage": "Referred",
+          "date": "Jan 2",
+          "completed": true,
+          "is_referred": true
+        },
+        { "stage": "Screening", "date": "Jan 3", "completed": true },
+        { "stage": "Interview", "date": "Jan 8", "completed": false },
+        { "stage": "Decision", "date": "TBD", "completed": false }
+      ]
+    }
+  ],
+  "total": 1
+}
+```
+
+**Frontend impact:** Once this endpoint exists, `ProfileView.tsx` can replace `mockApplications` with a `useEffect` fetch, and the "My Applications" tab will show real data automatically.
+
+---
+
+### Optional B — Real Stats in Profile Header
+
+**Affects:** `components/ProfileView.tsx` — stats grid (both roles)
+
+**What's showing now:**
+Every applicant sees `12 Connections / 3 Referrals / 8 Applied` and every sponsor sees `24 Network / 15 Referrals / 87% Success` — all hardcoded numbers identical for every user.
+
+**What users expect:**
+Accurate counts based on their actual activity.
+
+**Suggested stats per role:**
+
+_Applicant:_
+
+- `Connections` — number of mutual matches
+- `Referrals` — number of active referrals received
+- `Applied` — number of job applications submitted
+
+_Sponsor:_
+
+- `Network` — number of mutual matches
+- `Referrals` — number of referrals submitted
+- `Success` — percentage of referrals that reached interview stage or beyond
+
+**What to build:**
+Add a `stats` object to `GET /api/profile/` response:
+
+```json
+"stats": {
+  "connections": 8,
+  "referrals": 2,
+  "applied": 5
+}
+```
+
+(For sponsors, `applied` becomes `success_rate` as a float 0.0–1.0.)
+
+**Frontend impact:** `ProfileView.tsx` reads `profileData` from the store. Once `stats` is returned, replace the hardcoded `stats` array with values from `profileData.stats`.
+
+---
+
+### Optional C — Real Stats on Applicant Public Profile Cards
+
+**Affects:** `components/PublicProfileView.tsx` — stats row visible to sponsors when viewing any applicant's full card
+
+**What's showing now:**
+The stats row below every applicant's name on their public profile (opened by sponsors during swiping or from the matches list) always shows:
+
+```
+Connections: 42   |   Referrals: 8   |   Response: 98%
+```
+
+These are identical hardcoded numbers for **every single applicant**. Every sponsor sees the same fake stats regardless of who the applicant is.
+
+**What users expect:**
+Accurate counts based on the applicant's actual activity on the platform.
+
+**Suggested fields to add to `GET /api/profiles/<userId>/public/` response:**
+
+- `CONNECTIONS` — number of mutual matches the applicant has
+- `REFERRALS_RECEIVED` — number of active referrals they've received
+- `RESPONSE_RATE` — percentage of messages they've replied to (float 0.0–1.0, displayed as `"XX%"`)
+
+```json
+{
+  "USER_ID": 123,
+  "FIRST_NAME": "...",
+  "stats": {
+    "CONNECTIONS": 7,
+    "REFERRALS_RECEIVED": 2,
+    "RESPONSE_RATE": 0.94
+  }
+}
+```
+
+**Frontend impact:** `PublicProfileView.tsx` receives the applicant's data as a `userData` prop. Once these fields are present on the public profile response, replace the hardcoded `stats` array with:
+
+```tsx
+const stats = [
+  { label: "Connections", value: String(userData.stats?.CONNECTIONS ?? "—") },
+  {
+    label: "Referrals",
+    value: String(userData.stats?.REFERRALS_RECEIVED ?? "—"),
+  },
+  {
+    label: "Response",
+    value:
+      userData.stats?.RESPONSE_RATE != null
+        ? `${Math.round(userData.stats.RESPONSE_RATE * 100)}%`
+        : "—",
+  },
+];
+```
+
+> **Note:** This is distinct from Optional B. Optional B covers the _logged-in user's own_ stats on their own profile screen (`ProfileView.tsx`). Optional C covers the stats a _sponsor sees_ on someone else's public card (`PublicProfileView.tsx`).
+
+---
+
+### Optional D — Real Work Email Verification for Sponsor Onboarding
+
+**Affects:** `components/SponsorQuestionnaire.tsx` — step 8 "Verify your employment"
+
+**What's showing now:**
+The last step of sponsor sign-up asks for a work email (e.g. `name@company.com`). When the sponsor presses "Verify & Complete", the app shows a fake "Awaiting verification..." spinner for exactly **6 seconds** then submits registration regardless — no actual email was sent, no link was clicked, nothing was verified. The "Resend" button is also fake (a `setTimeout` with no API call).
+
+**What users expect:**
+A real verification email sent to their work address, confirming they are actually employed at the company they claimed.
+
+**What to build:**
+
+Two new endpoints:
+
+**1. `POST /api/auth/verify-work-email/send/`**
+
+- Sends a verification link to the provided work email address
+- Ties the pending verification to the authenticated user's session
+- Response `200`: `{ "message": "Verification email sent to name@company.com" }`
+
+**2. `POST /api/auth/verify-work-email/confirm/`** (called when user clicks the link)
+
+- Validates the token from the email link
+- Marks `sponsor_profiles.work_email_verified = true` in the DB
+- Response `200`: `{ "verified": true }`
+
+**Optionally**, `GET /api/auth/verify-work-email/status/` can be polled by the frontend to check if the user has clicked the link (enabling the "Awaiting verification..." UI to auto-advance).
+
+**Frontend impact:** Once these endpoints exist, `SponsorQuestionnaire.tsx` can:
+
+1. Call `POST /api/auth/verify-work-email/send/` when the sponsor presses "Verify & Complete"
+2. Show the "Awaiting verification..." screen and poll `GET /api/auth/verify-work-email/status/` every few seconds
+3. Auto-advance to `handleFinalSubmit()` when `verified: true` is returned
+4. Wire the "Resend" button to a second call to the send endpoint
+
+**Current state (until this is deployed):** The fake 6-second delay will be removed from `SponsorQuestionnaire.tsx` and replaced with a direct submit — the work email is still collected and stored, just not verified. The "Verify your employment" step becomes a "Confirm your work email" collection step only.

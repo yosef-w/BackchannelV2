@@ -5,6 +5,8 @@ import {
     getPublicProfile,
     getSponsorMatches,
     getWaitlistedJobs,
+    listReferrals,
+    withdrawReferral,
 } from "@/lib/api";
 import { BlurView } from "expo-blur";
 import {
@@ -60,6 +62,7 @@ interface Match {
   skills: string[];
   jobId?: string;
   sponsorUserId?: string;
+  applicantUserId?: string; // sponsor view — the matched applicant's user ID
   insights?: {
     funFact: string;
   };
@@ -69,71 +72,19 @@ interface Match {
   }[];
 }
 
-const mockMatches: Match[] = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    role: "Senior Product Manager",
-    company: "Google",
-    image: "https://images.unsplash.com/photo-1563132337-f159f484226c?w=200",
-    status: "referred",
-    date: "2 days ago",
-    appliedRole: "Lead Product Strategist",
-    experience: "8+ Years",
-    skills: ["Product Vision", "Agile", "SQL"],
-    insights: {
-      funFact: "Built a side project that reached 100k users in 3 months.",
-    },
-    prompts: [
-      {
-        question: "MY SECRET SUPERPOWER",
-        answer: "Turning complex data into simple, actionable stories.",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Michael Rodriguez",
-    role: "Software Engineer",
-    company: "Meta",
-    image: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?w=200",
-    status: "pending",
-    date: "5 days ago",
-    appliedRole: "Full Stack Lead",
-    experience: "5 Years",
-    skills: ["React", "Node.js", "System Design"],
-    insights: {
-      funFact: "Contributed to 3 major open-source libraries used by millions.",
-    },
-    prompts: [
-      {
-        question: "I'M BEST KNOWN FOR",
-        answer: "Writing code that's so clean it doesn't need comments.",
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Emily Watson",
-    role: "UX Design Lead",
-    company: "Airbnb",
-    image: "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=200",
-    status: "connected",
-    date: "1 week ago",
-    appliedRole: "Principal Designer",
-    experience: "10+ Years",
-    skills: ["Figma", "Design Systems", "User Research"],
-    insights: {
-      funFact: "Has a collection of over 50 rare design books from the 60s.",
-    },
-    prompts: [
-      {
-        question: "MY DESIGN PHILOSOPHY",
-        answer: "If it's not intuitive, it's not finished.",
-      },
-    ],
-  },
-];
+interface Referral {
+  referralId: string;
+  jobId: string;
+  applicantUserId: string;
+  sponsorUserId: string;
+  status: "REFERRED" | "WITHDRAWN" | string;
+  referralNote: string | null;
+  createdAt: string;
+  applicantFirstName: string | null;
+  applicantLastName: string | null;
+  jobTitle: string | null;
+  jobCompany: string | null;
+}
 
 interface JobOpportunity {
   id: number;
@@ -164,69 +115,6 @@ interface JobOpportunity {
   };
 }
 
-const mockJobs: JobOpportunity[] = [
-  {
-    id: 1,
-    title: "Senior Software Engineer",
-    company: "Stripe",
-    location: "San Francisco, CA",
-    salary: "$180k - $240k",
-    type: "Full-time",
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200",
-    description:
-      "Join our Payments Platform team to build the financial infrastructure for the internet.",
-    skills: ["TypeScript", "React", "Go", "Kubernetes"],
-    benefits: ["Unlimited PTO", "401k Match", "Full Health Coverage"],
-    sponsorInfo: {
-      name: "Sarah Chen",
-      role: "Engineering Manager",
-      image:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-      canRefer: true,
-    },
-  },
-  {
-    id: 2,
-    title: "Product Designer",
-    company: "Notion",
-    location: "New York, NY",
-    salary: "$140k - $190k",
-    type: "Full-time",
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=200",
-    description:
-      "Help us reimagine how teams collaborate with beautiful, intuitive design.",
-    skills: ["Figma", "Prototyping", "Design Systems"],
-    benefits: ["Equity Package", "Learning Stipend", "Remote Flexible"],
-    sponsorInfo: {
-      name: "Alex Kim",
-      role: "Head of Design",
-      image:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
-      canRefer: true,
-    },
-  },
-  {
-    id: 3,
-    title: "Data Scientist",
-    company: "Spotify",
-    location: "Remote",
-    salary: "$150k - $200k",
-    type: "Full-time",
-    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200",
-    description:
-      "Use ML to personalize music recommendations for 500M+ users worldwide.",
-    skills: ["Python", "SQL", "Machine Learning"],
-    benefits: ["Remote First", "Premium Spotify", "Annual Bonus"],
-    sponsorInfo: {
-      name: "Maria Rodriguez",
-      role: "Data Science Lead",
-      image:
-        "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200",
-      canRefer: true,
-    },
-  },
-];
-
 interface InterestedSponsor {
   likeId: string;
   userId: string;
@@ -253,82 +141,6 @@ interface WaitlistedJob {
   is_now_sponsored: boolean;
   sponsored_job_id: string | null;
 }
-
-const mockPipeline: Match[] = [
-  {
-    id: 101,
-    name: "James Chen",
-    role: "Frontend Developer",
-    company: "Pinterest",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
-    status: "Application Submitted",
-    date: "1 day ago",
-    appliedRole: "Senior Frontend Engineer",
-    experience: "4 Years",
-    skills: ["React", "TypeScript", "Next.js"],
-    insights: { funFact: "Won a national hackathon two years in a row." },
-    prompts: [
-      {
-        question: "MY WORK STYLE",
-        answer:
-          "I believe in shipping fast and iterating based on user feedback.",
-      },
-    ],
-  },
-  {
-    id: 102,
-    name: "Elena Rodriguez",
-    role: "Product Designer",
-    company: "Freelance",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
-    status: "Interviewing",
-    date: "1 week ago",
-    appliedRole: "Lead Product Designer",
-    experience: "6 Years",
-    skills: ["Figma", "UI/UX", "Prototyping"],
-    insights: { funFact: "Designed a mobile game played by 1M+ users." },
-    prompts: [
-      {
-        question: "DESIGN PHILOSOPHY",
-        answer: "Simplicity is the ultimate sophistication.",
-      },
-    ],
-  },
-  {
-    id: 103,
-    name: "David Kim",
-    role: "Data Analyst",
-    company: "Uber",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
-    status: "Hired",
-    date: "2 weeks ago",
-    appliedRole: "Data Scientist",
-    experience: "3 Years",
-    skills: ["Python", "SQL", "Tableau"],
-    insights: { funFact: "Can solve a Rubik's cube in under 45 seconds." },
-    prompts: [
-      {
-        question: "MOTIVATION",
-        answer: "Turning raw data into actionable business insights.",
-      },
-    ],
-  },
-];
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "Application Submitted":
-      return "#000";
-    case "Recruiter Screen":
-      return "#000";
-    case "Interviewing":
-      return "#000";
-    case "Hired":
-      return "#000";
-    default:
-      return "#000";
-  }
-};
 
 const QUICK_REPLIES = [
   "Nice to meet you!",
@@ -402,6 +214,14 @@ export function MatchesView({
   );
   const [selectedWaitlistedJob, setSelectedWaitlistedJob] =
     useState<WaitlistedJob | null>(null);
+
+  // Referrals state (for sponsors — submitted referrals & their statuses)
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [referralsLoading, setReferralsLoading] = useState(false);
+  const [referralsError, setReferralsError] = useState<string | null>(null);
+  const [withdrawingReferralId, setWithdrawingReferralId] = useState<
+    string | null
+  >(null);
 
   // Fetch matches on mount
   useEffect(() => {
@@ -490,6 +310,8 @@ export function MatchesView({
                       .map((s: string) => s.trim())
                   : [],
               jobId: match.JOB_ID || match.job?.id || "",
+              applicantUserId:
+                match.APPLICANT_USER_ID || match.applicant_user_id || "",
               insights: undefined,
               prompts: undefined,
             };
@@ -502,8 +324,6 @@ export function MatchesView({
         setMatchesError(
           err instanceof Error ? err.message : "Failed to fetch matches",
         );
-        // Fall back to mock data on error
-        setMatches(mockMatches);
       } finally {
         setMatchesLoading(false);
       }
@@ -654,6 +474,46 @@ export function MatchesView({
     fetchWaitlistedJobs();
   }, [userType]);
 
+  // Fetch referrals — role-aware: sponsors see submitted referrals, applicants see received referrals
+  useEffect(() => {
+    const fetchReferrals = async () => {
+      try {
+        setReferralsLoading(true);
+        const response = await listReferrals({ limit: 50, offset: 0 });
+
+        const transformed: Referral[] = (response.referrals || []).map(
+          (r: any) => ({
+            referralId: r.REFERRAL_ID || r.referral_id || "",
+            jobId: r.JOB_ID || r.job_id || "",
+            applicantUserId: r.APPLICANT_USER_ID || r.applicant_user_id || "",
+            sponsorUserId: r.SPONSOR_USER_ID || r.sponsor_user_id || "",
+            status: r.STATUS || r.status || "REFERRED",
+            referralNote: r.REFERRAL_NOTE || r.referral_note || null,
+            createdAt: r.CREATED_AT || r.created_at || "",
+            applicantFirstName:
+              r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
+            applicantLastName:
+              r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
+            jobTitle: r.JOB_TITLE || r.job_title || null,
+            jobCompany: r.JOB_COMPANY || r.job_company || null,
+          }),
+        );
+        setReferrals(transformed);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // 404 means no referrals yet — show empty state, not an error
+        if (!msg.includes("404") && !msg.toLowerCase().includes("not found")) {
+          console.error("[MatchesView] Failed to fetch referrals:", err);
+          setReferralsError(msg);
+        }
+      } finally {
+        setReferralsLoading(false);
+      }
+    };
+
+    fetchReferrals();
+  }, [userType]);
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
     setActiveSlide(slide);
@@ -664,10 +524,16 @@ export function MatchesView({
     setSelectedProfile(profile);
     setActiveSlide(0);
     setSponsorPublicProfile(null);
-    // NOTE: GET /api/matches/ does not return SPONSOR_USER_ID — j.SPONSOR_ID
-    // is used in the JOIN but never SELECTed. Until the backend adds
-    // `j.SPONSOR_ID AS SPONSOR_USER_ID` to get_job_matches_for_user, we
-    // can only display the fields already on the match card.
+    // Fetch the sponsor's full public profile for the Key Insights page.
+    // Becomes populated once the backend adds `j.sponsor_id AS "SPONSOR_USER_ID"`
+    // to get_job_matches_for_user (see docs/BACKEND_CHANGES_NEEDED.md §1).
+    if (profile.sponsorUserId) {
+      setSponsorPublicProfileLoading(true);
+      getPublicProfile(String(profile.sponsorUserId))
+        .then((p) => setSponsorPublicProfile(p))
+        .catch(() => {}) // silently fall through to placeholder UI
+        .finally(() => setSponsorPublicProfileLoading(false));
+    }
   };
 
   const openJob = (job: JobOpportunity) => {
@@ -702,6 +568,47 @@ export function MatchesView({
     setInterestedSponsorProfile(null);
     setSelectedWaitlistedJob(null);
     setMessage("");
+  };
+
+  const handleWithdrawReferral = async (referralId: string) => {
+    if (withdrawingReferralId) return; // debounce concurrent taps
+    setWithdrawingReferralId(referralId);
+    try {
+      await withdrawReferral(referralId);
+      // Optimistically update status in local state
+      setReferrals((prev) =>
+        prev.map((r) =>
+          r.referralId === referralId ? { ...r, status: "WITHDRAWN" } : r,
+        ),
+      );
+    } catch (err) {
+      console.error("[MatchesView] Failed to withdraw referral:", err);
+      // Re-fetch to restore truth from server
+      try {
+        const response = await listReferrals({ limit: 50, offset: 0 });
+        setReferrals(
+          (response.referrals || []).map((r: any) => ({
+            referralId: r.REFERRAL_ID || r.referral_id || "",
+            jobId: r.JOB_ID || r.job_id || "",
+            applicantUserId: r.APPLICANT_USER_ID || r.applicant_user_id || "",
+            sponsorUserId: r.SPONSOR_USER_ID || r.sponsor_user_id || "",
+            status: r.STATUS || r.status || "REFERRED",
+            referralNote: r.REFERRAL_NOTE || r.referral_note || null,
+            createdAt: r.CREATED_AT || r.created_at || "",
+            applicantFirstName:
+              r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
+            applicantLastName:
+              r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
+            jobTitle: r.JOB_TITLE || r.job_title || null,
+            jobCompany: r.JOB_COMPANY || r.job_company || null,
+          })),
+        );
+      } catch {
+        // ignore refresh error
+      }
+    } finally {
+      setWithdrawingReferralId(null);
+    }
   };
 
   return (
@@ -789,37 +696,148 @@ export function MatchesView({
               )}
             </View>
 
-            {/* Active Pipeline */}
+            {/* Active Pipeline — driven by real submitted referrals */}
             <View style={styles.listSection}>
-              <Text style={styles.listSectionTitle}>Active Pipeline</Text>
-              {mockPipeline.map((item, index) => (
-                <Animated.View
-                  key={`pipeline-${index}`}
-                  entering={FadeInUp.delay(index * 100)}
-                  style={styles.listItem}
+              <Text style={styles.listSectionTitle}>
+                {referralsLoading
+                  ? "Loading Pipeline..."
+                  : `Active Pipeline (${referrals.filter((r) => r.status === "REFERRED").length})`}
+              </Text>
+              {referralsError && (
+                <Text
+                  style={{ color: "#FF3B30", marginBottom: 12, fontSize: 13 }}
                 >
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.listImage}
-                  />
-                  <View style={styles.listInfo}>
-                    <Text style={styles.listName}>{item.name}</Text>
-                    <Text style={styles.pipelineRoleText}>
-                      Referred for {item.appliedRole}
-                    </Text>
-                    <View style={styles.statusBadge}>
-                      <View style={styles.statusDot} />
-                      <Text style={styles.statusText}>{item.status}</Text>
-                    </View>
+                  {referralsError}
+                </Text>
+              )}
+              {!referralsLoading && referrals.length === 0 ? (
+                <Animated.View
+                  entering={FadeInUp}
+                  style={styles.pipelineEmptyState}
+                >
+                  <View style={styles.pipelineEmptyIcon}>
+                    <Users size={28} color="#CCC" />
                   </View>
-                  <TouchableOpacity
-                    style={styles.viewProfileBtn}
-                    onPress={() => openProfile(item, "view")}
-                  >
-                    <Text style={styles.viewProfileText}>View</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.pipelineEmptyTitle}>
+                    No referrals yet
+                  </Text>
+                  <Text style={styles.pipelineEmptyText}>
+                    When you submit a referral from the Messages tab, it will
+                    appear here with live status tracking.
+                  </Text>
                 </Animated.View>
-              ))}
+              ) : (
+                referrals.map((referral, index) => {
+                  // Try to find the full match object so "View" opens the profile modal
+                  const matchForReferral = matches.find(
+                    (m) => m.applicantUserId === referral.applicantUserId,
+                  );
+                  const applicantName =
+                    [referral.applicantFirstName, referral.applicantLastName]
+                      .filter(Boolean)
+                      .join(" ") ||
+                    matchForReferral?.name ||
+                    "Applicant";
+                  const applicantImage = matchForReferral?.image || "";
+                  const isReferred = referral.status === "REFERRED";
+                  const isWithdrawing =
+                    withdrawingReferralId === referral.referralId;
+
+                  return (
+                    <Animated.View
+                      key={`referral-${referral.referralId || index}`}
+                      entering={FadeInUp.delay(index * 80)}
+                      style={[
+                        styles.listItem,
+                        !isReferred && styles.listItemWithdrawn,
+                      ]}
+                    >
+                      {applicantImage ? (
+                        <Image
+                          source={{ uri: applicantImage }}
+                          style={styles.listImage}
+                        />
+                      ) : (
+                        <View style={styles.listImagePlaceholder}>
+                          <Users size={20} color="#CCC" />
+                        </View>
+                      )}
+                      <View style={styles.listInfo}>
+                        <Text
+                          style={[
+                            styles.listName,
+                            !isReferred && styles.listNameWithdrawn,
+                          ]}
+                        >
+                          {applicantName}
+                        </Text>
+                        <Text style={styles.pipelineRoleText}>
+                          {referral.jobTitle || matchForReferral?.appliedRole
+                            ? `Referred for ${referral.jobTitle || matchForReferral?.appliedRole}`
+                            : "Referred"}
+                        </Text>
+                        <View
+                          style={
+                            isReferred
+                              ? styles.referralBadgeReferred
+                              : styles.referralBadgeWithdrawn
+                          }
+                        >
+                          <View
+                            style={[
+                              styles.statusDot,
+                              isReferred
+                                ? styles.statusDotReferred
+                                : styles.statusDotWithdrawn,
+                            ]}
+                          />
+                          <Text
+                            style={
+                              isReferred
+                                ? styles.referralStatusTextReferred
+                                : styles.referralStatusTextWithdrawn
+                            }
+                          >
+                            {isReferred ? "Referred" : "Withdrawn"}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.pipelineActions}>
+                        {matchForReferral && (
+                          <TouchableOpacity
+                            style={styles.viewProfileBtn}
+                            onPress={() =>
+                              openProfile(matchForReferral, "view")
+                            }
+                          >
+                            <Text style={styles.viewProfileText}>View</Text>
+                          </TouchableOpacity>
+                        )}
+                        {isReferred && (
+                          <TouchableOpacity
+                            style={[
+                              styles.withdrawBtn,
+                              isWithdrawing && styles.withdrawBtnDisabled,
+                            ]}
+                            onPress={() =>
+                              handleWithdrawReferral(referral.referralId)
+                            }
+                            disabled={isWithdrawing}
+                          >
+                            {isWithdrawing ? (
+                              <ActivityIndicator size="small" color="#DC2626" />
+                            ) : (
+                              <Text style={styles.withdrawBtnText}>
+                                Withdraw
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </Animated.View>
+                  );
+                })
+              )}
             </View>
           </>
         ) : (
@@ -1218,6 +1236,117 @@ export function MatchesView({
                 ))
               )}
             </View>
+
+            {/* Referrals Received — applicants see referrals submitted for them */}
+            <View style={styles.listSection}>
+              <Text style={styles.listSectionTitle}>
+                {referralsLoading
+                  ? "Loading Referrals..."
+                  : `Referrals Received (${referrals.filter((r) => r.status === "REFERRED").length})`}
+              </Text>
+              <Text style={[styles.sectionSubtitle, { marginBottom: 12 }]}>
+                Sponsors who have formally referred you for a role
+              </Text>
+
+              {referralsError && (
+                <Text
+                  style={{ color: "#FF3B30", fontSize: 13, marginBottom: 12 }}
+                >
+                  {referralsError}
+                </Text>
+              )}
+
+              {!referralsLoading && referrals.length === 0 ? (
+                <Animated.View
+                  entering={FadeInUp}
+                  style={styles.pipelineEmptyState}
+                >
+                  <View style={styles.pipelineEmptyIcon}>
+                    <Award size={28} color="#CCC" />
+                  </View>
+                  <Text style={styles.pipelineEmptyTitle}>
+                    No Referrals Yet
+                  </Text>
+                  <Text style={styles.pipelineEmptyText}>
+                    When a matched sponsor formally refers you for a role, it
+                    will appear here.
+                  </Text>
+                </Animated.View>
+              ) : (
+                referrals.map((referral, index) => {
+                  const isReferred = referral.status === "REFERRED";
+                  const sponsorName =
+                    [referral.applicantFirstName, referral.applicantLastName]
+                      .filter(Boolean)
+                      .join(" ") || "Sponsor";
+                  // For applicants the "applicantFirstName" field from the API
+                  // actually holds the SPONSOR name (since the role-aware endpoint
+                  // returns the other party's name). Use sponsorUserId for display.
+                  return (
+                    <Animated.View
+                      key={`recv-referral-${referral.referralId || index}`}
+                      entering={FadeInUp.delay(index * 80)}
+                      style={[
+                        styles.listItem,
+                        !isReferred && styles.listItemWithdrawn,
+                      ]}
+                    >
+                      <View style={styles.listImagePlaceholder}>
+                        <Award
+                          size={20}
+                          color={isReferred ? "#00CB54" : "#CCC"}
+                        />
+                      </View>
+                      <View style={styles.listInfo}>
+                        <Text
+                          style={[
+                            styles.listName,
+                            !isReferred && styles.listNameWithdrawn,
+                          ]}
+                        >
+                          {referral.jobTitle || "Open Role"}
+                        </Text>
+                        <Text style={styles.pipelineRoleText}>
+                          {referral.jobCompany
+                            ? `at ${referral.jobCompany}`
+                            : "Role referred"}
+                        </Text>
+                        <View
+                          style={
+                            isReferred
+                              ? styles.referralBadgeReferred
+                              : styles.referralBadgeWithdrawn
+                          }
+                        >
+                          <View
+                            style={[
+                              styles.statusDot,
+                              isReferred
+                                ? styles.statusDotReferred
+                                : styles.statusDotWithdrawn,
+                            ]}
+                          />
+                          <Text
+                            style={
+                              isReferred
+                                ? styles.referralStatusTextReferred
+                                : styles.referralStatusTextWithdrawn
+                            }
+                          >
+                            {isReferred ? "Referred" : "Withdrawn"}
+                          </Text>
+                        </View>
+                        {!!referral.createdAt && (
+                          <Text style={styles.referralDateText}>
+                            {getRelativeTime(referral.createdAt)}
+                          </Text>
+                        )}
+                      </View>
+                    </Animated.View>
+                  );
+                })
+              )}
+            </View>
           </>
         )}
       </ScrollView>
@@ -1325,45 +1454,155 @@ export function MatchesView({
                       </View>
                     </View>
 
-                    {/* Page 2: Key Insights — needs SPONSOR_USER_ID from backend */}
+                    {/* Page 2: Key Insights — populated once SPONSOR_USER_ID arrives from backend (see BACKEND_CHANGES_NEEDED.md §1) */}
                     <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
                       <View style={styles.insightsHeader}>
                         <Sparkles size={20} color="#000" />
                         <Text style={styles.insightsTitle}>Key Insights</Text>
                       </View>
-                      <View
-                        style={{
-                          flex: 1,
-                          justifyContent: "center",
-                          alignItems: "center",
-                          gap: 8,
-                          paddingHorizontal: 8,
-                        }}
-                      >
-                        <Users size={28} color="#DDD" />
-                        <Text
+
+                      {sponsorPublicProfileLoading ? (
+                        <View
                           style={{
-                            color: "#999",
-                            fontSize: 13,
-                            fontWeight: "600",
-                            textAlign: "center",
-                            lineHeight: 20,
+                            flex: 1,
+                            justifyContent: "center",
+                            alignItems: "center",
                           }}
                         >
-                          Full sponsor profile coming soon
-                        </Text>
-                        <Text
+                          <ActivityIndicator size="small" color="#000" />
+                        </View>
+                      ) : sponsorPublicProfile ? (
+                        <ScrollView
+                          showsVerticalScrollIndicator={false}
+                          bounces={false}
+                        >
+                          {/* Bio */}
+                          {!!sponsorPublicProfile.BIO && (
+                            <Text
+                              style={[styles.bioText, { marginBottom: 14 }]}
+                            >
+                              {sponsorPublicProfile.BIO}
+                            </Text>
+                          )}
+
+                          {/* Capability badges */}
+                          <View style={styles.sponsorCapabilityRow}>
+                            {sponsorPublicProfile?.sponsor_profile
+                              ?.OPEN_TO_REFERRALS && (
+                              <View style={styles.sponsorCapBadge}>
+                                <CheckCircle size={11} color="#00CB54" />
+                                <Text style={styles.sponsorCapBadgeText}>
+                                  Open to Referrals
+                                </Text>
+                              </View>
+                            )}
+                            {sponsorPublicProfile?.sponsor_profile
+                              ?.FINANCIAL_REWARD && (
+                              <View style={styles.sponsorCapBadge}>
+                                <DollarSign size={11} color="#000" />
+                                <Text style={styles.sponsorCapBadgeText}>
+                                  Financial Reward
+                                </Text>
+                              </View>
+                            )}
+                            {!!sponsorPublicProfile?.sponsor_profile
+                              ?.DURATION && (
+                              <View style={styles.sponsorCapBadge}>
+                                <Award size={11} color="#000" />
+                                <Text style={styles.sponsorCapBadgeText}>
+                                  {
+                                    sponsorPublicProfile.sponsor_profile
+                                      .DURATION
+                                  }
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* Companies can refer to */}
+                          {(sponsorPublicProfile?.sponsor_profile
+                            ?.COMPANIES_CAN_REFER_TO?.length ?? 0) > 0 && (
+                            <View style={styles.referCompaniesBlock}>
+                              <Text style={styles.referCompaniesLabel}>
+                                CAN REFER TO
+                              </Text>
+                              <View style={styles.referCompaniesList}>
+                                {sponsorPublicProfile.sponsor_profile.COMPANIES_CAN_REFER_TO.map(
+                                  (co: string, i: number) => (
+                                    <View
+                                      key={i}
+                                      style={styles.referCompanyChip}
+                                    >
+                                      <Text style={styles.referCompanyText}>
+                                        {co}
+                                      </Text>
+                                    </View>
+                                  ),
+                                )}
+                              </View>
+                            </View>
+                          )}
+
+                          {/* First insight / prompt */}
+                          {(sponsorPublicProfile?.sponsor_profile?.INSIGHTS
+                            ?.length ?? 0) > 0 &&
+                            sponsorPublicProfile.sponsor_profile.INSIGHTS.slice(
+                              0,
+                              1,
+                            ).map(
+                              (
+                                insight: { question: string; answer: string },
+                                idx: number,
+                              ) => (
+                                <View key={idx} style={styles.promptWrapper}>
+                                  <View style={styles.promptHeaderRow}>
+                                    <Zap size={14} color="#000" />
+                                    <Text style={styles.insightLabel}>
+                                      {insight.question}
+                                    </Text>
+                                  </View>
+                                  <Text style={styles.promptContent}>
+                                    {insight.answer}
+                                  </Text>
+                                </View>
+                              ),
+                            )}
+                        </ScrollView>
+                      ) : (
+                        // Fallback when SPONSOR_USER_ID is not yet in the API response
+                        <View
                           style={{
-                            color: "#CCC",
-                            fontSize: 11,
-                            textAlign: "center",
-                            lineHeight: 16,
+                            flex: 1,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            gap: 8,
+                            paddingHorizontal: 8,
                           }}
                         >
-                          Message {selectedProfile.name} to learn more about
-                          them
-                        </Text>
-                      </View>
+                          <Users size={28} color="#DDD" />
+                          <Text
+                            style={{
+                              color: "#999",
+                              fontSize: 13,
+                              fontWeight: "600",
+                              textAlign: "center",
+                              lineHeight: 20,
+                            }}
+                          >
+                            Sponsor insights unavailable
+                          </Text>
+                          <Text
+                            style={{
+                              color: "#CCC",
+                              fontSize: 11,
+                              textAlign: "center",
+                              lineHeight: 16,
+                            }}
+                          >
+                            Message {selectedProfile?.name} to learn more
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </ScrollView>
 
@@ -2866,5 +3105,120 @@ const styles = StyleSheet.create({
   waitingBadgeSponsored: {
     backgroundColor: "#F0FFF4",
     borderColor: "#BBF7D0",
+  },
+
+  // Pipeline empty state
+  pipelineEmptyState: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  pipelineEmptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  pipelineEmptyTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 6,
+  },
+  pipelineEmptyText: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  // ─── Referral pipeline styles ───────────────────────────────────────────────
+  listItemWithdrawn: {
+    opacity: 0.55,
+  },
+  listNameWithdrawn: {
+    color: "#AAA",
+  },
+  listImagePlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  referralBadgeReferred: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+    marginTop: 5,
+    backgroundColor: "#F0FFF4",
+    borderColor: "#BBF7D0",
+  },
+  referralBadgeWithdrawn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+    marginTop: 5,
+    backgroundColor: "#F5F5F5",
+    borderColor: "#E0E0E0",
+  },
+  statusDotReferred: {
+    backgroundColor: "#00CB54",
+  },
+  statusDotWithdrawn: {
+    backgroundColor: "#BBB",
+  },
+  referralStatusTextReferred: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: "#065F46",
+  },
+  referralStatusTextWithdrawn: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: "#999",
+  },
+  pipelineActions: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+    gap: 6,
+  },
+  withdrawBtn: {
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: "#FFCDD2",
+    backgroundColor: "#FFF5F5",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 74,
+  },
+  withdrawBtnDisabled: {
+    opacity: 0.5,
+  },
+  withdrawBtnText: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: "#DC2626",
+  },
+  referralDateText: {
+    fontSize: 11,
+    color: "#BBB",
+    marginTop: 3,
   },
 });

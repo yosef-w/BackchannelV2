@@ -34,6 +34,7 @@ export interface AutofillData {
     phone: string;
     portfolio: string;
     profileImage?: string; // URI or URL to profile image
+    workEmail?: string; // Sponsor's corporate email (separate from login email)
     address: {
       street: string;
       city: string;
@@ -108,6 +109,8 @@ interface UserProfileStore {
     data: Partial<AutofillData["demographics"]>,
   ) => Promise<void>;
   updateSkills: (skills: string[]) => Promise<void>;
+  updateWorkPreferences: (prefs: string[]) => Promise<void>;
+  updateDesiredRoles: (roles: string[]) => Promise<void>;
   updateInsights: (
     insights: Array<{ question: string; answer: string }>,
   ) => Promise<void>;
@@ -124,6 +127,9 @@ interface UserProfileStore {
   syncToBackend: () => Promise<void>;
   fetchFromBackend: () => Promise<void>;
 
+  workEmailVerified: boolean;
+  setWorkEmailVerified: (verified: boolean) => void;
+
   loadFromStorage: () => Promise<void>;
   clearData: () => Promise<void>;
 }
@@ -138,6 +144,7 @@ const defaultData: AutofillData = {
     email: "",
     phone: "",
     portfolio: "",
+    workEmail: "",
     address: {
       street: "",
       city: "",
@@ -195,6 +202,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   lastSyncedAt: null,
   syncError: null,
   needsSync: false,
+  workEmailVerified: false,
+  setWorkEmailVerified: (verified) => set({ workEmailVerified: verified }),
 
   updatePersonal: async (updates) => {
     const newData = { ...get().data };
@@ -314,6 +323,34 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     queueSync();
   },
 
+  updateWorkPreferences: async (prefs) => {
+    const newData = { ...get().data };
+    newData.workPreferences = prefs;
+    set({ data: newData, needsSync: true });
+
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch (error) {
+      console.warn("Failed to save work preferences data:", error);
+    }
+
+    queueSync();
+  },
+
+  updateDesiredRoles: async (roles) => {
+    const newData = { ...get().data };
+    newData.desiredRoles = roles;
+    set({ data: newData, needsSync: true });
+
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch (error) {
+      console.warn("Failed to save desired roles data:", error);
+    }
+
+    queueSync();
+  },
+
   updateInsights: async (insights) => {
     const newData = { ...get().data };
     newData.insights = insights;
@@ -394,6 +431,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         email: profileData.email || "",
         phone: profileData.phone || "",
         portfolio: profileData.portfolio || "",
+        workEmail: profileData.profileData?.workEmail || "",
         address: {
           street: profileData.address?.street || "",
           city: profileData.address?.city || "",
@@ -500,7 +538,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // (insights, skills, address details, portfolio, etc.) are not wiped.
       const existing = get().data;
 
-      // Helper: parse Snowflake VARIANT columns that may arrive as JSON strings
+      // Helper: parse PostgreSQL JSONB columns that may arrive as JSON strings
+      // (pg_utils.py casts JSONB → TEXT for backwards compatibility — PR #25)
       const parseVariant = (v: any): any[] => {
         if (!v) return [];
         if (typeof v === "string") {
@@ -721,8 +760,15 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
             (profile as any).PORTFOLIO_URL || existing.personal.portfolio,
           profileImage:
             (profile as any).PHOTO_URL || existing.personal.profileImage,
+          workEmail:
+            (profile as any).sponsor_profile?.WORK_EMAIL ||
+            existing.personal.workEmail ||
+            "",
           address: {
-            street: existing.personal.address?.street || "",
+            street:
+              (profile as any).STREET ||
+              existing.personal.address?.street ||
+              "",
             city:
               (profile as any).LOCATION?.split(",")[0]?.trim() ||
               existing.personal.address?.city ||
@@ -731,8 +777,11 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
               (profile as any).LOCATION?.split(",")[1]?.trim() ||
               existing.personal.address?.state ||
               "",
-            zip: existing.personal.address?.zip || "",
-            country: existing.personal.address?.country || "",
+            zip: (profile as any).ZIP || existing.personal.address?.zip || "",
+            country:
+              (profile as any).COUNTRY ||
+              existing.personal.address?.country ||
+              "",
           },
         },
         professional: {
@@ -803,6 +852,13 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });
 
+      // Update work email verification status.
+      // Defaults to true when WORK_EMAIL_VERIFIED is not yet returned by the backend
+      // (will enforce correctly once Optional D is deployed).
+      const workEmailVerifiedRaw = (profile as any).sponsor_profile
+        ?.WORK_EMAIL_VERIFIED;
+      set({ workEmailVerified: workEmailVerifiedRaw === false ? false : true });
+
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(autofillData));
       } catch (error) {
@@ -840,6 +896,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       lastSyncedAt: null,
       syncError: null,
       needsSync: false,
+      workEmailVerified: false,
     });
   },
 }));

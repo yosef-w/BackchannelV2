@@ -53,6 +53,7 @@ interface JobsState {
   // My Jobs actions
   setMyJobs: (jobs: Job[]) => void;
   setMyJobsLoading: (loading: boolean) => void;
+  removeMyJob: (jobId: string) => void;
 
   // Navigation actions
   setCurrentIndex: (index: number) => void;
@@ -118,6 +119,12 @@ export const useJobsStore = create<JobsState>((set, get) => ({
 
   setMyJobsLoading: (isMyJobsLoading) => set({ isMyJobsLoading }),
 
+  removeMyJob: (jobId) =>
+    set((state) => ({
+      myJobs: state.myJobs.filter((j) => j.id !== jobId),
+      sponsoredJobs: state.sponsoredJobs.filter((sj) => sj.jobId !== jobId),
+    })),
+
   // Navigation actions
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
 
@@ -158,7 +165,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   getFilteredJobs: () => {
     const { jobs, filters } = get();
 
-    return jobs.filter((job) => {
+    return (jobs || []).filter((job) => {
       // Filter by type
       if (filters.type.length > 0 && !filters.type.includes(job.type)) {
         return false;

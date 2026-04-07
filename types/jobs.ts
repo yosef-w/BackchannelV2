@@ -22,6 +22,9 @@ export interface JobApiResponse {
   AI_KEY_SKILLS: string; // JSON string array
   AI_JOB_HIGHLIGHTS: string; // JSON string array
   AI_JOB_SUMMARY: string;
+  REQUIREMENTS_SUMMARY: string | null;
+  CORE_RESPONSIBILITIES: string | null;
+  relevance_score: number;
 }
 
 /**
@@ -86,6 +89,9 @@ export interface Job {
   benefits: string[]; // Job benefits/perks
   isSponsored?: boolean;
   topApplicants?: any[];
+  requirementsSummary: string | null;
+  coreResponsibilities: string | null;
+  relevanceScore: number;
 }
 
 /**
@@ -252,6 +258,10 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     currentSponsors: [],
     isSponsored: false,
     topApplicants: [],
+    // PR #24 relevance scoring + content fields
+    requirementsSummary: apiJob.REQUIREMENTS_SUMMARY ?? null,
+    coreResponsibilities: apiJob.CORE_RESPONSIBILITIES ?? null,
+    relevanceScore: apiJob.relevance_score ?? 0,
     // Add applicationUrl for HomeView compatibility
     applicationUrl: apiJob.URL,
   } as any; // Cast to any to allow extra fields for compatibility

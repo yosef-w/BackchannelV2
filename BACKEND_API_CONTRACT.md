@@ -6,6 +6,8 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 
 Error responses use: `{"error": "message"}`
 
+> **Database Note (April 2026):** The backend migrated from Snowflake to **PostgreSQL** for all OLTP data (PR #25). This is fully transparent to the frontend — UPPERCASE column names, JSON string fields, and all endpoint URLs remain identical. Snowflake is retained **only** for Cortex AI (document parsing, autofill, classification). The `_parseVariant()` / `JSON.parse()` pattern still works correctly; JSONB columns are cast via `::TEXT`.
+
 ---
 
 ## 🎯 FRONTEND INTEGRATION STATUS
@@ -18,22 +20,22 @@ These endpoints are implemented in [lib/api.ts](lib/api.ts) and [lib/auth-api.ts
 
 #### 🔐 Authentication (4 endpoints)
 
-| Endpoint                 | Method | Function                         | File        | Status                                   |
-| ------------------------ | ------ | -------------------------------- | ----------- | ---------------------------------------- |
-| `/api/login/`            | POST   | `authApi.login(email, password)` | auth-api.ts | ✅ Verified - Returns tokens + user info |
-| `/api/register/`         | POST   | `authApi.register()`             | auth-api.ts | ✅ Verified - Applicant registration     |
-| `/api/register-sponsor/` | POST   | `authApi.register()`             | auth-api.ts | ✅ Verified - Sponsor registration       |
-| `/api/forgot-password/`  | POST   | `authApi.forgotPassword(email)`  | auth-api.ts | ✅ Verified - Returns reset token        |
-| `/api/token/refresh/`    | POST   | Auto in `ApiClient`              | api.ts      | ✅ Verified - Auto-refreshes on 401      |
+| Endpoint                 | Method | Function                         | File        | Status                                                           |
+| ------------------------ | ------ | -------------------------------- | ----------- | ---------------------------------------------------------------- |
+| `/api/login/`            | POST   | `authApi.login(email, password)` | auth-api.ts | ✅ Verified - Returns tokens + user info + `role` field          |
+| `/api/register/`         | POST   | `authApi.register()`             | auth-api.ts | ✅ Verified - Applicant registration                             |
+| `/api/register-sponsor/` | POST   | `authApi.register()`             | auth-api.ts | ✅ Verified - Sponsor registration                               |
+| `/api/forgot-password/`  | POST   | `authApi.forgotPassword(email)`  | auth-api.ts | ✅ Verified - Sends reset link via email (token NOT in response) |
+| `/api/token/refresh/`    | POST   | Auto in `ApiClient`              | api.ts      | ✅ Verified - Auto-refreshes on 401                              |
 
 #### 💼 Jobs & Feed (3 endpoints)
 
-| Endpoint                     | Method | Function                    | Status                                           |
-| ---------------------------- | ------ | --------------------------- | ------------------------------------------------ |
-| `/api/jobs/pack/`            | GET    | `fetchJobsPack()`           | ✅ Verified - Returns ATS + sponsored jobs mixed |
-| `/api/jobs/browse/`          | GET    | `browseJobs(filters?)`      | ✅ Verified - Sponsor browsing with filters      |
-| `/api/jobs/<jobId>/sponsor/` | POST   | `sponsorJob(jobId, data)`   | ✅ Verified - Sponsor an ATS job                 |
-| `/api/profiles/pack/`        | GET    | `fetchProfilesPack(jobId?)` | ✅ Verified - Sponsor viewing applicant profiles |
+| Endpoint                     | Method | Function                    | Status                                                                                                                               |
+| ---------------------------- | ------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `/api/jobs/pack/`            | GET    | `fetchJobsPack()`           | ✅ Verified - Returns relevance-scored jobs (PR #24); new fields: `relevance_score`, `REQUIREMENTS_SUMMARY`, `CORE_RESPONSIBILITIES` |
+| `/api/jobs/browse/`          | GET    | `browseJobs(filters?)`      | ✅ Verified - Sponsor browsing with filters                                                                                          |
+| `/api/jobs/<jobId>/sponsor/` | POST   | `sponsorJob(jobId, data)`   | ✅ Verified - Sponsor an ATS job                                                                                                     |
+| `/api/profiles/pack/`        | GET    | `fetchProfilesPack(jobId?)` | ✅ Verified - Sponsor viewing applicant profiles                                                                                     |
 
 #### 🤝 Matching & Likes (4 endpoints)
 
@@ -47,13 +49,13 @@ These endpoints are implemented in [lib/api.ts](lib/api.ts) and [lib/auth-api.ts
 
 #### 💬 Messaging (5 endpoints)
 
-| Endpoint                                     | Method | Function                                            | Status                                                                      |
-| -------------------------------------------- | ------ | --------------------------------------------------- | --------------------------------------------------------------------------- |
-| `/api/messages/conversations/`               | GET    | `getConversations()`                                | ✅ Verified - Returns UPPERCASE Snowflake fields                            |
-| `/api/messages/history/`                     | GET    | `getConversationMessages(conversationId, {limit?})` | ✅ Verified - Query param: `conversation_id`, `limit` (default 50, max 200) |
-| `/api/messages/send/`                        | POST   | `sendMessage(conversationId, body)`                 | ✅ Verified - Body: `{conversation_id, body}`, Returns: `{message_id}`      |
-| `/api/messages/conversations/get-or-create/` | POST   | `getOrCreateConversation(jobId, participantUserId)` | ✅ Verified - Requires match, Body: `{job_id, participant_user_id}`         |
-| `/api/messages/unmatch/`                     | POST   | `unmatchConversation(conversationId)`               | ✅ Verified - Body: `{conversation_id}`, Returns: `{status: "CLOSED"}`      |
+| Endpoint                                     | Method | Function                                            | Status                                                                                |
+| -------------------------------------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `/api/messages/conversations/`               | GET    | `getConversations()`                                | ✅ Verified - Returns UPPERCASE fields; supports `limit`/`offset` pagination (PR #22) |
+| `/api/messages/history/`                     | GET    | `getConversationMessages(conversationId, {limit?})` | ✅ Verified - Query param: `conversation_id`, `limit` (default 50, max 200)           |
+| `/api/messages/send/`                        | POST   | `sendMessage(conversationId, body)`                 | ✅ Verified - Body: `{conversation_id, body}`, Returns: `{message_id}`                |
+| `/api/messages/conversations/get-or-create/` | POST   | `getOrCreateConversation(jobId, participantUserId)` | ✅ Verified - Requires match, Body: `{job_id, participant_user_id}`                   |
+| `/api/messages/unmatch/`                     | POST   | `unmatchConversation(conversationId)`               | ✅ Verified - Body: `{conversation_id}`, Returns: `{status: "CLOSED"}`                |
 
 #### 👤 Profile Management (6 endpoints)
 
@@ -63,7 +65,7 @@ These endpoints are implemented in [lib/api.ts](lib/api.ts) and [lib/auth-api.ts
 | `/api/profile/basic/`            | GET    | `getBasicProfile()`               | ✅ Verified - Returns subset: USER_ID, EMAIL, FIRST_NAME, LAST_NAME, PHOTO_URL                                    |
 | `/api/profile/update/`           | PATCH  | `updateGeneralProfile(updates)`   | ✅ Verified - 15 fields (location, phone_number, bio, address components, etc.)                                   |
 | `/api/profile/applicant/update/` | PATCH  | `updateApplicantProfile(updates)` | ✅ Verified - 20+ fields including insights, professional_experiences, education_entries                          |
-| `/api/profile/sponsor/update/`   | PATCH  | `updateSponsorProfile(updates)`   | ✅ Verified - 11 fields including insights, companies_can_refer_to                                                |
+| `/api/profile/sponsor/update/`   | PATCH  | `updateSponsorProfile(updates)`   | ✅ Verified - 12 fields including insights, companies_can_refer_to, skills                                        |
 | `/api/profiles/<userId>/public/` | GET    | `getPublicProfile(userId)`        | ✅ Verified - Returns public profile (excludes email, phone, street, zip)                                         |
 
 #### 🚪 Session Management (1 endpoint)
@@ -80,6 +82,15 @@ These endpoints are implemented in [lib/api.ts](lib/api.ts) and [lib/auth-api.ts
 | `/api/notifications/unread-count/` | GET    | `getUnreadNotificationCount()`           | ✅ Verified - Returns badge count                  |
 | `/api/notifications/<id>/read/`    | PATCH  | `markNotificationAsRead(notificationId)` | ✅ Verified - Mark single notification             |
 | `/api/notifications/read-all/`     | PATCH  | `markAllNotificationsAsRead()`           | ✅ Verified - Bulk mark read with count            |
+
+### ✅ Additional Verified Endpoints (since March 2, 2026)
+
+| Endpoint                        | Method | Function                  | Status                                                                    |
+| ------------------------------- | ------ | ------------------------- | ------------------------------------------------------------------------- |
+| `/api/likes/profiles/received/` | GET    | `getInterestedSponsors()` | ✅ Deployed (PR #16) — wired in MatchesView                               |
+| `/api/profile/sponsor/update/`  | PATCH  | `updateSponsorProfile()`  | ✅ Now accepts `skills` array (PR #16)                                    |
+| `/api/auth/change-email/`       | POST   | —                         | ✅ 501 stub deployed (PR #16) — returns 501 until verification flow built |
+| `/api/jobs/<id>/unsponsor/`     | DELETE | `unsponsorJob()`          | ✅ Deployed (PR #17) — hard-deletes sponsored job, allows re-sponsoring   |
 
 ### ⚠️ Core Endpoints NOT Yet Wired (4 endpoints)
 
@@ -98,14 +109,14 @@ These are essential for core app functionality and should be prioritized:
 
 **UPPERCASE Convention:**
 
-- Snowflake returns UPPERCASE column names (`USER_ID`, `FIRST_NAME`, `MESSAGE_ID`, etc.)
+- PostgreSQL column names are uppercased by the connection layer (`USER_ID`, `FIRST_NAME`, `MESSAGE_ID`, etc.)
 - All response types in lib/api.ts match this convention
 - Components are responsible for transforming to UI-friendly names
 
-**VARIANT Fields:**
+**JSONB Fields (Arrive as JSON strings via `::TEXT` cast — use `JSON.parse()`):**
 
-- Complex fields (SKILLS, INSIGHTS, PROFESSIONAL_EXPERIENCES) are VARIANT columns
-- May be returned as JSON strings - use `JSON.parse()` if needed
+- Complex fields (SKILLS, INSIGHTS, PROFESSIONAL_EXPERIENCES) are PostgreSQL JSONB columns cast to TEXT
+- May be returned as JSON strings — use `JSON.parse()` if needed
 - See `_parseVariant()` helper in stores/useUserProfileStore.ts
 
 **Field Name Convention:**
@@ -115,7 +126,7 @@ These are essential for core app functionality and should be prioritized:
 
 **Messaging Behavior:**
 
-- `getConversations()` returns all conversations (no pagination params)
+- `getConversations()` supports `limit` and `offset` query params, returns `total_count`
 - `getConversationMessages()` uses query param `conversation_id` (not path param)
 - `sendMessage()` returns only `{message_id}` (not full message object)
 - Messages sent via HTTP are also broadcast to WebSocket connections
@@ -138,9 +149,9 @@ These are essential for core app functionality and should be prioritized:
 
 ### Response Conventions
 
-- Snowflake returns **UPPERCASE** column names (e.g., `USER_ID`, `FIRST_NAME`). The backend passes these through as-is.
-- Array/object fields stored as Snowflake VARIANT are returned as JSON strings in some contexts (e.g., `AI_KEY_SKILLS`) — parse them client-side.
-- Paginated endpoints accept `limit` and `offset` query parameters.
+- The backend returns **UPPERCASE** column names (PostgreSQL column names are uppercased by the connection layer for backwards compatibility).
+- Array/object fields stored as PostgreSQL JSONB are cast to TEXT strings in SQL queries (via `::TEXT`), so they arrive as JSON strings. Parse them client-side with `JSON.parse()`.
+- Paginated list endpoints accept `limit` and `offset` query parameters and return a `total_count` field in the response.
 - All UUIDs are v4 format (`xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`).
 
 ---
@@ -252,6 +263,7 @@ Authenticate and receive JWT tokens.
 {
   "user_id": "uuid",
   "email": "user@example.com",
+  "role": "Applicant",
   "refresh_token": "jwt-refresh-token",
   "access_token": "jwt-access-token"
 }
@@ -284,12 +296,11 @@ Request a password reset token.
 
 ```json
 {
-  "message": "If an account with that email exists, a password reset link has been sent.",
-  "reset_token": "jwt-token"
+  "message": "If an account with that email exists, a password reset link has been sent."
 }
 ```
 
-Note: `reset_token` only included if email exists (anti-enumeration). Token expires in 15 minutes.
+The reset token is **never** returned in the HTTP response. It is sent to the user's email address only. The response is identical whether or not the email exists (anti-enumeration). Token expires in 15 minutes.
 
 ---
 
@@ -589,7 +600,9 @@ Get a pack of applicant profiles for a sponsor's job.
 
 ### GET `/api/jobs/pack/`
 
-Get a pack of unseen jobs for the applicant feed (ATS + sponsored mixed).
+Get a pack of unseen jobs for the applicant feed (ATS + sponsored mixed), ranked by relevance to the applicant's profile (PR #24).
+
+> **Relevance scoring (PR #24):** Jobs are ranked server-side using a weighted algorithm: skills match 40%, experience level 20%, role match 20%, location 10%, recency 10%. The `relevance_score` (0.0–1.0) can optionally be displayed in job cards.
 
 - **Auth**: Required
 
@@ -617,6 +630,9 @@ Get a pack of unseen jobs for the applicant feed (ATS + sponsored mixed).
       "AI_KEY_SKILLS": "[\"Python\",\"Django\"]",
       "AI_JOB_HIGHLIGHTS": "[]",
       "AI_JOB_SUMMARY": "string",
+      "REQUIREMENTS_SUMMARY": "string | null",
+      "CORE_RESPONSIBILITIES": "string | null",
+      "relevance_score": 0.82,
       "card_index": 1,
       "total_cards": 10,
       "job_type": "ats | sponsored",
@@ -1009,9 +1025,10 @@ Note: Users must be matched for the job.
 
 ### GET `/api/messages/conversations/`
 
-List all conversations for the authenticated user.
+List all conversations for the authenticated user. Supports pagination (PR #22).
 
 - **Auth**: Required
+- **Query**: `limit` (optional, default 20), `offset` (optional, default 0)
 
 **Response (200):**
 
@@ -1030,7 +1047,8 @@ List all conversations for the authenticated user.
       "SPONSOR_FIRST_NAME": "string",
       "TITLE": "string"
     }
-  ]
+  ],
+  "total_count": 42
 }
 ```
 
@@ -1631,8 +1649,8 @@ All registration fields are now supported by the backend, including `current_rol
 
 # Backend Architecture
 
-**Stack:** Django REST Framework + Django Channels (WebSocket) + Snowflake (direct SQL, no ORM) + Redis (caching + pub/sub) + Firebase Cloud Messaging (push notifications) + Daphne (ASGI) + Docker
-**Auth:** JWT via `djangorestframework-simplejwt` with custom Snowflake-backed user model
+**Stack:** Django REST Framework + Django Channels (WebSocket) + **PostgreSQL** (direct SQL via psycopg2, no ORM) + Snowflake (Cortex AI only — resume parsing, autofill, classification) + Redis (caching + pub/sub) + Firebase Cloud Messaging (push notifications) + Daphne (ASGI) + Docker
+**Auth:** JWT via `djangorestframework-simplejwt` with custom PostgreSQL-backed user model
 
 ![Architecture Diagram](backchannel_architecture.png)
 
@@ -1658,7 +1676,7 @@ HTTP Request                 WebSocket Connection
              Services       (business logic, orchestration, domain rules)
                   |
                   v
-             Queries        (raw Snowflake SQL via snowflake-connector-python)
+             Queries        (raw PostgreSQL SQL via psycopg2; Snowflake queries for Cortex AI only)
 ```
 
 **Views** are thin — they extract parameters from the request, call a service function, and translate the `Result` into an HTTP response.
@@ -1691,11 +1709,11 @@ HTTP Request                 WebSocket Connection
 
 ### WebSocket layer
 
-| File           | Purpose                                                                                        |
-| -------------- | ---------------------------------------------------------------------------------------------- |
-| `consumers.py` | `ChatConsumer` — WebSocket handler for real-time messaging (connect, send/receive, disconnect) |
-| `ws_auth.py`   | `JWTAuthMiddleware` — validates JWT from query string, attaches `SnowflakeUser` to ASGI scope  |
-| `routing.py`   | WebSocket URL patterns (`ws/chat/<conversation_id>/`)                                          |
+| File           | Purpose                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| `consumers.py` | `ChatConsumer` — WebSocket handler for real-time messaging (connect, send/receive, disconnect)  |
+| `ws_auth.py`   | `JWTAuthMiddleware` — validates JWT from query string, attaches `BackChannelUser` to ASGI scope |
+| `routing.py`   | WebSocket URL patterns (`ws/chat/<conversation_id>/`)                                           |
 
 ### Services (business logic)
 
@@ -1706,25 +1724,25 @@ HTTP Request                 WebSocket Connection
 | `services/jobs.py`          | Job pack building (ATS + sponsored mix), browse filtering, sponsorship flow, application logic                                |
 | `services/matching.py`      | Like/match detection, mutual-match checks, match listing with enrichment                                                      |
 | `services/messaging.py`     | Conversation creation with match verification, message sending, unread flag management, WebSocket broadcast                   |
-| `services/documents.py`     | File validation, Snowflake stage upload, document parsing, resume text extraction                                             |
+| `services/documents.py`     | File validation, S3/DigitalOcean Spaces upload, document parsing (Snowflake Cortex AI), resume text extraction                |
 | `services/notifications.py` | Notification creation with preference gating, read/unread management                                                          |
 | `services/referrals.py`     | Referral submission with match validation, role-aware listing, withdrawal                                                     |
 | `services/push.py`          | FCM push notification delivery via `firebase-admin` SDK. Lazy-init, best-effort (never raises), auto-deactivates stale tokens |
 
 ### Queries (data access)
 
-| File                       | Tables Accessed                                                 |
-| -------------------------- | --------------------------------------------------------------- |
-| `queries/users.py`         | USERS                                                           |
-| `queries/profiles.py`      | USER_PROFILES, APPLICANT_PROFILES, SPONSOR_PROFILES             |
-| `queries/jobs.py`          | SILVER_JOBS (RAW_ATS), JOB_POSTINGS, JOB_FEED_HISTORY, WAITLIST |
-| `queries/likes.py`         | LIKES (job + profile)                                           |
-| `queries/messaging.py`     | CONVERSATIONS, MESSAGES                                         |
-| `queries/documents.py`     | Snowflake stages for file storage                               |
-| `queries/notifications.py` | NOTIFICATIONS                                                   |
-| `queries/referrals.py`     | REFERRALS                                                       |
-| `queries/devices.py`       | DEVICE_TOKENS                                                   |
-| `queries/shared.py`        | Common utilities (execute_query, sanitize_for_json)             |
+| File                       | Tables Accessed                                                       |
+| -------------------------- | --------------------------------------------------------------------- |
+| `queries/users.py`         | USERS                                                                 |
+| `queries/profiles.py`      | USER_PROFILES, APPLICANT_PROFILES, SPONSOR_PROFILES                   |
+| `queries/jobs.py`          | SILVER_JOBS (RAW_ATS), JOB_POSTINGS, JOB_FEED_HISTORY, WAITLIST       |
+| `queries/likes.py`         | LIKES (job + profile)                                                 |
+| `queries/messaging.py`     | CONVERSATIONS, MESSAGES                                               |
+| `queries/documents.py`     | Snowflake stages (Cortex AI pipeline only — resume parsing, autofill) |
+| `queries/notifications.py` | NOTIFICATIONS                                                         |
+| `queries/referrals.py`     | REFERRALS                                                             |
+| `queries/devices.py`       | DEVICE_TOKENS                                                         |
+| `queries/shared.py`        | Common utilities (execute_query, sanitize_for_json)                   |
 
 ### Cross-cutting
 
@@ -1734,20 +1752,21 @@ HTTP Request                 WebSocket Connection
 | `constants.py`       | Centralised magic numbers (pagination defaults, file size limits, token expiry, rate limits) |
 | `middleware.py`      | JSON error middleware (catches unhandled exceptions, returns structured JSON in production)  |
 | `throttles.py`       | DRF rate limiting classes (login, registration, password reset)                              |
-| `custom_jwt.py`      | JWT authentication against Snowflake USERS table                                             |
-| `backends.py`        | Custom authentication backend for Snowflake                                                  |
+| `custom_jwt.py`      | JWT authentication against PostgreSQL USERS table                                            |
+| `backends.py`        | Custom authentication backend for PostgreSQL                                                 |
 | `serializers.py`     | DRF serializers for input validation on auth endpoints                                       |
-| `snowflake_utils.py` | Snowflake connection management with thread-local connection pooling                         |
-| `snowflake_user.py`  | Minimal user model for DRF compatibility                                                     |
+| `pg_utils.py`        | PostgreSQL connection management via psycopg2 (replaces `snowflake_utils.py` after PR #25)   |
+| `snowflake_utils.py` | **Cortex AI only** — Snowflake connection for document parsing and autofill pipeline         |
+| `snowflake_user.py`  | Minimal user model for DRF compatibility (retained for backwards compat)                     |
 
 ---
 
 ## Key Design Decisions
 
-- **No Django ORM.** All data lives in Snowflake. We use raw SQL via `snowflake-connector-python` and return pandas DataFrames. Connections are pooled per-thread via `threading.local()` to avoid the 3-5s TLS/auth overhead on every query. A `SELECT 1` health check validates the connection before reuse; stale connections are transparently replaced.
-- **UPPERCASE column names.** Snowflake returns uppercase keys. The backend passes these through; the frontend handles casing.
-- **JSON VARIANT columns.** Complex fields (SKILLS, POSITIONS, RESUME_DATA) are stored as Snowflake VARIANT and parsed/serialized in the service layer.
-- **Redis caching (optional).** When `REDIS_URL` is set, hot-path queries are cached via `django-redis`, reducing Snowflake latency from 200-500ms to sub-millisecond. Falls back to `FileBasedCache` when Redis is unavailable. Caching is transparent at the query layer; invalidation happens in the service layer when data mutates.
+- **No Django ORM.** All OLTP data lives in **PostgreSQL** (DigitalOcean Managed Database, PR #25). We use raw SQL via `psycopg2` with `DictCursor`. Snowflake is retained **only** for Cortex AI queries (resume parsing, autofill, classification) via `snowflake-connector-python`. Previous per-thread connection pooling overhead (3–5s TLS) is now negligible with PostgreSQL's fast connection times.
+- **UPPERCASE column names.** The PostgreSQL connection layer (`pg_utils.py`) uppercases column names for full backwards compatibility with Snowflake-era frontend code. No frontend changes required.
+- **JSONB columns (arrive as JSON strings).** Complex fields (SKILLS, POSITIONS, RESUME_DATA) are stored as PostgreSQL `JSONB` and cast to `TEXT` via `::TEXT` before delivery. The existing `_parseVariant()` / `JSON.parse()` pattern in the frontend stores works unchanged.
+- **Redis caching (optional).** When `REDIS_URL` is set, hot-path queries are cached via `django-redis`, reducing repeated PostgreSQL query overhead to sub-millisecond. Falls back to `FileBasedCache` when Redis is unavailable. Caching is transparent at the query layer; invalidation happens in the service layer when data mutates.
 - **WebSocket messaging via Django Channels.** Real-time chat uses `channels` + `channels-redis` with Daphne as the ASGI server. JWT is passed as a `?token=` query parameter since WebSocket connections cannot send custom headers. Each conversation has a Redis-backed channel group (`chat_{conversation_id}`). Messages sent via HTTP REST are also broadcast to the group, keeping both transports in sync. Falls back to `InMemoryChannelLayer` when Redis is unavailable.
 - **Push notifications via FCM.** When `FIREBASE_CREDENTIALS_JSON` (or `FIREBASE_CREDENTIALS_B64`) is set, `create_notification()` also delivers a push via Firebase Cloud Messaging. The Firebase Admin SDK is lazily initialized on first use and gracefully degrades to no-op when credentials are absent. Invalid/unregistered device tokens are automatically deactivated. The mobile app registers its device token via `POST /api/devices/register/` on login.
 - **DEBUG=False in production.** The JSON error middleware ensures all 500 errors return structured JSON instead of Django's HTML debug page.
@@ -1757,7 +1776,7 @@ HTTP Request                 WebSocket Connection
 ## Testing
 
 - **Unit tests:** `bc_microservices/tests/` — mock service-layer functions, test view responses and business logic in isolation. 222 tests across 15 test modules (includes WebSocket consumer, auth middleware, and push notification tests).
-- **Integration tests:** `scripts/integration_test.sh` — builds Docker image, starts Django + Redis containers on an isolated Docker network, runs end-to-end HTTP tests with `curl` against real endpoints using real auth tokens and Snowflake. Includes deep pipeline tests (real PDF upload → Cortex parsing → DB persistence verification). Test functions are organized in `scripts/integration/` (one file per section) and sourced by the main script.
+- **Integration tests:** `scripts/integration_test.sh` — builds Docker image, starts Django + PostgreSQL + Redis containers on an isolated Docker network, runs end-to-end HTTP tests with `curl` against real endpoints using real auth tokens. Includes deep pipeline tests (real PDF upload → Cortex AI parsing → DB persistence verification). Test functions are organized in `scripts/integration/` (one file per section) and sourced by the main script.
 - **Coverage matrix:** `scripts/test_coverage_report.py` — unified runner that executes unit and/or integration tests and generates `docs/TEST_COVERAGE_MATRIX.md` mapping every endpoint to its test status.
 
 For local development with Redis (optional):

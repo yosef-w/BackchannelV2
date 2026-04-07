@@ -54,6 +54,7 @@ import {
   classifyResume,
   getExtractedResumeText,
   logout,
+  unregisterDevice,
   updateApplicantProfile,
   updateGeneralProfile,
   updateSponsorProfile,
@@ -125,6 +126,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   // Store access - must come before any useMemo that depends on it
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const deviceToken = useAuthStore((state) => state.deviceToken);
   const clearUserProfileData = useUserProfileStore((state) => state.clearData);
   const userProfileData = useUserProfileStore((state) => state.data);
   const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
@@ -136,6 +138,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.updatePreferences,
   );
   const updateSkills = useUserProfileStore((state) => state.updateSkills);
+  const updateWorkPreferencesStore = useUserProfileStore(
+    (state) => state.updateWorkPreferences,
+  );
+  const updateDesiredRolesStore = useUserProfileStore(
+    (state) => state.updateDesiredRoles,
+  );
   const updateInsights = useUserProfileStore((state) => state.updateInsights);
   const updateCertifications = useUserProfileStore(
     (state) => state.updateCertifications,
@@ -911,6 +919,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       case "workPreferences": {
         const newWorkPreferences = [...workPreferences, valueToAdd];
         setWorkPreferences(newWorkPreferences);
+        await updateWorkPreferencesStore(newWorkPreferences);
         if (userType === "applicant") {
           await updateApplicantProfile({
             work_preferences: newWorkPreferences,
@@ -931,6 +940,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         }
         const newDesiredRoles = [...desiredRoles, valueToAdd];
         setDesiredRoles(newDesiredRoles);
+        await updateDesiredRolesStore(newDesiredRoles);
         setNewRoleTag("");
         if (userType === "applicant") {
           await updateApplicantProfile({ desired_roles: newDesiredRoles });
@@ -954,6 +964,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       ? workPreferences.filter((p) => p !== preference)
       : [...workPreferences, preference];
     setWorkPreferences(updated);
+    await updateWorkPreferencesStore(updated);
     if (userType === "applicant") {
       await updateApplicantProfile({ work_preferences: updated });
     }
@@ -978,6 +989,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       case "workPreferences": {
         const updatedWorkPrefs = workPreferences.filter((_, i) => i !== index);
         setWorkPreferences(updatedWorkPrefs);
+        await updateWorkPreferencesStore(updatedWorkPrefs);
         if (userType === "applicant") {
           await updateApplicantProfile({ work_preferences: updatedWorkPrefs });
         }
@@ -986,6 +998,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       case "desiredRoles": {
         const updatedRoles = desiredRoles.filter((_, i) => i !== index);
         setDesiredRoles(updatedRoles);
+        await updateDesiredRolesStore(updatedRoles);
         if (userType === "applicant") {
           await updateApplicantProfile({ desired_roles: updatedRoles });
         }
@@ -1996,6 +2009,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const confirmLogout = async () => {
     setShowLogoutModal(false);
+    // Deactivate push token on the backend so no more notifications are
+    // delivered to this device after logout.
+    if (deviceToken) {
+      try {
+        await unregisterDevice(deviceToken);
+      } catch (err) {
+        console.warn("[ProfileView] Failed to unregister device token:", err);
+        // Non-fatal — proceed with logout regardless.
+      }
+    }
     try {
       // Call backend logout to invalidate session
       await logout();

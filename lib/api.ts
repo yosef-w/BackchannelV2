@@ -233,7 +233,9 @@ export async function fetchJobsPack(): Promise<any[]> {
   const response = await api.get<{ jobs: any[]; total_count: number }>(
     "/api/jobs/pack/",
   );
-  return response.jobs; // Extract jobs array from envelope
+  // Jobs are ranked by relevance_score (skills 40%, experience 20%, role 20%, location 10%, recency 10%)
+  // New fields: relevance_score (float 0-1), REQUIREMENTS_SUMMARY (string|null), CORE_RESPONSIBILITIES (string|null)
+  return response.jobs;
 }
 
 /**
@@ -556,19 +558,14 @@ export async function getSponsorMatches(): Promise<{
 
 /**
  * 💬 Get Conversations
- * Get all conversations for current user
- *
- * Query params:
- * - includeHidden: boolean (default: false)
- * - page: number
- * - limit: number
+ * List all conversations for the authenticated user.
+ * Backend returns UPPERCASE field names (PostgreSQL, PR #25).
+ * Supports pagination (PR #22): limit (default 20) and offset (default 0).
  */
-/**
- * 💬 Get Conversations
- * List all conversations for the authenticated user
- * Backend returns UPPERCASE field names from Snowflake
- */
-export async function getConversations(): Promise<{
+export async function getConversations(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{
   conversations: Array<{
     CONVERSATION_ID: string;
     JOB_ID: string;
@@ -578,11 +575,31 @@ export async function getConversations(): Promise<{
     APPLICANT_HAS_UNREAD: boolean;
     SPONSOR_HAS_UNREAD: boolean;
     APPLICANT_FIRST_NAME: string;
+    APPLICANT_LAST_NAME: string;
     SPONSOR_FIRST_NAME: string;
+    SPONSOR_LAST_NAME: string;
     TITLE: string;
+    // Enriched fields from server-side JOIN (last message + participant details)
+    LAST_BODY: string | null;
+    LAST_AT: string | null;
+    SPONSOR_PHOTO_URL: string | null;
+    APPLICANT_PHOTO_URL: string | null;
+    SPONSOR_JOB_TITLE: string | null;
+    SPONSOR_COMPANY: string | null;
+    COMPANY: string | null;
+    APPLICANT_POSITIONS: string | null; // JSON-encoded string array
+    SKILLS: string | null;
+    YEARS_EXPERIENCE: string | null;
   }>;
+  total_count: number;
 }> {
-  return api.get("/api/messages/conversations/");
+  const queryParams = new URLSearchParams();
+  if (params?.limit !== undefined)
+    queryParams.append("limit", String(params.limit));
+  if (params?.offset !== undefined)
+    queryParams.append("offset", String(params.offset));
+  const qs = queryParams.toString();
+  return api.get(`/api/messages/conversations/${qs ? `?${qs}` : ""}`);
 }
 
 /**
@@ -1376,6 +1393,18 @@ export async function deactivateJob(jobId: string): Promise<{
 }
 
 /**
+ * 🗑️ Unsponsor Job (Sponsor)
+ * Permanently removes a sponsored job posting (hard delete).
+ * Unlike deactivateJob (soft-delete), unsponsor allows re-sponsoring the same ATS listing later.
+ * Uses DELETE /api/jobs/<job_id>/unsponsor/
+ */
+export async function unsponsorJob(jobId: string): Promise<{
+  message: string;
+}> {
+  return api.delete(`/api/jobs/${jobId}/unsponsor/`);
+}
+
+/**
  * 👥 Get Applicants Who Liked a Job (Sponsor)
  * Returns all applicant profiles who liked a specific sponsored job.
  * Uses GET /api/jobs/<job_id>/likes/applicants/
@@ -1413,21 +1442,24 @@ export async function getJobApplicantsLikes(jobId: string): Promise<{
  * @param platform - "ios" | "android" | "web"
  */
 export async function registerDevice(
-  token: string,
-  platform: "ios" | "android" | "web",
-): Promise<{ message: string }> {
-  return api.post("/api/devices/register/", { token, platform });
+  deviceToken: string,
+  platform: "ios" | "android" | "expo",
+): Promise<{ token_id: string; message: string }> {
+  return api.post("/api/devices/register/", {
+    device_token: deviceToken,
+    platform,
+  });
 }
 
 /**
  * 🔔 Unregister Device Token
- * Remove a push notification device token (on logout / app uninstall).
- * Uses DELETE /api/devices/unregister/
+ * Deactivate a push notification device token (on logout / app uninstall).
+ * Uses POST /api/devices/unregister/ — token is marked inactive, not deleted.
  */
 export async function unregisterDevice(
-  _token: string,
+  deviceToken: string,
 ): Promise<{ message: string }> {
-  return api.delete("/api/devices/unregister/");
+  return api.post("/api/devices/unregister/", { device_token: deviceToken });
 }
 
 // ============================================================
@@ -1517,12 +1549,14 @@ export async function getReferralDetail(referralId: string): Promise<{
 /**
  * 🤝 Withdraw Referral (Sponsor)
  * Withdraw a previously submitted referral.
- * Uses DELETE /api/referrals/<referral_id>/withdraw/
+ * Uses PATCH /api/referrals/<referral_id>/withdraw/
+ * (NOT DELETE — the API contract specifies PATCH for this endpoint)
  */
 export async function withdrawReferral(referralId: string): Promise<{
   message: string;
+  status: string;
 }> {
-  return api.delete(`/api/referrals/${referralId}/withdraw/`);
+  return api.patch(`/api/referrals/${referralId}/withdraw/`);
 }
 
 /**

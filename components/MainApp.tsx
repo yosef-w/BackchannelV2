@@ -1,4 +1,6 @@
+import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 import { useLocalSearchParams } from "expo-router";
 import {
     Bell,
@@ -8,9 +10,10 @@ import {
     Star,
     User,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     Dimensions,
+    Platform,
     SafeAreaView,
     StatusBar,
     StyleSheet,
@@ -24,6 +27,8 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from "react-native-reanimated";
+import { getUnreadNotificationCount, registerDevice } from "../lib/api";
+import { useAuthStore } from "../stores/useAuthStore";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
@@ -107,11 +112,140 @@ export function MainApp({ userType }: MainAppProps) {
   const [isBottomNavHidden, setIsBottomNavHidden] = useState(false);
   const [publicProfileData, setPublicProfileData] = useState<any>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<
-    number | null
+    string | null
   >(null);
   const [pendingMessageJobId, setPendingMessageJobId] = useState<string | null>(
     null,
   );
+
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const setDeviceToken = useAuthStore((state) => state.setDeviceToken);
+
+  // ── Unread notification count for the bell badge ─────────────────────────
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const notifPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const { unread_count } = await getUnreadNotificationCount();
+      setUnreadNotificationCount(unread_count);
+    } catch {
+      // non-fatal — badge just won't update
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchUnreadCount();
+    // Poll every 60s so the badge stays reasonably fresh without hammering the server
+    notifPollRef.current = setInterval(fetchUnreadCount, 60_000);
+    return () => {
+      if (notifPollRef.current) clearInterval(notifPollRef.current);
+    };
+  }, [isAuthenticated]);
+
+  /**
+   * Register the device for push notifications whenever the user is
+   * authenticated.  Runs once per login session.
+   *
+   * - Requests OS permission (prompt shown only on first run).
+   * - Gets the Expo push token (requires a valid EAS projectId).
+   * - POSTs the token to /api/devices/register/ so the backend can target
+   *   this device with Firebase Cloud Messaging.
+   * - Stores the token in useAuthStore so ProfileView can unregister it
+   *   on logout.
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let active = true;
+
+    const registerPushToken = async () => {
+      try {
+        // Android requires an explicit notification channel.
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("default", {
+            name: "Default",
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: "#000000",
+          });
+        }
+
+        // Request permission — iOS shows a dialog on first call, Android 13+
+        // uses the POST_NOTIFICATIONS permission.
+        const { status: current } = await Notifications.getPermissionsAsync();
+        let finalStatus = current;
+        if (current !== "granted") {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus !== "granted") {
+          console.log("[MainApp] Push notification permission not granted");
+          return;
+        }
+
+        // projectId is required by Expo SDK ≥50 for getExpoPushTokenAsync.
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId as
+          | string
+          | undefined;
+        const { data: token } = await Notifications.getExpoPushTokenAsync({
+          projectId,
+        });
+
+        if (!active) return;
+
+        const platform: "ios" | "android" | "expo" =
+          Platform.OS === "ios"
+            ? "ios"
+            : Platform.OS === "android"
+              ? "android"
+              : "expo";
+
+        await registerDevice(token, platform);
+        setDeviceToken(token);
+        console.log("[MainApp] Push token registered:", token);
+      } catch (err) {
+        // Non-fatal — the app works without push notifications.
+        console.warn("[MainApp] Failed to register push token:", err);
+      }
+    };
+
+    registerPushToken();
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, setDeviceToken]);
+
+  // ── Handle push notification taps (deep-link to the right screen) ────────
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Fired when the user taps a notification while the app is in foreground
+    // or when it's brought to the foreground from background/killed state.
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as
+          | Record<string, string>
+          | undefined;
+        if (!data) return;
+
+        const type = data.type as string | undefined;
+        if (type === "match" || type === "referral") {
+          setActiveView("matches");
+        } else if (type === "message") {
+          setActiveView("messages");
+        } else {
+          // Generic fallback — open notifications list so the user can act on it
+          setActiveView("notifications");
+        }
+        // Refresh unread count now that we're acting on a push
+        fetchUnreadCount();
+      },
+    );
+
+    return () => subscription.remove();
+  }, [isAuthenticated]);
 
   const handleNavigateToMessages = (jobId: string) => {
     setPendingMessageJobId(jobId || null);
@@ -162,12 +296,17 @@ export function MainApp({ userType }: MainAppProps) {
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleViewChange("notifications");
+                // Optimistically clear badge when the user opens the screen;
+                // the NotificationsView will mark-all-read on its own.
+                setUnreadNotificationCount(0);
               }}
               activeOpacity={0.7}
               style={styles.headerIconButton}
             >
               <Bell color="#000" size={22} strokeWidth={1.5} />
-              <View style={styles.notificationDot} />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.notificationDot} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -187,34 +326,50 @@ export function MainApp({ userType }: MainAppProps) {
               onNavigateToMessages={handleNavigateToMessages}
             />
           )}
-          {activeView === "messages" && (
-            <MessagesView
-              onThreadActiveChange={setIsBottomNavHidden}
-              userType={userType}
-              onShowPublicProfile={handleShowPublicProfile}
-              selectedConversationId={selectedConversationId}
-              onConversationChange={setSelectedConversationId}
-              pendingJobId={pendingMessageJobId}
-              onPendingJobConsumed={() => setPendingMessageJobId(null)}
-            />
+          {/* Keep MessagesView mounted when messages OR publicProfile is active.
+              It always has flex:1 — the public-profile view is layered on top
+              as an absoluteFillObject overlay. This means display:none is
+              NEVER applied to this subtree, so Reanimated worklets (e.g. the
+              profile-modal SlideInDown/SlideOutDown) always have a live host
+              view and can complete normally, preventing the ghost-overlay
+              freeze that occurred with the previous display:none approach. */}
+          {(activeView === "messages" || activeView === "publicProfile") && (
+            <View style={{ flex: 1 }}>
+              <MessagesView
+                onThreadActiveChange={setIsBottomNavHidden}
+                userType={userType}
+                onShowPublicProfile={handleShowPublicProfile}
+                selectedConversationId={selectedConversationId}
+                onConversationChange={setSelectedConversationId}
+                pendingJobId={pendingMessageJobId}
+                onPendingJobConsumed={() => setPendingMessageJobId(null)}
+              />
+            </View>
           )}
           {activeView === "jobs" && userType === "sponsor" && <JobsView />}
           {activeView === "profile" && <ProfileView userType={userType} />}
           {activeView === "notifications" && (
             <NotificationsView onBack={() => setActiveView(previousView)} />
           )}
+          {/* Public profile rendered as a full-screen absolute overlay on top
+              of MessagesView. Removing it unmounts cleanly without ever having
+              hidden MessagesView underneath. */}
           {activeView === "publicProfile" &&
             publicProfileData &&
             (userType === "sponsor" ? (
-              <ApplicantPublicProfileView
-                userData={publicProfileData}
-                onClose={() => setActiveView("messages")}
-              />
+              <View style={StyleSheet.absoluteFillObject}>
+                <ApplicantPublicProfileView
+                  userData={publicProfileData}
+                  onClose={() => setActiveView("messages")}
+                />
+              </View>
             ) : (
-              <SponsorPublicProfileView
-                userData={publicProfileData}
-                onClose={() => setActiveView("messages")}
-              />
+              <View style={StyleSheet.absoluteFillObject}>
+                <SponsorPublicProfileView
+                  userData={publicProfileData}
+                  onClose={() => setActiveView("messages")}
+                />
+              </View>
             ))}
         </View>
 

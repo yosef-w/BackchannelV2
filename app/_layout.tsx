@@ -77,7 +77,15 @@ export default function RootLayout() {
             <Stack.Screen name="splash" options={{ headerShown: false }} />
             <Stack.Screen name="choose-role" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="dashboard"
+              options={{
+                headerShown: false,
+                // Prevent iOS swipe-back from ever leaving the dashboard.
+                // All in-app navigation is handled by MainApp's own view state.
+                gestureEnabled: false,
+              }}
+            />
           </Stack>
         </RevenueCatProvider>
       </ThemeProvider>

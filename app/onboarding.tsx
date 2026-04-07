@@ -29,7 +29,7 @@ export default function OnboardingScreen() {
   if (step === "onboarding") {
     return (
       <Onboarding
-        onBack={() => router.back()}
+        onBack={() => router.replace("/choose-role" as any)}
         onComplete={() => setStep("auth")}
         userType={userType}
       />

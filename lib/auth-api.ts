@@ -8,6 +8,7 @@ export interface LoginResponse {
   email: string;
   access_token: string;
   refresh_token: string;
+  role: "Applicant" | "Sponsor";
 }
 
 export interface RegisterResponse {
@@ -328,6 +329,10 @@ export const authApi = {
         rolePayload.willing_to_relocate = data.preferences.willingToRelocate;
       if (data.preferences?.requiresSponsorship)
         rolePayload.requires_sponsorship = data.preferences.requiresSponsorship;
+      if (data.workPreferences?.length)
+        rolePayload.work_preferences = data.workPreferences;
+      if (data.desiredRoles?.length)
+        rolePayload.desired_roles = data.desiredRoles;
     }
 
     // ── 4. Fire the PATCH requests in parallel ────────────────────────────

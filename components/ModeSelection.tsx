@@ -1,27 +1,30 @@
-import { ArrowLeft, Briefcase, ChevronRight, Handshake } from "lucide-react-native";
+import {
+    ArrowLeft,
+    Briefcase,
+    ChevronRight,
+    Handshake,
+} from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import Animated, {
-  FadeInDown,
-} from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
 
 interface ModeSelectionProps {
   onSelect: (mode: "applicant" | "sponsor") => void;
   onBack: () => void;
-  onSkipToDashboard?: () => void;
-  onSkipToApplicantDashboard?: () => void;
 }
 
-export function ModeSelection({ onSelect, onBack, onSkipToDashboard, onSkipToApplicantDashboard }: ModeSelectionProps) {
-  const [selected, setSelected] = useState<"applicant" | "sponsor" | null>(null);
+export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
+  const [selected, setSelected] = useState<"applicant" | "sponsor" | null>(
+    null,
+  );
   const setUserType = useOnboardingStore((state) => state.setUserType);
 
   const handleSelect = (mode: "applicant" | "sponsor") => {
@@ -34,7 +37,6 @@ export function ModeSelection({ onSelect, onBack, onSkipToDashboard, onSkipToApp
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
-        
         {/* Back Button */}
         <TouchableOpacity
           onPress={onBack}
@@ -56,111 +58,101 @@ export function ModeSelection({ onSelect, onBack, onSkipToDashboard, onSkipToApp
 
           <View style={styles.cardsContainer}>
             {/* Applicant Card */}
-            <Animated.View 
-              entering={FadeInDown.delay(100).duration(500)}
-            >
+            <Animated.View entering={FadeInDown.delay(100).duration(500)}>
               <TouchableOpacity
                 onPress={() => handleSelect("applicant")}
                 activeOpacity={0.9}
                 style={[
                   styles.card,
-                  selected === "applicant" && styles.cardSelected
+                  selected === "applicant" && styles.cardSelected,
                 ]}
               >
                 <View style={styles.cardMain}>
-                  <View style={[
-                    styles.iconCircle,
-                    selected === "applicant" && styles.iconCircleSelected
-                  ]}>
-                    <Briefcase 
-                      color={selected === "applicant" ? "#FFF" : "#000"} 
-                      size={22} 
-                      strokeWidth={2} 
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      selected === "applicant" && styles.iconCircleSelected,
+                    ]}
+                  >
+                    <Briefcase
+                      color={selected === "applicant" ? "#FFF" : "#000"}
+                      size={22}
+                      strokeWidth={2}
                     />
                   </View>
                   <View style={styles.textContainer}>
-                    <Text style={[
-                      styles.cardTitle,
-                      selected === "applicant" && styles.textSelected
-                    ]}>I'm an Applicant</Text>
-                    <Text style={[
-                      styles.cardDescription,
-                      selected === "applicant" && styles.textSelectedMuted
-                    ]}>
+                    <Text
+                      style={[
+                        styles.cardTitle,
+                        selected === "applicant" && styles.textSelected,
+                      ]}
+                    >
+                      I'm an Applicant
+                    </Text>
+                    <Text
+                      style={[
+                        styles.cardDescription,
+                        selected === "applicant" && styles.textSelectedMuted,
+                      ]}
+                    >
                       I want to find referrals and land my next role.
                     </Text>
                   </View>
                 </View>
-                <ChevronRight 
-                  color={selected === "applicant" ? "#FFF" : "#CCC"} 
-                  size={18} 
+                <ChevronRight
+                  color={selected === "applicant" ? "#FFF" : "#CCC"}
+                  size={18}
                 />
               </TouchableOpacity>
             </Animated.View>
 
             {/* Sponsor Card */}
-            <Animated.View 
-              entering={FadeInDown.delay(200).duration(500)}
-            >
+            <Animated.View entering={FadeInDown.delay(200).duration(500)}>
               <TouchableOpacity
                 onPress={() => handleSelect("sponsor")}
                 activeOpacity={0.9}
                 style={[
                   styles.card,
-                  selected === "sponsor" && styles.cardSelected
+                  selected === "sponsor" && styles.cardSelected,
                 ]}
               >
                 <View style={styles.cardMain}>
-                  <View style={[
-                    styles.iconCircle,
-                    selected === "sponsor" && styles.iconCircleSelected
-                  ]}>
-                    <Handshake 
-                      color={selected === "sponsor" ? "#FFF" : "#000"} 
-                      size={22} 
-                      strokeWidth={2} 
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      selected === "sponsor" && styles.iconCircleSelected,
+                    ]}
+                  >
+                    <Handshake
+                      color={selected === "sponsor" ? "#FFF" : "#000"}
+                      size={22}
+                      strokeWidth={2}
                     />
                   </View>
                   <View style={styles.textContainer}>
-                    <Text style={[
-                      styles.cardTitle,
-                      selected === "sponsor" && styles.textSelected
-                    ]}>I'm a Sponsor</Text>
-                    <Text style={[
-                      styles.cardDescription,
-                      selected === "sponsor" && styles.textSelectedMuted
-                    ]}>
+                    <Text
+                      style={[
+                        styles.cardTitle,
+                        selected === "sponsor" && styles.textSelected,
+                      ]}
+                    >
+                      I'm a Sponsor
+                    </Text>
+                    <Text
+                      style={[
+                        styles.cardDescription,
+                        selected === "sponsor" && styles.textSelectedMuted,
+                      ]}
+                    >
                       I want to refer talent and help others grow.
                     </Text>
                   </View>
                 </View>
-                <ChevronRight 
-                  color={selected === "sponsor" ? "#FFF" : "#CCC"} 
-                  size={18} 
+                <ChevronRight
+                  color={selected === "sponsor" ? "#FFF" : "#CCC"}
+                  size={18}
                 />
               </TouchableOpacity>
-
-              <View style={styles.skipLinksContainer}>
-                {!!onSkipToDashboard && (
-                  <TouchableOpacity
-                    onPress={onSkipToDashboard}
-                    activeOpacity={0.7}
-                    style={styles.skipToDashboard}
-                  >
-                    <Text style={styles.skipToDashboardText}>Skip to Sponsor Dashboard</Text>
-                  </TouchableOpacity>
-                )}
-
-                {!!onSkipToApplicantDashboard && (
-                  <TouchableOpacity
-                    onPress={onSkipToApplicantDashboard}
-                    activeOpacity={0.7}
-                    style={styles.skipToDashboard}
-                  >
-                    <Text style={styles.skipToDashboardText}>Skip to Applicant Dashboard</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
             </Animated.View>
           </View>
         </View>
@@ -185,7 +177,7 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 20,
     marginTop: 10,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   content: {
     flex: 1,
@@ -276,20 +268,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 1.5,
-  },
-  skipLinksContainer: {
-    marginTop: 24,
-    alignItems: "center",
-    gap: 12,
-  },
-  skipToDashboard: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  skipToDashboardText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-    textDecorationLine: "underline",
   },
 });

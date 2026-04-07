@@ -1,14 +1,16 @@
 import {
     ArrowLeft,
     Award,
+    Bell,
     CheckCircle,
     Heart,
     MessageCircle,
+    RefreshCw,
     UserPlus,
 } from "lucide-react-native";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-    Image,
+    ActivityIndicator,
     Platform,
     ScrollView,
     StyleSheet,
@@ -17,81 +19,143 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import {
+    getNotifications,
+    markAllNotificationsAsRead,
+    markNotificationAsRead,
+} from "../lib/api";
 
 interface NotificationsViewProps {
   onBack: () => void;
 }
 
-type NotificationType = {
-  id: number;
-  type: string;
-  Icon: React.ComponentType<any>;
-  iconGradient: readonly [string, string];
-  title: string;
-  message: string;
-  image?: string;
-  time: string;
-  unread: boolean;
+/** Backend notification shape as returned by GET /api/notifications/ */
+type BackendNotification = {
+  NOTIFICATION_ID: string;
+  USER_ID: string;
+  TYPE:
+    | "match"
+    | "message"
+    | "referral"
+    | "connection"
+    | "profile_update"
+    | string;
+  TITLE: string;
+  BODY: string;
+  IS_READ: boolean;
+  RELATED_USER_ID: string | null;
+  RELATED_JOB_ID: string | null;
+  RELATED_CONVERSATION_ID: string | null;
+  CREATED_AT: string;
 };
 
-const mockNotifications: NotificationType[] = [
+/** Map backend TYPE value → icon component for the UI badge */
+const NOTIFICATION_CONFIG: Record<string, { Icon: React.ComponentType<any> }> =
   {
-    id: 1,
-    type: "match",
-    Icon: Heart,
-    iconGradient: ["#ec4899", "#ef4444"],
-    title: "New Match!",
-    message: "Sarah Chen accepted your connection request",
-    image: "https://images.unsplash.com/photo-1563132337-f159f484226c?w=100",
-    time: "2m ago",
-    unread: true,
-  },
-  {
-    id: 2,
-    type: "message",
-    Icon: MessageCircle,
-    iconGradient: ["#3b82f6", "#9333ea"],
-    title: "New Message",
-    message: "Michael Rodriguez: Thanks for reaching out!",
-    image: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?w=100",
-    time: "1h ago",
-    unread: true,
-  },
-  {
-    id: 3,
-    type: "referral",
-    Icon: Award,
-    iconGradient: ["#22c55e", "#059669"],
-    title: "Referral Submitted",
-    message: "Emily Watson submitted your referral to Google",
-    image: "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=100",
-    time: "3h ago",
-    unread: false,
-  },
-  {
-    id: 4,
-    type: "connection",
-    Icon: UserPlus,
-    iconGradient: ["#9333ea", "#ec4899"],
-    title: "New Connection Request",
-    message: "David Kim wants to connect with you",
-    image: "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?w=100",
-    time: "5h ago",
-    unread: false,
-  },
-  {
-    id: 5,
-    type: "success",
-    Icon: CheckCircle,
-    iconGradient: ["#3b82f6", "#06b6d4"],
-    title: "Profile Update",
-    message: "Your profile has been successfully updated",
-    time: "1d ago",
-    unread: false,
-  },
-];
+    match: { Icon: Heart },
+    message: { Icon: MessageCircle },
+    referral: { Icon: Award },
+    connection: { Icon: UserPlus },
+    profile_update: { Icon: CheckCircle },
+  };
+
+const DEFAULT_CONFIG = { Icon: Bell };
+
+/**
+ * Format an ISO timestamp into a human-readable relative string.
+ * Mirrors the behaviour of formatPostedDate in types/jobs.ts.
+ */
+function formatRelativeTime(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(isoString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 export function NotificationsView({ onBack }: NotificationsViewProps) {
+  const [notifications, setNotifications] = useState<BackendNotification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await getNotifications({ limit: 50 });
+      setNotifications(response.notifications);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to load notifications";
+      // 404 = endpoint not yet seeded / user has no notifications — show empty
+      if (msg.includes("404") || msg.includes("Not found")) {
+        setNotifications([]);
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const handleMarkAllRead = async () => {
+    if (isMarkingAll) return;
+    setIsMarkingAll(true);
+    try {
+      await markAllNotificationsAsRead();
+      // Optimistically mark all as read
+      setNotifications((prev) => prev.map((n) => ({ ...n, IS_READ: true })));
+    } catch (err) {
+      console.warn("[NotificationsView] Failed to mark all read:", err);
+    } finally {
+      setIsMarkingAll(false);
+    }
+  };
+
+  const handleNotificationPress = async (n: BackendNotification) => {
+    if (n.IS_READ) return;
+
+    // Optimistic update first for instant feedback
+    setNotifications((prev) =>
+      prev.map((item) =>
+        item.NOTIFICATION_ID === n.NOTIFICATION_ID
+          ? { ...item, IS_READ: true }
+          : item,
+      ),
+    );
+
+    try {
+      await markNotificationAsRead(n.NOTIFICATION_ID);
+    } catch (err) {
+      // Revert on API failure
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.NOTIFICATION_ID === n.NOTIFICATION_ID
+            ? { ...item, IS_READ: false }
+            : item,
+        ),
+      );
+      console.warn(
+        "[NotificationsView] Failed to mark notification as read:",
+        err,
+      );
+    }
+  };
+
+  const hasUnread = notifications.some((n) => !n.IS_READ);
+
   return (
     <ScrollView
       style={styles.container}
@@ -112,88 +176,119 @@ export function NotificationsView({ onBack }: NotificationsViewProps) {
           <Text style={styles.title}>Notifications</Text>
         </View>
 
-        <TouchableOpacity activeOpacity={0.7}>
-          <Text style={styles.markAllRead}>Mark all</Text>
+        <TouchableOpacity
+          onPress={handleMarkAllRead}
+          disabled={!hasUnread || isMarkingAll}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.markAllRead,
+              (!hasUnread || isMarkingAll) && { opacity: 0.4 },
+            ]}
+          >
+            {isMarkingAll ? "Marking…" : "Mark all"}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Notifications list */}
-      <View style={styles.notificationsList}>
-        {mockNotifications.map((notification, index) => {
-          const Icon = notification.Icon;
-          return (
-            <Animated.View
-              key={notification.id}
-              entering={FadeInUp.delay(index * 50).duration(400)}
-            >
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.notificationCardWrapper}
-              >
-                <View
-                  style={[
-                    styles.notificationCard,
-                    notification.unread && styles.notificationCardUnread,
-                  ]}
-                >
-                  {/* Unread indicator */}
-                  {notification.unread && (
-                    <View style={styles.unreadIndicator} />
-                  )}
+      {/* Loading state */}
+      {isLoading && (
+        <View style={styles.centeredState}>
+          <ActivityIndicator size="large" color="#000" />
+        </View>
+      )}
 
-                  <View style={styles.notificationContent}>
-                    {/* Icon or Image */}
-                    {notification.image ? (
-                      <View style={styles.imageContainer}>
-                        <Image
-                          source={{ uri: notification.image }}
-                          style={styles.notificationImage}
-                          resizeMode="cover"
-                        />
-                        <View style={styles.badgeContainer}>
-                          <View style={styles.badge}>
-                            <Icon color="#ffffff" size={10} strokeWidth={2.5} />
-                          </View>
-                        </View>
-                      </View>
-                    ) : (
+      {/* Error state */}
+      {!isLoading && error && (
+        <View style={styles.centeredState}>
+          <Text style={styles.errorText}>Failed to load notifications</Text>
+          <TouchableOpacity
+            onPress={fetchNotifications}
+            style={styles.retryButton}
+            activeOpacity={0.7}
+          >
+            <RefreshCw color="#000" size={16} />
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Notifications list */}
+      {!isLoading && !error && notifications.length > 0 && (
+        <View style={styles.notificationsList}>
+          {notifications.map((notification, index) => {
+            const { Icon } =
+              NOTIFICATION_CONFIG[notification.TYPE] ?? DEFAULT_CONFIG;
+            return (
+              <Animated.View
+                key={notification.NOTIFICATION_ID}
+                entering={FadeInUp.delay(index * 50).duration(400)}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.notificationCardWrapper}
+                  onPress={() => handleNotificationPress(notification)}
+                >
+                  <View
+                    style={[
+                      styles.notificationCard,
+                      !notification.IS_READ && styles.notificationCardUnread,
+                    ]}
+                  >
+                    {/* Unread indicator bar */}
+                    {!notification.IS_READ && (
+                      <View style={styles.unreadIndicator} />
+                    )}
+
+                    <View style={styles.notificationContent}>
+                      {/* Type icon */}
                       <View style={styles.iconContainer}>
                         <Icon color="#ffffff" size={20} strokeWidth={2.5} />
                       </View>
-                    )}
 
-                    {/* Content */}
-                    <View style={styles.textContainer}>
-                      <View style={styles.titleRow}>
+                      {/* Content */}
+                      <View style={styles.textContainer}>
+                        <View style={styles.titleRow}>
+                          <Text
+                            style={styles.notificationTitle}
+                            numberOfLines={1}
+                          >
+                            {notification.TITLE}
+                          </Text>
+                          <Text style={styles.notificationTime}>
+                            {formatRelativeTime(notification.CREATED_AT)}
+                          </Text>
+                        </View>
                         <Text
-                          style={styles.notificationTitle}
-                          numberOfLines={1}
+                          style={styles.notificationMessage}
+                          numberOfLines={2}
                         >
-                          {notification.title}
-                        </Text>
-                        <Text style={styles.notificationTime}>
-                          {notification.time}
+                          {notification.BODY}
                         </Text>
                       </View>
-                      <Text
-                        style={styles.notificationMessage}
-                        numberOfLines={2}
-                      >
-                        {notification.message}
-                      </Text>
                     </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
-      </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </View>
+      )}
 
-      {/* Empty state at bottom */}
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyStateText}>You're all caught up! 🎉</Text>
-      </View>
+      {/* Empty state — user has no notifications at all */}
+      {!isLoading && !error && notifications.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No notifications yet 🔔</Text>
+        </View>
+      )}
+
+      {/* All-caught-up banner — shown only when list is non-empty and all read */}
+      {!isLoading && !error && notifications.length > 0 && !hasUnread && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>You're all caught up! 🎉</Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -254,6 +349,32 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#000",
   },
+  centeredState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  errorText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#666",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F0F0F0",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+  },
   notificationsList: {
     gap: 12,
   },
@@ -309,39 +430,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 14,
     paddingLeft: 6,
-  },
-  imageContainer: {
-    position: "relative",
-    width: 44,
-    height: 44,
-  },
-  notificationImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  badgeContainer: {
-    position: "absolute",
-    bottom: -4,
-    right: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#FFF",
-  },
-  badge: {
-    width: 18,
-    height: 18,
-    borderRadius: 5,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
   },
   iconContainer: {
     width: 44,

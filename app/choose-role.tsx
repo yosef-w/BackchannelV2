@@ -7,13 +7,7 @@ export default function ChooseRoleScreen() {
     <ModeSelection
       onBack={() => router.replace("/splash" as any)}
       onSelect={(mode) =>
-        router.push({ pathname: "/onboarding" as any, params: { mode } })
-      }
-      onSkipToDashboard={() =>
-        router.replace({ pathname: "/dashboard" as any, params: { mode: "sponsor" } })
-      }
-      onSkipToApplicantDashboard={() =>
-        router.replace({ pathname: "/dashboard" as any, params: { mode: "applicant" } })
+        router.replace({ pathname: "/onboarding" as any, params: { mode } })
       }
     />
   );

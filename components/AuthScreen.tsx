@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Lock, Mail, User } from "lucide-react-native";
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
@@ -46,6 +46,7 @@ export function AuthScreen({
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const storeUserType = useOnboardingStore((state) => state.userType);
@@ -66,8 +67,8 @@ export function AuthScreen({
       return authApi.login(email, password);
     },
     onSuccess: async (data) => {
-      // Store real tokens from backend
-      await setAuthTokens(data.access_token, data.refresh_token);
+      // Store real tokens + role from backend (PR #19)
+      await setAuthTokens(data.access_token, data.refresh_token, data.role);
 
       // Backend doesn't return profile info in login response
       // Just store the email, profile data will be loaded from cache or fetched later
@@ -280,9 +281,20 @@ export function AuthScreen({
                       placeholderTextColor="#BBB"
                       value={password}
                       onChangeText={setPassword}
-                      secureTextEntry
+                      secureTextEntry={!showPassword}
                       style={styles.input}
                     />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword((v) => !v)}
+                      style={styles.eyeBtn}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      {showPassword ? (
+                        <EyeOff color="#AAA" size={18} />
+                      ) : (
+                        <Eye color="#AAA" size={18} />
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -527,6 +539,9 @@ const styles = StyleSheet.create({
   forgotBtn: {
     alignSelf: "flex-end",
     marginTop: -8,
+  },
+  eyeBtn: {
+    marginLeft: 8,
   },
   forgotText: {
     fontSize: 14,

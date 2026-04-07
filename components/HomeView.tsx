@@ -1,67 +1,69 @@
 import {
-  fetchJobsPack,
-  fetchProfilesPack,
-  getPublicProfile,
-  joinWaitlist,
-  likeJob,
-  likeProfile,
+    fetchJobsPack,
+    fetchProfilesPack,
+    getPublicProfile,
+    joinWaitlist,
+    likeJob,
+    likeProfile,
 } from "@/lib/api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-  Award,
-  Briefcase,
-  Calendar,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Coffee,
-  DollarSign,
-  ExternalLink,
-  Globe,
-  GraduationCap,
-  Info,
-  MapPin,
-  MessageCircle,
-  RefreshCcw,
-  SlidersHorizontal,
-  Sparkles,
-  TrendingUp,
-  Users,
-  X,
-  Zap,
+    Award,
+    Briefcase,
+    Calendar,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    Coffee,
+    DollarSign,
+    ExternalLink,
+    Globe,
+    GraduationCap,
+    Info,
+    Mail,
+    MapPin,
+    MessageCircle,
+    RefreshCcw,
+    SlidersHorizontal,
+    Sparkles,
+    TrendingUp,
+    Users,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Modal,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  FadeOut,
-  LinearTransition,
-  SlideInDown,
-  SlideOutDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-  ZoomIn,
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    FadeOut,
+    LinearTransition,
+    SlideInDown,
+    SlideOutDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+    ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
@@ -1197,6 +1199,12 @@ export function HomeView({
 }: HomeViewProps) {
   const router = useRouter();
   const profileData = useUserProfileStore((state) => state.data);
+  const workEmailVerified = useUserProfileStore(
+    (state) => state.workEmailVerified,
+  );
+  const fetchFromBackend = useUserProfileStore(
+    (state) => state.fetchFromBackend,
+  );
 
   // Jobs store
   const jobs = useJobsStore((state) => state.jobs);
@@ -1235,6 +1243,12 @@ export function HomeView({
     return userType === "applicant" ? jobs.length === 0 : false;
   });
   const [showCelebration, setShowCelebration] = useState(false);
+  const [matchedUser, setMatchedUser] = useState<{
+    name: string;
+    image: string;
+    role: string;
+    jobTitle?: string;
+  } | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -1243,6 +1257,12 @@ export function HomeView({
   const [showProfileCompletionModal, setShowProfileCompletionModal] =
     useState(false);
   const [isTester, setIsTester] = useState(false);
+
+  // Email verification gate (sponsors only)
+  const [showEmailVerificationModal, setShowEmailVerificationModal] =
+    useState(false);
+  const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  const [emailVerifyError, setEmailVerifyError] = useState("");
   const profileCompletion = profileData
     ? checkProfileCompleteness(profileData)
     : { isComplete: false, percentage: 0, missingFields: [] };
@@ -1295,6 +1315,8 @@ export function HomeView({
   const swipeOpacity = useSharedValue(1);
   const rotateY = useSharedValue(0);
   const animatedProgress = useSharedValue(0);
+  const matchRingScale = useSharedValue(0.8);
+  const matchRingOpacity = useSharedValue(0);
 
   useEffect(() => {
     animatedProgress.value = withTiming(
@@ -1305,6 +1327,24 @@ export function HomeView({
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: `${animatedProgress.value * 100}%`,
+  }));
+
+  // Pulse-ring that radiates outward from both avatars when a mutual match fires
+  useEffect(() => {
+    if (matchedUser) {
+      matchRingScale.value = 0.8;
+      matchRingOpacity.value = 0;
+      matchRingScale.value = withTiming(1.9, { duration: 750 });
+      matchRingOpacity.value = withSequence(
+        withTiming(0.28, { duration: 260 }),
+        withTiming(0, { duration: 490 }),
+      );
+    }
+  }, [matchedUser]);
+
+  const matchRingStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: matchRingScale.value }],
+    opacity: matchRingOpacity.value,
   }));
 
   // Use profiles for sponsors, jobs for applicants
@@ -1519,6 +1559,13 @@ export function HomeView({
       return;
     }
 
+    // Block sponsors from swiping until they've verified their work email
+    if (userType === "sponsor" && !workEmailVerified && !isTester) {
+      setEmailVerifyError("");
+      setShowEmailVerificationModal(true);
+      return;
+    }
+
     // If applicant tries to apply to Non-Sponsored Job, intercept
     if (
       userType === "applicant" &&
@@ -1539,6 +1586,7 @@ export function HomeView({
 
     if (isAccept) {
       // Call like API when accepting
+      let didMatch = false;
       try {
         if (userType === "applicant") {
           // Applicant liking a job
@@ -1551,10 +1599,30 @@ export function HomeView({
             // Mark sponsored job as applied
             setAppliedJobIds((prev) => new Set([...prev, String(jobId)]));
 
-            // Show match celebration if mutual like
+            // Show match celebration modal on mutual like
             if (response.matched) {
               console.log("[HomeView] 🎉 It's a match!");
-              // TODO: Show special match modal/animation
+              didMatch = true;
+              setMatchedUser({
+                name:
+                  "sponsorInfo" in currentData && currentData.sponsorInfo?.name
+                    ? (currentData.sponsorInfo.name as string)
+                    : "company" in currentData
+                      ? (currentData.company as string) || "Your Sponsor"
+                      : "Your Sponsor",
+                image:
+                  "sponsorInfo" in currentData
+                    ? (currentData.sponsorInfo?.image as string) || ""
+                    : "",
+                role:
+                  "sponsorInfo" in currentData
+                    ? (currentData.sponsorInfo?.role as string) || ""
+                    : "",
+                jobTitle:
+                  "title" in currentData
+                    ? (currentData.title as string)
+                    : undefined,
+              });
             }
           } else {
             console.warn("[HomeView] No job ID found for current data");
@@ -1574,10 +1642,24 @@ export function HomeView({
             );
             console.log("[HomeView] Like profile response:", response);
 
-            // Show match celebration if mutual like
+            // Show match celebration modal on mutual like
             if (response.matched) {
               console.log("[HomeView] 🎉 It's a match!");
-              // TODO: Show special match modal/animation
+              didMatch = true;
+              setMatchedUser({
+                name:
+                  (currentData.name as string) ||
+                  `${(currentData.FIRST_NAME as string) || ""} ${(currentData.LAST_NAME as string) || ""}`.trim() ||
+                  "Applicant",
+                image:
+                  (currentData.image as string) ||
+                  (currentData.PHOTO_URL as string) ||
+                  "",
+                role:
+                  (currentData.desiredRole as string) ||
+                  (currentData.role as string) ||
+                  "",
+              });
             }
           } else {
             console.warn(
@@ -1590,11 +1672,15 @@ export function HomeView({
         // Continue with UI update even if API fails
       }
 
-      setShowCelebration(true);
-      setTimeout(() => {
-        setShowCelebration(false);
-        nextProfile(true);
-      }, 1800);
+      if (!didMatch) {
+        // Standard swipe-right toast — only shown when there is no mutual match
+        setShowCelebration(true);
+        setTimeout(() => {
+          setShowCelebration(false);
+          nextProfile(true);
+        }, 1800);
+      }
+      // When didMatch=true, nextProfile is called when the match modal is dismissed
     } else {
       nextProfile(false);
     }
@@ -1619,6 +1705,11 @@ export function HomeView({
       swipeX.value = 0;
       swipeOpacity.value = withTiming(1, { duration: 300 });
     }, 400);
+  };
+
+  const handleMatchModalDismiss = () => {
+    setMatchedUser(null);
+    nextProfile(true);
   };
 
   const handleDirectApply = () => {
@@ -2097,6 +2188,31 @@ export function HomeView({
                                     : ""}
                                 </Text>
                               </View>
+
+                              {/* Relevance Score Badge */}
+                              {"relevanceScore" in currentData &&
+                                (currentData as any).relevanceScore > 0 && (
+                                  <View style={styles.profileMetaRow}>
+                                    <View style={styles.relevancePill}>
+                                      <Zap
+                                        size={9}
+                                        color="#FFF"
+                                        strokeWidth={2.5}
+                                      />
+                                      <Text style={styles.relevancePillText}>
+                                        {Math.round(
+                                          (currentData as any).relevanceScore >
+                                            1
+                                            ? (currentData as any)
+                                                .relevanceScore
+                                            : (currentData as any)
+                                                .relevanceScore * 100,
+                                        )}
+                                        % AI Match
+                                      </Text>
+                                    </View>
+                                  </View>
+                                )}
                             </View>
                           </View>
 
@@ -2130,6 +2246,28 @@ export function HomeView({
                                 </Text>
                               </Text>
                             </View>
+
+                            {/* KEY REQUIREMENTS – real API data */}
+                            {"requirementsSummary" in currentData &&
+                              (currentData as any).requirementsSummary && (
+                                <View style={styles.requirementsSummaryBlock}>
+                                  <Text style={styles.sectionLabelSmall}>
+                                    KEY REQUIREMENTS
+                                  </Text>
+                                  <Text style={styles.descriptionText}>
+                                    {(currentData as any).requirementsSummary
+                                      .length > 220
+                                      ? (
+                                          currentData as any
+                                        ).requirementsSummary.substring(
+                                          0,
+                                          220,
+                                        ) + "..."
+                                      : (currentData as any)
+                                          .requirementsSummary}
+                                  </Text>
+                                </View>
+                              )}
                           </View>
                         </View>
                       </Animated.View>
@@ -2525,6 +2663,43 @@ export function HomeView({
                     ) : (
                       /* Applicant More Details - Job */
                       <>
+                        {/* Real API: Core Responsibilities */}
+                        {"coreResponsibilities" in currentData &&
+                          (currentData as any).coreResponsibilities && (
+                            <View style={styles.detailSection}>
+                              <View style={styles.detailSectionHeader}>
+                                <Briefcase size={16} color="#000" />
+                                <Text style={styles.detailSectionTitle}>
+                                  Core Responsibilities
+                                </Text>
+                              </View>
+                              <View style={styles.jobDetailCard}>
+                                <Text style={styles.jobDetailText}>
+                                  {(currentData as any).coreResponsibilities}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+
+                        {/* Real API: Requirements Overview */}
+                        {"requirementsSummary" in currentData &&
+                          (currentData as any).requirementsSummary && (
+                            <View style={styles.detailSection}>
+                              <View style={styles.detailSectionHeader}>
+                                <Award size={16} color="#000" />
+                                <Text style={styles.detailSectionTitle}>
+                                  Requirements Overview
+                                </Text>
+                              </View>
+                              <View style={styles.jobDetailCard}>
+                                <Text style={styles.jobDetailText}>
+                                  {(currentData as any).requirementsSummary}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+
+                        {/* Mock data fallback: fullDetails */}
                         {"fullDetails" in currentData &&
                           currentData.fullDetails &&
                           "responsibilities" in currentData.fullDetails && (
@@ -2682,6 +2857,140 @@ export function HomeView({
           </View>
         </Animated.View>
       )}
+
+      {/* ── Match Celebration Modal ───────────────────────────────────────── */}
+      <Modal
+        visible={!!matchedUser}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+      >
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          style={StyleSheet.absoluteFill}
+        >
+          <BlurView
+            intensity={60}
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+          />
+
+          <View style={styles.matchModalOverlay}>
+            <Animated.View
+              entering={ZoomIn.springify().damping(14).stiffness(180)}
+              style={styles.matchCard}
+            >
+              {/* "IT'S A MATCH" pill label */}
+              <Animated.View
+                entering={FadeInDown.delay(150).duration(350)}
+                style={styles.matchLabelPill}
+              >
+                <Text style={styles.matchLabelText}>IT’S A MATCH</Text>
+              </Animated.View>
+
+              {/* Avatar row */}
+              <Animated.View
+                entering={FadeInUp.delay(100).duration(400)}
+                style={styles.matchAvatarRow}
+              >
+                {/* Current user's avatar */}
+                <View style={styles.matchAvatarWrapper}>
+                  <Animated.View
+                    style={[styles.matchAvatarRing, matchRingStyle]}
+                  />
+                  {profileData?.personal?.profileImage ? (
+                    <Image
+                      source={{ uri: profileData.personal.profileImage }}
+                      style={styles.matchAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[styles.matchAvatar, styles.matchAvatarInitial]}
+                    >
+                      <Text style={styles.matchAvatarInitialText}>
+                        {(profileData?.personal?.firstName ||
+                          "Y")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Spark connector */}
+                <View style={styles.matchSparkWrapper}>
+                  <Sparkles size={18} color="#000" />
+                </View>
+
+                {/* Matched user's avatar */}
+                <View style={styles.matchAvatarWrapper}>
+                  <Animated.View
+                    style={[styles.matchAvatarRing, matchRingStyle]}
+                  />
+                  {matchedUser?.image ? (
+                    <Image
+                      source={{ uri: matchedUser.image }}
+                      style={styles.matchAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[styles.matchAvatar, styles.matchAvatarInitial]}
+                    >
+                      <Text style={styles.matchAvatarInitialText}>
+                        {(matchedUser?.name || "?")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </Animated.View>
+
+              {/* Title */}
+              <Animated.View entering={FadeInUp.delay(300).duration(400)}>
+                <Text style={styles.matchTitle}>It’s a Match!</Text>
+              </Animated.View>
+
+              {/* Subtitle */}
+              <Animated.View entering={FadeInUp.delay(400).duration(400)}>
+                <Text style={styles.matchSubtitle}>
+                  {userType === "applicant"
+                    ? `You and ${
+                        matchedUser?.name ?? "your sponsor"
+                      } are both interested${
+                        matchedUser?.jobTitle
+                          ? ` in ${matchedUser.jobTitle}`
+                          : ""
+                      }`
+                    : `You and ${
+                        matchedUser?.name ?? "this applicant"
+                      } are both interested in connecting`}
+                </Text>
+              </Animated.View>
+
+              {/* Action buttons */}
+              <Animated.View
+                entering={FadeInUp.delay(500).duration(400)}
+                style={styles.matchActions}
+              >
+                <TouchableOpacity
+                  style={styles.matchMsgBtn}
+                  onPress={handleMatchModalDismiss}
+                  activeOpacity={0.8}
+                >
+                  <MessageCircle size={18} color="#FFF" />
+                  <Text style={styles.matchMsgBtnText}>Message Now</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.matchSkipBtn}
+                  onPress={handleMatchModalDismiss}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.matchSkipBtnText}>Keep Swiping</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </Animated.View>
+          </View>
+        </Animated.View>
+      </Modal>
 
       {/* Apply Action Modal (For Non-Sponsored Jobs) */}
       <Modal visible={showApplyModal} animationType="none" transparent>
@@ -2972,6 +3281,111 @@ export function HomeView({
           setShowProfileCompletionModal(false);
         }}
       />
+
+      {/* Email Verification Modal — sponsors must verify work email before swiping */}
+      <Modal
+        visible={showEmailVerificationModal}
+        transparent
+        animationType="fade"
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => {}}
+        >
+          <BlurView
+            intensity={60}
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+          />
+        </TouchableOpacity>
+
+        <Animated.View
+          entering={SlideInDown}
+          exiting={SlideOutDown}
+          style={styles.emailVerifModal}
+        >
+          <View style={styles.emailVerifIconCircle}>
+            <Mail color="#FFF" size={32} strokeWidth={1.5} />
+          </View>
+
+          <Text style={styles.emailVerifTitle}>Verify Your Work Email</Text>
+
+          <Text style={styles.emailVerifSubtitle}>
+            To start discovering candidates, verify the link we sent to{" "}
+            <Text style={styles.emailVerifAddress}>
+              {profileData.personal.workEmail || "your work address"}
+            </Text>
+          </Text>
+
+          <View style={styles.emailVerifInfoBox}>
+            <Text style={styles.emailVerifInfoText}>
+              This keeps the network trusted — every candidate knows they're
+              talking to a real, verified professional.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.emailVerifPrimaryBtn}
+            onPress={() => Linking.openURL("message:")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.emailVerifPrimaryBtnText}>Open Email App</Text>
+            <ChevronRight color="#FFF" size={20} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.emailVerifSecondaryBtn}
+            onPress={async () => {
+              setEmailVerifyLoading(true);
+              setEmailVerifyError("");
+              try {
+                await fetchFromBackend();
+                const isNowVerified =
+                  useUserProfileStore.getState().workEmailVerified;
+                if (isNowVerified) {
+                  setShowEmailVerificationModal(false);
+                } else {
+                  setEmailVerifyError(
+                    "Still pending — please click the link in your inbox.",
+                  );
+                }
+              } catch {
+                setEmailVerifyError(
+                  "Could not check status. Please try again.",
+                );
+              } finally {
+                setEmailVerifyLoading(false);
+              }
+            }}
+            disabled={emailVerifyLoading}
+            activeOpacity={0.8}
+          >
+            {emailVerifyLoading ? (
+              <ActivityIndicator size="small" color="#000" />
+            ) : (
+              <Text style={styles.emailVerifSecondaryBtnText}>
+                I've Verified My Email
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {emailVerifyError ? (
+            <Text style={styles.emailVerifErrorText}>{emailVerifyError}</Text>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.emailVerifTesterBtn}
+            onPress={() => {
+              setIsTester(true);
+              setShowEmailVerificationModal(false);
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.emailVerifTesterBtnText}>I am a tester</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Modal>
 
       {/* Description Modal */}
       <Modal
@@ -4461,4 +4875,259 @@ const styles = StyleSheet.create({
     minWidth: 200,
   },
   successActionBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+
+  // Relevance badge & requirements summary
+  relevancePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#000",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
+  relevancePillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFF",
+    letterSpacing: 0.3,
+  },
+  requirementsSummaryBlock: {
+    marginTop: 12,
+    backgroundColor: "#F6F6F6",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+  },
+
+  // ── Match Celebration Modal ────────────────────────────────────────────────
+  matchModalOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+  },
+  matchCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 28,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
+    width: "100%",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.22,
+    shadowRadius: 36,
+    elevation: 20,
+  },
+  matchLabelPill: {
+    backgroundColor: "#000",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  matchLabelText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+  matchAvatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 24,
+  },
+  matchAvatarWrapper: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 80,
+    height: 80,
+  },
+  matchAvatarRing: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: "#000",
+  },
+  matchAvatar: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    borderWidth: 3,
+    borderColor: "#FFF",
+  },
+  matchAvatarInitial: {
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  matchAvatarInitialText: {
+    color: "#FFF",
+    fontSize: 26,
+    fontWeight: "800",
+  },
+  matchSparkWrapper: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  matchTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.5,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  matchSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 21,
+    marginBottom: 28,
+    paddingHorizontal: 4,
+  },
+  matchActions: {
+    width: "100%",
+    gap: 10,
+  },
+  matchMsgBtn: {
+    backgroundColor: "#000",
+    borderRadius: 18,
+    paddingVertical: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  matchMsgBtnText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  matchSkipBtn: {
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#E5E5E5",
+  },
+  matchSkipBtnText: {
+    color: "#666",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  // Email Verification Modal
+  emailVerifModal: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 28,
+    paddingBottom: 44,
+  },
+  emailVerifIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  emailVerifTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  emailVerifSubtitle: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  emailVerifAddress: {
+    fontWeight: "700",
+    color: "#000",
+  },
+  emailVerifInfoBox: {
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  emailVerifInfoText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  emailVerifPrimaryBtn: {
+    backgroundColor: "#000",
+    height: 56,
+    borderRadius: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  emailVerifPrimaryBtnText: {
+    color: "#FFF",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  emailVerifSecondaryBtn: {
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emailVerifSecondaryBtnText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  emailVerifErrorText: {
+    fontSize: 13,
+    color: "#EF4444",
+    textAlign: "center",
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  emailVerifTesterBtn: {
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  emailVerifTesterBtnText: {
+    color: "#999",
+    fontSize: 13,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
 });
