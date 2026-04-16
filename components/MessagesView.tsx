@@ -1,57 +1,59 @@
 import {
-  getBasicProfile,
-  getConversationMessages,
-  getConversations,
-  getPublicProfile,
-  sendMessage,
-  submitReferral,
+    getBasicProfile,
+    getConversationMessages,
+    getConversations,
+    getPublicProfile,
+    sendMessage,
+    submitReferral,
+    unmatchConversation,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { BlurView } from "expo-blur";
 import {
-  ArrowLeft,
-  Award,
-  Briefcase,
-  Check,
-  CheckCircle,
-  ChevronRight,
-  ClipboardCheck,
-  Clock,
-  FileText,
-  MapPin,
-  MessageCircle,
-  Paperclip,
-  Send,
-  ShieldCheck,
-  User,
-  UserCheck,
-  X,
+    ArrowLeft,
+    Award,
+    Briefcase,
+    Check,
+    CheckCircle,
+    ChevronRight,
+    ClipboardCheck,
+    Clock,
+    FileText,
+    MapPin,
+    MessageCircle,
+    MoreHorizontal,
+    Send,
+    ShieldCheck,
+    User,
+    UserCheck,
+    X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Keyboard,
-  Linking,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Keyboard,
+    Linking,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInDown,
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
-  useAnimatedKeyboard,
-  useAnimatedStyle,
+    FadeInDown,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
+    useAnimatedKeyboard,
+    useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -119,6 +121,10 @@ export function MessagesView({
   // Referral flow — full public profile of the applicant being referred
   const [referralProfile, setReferralProfile] = useState<any>(null);
   const [referralProfileLoading, setReferralProfileLoading] = useState(false);
+
+  // Unmatch
+  const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
+  const [isUnmatching, setIsUnmatching] = useState(false);
 
   // Fetch current user profile to get USER_ID
   useEffect(() => {
@@ -551,6 +557,31 @@ export function MessagesView({
     setSelectedConversation(conversationId);
     if (onConversationChange) {
       onConversationChange(conversationId ?? null);
+    }
+  };
+
+  const handleUnmatch = async () => {
+    if (!selectedConversation) return;
+    try {
+      setIsUnmatching(true);
+      await unmatchConversation(selectedConversation);
+      // Optimistically remove from local list
+      setConversations((prev) =>
+        prev.filter((c) => c.id !== selectedConversation),
+      );
+      setShowUnmatchMenu(false);
+      handleConversationSelect(null);
+    } catch (err) {
+      console.error("[MessagesView] Failed to unmatch:", err);
+      setShowUnmatchMenu(false);
+      Alert.alert(
+        "Failed to Unmatch",
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setIsUnmatching(false);
     }
   };
 
@@ -991,24 +1022,33 @@ export function MessagesView({
                 </Text>
               </View>
             </TouchableOpacity>
-            {userType === "sponsor" ? (
+            <View style={styles.headerActions}>
+              {userType === "sponsor" ? (
+                <TouchableOpacity
+                  style={styles.headerReferBtn}
+                  onPress={openReferral}
+                  activeOpacity={0.7}
+                >
+                  <UserCheck color="#000" size={20} />
+                  <Text style={styles.headerReferText}>Refer</Text>
+                </TouchableOpacity>
+              ) : conversation.applicationStatus ? (
+                <TouchableOpacity
+                  style={styles.headerStatusBtn}
+                  onPress={() => setShowApplicationDetail(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.headerStatusText}>Status</Text>
+                </TouchableOpacity>
+              ) : null}
               <TouchableOpacity
-                style={styles.headerReferBtn}
-                onPress={openReferral}
+                style={styles.headerMoreBtn}
+                onPress={() => setShowUnmatchMenu(true)}
                 activeOpacity={0.7}
               >
-                <UserCheck color="#000" size={20} />
-                <Text style={styles.headerReferText}>Refer</Text>
+                <MoreHorizontal color="#000" size={20} />
               </TouchableOpacity>
-            ) : conversation.applicationStatus ? (
-              <TouchableOpacity
-                style={styles.headerStatusBtn}
-                onPress={() => setShowApplicationDetail(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.headerStatusText}>Status</Text>
-              </TouchableOpacity>
-            ) : null}
+            </View>
           </View>
           <ScrollView
             ref={scrollViewRef}
@@ -1114,9 +1154,6 @@ export function MessagesView({
             )}
           </ScrollView>
           <View style={styles.inputArea}>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Paperclip color="#000" size={20} />
-            </TouchableOpacity>
             <TextInput
               value={messageText}
               onChangeText={setMessageText}
@@ -2209,6 +2246,56 @@ export function MessagesView({
               </Modal>
             );
           })()}
+
+        {/* UNMATCH ACTION SHEET */}
+        <Modal visible={showUnmatchMenu} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => !isUnmatching && setShowUnmatchMenu(false)}
+            >
+              <BlurView
+                intensity={30}
+                style={StyleSheet.absoluteFill}
+                tint="dark"
+              />
+            </TouchableOpacity>
+            <View style={styles.unmatchSheet}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.unmatchSheetTitle}>
+                {conversation.otherParticipant.name}
+              </Text>
+              <Text style={styles.unmatchSheetSubtitle}>
+                Unmatching will permanently close this conversation and remove
+                it from your inbox. This cannot be undone.
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.unmatchActionBtn,
+                  isUnmatching && { opacity: 0.6 },
+                ]}
+                onPress={handleUnmatch}
+                disabled={isUnmatching}
+                activeOpacity={0.7}
+              >
+                {isUnmatching ? (
+                  <ActivityIndicator size="small" color="#EF4444" />
+                ) : (
+                  <Text style={styles.unmatchActionText}>Unmatch</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.unmatchCancelBtn}
+                onPress={() => setShowUnmatchMenu(false)}
+                disabled={isUnmatching}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.unmatchCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -3154,5 +3241,66 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#DC2626",
     lineHeight: 18,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerMoreBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unmatchSheet: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    padding: 28,
+    paddingBottom: 52,
+  },
+  unmatchSheetTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  unmatchSheetSubtitle: {
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  unmatchActionBtn: {
+    paddingVertical: 17,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  unmatchActionText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#EF4444",
+  },
+  unmatchCancelBtn: {
+    paddingVertical: 17,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unmatchCancelText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
   },
 });

@@ -1,4 +1,10 @@
-import { browseJobs, getMyJobs, sponsorJob, unsponsorJob } from "@/lib/api";
+import {
+    browseJobs,
+    createJob,
+    getMyJobs,
+    sponsorJob,
+    unsponsorJob,
+} from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
@@ -846,6 +852,7 @@ export function JobsView() {
   const [dayToDay, setDayToDay] = useState("");
   const [teamCulture, setTeamCulture] = useState("");
   const [idealCandidate, setIdealCandidate] = useState("");
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
 
   const createScrollViewRef = useRef<ScrollView>(null);
 
@@ -937,6 +944,59 @@ export function JobsView() {
     setDayToDay("");
     setTeamCulture("");
     setIdealCandidate("");
+    setIsCreatingJob(false);
+  };
+
+  const handlePublishJob = async () => {
+    try {
+      setIsCreatingJob(true);
+      // Build a rich description from the BackChannel insight fields
+      const descriptionParts: string[] = [];
+      if (description.trim()) descriptionParts.push(description.trim());
+      if (dayToDay.trim())
+        descriptionParts.push(`Day-to-Day:\n${dayToDay.trim()}`);
+      if (teamCulture.trim())
+        descriptionParts.push(`Team Culture:\n${teamCulture.trim()}`);
+      if (idealCandidate.trim())
+        descriptionParts.push(`Ideal Candidate:\n${idealCandidate.trim()}`);
+      if (insiderInsights.trim())
+        descriptionParts.push(`Additional Notes:\n${insiderInsights.trim()}`);
+
+      const response = await createJob({
+        title: jobTitle,
+        company,
+        location: location || undefined,
+        description:
+          descriptionParts.length > 0
+            ? descriptionParts.join("\n\n")
+            : undefined,
+        requirements:
+          requiredSkills.length > 0 ? requiredSkills.join(", ") : undefined,
+        experience_level: experienceLevel || undefined,
+        employment_type: employmentType || undefined,
+        remote_option: location.toLowerCase().includes("remote"),
+        relationship: referralProcess || undefined,
+        can_refer: canProvideReferral !== null ? canProvideReferral : undefined,
+      });
+
+      console.log("[JobsView] Job created:", response);
+
+      // Refresh "My Sponsored" list so badge count and tab reflect the new posting
+      refreshMyJobs(false);
+
+      setCreateStep(7);
+      setTimeout(() => scrollToTop(), 100);
+    } catch (err) {
+      console.error("[JobsView] Failed to create job:", err);
+      Alert.alert(
+        "Failed to Publish Job",
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setIsCreatingJob(false);
+    }
   };
 
   // Validation for each step
@@ -2055,14 +2115,19 @@ export function JobsView() {
                       <Text style={styles.backNavText}>Back</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.nextBtn]}
-                      onPress={() => {
-                        setCreateStep(7);
-                        setTimeout(() => scrollToTop(), 100);
-                      }}
+                      style={[
+                        styles.nextBtn,
+                        isCreatingJob && { opacity: 0.6 },
+                      ]}
+                      onPress={handlePublishJob}
+                      disabled={isCreatingJob}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.confirmBtnText}>Publish Job</Text>
+                      {isCreatingJob ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                      ) : (
+                        <Text style={styles.confirmBtnText}>Publish Job</Text>
+                      )}
                     </TouchableOpacity>
                   </>
                 ) : null}

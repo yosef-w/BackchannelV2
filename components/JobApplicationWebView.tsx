@@ -1,42 +1,44 @@
 import { BlurView } from "expo-blur";
 import {
-  AlertCircle,
-  Bot,
-  CheckCircle,
-  Sparkles,
-  X,
+    AlertCircle,
+    Bot,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Sparkles,
+    X,
 } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
-  ZoomIn,
+    FadeIn,
+    FadeOut,
+    SlideInDown,
+    SlideOutDown,
+    ZoomIn,
 } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
 import { generateAutofillAnswers } from "../lib/api";
 import {
-  generateFieldInjectionScript,
-  generateFormScrapingScript,
+    generateFieldInjectionScript,
+    generateFormScrapingScript,
 } from "../lib/webview-scripts";
+import { useAuthStore } from "../stores/useAuthStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import type {
-  AutofillRequest,
-  AutofillResponse,
-  FormField,
-  ScrapedFormData
+    AutofillRequest,
+    AutofillResponse,
+    ScrapedFormData,
 } from "../types/autofill";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -46,6 +48,9 @@ interface JobApplicationWebViewProps {
   jobTitle: string;
   company: string;
   onClose: () => void;
+  /** Called instead of onClose when the autofill fails because the session expired.
+   *  Allows the parent to close the WebView without showing the apply-confirm modal. */
+  onSessionExpired?: () => void;
 }
 
 export function JobApplicationWebView({
@@ -53,16 +58,23 @@ export function JobApplicationWebView({
   jobTitle,
   company,
   onClose,
+  onSessionExpired,
 }: JobApplicationWebViewProps) {
   const webViewRef = useRef<WebView>(null);
+  const scrapingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Once PAGE_READY has fired we know the page is usable. Subsequent
+  // onLoadStart events are in-page navigations / subframe loads and should
+  // not re-show the full loading overlay.
+  const hasPageLoaded = useRef(false);
   const [loading, setLoading] = useState(true);
+  const [pageLoadError, setPageLoadError] = useState(false);
+  const [jobExpired, setJobExpired] = useState(false);
   const [showAutofillButton, setShowAutofillButton] = useState(false);
   const [autofillStatus, setAutofillStatus] = useState<
     "idle" | "scraping" | "generating" | "filling" | "success" | "error"
   >("idle");
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
-  const [scrapedFields, setScrapedFields] = useState<FormField[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   const profileData = useUserProfileStore((state) => state.data);
@@ -123,57 +135,70 @@ export function JobApplicationWebView({
       // Handle different message types from WebView
       if (data.type === "PAGE_READY") {
         console.log("[WebView] Page ready, showing autofill button");
+        hasPageLoaded.current = true;
+        setLoading(false); // guarantee spinner is gone even if onLoadEnd misfired
         setShowAutofillButton(true);
       } else if (data.type === "FORM_FIELDS_SCRAPED") {
-        // Form scraping complete - process the fields
+        // Clear the scraping watchdog timer and process the fields
+        if (scrapingTimeoutRef.current) {
+          clearTimeout(scrapingTimeoutRef.current);
+          scrapingTimeoutRef.current = null;
+        }
         console.log("[AI-AUTOFILL] Form fields scraped successfully");
         processScrapedFields(data.data);
       } else if (data.type === "AUTOFILL_COMPLETE") {
         // Field injection complete (from new AI system)
-        console.log("[AI-AUTOFILL] Autofill injection complete:", data.data);
+        if (__DEV__) {
+          const successCount = data.data?.successCount || data.filledCount || 0;
+          console.log(
+            `[AI-AUTOFILL] Injection complete: ${successCount} fields filled`,
+          );
+        }
         setAutofillStatus("success");
-
-        const successCount = data.data?.successCount || data.filledCount || 0;
-        Alert.alert(
-          "Success!",
-          `Filled ${successCount} fields with AI-generated answers. Please review and submit.`,
-          [{ text: "Got it", onPress: () => setAutofillStatus("idle") }],
-        );
       } else if (data.type === "AUTOFILL_ERROR") {
         // Error from WebView scripts
-        console.error("[AI-AUTOFILL] WebView error:", data.data);
+        if (__DEV__) {
+          console.log("[AI-AUTOFILL] WebView error:", data.data);
+        }
         setAutofillStatus("error");
         setErrorMessage(data.data?.error || "Unknown error in WebView");
-
-        setTimeout(() => {
-          setAutofillStatus("idle");
-        }, 3000);
       } else if (data.type === "CONSOLE_LOG") {
-        // Forward WebView console logs to React Native console
-        const prefix = `[WebView Console]`;
-        if (data.level === "error") {
-          console.error(prefix, data.message);
-        } else if (data.level === "warn") {
-          console.warn(prefix, data.message);
-        } else {
-          console.log(prefix, data.message);
+        // Detect expired listing signals from the host page
+        const msg: string = data.message ?? "";
+        if (
+          msg.includes("job-expired") ||
+          msg.includes("job_expired") ||
+          msg.toLowerCase().includes("job expired") ||
+          msg.toLowerCase().includes("position closed") ||
+          msg.toLowerCase().includes("no longer available")
+        ) {
+          setJobExpired(true);
+          setShowAutofillButton(false);
         }
+        // Forward WebView console logs for debugging only.
+        // Always use console.log (never console.error/warn) so Expo's red-box
+        // overlay is never triggered by third-party site logs.
+        const prefix = `[WebView ${data.level?.toUpperCase() ?? "LOG"}]`;
+        console.log(prefix, msg);
       }
-    } catch (error) {
-      console.error("Error parsing WebView message:", error);
-      setAutofillStatus("error");
+    } catch {
+      // Non-JSON postMessage from the page itself — ignore silently
     }
   };
 
   const handleNavigationStateChange = (navState: any) => {
     setCanGoBack(navState.canGoBack);
     setCanGoForward(navState.canGoForward);
+    // Clear the expired banner if user navigates to a different page
+    if (navState.loading) setJobExpired(false);
   };
 
   const handleCancelAutofill = () => {
-    console.log("🚫 User cancelled autofill");
+    if (scrapingTimeoutRef.current) {
+      clearTimeout(scrapingTimeoutRef.current);
+      scrapingTimeoutRef.current = null;
+    }
     setAutofillStatus("idle");
-    setScrapedFields([]);
     setErrorMessage("");
   };
 
@@ -215,16 +240,9 @@ export function JobApplicationWebView({
     const hasBasicInfo =
       profileData.personal.fullName || profileData.personal.email;
     if (!hasBasicInfo) {
-      console.log("⚠️ Warning: Missing basic profile information");
-      Alert.alert(
-        "Limited Profile Data",
-        "You haven't completed your profile yet. The autofill will work with whatever information is available, but results may be limited.",
-        [
-          { text: "Cancel", style: "cancel", onPress: () => {} },
-          { text: "Continue Anyway", onPress: () => proceedWithAutofill() },
-        ],
+      console.log(
+        "⚠️ Warning: Missing basic profile information — proceeding with available data",
       );
-      return;
     }
 
     // Proceed with autofill
@@ -248,21 +266,22 @@ export function JobApplicationWebView({
       // Inject scraping script
       webViewRef.current?.injectJavaScript(generateFormScrapingScript());
 
-      console.log("⏳ Waiting for form fields to be scraped...");
-      // Note: The actual scraping result will come through handleWebViewMessage
-      // We'll wait for the FORM_FIELDS_SCRAPED message
+      // 15-second watchdog: if FORM_FIELDS_SCRAPED never arrives (CSP block,
+      // no forms, script error) reset so the user isn't stuck in 'scraping' forever
+      scrapingTimeoutRef.current = setTimeout(() => {
+        setAutofillStatus("error");
+        setErrorMessage(
+          "Could not detect any form fields on this page. The site may block automated tools — please fill the form manually.",
+        );
+      }, 15000);
     } catch (error) {
-      console.error("❌ [AI-AUTOFILL] Error during autofill:", error);
+      const errMsg =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      if (__DEV__) {
+        console.log("[AI-AUTOFILL] Error during autofill:", errMsg);
+      }
       setAutofillStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
-
-      Alert.alert(
-        "Autofill Error",
-        "Failed to autofill the application. Please try again or fill manually.",
-        [{ text: "OK", onPress: () => setAutofillStatus("idle") }],
-      );
+      setErrorMessage(errMsg);
     }
   };
 
@@ -281,8 +300,6 @@ export function JobApplicationWebView({
       );
       console.log("Page title:", scrapedData.pageTitle);
       console.log("Form count:", scrapedData.formCount);
-
-      setScrapedFields(scrapedData.fields);
 
       if (scrapedData.fields.length === 0) {
         console.log("❌ No form fields detected");
@@ -330,10 +347,12 @@ export function JobApplicationWebView({
         },
       };
 
-      console.log("\n📤 BACKEND REQUEST PAYLOAD:");
-      console.log("=".repeat(60));
-      console.log(JSON.stringify(request, null, 2));
-      console.log("=".repeat(60));
+      if (__DEV__) {
+        console.log("\n📤 BACKEND REQUEST PAYLOAD:");
+        console.log("=".repeat(60));
+        console.log(JSON.stringify(request, null, 2));
+        console.log("=".repeat(60));
+      }
 
       console.log("\n📊 Payload Summary:");
       console.log("  Total form fields:", request.formFields.length);
@@ -402,7 +421,7 @@ export function JobApplicationWebView({
       console.log(
         "\n⏱️  Processing time:",
         response.metadata.processingTime,
-        "ms",
+        "s",
       );
       console.log("🤖 AI Model:", response.metadata.aiModel);
 
@@ -453,28 +472,38 @@ export function JobApplicationWebView({
       console.log("✨ AUTOFILL PROCESS COMPLETE");
       console.log("=".repeat(60) + "\n");
     } catch (error) {
-      console.log("\n" + "=".repeat(60));
-      console.error("❌ ERROR PROCESSING SCRAPED FIELDS");
-      console.log("=".repeat(60));
-      console.error("Error:", error);
-      if (error instanceof Error) {
-        console.error("Message:", error.message);
-        console.error("Stack:", error.stack);
+      const errMsg =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      const isAuthError =
+        errMsg.toLowerCase().includes("authentication") ||
+        errMsg.toLowerCase().includes("session expired") ||
+        errMsg.toLowerCase().includes("credentials") ||
+        errMsg.toLowerCase().includes("401");
+
+      if (__DEV__) {
+        console.log("\n" + "=".repeat(60));
+        console.log("ERROR PROCESSING SCRAPED FIELDS:", errMsg);
+        console.log("=".repeat(60) + "\n");
       }
-      console.log("=".repeat(60) + "\n");
 
-      setAutofillStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
-
-      Alert.alert(
-        "Autofill Error",
-        error instanceof Error
-          ? error.message
-          : "Failed to generate autofill answers",
-        [{ text: "OK", onPress: () => setAutofillStatus("idle") }],
-      );
+      if (isAuthError) {
+        // Only treat this as a permanent session expiry if the store has
+        // actually cleared auth (both tokens gone). If isAuthenticated is
+        // still true it was a transient 401/403 on the autofill endpoint
+        // — show a retryable error overlay instead of closing the WebView.
+        const stillAuthenticated = useAuthStore.getState().isAuthenticated;
+        if (!stillAuthenticated && onSessionExpired) {
+          onSessionExpired();
+        } else {
+          setAutofillStatus("error");
+          setErrorMessage(
+            "Authentication failed. Please tap the ✨ button to try again. If the issue persists, close and re-open the app.",
+          );
+        }
+      } else {
+        setAutofillStatus("error");
+        setErrorMessage(errMsg);
+      }
     }
   };
 
@@ -507,14 +536,7 @@ export function JobApplicationWebView({
               disabled={!canGoBack}
               style={[styles.navButton, !canGoBack && styles.navButtonDisabled]}
             >
-              <Text
-                style={[
-                  styles.navButtonText,
-                  !canGoBack && styles.navButtonTextDisabled,
-                ]}
-              >
-                ←
-              </Text>
+              <ChevronLeft color={canGoBack ? "#000" : "#CCC"} size={20} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => webViewRef.current?.goForward()}
@@ -524,14 +546,7 @@ export function JobApplicationWebView({
                 !canGoForward && styles.navButtonDisabled,
               ]}
             >
-              <Text
-                style={[
-                  styles.navButtonText,
-                  !canGoForward && styles.navButtonTextDisabled,
-                ]}
-              >
-                →
-              </Text>
+              <ChevronRight color={canGoForward ? "#000" : "#CCC"} size={20} />
             </TouchableOpacity>
           </View>
         </View>
@@ -541,26 +556,68 @@ export function JobApplicationWebView({
           ref={webViewRef}
           source={{ uri: jobUrl }}
           style={styles.webview}
-          onLoadStart={() => setLoading(true)}
+          onLoadStart={() => {
+            // Only show the full loading overlay for the very first page load.
+            // After PAGE_READY has fired, subsequent onLoadStart events are
+            // in-page navigations (SPA redirects, subframes) and should not
+            // re-cover an already-visible page with a spinner.
+            if (!hasPageLoaded.current) {
+              setLoading(true);
+            }
+            setPageLoadError(false);
+          }}
           onLoadEnd={() => setLoading(false)}
+          onError={() => {
+            setLoading(false);
+            setPageLoadError(true);
+          }}
+          onHttpError={(e) => {
+            if (e.nativeEvent.statusCode >= 400) {
+              setLoading(false);
+              setPageLoadError(true);
+            }
+          }}
           onMessage={handleWebViewMessage}
           injectedJavaScript={injectedJavaScript}
           onNavigationStateChange={handleNavigationStateChange}
           javaScriptEnabled={true}
           domStorageEnabled={true}
-          startInLoadingState={true}
-          renderLoading={() => (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#000" />
-              <Text style={styles.loadingText}>Loading application...</Text>
-            </View>
-          )}
+          // iOS: native swipe-back/forward gesture
+          allowsBackForwardNavigationGestures={Platform.OS === "ios"}
+          // Android: required for many ATS platforms (Greenhouse, Workday, Lever)
+          thirdPartyCookiesEnabled={true}
+          mixedContentMode="compatibility"
+          // Prevent blank screens when sites try to open new windows (Android)
+          setSupportMultipleWindows={false}
+          allowsInlineMediaPlayback={true}
         />
 
-        {/* Loading Overlay */}
+        {/* Loading Overlay — pointerEvents="none" so the header X button
+            stays tappable even while the page is still loading. */}
         {loading && (
-          <View style={styles.loadingOverlay}>
+          <View style={styles.loadingOverlay} pointerEvents="none">
             <ActivityIndicator size="large" color="#000" />
+          </View>
+        )}
+
+        {/* Page Load Error */}
+        {pageLoadError && (
+          <View style={styles.pageErrorContainer}>
+            <AlertCircle color="#CCC" size={48} />
+            <Text style={styles.pageErrorTitle}>Page couldn't load</Text>
+            <Text style={styles.pageErrorSubtitle}>
+              Check your connection or the link may no longer be active.
+            </Text>
+            <TouchableOpacity
+              style={styles.pageErrorRetryButton}
+              onPress={() => {
+                setPageLoadError(false);
+                webViewRef.current?.reload();
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.pageErrorRetryText}>Try Again</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -655,8 +712,50 @@ export function JobApplicationWebView({
           </Animated.View>
         )}
 
+        {/* Job Expired Banner */}
+        {jobExpired && (
+          <Animated.View
+            entering={SlideInDown.springify().damping(18)}
+            exiting={SlideOutDown}
+            style={styles.expiredBanner}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
+              <View style={styles.expiredIconWrap}>
+                <Clock color="#000" size={20} />
+              </View>
+              <View style={styles.expiredTextWrap}>
+                <Text style={styles.expiredTitle}>
+                  Position may have expired
+                </Text>
+                <Text style={styles.expiredSubtitle}>
+                  This listing appears to be closed. You can still browse the
+                  page or close and find a new role.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.expiredActions}>
+              <TouchableOpacity
+                style={styles.expiredCloseBtn}
+                onPress={onClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.expiredCloseBtnText}>Close Listing</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.expiredDismissBtn}
+                onPress={() => setJobExpired(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.expiredDismissBtnText}>Keep Browsing</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
+
         {/* AI-Powered Autofill Button */}
-        {showAutofillButton && autofillStatus === "idle" && (
+        {showAutofillButton && autofillStatus === "idle" && !jobExpired && (
           <Animated.View
             entering={SlideInDown}
             exiting={SlideOutDown}
@@ -739,14 +838,7 @@ const styles = StyleSheet.create({
   navButtonDisabled: {
     opacity: 0.3,
   },
-  navButtonText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#000",
-  },
-  navButtonTextDisabled: {
-    color: "#999",
-  },
+
   webview: {
     flex: 1,
   },
@@ -885,6 +977,112 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cancelButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  pageErrorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 48,
+    gap: 12,
+  },
+  pageErrorTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  pageErrorSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  pageErrorRetryButton: {
+    marginTop: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 36,
+    backgroundColor: "#000",
+    borderRadius: 28,
+  },
+  pageErrorRetryText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  expiredBanner: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === "ios" ? 32 : 16,
+    gap: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+  expiredIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  expiredTextWrap: {
+    flex: 1,
+    gap: 3,
+  },
+  expiredTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  expiredSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 18,
+  },
+  expiredActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  expiredCloseBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    backgroundColor: "#000",
+    borderRadius: 28,
+    alignItems: "center",
+  },
+  expiredCloseBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  expiredDismissBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 28,
+    alignItems: "center",
+  },
+  expiredDismissBtnText: {
     fontSize: 14,
     fontWeight: "600",
     color: "#666",

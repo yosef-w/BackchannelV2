@@ -1,69 +1,70 @@
 import {
-    fetchJobsPack,
-    fetchProfilesPack,
-    getPublicProfile,
-    joinWaitlist,
-    likeJob,
-    likeProfile,
+  fetchJobsPack,
+  fetchProfilesPack,
+  getPublicProfile,
+  joinWaitlist,
+  likeJob,
+  likeProfile,
 } from "@/lib/api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-    Award,
-    Briefcase,
-    Calendar,
-    Check,
-    ChevronDown,
-    ChevronRight,
-    Coffee,
-    DollarSign,
-    ExternalLink,
-    Globe,
-    GraduationCap,
-    Info,
-    Mail,
-    MapPin,
-    MessageCircle,
-    RefreshCcw,
-    SlidersHorizontal,
-    Sparkles,
-    TrendingUp,
-    Users,
-    X,
-    Zap,
+  Award,
+  Briefcase,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Coffee,
+  DollarSign,
+  ExternalLink,
+  Globe,
+  GraduationCap,
+  Info,
+  Layers,
+  Mail,
+  MapPin,
+  MessageCircle,
+  RefreshCcw,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
+  Users,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-    FadeOut,
-    LinearTransition,
-    SlideInDown,
-    SlideOutDown,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSequence,
-    withTiming,
-    ZoomIn,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  LinearTransition,
+  SlideInDown,
+  SlideOutDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
@@ -1398,6 +1399,12 @@ export function HomeView({
           );
           console.log("[HomeView] Transformed jobs:", transformedJobs.length);
           setJobs(transformedJobs);
+          console.log("[HomeView] Job deck URLs:");
+          transformedJobs.forEach((job, i) => {
+            console.log(
+              `  ${i + 1}. ${job.title} @ ${job.company} → ${job.applicationUrl}`,
+            );
+          });
         } catch (err) {
           console.error("[HomeView] Failed to fetch jobs:", err);
           setJobsError(
@@ -1786,6 +1793,13 @@ export function HomeView({
           setWebViewJob(null);
           setShowApplyConfirmModal(true);
         }}
+        onSessionExpired={() => {
+          // Session expired mid-application: close the WebView silently.
+          // Do NOT show the apply-confirm modal — the dashboard will redirect
+          // to splash once clearAuth() has fired.
+          setShowWebView(false);
+          setWebViewJob(null);
+        }}
       />
     );
   }
@@ -2017,27 +2031,31 @@ export function HomeView({
                               </Text>
                             </View>
 
-                            {"skills" in currentData && currentData.skills && (
-                              <View style={styles.skillsSection}>
-                                <Text style={styles.sectionLabelSmall}>
-                                  TOP SKILLS
-                                </Text>
-                                <View style={styles.skillsRow}>
-                                  {currentData.skills
-                                    .slice(0, 4)
-                                    .map((skill: string, idx: number) => (
-                                      <View
-                                        key={idx}
-                                        style={styles.skillChipSmall}
-                                      >
-                                        <Text style={styles.skillChipSmallText}>
-                                          {skill}
-                                        </Text>
-                                      </View>
-                                    ))}
+                            {"skills" in currentData &&
+                              currentData.skills &&
+                              currentData.skills.length > 0 && (
+                                <View style={styles.skillsSection}>
+                                  <Text style={styles.sectionLabelSmall}>
+                                    TOP SKILLS
+                                  </Text>
+                                  <View style={styles.skillsRow}>
+                                    {currentData.skills
+                                      .slice(0, 4)
+                                      .map((skill: string, idx: number) => (
+                                        <View
+                                          key={idx}
+                                          style={styles.skillChipSmall}
+                                        >
+                                          <Text
+                                            style={styles.skillChipSmallText}
+                                          >
+                                            {skill}
+                                          </Text>
+                                        </View>
+                                      ))}
+                                  </View>
                                 </View>
-                              </View>
-                            )}
+                              )}
                           </View>
                         </View>
                       </Animated.View>
@@ -2246,28 +2264,6 @@ export function HomeView({
                                 </Text>
                               </Text>
                             </View>
-
-                            {/* KEY REQUIREMENTS – real API data */}
-                            {"requirementsSummary" in currentData &&
-                              (currentData as any).requirementsSummary && (
-                                <View style={styles.requirementsSummaryBlock}>
-                                  <Text style={styles.sectionLabelSmall}>
-                                    KEY REQUIREMENTS
-                                  </Text>
-                                  <Text style={styles.descriptionText}>
-                                    {(currentData as any).requirementsSummary
-                                      .length > 220
-                                      ? (
-                                          currentData as any
-                                        ).requirementsSummary.substring(
-                                          0,
-                                          220,
-                                        ) + "..."
-                                      : (currentData as any)
-                                          .requirementsSummary}
-                                  </Text>
-                                </View>
-                              )}
                           </View>
                         </View>
                       </Animated.View>
@@ -2663,6 +2659,59 @@ export function HomeView({
                     ) : (
                       /* Applicant More Details - Job */
                       <>
+                        {/* AI Summary */}
+                        {"summary" in currentData &&
+                          (currentData as any).summary && (
+                            <View style={styles.detailSection}>
+                              <View style={styles.detailSectionHeader}>
+                                <Layers size={16} color="#000" />
+                                <Text style={styles.detailSectionTitle}>
+                                  AI Summary
+                                </Text>
+                              </View>
+                              <View style={styles.jobDetailCard}>
+                                <Text style={styles.jobDetailText}>
+                                  {(currentData as any).summary}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+
+                        {/* Experience Level + Work Arrangement inline chips */}
+                        {("experienceLevel" in currentData &&
+                          (currentData as any).experienceLevel) ||
+                        ("workArrangement" in currentData &&
+                          (currentData as any).workArrangement) ? (
+                          <View style={styles.detailSection}>
+                            <View style={styles.detailSectionHeader}>
+                              <Info size={16} color="#000" />
+                              <Text style={styles.detailSectionTitle}>
+                                Role Details
+                              </Text>
+                            </View>
+                            <View style={styles.skillsRow}>
+                              {"experienceLevel" in currentData &&
+                                (currentData as any).experienceLevel && (
+                                  <View style={styles.roleDetailChip}>
+                                    <GraduationCap size={13} color="#000" />
+                                    <Text style={styles.roleDetailChipText}>
+                                      {(currentData as any).experienceLevel}
+                                    </Text>
+                                  </View>
+                                )}
+                              {"workArrangement" in currentData &&
+                                (currentData as any).workArrangement && (
+                                  <View style={styles.roleDetailChip}>
+                                    <MapPin size={13} color="#000" />
+                                    <Text style={styles.roleDetailChipText}>
+                                      {(currentData as any).workArrangement}
+                                    </Text>
+                                  </View>
+                                )}
+                            </View>
+                          </View>
+                        ) : null}
+
                         {/* Real API: Core Responsibilities */}
                         {"coreResponsibilities" in currentData &&
                           (currentData as any).coreResponsibilities && (
@@ -2739,49 +2788,53 @@ export function HomeView({
                               </View>
                             </>
                           )}
-                        {"skills" in currentData && currentData.skills && (
-                          <View style={styles.detailSection}>
-                            <View style={styles.detailSectionHeader}>
-                              <TrendingUp size={16} color="#000" />
-                              <Text style={styles.detailSectionTitle}>
-                                Required Skills
-                              </Text>
+                        {"skills" in currentData &&
+                          currentData.skills &&
+                          currentData.skills.length > 0 && (
+                            <View style={styles.detailSection}>
+                              <View style={styles.detailSectionHeader}>
+                                <TrendingUp size={16} color="#000" />
+                                <Text style={styles.detailSectionTitle}>
+                                  Required Skills
+                                </Text>
+                              </View>
+                              <View style={styles.skillsRow}>
+                                {currentData.skills.map(
+                                  (skill: string, idx: number) => (
+                                    <View key={idx} style={styles.skillBadge}>
+                                      <Text style={styles.skillBadgeText}>
+                                        {skill}
+                                      </Text>
+                                    </View>
+                                  ),
+                                )}
+                              </View>
                             </View>
-                            <View style={styles.skillsRow}>
-                              {currentData.skills.map(
-                                (skill: string, idx: number) => (
-                                  <View key={idx} style={styles.skillBadge}>
-                                    <Text style={styles.skillBadgeText}>
-                                      {skill}
-                                    </Text>
-                                  </View>
-                                ),
-                              )}
+                          )}
+                        {"benefits" in currentData &&
+                          currentData.benefits &&
+                          currentData.benefits.length > 0 && (
+                            <View style={styles.detailSection}>
+                              <View style={styles.detailSectionHeader}>
+                                <Sparkles size={16} color="#000" />
+                                <Text style={styles.detailSectionTitle}>
+                                  Highlights
+                                </Text>
+                              </View>
+                              <View style={styles.benefitsList}>
+                                {currentData.benefits.map(
+                                  (benefit: string, idx: number) => (
+                                    <View key={idx} style={styles.benefitRow}>
+                                      <Check size={14} color="#00CB54" />
+                                      <Text style={styles.benefitText}>
+                                        {benefit}
+                                      </Text>
+                                    </View>
+                                  ),
+                                )}
+                              </View>
                             </View>
-                          </View>
-                        )}
-                        {"benefits" in currentData && currentData.benefits && (
-                          <View style={styles.detailSection}>
-                            <View style={styles.detailSectionHeader}>
-                              <Sparkles size={16} color="#000" />
-                              <Text style={styles.detailSectionTitle}>
-                                Benefits
-                              </Text>
-                            </View>
-                            <View style={styles.benefitsList}>
-                              {currentData.benefits.map(
-                                (benefit: string, idx: number) => (
-                                  <View key={idx} style={styles.benefitRow}>
-                                    <Check size={14} color="#00CB54" />
-                                    <Text style={styles.benefitText}>
-                                      {benefit}
-                                    </Text>
-                                  </View>
-                                ),
-                              )}
-                            </View>
-                          </View>
-                        )}
+                          )}
                       </>
                     )}
                   </View>
@@ -4628,6 +4681,30 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingHorizontal: 20,
   },
+  // ── Referral Check-in Banner ───────────────────────────────────────────────
+  checkInBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  checkInBannerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#000",
+  },
+  checkInBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#444",
+  },
   sponsorHeader: {
     flexDirection: "row",
     gap: 12,
@@ -4900,6 +4977,22 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: "#EFEFEF",
+  },
+  roleDetailChip: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 5,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  roleDetailChipText: {
+    fontSize: 13,
+    color: "#000",
+    fontWeight: "500" as const,
   },
 
   // ── Match Celebration Modal ────────────────────────────────────────────────

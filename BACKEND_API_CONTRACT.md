@@ -165,23 +165,24 @@ Register a new applicant.
 - **Auth**: None
 - **Rate limit**: 10/hour
 
-| Field              | Type    | Required | Notes                              |
-| ------------------ | ------- | -------- | ---------------------------------- |
-| email              | string  | yes      | Valid email format                 |
-| password           | string  | yes      | Min 8 characters                   |
-| first_name         | string  | yes      | Also accepts `firstName`           |
-| last_name          | string  | yes      | Also accepts `lastName`            |
-| role               | string  | yes      | Must be `"Applicant"`              |
-| username           | string  | no       | Auto-derived from email if omitted |
-| phone_number       | string  | no       | Also accepts `phone`               |
-| international_code | string  | no       | Default: `"+1"`                    |
-| dob                | string  | no       | Also accepts `dateOfBirth`         |
-| location           | string  | no       |                                    |
-| industry           | string  | no       |                                    |
-| range              | integer | no       | Search radius in miles             |
-| reason             | string  | no       |                                    |
-| positions          | array   | no       | List of position strings           |
-| skills             | array   | no       | List of skill strings              |
+| Field              | Type    | Required | Notes                                                                               |
+| ------------------ | ------- | -------- | ----------------------------------------------------------------------------------- |
+| email              | string  | yes      | Valid email format                                                                  |
+| password           | string  | yes      | Min 8 characters                                                                    |
+| first_name         | string  | yes      | Also accepts `firstName`                                                            |
+| last_name          | string  | yes      | Also accepts `lastName`                                                             |
+| role               | string  | yes      | Must be `"Applicant"`                                                               |
+| username           | string  | no       | Auto-derived from email if omitted                                                  |
+| phone_number       | string  | no       | Also accepts `phone`                                                                |
+| international_code | string  | no       | Default: `"+1"`                                                                     |
+| dob                | string  | no       | Also accepts `dateOfBirth`                                                          |
+| location           | string  | no       |                                                                                     |
+| industry           | string  | no       |                                                                                     |
+| range              | integer | no       | Search radius in miles                                                              |
+| reason             | string  | no       |                                                                                     |
+| positions          | array   | no       | List of position strings                                                            |
+| skills             | array   | no       | List of skill strings                                                               |
+| work_preferences   | array   | no       | e.g. `["Remote", "Full-time"]` — persisted to `applicant_profiles.work_preferences` |
 
 **Response (201):**
 
@@ -390,6 +391,10 @@ Get full profile for the authenticated user.
     "REASON": "string",
     "POSITIONS": ["string"],
     "SKILLS": ["string"],
+    "WORK_PREFERENCES": ["Remote", "Full-time"],
+    "DESIRED_ROLES": ["string"],
+    "YEARS_EXPERIENCE": 0,
+    "INSIGHTS": [],
     "RESUME_DATA": {}
   },
   "sponsor_profile": {
@@ -922,10 +927,14 @@ Get matches for an applicant.
       "JOB_ID": "uuid",
       "TITLE": "string",
       "COMPANY": "string",
+      "LOCATION": "string | null",
+      "SPONSOR_USER_ID": "integer",
       "SPONSOR_FIRST_NAME": "string",
       "SPONSOR_LAST_NAME": "string",
       "SPONSOR_JOB_TITLE": "string",
-      "SPONSOR_PHOTO_URL": "string | null"
+      "SPONSOR_PHOTO_URL": "string | null",
+      "SPONSOR_COMPANY": "string | null",
+      "matched_at": "ISO8601"
     }
   ],
   "profile_matches": []

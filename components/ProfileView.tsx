@@ -3,69 +3,69 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-  AlertCircle,
-  Briefcase,
-  Camera,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Edit,
-  FileText,
-  GraduationCap,
-  ImageIcon,
-  Lock,
-  LogOut,
-  MapPin,
-  MessageCircle,
-  Plus,
-  RefreshCw,
-  Target,
-  Trash2,
-  Upload,
-  X,
-  Zap,
+    AlertCircle,
+    Briefcase,
+    Camera,
+    Check,
+    CheckCircle2,
+    ChevronRight,
+    Edit,
+    FileText,
+    GraduationCap,
+    ImageIcon,
+    Lock,
+    LogOut,
+    MapPin,
+    Plus,
+    RefreshCw,
+    Target,
+    Trash2,
+    Upload,
+    X,
+    Zap
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
 } from "react-native-reanimated";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
-  changePassword,
-  classifyResume,
-  getExtractedResumeText,
-  logout,
-  unregisterDevice,
-  updateApplicantProfile,
-  updateGeneralProfile,
-  updateSponsorProfile,
-  uploadAndParseResume,
-  uploadProfileImage,
+    changePassword,
+    classifyResume,
+    deactivateAccount,
+    getExtractedResumeText,
+    logout,
+    unregisterDevice,
+    updateApplicantProfile,
+    updateGeneralProfile,
+    updateSponsorProfile,
+    uploadAndParseResume,
+    uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
-  EducationEntry,
-  ProfessionalExperience,
-  useUserProfileStore,
+    EducationEntry,
+    ProfessionalExperience,
+    useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
@@ -162,15 +162,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.fetchFromBackend,
   );
 
-  const [activeTab, setActiveTab] = useState<"profile" | "applications">(
-    "profile",
-  );
-  const [showApplicationDetail, setShowApplicationDetail] = useState(false);
-  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
-  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -501,116 +495,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         console.warn("[Resume] ⚠️ Could not fetch resume status:", err);
       });
   }, [userType]);
-
-  const stats =
-    userType === "applicant"
-      ? [
-          { label: "Connections", value: "12" },
-          { label: "Referrals", value: "3" },
-          { label: "Applied", value: "8" },
-        ]
-      : [
-          { label: "Network", value: "24" },
-          { label: "Referrals", value: "15" },
-          { label: "Success", value: "87%" },
-        ];
-
-  const mockApplications = [
-    {
-      id: 1,
-      jobTitle: "Senior Product Manager",
-      company: "Google",
-      companyLogo:
-        "https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=200",
-      status: "interview_scheduled" as const,
-      appliedDate: "Jan 2, 2026",
-      nextAction: "Technical interview on Jan 8 at 2 PM",
-      sponsorName: "Sarah Chen",
-      sponsorRole: "VP of Product",
-      sponsorImage:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200",
-      timeline: [
-        { stage: "Applied", date: "Jan 2", completed: true },
-        { stage: "Referred", date: "Jan 2", completed: true, isReferred: true },
-        { stage: "Screening", date: "Jan 3", completed: true },
-        { stage: "Interview", date: "Jan 8", completed: false },
-        { stage: "Decision", date: "TBD", completed: false },
-      ],
-    },
-    {
-      id: 2,
-      jobTitle: "Lead Product Designer",
-      company: "Airbnb",
-      companyLogo:
-        "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200",
-      status: "reviewing" as const,
-      appliedDate: "Jan 3, 2026",
-      nextAction: "Application under review by hiring team",
-      sponsorName: "Michael Rodriguez",
-      sponsorRole: "Design Director",
-      sponsorImage:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
-      timeline: [
-        { stage: "Applied", date: "Jan 3", completed: true },
-        { stage: "Referred", date: "Jan 3", completed: true, isReferred: true },
-        { stage: "Screening", date: "Pending", completed: false },
-        { stage: "Interview", date: "TBD", completed: false },
-        { stage: "Decision", date: "TBD", completed: false },
-      ],
-    },
-    {
-      id: 3,
-      jobTitle: "Product Marketing Manager",
-      company: "Notion",
-      companyLogo:
-        "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=200",
-      status: "applied" as const,
-      appliedDate: "Jan 4, 2026",
-      nextAction: "Waiting for referral confirmation",
-      sponsorName: "Emily Watson",
-      sponsorRole: "Head of Marketing",
-      sponsorImage:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
-      timeline: [
-        { stage: "Applied", date: "Jan 4", completed: true },
-        {
-          stage: "Referred",
-          date: "Pending",
-          completed: false,
-          isReferred: true,
-        },
-        { stage: "Screening", date: "Pending", completed: false },
-        { stage: "Interview", date: "TBD", completed: false },
-        { stage: "Decision", date: "TBD", completed: false },
-      ],
-    },
-    {
-      id: 4,
-      jobTitle: "VP of Product",
-      company: "Stripe",
-      companyLogo:
-        "https://images.unsplash.com/photo-1599658880436-c61792e70672?w=200",
-      status: "offer" as const,
-      appliedDate: "Dec 28, 2025",
-      nextAction: "Offer received - respond by Jan 10",
-      sponsorName: "David Park",
-      sponsorRole: "Chief Product Officer",
-      sponsorImage:
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200",
-      timeline: [
-        { stage: "Applied", date: "Dec 28", completed: true },
-        {
-          stage: "Referred",
-          date: "Dec 28",
-          completed: true,
-          isReferred: true,
-        },
-        { stage: "Screening", date: "Dec 29", completed: true },
-        { stage: "Interview", date: "Dec 30", completed: true },
-        { stage: "Decision", date: "Jan 2", completed: true },
-      ],
-    },
-  ];
 
   const getStatusLabel = (status: string) => {
     const labels = {
@@ -2032,6 +1916,46 @@ export function ProfileView({ userType }: ProfileViewProps) {
     router.replace("/splash");
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all your data. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setShowPrivacySecurity(false);
+            // Deactivate push token so no further notifications reach this device
+            if (deviceToken) {
+              try {
+                await unregisterDevice(deviceToken);
+              } catch (err) {
+                console.warn(
+                  "[ProfileView] Failed to unregister device token before delete:",
+                  err,
+                );
+              }
+            }
+            try {
+              await deactivateAccount();
+            } catch (err) {
+              console.warn(
+                "[ProfileView] Deactivate account call failed:",
+                err,
+              );
+              // Non-fatal — clear local state regardless
+            }
+            await clearAuth();
+            await clearUserProfileData();
+            router.replace("/splash");
+          },
+        },
+      ],
+    );
+  };
+
   // Helper to count missing fields by category
   const getMissingFieldsCount = (category: "personal" | "professional") => {
     if (!profileCompletion) return 0;
@@ -2569,208 +2493,64 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
       </View>
 
-      {/* Stats Grid */}
-      <View style={styles.statsGrid}>
-        {stats.map((stat, index) => (
-          <Animated.View
-            key={stat.label}
-            entering={FadeInUp.delay(index * 100).duration(400)}
-            style={styles.statBox}
-          >
-            <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statLabel}>{stat.label.toUpperCase()}</Text>
-          </Animated.View>
-        ))}
-      </View>
-
-      {/* Tab Navigation (Applicants Only) */}
-      {userType === "applicant" && (
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "profile" && styles.tabActive]}
-            onPress={() => setActiveTab("profile")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "profile" && styles.tabTextActive,
-              ]}
-            >
-              Profile
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              activeTab === "applications" && styles.tabActive,
-            ]}
-            onPress={() => setActiveTab("applications")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "applications" && styles.tabTextActive,
-              ]}
-            >
-              Applications
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Profile Content */}
-      {activeTab === "profile" && (
-        <>
-          {/* Expertise Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {profileData.expertiseLabel}
-            </Text>
-            <View style={styles.tagCloud}>
-              {profileData.expertise.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
+      <>
+        {/* Expertise Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
+          <View style={styles.tagCloud}>
+            {profileData.expertise.map((tag) => (
+              <View key={tag} style={styles.tag}>
+                <Text style={styles.tagText}>{tag}</Text>
+              </View>
+            ))}
           </View>
-        </>
-      )}
-
-      {/* Applications Content */}
-      {activeTab === "applications" && userType === "applicant" && (
-        <View style={styles.applicationsContainer}>
-          <Text style={styles.applicationsTitle}>My Applications</Text>
-          <Text style={styles.applicationsSubtitle}>
-            {mockApplications.length} active applications
-          </Text>
-
-          {mockApplications.map((app, index) => (
-            <Animated.View key={app.id} entering={FadeInUp.delay(index * 100)}>
-              <TouchableOpacity
-                style={styles.applicationCard}
-                onPress={() => {
-                  setSelectedApplication(app);
-                  setShowApplicationDetail(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.appCardHeader}>
-                  <Image
-                    source={{ uri: app.companyLogo }}
-                    style={styles.companyLogo}
-                  />
-                  <View style={styles.appCardInfo}>
-                    <Text style={styles.appJobTitle}>{app.jobTitle}</Text>
-                    <Text style={styles.appCompany}>{app.company}</Text>
-                  </View>
-                  <View style={styles.statusBadgeBlack}>
-                    <Text style={styles.statusBadgeBlackText}>
-                      {getStatusLabel(app.status)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.timelineContainer}>
-                  {app.timeline.map((stage, idx) => (
-                    <View key={idx} style={styles.timelineItem}>
-                      <View
-                        style={[
-                          styles.timelineDot,
-                          stage.completed && styles.timelineDotCompleted,
-                          stage.isReferred && styles.timelineDotReferred,
-                          stage.isReferred &&
-                            stage.completed &&
-                            styles.timelineDotReferredCompleted,
-                        ]}
-                      />
-                      {idx < app.timeline.length - 1 && (
-                        <View style={styles.timelineLine} />
-                      )}
-                      <View style={styles.timelineContent}>
-                        <Text
-                          style={[
-                            styles.timelineStage,
-                            stage.completed && styles.timelineStageCompleted,
-                            stage.isReferred &&
-                              stage.completed &&
-                              styles.timelineStageReferred,
-                          ]}
-                        >
-                          {stage.stage}
-                        </Text>
-                        <Text style={styles.timelineDate}>{stage.date}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-
-                <View style={styles.appCardFooter}>
-                  <Image
-                    source={{ uri: app.sponsorImage }}
-                    style={styles.sponsorAvatar}
-                  />
-                  <View style={styles.sponsorInfo}>
-                    <Text style={styles.sponsorLabel}>SPONSORED BY</Text>
-                    <Text style={styles.sponsorName}>{app.sponsorName}</Text>
-                  </View>
-                  <ChevronRight color="#BBB" size={18} />
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          ))}
         </View>
-      )}
 
-      {activeTab === "profile" && (
-        <>
-          {/* Applicant-Specific Sections */}
-          {userType === "applicant" && (
-            <>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Work Preferences</Text>
-                <View style={styles.tagCloud}>
-                  {applicantData.workPreferences.map((pref) => (
-                    <View key={pref} style={styles.preferenceTag}>
-                      <Text style={styles.preferenceText}>{pref}</Text>
-                    </View>
-                  ))}
-                </View>
+        {/* Applicant-Specific Sections */}
+        {userType === "applicant" && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Work Preferences</Text>
+              <View style={styles.tagCloud}>
+                {applicantData.workPreferences.map((pref) => (
+                  <View key={pref} style={styles.preferenceTag}>
+                    <Text style={styles.preferenceText}>{pref}</Text>
+                  </View>
+                ))}
               </View>
+            </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Desired Roles</Text>
-                <View style={styles.tagCloud}>
-                  {applicantData.desiredRoles.map((role) => (
-                    <View key={role} style={styles.roleTag}>
-                      <Target size={14} color="#FFF" strokeWidth={2.5} />
-                      <Text style={styles.roleTagText}>{role}</Text>
-                    </View>
-                  ))}
-                </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Desired Roles</Text>
+              <View style={styles.tagCloud}>
+                {applicantData.desiredRoles.map((role) => (
+                  <View key={role} style={styles.roleTag}>
+                    <Target size={14} color="#FFF" strokeWidth={2.5} />
+                    <Text style={styles.roleTagText}>{role}</Text>
+                  </View>
+                ))}
               </View>
-            </>
-          )}
+            </View>
+          </>
+        )}
 
-          {/* Sponsor-Specific Sections */}
-          {userType === "sponsor" && (
-            <>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>
-                  Companies I Can Refer To
-                </Text>
-                <View style={styles.tagCloud}>
-                  {sponsorData.companiesCanReferTo.map((company) => (
-                    <View key={company} style={styles.companyTag}>
-                      <Text style={styles.companyText}>{company}</Text>
-                    </View>
-                  ))}
-                </View>
+        {/* Sponsor-Specific Sections */}
+        {userType === "sponsor" && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Companies I Can Refer To</Text>
+              <View style={styles.tagCloud}>
+                {sponsorData.companiesCanReferTo.map((company) => (
+                  <View key={company} style={styles.companyTag}>
+                    <Text style={styles.companyText}>{company}</Text>
+                  </View>
+                ))}
               </View>
-            </>
-          )}
-        </>
-      )}
+            </View>
+          </>
+        )}
+      </>
 
       {/* Resume Upload Section — Applicant Only */}
       {userType === "applicant" && (
@@ -3099,162 +2879,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </Animated.View>
         </View>
       </Modal>
-
-      {/* APPLICATION DETAIL MODAL */}
-      {selectedApplication && (
-        <Modal visible={showApplicationDetail} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => {
-                setShowApplicationDetail(false);
-                setTimeout(() => setSelectedApplication(null), 300);
-              }}
-            >
-              <BlurView
-                intensity={60}
-                style={StyleSheet.absoluteFill}
-                tint="dark"
-              />
-            </TouchableOpacity>
-
-            <Animated.View
-              entering={SlideInDown}
-              exiting={SlideOutDown}
-              style={styles.modalContent}
-              pointerEvents="auto"
-            >
-              <View style={styles.modalHandle} />
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => {
-                  setShowApplicationDetail(false);
-                  setTimeout(() => setSelectedApplication(null), 300);
-                }}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={styles.modalScroll}
-                keyboardShouldPersistTaps="always"
-              >
-                <View style={styles.appDetailHeader}>
-                  <Image
-                    source={{ uri: selectedApplication.companyLogo }}
-                    style={styles.appDetailLogo}
-                  />
-                  <Text style={styles.appDetailTitle}>
-                    {selectedApplication.jobTitle}
-                  </Text>
-                  <Text style={styles.appDetailCompany}>
-                    {selectedApplication.company}
-                  </Text>
-                  <View style={styles.statusBadgeBlack}>
-                    <Text style={styles.statusBadgeBlackText}>
-                      {getStatusLabel(selectedApplication.status)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>
-                    APPLICATION TIMELINE
-                  </Text>
-                  <View style={styles.timelineDetailContainer}>
-                    {selectedApplication.timeline.map(
-                      (stage: any, idx: number) => (
-                        <View key={idx} style={styles.timelineDetailItem}>
-                          <View style={styles.timelineDetailLeft}>
-                            <View
-                              style={[
-                                styles.timelineDetailDot,
-                                stage.completed &&
-                                  styles.timelineDetailDotCompleted,
-                                stage.isReferred &&
-                                  styles.timelineDetailDotReferred,
-                                stage.isReferred &&
-                                  stage.completed &&
-                                  styles.timelineDetailDotReferredCompleted,
-                              ]}
-                            />
-                            {idx < selectedApplication.timeline.length - 1 && (
-                              <View
-                                style={[
-                                  styles.timelineDetailLine,
-                                  stage.completed &&
-                                    selectedApplication.timeline[idx + 1]
-                                      .completed &&
-                                    styles.timelineDetailLineCompleted,
-                                ]}
-                              />
-                            )}
-                          </View>
-                          <View style={styles.timelineDetailRight}>
-                            <Text
-                              style={[
-                                styles.timelineDetailStage,
-                                stage.completed &&
-                                  styles.timelineDetailStageCompleted,
-                                stage.isReferred &&
-                                  stage.completed &&
-                                  styles.timelineDetailStageReferred,
-                              ]}
-                            >
-                              {stage.stage}
-                            </Text>
-                            <Text style={styles.timelineDetailDate}>
-                              {stage.date}
-                            </Text>
-                          </View>
-                        </View>
-                      ),
-                    )}
-                  </View>
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>SPONSOR</Text>
-                  <View style={styles.sponsorCard}>
-                    <Image
-                      source={{ uri: selectedApplication.sponsorImage }}
-                      style={styles.sponsorDetailAvatar}
-                    />
-                    <View style={styles.sponsorDetailInfo}>
-                      <Text style={styles.sponsorDetailName}>
-                        {selectedApplication.sponsorName}
-                      </Text>
-                      <Text style={styles.sponsorDetailRole}>
-                        {selectedApplication.sponsorRole} @{" "}
-                        {selectedApplication.company}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>NEXT STEPS</Text>
-                  <View style={styles.nextActionCard}>
-                    <Clock size={20} color="#000" />
-                    <Text style={styles.nextActionText}>
-                      {selectedApplication.nextAction}
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity style={styles.messageBtn} activeOpacity={0.7}>
-                  <MessageCircle color="#FFF" size={20} />
-                  <Text style={styles.messageBtnText}>
-                    Message {selectedApplication.sponsorName}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </Animated.View>
-          </View>
-        </Modal>
-      )}
 
       {/* EDIT PROFILE MODAL */}
       <Modal visible={showEditProfile} transparent animationType="fade">
@@ -4213,7 +3837,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </TouchableOpacity>
 
         {/* Terms & Conditions */}
-        <TouchableOpacity style={styles.privacyActionCard}>
+        <TouchableOpacity
+          style={styles.privacyActionCard}
+          onPress={() =>
+            Linking.openURL(
+              "https://gist.github.com/yosef-w/af2a50954afcbdf0fbcb27ed60de34dd",
+            )
+          }
+        >
           <View style={styles.privacyIconContainer}>
             <Briefcase color="#000" size={18} />
           </View>
@@ -4227,7 +3858,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </TouchableOpacity>
 
         {/* Privacy Policy */}
-        <TouchableOpacity style={styles.privacyActionCard}>
+        <TouchableOpacity
+          style={styles.privacyActionCard}
+          onPress={() =>
+            Linking.openURL(
+              "https://gist.github.com/yosef-w/a93c7ed52e361528a99d084223e5cfcb",
+            )
+          }
+        >
           <View style={styles.privacyIconContainer}>
             <Lock color="#000" size={18} />
           </View>
@@ -4241,7 +3879,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </TouchableOpacity>
 
         {/* Delete Account */}
-        <TouchableOpacity style={styles.deleteActionCard}>
+        <TouchableOpacity
+          style={styles.deleteActionCard}
+          onPress={handleDeleteAccount}
+        >
           <View style={styles.privacyIconContainer}>
             <Trash2 color="#000" size={18} />
           </View>

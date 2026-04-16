@@ -153,8 +153,9 @@ export interface AutofillSuggestions {
 }
 
 export interface AutofillResponseMetadata {
-  processingTime: number; // milliseconds
-  aiModel: string;
+  processingTime: number; // seconds (e.g. 1.23)
+  aiModel: string; // backend returns "aiModel"
+  model?: string; // alias kept for safety
   timestamp: string;
 }
 

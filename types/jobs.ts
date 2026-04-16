@@ -79,6 +79,7 @@ export interface Job {
   workArrangement: string;
   isRemote: boolean;
   url: string;
+  applicationUrl: string; // Alias for url — used in HomeView for WebView navigation
   requirements?: string; // Raw requirements text (displayed when no skills chips available)
   // Required for UI
   applicants: number;
@@ -234,11 +235,18 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     location: locations[0] || "Location not specified",
     locations,
     type: employmentType,
-    salary: formatSalary(
-      apiJob.AI_SALARY_MINVALUE,
-      apiJob.AI_SALARY_MAXVALUE,
-      apiJob.AI_SALARY_CURRENCY,
-    ),
+    salary:
+      formatSalary(
+        apiJob.AI_SALARY_MINVALUE,
+        apiJob.AI_SALARY_MAXVALUE,
+        apiJob.AI_SALARY_CURRENCY,
+      ) !== "Salary not specified"
+        ? formatSalary(
+            apiJob.AI_SALARY_MINVALUE,
+            apiJob.AI_SALARY_MAXVALUE,
+            apiJob.AI_SALARY_CURRENCY,
+          )
+        : apiJob.SALARY_RAW || "Salary not specified",
     salaryMin: apiJob.AI_SALARY_MINVALUE,
     salaryMax: apiJob.AI_SALARY_MAXVALUE,
     salaryCurrency: apiJob.AI_SALARY_CURRENCY,

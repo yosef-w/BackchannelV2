@@ -525,8 +525,7 @@ export function MatchesView({
     setActiveSlide(0);
     setSponsorPublicProfile(null);
     // Fetch the sponsor's full public profile for the Key Insights page.
-    // Becomes populated once the backend adds `j.sponsor_id AS "SPONSOR_USER_ID"`
-    // to get_job_matches_for_user (see docs/BACKEND_CHANGES_NEEDED.md §1).
+    // SPONSOR_USER_ID is returned by GET /api/matches/ as of April 2026.
     if (profile.sponsorUserId) {
       setSponsorPublicProfileLoading(true);
       getPublicProfile(String(profile.sponsorUserId))
@@ -1454,7 +1453,7 @@ export function MatchesView({
                       </View>
                     </View>
 
-                    {/* Page 2: Key Insights — populated once SPONSOR_USER_ID arrives from backend (see BACKEND_CHANGES_NEEDED.md §1) */}
+                    {/* Page 2: Key Insights — sponsor profile loaded via getPublicProfile(sponsorUserId) */}
                     <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
                       <View style={styles.insightsHeader}>
                         <Sparkles size={20} color="#000" />

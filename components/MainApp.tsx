@@ -5,6 +5,7 @@ import { useLocalSearchParams } from "expo-router";
 import {
     Bell,
     Briefcase,
+    ClipboardCheck,
     Home,
     MessageCircle,
     Star,
@@ -29,6 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { getUnreadNotificationCount, registerDevice } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
+import { ApplicantCheckInModal } from "./ApplicantCheckInModal";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
@@ -36,6 +38,7 @@ import { MatchesView } from "./MatchesView";
 import { MessagesView } from "./MessagesView";
 import { NotificationsView } from "./NotificationsView";
 import { ProfileView } from "./ProfileView";
+import { SponsorCheckInModal } from "./SponsorCheckInModal";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -123,6 +126,21 @@ export function MainApp({ userType }: MainAppProps) {
 
   // ── Unread notification count for the bell badge ─────────────────────────
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+  // ── Referral check-in modals ─────────────────────────────────────────────
+  // Set DEV_SHOW_CHECKIN_MODAL to true to auto-open on load for demos
+  const DEV_SHOW_CHECKIN_MODAL = false;
+  const [showApplicantCheckIn, setShowApplicantCheckIn] = useState(false);
+  const [showSponsorCheckIn, setShowSponsorCheckIn] = useState(false);
+
+  useEffect(() => {
+    if (!DEV_SHOW_CHECKIN_MODAL) return;
+    const t = setTimeout(() => {
+      if (userType === "applicant") setShowApplicantCheckIn(true);
+      else setShowSponsorCheckIn(true);
+    }, 800);
+    return () => clearTimeout(t);
+  }, []);
   const notifPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchUnreadCount = async () => {
@@ -295,6 +313,17 @@ export function MainApp({ userType }: MainAppProps) {
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                if (userType === "applicant") setShowApplicantCheckIn(true);
+                else setShowSponsorCheckIn(true);
+              }}
+              activeOpacity={0.7}
+              style={styles.headerIconButton}
+            >
+              <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleViewChange("notifications");
                 // Optimistically clear badge when the user opens the screen;
                 // the NotificationsView will mark-all-read on its own.
@@ -394,6 +423,16 @@ export function MainApp({ userType }: MainAppProps) {
             </Animated.View>
           )}
       </SafeAreaView>
+
+      {/* ── Referral Check-in Modals ─────────────────────────────────────── */}
+      <ApplicantCheckInModal
+        visible={showApplicantCheckIn}
+        onDismiss={() => setShowApplicantCheckIn(false)}
+      />
+      <SponsorCheckInModal
+        visible={showSponsorCheckIn}
+        onDismiss={() => setShowSponsorCheckIn(false)}
+      />
     </View>
   );
 }

@@ -222,7 +222,10 @@ export const api = new ApiClient(API_BASE_URL);
 export async function generateAutofillAnswers(
   request: AutofillRequest,
 ): Promise<AutofillResponse> {
-  return api.post<AutofillResponse>("/api/v1/autofill/generate", request);
+  // Trailing slash is required — Django's APPEND_SLASH=True redirects POST
+  // requests to the slash URL via 301, which causes fetch to drop the
+  // Authorization header (RFC 7231 POST→GET redirect), resulting in 401.
+  return api.post<AutofillResponse>("/api/v1/autofill/generate/", request);
 }
 
 /**
@@ -478,46 +481,43 @@ export async function likeProfile(
 
 /**
  * 🤝 Get Matches (Applicant)
- * Get list of mutual matches for applicant
+ * Get list of mutual matches for applicant.
+ * Backend returns flat UPPERCASE fields (PostgreSQL, PR #25).
+ * SPONSOR_USER_ID is present as of April 2026 — used to fetch the sponsor's
+ * public profile for the Key Insights modal in MatchesView.
  */
 export async function getMatches(): Promise<{
   job_matches?: Array<{
-    id: string;
-    job: {
-      id: string;
-      title: string;
-      company: string;
-      location?: string;
-      salary_range?: string;
-    };
-    sponsor: {
-      id: string;
-      name: string;
-      role?: string;
-      company?: string;
-      profile_image_url?: string;
-    };
+    LIKE_ID: string;
     matched_at: string;
-    conversation_id?: string;
+    JOB_ID: string;
+    TITLE: string;
+    COMPANY: string;
+    LOCATION: string | null;
+    SPONSOR_USER_ID: string; // sponsor's user_id — used by getPublicProfile()
+    SPONSOR_FIRST_NAME: string | null;
+    SPONSOR_LAST_NAME: string | null;
+    SPONSOR_PHOTO_URL: string | null;
+    SPONSOR_JOB_TITLE: string | null;
+    SPONSOR_COMPANY: string | null;
+    sponsor_username?: string;
+    sponsor_email?: string;
   }>;
   profile_matches?: Array<{
-    id: string;
-    job: {
-      id: string;
-      title: string;
-      company: string;
-      location?: string;
-      salary_range?: string;
-    };
-    sponsor: {
-      id: string;
-      name: string;
-      role?: string;
-      company?: string;
-      profile_image_url?: string;
-    };
+    LIKE_ID: string;
     matched_at: string;
-    conversation_id?: string;
+    JOB_ID: string;
+    TITLE: string;
+    COMPANY: string;
+    LOCATION: string | null;
+    SPONSOR_USER_ID: string;
+    SPONSOR_FIRST_NAME: string | null;
+    SPONSOR_LAST_NAME: string | null;
+    SPONSOR_PHOTO_URL: string | null;
+    SPONSOR_JOB_TITLE: string | null;
+    SPONSOR_COMPANY: string | null;
+    sponsor_username?: string;
+    sponsor_email?: string;
   }>;
   total_count?: number;
 }> {

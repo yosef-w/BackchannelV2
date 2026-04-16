@@ -29,11 +29,17 @@ export default function DashboardScreen() {
     return params.mode === "sponsor" ? "sponsor" : "applicant";
   }, [role, params.mode, profileData]);
 
-  // Redirect to splash if not authenticated (e.g., after token expiry)
+  // Redirect to splash if not authenticated (e.g., after token expiry).
+  // The 800 ms debounce gives any open WebView (or other component) time to
+  // call its onSessionExpired / cleanup callback before navigation fires,
+  // preventing a jarring mid-operation kick to the splash screen.
   useEffect(() => {
     if (!isAuthenticated) {
-      console.log("[Dashboard] Not authenticated, redirecting to splash...");
-      router.replace("/splash");
+      const timer = setTimeout(() => {
+        console.log("[Dashboard] Not authenticated, redirecting to splash...");
+        router.replace("/splash");
+      }, 800);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, router]);
 

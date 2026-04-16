@@ -2,7 +2,6 @@
  * WebView JavaScript Injection Scripts for Form Scraping and Autofill
  */
 
-
 /**
  * Generate script to scrape all form fields from the current page
  * This will be injected into the WebView to extract form structure
@@ -246,6 +245,8 @@ export function generateFieldInjectionScript(
     fieldId: string;
     value: string | string[];
     confidence: number;
+    htmlSelector?: string;
+    fieldType?: string;
   }>,
 ): string {
   const answersJson = JSON.stringify(fieldAnswers);
@@ -377,25 +378,60 @@ export function generateFieldInjectionScript(
           return false;
         }
         
-        // Process each field answer
-        fieldAnswers.forEach(({ fieldId, value, confidence }) => {
+        // Process each field answer using the htmlSelector captured during the scraping phase
+        fieldAnswers.forEach(({ fieldId, value, confidence, htmlSelector, fieldType }) => {
           try {
-            // Find the element by looking for data attribute we can add
-            // In a real scenario, you'd map fieldId back to the htmlSelector
-            
-            // For now, we'll try to find by various selectors stored during scraping
-            // This is a placeholder - in practice, you'd store the mapping
-            console.log('[INJECTOR] Processing field:', fieldId, 'with value:', value);
-            
-            // You would use the htmlSelector from the scraped data here
-            // For example: const element = document.querySelector(htmlSelector);
-            
-            // This is just a demonstration - actual implementation would use
-            // the stored htmlSelector from the scraping phase
-            
-            successCount++;
+            if (!htmlSelector) {
+              console.warn('[INJECTOR] No selector for field:', fieldId);
+              failCount++;
+              return;
+            }
+
+            const element = document.querySelector(htmlSelector);
+            if (!element) {
+              console.warn('[INJECTOR] Element not found \u2014 selector:', htmlSelector, 'field:', fieldId);
+              failCount++;
+              return;
+            }
+
+            // Normalise value: AI may return an array (multi-select) or null/undefined
+            const stringValue = Array.isArray(value)
+              ? String(value[0] ?? '')
+              : String(value ?? '');
+
+            if (!stringValue.trim()) {
+              console.warn('[INJECTOR] Empty AI value for field:', fieldId);
+              failCount++;
+              return;
+            }
+
+            let success = false;
+
+            if (fieldType === 'select') {
+              success = selectOption(element, stringValue);
+            } else if (fieldType === 'radio') {
+              // selectRadio uses querySelectorAll on the selector to locate the correct button
+              success = selectRadio(htmlSelector, stringValue);
+            } else if (fieldType === 'checkbox') {
+              const shouldCheck = ['true', 'yes', '1', 'on'].includes(stringValue.toLowerCase());
+              success = checkBox(htmlSelector, shouldCheck);
+            } else {
+              // text, email, tel, number, url, date, textarea
+              success = setInputValue(element, stringValue);
+            }
+
+            if (success) {
+              const preview = stringValue.length > 60
+                ? stringValue.substring(0, 60) + '\u2026'
+                : stringValue;
+              console.log('[INJECTOR] \u2713 Filled "' + fieldId + '" (' + (fieldType || 'text') + '):', preview);
+              successCount++;
+            } else {
+              console.warn('[INJECTOR] \u2717 Skipped "' + fieldId + '" \u2014 field already filled or option not matched');
+              failCount++;
+            }
           } catch (error) {
-            console.error('[INJECTOR] Error processing field', fieldId, ':', error);
+            console.error('[INJECTOR] Error processing field', fieldId, ':', error.message || error);
             failCount++;
           }
         });
