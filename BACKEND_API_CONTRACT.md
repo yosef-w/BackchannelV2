@@ -1936,7 +1936,6 @@ See [FRONTEND_BACKEND_GAP_AUDIT.md](FRONTEND_BACKEND_GAP_AUDIT.md) for the full 
 | LinkedIn OAuth                                                          | Alternate auth method                                                                                        |
 | Chat file attachments                                                   | Nice-to-have for messaging                                                                                   |
 | ~~Notification preferences storage~~                                    | **Closed** — `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES`, exposed via `PATCH /api/profile/update/` |
-| Subscription/payment verification                                       | RevenueCat handles client-side; may need server-side receipt validation                                      |
 
 ### Architecture North Star
 
@@ -3209,12 +3208,6 @@ Appears to be a duplicate of `ApplicantPublicProfileView.tsx`. Not imported anyw
 | `useUserProfileStore` | `stores/useUserProfileStore.ts` | Yes — debounced 2s sync to `PATCH /api/profile/update/` (**currently mocked**) |
 | `useJobsStore`        | `stores/useJobsStore.ts`        | No — fetched fresh from API                                                    |
 
-### Other: RevenueCat / Subscriptions
-
-**Files:** `lib/revenuecat.ts`, `providers/RevenueCatProvider.tsx`
-Entitlement: "BackchannelV2 Pro"
-May need `POST /api/subscriptions/verify/` for server-side receipt validation.
-
 ---
 
 ## Gap Summary by Priority
@@ -3251,7 +3244,6 @@ May need `POST /api/subscriptions/verify/` for server-side receipt validation.
 | LinkedIn OAuth                       | Alternate auth method                              | Medium       | Open                                                               |
 | ~~Notification preferences storage~~ | Toggles exist, no persistence                      | Small        | **Closed** — `NOTIFICATION_PREFERENCES` VARIANT on `USER_PROFILES` |
 | ~~Granular address fields~~          | Street, city, state, zip, country on USER_PROFILES | Small        | **Closed** — included in Migration 003                             |
-| Subscription verification            | RevenueCat handles client-side                     | Medium       | Open                                                               |
 
 ---
 

@@ -276,11 +276,37 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [newTag, setNewTag] = useState("");
   const [newRoleTag, setNewRoleTag] = useState("");
 
-  // Notification settings
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [referralUpdates, setReferralUpdates] = useState(true);
-  const [messageNotifications, setMessageNotifications] = useState(true);
+  // Notification settings — sourced from the store, persisted via
+  // PATCH /api/profile/update/ { notification_preferences }.
+  // Backend gate lives in services/notifications.py:create_notification —
+  // missing keys default to enabled, so `undefined` reads as `true`.
+  const notificationPreferences =
+    userProfileData.notificationPreferences || {};
+  const updateNotificationPreferences = useUserProfileStore(
+    (state) => state.updateNotificationPreferences,
+  );
+  const [notifSaving, setNotifSaving] = useState<string | null>(null);
+
+  const isNotifEnabled = (
+    key: "match" | "message" | "referral" | "waitlist" | "job_like",
+  ) => notificationPreferences[key] !== false;
+
+  const handleNotifToggle = async (
+    key: "match" | "message" | "referral" | "waitlist" | "job_like",
+    next: boolean,
+  ) => {
+    setNotifSaving(key);
+    try {
+      await updateNotificationPreferences({ [key]: next });
+    } catch {
+      Alert.alert(
+        "Couldn't save",
+        "Your notification setting didn't save. Please try again.",
+      );
+    } finally {
+      setNotifSaving(null);
+    }
+  };
 
   // Profile completeness check - recalculate when userProfileData changes
   const profileCompletion = useMemo(() => {
@@ -4187,9 +4213,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           privacy policies:
         </Text>
         <Text style={styles.legalBullet}>
-          • RevenueCat — subscription management
-        </Text>
-        <Text style={styles.legalBullet}>
           • Apple Push Notification Service / Firebase Cloud Messaging — push
           notifications
         </Text>
@@ -4342,28 +4365,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
         title="Notifications"
       >
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Email Notifications</Text>
+          <Text style={styles.toggleLabel}>New Matches</Text>
           <Switch
-            value={emailNotifications}
-            onValueChange={setEmailNotifications}
-            trackColor={{ false: "#E5E5E5", true: "#000" }}
-            thumbColor="#FFF"
-          />
-        </View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Push Notifications</Text>
-          <Switch
-            value={pushNotifications}
-            onValueChange={setPushNotifications}
-            trackColor={{ false: "#E5E5E5", true: "#000" }}
-            thumbColor="#FFF"
-          />
-        </View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Referral Updates</Text>
-          <Switch
-            value={referralUpdates}
-            onValueChange={setReferralUpdates}
+            value={isNotifEnabled("match")}
+            onValueChange={(v) => handleNotifToggle("match", v)}
+            disabled={notifSaving === "match"}
             trackColor={{ false: "#E5E5E5", true: "#000" }}
             thumbColor="#FFF"
           />
@@ -4371,12 +4377,49 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>New Messages</Text>
           <Switch
-            value={messageNotifications}
-            onValueChange={setMessageNotifications}
+            value={isNotifEnabled("message")}
+            onValueChange={(v) => handleNotifToggle("message", v)}
+            disabled={notifSaving === "message"}
             trackColor={{ false: "#E5E5E5", true: "#000" }}
             thumbColor="#FFF"
           />
         </View>
+        {userType === "applicant" && (
+          <>
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>Referral Updates</Text>
+              <Switch
+                value={isNotifEnabled("referral")}
+                onValueChange={(v) => handleNotifToggle("referral", v)}
+                disabled={notifSaving === "referral"}
+                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                thumbColor="#FFF"
+              />
+            </View>
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>Saved Job Got Sponsored</Text>
+              <Switch
+                value={isNotifEnabled("waitlist")}
+                onValueChange={(v) => handleNotifToggle("waitlist", v)}
+                disabled={notifSaving === "waitlist"}
+                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                thumbColor="#FFF"
+              />
+            </View>
+          </>
+        )}
+        {userType === "sponsor" && (
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Someone Liked Your Job</Text>
+            <Switch
+              value={isNotifEnabled("job_like")}
+              onValueChange={(v) => handleNotifToggle("job_like", v)}
+              disabled={notifSaving === "job_like"}
+              trackColor={{ false: "#E5E5E5", true: "#000" }}
+              thumbColor="#FFF"
+            />
+          </View>
+        )}
       </SimpleModal>
     </ScrollView>
   );

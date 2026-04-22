@@ -292,7 +292,14 @@ export function MainApp({ userType }: MainAppProps) {
   };
 
   const handleViewChange = (newView: ViewType) => {
-    if (newView !== "notifications" && newView !== "publicProfile") {
+    // Only save the "return-to" tab when entering an overlay (notifications /
+    // publicProfile). For regular tab switches, previousView is irrelevant.
+    // Guard against recording an overlay as the previousView (would loop back).
+    if (
+      (newView === "notifications" || newView === "publicProfile") &&
+      activeView !== "notifications" &&
+      activeView !== "publicProfile"
+    ) {
       setPreviousView(activeView);
     }
     setActiveView(newView);
@@ -378,7 +385,19 @@ export function MainApp({ userType }: MainAppProps) {
           {activeView === "jobs" && userType === "sponsor" && <JobsView />}
           {activeView === "profile" && <ProfileView userType={userType} />}
           {activeView === "notifications" && (
-            <NotificationsView onBack={() => setActiveView(previousView)} />
+            <NotificationsView
+              userType={userType}
+              onBack={() => setActiveView(previousView)}
+              onOpenConversation={(conversationId) => {
+                setSelectedConversationId(conversationId);
+                setPreviousView("messages");
+                setActiveView("messages");
+              }}
+              onOpenTab={(tab) => {
+                setPreviousView(tab);
+                setActiveView(tab);
+              }}
+            />
           )}
           {/* Public profile rendered as a full-screen absolute overlay on top
               of MessagesView. Removing it unmounts cleanly without ever having

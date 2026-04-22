@@ -1,5 +1,4 @@
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { RevenueCatProvider } from "@/providers/RevenueCatProvider";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import {
@@ -69,25 +68,23 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClientRef.current}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <RevenueCatProvider>
-          <StatusBar style="auto" />
+        <StatusBar style="auto" />
 
-          {/* Main navigation stack for BackchannelV2 */}
-          <Stack initialRouteName="splash">
-            <Stack.Screen name="splash" options={{ headerShown: false }} />
-            <Stack.Screen name="choose-role" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="dashboard"
-              options={{
-                headerShown: false,
-                // Prevent iOS swipe-back from ever leaving the dashboard.
-                // All in-app navigation is handled by MainApp's own view state.
-                gestureEnabled: false,
-              }}
-            />
-          </Stack>
-        </RevenueCatProvider>
+        {/* Main navigation stack for BackchannelV2 */}
+        <Stack initialRouteName="splash">
+          <Stack.Screen name="splash" options={{ headerShown: false }} />
+          <Stack.Screen name="choose-role" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="dashboard"
+            options={{
+              headerShown: false,
+              // Prevent iOS swipe-back from ever leaving the dashboard.
+              // All in-app navigation is handled by MainApp's own view state.
+              gestureEnabled: false,
+            }}
+          />
+        </Stack>
       </ThemeProvider>
     </QueryClientProvider>
   );

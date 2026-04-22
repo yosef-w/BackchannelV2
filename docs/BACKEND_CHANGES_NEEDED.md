@@ -375,3 +375,60 @@ Two new endpoints:
 4. Wire the "Resend" button to a second call to the send endpoint
 
 **Current state (until this is deployed):** The fake 6-second delay will be removed from `SponsorQuestionnaire.tsx` and replaced with a direct submit — the work email is still collected and stored, just not verified. The "Verify your employment" step becomes a "Confirm your work email" collection step only.
+
+---
+
+### Optional E — Notifications Enhancements
+
+**Affects:** `components/NotificationsView.tsx`
+
+**Context:** The notifications list is now fully interactive — tap-to-navigate, swipe-to-mark-read, pull-to-refresh, date grouping, ticking relative times. The items below unlock functionality the frontend cannot implement alone.
+
+**1. `DELETE /api/notifications/<id>/` — true per-row dismiss**
+
+- Marks a single notification as dismissed for the owning user (hard delete or soft-delete via `DISMISSED_AT`).
+- Response `200`: `{ "message": "Notification deleted" }`
+
+*Why:* Swipe currently maps to mark-as-read because there is no delete endpoint. Users expect swipe-away to mean gone.
+
+**2. `DELETE /api/notifications/?only=read` — bulk clear read**
+
+- Deletes/dismisses all read notifications for the authenticated user.
+- Response `200`: `{ "deleted_count": N }`
+
+*Why:* Read notifications accumulate forever today. A "Clear read" action needs this.
+
+**3. Denormalized metadata on notification rows**
+
+Add nullable fields to the `GET /api/notifications/` response:
+
+- `RELATED_USER_NAME` (string)
+- `RELATED_USER_PHOTO_URL` (string)
+- `RELATED_JOB_TITLE` (string)
+- `RELATED_JOB_COMPANY` (string)
+
+*Why:* The frontend has `RELATED_USER_ID` / `RELATED_JOB_ID` but no display data. Without these, richer cards ("John Smith liked *Senior Engineer* at Acme") require N+1 follow-up fetches per notification.
+
+**4. Realtime (or a cheap poll) channel**
+
+Either:
+
+- WebSocket `/ws/notifications/` that pushes newly-created rows, or
+- `GET /api/notifications/?since=<iso_timestamp>` to return only rows created after a client-held cursor.
+
+*Why:* The list is fetched once on mount and stale for the duration of the session. The `unread-count` poll updates the badge but not the list itself. A focused user sitting on the notifications screen never sees new rows arrive.
+
+**5. Server-side grouping of repeat events**
+
+Aggregate near-identical events into a single row with a count (e.g., 5 `job_like` notifications on the same job within 10 minutes → one row, `body: "5 new applicants interested"`).
+
+*Why:* High-activity users (especially sponsors) can otherwise receive a cascade of identical rows, burying other events.
+
+**Frontend impact (when each ships):**
+
+1. Swap swipe-to-mark-read → swipe-to-delete; add "Clear read" button in header.
+2. Render richer cards with actual names/photos/job titles instead of generic `BODY` strings.
+3. Live list updates without manual pull-to-refresh.
+4. Collapse grouped rows with a count badge.
+
+**Current state:** Swipe → mark-read. All rows persist until manually marked. Cards show the generic server-provided `TITLE` / `BODY` only. Fresh rows appear only on pull-to-refresh or re-navigation.

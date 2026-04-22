@@ -1,23 +1,34 @@
+import * as Haptics from "expo-haptics";
 import {
     ArrowLeft,
     Award,
     Bell,
+    Briefcase,
+    Check,
     CheckCircle,
     Heart,
     MessageCircle,
     RefreshCw,
+    Star,
     UserPlus,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
 import {
     ActivityIndicator,
     Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import {
     getNotifications,
@@ -26,7 +37,12 @@ import {
 } from "../lib/api";
 
 interface NotificationsViewProps {
+  userType: "applicant" | "sponsor";
   onBack: () => void;
+  /** Open the Messages tab and focus a specific conversation */
+  onOpenConversation: (conversationId: string) => void;
+  /** Switch the bottom-tab active view */
+  onOpenTab: (tab: "home" | "matches" | "jobs" | "messages") => void;
 }
 
 /** Backend notification shape as returned by GET /api/notifications/ */
@@ -37,6 +53,8 @@ type BackendNotification = {
     | "match"
     | "message"
     | "referral"
+    | "job_like"
+    | "waitlist"
     | "connection"
     | "profile_update"
     | string;
@@ -49,22 +67,31 @@ type BackendNotification = {
   CREATED_AT: string;
 };
 
-/** Map backend TYPE value → icon component for the UI badge */
-const NOTIFICATION_CONFIG: Record<string, { Icon: React.ComponentType<any> }> =
-  {
-    match: { Icon: Heart },
-    message: { Icon: MessageCircle },
-    referral: { Icon: Award },
-    connection: { Icon: UserPlus },
-    profile_update: { Icon: CheckCircle },
-  };
-
-const DEFAULT_CONFIG = { Icon: Bell };
-
 /**
- * Format an ISO timestamp into a human-readable relative string.
- * Mirrors the behaviour of formatPostedDate in types/jobs.ts.
+ * Per-type visual + routing config.
+ *
+ * Colors are drawn ONLY from the existing app palette:
+ *   #000     — primary black (used everywhere)
+ *   #2563EB  — existing accent blue (HomeView)
+ *   #00CB54  — existing confirmation green (HomeView checkmarks)
+ *
+ * No new hues are introduced.
  */
+const NOTIFICATION_CONFIG: Record<
+  string,
+  { Icon: React.ComponentType<any>; accent: string }
+> = {
+  match: { Icon: Heart, accent: "#000" },
+  message: { Icon: MessageCircle, accent: "#2563EB" },
+  referral: { Icon: Award, accent: "#00CB54" },
+  job_like: { Icon: Star, accent: "#000" },
+  waitlist: { Icon: Briefcase, accent: "#00CB54" },
+  connection: { Icon: UserPlus, accent: "#000" },
+  profile_update: { Icon: CheckCircle, accent: "#000" },
+};
+
+const DEFAULT_CONFIG = { Icon: Bell, accent: "#000" };
+
 function formatRelativeTime(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime();
   const diffMins = Math.floor(diffMs / 60_000);
@@ -80,71 +107,108 @@ function formatRelativeTime(isoString: string): string {
   });
 }
 
-export function NotificationsView({ onBack }: NotificationsViewProps) {
+type SectionKey = "today" | "yesterday" | "thisWeek" | "earlier";
+const SECTION_LABELS: Record<SectionKey, string> = {
+  today: "TODAY",
+  yesterday: "YESTERDAY",
+  thisWeek: "THIS WEEK",
+  earlier: "EARLIER",
+};
+
+function bucketForDate(iso: string): SectionKey {
+  const created = new Date(iso);
+  const now = new Date();
+
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+  const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
+  const startOfWeek = startOfToday - 7 * 24 * 60 * 60 * 1000;
+
+  const t = created.getTime();
+  if (t >= startOfToday) return "today";
+  if (t >= startOfYesterday) return "yesterday";
+  if (t >= startOfWeek) return "thisWeek";
+  return "earlier";
+}
+
+export function NotificationsView({
+  userType,
+  onBack,
+  onOpenConversation,
+  onOpenTab,
+}: NotificationsViewProps) {
   const [notifications, setNotifications] = useState<BackendNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await getNotifications({ limit: 50 });
-      setNotifications(response.notifications);
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to load notifications";
-      // 404 = endpoint not yet seeded / user has no notifications — show empty
-      if (msg.includes("404") || msg.includes("Not found")) {
-        setNotifications([]);
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+  // Bump this counter every 30s so relative-time strings refresh on screen
+  // without re-fetching from the server.
+  const [, setTimeTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTimeTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
   }, []);
+
+  const fetchNotifications = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      try {
+        if (!opts?.silent) setIsLoading(true);
+        setError(null);
+        const response = await getNotifications({ limit: 50 });
+        setNotifications(response.notifications);
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Failed to load notifications";
+        // 404 = endpoint not yet seeded / user has no notifications — show empty
+        if (msg.includes("404") || msg.includes("Not found")) {
+          setNotifications([]);
+        } else if (!opts?.silent) {
+          setError(msg);
+        }
+      } finally {
+        if (!opts?.silent) setIsLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  const handleMarkAllRead = async () => {
-    if (isMarkingAll) return;
-    setIsMarkingAll(true);
+  const handlePullToRefresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
-      await markAllNotificationsAsRead();
-      // Optimistically mark all as read
-      setNotifications((prev) => prev.map((n) => ({ ...n, IS_READ: true })));
-    } catch (err) {
-      console.warn("[NotificationsView] Failed to mark all read:", err);
+      await fetchNotifications({ silent: true });
     } finally {
-      setIsMarkingAll(false);
+      setIsRefreshing(false);
     }
-  };
+  }, [fetchNotifications]);
 
-  const handleNotificationPress = async (n: BackendNotification) => {
-    if (n.IS_READ) return;
-
-    // Optimistic update first for instant feedback
+  const markOneRead = useCallback(async (notification: BackendNotification) => {
+    if (notification.IS_READ) return;
+    // Optimistic UI
     setNotifications((prev) =>
-      prev.map((item) =>
-        item.NOTIFICATION_ID === n.NOTIFICATION_ID
-          ? { ...item, IS_READ: true }
-          : item,
+      prev.map((n) =>
+        n.NOTIFICATION_ID === notification.NOTIFICATION_ID
+          ? { ...n, IS_READ: true }
+          : n,
       ),
     );
-
     try {
-      await markNotificationAsRead(n.NOTIFICATION_ID);
+      await markNotificationAsRead(notification.NOTIFICATION_ID);
     } catch (err) {
-      // Revert on API failure
+      // Revert on failure — the gesture/tap shouldn't lie about state
       setNotifications((prev) =>
-        prev.map((item) =>
-          item.NOTIFICATION_ID === n.NOTIFICATION_ID
-            ? { ...item, IS_READ: false }
-            : item,
+        prev.map((n) =>
+          n.NOTIFICATION_ID === notification.NOTIFICATION_ID
+            ? { ...n, IS_READ: false }
+            : n,
         ),
       );
       console.warn(
@@ -152,15 +216,106 @@ export function NotificationsView({ onBack }: NotificationsViewProps) {
         err,
       );
     }
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    if (isMarkingAll) return;
+    setIsMarkingAll(true);
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, IS_READ: true })));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (err) {
+      console.warn("[NotificationsView] Failed to mark all read:", err);
+    } finally {
+      setIsMarkingAll(false);
+    }
   };
 
+  /**
+   * Tap: mark-read (if unread) + deep-link to the related surface.
+   * Falls through to a tab switch when a specific target isn't available.
+   */
+  const handleNotificationPress = async (n: BackendNotification) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Kick off mark-read in the background; don't await — routing shouldn't wait.
+    markOneRead(n);
+
+    switch (n.TYPE) {
+      case "message": {
+        if (n.RELATED_CONVERSATION_ID) {
+          onOpenConversation(n.RELATED_CONVERSATION_ID);
+        } else {
+          onOpenTab("messages");
+        }
+        return;
+      }
+      case "match":
+      case "referral": {
+        onOpenTab("matches");
+        return;
+      }
+      case "job_like": {
+        // Defensive: backend only sends this to sponsors, but guard anyway.
+        onOpenTab(userType === "sponsor" ? "jobs" : "matches");
+        return;
+      }
+      case "waitlist": {
+        onOpenTab("home");
+        return;
+      }
+      default: {
+        // Unknown / connection / profile_update — no deep link target.
+        // Mark-read already fired; stay on the list.
+        return;
+      }
+    }
+  };
+
+  /**
+   * Swipe-left action: mark-read with a committed gesture.
+   * The child row closes its own Swipeable via its internal ref.
+   * (True dismiss requires a backend DELETE endpoint — see
+   * docs/BACKEND_CHANGES_NEEDED.md "Optional E".)
+   */
+  const handleSwipeCommit = useCallback(
+    (n: BackendNotification) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      markOneRead(n);
+    },
+    [markOneRead],
+  );
+
   const hasUnread = notifications.some((n) => !n.IS_READ);
+
+  /** Group rows into time buckets, preserving newest-first ordering. */
+  const sections = useMemo(() => {
+    const buckets: Record<SectionKey, BackendNotification[]> = {
+      today: [],
+      yesterday: [],
+      thisWeek: [],
+      earlier: [],
+    };
+    for (const n of notifications) {
+      buckets[bucketForDate(n.CREATED_AT)].push(n);
+    }
+    return (Object.keys(SECTION_LABELS) as SectionKey[])
+      .filter((k) => buckets[k].length > 0)
+      .map((k) => ({ key: k, label: SECTION_LABELS[k], rows: buckets[k] }));
+  }, [notifications]);
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handlePullToRefresh}
+          tintColor="#000"
+        />
+      }
     >
       {/* Header */}
       <View style={styles.header}>
@@ -204,7 +359,7 @@ export function NotificationsView({ onBack }: NotificationsViewProps) {
         <View style={styles.centeredState}>
           <Text style={styles.errorText}>Failed to load notifications</Text>
           <TouchableOpacity
-            onPress={fetchNotifications}
+            onPress={() => fetchNotifications()}
             style={styles.retryButton}
             activeOpacity={0.7}
           >
@@ -214,79 +369,130 @@ export function NotificationsView({ onBack }: NotificationsViewProps) {
         </View>
       )}
 
-      {/* Notifications list */}
+      {/* Notifications list, grouped by recency */}
       {!isLoading && !error && notifications.length > 0 && (
-        <View style={styles.notificationsList}>
-          {notifications.map((notification, index) => {
-            const { Icon } =
-              NOTIFICATION_CONFIG[notification.TYPE] ?? DEFAULT_CONFIG;
-            return (
-              <Animated.View
-                key={notification.NOTIFICATION_ID}
-                entering={FadeInUp.delay(index * 50).duration(400)}
-              >
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={styles.notificationCardWrapper}
-                  onPress={() => handleNotificationPress(notification)}
-                >
-                  <View
-                    style={[
-                      styles.notificationCard,
-                      !notification.IS_READ && styles.notificationCardUnread,
-                    ]}
-                  >
-                    {/* Unread indicator bar */}
-                    {!notification.IS_READ && (
-                      <View style={styles.unreadIndicator} />
-                    )}
+        <View>
+          {sections.map((section, sectionIdx) => (
+            <View
+              key={section.key}
+              style={sectionIdx === 0 ? undefined : styles.sectionSpacer}
+            >
+              <Text style={styles.sectionLabel}>{section.label}</Text>
+              <View style={styles.notificationsList}>
+                {section.rows.map((notification, rowIdx) => {
+                  const config =
+                    NOTIFICATION_CONFIG[notification.TYPE] ?? DEFAULT_CONFIG;
+                  const { Icon, accent } = config;
 
-                    <View style={styles.notificationContent}>
-                      {/* Type icon */}
-                      <View style={styles.iconContainer}>
-                        <Icon color="#ffffff" size={20} strokeWidth={2.5} />
-                      </View>
+                  const card = (
+                    <View
+                      style={[
+                        styles.notificationCard,
+                        !notification.IS_READ && styles.notificationCardUnread,
+                      ]}
+                    >
+                      {!notification.IS_READ && (
+                        <View style={styles.unreadIndicator} />
+                      )}
 
-                      {/* Content */}
-                      <View style={styles.textContainer}>
-                        <View style={styles.titleRow}>
+                      <View style={styles.notificationContent}>
+                        <View
+                          style={[
+                            styles.iconContainer,
+                            { backgroundColor: accent },
+                          ]}
+                        >
+                          <Icon
+                            color="#ffffff"
+                            size={20}
+                            strokeWidth={2.5}
+                          />
+                        </View>
+
+                        <View style={styles.textContainer}>
+                          <View style={styles.titleRow}>
+                            <Text
+                              style={styles.notificationTitle}
+                              numberOfLines={1}
+                            >
+                              {notification.TITLE}
+                            </Text>
+                            <Text style={styles.notificationTime}>
+                              {formatRelativeTime(notification.CREATED_AT)}
+                            </Text>
+                          </View>
                           <Text
-                            style={styles.notificationTitle}
-                            numberOfLines={1}
+                            style={styles.notificationMessage}
+                            numberOfLines={2}
                           >
-                            {notification.TITLE}
-                          </Text>
-                          <Text style={styles.notificationTime}>
-                            {formatRelativeTime(notification.CREATED_AT)}
+                            {notification.BODY}
                           </Text>
                         </View>
-                        <Text
-                          style={styles.notificationMessage}
-                          numberOfLines={2}
-                        >
-                          {notification.BODY}
-                        </Text>
                       </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          })}
+                  );
+
+                  const touchable = (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={styles.notificationCardWrapper}
+                      onPress={() => handleNotificationPress(notification)}
+                    >
+                      {card}
+                    </TouchableOpacity>
+                  );
+
+                  return (
+                    <Animated.View
+                      key={notification.NOTIFICATION_ID}
+                      entering={FadeInUp.delay(rowIdx * 40).duration(350)}
+                    >
+                      {notification.IS_READ ? (
+                        touchable
+                      ) : (
+                        <ReanimatedSwipeable
+                          friction={2}
+                          rightThreshold={48}
+                          overshootRight={false}
+                          renderRightActions={() => (
+                            <View style={styles.swipeActionContainer}>
+                              <View style={styles.swipeAction}>
+                                <Check
+                                  color="#FFF"
+                                  size={18}
+                                  strokeWidth={2.5}
+                                />
+                                <Text style={styles.swipeActionText}>
+                                  Read
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+                          onSwipeableOpen={() => handleSwipeCommit(notification)}
+                        >
+                          {touchable}
+                        </ReanimatedSwipeable>
+                      )}
+                    </Animated.View>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
         </View>
       )}
 
       {/* Empty state — user has no notifications at all */}
       {!isLoading && !error && notifications.length === 0 && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No notifications yet 🔔</Text>
+          <Text style={styles.emptyStateText}>No notifications yet</Text>
         </View>
       )}
 
       {/* All-caught-up banner — shown only when list is non-empty and all read */}
       {!isLoading && !error && notifications.length > 0 && !hasUnread && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>You're all caught up! 🎉</Text>
+          <Text style={styles.emptyStateText}>You&apos;re all caught up</Text>
         </View>
       )}
     </ScrollView>
@@ -375,6 +581,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
   },
+  sectionSpacer: {
+    marginTop: 20,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#999",
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginLeft: 4,
+  },
   notificationsList: {
     gap: 12,
   },
@@ -435,7 +652,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -466,6 +682,27 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#666",
     lineHeight: 20,
+  },
+  swipeActionContainer: {
+    justifyContent: "center",
+    paddingLeft: 8,
+  },
+  swipeAction: {
+    backgroundColor: "#000",
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 22,
+    height: "100%",
+    minWidth: 92,
+  },
+  swipeActionText: {
+    color: "#FFF",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   emptyState: {
     alignItems: "center",

@@ -25,6 +25,19 @@ export interface EducationEntry {
   gpa: string;
 }
 
+/**
+ * Keys mirror the backend `notif_type` values used in
+ * services/notifications.py — do not rename without a backend change.
+ * Missing keys default to enabled on the backend.
+ */
+export interface NotificationPreferences {
+  match?: boolean;
+  message?: boolean;
+  referral?: boolean;
+  waitlist?: boolean;
+  job_like?: boolean;
+}
+
 export interface AutofillData {
   personal: {
     firstName: string;
@@ -84,6 +97,7 @@ export interface AutofillData {
   languages: Array<{ language: string; proficiency: string }>;
   achievements: string;
   sponsorCompanies: string[];
+  notificationPreferences: NotificationPreferences;
 }
 
 interface UserProfileStore {
@@ -123,6 +137,9 @@ interface UserProfileStore {
     languages: Array<{ language: string; proficiency: string }>,
   ) => Promise<void>;
   updateAchievements: (achievements: string) => Promise<void>;
+  updateNotificationPreferences: (
+    prefs: Partial<NotificationPreferences>,
+  ) => Promise<void>;
 
   loadFromProfile: (profileData: any) => Promise<void>;
   syncToBackend: () => Promise<void>;
@@ -195,6 +212,7 @@ const defaultData: AutofillData = {
   languages: [],
   achievements: "",
   sponsorCompanies: [],
+  notificationPreferences: {},
 };
 
 export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
@@ -423,6 +441,37 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     queueSync();
   },
 
+  updateNotificationPreferences: async (updates) => {
+    const prev = get().data.notificationPreferences || {};
+    const merged: NotificationPreferences = { ...prev, ...updates };
+
+    // Optimistic local update
+    const newData = { ...get().data, notificationPreferences: merged };
+    set({ data: newData });
+
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch (error) {
+      console.warn("Failed to persist notification preferences locally:", error);
+    }
+
+    // Direct, targeted PATCH — do NOT go through the full-profile sync queue.
+    try {
+      const { updateUserProfile } = await import("../lib/api");
+      await updateUserProfile({ notification_preferences: merged });
+    } catch (error) {
+      console.error("Failed to save notification preferences:", error);
+      // Roll back on failure so the UI doesn't show a state the backend
+      // didn't accept.
+      const rolledBack = { ...get().data, notificationPreferences: prev };
+      set({ data: rolledBack });
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rolledBack));
+      } catch {}
+      throw error;
+    }
+  },
+
   loadFromProfile: async (profileData) => {
     const autofillData: AutofillData = {
       personal: {
@@ -489,6 +538,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       languages: profileData.languages || [],
       achievements: profileData.achievements || "",
       sponsorCompanies: profileData.sponsorCompanies || [],
+      notificationPreferences: profileData.notificationPreferences || {},
     };
 
     set({ data: autofillData, isLoaded: true });
@@ -752,6 +802,20 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           // Seed with their own company if COMPANIES_CAN_REFER_TO is null
           const ownCompany = (profile as any).sponsor_profile?.COMPANY;
           return ownCompany ? [ownCompany] : [];
+        })(),
+        notificationPreferences: (() => {
+          // Backend parses JSON in services/profiles.py:34 but may still return
+          // a string in older responses — accept both shapes.
+          const raw = (profile as any).NOTIFICATION_PREFERENCES;
+          if (!raw) return existing.notificationPreferences || {};
+          if (typeof raw === "string") {
+            try {
+              return JSON.parse(raw);
+            } catch {
+              return existing.notificationPreferences || {};
+            }
+          }
+          return raw;
         })(),
       };
 

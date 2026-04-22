@@ -19,7 +19,6 @@ Backchannel is a mobile application designed to connect applicants and sponsors.
 - **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/)
 - **Animations**: [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/) & [Moti](https://moti.fyi/)
 - **Icons**: [Lucide React Native](https://lucide.dev/guide/packages/lucide-react-native)
-- **Payments**: [RevenueCat](https://www.revenuecat.com/)
 
 ## Prerequisites
 
@@ -72,8 +71,7 @@ Backchannel/
 ├── assets/              # Images and static assets
 ├── constants/           # App constants (theme, colors)
 ├── hooks/               # Custom React hooks
-├── lib/                 # Third-party library configurations (RevenueCat)
-└── providers/           # Context providers
+└── lib/                 # Third-party library configurations
 ```
 
 ## Troubleshooting

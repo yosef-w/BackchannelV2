@@ -3,7 +3,11 @@
     "allow": [
       "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
       "Read(//Users/yosefwolday/Desktop/**)",
-      "Read(//Users/yosefwolday/**)"
+      "Read(//Users/yosefwolday/**)",
+      "Bash(npx tsc *)",
+      "Bash(git stash *)",
+      "Bash(grep -E \"^providers$|^lib$\")",
+      "Bash(npm install *)"
     ]
   }
 }
