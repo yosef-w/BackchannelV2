@@ -3,69 +3,68 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-    AlertCircle,
-    Briefcase,
-    Camera,
-    Check,
-    CheckCircle2,
-    ChevronRight,
-    Edit,
-    FileText,
-    GraduationCap,
-    ImageIcon,
-    Lock,
-    LogOut,
-    MapPin,
-    Plus,
-    RefreshCw,
-    Target,
-    Trash2,
-    Upload,
-    X,
-    Zap
+  AlertCircle,
+  Briefcase,
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Edit,
+  FileText,
+  GraduationCap,
+  ImageIcon,
+  Lock,
+  LogOut,
+  MapPin,
+  Plus,
+  RefreshCw,
+  Target,
+  Trash2,
+  Upload,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import Animated, {
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
-    changePassword,
-    classifyResume,
-    deactivateAccount,
-    getExtractedResumeText,
-    logout,
-    unregisterDevice,
-    updateApplicantProfile,
-    updateGeneralProfile,
-    updateSponsorProfile,
-    uploadAndParseResume,
-    uploadProfileImage,
+  changePassword,
+  classifyResume,
+  deactivateAccount,
+  getExtractedResumeText,
+  logout,
+  unregisterDevice,
+  updateApplicantProfile,
+  updateGeneralProfile,
+  updateSponsorProfile,
+  uploadAndParseResume,
+  uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
-    EducationEntry,
-    ProfessionalExperience,
-    useUserProfileStore,
+  EducationEntry,
+  ProfessionalExperience,
+  useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
@@ -166,6 +165,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -194,29 +195,19 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [passwordError, setPasswordError] = useState("");
 
   // Editable profile state
-  const [name, setName] = useState("Alex Johnson");
+  const [name, setName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState(
-    userType === "applicant"
-      ? "Seeking Product Manager Roles"
-      : "VP of Product",
-  );
-  const [company, setCompany] = useState("Stripe");
-  const [location, setLocation] = useState("San Francisco, CA");
-  const [email, setEmail] = useState("alex.johnson@email.com");
-  const [phone, setPhone] = useState("+1 (415) 555-0123");
+  const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
+  const [location, setLocation] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [bio, setBio] = useState(
-    userType === "applicant"
-      ? "Passionate about AI/ML and building products that scale. Looking to join a high-growth startup where I can lead product strategy and make meaningful impact."
-      : "Helping the next generation of product leaders break into tech. 10+ years at Google and Stripe, now mentoring at early-stage companies and opening doors for talented PMs.",
-  );
+  const [bio, setBio] = useState("");
 
   // Additional details (optional)
-  const [achievements, setAchievements] = useState(
-    "Forbes 30 Under 30 (Consumer Tech). 2 Patents in Recommendation Systems. Speaker at SXSW 2023 on 'The Future of Audio'.",
-  );
+  const [achievements, setAchievements] = useState("");
   const [certifications, setCertifications] = useState<
     Array<{ name: string; organization: string; year: string }>
   >([]);
@@ -272,47 +263,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [country, setCountry] = useState("");
 
   // Editable tags state
-  const [expertise, setExpertise] = useState(
-    userType === "applicant"
-      ? [
-          "React",
-          "Product Strategy",
-          "FinTech",
-          "Early Stage Startups",
-          "Data Analytics",
-          "UX Design",
-        ]
-      : [
-          "Product Management",
-          "Engineering Leadership",
-          "Career Growth",
-          "Interview Prep",
-          "Product Strategy",
-          "Team Building",
-        ],
-  );
+  const [expertise, setExpertise] = useState<string[]>([]);
   const [workPreferences, setWorkPreferences] = useState<string[]>([]);
   const [desiredRoles, setDesiredRoles] = useState<string[]>([]);
-  const [companiesCanReferTo, setCompaniesCanReferTo] = useState([
-    "Stripe",
-    "Google",
-    "Meta",
-    "Airbnb",
-    "Notion",
-    "Figma",
-  ]);
+  const [companiesCanReferTo, setCompaniesCanReferTo] = useState<string[]>([]);
 
   // Profile insights state
-  const [profileInsights, setProfileInsights] = useState<ProfileInsight[]>([
-    {
-      question: "MY SECRET SUPERPOWER",
-      answer: "Turning complex data into simple, actionable stories.",
-    },
-    {
-      question: "IF I WASN'T IN TECH",
-      answer: "I'd be a chef. Chemistry you can eat.",
-    },
-  ]);
+  const [profileInsights, setProfileInsights] = useState<ProfileInsight[]>([]);
 
   // Temp states for editing
   const [tempValue, setTempValue] = useState("");
@@ -330,7 +287,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (!userProfileData || !userProfileData.personal) {
       return { isComplete: false, percentage: 0, missingFields: [] };
     }
-    return checkProfileCompleteness(userProfileData);
+    const result = checkProfileCompleteness(userProfileData);
+    return result;
   }, [userProfileData]);
 
   const hasIncompleteProfile = profileCompletion.percentage < 90;
@@ -446,6 +404,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (userProfileData.achievements) {
       setAchievements(userProfileData.achievements);
     }
+    if (userProfileData.sponsorCompanies && userProfileData.sponsorCompanies.length > 0) {
+      setCompaniesCanReferTo(userProfileData.sponsorCompanies);
+    }
   }, [userProfileData]);
 
   // Auto-save certifications when they change
@@ -477,7 +438,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
           "[Resume] ✅ Resume status response:",
           JSON.stringify(r, null, 2),
         );
-        if (r.updated_at) setResumeLastUpdated(r.updated_at);
+        if (r.extracted_resume_text && r.updated_at)
+          setResumeLastUpdated(r.updated_at);
         if (!r.extracted_resume_text) {
           console.log(
             "[Resume] ℹ️ No resume text on file yet — user hasn't uploaded a resume.",
@@ -2470,10 +2432,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
         <View style={styles.infoRow}>
           <MapPin color="#BBB" size={14} strokeWidth={2} />
-          <Text style={styles.locationText}>{profileData.location}</Text>
+          {profileData.location ? (
+            <Text style={styles.locationText}>{profileData.location}</Text>
+          ) : (
+            <Text style={styles.emptyHint}>No location added yet</Text>
+          )}
         </View>
 
-        <Text style={styles.bio}>{profileData.bio}</Text>
+        {profileData.bio ? (
+          <Text style={styles.bio}>{profileData.bio}</Text>
+        ) : (
+          <Text style={styles.emptyHint}>Tap "Edit Profile" to add a bio</Text>
+        )}
 
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -2498,13 +2468,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
         {/* Expertise Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
-          <View style={styles.tagCloud}>
-            {profileData.expertise.map((tag) => (
-              <View key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
+          {profileData.expertise.length > 0 ? (
+            <View style={styles.tagCloud}>
+              {profileData.expertise.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyHint}>No skills added yet</Text>
+          )}
         </View>
 
         {/* Applicant-Specific Sections */}
@@ -2512,25 +2486,33 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Work Preferences</Text>
-              <View style={styles.tagCloud}>
-                {applicantData.workPreferences.map((pref) => (
-                  <View key={pref} style={styles.preferenceTag}>
-                    <Text style={styles.preferenceText}>{pref}</Text>
-                  </View>
-                ))}
-              </View>
+              {applicantData.workPreferences.length > 0 ? (
+                <View style={styles.tagCloud}>
+                  {applicantData.workPreferences.map((pref) => (
+                    <View key={pref} style={styles.preferenceTag}>
+                      <Text style={styles.preferenceText}>{pref}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.emptyHint}>No work preferences added yet</Text>
+              )}
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Desired Roles</Text>
-              <View style={styles.tagCloud}>
-                {applicantData.desiredRoles.map((role) => (
-                  <View key={role} style={styles.roleTag}>
-                    <Target size={14} color="#FFF" strokeWidth={2.5} />
-                    <Text style={styles.roleTagText}>{role}</Text>
-                  </View>
-                ))}
-              </View>
+              {applicantData.desiredRoles.length > 0 ? (
+                <View style={styles.tagCloud}>
+                  {applicantData.desiredRoles.map((role) => (
+                    <View key={role} style={styles.roleTag}>
+                      <Target size={14} color="#FFF" strokeWidth={2.5} />
+                      <Text style={styles.roleTagText}>{role}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.emptyHint}>No desired roles added yet</Text>
+              )}
             </View>
           </>
         )}
@@ -2540,13 +2522,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Companies I Can Refer To</Text>
-              <View style={styles.tagCloud}>
-                {sponsorData.companiesCanReferTo.map((company) => (
-                  <View key={company} style={styles.companyTag}>
-                    <Text style={styles.companyText}>{company}</Text>
-                  </View>
-                ))}
-              </View>
+              {sponsorData.companiesCanReferTo.length > 0 ? (
+                <View style={styles.tagCloud}>
+                  {sponsorData.companiesCanReferTo.map((company) => (
+                    <View key={company} style={styles.companyTag}>
+                      <Text style={styles.companyText}>{company}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.emptyHint}>No companies added yet</Text>
+              )}
             </View>
           </>
         )}
@@ -2570,16 +2556,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <Text style={styles.resumeSectionSubtitle}>
             Upload your resume and AI will auto-fill your profile
           </Text>
-
-          {/* Status line: show when already uploaded and idle */}
-          {resumeLastUpdated && resumeUploadStep === "idle" && (
-            <View style={styles.resumeStatusRow}>
-              <CheckCircle2 size={14} color="#16A34A" strokeWidth={2.5} />
-              <Text style={styles.resumeStatusText}>
-                Last uploaded {formatRelativeTime(resumeLastUpdated)}
-              </Text>
-            </View>
-          )}
 
           {/* Idle state — upload button */}
           {resumeUploadStep === "idle" && (
@@ -2914,7 +2890,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <View style={styles.modalProgressContainer}>
                 <Text style={styles.modalProgressText}>
                   {personalMissingCount} field
-                  {personalMissingCount !== 1 ? "s" : ""} remaining
+                  {personalMissingCount !== 1 ? "s" : ""} remaining:{" "}
+                  {profileCompletion.missingFields
+                    .filter((f) => f.category === "Personal Information")
+                    .map((f) => f.label)
+                    .join(", ")}
                 </Text>
                 <View style={styles.modalProgressBar}>
                   <View
@@ -3628,7 +3608,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <View style={styles.modalProgressContainer}>
                 <Text style={styles.modalProgressText}>
                   {professionalMissingCount} field
-                  {professionalMissingCount !== 1 ? "s" : ""} remaining
+                  {professionalMissingCount !== 1 ? "s" : ""} remaining:{" "}
+                  {profileCompletion.missingFields
+                    .filter((f) => f.category !== "Personal Information")
+                    .map((f) => f.label)
+                    .join(", ")}
                 </Text>
                 <View style={styles.modalProgressBar}>
                   <View
@@ -3839,11 +3823,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
         {/* Terms & Conditions */}
         <TouchableOpacity
           style={styles.privacyActionCard}
-          onPress={() =>
-            Linking.openURL(
-              "https://gist.github.com/yosef-w/af2a50954afcbdf0fbcb27ed60de34dd",
-            )
-          }
+          onPress={() => {
+            setShowPrivacySecurity(false);
+            setTimeout(() => setShowTerms(true), 300);
+          }}
         >
           <View style={styles.privacyIconContainer}>
             <Briefcase color="#000" size={18} />
@@ -3860,11 +3843,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
         {/* Privacy Policy */}
         <TouchableOpacity
           style={styles.privacyActionCard}
-          onPress={() =>
-            Linking.openURL(
-              "https://gist.github.com/yosef-w/a93c7ed52e361528a99d084223e5cfcb",
-            )
-          }
+          onPress={() => {
+            setShowPrivacySecurity(false);
+            setTimeout(() => setShowPrivacyPolicy(true), 300);
+          }}
         >
           <View style={styles.privacyIconContainer}>
             <Lock color="#000" size={18} />
@@ -3894,6 +3876,341 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </View>
           <ChevronRight color="#666" size={20} />
         </TouchableOpacity>
+      </SimpleModal>
+
+      {/* TERMS & CONDITIONS MODAL */}
+      <SimpleModal
+        visible={showTerms}
+        onClose={() => setShowTerms(false)}
+        title="Terms & Conditions"
+      >
+        <Text style={styles.legalLastUpdated}>
+          Last updated: April 15, 2026
+        </Text>
+        <Text style={styles.legalIntro}>
+          Please read these Terms and Conditions carefully before using the
+          Backchannel mobile application operated by Backchannel ("us", "we", or
+          "our").
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>1. Acceptance of Terms</Text>
+        <Text style={styles.legalBody}>
+          By downloading, installing, or using Backchannel, you agree to be
+          bound by these Terms. If you do not agree to these Terms, do not use
+          the app.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>2. Description of Service</Text>
+        <Text style={styles.legalBody}>
+          Backchannel is a professional networking platform that connects job
+          seekers ("Applicants") with employed professionals ("Sponsors") who
+          can provide referrals and career guidance. The service includes
+          profile creation, job matching, direct messaging, and referral
+          facilitation.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>3. Eligibility</Text>
+        <Text style={styles.legalBody}>
+          You must be at least 18 years of age to use Backchannel. By using the
+          app, you represent and warrant that you meet this requirement.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>4. User Accounts</Text>
+        <Text style={styles.legalBullet}>
+          • You are responsible for maintaining the confidentiality of your
+          account credentials.
+        </Text>
+        <Text style={styles.legalBullet}>
+          • You are responsible for all activity that occurs under your account.
+        </Text>
+        <Text style={styles.legalBullet}>
+          • You must provide accurate, current, and complete information during
+          registration.
+        </Text>
+        <Text style={styles.legalBullet}>
+          • You may not create an account on behalf of another person without
+          their explicit consent.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>5. Acceptable Use</Text>
+        <Text style={styles.legalBody}>You agree not to:</Text>
+        <Text style={styles.legalBullet}>
+          • Post false, misleading, or fraudulent information on your profile
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Impersonate any person or entity
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Use the platform to harass, abuse, or harm other users
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Spam or send unsolicited messages
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Attempt to gain unauthorized access to any part of the service
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Use the service for any unlawful purpose
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>6. Content You Provide</Text>
+        <Text style={styles.legalBody}>
+          By submitting content (including profile information, messages, and
+          resumes) to Backchannel, you grant us a non-exclusive, worldwide,
+          royalty-free license to use, store, and display that content solely
+          for the purpose of operating and improving the service.{"\n\n"}You
+          represent that you own or have the right to submit all content you
+          provide.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>7. Referrals</Text>
+        <Text style={styles.legalBody}>
+          Backchannel facilitates introductions between Applicants and Sponsors.
+          We do not guarantee employment outcomes, referral success, or
+          interview results. Any referral arrangement is solely between the
+          Applicant and Sponsor.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>
+          8. Subscriptions and Payments
+        </Text>
+        <Text style={styles.legalBody}>
+          Certain features of Backchannel may require a paid subscription.
+          Subscriptions are billed through the Apple App Store or Google Play
+          Store and are subject to their respective terms. All purchases are
+          final unless otherwise required by applicable law.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>9. Termination</Text>
+        <Text style={styles.legalBody}>
+          We reserve the right to suspend or terminate your account at any time
+          if you violate these Terms or engage in conduct we determine to be
+          harmful to other users or the platform.{"\n\n"}You may delete your
+          account at any time through Settings › Privacy & Security › Delete
+          Account.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>10. Disclaimers</Text>
+        <Text style={styles.legalBody}>
+          The service is provided "as is" without warranties of any kind. We do
+          not guarantee that the service will be error-free, uninterrupted, or
+          that any particular employment outcome will result from use of the
+          platform.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>
+          11. Limitation of Liability
+        </Text>
+        <Text style={styles.legalBody}>
+          To the maximum extent permitted by law, Backchannel shall not be
+          liable for any indirect, incidental, special, or consequential damages
+          arising from your use of the service.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>12. Changes to Terms</Text>
+        <Text style={styles.legalBody}>
+          We may update these Terms at any time. Continued use of the app after
+          changes constitutes acceptance of the new Terms. We will notify users
+          of material changes through the app.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>13. Contact</Text>
+        <Text style={styles.legalBody}>
+          If you have questions about these Terms, please contact us at:
+        </Text>
+        <Text style={styles.legalContact}>support@backchannelapp.io</Text>
+        <View style={{ height: 16 }} />
+      </SimpleModal>
+
+      {/* PRIVACY POLICY MODAL */}
+      <SimpleModal
+        visible={showPrivacyPolicy}
+        onClose={() => setShowPrivacyPolicy(false)}
+        title="Privacy Policy"
+      >
+        <Text style={styles.legalLastUpdated}>
+          Last updated: April 15, 2026
+        </Text>
+        <Text style={styles.legalIntro}>
+          This Privacy Policy describes how Backchannel ("we", "us", or "our")
+          collects, uses, and shares information when you use our mobile
+          application.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>1. Information We Collect</Text>
+        <Text style={styles.legalSubSectionTitle}>Information You Provide</Text>
+        <Text style={styles.legalBullet}>
+          • Account information: Name, email address, phone number
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Profile information: Job title, company, location, biography,
+          skills, work preferences, desired roles, profile photo
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Resume data: Uploaded resume files and the extracted text content
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Professional history: Work experience, education, certifications,
+          languages
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Messages: Content of messages sent between users on the platform
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Work email: Provided by Sponsors to indicate professional
+          affiliation
+        </Text>
+        <Text style={styles.legalSubSectionTitle}>
+          Information Collected Automatically
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Device information: Device type, operating system, push notification
+          token
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Usage data: Features used, interactions within the app, session
+          activity
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Log data: IP address, app version, crash reports
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>
+          2. How We Use Your Information
+        </Text>
+        <Text style={styles.legalBody}>
+          We use the information we collect to:
+        </Text>
+        <Text style={styles.legalBullet}>• Create and manage your account</Text>
+        <Text style={styles.legalBullet}>
+          • Match Applicants with relevant job opportunities and Sponsors
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Enable messaging and referral facilitation between users
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Send push notifications about matches, messages, and referrals
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Improve and personalize the service
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Detect and prevent fraud or abuse
+        </Text>
+        <Text style={styles.legalBullet}>• Comply with legal obligations</Text>
+
+        <Text style={styles.legalSectionTitle}>
+          3. How We Share Your Information
+        </Text>
+        <Text style={styles.legalBody}>
+          We do not sell your personal information. We may share your
+          information in the following circumstances:
+        </Text>
+        <Text style={styles.legalBullet}>
+          • With other users: Your public profile information is visible to
+          other users for matching and networking purposes
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Service providers: We work with third-party providers who process
+          data on our behalf under confidentiality agreements
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Legal requirements: We may disclose information if required by law
+          or to protect the rights and safety of our users
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Business transfers: In the event of a merger or acquisition, user
+          data may be transferred as part of that transaction
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>4. Data Retention</Text>
+        <Text style={styles.legalBody}>
+          We retain your data for as long as your account is active. When you
+          delete your account, we will delete or anonymize your personal
+          information within 30 days, except where retention is required by law.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>5. Your Rights</Text>
+        <Text style={styles.legalBody}>
+          Depending on your location, you may have the right to:
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Access the personal data we hold about you
+        </Text>
+        <Text style={styles.legalBullet}>• Correct inaccurate data</Text>
+        <Text style={styles.legalBullet}>
+          • Request deletion of your data (via Settings › Privacy & Security ›
+          Delete Account)
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Object to or restrict certain processing of your data
+        </Text>
+        <Text style={styles.legalBullet}>• Data portability</Text>
+        <Text style={[styles.legalBody, { marginTop: 8 }]}>
+          To exercise these rights, contact us at support@backchannelapp.io.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>6. Push Notifications</Text>
+        <Text style={styles.legalBody}>
+          We may send push notifications for matches, messages, and referral
+          activity. You can disable push notifications at any time through your
+          device settings. Your push notification token is unregistered from our
+          servers when you log out.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>7. Payments</Text>
+        <Text style={styles.legalBody}>
+          Subscription payments are processed by Apple or Google through their
+          respective app store platforms. We do not store your payment card
+          information. Payment processing is subject to Apple's and Google's
+          privacy policies.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>8. Children's Privacy</Text>
+        <Text style={styles.legalBody}>
+          Backchannel is not directed at children under the age of 18. We do not
+          knowingly collect personal information from anyone under 18. If we
+          learn we have collected such information, we will delete it promptly.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>9. Security</Text>
+        <Text style={styles.legalBody}>
+          We implement industry-standard security measures including encrypted
+          token storage, HTTPS for all API communication, and JWT-based
+          authentication. However, no method of transmission or storage is 100%
+          secure.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>10. Third-Party Services</Text>
+        <Text style={styles.legalBody}>
+          Our app uses the following third-party services which have their own
+          privacy policies:
+        </Text>
+        <Text style={styles.legalBullet}>
+          • RevenueCat — subscription management
+        </Text>
+        <Text style={styles.legalBullet}>
+          • Apple Push Notification Service / Firebase Cloud Messaging — push
+          notifications
+        </Text>
+        <Text style={styles.legalBullet}>
+          • DigitalOcean — cloud infrastructure
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>11. Changes to This Policy</Text>
+        <Text style={styles.legalBody}>
+          We may update this Privacy Policy from time to time. We will notify
+          you of significant changes through the app. Continued use after
+          changes constitutes acceptance of the updated policy.
+        </Text>
+
+        <Text style={styles.legalSectionTitle}>12. Contact</Text>
+        <Text style={styles.legalBody}>
+          If you have questions about this Privacy Policy or how we handle your
+          data, contact us at:
+        </Text>
+        <Text style={styles.legalContact}>support@backchannelapp.io</Text>
+        <View style={{ height: 16 }} />
       </SimpleModal>
 
       {/* PASSWORD CHANGE MODAL */}
@@ -5085,6 +5402,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#666",
   },
+  legalLastUpdated: {
+    fontSize: 12,
+    color: "#999",
+    marginBottom: 12,
+    fontStyle: "italic",
+  },
+  legalIntro: {
+    fontSize: 14,
+    color: "#444",
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  legalSectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+    marginTop: 20,
+    marginBottom: 6,
+    letterSpacing: 0.1,
+  },
+  legalSubSectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#333",
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  legalBody: {
+    fontSize: 14,
+    color: "#444",
+    lineHeight: 21,
+    marginBottom: 4,
+  },
+  legalBullet: {
+    fontSize: 14,
+    color: "#444",
+    lineHeight: 21,
+    paddingLeft: 4,
+    marginBottom: 3,
+  },
+  legalContact: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    marginTop: 4,
+  },
   deleteActionCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -5694,6 +6057,12 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     fontSize: 12,
     fontWeight: "700",
+  },
+  emptyHint: {
+    fontSize: 13,
+    color: "#BBB",
+    fontStyle: "italic",
+    marginTop: 4,
   },
   emptyStateCard: {
     backgroundColor: "#F9F9F9",

@@ -499,11 +499,7 @@ export function MessagesView({
         const transformedMessages = response.messages.map((msg) => ({
           id: msg.MESSAGE_ID,
           serverId: msg.MESSAGE_ID,
-          // Backend returns SENDER_USER_ID from Snowflake; SENDER_ID is a fallback for older schema
-          senderId:
-            (msg as any).SENDER_USER_ID ||
-            (msg as any).SENDER_ID ||
-            msg.SENDER_ID,
+          senderId: msg.SENDER_USER_ID,
           content: msg.BODY,
           messageType: "text" as const,
           isRead: true, // Backend doesn't track per-message read status
@@ -517,8 +513,8 @@ export function MessagesView({
           // Find current user by checking which sender appears most frequently
           const senderCounts: Record<string, number> = {};
           response.messages.forEach((msg) => {
-            senderCounts[msg.SENDER_ID] =
-              (senderCounts[msg.SENDER_ID] || 0) + 1;
+            const senderId = msg.SENDER_USER_ID;
+            senderCounts[senderId] = (senderCounts[senderId] || 0) + 1;
           });
 
           // Get the conversation to find the other participant

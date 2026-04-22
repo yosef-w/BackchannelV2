@@ -2,19 +2,19 @@ import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { authApi, LoginResponse } from "../lib/auth-api";
@@ -38,7 +38,7 @@ export function AuthScreen({
   onBack,
   userType: propUserType,
 }: AuthScreenProps) {
-  const [isLogin, setIsLogin] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");

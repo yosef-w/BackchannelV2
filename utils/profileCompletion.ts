@@ -26,30 +26,30 @@ export function checkProfileCompleteness(
 
   // Personal Information (Required for autofill)
   const personalChecks = [
-    { key: "firstName", label: "First Name", value: data.personal.firstName },
-    { key: "lastName", label: "Last Name", value: data.personal.lastName },
-    { key: "role", label: "Role / Title", value: data.professional.title },
+    { key: "firstName", label: "First name", value: data.personal.firstName },
+    { key: "lastName", label: "Last name", value: data.personal.lastName },
+    { key: "role", label: "Title", value: data.professional.title },
     { key: "email", label: "Email", value: data.personal.email },
-    { key: "phone", label: "Phone Number", value: data.personal.phone },
+    { key: "phone", label: "Phone", value: data.personal.phone },
     { key: "bio", label: "Bio", value: data.professional.summary },
     {
       key: "profileImage",
-      label: "Profile Photo",
+      label: "Photo",
       value: data.personal.profileImage,
     },
     {
       key: "portfolio",
-      label: "Portfolio URL",
+      label: "Portfolio",
       value: data.personal.portfolio,
     },
     {
       key: "street",
-      label: "Street Address",
+      label: "Street",
       value: data.personal.address.street,
     },
     { key: "city", label: "City", value: data.personal.address.city },
     { key: "state", label: "State", value: data.personal.address.state },
-    { key: "zip", label: "Zip Code", value: data.personal.address.zip },
+    { key: "zip", label: "Zip", value: data.personal.address.zip },
     { key: "country", label: "Country", value: data.personal.address.country },
   ];
 
@@ -75,7 +75,7 @@ export function checkProfileCompleteness(
     missingFields.push({
       category: "Personal Information",
       field: "skills",
-      label: "Skills & Interests",
+      label: "Skills",
     });
   }
 
@@ -85,8 +85,7 @@ export function checkProfileCompleteness(
     data.professional.experiences &&
     data.professional.experiences.length > 0 &&
     data.professional.experiences.some(
-      (exp) =>
-        exp.jobTitle?.trim() && exp.company?.trim() && exp.startDate?.trim(),
+      (exp) => !!(exp.jobTitle?.trim() && exp.company?.trim()),
     );
 
   if (hasValidExperience) {
@@ -95,7 +94,7 @@ export function checkProfileCompleteness(
     missingFields.push({
       category: "Professional",
       field: "experiences",
-      label: "At least one work experience",
+      label: "Work experience",
     });
   }
 
@@ -117,7 +116,7 @@ export function checkProfileCompleteness(
     missingFields.push({
       category: "Education",
       field: "entries",
-      label: "At least one degree",
+      label: "Education",
     });
   }
 

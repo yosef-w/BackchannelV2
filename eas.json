@@ -16,6 +16,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "yosefwolday@yahoo.com",
+        "ascAppId": "6762495044",
+        "appleTeamId": "ZWFR8LC25W"
+      }
+    }
   }
 }

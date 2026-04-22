@@ -1,63 +1,63 @@
 import {
-    browseJobs,
-    createJob,
-    getMyJobs,
-    sponsorJob,
-    unsponsorJob,
+  browseJobs,
+  createJob,
+  getMyJobs,
+  sponsorJob,
+  unsponsorJob,
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
-    Award,
-    Briefcase,
-    Check,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    DollarSign,
-    FileText,
-    Lock,
-    MapPin,
-    MessageCircle,
-    MoreHorizontal,
-    Plus,
-    Send,
-    Share,
-    SlidersHorizontal,
-    Sparkles,
-    ThumbsDown,
-    Trash2,
-    Users,
-    X,
-    Zap,
+  Award,
+  Briefcase,
+  Check,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  FileText,
+  Lock,
+  MapPin,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  Send,
+  Share,
+  SlidersHorizontal,
+  Sparkles,
+  ThumbsDown,
+  Trash2,
+  Users,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-    FadeOut,
-    SlideInDown,
-    SlideOutDown,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -143,363 +143,6 @@ function parseSkillsField(raw: string | null | undefined): string[] {
 
 // Extend Job type with UI-specific fields (JobPosting is now just an alias)
 type JobPosting = Job;
-
-const mockJobs: JobPosting[] = [
-  {
-    id: "1",
-    title: "Software Engineer",
-    company: "JPMorgan Chase",
-    location: "New York, NY",
-    locations: ["New York, NY"],
-    type: "Full-time",
-    applicants: 24,
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
-    logo: require("../assets/images/jpmc-logo.png"),
-    salary: "$140k - $180k",
-    salaryMin: 140000,
-    salaryMax: 180000,
-    salaryCurrency: "USD",
-    postedAt: "2d ago",
-    description:
-      "Join our Corporate & Investment Bank division to build high-performance trading platforms.",
-    summary:
-      "Build high-performance trading platforms at JPMorgan Chase Corporate & Investment Bank division.",
-    skills: ["Java", "Spring Boot", "React", "Kafka"],
-    highlights: ["Hybrid Work", "Pension Plan", "Health Insurance"],
-    experienceLevel: "5-10",
-    workArrangement: "Hybrid",
-    isRemote: false,
-    url: "https://jpmorgan.com/careers/1",
-    benefits: ["Hybrid Work", "Pension Plan", "Health Insurance"],
-    currentSponsors: [
-      {
-        name: "David Chen",
-        role: "VP of Engineering",
-        image:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
-        canRefer: true,
-      },
-      {
-        name: "Maria Rodriguez",
-        role: "Senior Engineer",
-        image:
-          "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200",
-        canRefer: false,
-      },
-    ],
-  },
-  {
-    id: "2",
-    title: "Data Scientist",
-    company: "JPMorgan Chase",
-    location: "Plano, TX",
-    locations: ["Plano, TX"],
-    type: "Full-time",
-    applicants: 12,
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
-    logo: require("../assets/images/jpmc-logo.png"),
-    salary: "$130k - $160k",
-    salaryMin: 130000,
-    salaryMax: 160000,
-    salaryCurrency: "USD",
-    postedAt: "4h ago",
-    description:
-      "Leverage machine learning to detect fraud and improve customer experience in our Consumer Banking division.",
-    summary:
-      "Use ML to detect fraud and improve customer experience in Consumer Banking.",
-    skills: ["Python", "TensorFlow", "SQL", "Spark"],
-    highlights: ["401k Match", "Wellness Stipend", "Flexible Hours"],
-    experienceLevel: "2-5",
-    workArrangement: "Hybrid",
-    isRemote: false,
-    url: "https://jpmorgan.com/careers/2",
-    benefits: ["401k Match", "Wellness Stipend", "Flexible Hours"],
-    currentSponsors: [
-      {
-        name: "Sarah Miller",
-        role: "Lead Data Scientist",
-        image:
-          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-        canRefer: true,
-      },
-    ],
-  },
-  {
-    id: "3",
-    title: "Mobile Developer",
-    company: "JPMorgan Chase",
-    location: "Wilmington, DE",
-    locations: ["Wilmington, DE"],
-    type: "Contract",
-    applicants: 8,
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
-    logo: require("../assets/images/jpmc-logo.png"),
-    salary: "$90 - $120 / hr",
-    salaryMin: 90,
-    salaryMax: 120,
-    salaryCurrency: "USD",
-    postedAt: "1d ago",
-    description:
-      "Build the next generation of our mobile banking app used by millions of customers daily.",
-    summary:
-      "Build next-gen mobile banking app used by millions of customers daily.",
-    skills: ["Swift", "React Native", "iOS", "Security"],
-    highlights: ["Contract", "Remote Options", "Performance Bonus"],
-    experienceLevel: "5-10",
-    workArrangement: "Hybrid",
-    isRemote: false,
-    url: "https://jpmorgan.com/careers/3",
-    benefits: ["Contract", "Remote Options", "Performance Bonus"],
-    currentSponsors: [
-      {
-        name: "James Wilson",
-        role: "Executive Director",
-        image:
-          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
-        canRefer: false,
-      },
-    ],
-  },
-  {
-    id: "4",
-    title: "Machine Learning Lead",
-    company: "JPMorgan Chase",
-    location: "San Francisco, CA",
-    locations: ["San Francisco, CA"],
-    type: "Full-time",
-    applicants: 45,
-    isSponsored: true,
-    topApplicants: [
-      {
-        id: "a1",
-        name: "Elena Torres",
-        role: "Sr ML Engineer",
-        company: "OpenAI",
-        image:
-          "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
-        matchScore: 98,
-        experience: "8+ Years",
-        skills: ["PyTorch", "TensorFlow", "NLP", "Python"],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Published 3 papers on transformer architectures at top AI conferences.",
-        },
-        prompts: [
-          {
-            question: "MY SECRET SUPERPOWER",
-            answer: "Turning complex ML models into production-ready systems.",
-          },
-        ],
-      },
-      {
-        id: "a2",
-        name: "David Kim",
-        role: "AI Researcher",
-        company: "Google",
-        image:
-          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
-        matchScore: 95,
-        experience: "6+ Years",
-        skills: ["Deep Learning", "Computer Vision", "Research", "Scaling"],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Led a team that reduced model inference time by 10x using novel optimization techniques.",
-        },
-        prompts: [
-          {
-            question: "I'M BEST KNOWN FOR",
-            answer:
-              "Building AI systems that operate at massive scale with minimal latency.",
-          },
-        ],
-      },
-      {
-        id: "a3",
-        name: "Sarah Jenkins",
-        role: "Lead Data Scientist",
-        company: "Meta",
-        image:
-          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-        matchScore: 92,
-        experience: "7+ Years",
-        skills: ["Machine Learning", "A/B Testing", "SQL", "Leadership"],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Grew a team from 3 to 25 data scientists while shipping 50+ ML models.",
-        },
-        prompts: [
-          {
-            question: "MY LEADERSHIP STYLE",
-            answer:
-              "Empowering teams through autonomy and data-driven decision making.",
-          },
-        ],
-      },
-      {
-        id: "a4",
-        name: "Marcus Johnson",
-        role: "ML Platform Engineer",
-        company: "Microsoft",
-        image:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
-        matchScore: 89,
-        experience: "5+ Years",
-        skills: ["MLOps", "Kubernetes", "Python", "System Design"],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Built the ML infrastructure that powers Azure's recommendation engine.",
-        },
-        prompts: [
-          {
-            question: "WHAT DRIVES ME",
-            answer:
-              "Making machine learning accessible to every developer through great tooling.",
-          },
-        ],
-      },
-      {
-        id: "a5",
-        name: "Priya Patel",
-        role: "AI Research Scientist",
-        company: "DeepMind",
-        image:
-          "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200",
-        matchScore: 94,
-        experience: "9+ Years",
-        skills: [
-          "Reinforcement Learning",
-          "Research",
-          "Mathematics",
-          "PyTorch",
-        ],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Co-authored breakthrough research on multi-agent RL systems.",
-        },
-        prompts: [
-          {
-            question: "MY APPROACH",
-            answer:
-              "Bridging the gap between cutting-edge research and real-world applications.",
-          },
-        ],
-      },
-      {
-        id: "a6",
-        name: "Alex Chen",
-        role: "Senior ML Engineer",
-        company: "Tesla",
-        image:
-          "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
-        matchScore: 91,
-        experience: "6+ Years",
-        skills: [
-          "Computer Vision",
-          "Autonomous Systems",
-          "C++",
-          "Real-time ML",
-        ],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Shipped ML models running on millions of vehicles in production.",
-        },
-        prompts: [
-          {
-            question: "WHY I BUILD",
-            answer:
-              "Creating technology that saves lives through intelligent automation.",
-          },
-        ],
-      },
-      {
-        id: "a7",
-        name: "Sofia Rodriguez",
-        role: "Data Science Lead",
-        company: "Uber",
-        image:
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
-        matchScore: 87,
-        experience: "7+ Years",
-        skills: ["Forecasting", "Optimization", "Python", "Team Leadership"],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Built dynamic pricing models that optimize billions in revenue annually.",
-        },
-        prompts: [
-          {
-            question: "MY MISSION",
-            answer:
-              "Using data science to create seamless experiences for millions of users.",
-          },
-        ],
-      },
-      {
-        id: "a8",
-        name: "James Wilson",
-        role: "NLP Engineer",
-        company: "Amazon",
-        image:
-          "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200",
-        matchScore: 93,
-        experience: "5+ Years",
-        skills: ["NLP", "LLMs", "Transformers", "Distributed Systems"],
-        appliedRole: "Machine Learning Lead",
-        insights: {
-          funFact:
-            "Fine-tuned language models that power Alexa's conversational AI.",
-        },
-        prompts: [
-          {
-            question: "WHAT EXCITES ME",
-            answer:
-              "Making AI understand and communicate like humans through language.",
-          },
-        ],
-      },
-    ],
-    image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800",
-    logo: require("../assets/images/jpmc-logo.png"),
-    salary: "$220k - $300k",
-    salaryMin: 220000,
-    salaryMax: 300000,
-    salaryCurrency: "USD",
-    postedAt: "5h ago",
-    description:
-      "Lead a team of researchers and engineers to deploy large language models for financial analysis.",
-    summary:
-      "Lead ML research team deploying LLMs for financial analysis with industry-leading compensation and benefits.",
-    skills: ["NLP", "PyTorch", "Leadership", "Cloud"],
-    highlights: ["Relocation", "Stock Options", "Sabbatical"],
-    experienceLevel: "10+",
-    workArrangement: "Hybrid",
-    isRemote: false,
-    url: "https://jpmorgan.com/careers/4",
-    benefits: ["Relocation", "Stock Options", "Sabbatical"],
-    currentSponsors: [
-      {
-        name: "Emily Zhang",
-        role: "Managing Director, AI Research",
-        image:
-          "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200",
-        canRefer: true,
-      },
-      {
-        name: "Robert Fox",
-        role: "Senior Researcher",
-        image:
-          "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200",
-        canRefer: true,
-      },
-    ],
-  },
-];
 
 export function JobsView() {
   // Zustand store
@@ -1472,7 +1115,11 @@ export function JobsView() {
         animationType="fade"
         onRequestClose={closeCreateModal}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+        >
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
@@ -2144,7 +1791,7 @@ export function JobsView() {
               </TouchableOpacity>
             )}
           </Animated.View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Menu Modal */}

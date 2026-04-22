@@ -83,6 +83,7 @@ export interface AutofillData {
   certifications: Array<{ name: string; organization: string; year: string }>;
   languages: Array<{ language: string; proficiency: string }>;
   achievements: string;
+  sponsorCompanies: string[];
 }
 
 interface UserProfileStore {
@@ -193,6 +194,7 @@ const defaultData: AutofillData = {
   certifications: [],
   languages: [],
   achievements: "",
+  sponsorCompanies: [],
 };
 
 export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
@@ -486,6 +488,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       certifications: profileData.certifications || [],
       languages: profileData.languages || [],
       achievements: profileData.achievements || "",
+      sponsorCompanies: profileData.sponsorCompanies || [],
     };
 
     set({ data: autofillData, isLoaded: true });
@@ -561,9 +564,6 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       const mergedSkills =
         backendSkills.length > 0 ? backendSkills : existing.skills;
 
-      // Insights: GET /api/profile/ does not return INSIGHTS yet (backend gap —
-      // see BACKEND_CHANGES_NEEDED.md #4). Preserve local value until the backend
-      // starts returning this field.
       const backendInsights: Array<{ question: string; answer: string }> =
         parseVariant(
           (profile as any).applicant_profile?.INSIGHTS ||
@@ -571,49 +571,6 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         );
       const mergedInsights =
         backendInsights.length > 0 ? backendInsights : existing.insights;
-
-      // Resume-derived fields: GET /api/profile/ may return these once the backend
-      // is updated to expose them (VARIANT columns on APPLICANT_PROFILES).
-      // Defensively map them so they populate automatically once available.
-      // ── RAW API RESPONSE DIAGNOSTIC ──────────────────────────────────────
-      console.log(
-        "[StoreSync] 📡 Raw GET /api/profile/ applicant_profile fields:",
-        JSON.stringify(
-          {
-            CURRENT_ROLE: (profile as any).applicant_profile?.CURRENT_ROLE,
-            YEARS_EXPERIENCE: (profile as any).applicant_profile
-              ?.YEARS_EXPERIENCE,
-            INDUSTRY: (profile as any).applicant_profile?.INDUSTRY,
-            SKILLS: (profile as any).applicant_profile?.SKILLS,
-            PROFESSIONAL_EXPERIENCES: (profile as any).applicant_profile
-              ?.PROFESSIONAL_EXPERIENCES,
-            EDUCATION_ENTRIES: (profile as any).applicant_profile
-              ?.EDUCATION_ENTRIES,
-            CERTIFICATIONS: (profile as any).applicant_profile?.CERTIFICATIONS,
-            LANGUAGES: (profile as any).applicant_profile?.LANGUAGES,
-            ACHIEVEMENTS: (profile as any).applicant_profile?.ACHIEVEMENTS,
-          },
-          null,
-          2,
-        ),
-      );
-      console.log(
-        "[StoreSync] 📡 Raw GET /api/profile/ user fields:",
-        JSON.stringify(
-          {
-            FIRST_NAME: (profile as any).FIRST_NAME,
-            LAST_NAME: (profile as any).LAST_NAME,
-            BIO: (profile as any).BIO,
-            PHOTO_URL: (profile as any).PHOTO_URL,
-            PORTFOLIO_URL: (profile as any).PORTFOLIO_URL,
-            PHONE_NUMBER: (profile as any).PHONE_NUMBER,
-            LOCATION: (profile as any).LOCATION,
-          },
-          null,
-          2,
-        ),
-      );
-      // ─────────────────────────────────────────────────────────────────────
 
       const backendExperiences = parseVariant(
         (profile as any).applicant_profile?.PROFESSIONAL_EXPERIENCES,
@@ -632,79 +589,6 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         (profile as any).ACHIEVEMENTS ||
         "";
 
-      // ── FIELD RESOLUTION DIAGNOSTIC ──────────────────────────────────────
-      console.log(
-        "[StoreSync] 🔀 Field resolution (backend vs fallback):",
-        JSON.stringify(
-          {
-            experiences: {
-              source:
-                backendExperiences.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
-              count:
-                backendExperiences.length > 0
-                  ? backendExperiences.length
-                  : existing.professional.experiences.length,
-              value:
-                backendExperiences.length > 0
-                  ? backendExperiences
-                  : existing.professional.experiences,
-            },
-            education: {
-              source:
-                backendEducationEntries.length > 0
-                  ? "BACKEND"
-                  : "LOCAL_FALLBACK",
-              count:
-                backendEducationEntries.length > 0
-                  ? backendEducationEntries.length
-                  : existing.education.entries.length,
-              value:
-                backendEducationEntries.length > 0
-                  ? backendEducationEntries
-                  : existing.education.entries,
-            },
-            certifications: {
-              source:
-                backendCertifications.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
-              count:
-                backendCertifications.length > 0
-                  ? backendCertifications.length
-                  : existing.certifications.length,
-              value:
-                backendCertifications.length > 0
-                  ? backendCertifications
-                  : existing.certifications,
-            },
-            languages: {
-              source:
-                backendLanguages.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
-              count:
-                backendLanguages.length > 0
-                  ? backendLanguages.length
-                  : existing.languages.length,
-              value:
-                backendLanguages.length > 0
-                  ? backendLanguages
-                  : existing.languages,
-            },
-            skills: {
-              source: backendSkills.length > 0 ? "BACKEND" : "LOCAL_FALLBACK",
-              count: (backendSkills.length > 0
-                ? backendSkills
-                : existing.skills
-              ).length,
-            },
-            achievements: {
-              source: backendAchievements ? "BACKEND" : "LOCAL_FALLBACK",
-              value: backendAchievements || existing.achievements,
-            },
-          },
-          null,
-          2,
-        ),
-      );
-      // ─────────────────────────────────────────────────────────────────────
-
       // ── FIELD SHAPE NORMALIZERS ───────────────────────────────────────────
       // The AI classify endpoint stores experiences/education with different
       // key names than our ProfessionalExperience / EducationEntry interfaces.
@@ -716,17 +600,28 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
        * "dates" is a combined string like "2022 – Present" or "2019 – 2022".
        */
       const mapExperience = (raw: any, idx: number) => {
-        const datesStr: string = raw.dates || "";
-        const parts = datesStr.split(/\s*[\u2013\u2014-]\s*/); // en-dash, em-dash, or hyphen
-        const startDate = parts[0]?.trim() || "";
-        const endRaw = parts[1]?.trim() || "";
-        const isCurrent = /present/i.test(endRaw);
+        // Experiences saved through the app already have startDate/endDate/current
+        // as direct fields.  AI-classified experiences use a combined "dates" string
+        // like "2022 – Present".  Prefer direct fields; fall back to parsing "dates".
+        let startDate: string = raw.startDate || "";
+        let endDate: string = raw.endDate || "";
+        let isCurrent: boolean = raw.current ?? false;
+
+        if (!startDate && raw.dates) {
+          const datesStr: string = raw.dates;
+          const parts = datesStr.split(/\s*[\u2013\u2014-]\s*/); // en-dash, em-dash, or hyphen
+          startDate = parts[0]?.trim() || "";
+          const endRaw = parts[1]?.trim() || "";
+          isCurrent = /present/i.test(endRaw);
+          endDate = isCurrent ? "" : endRaw;
+        }
+
         return {
           id: raw.id || `exp-${idx}`,
           jobTitle: raw.jobTitle || raw.title || "", // backend sends "title"
           company: raw.company || "",
           startDate,
-          endDate: isCurrent ? "" : endRaw,
+          endDate,
           current: isCurrent,
           description: raw.description || "",
         };
@@ -848,7 +743,18 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         languages:
           backendLanguages.length > 0 ? backendLanguages : existing.languages,
         achievements: backendAchievements || existing.achievements,
+        sponsorCompanies: (() => {
+          const fromBackend = parseVariant(
+            (profile as any).sponsor_profile?.COMPANIES_CAN_REFER_TO,
+          );
+          if (fromBackend.length > 0) return fromBackend;
+          if (existing.sponsorCompanies.length > 0) return existing.sponsorCompanies;
+          // Seed with their own company if COMPANIES_CAN_REFER_TO is null
+          const ownCompany = (profile as any).sponsor_profile?.COMPANY;
+          return ownCompany ? [ownCompany] : [];
+        })(),
       };
+
 
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });
 

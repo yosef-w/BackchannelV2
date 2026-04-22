@@ -279,39 +279,37 @@ export function MatchesView({
           console.log("[MatchesView] Sponsor matches:", response);
 
           // Transform API response to Match interface
-          const transformedMatches: Match[] = response.matches.map((m) => {
-            const match = m as any;
-            const applicantName = match.applicant?.name
-              ? match.applicant.name
-              : `${match.FIRST_NAME || ""} ${match.LAST_NAME || ""}`.trim();
-            const matchedAt = match.matched_at || match.MATCHED_AT;
+          const transformedMatches: Match[] = response.matches.map((match) => {
+            const applicantName =
+              `${match.FIRST_NAME || ""} ${match.LAST_NAME || ""}`.trim();
+            const matchedAt = match.matched_at;
+
+            // SKILLS arrives as a JSON-encoded string from Snowflake ::TEXT cast
+            let skills: string[] = [];
+            if (match.SKILLS) {
+              try {
+                const parsed = JSON.parse(match.SKILLS);
+                skills = Array.isArray(parsed) ? parsed : [];
+              } catch {
+                skills = [];
+              }
+            }
 
             return {
-              id: Number(match.id || match.LIKE_ID) || 0,
+              id: Number(match.LIKE_ID) || 0,
               name: applicantName || "Applicant",
-              role:
-                match.applicant?.current_role ||
-                match.CURRENT_ROLE ||
-                "Job Seeker",
-              company: "", // Applicants don't have company in this context
+              role: "Job Seeker",
+              company: "",
               image:
-                match.applicant?.profile_image_url ||
                 match.PHOTO_URL ||
                 "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
               status: "connected",
               date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
-              appliedRole: match.applicant?.seeking_role || match.TITLE || "",
-              experience: "", // Not provided by API
-              skills: Array.isArray(match.applicant?.skills || match.SKILLS)
-                ? match.applicant?.skills || match.SKILLS
-                : typeof (match.applicant?.skills || match.SKILLS) === "string"
-                  ? (match.applicant?.skills || match.SKILLS)
-                      .split(",")
-                      .map((s: string) => s.trim())
-                  : [],
-              jobId: match.JOB_ID || match.job?.id || "",
-              applicantUserId:
-                match.APPLICANT_USER_ID || match.applicant_user_id || "",
+              appliedRole: match.TITLE || "",
+              experience: "",
+              skills,
+              jobId: match.JOB_ID || "",
+              applicantUserId: match.applicant_user_id || "",
               insights: undefined,
               prompts: undefined,
             };

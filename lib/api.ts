@@ -115,7 +115,10 @@ class ApiClient {
     // ─────────────────────────────────────────────────────────────────────────
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const rawText = await response.text().catch(() => "");
+      let errorData: any = {};
+      try { errorData = JSON.parse(rawText); } catch {}
+      console.error(`[API ${response.status}] ${endpoint}`, rawText.slice(0, 500));
       const errorMessage =
         errorData?.error ||
         errorData?.detail ||
@@ -143,7 +146,10 @@ class ApiClient {
     };
     const retryResponse = await fetch(url, retryConfig);
     if (!retryResponse.ok) {
-      const errorData = await retryResponse.json().catch(() => ({}));
+      const rawText = await retryResponse.text().catch(() => "");
+      let errorData: any = {};
+      try { errorData = JSON.parse(rawText); } catch {}
+      console.error(`[API retry ${retryResponse.status}] ${url}`, rawText.slice(0, 500));
       const errorMessage =
         errorData?.error ||
         errorData?.detail ||
@@ -415,23 +421,26 @@ export async function likeJob(jobId: string): Promise<{
  * Get list of jobs the applicant has liked
  */
 export async function getLikedJobs(): Promise<
-  | Array<{
-      id: string;
-      job_id: string;
-      job_title: string;
-      company: string;
-      created_at: string;
-    }>
-  | {
-      liked_jobs: Array<{
-        id: string;
-        job_id: string;
-        job_title: string;
-        company: string;
-        created_at: string;
-      }>;
-      total_count: number;
-    }
+  Array<{
+    LIKE_ID: string;
+    liked_at: string;
+    NOTES: string | null;
+    STATUS: string;
+    JOB_ID: string;
+    TITLE: string;
+    COMPANY: string;
+    LOCATION: string | null;
+    REMOTE_OPTION: boolean;
+    SALARY_MIN: number | null;
+    SALARY_MAX: number | null;
+    SALARY_CURRENCY: string | null;
+    EXPERIENCE_LEVEL: string | null;
+    DESCRIPTION: string | null;
+    SPONSOR_FIRST_NAME: string | null;
+    SPONSOR_LAST_NAME: string | null;
+    SPONSOR_PHOTO_URL: string | null;
+    SPONSOR_JOB_TITLE: string | null;
+  }>
 > {
   return api.get(`/api/likes/jobs/`);
 }
@@ -530,24 +539,22 @@ export async function getMatches(): Promise<{
  */
 export async function getSponsorMatches(): Promise<{
   matches: Array<{
-    id: string;
-    applicant: {
-      id: string;
-      name: string;
-      current_role?: string;
-      seeking_role?: string;
-      profile_image_url?: string;
-      skills?: string[];
-    };
-    job: {
-      id: string;
-      title: string;
-      company: string;
-    };
+    LIKE_ID: string;
     matched_at: string;
-    conversation_id?: string;
+    applicant_user_id: string;
+    JOB_ID: string;
+    TITLE: string;
+    COMPANY: string;
+    LOCATION: string | null;
+    FIRST_NAME: string | null;
+    LAST_NAME: string | null;
+    PHOTO_URL: string | null;
+    APPLICANT_LOCATION: string | null;
+    SKILLS: string | null;
+    POSITIONS: string | null;
+    INDUSTRY: string | null;
+    RESUME_DATA: string | null;
   }>;
-  total_count: number;
 }> {
   return api.get(`/api/matches/sponsor/`);
 }
@@ -588,10 +595,10 @@ export async function getConversations(params?: {
     SPONSOR_COMPANY: string | null;
     COMPANY: string | null;
     APPLICANT_POSITIONS: string | null; // JSON-encoded string array
-    SKILLS: string | null;
-    YEARS_EXPERIENCE: string | null;
   }>;
   total_count: number;
+  limit?: number;
+  offset?: number;
 }> {
   const queryParams = new URLSearchParams();
   if (params?.limit !== undefined)
@@ -620,7 +627,7 @@ export async function getConversationMessages(
   messages: Array<{
     MESSAGE_ID: string;
     CONVERSATION_ID: string;
-    SENDER_ID: string;
+    SENDER_USER_ID: string;
     BODY: string;
     CREATED_AT: string;
     SENDER_FIRST_NAME: string;

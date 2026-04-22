@@ -3,6 +3,19 @@
  * Based on the jobs/pack endpoint response
  */
 
+export interface JobApiSponsor {
+  USER_ID?: number | string;
+  FIRST_NAME?: string;
+  LAST_NAME?: string;
+  JOB_TITLE?: string;
+  PHOTO_URL?: string | null;
+  COMPANY?: string | null;
+  OPEN_TO_REFERRALS?: boolean;
+  REFERRAL_ELIGIBLE?: boolean;
+  REFERRAL_NOTE?: string | null;
+  DURATION?: string | null;
+}
+
 export interface JobApiResponse {
   ID: number;
   TITLE: string;
@@ -25,6 +38,8 @@ export interface JobApiResponse {
   REQUIREMENTS_SUMMARY: string | null;
   CORE_RESPONSIBILITIES: string | null;
   relevance_score: number;
+  job_type?: "ats" | "sponsored";
+  sponsor?: JobApiSponsor | null;
 }
 
 /**
@@ -79,7 +94,7 @@ export interface Job {
   workArrangement: string;
   isRemote: boolean;
   url: string;
-  applicationUrl: string; // Alias for url — used in HomeView for WebView navigation
+  applicationUrl?: string; // Alias for url — used in HomeView for WebView navigation
   requirements?: string; // Raw requirements text (displayed when no skills chips available)
   // Required for UI
   applicants: number;
@@ -90,9 +105,18 @@ export interface Job {
   benefits: string[]; // Job benefits/perks
   isSponsored?: boolean;
   topApplicants?: any[];
-  requirementsSummary: string | null;
-  coreResponsibilities: string | null;
-  relevanceScore: number;
+  requirementsSummary?: string | null;
+  coreResponsibilities?: string | null;
+  relevanceScore?: number;
+  sponsorInfo?: {
+    name: string;
+    role: string;
+    image: string;
+    yearsAtCompany?: string;
+    canRefer: boolean;
+    referralNote?: string;
+    userId?: string | number;
+  } | null;
 }
 
 /**
@@ -272,5 +296,23 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     relevanceScore: apiJob.relevance_score ?? 0,
     // Add applicationUrl for HomeView compatibility
     applicationUrl: apiJob.URL,
+    // Sponsor info — present when job_type === "sponsored"
+    sponsorInfo: apiJob.sponsor
+      ? {
+          userId: apiJob.sponsor.USER_ID,
+          name:
+            [apiJob.sponsor.FIRST_NAME, apiJob.sponsor.LAST_NAME]
+              .filter(Boolean)
+              .join(" ") || "Sponsor",
+          role: apiJob.sponsor.JOB_TITLE || "",
+          image: apiJob.sponsor.PHOTO_URL || "",
+          yearsAtCompany: apiJob.sponsor.DURATION || undefined,
+          canRefer:
+            apiJob.sponsor.OPEN_TO_REFERRALS ??
+            apiJob.sponsor.REFERRAL_ELIGIBLE ??
+            false,
+          referralNote: apiJob.sponsor.REFERRAL_NOTE || undefined,
+        }
+      : null,
   } as any; // Cast to any to allow extra fields for compatibility
 }

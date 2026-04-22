@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Read(//Users/yosefwolday/Desktop/**)",
+      "Read(//Users/yosefwolday/**)"
+    ]
+  }
+}

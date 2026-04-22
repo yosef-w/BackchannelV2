@@ -1,70 +1,71 @@
 import {
-  fetchJobsPack,
-  fetchProfilesPack,
-  getPublicProfile,
-  joinWaitlist,
-  likeJob,
-  likeProfile,
+    fetchJobsPack,
+    fetchProfilesPack,
+    getMyJobs,
+    getPublicProfile,
+    joinWaitlist,
+    likeJob,
+    likeProfile,
 } from "@/lib/api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-  Award,
-  Briefcase,
-  Calendar,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Coffee,
-  DollarSign,
-  ExternalLink,
-  Globe,
-  GraduationCap,
-  Info,
-  Layers,
-  Mail,
-  MapPin,
-  MessageCircle,
-  RefreshCcw,
-  SlidersHorizontal,
-  Sparkles,
-  TrendingUp,
-  Users,
-  X,
-  Zap,
+    Award,
+    Briefcase,
+    Calendar,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    Coffee,
+    DollarSign,
+    ExternalLink,
+    Globe,
+    GraduationCap,
+    Info,
+    Layers,
+    Mail,
+    MapPin,
+    MessageCircle,
+    RefreshCcw,
+    SlidersHorizontal,
+    Sparkles,
+    TrendingUp,
+    Users,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  FadeOut,
-  LinearTransition,
-  SlideInDown,
-  SlideOutDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-  ZoomIn,
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    FadeOut,
+    LinearTransition,
+    SlideInDown,
+    SlideOutDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+    ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
@@ -1216,8 +1217,12 @@ export function HomeView({
 
   // Sponsored jobs (for sponsors)
   const sponsoredJobs = useJobsStore((state) => state.sponsoredJobs);
+  const addSponsoredJob = useJobsStore((state) => state.addSponsoredJob);
   const activeSponsoredJobId = useJobsStore(
     (state) => state.activeSponsoredJobId,
+  );
+  const setActiveSponsoredJobId = useJobsStore(
+    (state) => state.setActiveSponsoredJobId,
   );
 
   // Profiles state (for sponsors)
@@ -1372,6 +1377,38 @@ export function HomeView({
       ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
       : applicantJobs[currentProfileIndex % applicantJobs.length];
   const isDeckFinished = progress > DECK_SIZE;
+
+  // Bootstrap sponsor state on mount — ensures activeSponsoredJobId is set
+  // even when the user lands on the dashboard before visiting the jobs tab.
+  useEffect(() => {
+    if (userType !== "sponsor") return;
+    // Skip if we already have sponsored jobs in the store (e.g. navigated back)
+    if (activeSponsoredJobId) return;
+    const bootstrap = async () => {
+      try {
+        const response = await getMyJobs();
+        if (!response.jobs?.length) return;
+        response.jobs.forEach((j: any) => {
+          if (j.REFERENCE_JOB_ID) {
+            addSponsoredJob({
+              jobId: String(j.JOB_ID),
+              atsJobId: String(j.REFERENCE_JOB_ID),
+              title: j.TITLE || "",
+              company: j.COMPANY || "",
+            });
+          }
+        });
+        // Set the first job as active so the profile fetch proceeds
+        const firstJob = response.jobs[0];
+        if (firstJob) {
+          setActiveSponsoredJobId(String(firstJob.JOB_ID));
+        }
+      } catch {
+        // silent fail — dashboard will show empty state with CTA
+      }
+    };
+    bootstrap();
+  }, [userType]);
 
   // Fetch jobs/profiles on mount (only if we don't have recent data)
   useEffect(() => {

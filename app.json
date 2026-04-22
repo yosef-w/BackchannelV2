@@ -3,6 +3,9 @@
     "name": "BackchannelV2",
     "slug": "backchannelv2",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "backchannelv2",
@@ -62,8 +65,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "bundleIdentifier": "com.yosefwolday.backchannelv2",
-        "projectId": "67d2801c-2564-43a5-8edd-fec2550a5925"
+        "projectId": "541c04b4-9798-40e0-ac48-6435ad517940"
       }
     },
     "owner": "ywolday"

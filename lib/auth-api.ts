@@ -13,10 +13,12 @@ export interface LoginResponse {
 
 export interface RegisterResponse {
   user_id: string;
+  profile_id: string;
   email: string;
   username: string;
   access_token: string;
   refresh_token: string;
+  role: "Applicant" | "Sponsor";
 }
 
 export interface CreateProfileRequest {
@@ -122,16 +124,19 @@ export const authApi = {
     email: string,
     password: string,
   ): Promise<RegisterResponse> => {
+    const username = email.split("@")[0];
     return api.post<RegisterResponse>(
       "/api/register/",
       {
+        username,
         first_name: firstName,
         last_name: lastName,
         email,
         password,
+        role: "Applicant",
       },
       true,
-    ); // Skip auth header for registration
+    );
   },
 
   /**
@@ -143,16 +148,19 @@ export const authApi = {
     email: string,
     password: string,
   ): Promise<RegisterResponse> => {
+    const username = email.split("@")[0];
     return api.post<RegisterResponse>(
       "/api/register-sponsor/",
       {
+        username,
         first_name: firstName,
         last_name: lastName,
         email,
         password,
+        role: "Sponsor",
       },
       true,
-    ); // Skip auth header for registration
+    );
   },
 
   /**
