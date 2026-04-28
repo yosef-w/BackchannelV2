@@ -1,57 +1,92 @@
 # Backend Changes Needed
 
+**Last updated:** 2026-04-27
+**Verified against backend HEAD:** `125b425` (PR #36, 2026-04-22)
+**Frontend repo:** `BackchannelV2`
+**Backend repo:** `Backchannel-backend/BackChannel-backend`
+
 > **Database migration (PR #25, April 2026):** The backend has migrated from **Snowflake** (OLTP) to **PostgreSQL**. All SQL patches in this document use plain PostgreSQL table names and `psycopg2` cursor patterns. Snowflake is now used **only** for the Cortex AI pipeline (resume parsing, autofill). The `execute_query()` helper now wraps `psycopg2` instead of `snowflake-connector-python`, but its call signature is identical — no other call sites need changes.
 
 ---
 
-## 6. Complete `POST /api/auth/change-email/` — Email Change with Verification
+## 📋 Summary
 
-> **501 stub deployed (PR #16).** The route exists and returns HTTP 501. The full transactional email flow still needs implementing.
+| #     | Item                                          | Priority    | Status      | Type        |
+| ----- | --------------------------------------------- | ----------- | ----------- | ----------- |
+| §1    | `POST /api/auth/change-email/` implementation | 🟡 Medium   | 501 stub    | New flow    |
+| §2    | Redis caching — 5 uncached read functions     | 🔴 High     | Uncached    | Performance |
+| §3    | `POST /api/jobs/create-from-url/`             | 🔴 High     | Missing     | New endpoint |
+| §4.1  | Insights columns in sponsored read path       | 🔴 High     | Not in SELECT | Bug-ish    |
+| §4.2  | `REFERRAL_NOTE` column on `job_postings`      | 🔴 High     | Missing column | Schema  |
+| §4.3  | Accept insights on `sponsor_job` endpoint     | 🔴 High     | Missing fields | Endpoint extension |
+| Opt A | Real work-email verification for sponsors     | 🟢 Optional | Fake delay  | New flow    |
+| Opt B | Notifications enhancements (5 sub-items)      | 🟢 Optional | Mostly working | Polish   |
+| Opt C | Enrich `/api/profiles/pack/` with bio/insights | 🟢 Optional | Workaround in place | Optimization |
 
-**Why:** Email is the user's login credential and cannot be changed via a simple profile PATCH. The edit profile modal shows email as **read-only** (lock icon). To enable email changes, the stub needs the following implementation:
+**🔴 = ship blockers** (frontend already calls these or expects this data) **·** **🟡 = unblocks UI we've gated** **·** **🟢 = polish, app works without them**
 
-1. User submits new email → `POST /api/auth/change-email/ { new_email, current_password }` (password required to confirm identity)
-2. Backend sends a verification link to the **new** email address via the existing transactional email service (same SendGrid/SES integration used for password reset — PR #21)
-3. User clicks link → backend updates the email on the PostgreSQL `users` table
-4. Frontend's next `GET /api/profile/` returns the new email automatically
+---
 
-**Request body:**
+## §1 — Complete `POST /api/auth/change-email/`
+
+**Status:** 501 stub deployed (PR #16). Verified at [views_auth.py:242-250](../../Backchannel-backend/BackChannel-backend/bc_microservices/views_auth.py#L242) — still returning HTTP 501 as of HEAD.
+
+**Why we need it:** Email is the user's login credential and cannot be changed via a simple profile PATCH. The Edit Profile modal currently shows email as **read-only** with a lock icon. Until this endpoint returns 200, the frontend cannot expose a "Change Email" button.
+
+### Flow
+
+1. User submits new email + current password → `POST /api/auth/change-email/`
+2. Backend sends a verification link to the **new** email via the existing transactional email service (same SendGrid/SES integration used for password reset, PR #21)
+3. User clicks link → backend updates the email column on the PostgreSQL `users` table
+4. Frontend's next `GET /api/profile/` automatically returns the new email — no special handling needed
+
+### Request
 
 ```json
-{ "new_email": "newemail@example.com", "current_password": "secret" }
+POST /api/auth/change-email/
+{
+  "new_email": "newemail@example.com",
+  "current_password": "secret"
+}
 ```
 
-**Response (200):**
+### Response (200)
 
 ```json
 { "message": "Verification email sent to newemail@example.com" }
 ```
 
-**Frontend:** Once the endpoint returns 200 (not 501), replace the "Contact support" lock icon on the email field with a "Change Email" button that opens a dedicated modal.
+### Done when
+
+- Endpoint returns 200 (not 501) for a valid request
+- Verification email actually sends
+- Click-through link updates `users.email` in Postgres
+
+### Frontend follow-up (already scoped)
+
+Replace the lock icon on the email field in the Edit Profile modal with a "Change Email" button that opens a dedicated modal calling this endpoint.
 
 ---
 
-## 7. Redis Caching — Remaining Gaps
+## §2 — Redis Caching Gaps
 
-The app already has Redis configured and a `cached_query` helper working correctly. The most-hit screens are partially cached. The following 5 functions still hit PostgreSQL on every call:
+**Status:** Redis is configured and the `cached_query` helper works correctly. The 6 highest-traffic reads are already cached. **5 functions still hit Postgres on every call.**
 
-| File                  | Function                       | Tables JOINed | Called from                            | Priority |
-| --------------------- | ------------------------------ | ------------- | -------------------------------------- | -------- |
-| `queries/profiles.py` | `get_applicant_profile`        | 1             | `GET /api/profile/` (every applicant)  | 🔴 High  |
-| `queries/profiles.py` | `get_sponsor_profile`          | 1             | `GET /api/profile/` (every sponsor)    | 🔴 High  |
-| `queries/likes.py`    | `get_sponsor_matches`          | 4             | `GET /api/matches/sponsor/`            | 🟡 Med   |
-| `queries/likes.py`    | `get_received_profile_likes`   | 3             | `GET /api/likes/profiles/received/`    | 🟡 Med   |
-| `queries/likes.py`    | `get_applicants_who_liked_job` | 3             | `GET /api/jobs/<id>/likes/applicants/` | 🟢 Low   |
+> **Why this matters:** Pure speed/cost — the app works without these caches, but every uncached call is a Postgres round-trip (~50–200ms). At scale these become the bottleneck and inflate the database bill.
 
-Already cached (confirmed): `get_liked_jobs_for_user`, `get_job_matches_for_user`, `list_conversations_for_user`, `get_user_basic`, `get_profile_data`, `get_public_profile`.
+| File                  | Function                       | Joins | Called from                            | Priority |
+| --------------------- | ------------------------------ | ----- | -------------------------------------- | -------- |
+| `queries/profiles.py` | `get_applicant_profile`        | 1     | `GET /api/profile/` (every applicant)  | 🔴 High  |
+| `queries/profiles.py` | `get_sponsor_profile`          | 1     | `GET /api/profile/` (every sponsor)    | 🔴 High  |
+| `queries/likes.py`    | `get_sponsor_matches`          | 4     | `GET /api/matches/sponsor/`            | 🟡 Med   |
+| `queries/likes.py`    | `get_received_profile_likes`   | 3     | `GET /api/likes/profiles/received/`    | 🟡 Med   |
+| `queries/likes.py`    | `get_applicants_who_liked_job` | 3     | `GET /api/jobs/<id>/likes/applicants/` | 🟢 Low   |
 
----
-
-so outside of these, is the app fully functional and ready for production in that is everything wired up up to the backend and is every button accounted for in terms of api and flows for the user end to end. Can you check everything to verify and be thorough and think very deeply as we are close to shipping this out to the app store.
+**Already cached** (confirmed): `get_liked_jobs_for_user`, `get_job_matches_for_user`, `list_conversations_for_user`, `get_user_basic`, `get_profile_data`, `get_public_profile`.
 
 ### Patch — `queries/profiles.py`
 
-Wrap `get_applicant_profile` and `get_sponsor_profile` with `cached_query`. These fire on every `GET /api/profile/` call — the highest-frequency miss.
+Wrap with `cached_query`. These fire on **every** `GET /api/profile/` call.
 
 ```python
 from ..cache import cached_query, invalidate, TTL_MEDIUM
@@ -96,7 +131,7 @@ def get_sponsor_profile(user_id):
     return cached_query(f"sponsor_profile:{user_id}", TTL_MEDIUM, _fetch)
 ```
 
-Add invalidation to the existing write functions in the same file:
+**Invalidation** (add to existing write functions in same file):
 
 ```python
 def update_applicant_fields(user_id, set_clauses, params):
@@ -108,11 +143,7 @@ def update_sponsor_fields(user_id, set_clauses, params):
     invalidate(f"sponsor_profile:{user_id}", f"pub_profile:{user_id}", f"sponsor_info:{user_id}")
 ```
 
----
-
 ### Patch — `queries/likes.py`
-
-Wrap the three remaining uncached read functions:
 
 ```python
 def get_sponsor_matches(sponsor_id, limit=200):
@@ -176,229 +207,266 @@ def get_applicants_who_liked_job(job_id, limit=200):
     return cached_query(f"job_likes:{job_id}", TTL_SHORT, _fetch)
 ```
 
-Add invalidation where matches are created/changed — the service layer that calls `set_matched` should also call:
+**Invalidation** — wherever matches are created/changed, the service layer that calls `set_matched` should also call:
 
 ```python
 invalidate(f"sponsor_matches:{sponsor_id}", f"job_matches:{applicant_user_id}", f"job_likes:{job_id}")
 ```
 
+### Done when
+
+- All 5 functions wrap their SELECT in `cached_query(...)`
+- Profile/match/like writes call `invalidate(...)` for the corresponding keys
+- Manual test: edit profile → next `GET /api/profile/` reflects the change without staleness
+
 ---
 
-## 🔮 Optional — Future Enhancements
+## §3 — `POST /api/jobs/create-from-url/`
 
-> These are **not ship blockers** — the app works without them — but they would replace placeholder UI with real user data and meaningfully improve the experience. Both require new backend endpoints.
+**Status:** Frontend ready, endpoint missing. `lib/api.ts` exports `createJobFromUrl()` and `components/JobsView.tsx` calls it from the redesigned create-listing flow.
 
----
+**Why:** The legacy create-listing flow asked sponsors to manually fill in title / company / location / employment type / experience / skills / requirements across six form steps. Sponsors abandoned it. The new flow is three steps:
 
-### Optional A — Real Application Tracking for "My Applications" Tab
+1. Sponsor pastes a job posting URL (LinkedIn, Greenhouse, Lever, Workday, etc.).
+2. App opens an in-app `react-native-webview`, lets the sponsor confirm it's the right page, then injects a scraping script that extracts:
+   - **`structured`** (preferred) — JSON-LD `JobPosting` schema, falling back to `og:`/`<meta name>` tags
+   - **`rawText`** — `document.body.innerText`, capped client-side at 60 KB
+3. Sponsor adds optional BackChannel insights and taps "Create Job".
 
-**Affects:** `components/ProfileView.tsx` — Applications tab (applicants only)
-
-**What's showing now:**
-The "My Applications" tab in the applicant's profile shows 4 hardcoded fake applications (Google, Airbnb, Notion, Stripe) with fabricated dates, statuses, and sponsor names. Every user sees the same mock data.
-
-**What users expect:**
-A live list of the jobs they've actually applied to, the current status of each application (applied → screening → interview → offer), and which sponsor referred them.
-
-**What to build:**
-A `GET /api/applications/` endpoint (noted in `BACKEND_API_CONTRACT.md` as `DOES NOT EXIST`) that returns the authenticated user's applications with:
+### Request
 
 ```json
+POST /api/jobs/create-from-url/
 {
-  "applications": [
-    {
-      "APPLICATION_ID": 42,
-      "JOB_ID": 7,
-      "JOB_TITLE": "Senior Product Manager",
-      "COMPANY": "Acme Corp",
-      "COMPANY_LOGO_URL": "https://...",
-      "STATUS": "interview_scheduled",
-      "APPLIED_DATE": "2026-01-02T14:00:00Z",
-      "NEXT_ACTION": "Technical interview on Jan 8 at 2 PM",
-      "SPONSOR_FIRST_NAME": "Sarah",
-      "SPONSOR_LAST_NAME": "Chen",
-      "SPONSOR_ROLE": "VP of Product",
-      "SPONSOR_PHOTO_URL": "https://...",
-      "TIMELINE": [
-        { "stage": "Applied", "date": "Jan 2", "completed": true },
-        {
-          "stage": "Referred",
-          "date": "Jan 2",
-          "completed": true,
-          "is_referred": true
-        },
-        { "stage": "Screening", "date": "Jan 3", "completed": true },
-        { "stage": "Interview", "date": "Jan 8", "completed": false },
-        { "stage": "Decision", "date": "TBD", "completed": false }
-      ]
-    }
-  ],
-  "total": 1
-}
-```
-
-**Frontend impact:** Once this endpoint exists, `ProfileView.tsx` can replace `mockApplications` with a `useEffect` fetch, and the "My Applications" tab will show real data automatically.
-
----
-
-### Optional B — Real Stats in Profile Header
-
-**Affects:** `components/ProfileView.tsx` — stats grid (both roles)
-
-**What's showing now:**
-Every applicant sees `12 Connections / 3 Referrals / 8 Applied` and every sponsor sees `24 Network / 15 Referrals / 87% Success` — all hardcoded numbers identical for every user.
-
-**What users expect:**
-Accurate counts based on their actual activity.
-
-**Suggested stats per role:**
-
-_Applicant:_
-
-- `Connections` — number of mutual matches
-- `Referrals` — number of active referrals received
-- `Applied` — number of job applications submitted
-
-_Sponsor:_
-
-- `Network` — number of mutual matches
-- `Referrals` — number of referrals submitted
-- `Success` — percentage of referrals that reached interview stage or beyond
-
-**What to build:**
-Add a `stats` object to `GET /api/profile/` response:
-
-```json
-"stats": {
-  "connections": 8,
-  "referrals": 2,
-  "applied": 5
-}
-```
-
-(For sponsors, `applied` becomes `success_rate` as a float 0.0–1.0.)
-
-**Frontend impact:** `ProfileView.tsx` reads `profileData` from the store. Once `stats` is returned, replace the hardcoded `stats` array with values from `profileData.stats`.
-
----
-
-### Optional C — Real Stats on Applicant Public Profile Cards
-
-**Affects:** `components/PublicProfileView.tsx` — stats row visible to sponsors when viewing any applicant's full card
-
-**What's showing now:**
-The stats row below every applicant's name on their public profile (opened by sponsors during swiping or from the matches list) always shows:
-
-```
-Connections: 42   |   Referrals: 8   |   Response: 98%
-```
-
-These are identical hardcoded numbers for **every single applicant**. Every sponsor sees the same fake stats regardless of who the applicant is.
-
-**What users expect:**
-Accurate counts based on the applicant's actual activity on the platform.
-
-**Suggested fields to add to `GET /api/profiles/<userId>/public/` response:**
-
-- `CONNECTIONS` — number of mutual matches the applicant has
-- `REFERRALS_RECEIVED` — number of active referrals they've received
-- `RESPONSE_RATE` — percentage of messages they've replied to (float 0.0–1.0, displayed as `"XX%"`)
-
-```json
-{
-  "USER_ID": 123,
-  "FIRST_NAME": "...",
-  "stats": {
-    "CONNECTIONS": 7,
-    "REFERRALS_RECEIVED": 2,
-    "RESPONSE_RATE": 0.94
+  "url": "https://jobs.acme.com/role/12345",
+  "structured": {
+    "title": "Senior Software Engineer",
+    "company": "Acme",
+    "location": "New York, NY, US",
+    "description": "...",
+    "employmentType": "FULL_TIME",
+    "salary": "150000 - 200000 USD",
+    "datePosted": "2026-04-15"
+  },
+  "rawText": "Senior Software Engineer\nAcme\nNew York...",
+  "insights": {
+    "dayToDay": "...",
+    "teamCulture": "...",
+    "idealCandidate": "...",
+    "insiderInsights": ""
   }
 }
 ```
 
-**Frontend impact:** `PublicProfileView.tsx` receives the applicant's data as a `userData` prop. Once these fields are present on the public profile response, replace the hardcoded `stats` array with:
+`structured` may be `null` (or any field within may be `null`). `rawText` is always present.
 
-```tsx
-const stats = [
-  { label: "Connections", value: String(userData.stats?.CONNECTIONS ?? "—") },
-  {
-    label: "Referrals",
-    value: String(userData.stats?.REFERRALS_RECEIVED ?? "—"),
-  },
-  {
-    label: "Response",
-    value:
-      userData.stats?.RESPONSE_RATE != null
-        ? `${Math.round(userData.stats.RESPONSE_RATE * 100)}%`
-        : "—",
-  },
-];
+### Response (200) — same shape as existing `POST /api/jobs/create/`
+
+```json
+{
+  "job_id": "j_01HX...",
+  "title": "Senior Software Engineer",
+  "company": "Acme",
+  "message": "Job created",
+  "expires_at": "2026-05-25T00:00:00Z"
+}
 ```
 
-> **Note:** This is distinct from Optional B. Optional B covers the _logged-in user's own_ stats on their own profile screen (`ProfileView.tsx`). Optional C covers the stats a _sponsor sees_ on someone else's public card (`PublicProfileView.tsx`).
+### What the backend needs to do
+
+1. **Prefer `structured` when present** — map directly into `job_postings` columns (`title`, `company`, `location`, `description`, `employment_type`, salary parsing into `salary_min` / `salary_max` / `salary_currency`).
+2. **Fall back to LLM extraction** when `structured` is `null` or partial — run Cortex on Snowflake (same pipeline as resume parsing) over `rawText` to fill missing columns.
+3. **Store the four `insights.*` fields** on the job row. Recommendation: a single `insights` JSONB column matching the applicant `INSIGHTS` shape, OR four nullable text columns (`day_to_day`, `team_culture`, `ideal_candidate`, `insider_insights`). Pick whichever lines up with §4.1.
+4. **Persist `url`** as the canonical application link.
+5. **Return the same response shape** as `POST /api/jobs/create/` so the frontend's `refreshMyJobs()` flow works without changes.
+
+### Done when
+
+- Endpoint accepts the request shape above
+- Job row created with title/company/location/salary correctly populated from `structured` (verify with a real LinkedIn URL)
+- Insights persist and are retrievable
+- Frontend's "Create Listing → Paste URL" flow end-to-end produces a live job
 
 ---
 
-### Optional D — Real Work Email Verification for Sponsor Onboarding
+## §4 — Sponsored Job Back-Card: Surface Insights and Referral Note
+
+**Status:** Critical UX hole. Sponsors fill out insights expecting them to be visible; applicants need them to decide whether to apply. **None of it reaches the UI today.**
+
+**Frontend touchpoints:** `components/HomeView.tsx` (back-of-card sponsored branch, [HomeView.tsx:2627-2710](../components/HomeView.tsx#L2627-L2710)), `lib/api.ts`, `types/jobs.ts`.
+
+### §4.1 — Add insights to the sponsored read path
+
+The four insights fields stored by the create-from-url flow (§3) are not currently selected by `fetch_sponsored_pack` or returned by `format_job_for_frontend_api`. **Even after §3 lands, the applicant deck would still render no insights.**
+
+#### Required changes
+
+1. **Extend `fetch_sponsored_pack`** ([queries/jobs.py:520-540](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/jobs.py#L520)) — add the four insights columns (or `insights::jsonb`) to the SELECT list. Currently:
+   ```python
+   cols = """JOB_ID, SPONSOR_ID, TITLE, COMPANY, LOCATION, DESCRIPTION,
+             SALARY_MIN, SALARY_MAX, SALARY_CURRENCY, REQUIREMENTS,
+             EXPERIENCE_LEVEL, EMPLOYMENT_TYPE, REMOTE_OPTION,
+             CREATED_AT, EXPIRES_AT, IS_ACTIVE, REFERENCE_JOB_ID"""
+   ```
+   Needs `DAY_TO_DAY, TEAM_CULTURE, IDEAL_CANDIDATE, INSIDER_INSIGHTS` (or `INSIGHTS::TEXT` if JSONB).
+
+2. **Extend `get_sponsored_job_detail`** ([queries/jobs.py:229-236](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/jobs.py#L229)) — same SELECT change.
+
+3. **Update `format_job_for_frontend_api`** ([services/jobs.py:111-145](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L111)) to include them in the response under an `insights` key:
+
+   ```json
+   "insights": {
+     "dayToDay": "...",
+     "teamCulture": "...",
+     "idealCandidate": "...",
+     "insiderInsights": "..."
+   }
+   ```
+
+   Empty/null fields can be omitted or returned as empty strings — the frontend will hide sections with no content.
+
+4. **Sponsor sub-object contract — keep lowercase keys.** The current `sponsor` payload from `get_sponsor_info` uses lowercase keys (`first_name`, `job_title`, `photo_url`, `duration`, `years_at_company`, `can_provide_direct_referral`), inconsistent with the rest of `JobApiResponse` which is UPPERCASE. Frontend types in [types/jobs.ts:6-17](../types/jobs.ts#L6-L17) now match the lowercase shape. **Do not "normalize" sponsor to UPPERCASE without updating the frontend type in lockstep.**
+
+#### Done when
+
+`GET /api/jobs/pack/` returns `insights` on every sponsored job row, and the four sub-fields contain whatever was saved by the sponsor.
+
+---
+
+### §4.2 — Move `REFERRAL_NOTE` onto the job, not the sponsor
+
+`get_sponsor_info` ([queries/jobs.py:77-111](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/jobs.py#L77)) does not return a referral note, and `sponsor_profiles` has no such column. The note is per-job (each role has its own context — engineering vs. marketing vibe, direct-team familiarity, etc.), so it belongs on `jobs.job_postings`.
+
+#### Required changes
+
+1. **Schema:** Add a nullable `REFERRAL_NOTE TEXT` column to `jobs.job_postings`.
+2. **Accept and persist** in both:
+   - `create_job` ([services/jobs.py:334-358](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L334))
+   - `sponsor_job` ([services/jobs.py:401-437](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L401)) — see §4.3
+3. **Surface it on the job's `sponsor` object** in `format_job_for_ui`:
+   ```python
+   sponsor['referral_note'] = job_data.get('REFERRAL_NOTE')
+   ```
+   The existing frontend mapping at [types/jobs.ts:317](../types/jobs.ts#L317) will pick it up.
+
+#### Done when
+
+A sponsored job created with a `referralNote` returns it on the `sponsor.referral_note` field of the pack response.
+
+---
+
+### §4.3 — Accept insights on `sponsor_job` (sponsoring an existing ATS job)
+
+When a sponsor sponsors an existing `SILVER_JOBS` row from the browse feed, the current `sponsor_job` endpoint accepts only `relationship` and `canRefer`. **The frontend now sends a 3-step flow** — relationship → insights → confirm — and includes the four insights fields plus a referral note in the payload.
+
+#### Frontend status
+
+✅ **Shipped 2026-04-27** — `JobsView.tsx` sponsor confirm modal is now 3 steps (form → insights → success). `sponsorJob()` in `lib/api.ts:284` sends the `insights` object.
+
+#### Required changes
+
+1. **Accept the new fields** on `POST /api/jobs/<silver_job_id>/sponsor/`:
+   ```json
+   {
+     "relationship": "current_employee",
+     "canRefer": true,
+     "referralNote": "I joined this team last year — happy to refer for ML backgrounds.",
+     "insights": {
+       "dayToDay": "...",
+       "teamCulture": "...",
+       "idealCandidate": "...",
+       "insiderInsights": ""
+     }
+   }
+   ```
+2. **Persist insights** to the same `job_postings` columns/JSONB used by §3.
+3. **Persist `referralNote`** to the `REFERRAL_NOTE` column from §4.2.
+
+#### Done when
+
+Sponsoring an ATS job from the browse feed creates a `JOB_POSTINGS` row with all four insights fields and the referral note populated. The applicant-facing back card then renders them via §4.1.
+
+---
+
+### Combined impact of §4.1 + §4.2 + §4.3 + §3
+
+Every sponsored back card — whether the job was created via `create-from-url` or by sponsoring an existing ATS job — will render:
+
+- Sponsor name, photo, role, years at company
+- Per-job referral note
+- Can-refer badge
+- Four insights sections (Day-to-Day, Team Culture, Ideal Candidate, Insider Insights)
+
+This replaces the current empty/blank state.
+
+---
+
+## 🔮 Optional — Not Ship Blockers
+
+> The app works without these. They replace placeholder UI with real data and meaningfully improve the experience, but are not required for launch.
+
+---
+
+### Optional A — Real Work Email Verification for Sponsor Onboarding
 
 **Affects:** `components/SponsorQuestionnaire.tsx` — step 8 "Verify your employment"
 
-**What's showing now:**
-The last step of sponsor sign-up asks for a work email (e.g. `name@company.com`). When the sponsor presses "Verify & Complete", the app shows a fake "Awaiting verification..." spinner for exactly **6 seconds** then submits registration regardless — no actual email was sent, no link was clicked, nothing was verified. The "Resend" button is also fake (a `setTimeout` with no API call).
+**What's showing now:** The last step of sponsor sign-up asks for a work email (e.g. `name@company.com`). When the sponsor presses "Verify & Complete", the app shows a fake "Awaiting verification..." spinner for exactly **6 seconds** then submits registration regardless — no actual email was sent, no link was clicked, nothing was verified. The "Resend" button is also fake (a `setTimeout` with no API call).
 
-**What users expect:**
-A real verification email sent to their work address, confirming they are actually employed at the company they claimed.
+**What users expect:** A real verification email sent to their work address, confirming they are actually employed at the company they claimed.
 
-**What to build:**
-
-Two new endpoints:
+#### Endpoints needed
 
 **1. `POST /api/auth/verify-work-email/send/`**
 
 - Sends a verification link to the provided work email address
 - Ties the pending verification to the authenticated user's session
-- Response `200`: `{ "message": "Verification email sent to name@company.com" }`
+- `200 → { "message": "Verification email sent to name@company.com" }`
 
 **2. `POST /api/auth/verify-work-email/confirm/`** (called when user clicks the link)
 
 - Validates the token from the email link
 - Marks `sponsor_profiles.work_email_verified = true` in the DB
-- Response `200`: `{ "verified": true }`
+- `200 → { "verified": true }`
 
-**Optionally**, `GET /api/auth/verify-work-email/status/` can be polled by the frontend to check if the user has clicked the link (enabling the "Awaiting verification..." UI to auto-advance).
+**3. `GET /api/auth/verify-work-email/status/`** *(optional — enables auto-advance UI)*
 
-**Frontend impact:** Once these endpoints exist, `SponsorQuestionnaire.tsx` can:
+- Polled by the frontend to check if the user has clicked the link
+
+#### Frontend impact
+
+Once the endpoints exist, `SponsorQuestionnaire.tsx` can:
 
 1. Call `POST /api/auth/verify-work-email/send/` when the sponsor presses "Verify & Complete"
-2. Show the "Awaiting verification..." screen and poll `GET /api/auth/verify-work-email/status/` every few seconds
+2. Show "Awaiting verification..." and poll `GET /api/auth/verify-work-email/status/` every few seconds
 3. Auto-advance to `handleFinalSubmit()` when `verified: true` is returned
 4. Wire the "Resend" button to a second call to the send endpoint
 
-**Current state (until this is deployed):** The fake 6-second delay will be removed from `SponsorQuestionnaire.tsx` and replaced with a direct submit — the work email is still collected and stored, just not verified. The "Verify your employment" step becomes a "Confirm your work email" collection step only.
+**Current state until shipped:** The fake 6-second delay will be removed and replaced with a direct submit — work email is still collected and stored, just not verified. The "Verify your employment" step becomes a "Confirm your work email" collection step only.
 
 ---
 
-### Optional E — Notifications Enhancements
+### Optional B — Notifications Enhancements
 
 **Affects:** `components/NotificationsView.tsx`
 
 **Context:** The notifications list is now fully interactive — tap-to-navigate, swipe-to-mark-read, pull-to-refresh, date grouping, ticking relative times. The items below unlock functionality the frontend cannot implement alone.
 
-**1. `DELETE /api/notifications/<id>/` — true per-row dismiss**
+#### 1. `DELETE /api/notifications/<id>/` — true per-row dismiss
 
-- Marks a single notification as dismissed for the owning user (hard delete or soft-delete via `DISMISSED_AT`).
-- Response `200`: `{ "message": "Notification deleted" }`
+- Marks a single notification as dismissed for the owning user (hard delete or soft-delete via `DISMISSED_AT`)
+- `200 → { "message": "Notification deleted" }`
 
 *Why:* Swipe currently maps to mark-as-read because there is no delete endpoint. Users expect swipe-away to mean gone.
 
-**2. `DELETE /api/notifications/?only=read` — bulk clear read**
+#### 2. `DELETE /api/notifications/?only=read` — bulk clear read
 
-- Deletes/dismisses all read notifications for the authenticated user.
-- Response `200`: `{ "deleted_count": N }`
+- Deletes/dismisses all read notifications for the authenticated user
+- `200 → { "deleted_count": N }`
 
 *Why:* Read notifications accumulate forever today. A "Clear read" action needs this.
 
-**3. Denormalized metadata on notification rows**
+#### 3. Denormalized metadata on notification rows
 
 Add nullable fields to the `GET /api/notifications/` response:
 
@@ -409,26 +477,63 @@ Add nullable fields to the `GET /api/notifications/` response:
 
 *Why:* The frontend has `RELATED_USER_ID` / `RELATED_JOB_ID` but no display data. Without these, richer cards ("John Smith liked *Senior Engineer* at Acme") require N+1 follow-up fetches per notification.
 
-**4. Realtime (or a cheap poll) channel**
+#### 4. Realtime (or a cheap poll) channel
 
 Either:
 
 - WebSocket `/ws/notifications/` that pushes newly-created rows, or
-- `GET /api/notifications/?since=<iso_timestamp>` to return only rows created after a client-held cursor.
+- `GET /api/notifications/?since=<iso_timestamp>` to return only rows created after a client-held cursor
 
 *Why:* The list is fetched once on mount and stale for the duration of the session. The `unread-count` poll updates the badge but not the list itself. A focused user sitting on the notifications screen never sees new rows arrive.
 
-**5. Server-side grouping of repeat events**
+#### 5. Server-side grouping of repeat events
 
 Aggregate near-identical events into a single row with a count (e.g., 5 `job_like` notifications on the same job within 10 minutes → one row, `body: "5 new applicants interested"`).
 
 *Why:* High-activity users (especially sponsors) can otherwise receive a cascade of identical rows, burying other events.
 
-**Frontend impact (when each ships):**
+#### Frontend impact (when each ships)
 
-1. Swap swipe-to-mark-read → swipe-to-delete; add "Clear read" button in header.
-2. Render richer cards with actual names/photos/job titles instead of generic `BODY` strings.
-3. Live list updates without manual pull-to-refresh.
-4. Collapse grouped rows with a count badge.
+1. Swap swipe-to-mark-read → swipe-to-delete; add "Clear read" button in header
+2. Render richer cards with actual names/photos/job titles instead of generic `BODY` strings
+3. Live list updates without manual pull-to-refresh
+4. Collapse grouped rows with a count badge
 
 **Current state:** Swipe → mark-read. All rows persist until manually marked. Cards show the generic server-provided `TITLE` / `BODY` only. Fresh rows appear only on pull-to-refresh or re-navigation.
+
+---
+
+### Optional C — Enrich `/api/profiles/pack/` with Bio + Insights
+
+**Affects:** `components/HomeView.tsx` — sponsor swipe deck
+
+**What's showing now:** The sponsor's swipe deck calls `fetch_profile_pack` ([queries/profiles.py:156](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/profiles.py#L156)), which returns a deliberately minimal projection: `USER_ID`, `FIRST_NAME`, `LAST_NAME`, `LOCATION`, `PHOTO_URL`, `REASON`, `POSITIONS`, `SKILLS`. It **omits** `applicant_profile.INSIGHTS` and the base `BIO`.
+
+When a sponsor flips an applicant card to view the back (insights/prompts), the panel is blank. The front-of-card "About" also falls back to the much shorter `REASON` field instead of the user's actual `BIO`.
+
+**Frontend workaround in place:** `HomeView.tsx` eager-fetches `GET /profiles/<USER_ID>/public/` for each card the sponsor lands on, caches the response keyed by `USER_ID` in `fullProfileCache`, and renders cached `INSIGHTS` + `BIO` when available. This works but doubles network round-trips per swipe and adds a brief loading state on the back of the card.
+
+#### What to build
+
+Extend `fetch_profile_pack`'s SELECT list to include:
+
+```sql
+ap.INSIGHTS::TEXT,
+up.BIO
+```
+
+…and return them on each pack row. Schema for `INSIGHTS` is already established as `[{"question": "...", "answer": "..."}]`.
+
+#### Done when
+
+`fetch_profile_pack` returns `INSIGHTS` + `BIO` per row, and the per-card lazy `getPublicProfile` call in `HomeView.tsx` (plus the `fullProfileCache` state) can be deleted — the swipe deck renders insights and full bio on first paint with zero extra requests.
+
+---
+
+## 📝 Changelog
+
+| Date       | Change                                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
+| 2026-04-27 | Audited against backend HEAD `125b425`. Verified company-filter for browse feed shipped (PR #36) — removed from doc. Reformatted with summary table, status badges, and "done when" criteria per item. |
+| 2026-04-27 | Added §4.3 (insights on `sponsor_job`). Frontend 3-step flow shipped same day. |
+| 2026-04-27 | Removed three Optionals (applications, profile stats, public profile stats) per scope decision. Renumbered surviving optionals to A, B, C. |

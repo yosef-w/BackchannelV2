@@ -1,71 +1,71 @@
 import {
-    fetchJobsPack,
-    fetchProfilesPack,
-    getMyJobs,
-    getPublicProfile,
-    joinWaitlist,
-    likeJob,
-    likeProfile,
+  fetchJobsPack,
+  fetchProfilesPack,
+  getMyJobs,
+  getPublicProfile,
+  joinWaitlist,
+  likeJob,
+  likeProfile,
 } from "@/lib/api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-    Award,
-    Briefcase,
-    Calendar,
-    Check,
-    ChevronDown,
-    ChevronRight,
-    Coffee,
-    DollarSign,
-    ExternalLink,
-    Globe,
-    GraduationCap,
-    Info,
-    Layers,
-    Mail,
-    MapPin,
-    MessageCircle,
-    RefreshCcw,
-    SlidersHorizontal,
-    Sparkles,
-    TrendingUp,
-    Users,
-    X,
-    Zap,
+  Award,
+  Briefcase,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Coffee,
+  DollarSign,
+  ExternalLink,
+  Globe,
+  GraduationCap,
+  Info,
+  Layers,
+  Mail,
+  MapPin,
+  MessageCircle,
+  RefreshCcw,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
+  Users,
+  X,
+  Zap,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-    FadeOut,
-    LinearTransition,
-    SlideInDown,
-    SlideOutDown,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSequence,
-    withTiming,
-    ZoomIn,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  LinearTransition,
+  SlideInDown,
+  SlideOutDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
@@ -1257,6 +1257,7 @@ export function HomeView({
   } | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [showFullBio, setShowFullBio] = useState(false);
   const [showMore, setShowMore] = useState(false);
 
   // Profile completion state
@@ -1535,6 +1536,57 @@ export function HomeView({
     }
   }, [userType, jobsLoading, jobs.length, profilesLoading, profiles.length]);
 
+  // Lazy-load the full applicant profile (insights, bio, experiences, etc.)
+  // on demand. The pack endpoint returns a minimal projection and omits
+  // INSIGHTS + BIO, so the back-of-card prompts are blank without this fetch.
+  const fetchFullProfileFor = useCallback(
+    async (userId: string) => {
+      if (!userId || fullProfileCache[userId] || fullProfileLoading) return;
+      setFullProfileLoading(true);
+      try {
+        const pub = await getPublicProfile(String(userId));
+        const ap = (pub as any).applicant_profile || {};
+        const parseV = (v: any): any[] => {
+          if (!v) return [];
+          if (typeof v === "string") {
+            try {
+              return JSON.parse(v) || [];
+            } catch {
+              return [];
+            }
+          }
+          return Array.isArray(v) ? v : [];
+        };
+        setFullProfileCache((prev) => ({
+          ...prev,
+          [userId]: {
+            experiences: parseV(ap.PROFESSIONAL_EXPERIENCES),
+            education: parseV(ap.EDUCATION_ENTRIES),
+            certifications: parseV(ap.CERTIFICATIONS),
+            languages: parseV(ap.LANGUAGES),
+            achievements: ap.ACHIEVEMENTS || "",
+            prompts: parseV(ap.INSIGHTS),
+            bio: (pub as any).BIO || "",
+          },
+        }));
+      } catch {
+        // silent — feature degrades gracefully if backend call fails
+      } finally {
+        setFullProfileLoading(false);
+      }
+    },
+    [fullProfileCache, fullProfileLoading],
+  );
+
+  // Eager-fetch the full applicant profile when a sponsor advances to a
+  // new card so the back-of-card insights + richer front-of-card bio are
+  // ready before the user flips.
+  useEffect(() => {
+    if (userType !== "sponsor") return;
+    const userId = (currentData as any)?.USER_ID;
+    if (userId) fetchFullProfileFor(String(userId));
+  }, [userType, currentData, fetchFullProfileFor]);
+
   const toggleFlip = () => {
     // console.log("[HomeView] toggleFlip called");
     rotateY.value = withTiming(isFlipped ? 0 : 180, { duration: 600 });
@@ -1550,41 +1602,11 @@ export function HomeView({
         80,
       );
 
-      // For sponsors viewing real API profiles: lazy-load full details on expand
+      // For sponsors viewing real API profiles: ensure full details are loaded
+      // (insights, bio, experiences, etc.) Pack endpoint returns minimal fields.
       if (userType === "sponsor") {
         const userId = currentData?.USER_ID;
-        if (userId && !fullProfileCache[userId] && !fullProfileLoading) {
-          setFullProfileLoading(true);
-          getPublicProfile(String(userId))
-            .then((pub) => {
-              const ap = (pub as any).applicant_profile || {};
-              const parseV = (v: any): any[] => {
-                if (!v) return [];
-                if (typeof v === "string") {
-                  try {
-                    return JSON.parse(v) || [];
-                  } catch {
-                    return [];
-                  }
-                }
-                return Array.isArray(v) ? v : [];
-              };
-              setFullProfileCache((prev) => ({
-                ...prev,
-                [userId]: {
-                  experiences: parseV(ap.PROFESSIONAL_EXPERIENCES),
-                  education: parseV(ap.EDUCATION_ENTRIES),
-                  certifications: parseV(ap.CERTIFICATIONS),
-                  languages: parseV(ap.LANGUAGES),
-                  achievements: ap.ACHIEVEMENTS || "",
-                },
-              }));
-            })
-            .catch(() => {
-              // Silently fail — fullDetails section stays empty
-            })
-            .finally(() => setFullProfileLoading(false));
-        }
+        if (userId) fetchFullProfileFor(String(userId));
       }
     } else {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -2017,15 +2039,16 @@ export function HomeView({
                               style={styles.profileImageSquare}
                             />
                             <View style={styles.profileInfoColumn}>
-                              <View style={styles.profileMetaRow}>
-                                <View style={styles.companyPill}>
-                                  <Text style={styles.companyPillText}>
-                                    {"company" in currentData
-                                      ? currentData.company
-                                      : ""}
-                                  </Text>
-                                </View>
-                              </View>
+                              {"company" in currentData &&
+                                !!currentData.company && (
+                                  <View style={styles.profileMetaRow}>
+                                    <View style={styles.companyPill}>
+                                      <Text style={styles.companyPillText}>
+                                        {currentData.company}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                )}
                               <View style={styles.profileMetaRow}>
                                 <MapPin color="#999" size={11} />
                                 <Text style={styles.profileLocation}>
@@ -2059,45 +2082,46 @@ export function HomeView({
 
                           {/* Content Section */}
                           <View style={styles.profileCardContent}>
-                            <View style={styles.descriptionSection}>
-                              <Text style={styles.sectionLabelSmall}>
-                                ABOUT
-                              </Text>
-                              <Text style={styles.descriptionText}>
-                                {"bio" in currentData ? currentData.bio : ""}
-                              </Text>
-                            </View>
-
-                            {"skills" in currentData &&
-                              currentData.skills &&
-                              currentData.skills.length > 0 && (
-                                <View style={styles.skillsSection}>
+                            {(() => {
+                              const uid = (currentData as any)?.USER_ID;
+                              const cachedBio =
+                                uid && fullProfileCache[String(uid)]?.bio;
+                              const bio: string =
+                                cachedBio ||
+                                ("bio" in currentData ? currentData.bio : "") ||
+                                "";
+                              const isLong = bio.length > 240;
+                              return (
+                                <View style={styles.descriptionSection}>
                                   <Text style={styles.sectionLabelSmall}>
-                                    TOP SKILLS
+                                    ABOUT
                                   </Text>
-                                  <View style={styles.skillsRow}>
-                                    {currentData.skills
-                                      .slice(0, 4)
-                                      .map((skill: string, idx: number) => (
-                                        <View
-                                          key={idx}
-                                          style={styles.skillChipSmall}
-                                        >
-                                          <Text
-                                            style={styles.skillChipSmallText}
-                                          >
-                                            {skill}
-                                          </Text>
-                                        </View>
-                                      ))}
-                                  </View>
+                                  <Text style={styles.descriptionText}>
+                                    {bio}
+                                  </Text>
+                                  {isLong && (
+                                    <TouchableOpacity
+                                      onPress={(e) => {
+                                        e.stopPropagation();
+                                        setShowFullBio(true);
+                                      }}
+                                      activeOpacity={0.7}
+                                      style={styles.readMoreBtn}
+                                    >
+                                      <Text style={styles.readMoreBtnText}>
+                                        Read more
+                                      </Text>
+                                      <ChevronRight color="#000" size={12} />
+                                    </TouchableOpacity>
+                                  )}
                                 </View>
-                              )}
+                              );
+                            })()}
                           </View>
                         </View>
                       </Animated.View>
 
-                      {/* Back Face - Insights Only */}
+                      {/* Back Face - Applicant Deep Profile */}
                       <Animated.View
                         style={[
                           styles.cardOuter,
@@ -2108,33 +2132,270 @@ export function HomeView({
                         <View style={[styles.cardInner, styles.cardInnerBack]}>
                           <ScrollView
                             showsVerticalScrollIndicator={false}
-                            contentContainerStyle={styles.cardInfoScrollable}
+                            contentContainerStyle={styles.applicantBackScroll}
                           >
-                            <View style={styles.backHeader}>
-                              <Text style={styles.backTitle}>
-                                {"name" in currentData ? currentData.name : ""}
-                              </Text>
-                            </View>
+                            {(() => {
+                              const uid = (currentData as any)?.USER_ID;
+                              const cached = uid
+                                ? fullProfileCache[String(uid)]
+                                : null;
+                              const inlinePrompts =
+                                "prompts" in currentData
+                                  ? (currentData as any).prompts
+                                  : null;
+                              const prompts: any[] =
+                                cached?.prompts && cached.prompts.length > 0
+                                  ? cached.prompts
+                                  : Array.isArray(inlinePrompts)
+                                    ? inlinePrompts
+                                    : [];
+                              const experiences: any[] = Array.isArray(
+                                cached?.experiences,
+                              )
+                                ? cached!.experiences
+                                : [];
+                              const education: any[] = Array.isArray(
+                                cached?.education,
+                              )
+                                ? cached!.education
+                                : [];
+                              const certifications: any[] = Array.isArray(
+                                cached?.certifications,
+                              )
+                                ? cached!.certifications
+                                : [];
+                              const languages: any[] = Array.isArray(
+                                cached?.languages,
+                              )
+                                ? cached!.languages
+                                : [];
+                              const achievements: string =
+                                cached?.achievements || "";
 
-                            {/* Prompts Section */}
-                            {"prompts" in currentData &&
-                              currentData.prompts?.map(
-                                (prompt: any, idx: number) => (
-                                  <View key={idx} style={styles.promptCard}>
-                                    <View style={styles.promptIconRow}>
-                                      <View style={styles.promptIconCircle}>
-                                        {prompt.icon}
-                                      </View>
-                                      <Text style={styles.promptQuestion}>
-                                        {prompt.question}
+                              const name =
+                                "name" in currentData ? currentData.name : "";
+                              const photo =
+                                "image" in currentData ? currentData.image : "";
+                              const role =
+                                "desiredRole" in currentData
+                                  ? currentData.desiredRole
+                                  : "";
+                              const location =
+                                "location" in currentData
+                                  ? currentData.location
+                                  : "";
+
+                              const stats: { value: string; label: string }[] =
+                                [];
+                              if (experiences.length > 0) {
+                                stats.push({
+                                  value: String(experiences.length),
+                                  label:
+                                    experiences.length === 1 ? "Role" : "Roles",
+                                });
+                              }
+                              if (languages.length > 0) {
+                                stats.push({
+                                  value: String(languages.length),
+                                  label:
+                                    languages.length === 1
+                                      ? "Language"
+                                      : "Languages",
+                                });
+                              }
+                              if (certifications.length > 0) {
+                                stats.push({
+                                  value: String(certifications.length),
+                                  label:
+                                    certifications.length === 1
+                                      ? "Cert"
+                                      : "Certs",
+                                });
+                              }
+
+                              const hasAnyContent =
+                                prompts.length > 0 || stats.length > 0;
+
+                              return (
+                                <>
+                                  {/* Stats Strip */}
+                                  {stats.length > 0 && (
+                                    <View style={styles.applicantBackStatsRow}>
+                                      {stats.map((s, i) => (
+                                        <View
+                                          key={s.label}
+                                          style={[
+                                            styles.applicantBackStatCell,
+                                            i === stats.length - 1 &&
+                                              styles.applicantBackStatCellLast,
+                                          ]}
+                                        >
+                                          <Text
+                                            style={
+                                              styles.applicantBackStatValue
+                                            }
+                                          >
+                                            {s.value}
+                                          </Text>
+                                          <Text
+                                            style={
+                                              styles.applicantBackStatLabel
+                                            }
+                                          >
+                                            {s.label}
+                                          </Text>
+                                        </View>
+                                      ))}
+                                    </View>
+                                  )}
+
+                                  {/* Loading skeleton when nothing is cached yet */}
+                                  {!hasAnyContent && fullProfileLoading && (
+                                    <View
+                                      style={styles.applicantBackLoadingWrap}
+                                    >
+                                      <ActivityIndicator color="#999" />
+                                      <Text
+                                        style={styles.applicantBackLoadingText}
+                                      >
+                                        Loading profile…
                                       </Text>
                                     </View>
-                                    <Text style={styles.promptAnswer}>
-                                      {prompt.answer}
-                                    </Text>
-                                  </View>
-                                ),
-                              )}
+                                  )}
+
+                                  {/* Empty state when nothing exists */}
+                                  {!hasAnyContent && !fullProfileLoading && (
+                                    <View style={styles.applicantBackSection}>
+                                      <View
+                                        style={
+                                          styles.applicantBackSectionHeader
+                                        }
+                                      >
+                                        <Sparkles color="#D1D5DB" size={12} />
+                                        <Text
+                                          style={[
+                                            styles.applicantBackSectionLabel,
+                                            { color: "#D1D5DB" },
+                                          ]}
+                                        >
+                                          INSIGHTS
+                                        </Text>
+                                      </View>
+                                      {(
+                                        [
+                                          { q: 55, a1: 80, a2: 60 },
+                                          { q: 40, a1: 70, a2: 45 },
+                                          { q: 50, a1: 65, a2: 50 },
+                                        ] as const
+                                      ).map((dims, i) => (
+                                        <View
+                                          key={i}
+                                          style={[
+                                            styles.insightQuoteCard,
+                                            { opacity: 0.5 - i * 0.13 },
+                                          ]}
+                                        >
+                                          <View
+                                            style={[
+                                              styles.insightQuoteAccent,
+                                              { backgroundColor: "#E5E7EB" },
+                                            ]}
+                                          />
+                                          <View
+                                            style={[
+                                              styles.insightQuoteContent,
+                                              { gap: 10 },
+                                            ]}
+                                          >
+                                            <View
+                                              style={{
+                                                width: `${dims.q}%`,
+                                                height: 7,
+                                                borderRadius: 4,
+                                                backgroundColor: "#EBEBEB",
+                                              }}
+                                            />
+                                            <View
+                                              style={{
+                                                width: `${dims.a1}%`,
+                                                height: 11,
+                                                borderRadius: 5,
+                                                backgroundColor: "#F0F0F0",
+                                              }}
+                                            />
+                                            <View
+                                              style={{
+                                                width: `${dims.a2}%`,
+                                                height: 11,
+                                                borderRadius: 5,
+                                                backgroundColor: "#F0F0F0",
+                                              }}
+                                            />
+                                          </View>
+                                        </View>
+                                      ))}
+                                      <Text
+                                        style={styles.applicantBackEmptyBody}
+                                      >
+                                        No insights added yet.
+                                      </Text>
+                                    </View>
+                                  )}
+
+                                  {/* Insights / Prompts */}
+                                  {prompts.length > 0 && (
+                                    <View style={styles.applicantBackSection}>
+                                      <View
+                                        style={
+                                          styles.applicantBackSectionHeader
+                                        }
+                                      >
+                                        <Sparkles color="#000" size={12} />
+                                        <Text
+                                          style={
+                                            styles.applicantBackSectionLabel
+                                          }
+                                        >
+                                          INSIGHTS
+                                        </Text>
+                                      </View>
+                                      {prompts.map(
+                                        (prompt: any, idx: number) => (
+                                          <View
+                                            key={idx}
+                                            style={styles.insightQuoteCard}
+                                          >
+                                            <View
+                                              style={styles.insightQuoteAccent}
+                                            />
+                                            <View
+                                              style={styles.insightQuoteContent}
+                                            >
+                                              {!!prompt.question && (
+                                                <Text
+                                                  style={
+                                                    styles.insightQuoteQuestion
+                                                  }
+                                                >
+                                                  {prompt.question}
+                                                </Text>
+                                              )}
+                                              <Text
+                                                style={
+                                                  styles.insightQuoteAnswer
+                                                }
+                                              >
+                                                {prompt.answer}
+                                              </Text>
+                                            </View>
+                                          </View>
+                                        ),
+                                      )}
+                                    </View>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </ScrollView>
                         </View>
                       </Animated.View>
@@ -2523,8 +2784,46 @@ export function HomeView({
                           );
                         }
 
+                        const topSkills: string[] = (() => {
+                          const fromCard =
+                            "skills" in currentData &&
+                            Array.isArray((currentData as any).skills)
+                              ? ((currentData as any).skills as string[])
+                              : [];
+                          const fromCache = Array.isArray((fd as any)?.skills)
+                            ? ((fd as any).skills as string[])
+                            : [];
+                          return fromCache.length > 0 ? fromCache : fromCard;
+                        })();
+
                         return (
                           <>
+                            {/* Top Skills */}
+                            {topSkills.length > 0 && (
+                              <View style={styles.detailSection}>
+                                <View style={styles.detailSectionHeader}>
+                                  <Zap size={16} color="#000" />
+                                  <Text style={styles.detailSectionTitle}>
+                                    Top Skills
+                                  </Text>
+                                </View>
+                                <View style={styles.skillsRow}>
+                                  {topSkills.map(
+                                    (skill: string, idx: number) => (
+                                      <View
+                                        key={idx}
+                                        style={styles.skillChipSmall}
+                                      >
+                                        <Text style={styles.skillChipSmallText}>
+                                          {skill}
+                                        </Text>
+                                      </View>
+                                    ),
+                                  )}
+                                </View>
+                              </View>
+                            )}
+
                             {/* Professional Experience */}
                             {Array.isArray(fd.experiences) &&
                               fd.experiences.length > 0 && (
@@ -3627,6 +3926,158 @@ export function HomeView({
           </ScrollView>
         </Animated.View>
       </Modal>
+
+      {/* Full Bio Modal */}
+      <Modal
+        visible={showFullBio}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFullBio(false)}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => setShowFullBio(false)}
+        >
+          <BlurView
+            intensity={60}
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+          />
+        </TouchableOpacity>
+
+        <Animated.View
+          entering={SlideInDown}
+          exiting={SlideOutDown}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: "#FFF",
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            paddingTop: 12,
+            paddingBottom: 40,
+            maxHeight: "75%",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 20,
+            elevation: 20,
+          }}
+        >
+          <View
+            style={{
+              width: 40,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: "#D1D5DB",
+              alignSelf: "center",
+              marginBottom: 20,
+            }}
+          />
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 28,
+              marginBottom: 8,
+            }}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: "#F5F5F5",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Info color="#000" size={20} />
+              </View>
+              <View>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: "800",
+                    color: "#000",
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  About
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "600",
+                    color: "#999",
+                    marginTop: 2,
+                  }}
+                >
+                  {currentData && "name" in currentData
+                    ? (currentData as any).name
+                    : ""}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowFullBio(false)}
+              style={{
+                width: 36,
+                height: 36,
+                backgroundColor: "#F5F5F5",
+                borderRadius: 18,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              activeOpacity={0.7}
+            >
+              <X color="#666" size={18} />
+            </TouchableOpacity>
+          </View>
+
+          <View
+            style={{
+              height: 1,
+              backgroundColor: "#F0F0F0",
+              marginHorizontal: 28,
+              marginVertical: 20,
+            }}
+          />
+
+          <ScrollView
+            style={{ paddingHorizontal: 28 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                lineHeight: 26,
+                color: "#444",
+                fontWeight: "500",
+                letterSpacing: -0.2,
+              }}
+            >
+              {(() => {
+                if (!currentData) return "";
+                const uid = (currentData as any)?.USER_ID;
+                const cachedBio =
+                  uid && fullProfileCache[String(uid)]?.bio;
+                if (cachedBio) return cachedBio;
+                return "bio" in currentData ? currentData.bio : "";
+              })()}
+            </Text>
+          </ScrollView>
+        </Animated.View>
+      </Modal>
     </View>
   );
 }
@@ -3979,6 +4430,19 @@ const styles = StyleSheet.create({
     color: "#333",
     lineHeight: 21,
     fontWeight: "500",
+  },
+  readMoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  readMoreBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.2,
   },
   skillsSection: {
     gap: 10,
@@ -4562,6 +5026,279 @@ const styles = StyleSheet.create({
     color: "#000",
     lineHeight: 24,
     letterSpacing: -0.2,
+  },
+
+  // Redesigned applicant back-of-card
+  applicantBackScroll: { padding: 20, paddingBottom: 40 },
+  applicantBackIdentity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  applicantBackPhoto: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#EEE",
+  },
+  applicantBackIdentityText: { flex: 1, gap: 2 },
+  applicantBackName: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.4,
+  },
+  applicantBackRole: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#444",
+  },
+  applicantBackLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  applicantBackLocationText: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+
+  applicantBackStatsRow: {
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingVertical: 14,
+    marginBottom: 24,
+  },
+  applicantBackStatCell: {
+    flex: 1,
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightColor: "#F0F0F0",
+  },
+  applicantBackStatCellLast: {
+    borderRightWidth: 0,
+  },
+  applicantBackStatValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.4,
+  },
+  applicantBackStatLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#999",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginTop: 2,
+  },
+
+  applicantBackSection: { marginBottom: 24 },
+  applicantBackSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  applicantBackSectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: 1.4,
+  },
+
+  applicantBackLoadingWrap: {
+    paddingVertical: 32,
+    alignItems: "center",
+    gap: 8,
+  },
+  applicantBackLoadingText: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+  applicantBackEmptyWrap: {
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    gap: 8,
+  },
+  applicantBackEmptyTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    marginTop: 4,
+  },
+  applicantBackEmptyBody: {
+    fontSize: 12,
+    color: "#C0C0C0",
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 4,
+    letterSpacing: 0.2,
+  },
+
+  // Insight (prompt) cards — quote-bar style
+  insightQuoteCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  insightQuoteAccent: {
+    width: 3,
+    backgroundColor: "#000",
+  },
+  insightQuoteContent: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 6,
+  },
+  insightQuoteQuestion: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  insightQuoteAnswer: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    lineHeight: 20,
+    letterSpacing: -0.2,
+  },
+
+  // Experience timeline
+  timelineItem: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  timelineDotWrap: {
+    width: 12,
+    alignItems: "center",
+    paddingTop: 4,
+  },
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#000",
+  },
+  timelineLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: "#E5E5E5",
+    marginTop: 4,
+    marginBottom: -4,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingBottom: 14,
+    gap: 2,
+  },
+  timelineRole: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    letterSpacing: -0.2,
+  },
+  timelineCompany: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#444",
+  },
+  timelineDates: {
+    fontSize: 11,
+    color: "#999",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+
+  // Education (back-of-card)
+  eduBackCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+    gap: 2,
+  },
+  eduBackSchool: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    letterSpacing: -0.2,
+  },
+  eduBackDegree: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#444",
+  },
+  eduBackYear: {
+    fontSize: 11,
+    color: "#999",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+
+  // Achievements (back-of-card)
+  achievementsBackCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  achievementsBackText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#222",
+    lineHeight: 20,
+  },
+
+  // Languages
+  languagePillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  languagePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  languagePillName: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#000",
+  },
+  languagePillProf: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#999",
   },
 
   insightSection: { marginBottom: 24 },

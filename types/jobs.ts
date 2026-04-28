@@ -4,16 +4,16 @@
  */
 
 export interface JobApiSponsor {
-  USER_ID?: number | string;
-  FIRST_NAME?: string;
-  LAST_NAME?: string;
-  JOB_TITLE?: string;
-  PHOTO_URL?: string | null;
-  COMPANY?: string | null;
-  OPEN_TO_REFERRALS?: boolean;
-  REFERRAL_ELIGIBLE?: boolean;
-  REFERRAL_NOTE?: string | null;
-  DURATION?: string | null;
+  user_id?: number | string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  job_title?: string;
+  photo_url?: string | null;
+  duration?: string | null;
+  years_at_company?: number | null;
+  can_provide_direct_referral?: boolean;
+  referral_note?: string | null;
 }
 
 export interface JobApiResponse {
@@ -288,7 +288,7 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
     benefits: highlights,
     currentSponsors: [],
-    isSponsored: false,
+    isSponsored: apiJob.job_type === "sponsored",
     topApplicants: [],
     // PR #24 relevance scoring + content fields
     requirementsSummary: apiJob.REQUIREMENTS_SUMMARY ?? null,
@@ -299,19 +299,22 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     // Sponsor info — present when job_type === "sponsored"
     sponsorInfo: apiJob.sponsor
       ? {
-          userId: apiJob.sponsor.USER_ID,
+          userId: apiJob.sponsor.user_id,
           name:
-            [apiJob.sponsor.FIRST_NAME, apiJob.sponsor.LAST_NAME]
+            apiJob.sponsor.name ||
+            [apiJob.sponsor.first_name, apiJob.sponsor.last_name]
               .filter(Boolean)
-              .join(" ") || "Sponsor",
-          role: apiJob.sponsor.JOB_TITLE || "",
-          image: apiJob.sponsor.PHOTO_URL || "",
-          yearsAtCompany: apiJob.sponsor.DURATION || undefined,
-          canRefer:
-            apiJob.sponsor.OPEN_TO_REFERRALS ??
-            apiJob.sponsor.REFERRAL_ELIGIBLE ??
-            false,
-          referralNote: apiJob.sponsor.REFERRAL_NOTE || undefined,
+              .join(" ") ||
+            "Sponsor",
+          role: apiJob.sponsor.job_title || "",
+          image: apiJob.sponsor.photo_url || "",
+          yearsAtCompany:
+            apiJob.sponsor.duration ||
+            (apiJob.sponsor.years_at_company != null
+              ? `${apiJob.sponsor.years_at_company} ${apiJob.sponsor.years_at_company === 1 ? "year" : "years"}`
+              : undefined),
+          canRefer: apiJob.sponsor.can_provide_direct_referral ?? false,
+          referralNote: apiJob.sponsor.referral_note || undefined,
         }
       : null,
   } as any; // Cast to any to allow extra fields for compatibility

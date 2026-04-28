@@ -280,12 +280,19 @@ export async function browseJobs(filters?: {
  * Body:
  * - relationship: string (e.g. "Hiring Manager", "Recruiter")
  * - canRefer: boolean
+ * - insights: { dayToDay, teamCulture, idealCandidate, insiderInsights }
  */
 export async function sponsorJob(
   jobId: string,
   data: {
     relationship?: string;
     canRefer?: boolean;
+    insights?: {
+      dayToDay?: string;
+      teamCulture?: string;
+      idealCandidate?: string;
+      insiderInsights?: string;
+    };
   },
 ): Promise<{
   job_id: string;
@@ -1363,6 +1370,32 @@ export async function createJob(data: {
   expires_at: string;
 }> {
   return api.post("/api/jobs/create/", data);
+}
+
+/**
+ * 💼 Create Job From URL (Sponsor)
+ * Submit a job-posting URL with scraped content + sponsor's BackChannel insights.
+ * Backend resolves the URL into a structured posting, then creates the sponsored job.
+ * Uses POST /api/jobs/create-from-url/
+ */
+export async function createJobFromUrl(data: {
+  url: string;
+  structured: Record<string, string | null> | null;
+  rawText: string;
+  insights: {
+    dayToDay: string;
+    teamCulture: string;
+    idealCandidate: string;
+    insiderInsights: string;
+  };
+}): Promise<{
+  job_id: string;
+  title: string;
+  company: string;
+  message: string;
+  expires_at: string;
+}> {
+  return api.post("/api/jobs/create-from-url/", data);
 }
 
 /**

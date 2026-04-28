@@ -1,6 +1,6 @@
 import {
   browseJobs,
-  createJob,
+  createJobFromUrl,
   getMyJobs,
   sponsorJob,
   unsponsorJob,
@@ -17,6 +17,7 @@ import {
   ChevronRight,
   DollarSign,
   FileText,
+  Globe,
   Lock,
   MapPin,
   MessageCircle,
@@ -59,6 +60,7 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
 } from "react-native-reanimated";
+import { WebView } from "react-native-webview";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -471,39 +473,136 @@ export function JobsView() {
   const [relationship, setRelationship] = useState<string | null>(null);
   const [canRefer, setCanRefer] = useState<boolean | null>(null);
   const [isSponsoring, setIsSponsoring] = useState(false);
+  // Insights captured during sponsor_job flow (separate from create-from-url state)
+  const [sponsorDayToDay, setSponsorDayToDay] = useState("");
+  const [sponsorTeamCulture, setSponsorTeamCulture] = useState("");
+  const [sponsorIdealCandidate, setSponsorIdealCandidate] = useState("");
+  const [sponsorInsiderInsights, setSponsorInsiderInsights] = useState("");
 
   // Create Listing Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createStep, setCreateStep] = useState(1);
-  const [jobTitle, setJobTitle] = useState("");
-  const [company, setCompany] = useState("");
-  const [location, setLocation] = useState("");
-  const [employmentType, setEmploymentType] = useState<string | null>(null);
-  const [experienceLevel, setExperienceLevel] = useState<string | null>(null);
-  const [salary, setSalary] = useState("");
-  const [description, setDescription] = useState("");
-  const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
-  const [skillInput, setSkillInput] = useState("");
-  const [workAuthorization, setWorkAuthorization] = useState<string | null>(
-    null,
-  );
-  const [referralProcess, setReferralProcess] = useState<string | null>(null);
-  const [canProvideReferral, setCanProvideReferral] = useState<boolean | null>(
-    null,
-  );
+  const [createFlowStep, setCreateFlowStep] = useState<
+    "url" | "webview" | "insights"
+  >("url");
+  const [jobUrlInput, setJobUrlInput] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [webviewLoading, setWebviewLoading] = useState(false);
+  const [webviewCanGoBack, setWebviewCanGoBack] = useState(false);
+  const [webviewCanGoForward, setWebviewCanGoForward] = useState(false);
   const [insiderInsights, setInsiderInsights] = useState("");
   const [dayToDay, setDayToDay] = useState("");
   const [teamCulture, setTeamCulture] = useState("");
   const [idealCandidate, setIdealCandidate] = useState("");
   const [isCreatingJob, setIsCreatingJob] = useState(false);
+  const [isScraping, setIsScraping] = useState(false);
+  const [jobScrapedData, setJobScrapedData] = useState<{
+    url: string;
+    structured: Record<string, string | null> | null;
+    rawText: string;
+  } | null>(null);
 
-  const createScrollViewRef = useRef<ScrollView>(null);
+  const previewWebViewRef = useRef<WebView>(null);
+
+  // Injected JS: tries JSON-LD JobPosting schema (Option 3) first,
+  // supplements with OG meta tags, then falls back to body.innerText (Option 1).
+  const jobScrapingScript = `
+    (function() {
+      try {
+        var structured = null;
+
+        // --- Option 3: JSON-LD structured data ---
+        var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+        for (var i = 0; i < ldScripts.length; i++) {
+          try {
+            var parsed = JSON.parse(ldScripts[i].textContent || ldScripts[i].innerText || '');
+            var items = Array.isArray(parsed) ? parsed : [parsed];
+            for (var j = 0; j < items.length; j++) {
+              var item = items[j];
+              if (item['@type'] === 'JobPosting') {
+                var salaryNode = item.baseSalary;
+                var salaryStr = null;
+                if (salaryNode && salaryNode.value) {
+                  var sv = salaryNode.value;
+                  salaryStr = (sv.minValue || '') + (sv.maxValue ? ' - ' + sv.maxValue : '') + (salaryNode.currency ? ' ' + salaryNode.currency : '');
+                  salaryStr = salaryStr.trim() || null;
+                }
+                var locNode = item.jobLocation;
+                var locStr = null;
+                if (locNode) {
+                  var addr = Array.isArray(locNode) ? locNode[0] : locNode;
+                  if (addr && addr.address) {
+                    locStr = [addr.address.addressLocality, addr.address.addressRegion, addr.address.addressCountry]
+                      .filter(Boolean).join(', ') || null;
+                  }
+                }
+                structured = {
+                  title: item.title || null,
+                  company: (item.hiringOrganization && item.hiringOrganization.name) || null,
+                  location: locStr,
+                  description: item.description || null,
+                  employmentType: item.employmentType || null,
+                  salary: salaryStr,
+                  datePosted: item.datePosted || null,
+                };
+                break;
+              }
+            }
+            if (structured) break;
+          } catch(e) {}
+        }
+
+        // --- Supplement / fallback: OG + standard meta tags ---
+        if (!structured) {
+          var getMeta = function(sel) {
+            var el = document.querySelector(sel);
+            return el ? (el.getAttribute('content') || null) : null;
+          };
+          var ogTitle = getMeta('meta[property="og:title"]') || getMeta('meta[name="title"]');
+          var ogDesc  = getMeta('meta[property="og:description"]') || getMeta('meta[name="description"]');
+          var ogSite  = getMeta('meta[property="og:site_name"]');
+          if (ogTitle || ogDesc) {
+            structured = {
+              title: ogTitle,
+              company: ogSite,
+              location: null,
+              description: ogDesc,
+              employmentType: null,
+              salary: null,
+              datePosted: null,
+            };
+          }
+        }
+
+        // --- Option 1: Raw visible text fallback ---
+        var rawText = (document.body && document.body.innerText) || '';
+        if (rawText.length > 60000) rawText = rawText.slice(0, 60000);
+
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'JOB_CONTENT_SCRAPED',
+          data: {
+            url: window.location.href,
+            structured: structured,
+            rawText: rawText,
+          }
+        }));
+      } catch(err) {
+        // Last-resort: at least send the URL and whatever text we can get
+        var fallbackText = '';
+        try { fallbackText = (document.body && document.body.innerText.slice(0, 60000)) || ''; } catch(e2) {}
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'JOB_CONTENT_SCRAPED',
+          data: {
+            url: window.location.href,
+            structured: null,
+            rawText: fallbackText,
+          }
+        }));
+      }
+      true;
+    })();
+  `;
 
   const isFormComplete = relationship !== null && canRefer !== null;
-
-  const scrollToTop = () => {
-    createScrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  };
 
   const handleOpenModal = (job: JobPosting) => {
     setSelectedJob(job);
@@ -516,6 +615,10 @@ export function JobsView() {
     setSelectedJob(null);
     setRelationship(null);
     setCanRefer(null);
+    setSponsorDayToDay("");
+    setSponsorTeamCulture("");
+    setSponsorIdealCandidate("");
+    setSponsorInsiderInsights("");
   };
 
   const handleConfirmSponsorship = async () => {
@@ -530,6 +633,12 @@ export function JobsView() {
       const response = await sponsorJob(selectedJob.id, {
         relationship,
         canRefer,
+        insights: {
+          dayToDay: sponsorDayToDay,
+          teamCulture: sponsorTeamCulture,
+          idealCandidate: sponsorIdealCandidate,
+          insiderInsights: sponsorInsiderInsights,
+        },
       });
       console.log("[JobsView] Sponsorship successful:", response);
       console.log("[JobsView] New JOB_POSTINGS ID:", response.job_id);
@@ -554,7 +663,7 @@ export function JobsView() {
       refreshMyJobs(false);
 
       // Move to success step
-      setSponsorshipStep(2);
+      setSponsorshipStep(3);
     } catch (err) {
       console.error("[JobsView] Failed to sponsor job:", err);
       // You could show an error message to the user here
@@ -565,72 +674,109 @@ export function JobsView() {
   };
 
   const openCreateModal = () => {
+    setCreateFlowStep("url");
+    setJobUrlInput("");
+    setPreviewUrl("");
     setShowCreateModal(true);
   };
 
   const closeCreateModal = () => {
     setShowCreateModal(false);
-    setCreateStep(1);
-    setJobTitle("");
-    setCompany("");
-    setLocation("");
-    setEmploymentType(null);
-    setExperienceLevel(null);
-    setSalary("");
-    setDescription("");
-    setRequiredSkills([]);
-    setSkillInput("");
-    setWorkAuthorization(null);
-    setReferralProcess(null);
-    setCanProvideReferral(null);
+    setCreateFlowStep("url");
+    setJobUrlInput("");
+    setPreviewUrl("");
+    setWebviewLoading(false);
+    setWebviewCanGoBack(false);
+    setWebviewCanGoForward(false);
     setInsiderInsights("");
     setDayToDay("");
     setTeamCulture("");
     setIdealCandidate("");
     setIsCreatingJob(false);
+    setIsScraping(false);
+    setJobScrapedData(null);
   };
 
-  const handlePublishJob = async () => {
+  const handlePreviewJob = () => {
+    let url = jobUrlInput.trim();
+    if (url && !url.startsWith("http")) url = "https://" + url;
+    setPreviewUrl(url);
+    setWebviewLoading(true);
+    setCreateFlowStep("webview");
+  };
+
+  const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === "JOB_CONTENT_SCRAPED") {
+        const payload = msg.data as {
+          url: string;
+          structured: Record<string, string | null> | null;
+          rawText: string;
+        };
+        setJobScrapedData(payload);
+        setIsScraping(false);
+
+        // ── Dev logging ─────────────────────────────────────────────────────
+        console.log("[CreateJob] ✅ Job content scraped successfully");
+        console.log("[CreateJob] URL:", payload.url);
+        if (payload.structured) {
+          console.log(
+            "[CreateJob] Structured data (JSON-LD / OG):",
+            JSON.stringify(payload.structured, null, 2),
+          );
+        } else {
+          console.log(
+            "[CreateJob] No structured data found — using raw text only.",
+          );
+        }
+        console.log(
+          "[CreateJob] Raw text preview (first 500 chars):\n",
+          payload.rawText.slice(0, 500),
+        );
+        console.log("[CreateJob] Full payload ready to send to backend:", {
+          url: payload.url,
+          hasStructured: !!payload.structured,
+          rawTextLength: payload.rawText.length,
+        });
+        // ────────────────────────────────────────────────────────────────────
+
+        // Advance to insights step
+        setCreateFlowStep("insights");
+      }
+    } catch {
+      // Non-JSON messages from the page itself — ignore
+    }
+  };
+
+  const handleConfirmJob = () => {
+    setIsScraping(true);
+    previewWebViewRef.current?.injectJavaScript(jobScrapingScript);
+  };
+
+  const handleCreateJob = async () => {
+    const payload = {
+      url: jobScrapedData?.url ?? previewUrl,
+      structured: jobScrapedData?.structured ?? null,
+      rawText: jobScrapedData?.rawText ?? "",
+      insights: { dayToDay, teamCulture, idealCandidate, insiderInsights },
+    };
+
     try {
       setIsCreatingJob(true);
-      // Build a rich description from the BackChannel insight fields
-      const descriptionParts: string[] = [];
-      if (description.trim()) descriptionParts.push(description.trim());
-      if (dayToDay.trim())
-        descriptionParts.push(`Day-to-Day:\n${dayToDay.trim()}`);
-      if (teamCulture.trim())
-        descriptionParts.push(`Team Culture:\n${teamCulture.trim()}`);
-      if (idealCandidate.trim())
-        descriptionParts.push(`Ideal Candidate:\n${idealCandidate.trim()}`);
-      if (insiderInsights.trim())
-        descriptionParts.push(`Additional Notes:\n${insiderInsights.trim()}`);
+      const response = await createJobFromUrl(payload);
+      console.log("[JobsView] Job created from URL:", response);
 
-      const response = await createJob({
-        title: jobTitle,
-        company,
-        location: location || undefined,
-        description:
-          descriptionParts.length > 0
-            ? descriptionParts.join("\n\n")
-            : undefined,
-        requirements:
-          requiredSkills.length > 0 ? requiredSkills.join(", ") : undefined,
-        experience_level: experienceLevel || undefined,
-        employment_type: employmentType || undefined,
-        remote_option: location.toLowerCase().includes("remote"),
-        relationship: referralProcess || undefined,
-        can_refer: canProvideReferral !== null ? canProvideReferral : undefined,
-      });
-
-      console.log("[JobsView] Job created:", response);
-
-      // Refresh "My Sponsored" list so badge count and tab reflect the new posting
+      // Refresh "My Sponsored" so the badge + tab reflect the new posting
       refreshMyJobs(false);
 
-      setCreateStep(7);
-      setTimeout(() => scrollToTop(), 100);
+      closeCreateModal();
+      Alert.alert(
+        "Job Posted!",
+        `Your listing for ${response.title} at ${response.company} is now live on the job board.`,
+      );
     } catch (err) {
-      console.error("[JobsView] Failed to create job:", err);
+      console.error("[JobsView] Failed to create job from URL:", err);
       Alert.alert(
         "Failed to Publish Job",
         err instanceof Error
@@ -643,10 +789,7 @@ export function JobsView() {
   };
 
   // Validation for each step
-  const canProceedStep1 = jobTitle.trim() && company.trim() && location.trim();
-  const canProceedStep2 = employmentType && experienceLevel;
-  const canProceedStep3 = requiredSkills.length > 0 && workAuthorization;
-  const canProceedStep4 = referralProcess && canProvideReferral !== null;
+  const canProceedStep3 = true; // insights are all optional
 
   return (
     <View style={styles.container}>
@@ -977,7 +1120,9 @@ export function JobsView() {
               <Text style={styles.modalMainTitle}>
                 {sponsorshipStep === 1
                   ? "Confirm Sponsorship"
-                  : "Sponsorship Active!"}
+                  : sponsorshipStep === 2
+                    ? "Add Insider Insights"
+                    : "Sponsorship Active!"}
               </Text>
               <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
                 <X color="#000" size={24} />
@@ -985,6 +1130,13 @@ export function JobsView() {
             </View>
             {sponsorshipStep === 1 ? (
               <>
+                <View style={styles.insightsStepRow}>
+                  <View
+                    style={[styles.stepDot, styles.stepDotActive, { width: 8 }]}
+                  />
+                  <View style={styles.stepDot} />
+                  <Text style={styles.insightsStepLabel}>Step 1 of 2</Text>
+                </View>
                 <ScrollView
                   showsVerticalScrollIndicator={false}
                   bounces={false}
@@ -1073,10 +1225,124 @@ export function JobsView() {
                 <TouchableOpacity
                   style={[
                     styles.confirmBtn,
-                    (!isFormComplete || isSponsoring) &&
-                      styles.confirmBtnDisabled,
+                    !isFormComplete && styles.confirmBtnDisabled,
                   ]}
-                  disabled={!isFormComplete || isSponsoring}
+                  disabled={!isFormComplete}
+                  onPress={() => setSponsorshipStep(2)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.confirmBtnText}>Continue</Text>
+                </TouchableOpacity>
+              </>
+            ) : sponsorshipStep === 2 ? (
+              <>
+                <View style={styles.insightsStepRow}>
+                  <View
+                    style={[styles.stepDot, styles.stepDotActive, { width: 8 }]}
+                  />
+                  <View style={[styles.stepDot, styles.stepDotActive]} />
+                  <Text style={styles.insightsStepLabel}>Step 2 of 2</Text>
+                </View>
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <Text style={styles.modalSubTitle}>
+                    Share the inside story that candidates won't find anywhere
+                    else. All fields are optional.
+                  </Text>
+
+                  <View style={styles.backchannelCallout}>
+                    <Text style={styles.backchannelTitle}>
+                      💡 Why This Matters
+                    </Text>
+                    <Text style={styles.backchannelText}>
+                      Unlike traditional job boards, BackChannel gives
+                      candidates real insider knowledge — which means better
+                      applicants and fewer surprises on both sides.
+                    </Text>
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.fieldLabel}>The Real Day-to-Day</Text>
+                    <Text style={styles.fieldHint}>
+                      What does this role actually look like beyond the job
+                      description?
+                    </Text>
+                    <TextInput
+                      style={[styles.textInput, styles.multilineInput]}
+                      placeholder="Be honest about daily work — meetings, focus time, pace, autonomy..."
+                      placeholderTextColor="#999"
+                      value={sponsorDayToDay}
+                      onChangeText={setSponsorDayToDay}
+                      multiline
+                      numberOfLines={4}
+                    />
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.fieldLabel}>
+                      Team Culture & Dynamics
+                    </Text>
+                    <Text style={styles.fieldHint}>
+                      Give candidates a real sense of who they'll be working
+                      with.
+                    </Text>
+                    <TextInput
+                      style={[styles.textInput, styles.multilineInput]}
+                      placeholder="Team size, seniority mix, remote vs. in-office norms, collaboration style..."
+                      placeholderTextColor="#999"
+                      value={sponsorTeamCulture}
+                      onChangeText={setSponsorTeamCulture}
+                      multiline
+                      numberOfLines={4}
+                    />
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.fieldLabel}>
+                      Who Actually Thrives Here
+                    </Text>
+                    <Text style={styles.fieldHint}>
+                      What matters more than what's on the resume?
+                    </Text>
+                    <TextInput
+                      style={[styles.textInput, styles.multilineInput]}
+                      placeholder="Mindset, soft skills, working style, previous backgrounds that tend to succeed..."
+                      placeholderTextColor="#999"
+                      value={sponsorIdealCandidate}
+                      onChangeText={setSponsorIdealCandidate}
+                      multiline
+                      numberOfLines={4}
+                    />
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.fieldLabel}>
+                      Everything Else Worth Knowing
+                    </Text>
+                    <Text style={styles.fieldHint}>
+                      Interview process, growth path, comp notes, anything
+                      candidates should know.
+                    </Text>
+                    <TextInput
+                      style={[styles.textInput, styles.multilineInput]}
+                      placeholder="Interview format, timeline, promotion path, equity situation..."
+                      placeholderTextColor="#999"
+                      value={sponsorInsiderInsights}
+                      onChangeText={setSponsorInsiderInsights}
+                      multiline
+                      numberOfLines={5}
+                    />
+                  </View>
+                </ScrollView>
+                <TouchableOpacity
+                  style={[
+                    styles.confirmBtn,
+                    isSponsoring && styles.confirmBtnDisabled,
+                  ]}
+                  disabled={isSponsoring}
                   onPress={handleConfirmSponsorship}
                   activeOpacity={0.7}
                 >
@@ -1108,9 +1374,9 @@ export function JobsView() {
         </View>
       </Modal>
 
-      {/* Create Listing Modal */}
+      {/* Step 1: URL Entry Modal */}
       <Modal
-        visible={showCreateModal}
+        visible={showCreateModal && createFlowStep === "url"}
         transparent
         animationType="fade"
         onRequestClose={closeCreateModal}
@@ -1136,16 +1402,9 @@ export function JobsView() {
             exiting={SlideOutDown}
             style={styles.createModalContent}
           >
+            {/* Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalMainTitle}>
-                {createStep === 1 && "Job Details"}
-                {createStep === 2 && "Employment Info"}
-                {createStep === 3 && "Requirements"}
-                {createStep === 4 && "Referral Process"}
-                {createStep === 5 && "Review"}
-                {createStep === 6 && "BackChannel Insights"}
-                {createStep === 7 && "Job Posted!"}
-              </Text>
+              <Text style={styles.modalMainTitle}>Add a Job</Text>
               <TouchableOpacity
                 onPress={closeCreateModal}
                 style={styles.closeButton}
@@ -1154,642 +1413,343 @@ export function JobsView() {
               </TouchableOpacity>
             </View>
 
-            {createStep < 7 && (
-              <View style={styles.stepIndicator}>
-                {[1, 2, 3, 4, 5, 6].map((step) => (
-                  <View
-                    key={step}
-                    style={[
-                      styles.stepDot,
-                      createStep >= step && styles.stepDotActive,
-                    ]}
-                  />
-                ))}
+            <Text style={styles.modalSubTitle}>
+              Paste the URL of the job posting you want to add to BackChannel.
+            </Text>
+
+            {/* URL Input */}
+            <View style={styles.urlInputContainer}>
+              <Globe color="#999" size={18} />
+              <TextInput
+                style={styles.urlTextInput}
+                placeholder="https://jobs.company.com/role"
+                placeholderTextColor="#999"
+                value={jobUrlInput}
+                onChangeText={setJobUrlInput}
+                keyboardType="url"
+                autoCapitalize="none"
+                autoCorrect={false}
+                onSubmitEditing={
+                  jobUrlInput.trim() ? handlePreviewJob : undefined
+                }
+                returnKeyType="go"
+              />
+              {jobUrlInput.trim().length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setJobUrlInput("")}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X color="#999" size={16} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <Text style={styles.urlHintText}>
+              Works with LinkedIn, Greenhouse, Lever, Workday, and most job
+              boards.
+            </Text>
+
+            {/* Preview Button */}
+            <TouchableOpacity
+              style={[
+                styles.confirmBtn,
+                {
+                  marginTop: 24,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                },
+                !jobUrlInput.trim() && styles.confirmBtnDisabled,
+              ]}
+              disabled={!jobUrlInput.trim()}
+              onPress={handlePreviewJob}
+              activeOpacity={0.85}
+            >
+              <Globe color={!jobUrlInput.trim() ? "#999" : "#FFF"} size={18} />
+              <Text
+                style={[
+                  styles.confirmBtnText,
+                  !jobUrlInput.trim() && { color: "#999" },
+                ]}
+              >
+                Preview Job
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Step 2: Full-Screen WebView Job Preview */}
+      <Modal
+        visible={showCreateModal && createFlowStep === "webview"}
+        animationType="slide"
+        onRequestClose={() => setCreateFlowStep("url")}
+      >
+        <SafeAreaView style={styles.webviewModalContainer}>
+          {/* Header */}
+          <View style={styles.createWebViewHeader}>
+            <TouchableOpacity
+              onPress={() => setCreateFlowStep("url")}
+              style={styles.createWebViewNavBtn}
+              activeOpacity={0.7}
+            >
+              <X color="#000" size={22} />
+            </TouchableOpacity>
+
+            <View style={styles.createWebViewUrlWrap}>
+              <Globe color="#999" size={13} />
+              <Text style={styles.createWebViewUrl} numberOfLines={1}>
+                {previewUrl}
+              </Text>
+            </View>
+
+            <View style={styles.createWebViewNavGroup}>
+              <TouchableOpacity
+                onPress={() => previewWebViewRef.current?.goBack()}
+                disabled={!webviewCanGoBack}
+                style={styles.createWebViewNavBtn}
+                activeOpacity={0.7}
+              >
+                <ChevronLeft
+                  color={webviewCanGoBack ? "#000" : "#CCC"}
+                  size={22}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => previewWebViewRef.current?.goForward()}
+                disabled={!webviewCanGoForward}
+                style={styles.createWebViewNavBtn}
+                activeOpacity={0.7}
+              >
+                <ChevronRight
+                  color={webviewCanGoForward ? "#000" : "#CCC"}
+                  size={22}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* WebView */}
+          <WebView
+            ref={previewWebViewRef}
+            source={{ uri: previewUrl }}
+            style={{ flex: 1 }}
+            onLoadStart={() => setWebviewLoading(true)}
+            onLoadEnd={() => setWebviewLoading(false)}
+            onNavigationStateChange={(nav) => {
+              setWebviewCanGoBack(nav.canGoBack);
+              setWebviewCanGoForward(nav.canGoForward);
+            }}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled
+            domStorageEnabled
+            thirdPartyCookiesEnabled
+            allowsBackForwardNavigationGestures={Platform.OS === "ios"}
+          />
+
+          {/* Loading overlay */}
+          {webviewLoading && (
+            <View style={styles.webviewLoadingOverlay} pointerEvents="none">
+              <ActivityIndicator size="large" color="#000" />
+            </View>
+          )}
+
+          {/* Confirm bar */}
+          <View style={styles.confirmJobBar}>
+            <View style={styles.confirmJobBarInner}>
+              <View style={styles.confirmJobStepPill}>
+                <Sparkles color="#FFF" size={11} />
+                <Text style={styles.confirmJobStepText}>Step 1 of 2</Text>
               </View>
-            )}
+              <Text style={styles.confirmJobBarLabel}>
+                Is this the right job?
+              </Text>
+              <TouchableOpacity
+                style={[styles.confirmJobBtn, isScraping && { opacity: 0.6 }]}
+                onPress={handleConfirmJob}
+                disabled={isScraping}
+                activeOpacity={0.85}
+              >
+                {isScraping ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Check color="#FFF" size={17} strokeWidth={2.5} />
+                    <Text style={styles.confirmJobBtnText}>Confirm Job</Text>
+                    <ChevronRight color="#FFF" size={17} />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Step 3: BackChannel Insights Modal */}
+      <Modal
+        visible={showCreateModal && createFlowStep === "insights"}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCreateFlowStep("webview")}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeCreateModal}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={styles.createModalContent}
+          >
+            {/* Header */}
+            <View style={[styles.modalHeader, { gap: 8 }]}>
+              <TouchableOpacity
+                onPress={() => setCreateFlowStep("webview")}
+                style={[styles.closeButton, { marginRight: 4 }]}
+              >
+                <ChevronLeft color="#000" size={24} />
+              </TouchableOpacity>
+              <Text style={[styles.modalMainTitle, { flex: 1 }]}>
+                BackChannel Insights
+              </Text>
+              <TouchableOpacity
+                onPress={closeCreateModal}
+                style={styles.closeButton}
+              >
+                <X color="#000" size={22} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Step indicator */}
+            <View style={styles.insightsStepRow}>
+              <View
+                style={[styles.stepDot, styles.stepDotActive, { width: 8 }]}
+              />
+              <View style={[styles.stepDot, styles.stepDotActive]} />
+              <Text style={styles.insightsStepLabel}>Step 2 of 2</Text>
+            </View>
 
             <ScrollView
-              ref={createScrollViewRef}
               showsVerticalScrollIndicator={false}
               bounces={false}
               style={styles.createScrollView}
             >
-              {/* Step 1: Job Details */}
-              {createStep === 1 && (
-                <Animated.View entering={FadeIn}>
-                  <Text style={styles.modalSubTitle}>
-                    Enter the basic information about the position
-                  </Text>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Job Title *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Senior Software Engineer"
-                      placeholderTextColor="#999"
-                      value={jobTitle}
-                      onChangeText={setJobTitle}
-                    />
-                  </View>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Company *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Google"
-                      placeholderTextColor="#999"
-                      value={company}
-                      onChangeText={setCompany}
-                    />
-                  </View>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Location *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. New York, NY or Remote"
-                      placeholderTextColor="#999"
-                      value={location}
-                      onChangeText={setLocation}
-                    />
-                  </View>
-                </Animated.View>
-              )}
+              <Text style={styles.modalSubTitle}>
+                Share the inside story that candidates won't find anywhere else.
+                All fields are optional.
+              </Text>
 
-              {/* Step 2: Employment Info */}
-              {createStep === 2 && (
-                <Animated.View entering={FadeIn}>
-                  <Text style={styles.modalSubTitle}>
-                    Specify employment type and experience level
-                  </Text>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Employment Type *</Text>
-                    {["Full-time", "Part-time", "Contract", "Internship"].map(
-                      (type) => (
-                        <TouchableOpacity
-                          key={type}
-                          style={styles.radioOption}
-                          onPress={() => setEmploymentType(type)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.radioLeft}>
-                            <View
-                              style={[
-                                styles.radioCircle,
-                                employmentType === type &&
-                                  styles.radioCircleActive,
-                              ]}
-                            />
-                            <Text
-                              style={[
-                                styles.radioText,
-                                employmentType === type &&
-                                  styles.radioTextActive,
-                              ]}
-                            >
-                              {type}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      ),
-                    )}
-                  </View>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Experience Level *</Text>
-                    {[
-                      "Entry Level",
-                      "Mid Level",
-                      "Senior Level",
-                      "Lead/Principal",
-                      "Executive",
-                    ].map((level) => (
-                      <TouchableOpacity
-                        key={level}
-                        style={styles.radioOption}
-                        onPress={() => setExperienceLevel(level)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.radioLeft}>
-                          <View
-                            style={[
-                              styles.radioCircle,
-                              experienceLevel === level &&
-                                styles.radioCircleActive,
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.radioText,
-                              experienceLevel === level &&
-                                styles.radioTextActive,
-                            ]}
-                          >
-                            {level}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>
-                      Salary Range (Optional)
-                    </Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. $120k - $180k"
-                      placeholderTextColor="#999"
-                      value={salary}
-                      onChangeText={setSalary}
-                    />
-                  </View>
-                </Animated.View>
-              )}
+              <View style={styles.backchannelCallout}>
+                <Text style={styles.backchannelTitle}>💡 Why This Matters</Text>
+                <Text style={styles.backchannelText}>
+                  Unlike traditional job boards, BackChannel gives candidates
+                  real insider knowledge — which means better applicants and
+                  fewer surprises on both sides.
+                </Text>
+              </View>
 
-              {/* Step 3: Requirements */}
-              {createStep === 3 && (
-                <Animated.View entering={FadeIn}>
-                  <Text style={styles.modalSubTitle}>
-                    Define the key requirements for this role
-                  </Text>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Required Skills *</Text>
-                    <Text style={styles.fieldHint}>
-                      List the key skills needed for this position (press comma,
-                      space, or enter to add)
-                    </Text>
-                    <TextInput
-                      style={[styles.textInput, styles.skillsInput]}
-                      placeholder="Type a skill and press comma, space, or enter..."
-                      placeholderTextColor="#999"
-                      value={skillInput}
-                      onChangeText={(text) => {
-                        const lastChar = text[text.length - 1];
-                        if (
-                          lastChar === "," ||
-                          lastChar === " " ||
-                          lastChar === "\n"
-                        ) {
-                          const skillText = text.slice(0, -1).trim();
-                          if (skillText.length > 0) {
-                            if (!requiredSkills.includes(skillText)) {
-                              setRequiredSkills((prev) => [...prev, skillText]);
-                            }
-                            setSkillInput("");
-                          }
-                        } else {
-                          setSkillInput(text);
-                        }
-                      }}
-                      onSubmitEditing={() => {
-                        const skillText = skillInput.trim();
-                        if (skillText.length > 0) {
-                          if (!requiredSkills.includes(skillText)) {
-                            setRequiredSkills((prev) => [...prev, skillText]);
-                          }
-                          setSkillInput("");
-                        }
-                      }}
-                      blurOnSubmit={false}
-                      returnKeyType="done"
-                    />
-                    {requiredSkills.length > 0 && (
-                      <View style={styles.skillsPreview}>
-                        {requiredSkills.map((skill, idx) => (
-                          <View key={idx} style={styles.previewSkillBadge}>
-                            <Text style={styles.previewSkillText}>{skill}</Text>
-                            <TouchableOpacity
-                              onPress={() =>
-                                setRequiredSkills((prev) =>
-                                  prev.filter((_, i) => i !== idx),
-                                )
-                              }
-                              hitSlop={{
-                                top: 10,
-                                bottom: 10,
-                                left: 10,
-                                right: 10,
-                              }}
-                            >
-                              <X size={14} color="#FFF" />
-                            </TouchableOpacity>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Work Authorization *</Text>
-                    {[
-                      "US Citizen/Green Card",
-                      "Visa Sponsorship Available",
-                      "Any Authorization",
-                    ].map((auth) => (
-                      <TouchableOpacity
-                        key={auth}
-                        style={styles.radioOption}
-                        onPress={() => setWorkAuthorization(auth)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.radioLeft}>
-                          <View
-                            style={[
-                              styles.radioCircle,
-                              workAuthorization === auth &&
-                                styles.radioCircleActive,
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.radioText,
-                              workAuthorization === auth &&
-                                styles.radioTextActive,
-                            ]}
-                          >
-                            {auth}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </Animated.View>
-              )}
+              {/* Day-to-Day */}
+              <View style={styles.formSection}>
+                <Text style={styles.fieldLabel}>The Real Day-to-Day</Text>
+                <Text style={styles.fieldHint}>
+                  What does this role actually look like beyond the job
+                  description?
+                </Text>
+                <TextInput
+                  style={[styles.textInput, styles.multilineInput]}
+                  placeholder="Be honest about daily work — meetings, focus time, pace, autonomy..."
+                  placeholderTextColor="#999"
+                  value={dayToDay}
+                  onChangeText={setDayToDay}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
 
-              {/* Step 4: Referral Process */}
-              {createStep === 4 && (
-                <Animated.View entering={FadeIn}>
-                  <Text style={styles.modalSubTitle}>
-                    How will you handle referrals and support applicants through
-                    the hiring process?
-                  </Text>
+              {/* Team Culture */}
+              <View style={styles.formSection}>
+                <Text style={styles.fieldLabel}>Team Culture & Dynamics</Text>
+                <Text style={styles.fieldHint}>
+                  Give candidates a real sense of who they'll be working with.
+                </Text>
+                <TextInput
+                  style={[styles.textInput, styles.multilineInput]}
+                  placeholder="Team size, seniority mix, remote vs. in-office norms, collaboration style..."
+                  placeholderTextColor="#999"
+                  value={teamCulture}
+                  onChangeText={setTeamCulture}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
 
-                  <View style={styles.infoCallout}>
-                    <Text style={styles.infoCalloutTitle}>
-                      🤝 The Power of Referrals
-                    </Text>
-                    <Text style={styles.infoCalloutText}>
-                      Your referral approach helps applicants understand what to
-                      expect and increases successful placements.
-                    </Text>
-                  </View>
+              {/* Ideal Candidate */}
+              <View style={styles.formSection}>
+                <Text style={styles.fieldLabel}>Who Actually Thrives Here</Text>
+                <Text style={styles.fieldHint}>
+                  What matters more than what's on the resume?
+                </Text>
+                <TextInput
+                  style={[styles.textInput, styles.multilineInput]}
+                  placeholder="Mindset, soft skills, working style, previous backgrounds that tend to succeed..."
+                  placeholderTextColor="#999"
+                  value={idealCandidate}
+                  onChangeText={setIdealCandidate}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
 
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>Referral Method *</Text>
-                    <Text style={styles.fieldHint}>
-                      How will you submit qualified candidates?
-                    </Text>
-                    {[
-                      {
-                        value: "Direct Referral to Hiring Manager",
-                        desc: "I will personally introduce candidates to the hiring manager",
-                      },
-                      {
-                        value: "Submit Through Company Portal",
-                        desc: "I will submit candidates through our internal system",
-                      },
-                      {
-                        value: "Forward Resume to Recruiter",
-                        desc: "I will forward resumes to our recruiting team",
-                      },
-                    ].map((process) => (
-                      <TouchableOpacity
-                        key={process.value}
-                        style={styles.radioOptionWithDesc}
-                        onPress={() => setReferralProcess(process.value)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.radioLeft}>
-                          <View
-                            style={[
-                              styles.radioCircle,
-                              referralProcess === process.value &&
-                                styles.radioCircleActive,
-                            ]}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text
-                              style={[
-                                styles.radioText,
-                                referralProcess === process.value &&
-                                  styles.radioTextActive,
-                              ]}
-                            >
-                              {process.value}
-                            </Text>
-                            <Text style={styles.radioDescription}>
-                              {process.desc}
-                            </Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>
-                      Can you provide a referral? *
-                    </Text>
-                    <Text style={styles.fieldHint}>
-                      Confirming your ability to refer increases applicant
-                      confidence
-                    </Text>
-                    <View style={styles.sideBySide}>
-                      <TouchableOpacity
-                        style={styles.halfOption}
-                        onPress={() => setCanProvideReferral(true)}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={[
-                            styles.radioCircle,
-                            canProvideReferral === true &&
-                              styles.radioCircleActive,
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.radioText,
-                            canProvideReferral === true &&
-                              styles.radioTextActive,
-                          ]}
-                        >
-                          Yes
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.halfOption}
-                        onPress={() => setCanProvideReferral(false)}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={[
-                            styles.radioCircle,
-                            canProvideReferral === false &&
-                              styles.radioCircleActive,
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.radioText,
-                            canProvideReferral === false &&
-                              styles.radioTextActive,
-                          ]}
-                        >
-                          No
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </Animated.View>
-              )}
-
-              {/* Step 5: Review */}
-              {createStep === 5 && (
-                <Animated.View entering={FadeIn}>
-                  <Text style={styles.modalSubTitle}>
-                    Review your job posting details
-                  </Text>
-                  <View style={styles.reviewCard}>
-                    <View style={styles.reviewSection}>
-                      <Text style={styles.reviewLabel}>JOB DETAILS</Text>
-                      <Text style={styles.reviewValue}>{jobTitle}</Text>
-                      <Text style={styles.reviewSubValue}>
-                        {company} • {location}
-                      </Text>
-                    </View>
-                    <View style={styles.reviewSection}>
-                      <Text style={styles.reviewLabel}>EMPLOYMENT</Text>
-                      <Text style={styles.reviewValue}>
-                        {employmentType} • {experienceLevel}
-                      </Text>
-                      {salary && (
-                        <Text style={styles.reviewSubValue}>{salary}</Text>
-                      )}
-                    </View>
-                    <View style={styles.reviewSection}>
-                      <Text style={styles.reviewLabel}>REQUIREMENTS</Text>
-                      <View style={styles.reviewSkills}>
-                        {requiredSkills.map((skill, idx) => (
-                          <View key={idx} style={styles.reviewSkillBadge}>
-                            <Text style={styles.reviewSkillText}>{skill}</Text>
-                          </View>
-                        ))}
-                      </View>
-                      <Text style={styles.reviewSubValue}>
-                        {workAuthorization}
-                      </Text>
-                    </View>
-                    <View style={styles.reviewSection}>
-                      <Text style={styles.reviewLabel}>REFERRAL PROCESS</Text>
-                      <Text style={styles.reviewValue}>{referralProcess}</Text>
-                      <Text style={styles.reviewSubValue}>
-                        Can provide referral:{" "}
-                        {canProvideReferral ? "Yes" : "No"}
-                      </Text>
-                    </View>
-                  </View>
-                </Animated.View>
-              )}
-
-              {/* Step 6: BackChannel Insights */}
-              {createStep === 6 && (
-                <Animated.View entering={FadeIn}>
-                  <Text style={styles.modalSubTitle}>
-                    Share the inside story that candidates won't find anywhere
-                    else
-                  </Text>
-
-                  <View style={styles.backchannelCallout}>
-                    <Text style={styles.backchannelTitle}>
-                      💡 Why BackChannel Insights Matter
-                    </Text>
-                    <Text style={styles.backchannelText}>
-                      Unlike traditional job boards, BackChannel gives you the
-                      opportunity to share the real story behind the role. This
-                      insider knowledge helps attract the right candidates and
-                      sets clear expectations from day one.
-                    </Text>
-                  </View>
-
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>The Real Day-to-Day</Text>
-                    <Text style={styles.fieldHint}>
-                      What does this role actually look like beyond the job
-                      description?
-                    </Text>
-                    <TextInput
-                      style={[styles.textInput, styles.multilineInput]}
-                      placeholder="Be honest about the daily work. Example: 'You'll spend mornings in collaborative planning, afternoons in deep work. Expect 2-3 hours of meetings weekly, mostly async. Some weeks are heads-down coding, others are high-touch with stakeholders...'"
-                      placeholderTextColor="#999"
-                      value={dayToDay}
-                      onChangeText={setDayToDay}
-                      multiline
-                      numberOfLines={4}
-                    />
-                  </View>
-
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>
-                      Team Culture & Dynamics
-                    </Text>
-                    <Text style={styles.fieldHint}>
-                      Give candidates a real sense of who they'll be working
-                      with
-                    </Text>
-                    <TextInput
-                      style={[styles.textInput, styles.multilineInput]}
-                      placeholder="Example: 'Team of 6 senior engineers, we value mentorship and collaboration over ego. Very flexible on remote work - many of us WFH 3-4 days/week. We do quarterly offsites and have a no-weekend-work policy...'"
-                      placeholderTextColor="#999"
-                      value={teamCulture}
-                      onChangeText={setTeamCulture}
-                      multiline
-                      numberOfLines={4}
-                    />
-                  </View>
-
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>
-                      Who Actually Thrives Here
-                    </Text>
-                    <Text style={styles.fieldHint}>
-                      What matters more than what's on the resume?
-                    </Text>
-                    <TextInput
-                      style={[styles.textInput, styles.multilineInput]}
-                      placeholder="Example: 'We need someone comfortable with ambiguity who can own projects end-to-end. Strong communication beats perfect technical skills - we can teach the tech stack. Previous startup experience is a plus but not required...'"
-                      placeholderTextColor="#999"
-                      value={idealCandidate}
-                      onChangeText={setIdealCandidate}
-                      multiline
-                      numberOfLines={4}
-                    />
-                  </View>
-
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>
-                      Everything Else Worth Knowing (Optional)
-                    </Text>
-                    <Text style={styles.fieldHint}>
-                      Growth opportunities or anything else candidates should
-                      know
-                    </Text>
-                    <TextInput
-                      style={[styles.textInput, styles.multilineInput]}
-                      placeholder="Example: 'Interview is 3 rounds over 2 weeks - intro call, technical deep-dive, team fit. We're planning to 2x the team this year. Clear promotion path to Staff in 18-24 months. Comp is competitive but we're not top-of-market...'"
-                      placeholderTextColor="#999"
-                      value={insiderInsights}
-                      onChangeText={setInsiderInsights}
-                      multiline
-                      numberOfLines={5}
-                    />
-                  </View>
-                </Animated.View>
-              )}
-
-              {/* Step 7: Success */}
-              {createStep === 7 && (
-                <Animated.View entering={FadeIn} style={styles.successStep}>
-                  <View style={styles.successIconCircle}>
-                    <Check color="#FFF" size={32} strokeWidth={3} />
-                  </View>
-                  <Text style={styles.successTitle}>
-                    Job Posted Successfully!
-                  </Text>
-                  <Text style={styles.successDesc}>
-                    Your job posting for {jobTitle} is now live and visible to
-                    applicants on the job board.
-                  </Text>
-                </Animated.View>
-              )}
+              {/* Other Notes */}
+              <View style={styles.formSection}>
+                <Text style={styles.fieldLabel}>
+                  Everything Else Worth Knowing
+                </Text>
+                <Text style={styles.fieldHint}>
+                  Interview process, growth path, comp notes, anything
+                  candidates should know.
+                </Text>
+                <TextInput
+                  style={[styles.textInput, styles.multilineInput]}
+                  placeholder="Interview format, timeline, promotion path, equity situation..."
+                  placeholderTextColor="#999"
+                  value={insiderInsights}
+                  onChangeText={setInsiderInsights}
+                  multiline
+                  numberOfLines={5}
+                />
+              </View>
             </ScrollView>
 
-            {/* Navigation Buttons */}
-            {createStep < 7 && (
-              <View style={styles.navigationButtons}>
-                {createStep > 1 && createStep < 6 && (
-                  <TouchableOpacity
-                    style={styles.backNavBtn}
-                    onPress={() => {
-                      setCreateStep(createStep - 1);
-                      setTimeout(() => scrollToTop(), 100);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <ChevronLeft color="#000" size={20} />
-                    <Text style={styles.backNavText}>Back</Text>
-                  </TouchableOpacity>
-                )}
-                {createStep < 6 ? (
-                  <TouchableOpacity
-                    style={[
-                      styles.nextBtn,
-                      createStep === 1 &&
-                        !canProceedStep1 &&
-                        styles.confirmBtnDisabled,
-                      createStep === 2 &&
-                        !canProceedStep2 &&
-                        styles.confirmBtnDisabled,
-                      createStep === 3 &&
-                        !canProceedStep3 &&
-                        styles.confirmBtnDisabled,
-                      createStep === 4 &&
-                        !canProceedStep4 &&
-                        styles.confirmBtnDisabled,
-                      createStep === 1 && { flex: 1 },
-                    ]}
-                    disabled={
-                      (createStep === 1 && !canProceedStep1) ||
-                      (createStep === 2 && !canProceedStep2) ||
-                      (createStep === 3 && !canProceedStep3) ||
-                      (createStep === 4 && !canProceedStep4)
-                    }
-                    onPress={() => {
-                      setCreateStep(createStep + 1);
-                      setTimeout(() => scrollToTop(), 100);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.confirmBtnText}>Continue</Text>
-                    <ChevronRight color="#FFF" size={20} />
-                  </TouchableOpacity>
-                ) : createStep === 6 ? (
-                  <>
-                    <TouchableOpacity
-                      style={styles.backNavBtn}
-                      onPress={() => {
-                        setCreateStep(5);
-                        setTimeout(() => scrollToTop(), 100);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <ChevronLeft color="#000" size={20} />
-                      <Text style={styles.backNavText}>Back</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.nextBtn,
-                        isCreatingJob && { opacity: 0.6 },
-                      ]}
-                      onPress={handlePublishJob}
-                      disabled={isCreatingJob}
-                      activeOpacity={0.7}
-                    >
-                      {isCreatingJob ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                      ) : (
-                        <Text style={styles.confirmBtnText}>Publish Job</Text>
-                      )}
-                    </TouchableOpacity>
-                  </>
-                ) : null}
-              </View>
-            )}
-
-            {createStep === 7 && (
-              <TouchableOpacity
-                style={styles.confirmBtn}
-                onPress={closeCreateModal}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.confirmBtnText}>Back to Job Board</Text>
-              </TouchableOpacity>
-            )}
+            {/* Create Job Button */}
+            <TouchableOpacity
+              style={[styles.createJobBtn, isCreatingJob && { opacity: 0.6 }]}
+              onPress={handleCreateJob}
+              disabled={isCreatingJob}
+              activeOpacity={0.85}
+            >
+              {isCreatingJob ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Sparkles color="#FFF" size={18} />
+                  <Text style={styles.confirmBtnText}>Create Job</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
@@ -3069,6 +3029,155 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     width: "100%",
     maxHeight: "90%",
+  },
+
+  // URL Entry Step
+  urlInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1.5,
+    borderColor: "#EEE",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 2,
+    gap: 10,
+  },
+  urlTextInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#000",
+    paddingVertical: 14,
+    fontWeight: "500",
+  },
+  urlHintText: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 10,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
+
+  // WebView Preview Step
+  webviewModalContainer: {
+    flex: 1,
+    backgroundColor: "#FFF",
+  },
+  createWebViewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+    backgroundColor: "#FFF",
+    gap: 8,
+  },
+  createWebViewNavBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    backgroundColor: "#F5F5F5",
+  },
+  createWebViewUrlWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  createWebViewUrl: {
+    flex: 1,
+    fontSize: 12,
+    color: "#555",
+    fontWeight: "500",
+  },
+  createWebViewNavGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  webviewLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmJobBar: {
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 8,
+  },
+  confirmJobBarInner: {
+    alignItems: "center",
+    gap: 10,
+  },
+  confirmJobStepPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#000",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  confirmJobStepText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.3,
+  },
+  confirmJobBarLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+  },
+  confirmJobBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 18,
+    width: "100%",
+  },
+  confirmJobBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+
+  // Insights Step
+  insightsStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 20,
+  },
+  insightsStepLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#999",
+    marginLeft: 4,
+  },
+  createJobBtn: {
+    backgroundColor: "#000",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 18,
+    borderRadius: 18,
+    marginTop: 4,
   },
   stepIndicator: {
     flexDirection: "row",
