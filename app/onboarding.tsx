@@ -25,6 +25,10 @@ export default function OnboardingScreen() {
   }, [userType]);
 
   const [step, setStep] = useState<Step>("onboarding");
+  // True once the user has advanced to the questionnaire step.
+  // When they navigate back, we want to land on sign-up (not sign-in)
+  // with their previously entered data still visible.
+  const [hasStartedSignup, setHasStartedSignup] = useState(false);
 
   if (step === "onboarding") {
     return (
@@ -40,8 +44,14 @@ export default function OnboardingScreen() {
     return (
       <AuthScreen
         userType={userType}
+        // Default to sign-in on first arrival; switch to sign-up only when
+        // the user has already been to the questionnaire step and navigated back.
+        initialIsLogin={!hasStartedSignup}
         onBack={() => setStep("onboarding")}
-        onComplete={() => setStep("questionnaire")}
+        onComplete={() => {
+          setHasStartedSignup(true);
+          setStep("questionnaire");
+        }}
         onLoginComplete={() =>
           router.replace({ pathname: "/dashboard", params: { mode: userType } })
         }

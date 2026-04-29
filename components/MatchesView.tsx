@@ -1,48 +1,50 @@
 import {
-    getInterestedSponsors,
-    getLikedJobs,
-    getMatches,
-    getPublicProfile,
-    getSponsorMatches,
-    getWaitlistedJobs,
-    listReferrals,
-    withdrawReferral,
+  getInterestedSponsors,
+  getLikedJobs,
+  getMatches,
+  getPublicProfile,
+  getSponsorMatches,
+  getWaitlistedJobs,
+  listReferrals,
+  withdrawReferral,
 } from "@/lib/api";
+import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
-    Award,
-    Briefcase,
-    CheckCircle,
-    Clock,
-    DollarSign,
-    Heart,
-    MapPin,
-    MessageCircle,
-    Sparkles,
-    Users,
-    Zap,
+  AlertTriangle,
+  Award,
+  Briefcase,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Heart,
+  MapPin,
+  MessageCircle,
+  Sparkles,
+  Users,
+  Zap,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInRight,
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
+  FadeInRight,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -82,6 +84,7 @@ interface Referral {
   createdAt: string;
   applicantFirstName: string | null;
   applicantLastName: string | null;
+  applicantPhotoUrl: string | null;
   jobTitle: string | null;
   jobCompany: string | null;
 }
@@ -222,6 +225,16 @@ export function MatchesView({
   const [withdrawingReferralId, setWithdrawingReferralId] = useState<
     string | null
   >(null);
+  const [confirmingWithdrawReferral, setConfirmingWithdrawReferral] =
+    useState<Referral | null>(null);
+  const [undoToastVisible, setUndoToastVisible] = useState(false);
+  const [pendingWithdrawReferralId, setPendingWithdrawReferralId] = useState<
+    string | null
+  >(null);
+  const [pendingWithdrawApplicantName, setPendingWithdrawApplicantName] =
+    useState<string>("");
+  const withdrawTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useToastStore((state) => state.showToast);
 
   // Fetch matches on mount
   useEffect(() => {
@@ -318,7 +331,7 @@ export function MatchesView({
           setMatches(transformedMatches);
         }
       } catch (err) {
-        console.error("[MatchesView] Failed to fetch matches:", err);
+        console.warn("[MatchesView] Failed to fetch matches:", err);
         setMatchesError(
           err instanceof Error ? err.message : "Failed to fetch matches",
         );
@@ -345,7 +358,7 @@ export function MatchesView({
         // API returns array directly or object with liked_jobs
         const likedJobsArray = Array.isArray(response)
           ? response
-          : response.liked_jobs || [];
+          : (response as any).liked_jobs || [];
 
         // Transform API response to JobOpportunity interface
         const transformedJobs: JobOpportunity[] = likedJobsArray.map(
@@ -387,7 +400,7 @@ export function MatchesView({
 
         setLikedJobs(transformedJobs);
       } catch (err) {
-        console.error("[MatchesView] Failed to fetch liked jobs:", err);
+        console.warn("[MatchesView] Failed to fetch liked jobs:", err);
         setLikedJobsError(
           err instanceof Error ? err.message : "Failed to fetch liked jobs",
         );
@@ -434,7 +447,7 @@ export function MatchesView({
           );
           setInterestedSponsors([]);
         } else {
-          console.error(
+          console.warn(
             "[MatchesView] Failed to fetch interested sponsors:",
             err,
           );
@@ -458,7 +471,7 @@ export function MatchesView({
         const response = await getWaitlistedJobs();
         setWaitlistedJobs(response.jobs);
       } catch (err) {
-        console.error("[MatchesView] Failed to fetch waitlisted jobs:", err);
+        console.warn("[MatchesView] Failed to fetch waitlisted jobs:", err);
         setWaitlistedJobsError(
           err instanceof Error
             ? err.message
@@ -492,6 +505,8 @@ export function MatchesView({
               r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
             applicantLastName:
               r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
+            applicantPhotoUrl:
+              r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
             jobTitle: r.JOB_TITLE || r.job_title || null,
             jobCompany: r.JOB_COMPANY || r.job_company || null,
           }),
@@ -501,7 +516,7 @@ export function MatchesView({
         const msg = err instanceof Error ? err.message : String(err);
         // 404 means no referrals yet — show empty state, not an error
         if (!msg.includes("404") && !msg.toLowerCase().includes("not found")) {
-          console.error("[MatchesView] Failed to fetch referrals:", err);
+          console.warn("[MatchesView] Failed to fetch referrals:", err);
           setReferralsError(msg);
         }
       } finally {
@@ -548,7 +563,7 @@ export function MatchesView({
         const profile = await getPublicProfile(sponsor.userId);
         setInterestedSponsorProfile(profile);
       } catch (err) {
-        console.error(
+        console.warn(
           "[MatchesView] Failed to load sponsor public profile:",
           err,
         );
@@ -567,45 +582,80 @@ export function MatchesView({
     setMessage("");
   };
 
-  const handleWithdrawReferral = async (referralId: string) => {
-    if (withdrawingReferralId) return; // debounce concurrent taps
+  const commitWithdrawReferral = async (referralId: string) => {
     setWithdrawingReferralId(referralId);
     try {
       await withdrawReferral(referralId);
-      // Optimistically update status in local state
+    } catch (err) {
+      console.warn("[MatchesView] Failed to withdraw referral:", err);
+      // Revert the optimistic update on error
       setReferrals((prev) =>
         prev.map((r) =>
-          r.referralId === referralId ? { ...r, status: "WITHDRAWN" } : r,
+          r.referralId === referralId ? { ...r, status: "REFERRED" } : r,
         ),
       );
-    } catch (err) {
-      console.error("[MatchesView] Failed to withdraw referral:", err);
-      // Re-fetch to restore truth from server
-      try {
-        const response = await listReferrals({ limit: 50, offset: 0 });
-        setReferrals(
-          (response.referrals || []).map((r: any) => ({
-            referralId: r.REFERRAL_ID || r.referral_id || "",
-            jobId: r.JOB_ID || r.job_id || "",
-            applicantUserId: r.APPLICANT_USER_ID || r.applicant_user_id || "",
-            sponsorUserId: r.SPONSOR_USER_ID || r.sponsor_user_id || "",
-            status: r.STATUS || r.status || "REFERRED",
-            referralNote: r.REFERRAL_NOTE || r.referral_note || null,
-            createdAt: r.CREATED_AT || r.created_at || "",
-            applicantFirstName:
-              r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
-            applicantLastName:
-              r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
-            jobTitle: r.JOB_TITLE || r.job_title || null,
-            jobCompany: r.JOB_COMPANY || r.job_company || null,
-          })),
-        );
-      } catch {
-        // ignore refresh error
-      }
+      showToast(
+        "Something went wrong. Your referral is still active.",
+        "error",
+      );
     } finally {
       setWithdrawingReferralId(null);
+      setPendingWithdrawReferralId(null);
+      setPendingWithdrawApplicantName("");
+      setUndoToastVisible(false);
     }
+  };
+
+  const handleConfirmWithdrawWithUndo = (referral: Referral) => {
+    const referralId = referral.referralId;
+    const applicantName =
+      [referral.applicantFirstName, referral.applicantLastName]
+        .filter(Boolean)
+        .join(" ") || "Applicant";
+
+    // Close the confirmation modal immediately
+    setConfirmingWithdrawReferral(null);
+
+    // Optimistically mark as withdrawn in local state
+    setReferrals((prev) =>
+      prev.map((r) =>
+        r.referralId === referralId ? { ...r, status: "WITHDRAWN" } : r,
+      ),
+    );
+
+    // Show the undo toast
+    setPendingWithdrawReferralId(referralId);
+    setPendingWithdrawApplicantName(applicantName);
+    setUndoToastVisible(true);
+
+    // Clear any previous timer and schedule the actual API call after 6s
+    if (withdrawTimeoutRef.current) {
+      clearTimeout(withdrawTimeoutRef.current);
+    }
+    withdrawTimeoutRef.current = setTimeout(() => {
+      setUndoToastVisible(false);
+      commitWithdrawReferral(referralId);
+    }, 6000);
+  };
+
+  const handleUndoWithdraw = () => {
+    if (withdrawTimeoutRef.current) {
+      clearTimeout(withdrawTimeoutRef.current);
+      withdrawTimeoutRef.current = null;
+    }
+    // Revert optimistic update
+    if (pendingWithdrawReferralId) {
+      setReferrals((prev) =>
+        prev.map((r) =>
+          r.referralId === pendingWithdrawReferralId
+            ? { ...r, status: "REFERRED" }
+            : r,
+        ),
+      );
+    }
+    setPendingWithdrawReferralId(null);
+    setPendingWithdrawApplicantName("");
+    setUndoToastVisible(false);
   };
 
   return (
@@ -735,7 +785,8 @@ export function MatchesView({
                       .join(" ") ||
                     matchForReferral?.name ||
                     "Applicant";
-                  const applicantImage = matchForReferral?.image || "";
+                  const applicantImage =
+                    referral.applicantPhotoUrl || matchForReferral?.image || "";
                   const isReferred = referral.status === "REFERRED";
                   const isWithdrawing =
                     withdrawingReferralId === referral.referralId;
@@ -817,7 +868,7 @@ export function MatchesView({
                               isWithdrawing && styles.withdrawBtnDisabled,
                             ]}
                             onPress={() =>
-                              handleWithdrawReferral(referral.referralId)
+                              setConfirmingWithdrawReferral(referral)
                             }
                             disabled={isWithdrawing}
                           >
@@ -2252,6 +2303,151 @@ export function MatchesView({
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Withdraw Referral Confirmation Modal */}
+      <Modal
+        visible={!!confirmingWithdrawReferral}
+        transparent
+        animationType="none"
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setConfirmingWithdrawReferral(null)}
+          >
+            <BlurView
+              intensity={30}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={[styles.modalContent, { maxHeight: "60%" }]}
+          >
+            <View style={styles.modalHandle} />
+
+            {confirmingWithdrawReferral &&
+              (() => {
+                const matchForReferral = matches.find(
+                  (m) =>
+                    m.applicantUserId ===
+                    confirmingWithdrawReferral.applicantUserId,
+                );
+                const applicantName =
+                  [
+                    confirmingWithdrawReferral.applicantFirstName,
+                    confirmingWithdrawReferral.applicantLastName,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") ||
+                  matchForReferral?.name ||
+                  "this applicant";
+                const isProcessing =
+                  withdrawingReferralId ===
+                  confirmingWithdrawReferral.referralId;
+
+                return (
+                  <View>
+                    <View style={styles.withdrawIconCircle}>
+                      <AlertTriangle
+                        size={28}
+                        color="#DC2626"
+                        strokeWidth={2.5}
+                      />
+                    </View>
+
+                    <Text style={styles.withdrawModalTitle}>
+                      Withdraw referral?
+                    </Text>
+                    <Text style={styles.withdrawModalSubtitle}>
+                      You're about to withdraw{" "}
+                      <Text style={styles.withdrawModalEmphasis}>
+                        {applicantName}
+                      </Text>
+                      {confirmingWithdrawReferral.jobTitle
+                        ? `'s referral for ${confirmingWithdrawReferral.jobTitle}.`
+                        : "'s referral."}
+                    </Text>
+
+                    <View style={styles.withdrawWarningCard}>
+                      <View style={styles.withdrawWarningRow}>
+                        <View style={styles.withdrawWarningDot} />
+                        <Text style={styles.withdrawWarningText}>
+                          You'll have a few seconds to undo this.
+                        </Text>
+                      </View>
+                      <View style={styles.withdrawWarningRow}>
+                        <View style={styles.withdrawWarningDot} />
+                        <Text style={styles.withdrawWarningText}>
+                          The applicant will be notified of the withdrawal.
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.withdrawModalActions}>
+                      <TouchableOpacity
+                        style={styles.withdrawCancelBtn}
+                        onPress={() => setConfirmingWithdrawReferral(null)}
+                        disabled={isProcessing}
+                      >
+                        <Text style={styles.withdrawCancelBtnText}>
+                          Keep referral
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.withdrawConfirmBtn,
+                          isProcessing && styles.withdrawBtnDisabled,
+                        ]}
+                        onPress={() =>
+                          handleConfirmWithdrawWithUndo(
+                            confirmingWithdrawReferral,
+                          )
+                        }
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <Text style={styles.withdrawConfirmBtnText}>
+                            Yes, withdraw
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })()}
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Undo toast — shown after confirming withdrawal, before API commit */}
+      {undoToastVisible && (
+        <Animated.View
+          entering={SlideInDown.springify().damping(20)}
+          exiting={SlideOutDown.springify().damping(20)}
+          style={styles.undoToast}
+          pointerEvents="box-none"
+        >
+          <Text style={styles.undoToastText}>
+            Referral withdrawn
+            {pendingWithdrawApplicantName
+              ? ` for ${pendingWithdrawApplicantName}`
+              : ""}
+          </Text>
+          <TouchableOpacity
+            onPress={handleUndoWithdraw}
+            style={styles.undoToastBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.undoToastBtnText}>Undo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -3212,6 +3408,132 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700" as const,
     color: "#DC2626",
+  },
+  withdrawIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 18,
+  },
+  withdrawModalTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+    letterSpacing: -0.5,
+    marginBottom: 10,
+  },
+  withdrawModalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 21,
+    fontWeight: "500",
+    marginBottom: 22,
+    paddingHorizontal: 4,
+  },
+  withdrawModalEmphasis: {
+    fontWeight: "800",
+    color: "#000",
+  },
+  withdrawWarningCard: {
+    backgroundColor: "#FFF5F5",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#FFE5E5",
+    padding: 16,
+    marginBottom: 24,
+    gap: 10,
+  },
+  withdrawWarningRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  withdrawWarningDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#DC2626",
+    marginTop: 7,
+  },
+  withdrawWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#7F1D1D",
+    lineHeight: 19,
+    fontWeight: "600",
+  },
+  withdrawModalActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  withdrawCancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  withdrawCancelBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  withdrawConfirmBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: "#DC2626",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  undoToast: {
+    position: "absolute",
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  undoToastText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "600",
+    flex: 1,
+    marginRight: 12,
+  },
+  undoToastBtn: {
+    backgroundColor: "#00CB54",
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  undoToastBtnText: {
+    color: "#FFF",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  withdrawConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFF",
   },
   referralDateText: {
     fontSize: 11,

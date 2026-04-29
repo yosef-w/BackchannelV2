@@ -1,71 +1,72 @@
 import {
-  fetchJobsPack,
-  fetchProfilesPack,
-  getMyJobs,
-  getPublicProfile,
-  joinWaitlist,
-  likeJob,
-  likeProfile,
+    fetchJobsPack,
+    fetchProfilesPack,
+    getMyJobs,
+    getPublicProfile,
+    joinWaitlist,
+    likeJob,
+    likeProfile,
 } from "@/lib/api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-  Award,
-  Briefcase,
-  Calendar,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Coffee,
-  DollarSign,
-  ExternalLink,
-  Globe,
-  GraduationCap,
-  Info,
-  Layers,
-  Mail,
-  MapPin,
-  MessageCircle,
-  RefreshCcw,
-  SlidersHorizontal,
-  Sparkles,
-  TrendingUp,
-  Users,
-  X,
-  Zap,
+    Award,
+    BellRing,
+    Briefcase,
+    Calendar,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    Coffee,
+    DollarSign,
+    ExternalLink,
+    Globe,
+    GraduationCap,
+    Info,
+    Layers,
+    Mail,
+    MapPin,
+    MessageCircle,
+    RefreshCcw,
+    SlidersHorizontal,
+    Sparkles,
+    TrendingUp,
+    Users,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  FadeOut,
-  LinearTransition,
-  SlideInDown,
-  SlideOutDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-  ZoomIn,
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    FadeOut,
+    LinearTransition,
+    SlideInDown,
+    SlideOutDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+    ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
@@ -723,8 +724,6 @@ const mockJobs = [
         "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800",
       yearsAtCompany: "4 years",
       canRefer: true,
-      referralNote:
-        "I personally review all applications and fast-track strong candidates through our process.",
     },
     backchannelInsights: {
       dayToDay:
@@ -801,8 +800,6 @@ const mockJobs = [
         "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800",
       yearsAtCompany: "3 years",
       canRefer: true,
-      referralNote:
-        "I'm looking for designers who think in systems and can balance craft with shipping velocity.",
     },
     backchannelInsights: {
       dayToDay:
@@ -878,8 +875,6 @@ const mockJobs = [
         "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800",
       yearsAtCompany: "5 years",
       canRefer: true,
-      referralNote:
-        "I fast-track candidates who can balance technical rigor with business impact. Show me you care about the music, not just the models.",
     },
     backchannelInsights: {
       dayToDay:
@@ -951,8 +946,6 @@ const mockJobs = [
         "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800",
       yearsAtCompany: "6 years",
       canRefer: true,
-      referralNote:
-        "We're looking for engineers who love automation and think about reliability from day one. If you've scaled infrastructure before, let's talk.",
     },
     backchannelInsights: {
       dayToDay:
@@ -1444,7 +1437,7 @@ export function HomeView({
             );
           });
         } catch (err) {
-          console.error("[HomeView] Failed to fetch jobs:", err);
+          console.warn("[HomeView] Failed to fetch jobs:", err);
           setJobsError(
             err instanceof Error ? err.message : "Failed to fetch jobs",
           );
@@ -1508,7 +1501,7 @@ export function HomeView({
           );
           setProfiles(transformedProfiles);
         } catch (err) {
-          console.error("[HomeView] Failed to fetch profiles:", err);
+          console.warn("[HomeView] Failed to fetch profiles:", err);
           setProfilesError(
             err instanceof Error ? err.message : "Failed to fetch profiles",
           );
@@ -1734,7 +1727,7 @@ export function HomeView({
           }
         }
       } catch (err) {
-        console.error("[HomeView] Failed to record like:", err);
+        console.warn("[HomeView] Failed to record like:", err);
         // Continue with UI update even if API fails
       }
 
@@ -1794,7 +1787,7 @@ export function HomeView({
         await joinWaitlist(String(pendingJob.id));
       }
     } catch (err) {
-      console.error("[HomeView] Failed to join waitlist:", err);
+      console.warn("[HomeView] Failed to join waitlist:", err);
       // Still show success UI — the user's intent is clear
     } finally {
       setIsJoiningWaitlist(false);
@@ -1971,7 +1964,7 @@ export function HomeView({
                             await fetchProfilesPack(activeSponsoredJobId);
                           setProfiles(response.profiles);
                         } catch (err) {
-                          console.error(
+                          console.warn(
                             "[HomeView] Failed to fetch profiles:",
                             err,
                           );
@@ -2616,11 +2609,18 @@ export function HomeView({
                                     </View>
                                   )}
 
-                                <View style={styles.noSponsorBanner}>
-                                  <MessageCircle size={16} color="#666" />
-                                  <Text style={styles.noSponsorText}>
-                                    No active sponsors yet. Join the waitlist to
-                                    get notified.
+                                <View style={styles.emptyStateDivider} />
+
+                                <View style={styles.noSponsorEmptyState}>
+                                  <View style={styles.noSponsorIconCircle}>
+                                    <BellRing size={22} color="#000" />
+                                  </View>
+                                  <Text style={styles.noSponsorHeadline}>
+                                    Be the first to know
+                                  </Text>
+                                  <Text style={styles.noSponsorSubtext}>
+                                    When a sponsor signs on for this role,
+                                    you'll get notified instantly.
                                   </Text>
                                 </View>
                               </>
@@ -2656,9 +2656,33 @@ export function HomeView({
                                             style={styles.sponsorAvatar}
                                           />
                                           <View style={{ flex: 1 }}>
-                                            <Text style={styles.sponsorName}>
-                                              {currentData.sponsorInfo.name}
-                                            </Text>
+                                            <View style={styles.sponsorNameRow}>
+                                              <Text
+                                                style={styles.sponsorName}
+                                                numberOfLines={1}
+                                              >
+                                                {currentData.sponsorInfo.name}
+                                              </Text>
+                                              {currentData.sponsorInfo
+                                                .canRefer && (
+                                                <View
+                                                  style={styles.canReferTag}
+                                                >
+                                                  <Check
+                                                    size={10}
+                                                    color="#00A843"
+                                                    strokeWidth={3}
+                                                  />
+                                                  <Text
+                                                    style={
+                                                      styles.canReferTagText
+                                                    }
+                                                  >
+                                                    Can refer
+                                                  </Text>
+                                                </View>
+                                              )}
+                                            </View>
                                             <Text style={styles.sponsorRole}>
                                               {currentData.sponsorInfo.role}
                                             </Text>
@@ -2684,40 +2708,148 @@ export function HomeView({
                                         </View>
                                       </View>
 
+                                      {/* Insights Section */}
                                       <View style={styles.insightSection}>
                                         <View style={styles.insightHeaderRow}>
                                           <Text
                                             style={styles.insightSectionLabel}
                                           >
-                                            REFERRAL NOTE
+                                            THE INSIDE STORY
                                           </Text>
                                         </View>
-                                        <Text style={styles.insightContent}>
-                                          {currentData.sponsorInfo.referralNote}
-                                        </Text>
+                                        {(() => {
+                                          const ins =
+                                            "backchannelInsights" in
+                                              currentData &&
+                                            currentData.backchannelInsights
+                                              ? currentData.backchannelInsights
+                                              : null;
+                                          const hasContent =
+                                            ins &&
+                                            (ins.dayToDay ||
+                                              ins.teamCulture ||
+                                              ins.idealCandidate ||
+                                              (ins as any).insiderInsights);
+                                          if (!hasContent) {
+                                            return (
+                                              <View
+                                                style={styles.insightsEmpty}
+                                              >
+                                                <View
+                                                  style={
+                                                    styles.insightsEmptyIcon
+                                                  }
+                                                >
+                                                  <Sparkles
+                                                    size={20}
+                                                    color="#999"
+                                                  />
+                                                </View>
+                                                <Text
+                                                  style={
+                                                    styles.insightsEmptyTitle
+                                                  }
+                                                >
+                                                  Insights coming soon
+                                                </Text>
+                                                <Text
+                                                  style={
+                                                    styles.insightsEmptySubtext
+                                                  }
+                                                >
+                                                  This sponsor hasn't shared
+                                                  insider context for this role
+                                                  yet.
+                                                </Text>
+                                              </View>
+                                            );
+                                          }
+                                          return (
+                                            <View style={{ gap: 18 }}>
+                                              {ins?.dayToDay ? (
+                                                <View
+                                                  style={styles.insightBlock}
+                                                >
+                                                  <Text
+                                                    style={styles.insightLabel}
+                                                  >
+                                                    DAY-TO-DAY
+                                                  </Text>
+                                                  <Text
+                                                    style={
+                                                      styles.insightContent
+                                                    }
+                                                  >
+                                                    {ins.dayToDay}
+                                                  </Text>
+                                                </View>
+                                              ) : null}
+                                              {ins?.teamCulture ? (
+                                                <View
+                                                  style={styles.insightBlock}
+                                                >
+                                                  <Text
+                                                    style={styles.insightLabel}
+                                                  >
+                                                    TEAM CULTURE
+                                                  </Text>
+                                                  <Text
+                                                    style={
+                                                      styles.insightContent
+                                                    }
+                                                  >
+                                                    {ins.teamCulture}
+                                                  </Text>
+                                                </View>
+                                              ) : null}
+                                              {ins?.idealCandidate ? (
+                                                <View
+                                                  style={styles.insightBlock}
+                                                >
+                                                  <Text
+                                                    style={styles.insightLabel}
+                                                  >
+                                                    WHO THRIVES HERE
+                                                  </Text>
+                                                  <Text
+                                                    style={
+                                                      styles.insightContent
+                                                    }
+                                                  >
+                                                    {ins.idealCandidate}
+                                                  </Text>
+                                                </View>
+                                              ) : null}
+                                              {(ins as any)?.insiderInsights ? (
+                                                <View
+                                                  style={styles.insightBlock}
+                                                >
+                                                  <Text
+                                                    style={styles.insightLabel}
+                                                  >
+                                                    EVERYTHING ELSE
+                                                  </Text>
+                                                  <Text
+                                                    style={
+                                                      styles.insightContent
+                                                    }
+                                                  >
+                                                    {
+                                                      (ins as any)
+                                                        .insiderInsights
+                                                    }
+                                                  </Text>
+                                                </View>
+                                              ) : null}
+                                            </View>
+                                          );
+                                        })()}
                                       </View>
-
-                                      {currentData.sponsorInfo.canRefer && (
-                                        <View style={styles.canReferBadge}>
-                                          <Check size={14} color="#00CB54" />
-                                          <Text style={styles.canReferText}>
-                                            Can provide direct referral
-                                          </Text>
-                                        </View>
-                                      )}
                                     </>
                                   )}
                               </>
                             )}
                           </ScrollView>
-                          <TouchableOpacity
-                            style={styles.flipBackBtn}
-                            onPress={toggleFlip}
-                          >
-                            <Text style={styles.flipBackText}>
-                              View Job Details
-                            </Text>
-                          </TouchableOpacity>
                         </View>
                       </Animated.View>
                     </>
@@ -4069,8 +4201,7 @@ export function HomeView({
               {(() => {
                 if (!currentData) return "";
                 const uid = (currentData as any)?.USER_ID;
-                const cachedBio =
-                  uid && fullProfileCache[String(uid)]?.bio;
+                const cachedBio = uid && fullProfileCache[String(uid)]?.bio;
                 if (cachedBio) return cachedBio;
                 return "bio" in currentData ? currentData.bio : "";
               })()}
@@ -4731,7 +4862,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cardInfo: { padding: 24 },
-  cardInfoScrollable: { padding: 24, paddingBottom: 80 },
+  cardInfoScrollable: { padding: 24, paddingBottom: 32 },
   nameText: {
     fontSize: 18,
     fontWeight: "800",
@@ -5332,26 +5463,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 
-  flipBackBtn: {
-    position: "absolute",
-    bottom: 12,
-    left: 12,
-    right: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: "#FBFBFB",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  flipBackText: {
-    fontSize: 12,
-    color: "#BBB",
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-
   overlayCenter: {
     flex: 1,
     alignItems: "center",
@@ -5513,6 +5624,61 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   canReferText: { fontSize: 12, fontWeight: "700", color: "#00CB54" },
+  sponsorNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 2,
+  },
+  canReferTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8FBEF",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  canReferTagText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#00A843",
+    letterSpacing: 0.2,
+  },
+  insightBlock: {},
+  insightsEmpty: {
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+  },
+  insightsEmptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  insightsEmptyTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  insightsEmptySubtext: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#888",
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 260,
+  },
   skillBadge: {
     backgroundColor: "#F5F5F5",
     paddingHorizontal: 12,
@@ -5631,6 +5797,42 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
     lineHeight: 18,
+  },
+  emptyStateDivider: {
+    height: 1,
+    backgroundColor: "#EEE",
+    alignSelf: "stretch",
+    marginVertical: 24,
+  },
+  noSponsorEmptyState: {
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  noSponsorIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  noSponsorHeadline: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 6,
+    textAlign: "center",
+    letterSpacing: -0.2,
+  },
+  noSponsorSubtext: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#777",
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 280,
   },
 
   // Apply Modal

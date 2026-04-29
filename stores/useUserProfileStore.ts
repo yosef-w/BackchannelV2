@@ -452,7 +452,10 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch (error) {
-      console.warn("Failed to persist notification preferences locally:", error);
+      console.warn(
+        "Failed to persist notification preferences locally:",
+        error,
+      );
     }
 
     // Direct, targeted PATCH — do NOT go through the full-profile sync queue.
@@ -460,7 +463,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       const { updateUserProfile } = await import("../lib/api");
       await updateUserProfile({ notification_preferences: merged });
     } catch (error) {
-      console.error("Failed to save notification preferences:", error);
+      console.warn("Failed to save notification preferences:", error);
       // Roll back on failure so the UI doesn't show a state the backend
       // didn't accept.
       const rolledBack = { ...get().data, notificationPreferences: prev };
@@ -562,7 +565,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       await authApi.updateProfile(data);
       set({ lastSyncedAt: new Date(), syncError: null, needsSync: false });
     } catch (error: any) {
-      console.error("Failed to sync profile to backend:", error);
+      console.warn("Failed to sync profile to backend:", error);
 
       if (
         error.message?.includes("network") ||
@@ -798,7 +801,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
             (profile as any).sponsor_profile?.COMPANIES_CAN_REFER_TO,
           );
           if (fromBackend.length > 0) return fromBackend;
-          if (existing.sponsorCompanies.length > 0) return existing.sponsorCompanies;
+          if (existing.sponsorCompanies.length > 0)
+            return existing.sponsorCompanies;
           // Seed with their own company if COMPANIES_CAN_REFER_TO is null
           const ownCompany = (profile as any).sponsor_profile?.COMPANY;
           return ownCompany ? [ownCompany] : [];
@@ -818,7 +822,6 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           return raw;
         })(),
       };
-
 
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });
 

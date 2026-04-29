@@ -117,8 +117,13 @@ class ApiClient {
     if (!response.ok) {
       const rawText = await response.text().catch(() => "");
       let errorData: any = {};
-      try { errorData = JSON.parse(rawText); } catch {}
-      console.error(`[API ${response.status}] ${endpoint}`, rawText.slice(0, 500));
+      try {
+        errorData = JSON.parse(rawText);
+      } catch {}
+      console.warn(
+        `[API ${response.status}] ${endpoint}`,
+        rawText.slice(0, 500),
+      );
       const errorMessage =
         errorData?.error ||
         errorData?.detail ||
@@ -148,8 +153,13 @@ class ApiClient {
     if (!retryResponse.ok) {
       const rawText = await retryResponse.text().catch(() => "");
       let errorData: any = {};
-      try { errorData = JSON.parse(rawText); } catch {}
-      console.error(`[API retry ${retryResponse.status}] ${url}`, rawText.slice(0, 500));
+      try {
+        errorData = JSON.parse(rawText);
+      } catch {}
+      console.warn(
+        `[API retry ${retryResponse.status}] ${url}`,
+        rawText.slice(0, 500),
+      );
       const errorMessage =
         errorData?.error ||
         errorData?.detail ||
@@ -1545,8 +1555,10 @@ export async function listReferrals(params?: {
     UPDATED_AT: string;
     SPONSOR_FIRST_NAME: string | null;
     SPONSOR_LAST_NAME: string | null;
+    SPONSOR_PHOTO_URL: string | null;
     APPLICANT_FIRST_NAME: string | null;
     APPLICANT_LAST_NAME: string | null;
+    APPLICANT_PHOTO_URL: string | null;
     JOB_TITLE: string | null;
     JOB_COMPANY: string | null;
   }>;

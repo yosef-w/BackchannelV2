@@ -13,7 +13,6 @@ export interface JobApiSponsor {
   duration?: string | null;
   years_at_company?: number | null;
   can_provide_direct_referral?: boolean;
-  referral_note?: string | null;
 }
 
 export interface JobApiResponse {
@@ -114,7 +113,6 @@ export interface Job {
     image: string;
     yearsAtCompany?: string;
     canRefer: boolean;
-    referralNote?: string;
     userId?: string | number;
   } | null;
 }
@@ -314,7 +312,6 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
               ? `${apiJob.sponsor.years_at_company} ${apiJob.sponsor.years_at_company === 1 ? "year" : "years"}`
               : undefined),
           canRefer: apiJob.sponsor.can_provide_direct_referral ?? false,
-          referralNote: apiJob.sponsor.referral_note || undefined,
         }
       : null,
   } as any; // Cast to any to allow extra fields for compatibility

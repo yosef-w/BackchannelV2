@@ -1,64 +1,64 @@
 import {
-  browseJobs,
-  createJobFromUrl,
-  getMyJobs,
-  sponsorJob,
-  unsponsorJob,
+    browseJobs,
+    createJobFromUrl,
+    getMyJobs,
+    sponsorJob,
+    unsponsorJob,
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
+import { useToastStore } from "@/stores/useToastStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
-  Award,
-  Briefcase,
-  Check,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  FileText,
-  Globe,
-  Lock,
-  MapPin,
-  MessageCircle,
-  MoreHorizontal,
-  Plus,
-  Send,
-  Share,
-  SlidersHorizontal,
-  Sparkles,
-  ThumbsDown,
-  Trash2,
-  Users,
-  X,
-  Zap,
+    Award,
+    Briefcase,
+    Check,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    DollarSign,
+    FileText,
+    Globe,
+    Lock,
+    MapPin,
+    MessageCircle,
+    MoreHorizontal,
+    Plus,
+    Send,
+    Share,
+    SlidersHorizontal,
+    Sparkles,
+    ThumbsDown,
+    Trash2,
+    Users,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    FadeOut,
+    SlideInDown,
+    SlideOutDown,
 } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
 
@@ -164,6 +164,7 @@ export function JobsView() {
   const setMyJobs = useJobsStore((state) => state.setMyJobs);
   const setMyJobsLoading = useJobsStore((state) => state.setMyJobsLoading);
   const removeMyJob = useJobsStore((state) => state.removeMyJob);
+  const showToast = useToastStore((state) => state.showToast);
 
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewJobDetails, setViewJobDetails] = useState<JobPosting | null>(null);
@@ -248,7 +249,7 @@ export function JobsView() {
         );
         setJobs(transformedJobs);
       } catch (err) {
-        console.error("Failed to fetch browse jobs:", err);
+        console.warn("Failed to fetch browse jobs:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch jobs");
       } finally {
         setLoading(false);
@@ -312,7 +313,7 @@ export function JobsView() {
       }));
       setMyJobs(transformed);
     } catch (err) {
-      console.error("[JobsView] Failed to fetch my jobs:", err);
+      console.warn("[JobsView] Failed to fetch my jobs:", err);
     } finally {
       if (showLoadingSpinner) setMyJobsLoading(false);
     }
@@ -326,10 +327,10 @@ export function JobsView() {
     try {
       await unsponsorJob(job.id);
     } catch (err) {
-      console.error("[JobsView] Failed to unsponsor job:", err);
+      console.warn("[JobsView] Failed to unsponsor job:", err);
       // Revert by re-fetching the real list from backend
       refreshMyJobs(false);
-      Alert.alert("Error", "Failed to remove sponsorship. Please try again.");
+      showToast("Failed to remove sponsorship. Please try again.", "error");
     } finally {
       setIsUnsponsoringId(null);
     }
@@ -623,7 +624,7 @@ export function JobsView() {
 
   const handleConfirmSponsorship = async () => {
     if (!selectedJob || !relationship || canRefer === null) {
-      console.error("[JobsView] Missing required sponsorship data");
+      console.warn("[JobsView] Missing required sponsorship data");
       return;
     }
 
@@ -665,9 +666,9 @@ export function JobsView() {
       // Move to success step
       setSponsorshipStep(3);
     } catch (err) {
-      console.error("[JobsView] Failed to sponsor job:", err);
+      console.warn("[JobsView] Failed to sponsor job:", err);
       // You could show an error message to the user here
-      alert("Failed to sponsor job. Please try again.");
+      showToast("Failed to sponsor job. Please try again.", "error");
     } finally {
       setIsSponsoring(false);
     }
@@ -771,18 +772,10 @@ export function JobsView() {
       refreshMyJobs(false);
 
       closeCreateModal();
-      Alert.alert(
-        "Job Posted!",
-        `Your listing for ${response.title} at ${response.company} is now live on the job board.`,
-      );
+      showToast("Job listing published.", "success");
     } catch (err) {
-      console.error("[JobsView] Failed to create job from URL:", err);
-      Alert.alert(
-        "Failed to Publish Job",
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.",
-      );
+      console.warn("[JobsView] Failed to create job from URL:", err);
+      showToast("Failed to publish job listing. Please try again.", "error");
     } finally {
       setIsCreatingJob(false);
     }
@@ -895,7 +888,7 @@ export function JobsView() {
                   );
                   setJobs(transformedJobs);
                 } catch (err) {
-                  console.error("Failed to fetch jobs:", err);
+                  console.warn("Failed to fetch jobs:", err);
                   setError(
                     err instanceof Error ? err.message : "Failed to fetch jobs",
                   );
@@ -2059,14 +2052,14 @@ export function JobsView() {
                             setViewJobDetails(null);
                             unsponsorJob(jobPostingsId)
                               .catch((err) => {
-                                console.error(
+                                console.warn(
                                   "[JobsView] Failed to unsponsor:",
                                   err,
                                 );
                                 refreshMyJobs(false);
-                                Alert.alert(
-                                  "Error",
+                                showToast(
                                   "Failed to remove sponsorship. Please try again.",
+                                  "error",
                                 );
                               })
                               .finally(() => setIsUnsponsoringId(null));

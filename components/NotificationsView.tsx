@@ -12,12 +12,7 @@ import {
     Star,
     UserPlus,
 } from "lucide-react-native";
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Platform,
@@ -35,6 +30,7 @@ import {
     markAllNotificationsAsRead,
     markNotificationAsRead,
 } from "../lib/api";
+import { useToastStore } from "../stores/useToastStore";
 
 interface NotificationsViewProps {
   userType: "applicant" | "sponsor";
@@ -145,6 +141,7 @@ export function NotificationsView({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const showToast = useToastStore((state) => state.showToast);
 
   // Bump this counter every 30s so relative-time strings refresh on screen
   // without re-fetching from the server.
@@ -227,6 +224,7 @@ export function NotificationsView({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (err) {
       console.warn("[NotificationsView] Failed to mark all read:", err);
+      showToast("Failed to mark all as read. Please try again.", "error");
     } finally {
       setIsMarkingAll(false);
     }
@@ -402,11 +400,7 @@ export function NotificationsView({
                             { backgroundColor: accent },
                           ]}
                         >
-                          <Icon
-                            color="#ffffff"
-                            size={20}
-                            strokeWidth={2.5}
-                          />
+                          <Icon color="#ffffff" size={20} strokeWidth={2.5} />
                         </View>
 
                         <View style={styles.textContainer}>
@@ -462,13 +456,13 @@ export function NotificationsView({
                                   size={18}
                                   strokeWidth={2.5}
                                 />
-                                <Text style={styles.swipeActionText}>
-                                  Read
-                                </Text>
+                                <Text style={styles.swipeActionText}>Read</Text>
                               </View>
                             </View>
                           )}
-                          onSwipeableOpen={() => handleSwipeCommit(notification)}
+                          onSwipeableOpen={() =>
+                            handleSwipeCommit(notification)
+                          }
                         >
                           {touchable}
                         </ReanimatedSwipeable>

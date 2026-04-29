@@ -2,43 +2,44 @@ import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import {
-    ArrowLeft,
-    ArrowRight,
-    Check,
-    ChevronRight,
-    FileText,
-    Plus,
-    Search,
-    Sparkles,
-    Upload,
-    UserCheck,
-    X,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronRight,
+  FileText,
+  Plus,
+  Search,
+  Sparkles,
+  Upload,
+  UserCheck,
+  X,
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    useAnimatedStyle,
-    withTiming,
-    ZoomIn,
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 import { SKILLS_BY_INDUSTRY } from "../constants/skills";
 import { classifyResume, uploadAndParseResume } from "../lib/api";
 import { authApi } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { useToastStore } from "../stores/useToastStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -84,14 +85,7 @@ const questions = [
     id: 1,
     question: "What industry are you targeting?",
     type: "select",
-    options: [
-      "Technology",
-      "Finance",
-      "Healthcare",
-      "Education",
-      "Marketing",
-      "Other",
-    ],
+    options: ["Technology", "Finance", "Healthcare", "Education", "Marketing"],
   },
   {
     id: 2,
@@ -163,6 +157,7 @@ export function ApplicantQuestionnaire({
   const fetchFromBackend = useUserProfileStore(
     (state) => state.fetchFromBackend,
   );
+  const showToast = useToastStore((state) => state.showToast);
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
@@ -255,10 +250,17 @@ export function ApplicantQuestionnaire({
       setTimeout(() => {
         setIsSubmitting(false);
         onComplete();
+        // Delay toast until after the navigation transition finishes
+        setTimeout(() => {
+          showToast(
+            "Welcome! Finish your profile to start swiping.",
+            "success",
+          );
+        }, 500);
       }, 2200);
     },
     onError: (error: Error) => {
-      console.error("[ApplicantQuestionnaire] Registration failed:", error);
+      console.warn("[ApplicantQuestionnaire] Registration failed:", error);
       setIsSubmitting(false);
 
       // Handle specific error cases
@@ -268,14 +270,14 @@ export function ApplicantQuestionnaire({
         errorMessage.includes("email already in use") ||
         errorMessage.includes("already exists")
       ) {
-        alert(
-          "This email is already registered.\n\n" +
-            "Please use a different email or go back to login with your existing account.",
+        showToast(
+          "This email is already registered. Please use a different email or sign in.",
+          "error",
         );
       } else if (errorMessage.includes("password")) {
-        alert("Password requirements not met.\n\n" + error.message);
+        showToast(`Password requirements not met. ${error.message}`, "error");
       } else {
-        alert(`Registration failed: ${error.message}`);
+        showToast(`Registration failed: ${error.message}`, "error");
       }
     },
   });
@@ -339,7 +341,7 @@ export function ApplicantQuestionnaire({
         setAnswers({ ...answers, [currentQuestion]: asset.uri });
       }
     } catch (error) {
-      console.error(error);
+      console.warn(error);
     }
   };
 
@@ -406,21 +408,26 @@ export function ApplicantQuestionnaire({
                 <View style={styles.optionsContainer}>
                   {question.options?.map((option) => {
                     const isSelected = answers[currentQuestion] === option;
+                    const isEnabled = option === "Technology";
                     return (
                       <TouchableOpacity
                         key={option}
                         onPress={() =>
+                          isEnabled &&
                           setAnswers({ ...answers, [currentQuestion]: option })
                         }
+                        activeOpacity={isEnabled ? 0.7 : 1}
                         style={[
                           styles.optionCard,
                           isSelected && styles.optionCardSelected,
+                          !isEnabled && styles.optionCardDisabled,
                         ]}
                       >
                         <Text
                           style={[
                             styles.optionText,
                             isSelected && styles.textWhite,
+                            !isEnabled && styles.optionTextDisabled,
                           ]}
                         >
                           {option}
@@ -428,11 +435,18 @@ export function ApplicantQuestionnaire({
                         {isSelected ? (
                           <Check color="#FFF" size={20} />
                         ) : (
-                          <ChevronRight color="#CCC" size={18} />
+                          <ChevronRight
+                            color={isEnabled ? "#CCC" : "#E0E0E0"}
+                            size={18}
+                          />
                         )}
                       </TouchableOpacity>
                     );
                   })}
+                  <Text style={styles.comingSoonNote}>
+                    More industries are on their way — we're expanding beyond
+                    tech very soon.
+                  </Text>
                 </View>
               )}
 
@@ -831,7 +845,16 @@ const styles = StyleSheet.create({
     borderColor: "#F0F0F0",
   },
   optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
+  optionCardDisabled: { backgroundColor: "#FAFAFA", borderColor: "#F0F0F0" },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
+  optionTextDisabled: { color: "#C8C8C8" },
+  comingSoonNote: {
+    marginTop: 12,
+    fontSize: 13,
+    color: "#AAAAAA",
+    textAlign: "center",
+    lineHeight: 18,
+  },
   inputWrapper: {
     backgroundColor: "#F9F9F9",
     borderRadius: 16,

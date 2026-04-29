@@ -8,6 +8,7 @@ import {
     unmatchConversation,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
     ArrowLeft,
@@ -31,7 +32,6 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Dimensions,
     Image,
     Keyboard,
@@ -82,6 +82,7 @@ export function MessagesView({
 }: MessagesViewProps) {
   // Store current user ID from profile API to determine which participant to show
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const showToast = useToastStore((state) => state.showToast);
 
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
@@ -134,7 +135,7 @@ export function MessagesView({
         console.log("[MessagesView] Current user profile:", profile);
         setCurrentUserId(profile.USER_ID);
       } catch (err) {
-        console.error("[MessagesView] Failed to fetch current user:", err);
+        console.warn("[MessagesView] Failed to fetch current user:", err);
       }
     };
     fetchCurrentUser();
@@ -245,7 +246,7 @@ export function MessagesView({
 
         setConversations(transformedConversations);
       } catch (err) {
-        console.error("[MessagesView] Failed to fetch conversations:", err);
+        console.warn("[MessagesView] Failed to fetch conversations:", err);
         const errorMessage =
           err instanceof Error ? err.message : "Failed to fetch conversations";
 
@@ -353,7 +354,7 @@ export function MessagesView({
       );
       setConversations((prev) => [...prev, ...more]);
     } catch (err) {
-      console.error("[MessagesView] Failed to load more conversations:", err);
+      console.warn("[MessagesView] Failed to load more conversations:", err);
     } finally {
       setIsLoadingMore(false);
     }
@@ -431,10 +432,10 @@ export function MessagesView({
               // Scroll to bottom when new message arrives
               setTimeout(() => scrollToBottom(true), 100);
             } else if (data.type === "error") {
-              console.error("[MessagesView] WebSocket error:", data.message);
+              console.warn("[MessagesView] WebSocket error:", data.message);
             }
           } catch (err) {
-            console.error(
+            console.warn(
               "[MessagesView] Failed to parse WebSocket message:",
               err,
             );
@@ -442,7 +443,7 @@ export function MessagesView({
         };
 
         ws.onerror = (error) => {
-          console.error("[MessagesView] WebSocket error:", error);
+          console.warn("[MessagesView] WebSocket error:", error);
         };
 
         ws.onclose = (event) => {
@@ -452,17 +453,17 @@ export function MessagesView({
             event.reason,
           );
           if (event.code === 4001) {
-            console.error(
+            console.warn(
               "[MessagesView] WebSocket auth failed - invalid token",
             );
           } else if (event.code === 4003) {
-            console.error(
+            console.warn(
               "[MessagesView] WebSocket rejected - not a participant",
             );
           }
         };
       } catch (err) {
-        console.error("[MessagesView] Failed to connect to WebSocket:", err);
+        console.warn("[MessagesView] Failed to connect to WebSocket:", err);
       }
     }
 
@@ -531,7 +532,7 @@ export function MessagesView({
           }
         }
       } catch (err) {
-        console.error("[MessagesView] Failed to fetch messages:", err);
+        console.warn("[MessagesView] Failed to fetch messages:", err);
         setMessagesError(
           err instanceof Error ? err.message : "Failed to fetch messages",
         );
@@ -568,13 +569,13 @@ export function MessagesView({
       setShowUnmatchMenu(false);
       handleConversationSelect(null);
     } catch (err) {
-      console.error("[MessagesView] Failed to unmatch:", err);
+      console.warn("[MessagesView] Failed to unmatch:", err);
       setShowUnmatchMenu(false);
-      Alert.alert(
-        "Failed to Unmatch",
+      showToast(
         err instanceof Error
           ? err.message
-          : "Something went wrong. Please try again.",
+          : "Failed to unmatch. Please try again.",
+        "error",
       );
     } finally {
       setIsUnmatching(false);
@@ -645,11 +646,11 @@ export function MessagesView({
       // Scroll to bottom after sending
       setTimeout(() => scrollToBottom(true), 100);
     } catch (err) {
-      console.error("[MessagesView] Failed to send message:", err);
+      console.warn("[MessagesView] Failed to send message:", err);
       // Remove optimistic message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
       setMessageText(messageToSend); // Restore message text
-      alert("Failed to send message. Please try again.");
+      showToast("Failed to send message. Please try again.", "error");
     } finally {
       setSendingMessage(false);
     }

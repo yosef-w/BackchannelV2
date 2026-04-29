@@ -17,8 +17,7 @@
 | §2    | Redis caching — 5 uncached read functions     | 🔴 High     | Uncached    | Performance |
 | §3    | `POST /api/jobs/create-from-url/`             | 🔴 High     | Missing     | New endpoint |
 | §4.1  | Insights columns in sponsored read path       | 🔴 High     | Not in SELECT | Bug-ish    |
-| §4.2  | `REFERRAL_NOTE` column on `job_postings`      | 🔴 High     | Missing column | Schema  |
-| §4.3  | Accept insights on `sponsor_job` endpoint     | 🔴 High     | Missing fields | Endpoint extension |
+| §4.2  | Accept insights on `sponsor_job` endpoint     | 🔴 High     | Missing fields | Endpoint extension |
 | Opt A | Real work-email verification for sponsors     | 🟢 Optional | Fake delay  | New flow    |
 | Opt B | Notifications enhancements (5 sub-items)      | 🟢 Optional | Mostly working | Polish   |
 | Opt C | Enrich `/api/profiles/pack/` with bio/insights | 🟢 Optional | Workaround in place | Optimization |
@@ -333,31 +332,9 @@ The four insights fields stored by the create-from-url flow (§3) are not curren
 
 ---
 
-### §4.2 — Move `REFERRAL_NOTE` onto the job, not the sponsor
+### §4.2 — Accept insights on `sponsor_job` (sponsoring an existing ATS job)
 
-`get_sponsor_info` ([queries/jobs.py:77-111](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/jobs.py#L77)) does not return a referral note, and `sponsor_profiles` has no such column. The note is per-job (each role has its own context — engineering vs. marketing vibe, direct-team familiarity, etc.), so it belongs on `jobs.job_postings`.
-
-#### Required changes
-
-1. **Schema:** Add a nullable `REFERRAL_NOTE TEXT` column to `jobs.job_postings`.
-2. **Accept and persist** in both:
-   - `create_job` ([services/jobs.py:334-358](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L334))
-   - `sponsor_job` ([services/jobs.py:401-437](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L401)) — see §4.3
-3. **Surface it on the job's `sponsor` object** in `format_job_for_ui`:
-   ```python
-   sponsor['referral_note'] = job_data.get('REFERRAL_NOTE')
-   ```
-   The existing frontend mapping at [types/jobs.ts:317](../types/jobs.ts#L317) will pick it up.
-
-#### Done when
-
-A sponsored job created with a `referralNote` returns it on the `sponsor.referral_note` field of the pack response.
-
----
-
-### §4.3 — Accept insights on `sponsor_job` (sponsoring an existing ATS job)
-
-When a sponsor sponsors an existing `SILVER_JOBS` row from the browse feed, the current `sponsor_job` endpoint accepts only `relationship` and `canRefer`. **The frontend now sends a 3-step flow** — relationship → insights → confirm — and includes the four insights fields plus a referral note in the payload.
+When a sponsor sponsors an existing `SILVER_JOBS` row from the browse feed, the current `sponsor_job` endpoint accepts only `relationship` and `canRefer`. **The frontend now sends a 3-step flow** — relationship → insights → confirm — and includes the four insights fields in the payload.
 
 #### Frontend status
 
@@ -370,7 +347,6 @@ When a sponsor sponsors an existing `SILVER_JOBS` row from the browse feed, the 
    {
      "relationship": "current_employee",
      "canRefer": true,
-     "referralNote": "I joined this team last year — happy to refer for ML backgrounds.",
      "insights": {
        "dayToDay": "...",
        "teamCulture": "...",
@@ -380,20 +356,18 @@ When a sponsor sponsors an existing `SILVER_JOBS` row from the browse feed, the 
    }
    ```
 2. **Persist insights** to the same `job_postings` columns/JSONB used by §3.
-3. **Persist `referralNote`** to the `REFERRAL_NOTE` column from §4.2.
 
 #### Done when
 
-Sponsoring an ATS job from the browse feed creates a `JOB_POSTINGS` row with all four insights fields and the referral note populated. The applicant-facing back card then renders them via §4.1.
+Sponsoring an ATS job from the browse feed creates a `JOB_POSTINGS` row with all four insights fields populated. The applicant-facing back card then renders them via §4.1.
 
 ---
 
-### Combined impact of §4.1 + §4.2 + §4.3 + §3
+### Combined impact of §4.1 + §4.2 + §3
 
 Every sponsored back card — whether the job was created via `create-from-url` or by sponsoring an existing ATS job — will render:
 
 - Sponsor name, photo, role, years at company
-- Per-job referral note
 - Can-refer badge
 - Four insights sections (Day-to-Day, Team Culture, Ideal Candidate, Insider Insights)
 
@@ -537,3 +511,4 @@ up.BIO
 | 2026-04-27 | Audited against backend HEAD `125b425`. Verified company-filter for browse feed shipped (PR #36) — removed from doc. Reformatted with summary table, status badges, and "done when" criteria per item. |
 | 2026-04-27 | Added §4.3 (insights on `sponsor_job`). Frontend 3-step flow shipped same day. |
 | 2026-04-27 | Removed three Optionals (applications, profile stats, public profile stats) per scope decision. Renumbered surviving optionals to A, B, C. |
+| 2026-04-28 | Removed per-job referral note entirely (was old §4.2). Renumbered §4.3 → §4.2. The post-match referrals system in `MatchesView.tsx` / `lib/api.ts` is unaffected — that's a separate feature. |

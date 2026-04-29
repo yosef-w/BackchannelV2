@@ -3,68 +3,69 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-  AlertCircle,
-  Briefcase,
-  Camera,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  Edit,
-  FileText,
-  GraduationCap,
-  ImageIcon,
-  Lock,
-  LogOut,
-  MapPin,
-  Plus,
-  RefreshCw,
-  Target,
-  Trash2,
-  Upload,
-  X,
-  Zap,
+    AlertCircle,
+    Briefcase,
+    Camera,
+    Check,
+    CheckCircle2,
+    ChevronRight,
+    Edit,
+    FileText,
+    GraduationCap,
+    ImageIcon,
+    Lock,
+    LogOut,
+    MapPin,
+    Plus,
+    RefreshCw,
+    Target,
+    Trash2,
+    Upload,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
 } from "react-native-reanimated";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
-  changePassword,
-  classifyResume,
-  deactivateAccount,
-  getExtractedResumeText,
-  logout,
-  unregisterDevice,
-  updateApplicantProfile,
-  updateGeneralProfile,
-  updateSponsorProfile,
-  uploadAndParseResume,
-  uploadProfileImage,
+    changePassword,
+    classifyResume,
+    deactivateAccount,
+    getExtractedResumeText,
+    logout,
+    unregisterDevice,
+    updateApplicantProfile,
+    updateGeneralProfile,
+    updateSponsorProfile,
+    uploadAndParseResume,
+    uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useToastStore } from "../stores/useToastStore";
 import {
-  EducationEntry,
-  ProfessionalExperience,
-  useUserProfileStore,
+    EducationEntry,
+    ProfessionalExperience,
+    useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
@@ -280,12 +281,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
   // PATCH /api/profile/update/ { notification_preferences }.
   // Backend gate lives in services/notifications.py:create_notification —
   // missing keys default to enabled, so `undefined` reads as `true`.
-  const notificationPreferences =
-    userProfileData.notificationPreferences || {};
+  const notificationPreferences = userProfileData.notificationPreferences || {};
   const updateNotificationPreferences = useUserProfileStore(
     (state) => state.updateNotificationPreferences,
   );
   const [notifSaving, setNotifSaving] = useState<string | null>(null);
+  const showToast = useToastStore((state) => state.showToast);
 
   const isNotifEnabled = (
     key: "match" | "message" | "referral" | "waitlist" | "job_like",
@@ -299,9 +300,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     try {
       await updateNotificationPreferences({ [key]: next });
     } catch {
-      Alert.alert(
-        "Couldn't save",
-        "Your notification setting didn't save. Please try again.",
+      showToast(
+        "Notification setting could not be saved. Please try again.",
+        "error",
       );
     } finally {
       setNotifSaving(null);
@@ -430,7 +431,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (userProfileData.achievements) {
       setAchievements(userProfileData.achievements);
     }
-    if (userProfileData.sponsorCompanies && userProfileData.sponsorCompanies.length > 0) {
+    if (
+      userProfileData.sponsorCompanies &&
+      userProfileData.sponsorCompanies.length > 0
+    ) {
       setCompaniesCanReferTo(userProfileData.sponsorCompanies);
     }
   }, [userProfileData]);
@@ -755,9 +759,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
       }
       setEditingField(null);
       setTempValue("");
+      showToast("Profile updated.", "success");
     } catch (error) {
-      console.error("Failed to save field:", error);
-      alert("Failed to save changes. Please try again.");
+      console.warn("Failed to save field:", error);
+      showToast("Failed to save changes. Please try again.", "error");
     }
   };
 
@@ -771,11 +776,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
     switch (type) {
       case "expertise":
         if (expertise.length >= 5) {
-          alert("You can only add up to 5 skills");
+          showToast("You can add a maximum of 5 skills.", "info");
           return;
         }
         if (expertise.includes(valueToAdd)) {
-          alert("This skill is already added");
+          showToast("That skill has already been added.", "info");
           setNewTag("");
           return;
         }
@@ -801,11 +806,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
       }
       case "desiredRoles": {
         if (desiredRoles.length >= 3) {
-          alert("You can only add up to 3 desired roles");
+          showToast("You can add a maximum of 3 desired roles.", "info");
           return;
         }
         if (desiredRoles.includes(valueToAdd)) {
-          alert("This role is already added");
+          showToast("That role has already been added.", "info");
           setNewTag("");
           setNewRoleTag("");
           return;
@@ -894,7 +899,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const handleAddInsight = async (question: string, answer: string) => {
     try {
       if (profileInsights.length >= 3) {
-        alert("You can only have up to 3 profile insights");
+        showToast("You can add a maximum of 3 profile insights.", "info");
         return;
       }
       const newInsights = [...profileInsights, { question, answer }];
@@ -907,8 +912,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateSponsorProfile({ insights: newInsights });
       }
     } catch (error) {
-      console.error("Failed to add insight:", error);
-      alert("Failed to save insight. Please try again.");
+      console.warn("Failed to add insight:", error);
+      showToast("Failed to save insight. Please try again.", "error");
     }
   };
 
@@ -924,8 +929,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateSponsorProfile({ insights: updatedInsights });
       }
     } catch (error) {
-      console.error("Failed to remove insight:", error);
-      alert("Failed to remove insight. Please try again.");
+      console.warn("Failed to remove insight:", error);
+      showToast("Failed to remove insight. Please try again.", "error");
     }
   };
 
@@ -943,8 +948,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateSponsorProfile({ insights: updated });
       }
     } catch (error) {
-      console.error("Failed to update insight:", error);
-      alert("Failed to save insight. Please try again.");
+      console.warn("Failed to update insight:", error);
+      showToast("Failed to save insight. Please try again.", "error");
     }
   };
 
@@ -966,8 +971,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setEditingExperience(newExperience.id);
       await updateProfessionalExperiences(updated);
     } catch (error) {
-      console.error("Failed to add experience:", error);
-      alert("Failed to add experience. Please try again.");
+      console.warn("Failed to add experience:", error);
+      showToast("Failed to add experience. Please try again.", "error");
     }
   };
 
@@ -995,8 +1000,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateApplicantProfile({ professional_experiences });
       }
     } catch (error) {
-      console.error("Failed to update experience:", error);
-      alert("Failed to save experience. Please try again.");
+      console.warn("Failed to update experience:", error);
+      showToast("Failed to save experience. Please try again.", "error");
     }
   };
 
@@ -1019,8 +1024,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateApplicantProfile({ professional_experiences });
       }
     } catch (error) {
-      console.error("Failed to delete experience:", error);
-      alert("Failed to delete experience. Please try again.");
+      console.warn("Failed to delete experience:", error);
+      showToast("Failed to delete experience. Please try again.", "error");
     }
   };
 
@@ -1041,8 +1046,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setEditingEducation(newEducation.id);
       await updateEducationEntries(updated);
     } catch (error) {
-      console.error("Failed to add education:", error);
-      alert("Failed to add education. Please try again.");
+      console.warn("Failed to add education:", error);
+      showToast("Failed to add education. Please try again.", "error");
     }
   };
 
@@ -1069,8 +1074,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateApplicantProfile({ education_entries });
       }
     } catch (error) {
-      console.error("Failed to update education:", error);
-      alert("Failed to save education. Please try again.");
+      console.warn("Failed to update education:", error);
+      showToast("Failed to save education. Please try again.", "error");
     }
   };
 
@@ -1092,8 +1097,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateApplicantProfile({ education_entries });
       }
     } catch (error) {
-      console.error("Failed to delete education:", error);
-      alert("Failed to delete education. Please try again.");
+      console.warn("Failed to delete education:", error);
+      showToast("Failed to delete education. Please try again.", "error");
     }
   };
 
@@ -1164,10 +1169,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
     const handleSaveCertification = async () => {
       if (!hasRequiredFields) {
-        Alert.alert(
-          "Required Fields Missing",
+        showToast(
           "Please fill in Certification Name, Organization, and Year before saving.",
-          [{ text: "OK" }],
+          "error",
         );
         return;
       }
@@ -1343,10 +1347,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
     const handleSaveLanguage = async () => {
       if (!hasRequiredFields) {
-        Alert.alert(
-          "Required Fields Missing",
+        showToast(
           "Please fill in Language and Proficiency Level before saving.",
-          [{ text: "OK" }],
+          "error",
         );
         return;
       }
@@ -1506,7 +1509,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setNewPassword("");
       setConfirmPassword("");
       setShowPasswordChange(false);
-      Alert.alert("Success", "Password changed successfully.");
+      showToast("Password changed successfully.", "success");
     } catch (err: any) {
       setPasswordError(
         err?.message || "Failed to change password. Please try again.",
@@ -1600,8 +1603,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
       );
       updatePersonal({ profileImage: cdn_url });
       setProfileImage(cdn_url);
+      showToast("Profile photo updated.", "success");
     } catch (err) {
-      console.error("[ProfileImage] ❌ Failed to upload profile photo:", err);
+      console.warn("[ProfileImage] ❌ Failed to upload profile photo:", err);
+      showToast("Failed to upload photo. Please try again.", "error");
     }
   };
 
@@ -1721,7 +1726,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       // text (extracted_text will be null). Catch this here so we show a clear
       // error rather than a confusing "no resume text" message from classifyResume.
       if (!parseResult.extracted_text) {
-        console.error(
+        console.warn(
           "[Resume] ❌ Text extraction failed — extracted_text is null. parsing_error:",
           parseResult.parsing_error,
         );
@@ -1865,7 +1870,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         return;
       }
 
-      console.error(
+      console.warn(
         "[Resume] ❌ Resume upload pipeline failed:",
         err?.message,
         err,
@@ -1979,10 +1984,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
     const handleSaveExperience = () => {
       if (!hasRequiredFields) {
-        Alert.alert(
-          "Required Fields Missing",
+        showToast(
           "Please fill in Job Title, Company, and Start Date before saving.",
-          [{ text: "OK" }],
+          "error",
         );
         return;
       }
@@ -2215,10 +2219,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
     const handleSaveEducation = () => {
       if (!hasRequiredFields) {
-        Alert.alert(
-          "Required Fields Missing",
+        showToast(
           "Please fill in Degree, University, and Graduation Year before saving.",
-          [{ text: "OK" }],
+          "error",
         );
         return;
       }
@@ -2521,7 +2524,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   ))}
                 </View>
               ) : (
-                <Text style={styles.emptyHint}>No work preferences added yet</Text>
+                <Text style={styles.emptyHint}>
+                  No work preferences added yet
+                </Text>
               )}
             </View>
 

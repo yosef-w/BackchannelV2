@@ -2,24 +2,24 @@ import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { authApi, LoginResponse } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { useToastStore } from "../stores/useToastStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -30,6 +30,8 @@ interface AuthScreenProps {
   onBack: () => void;
   /** Passed from onboarding.tsx so AuthScreen never relies solely on the Zustand store */
   userType?: "applicant" | "sponsor";
+  /** Whether to start on the sign-in (true) or sign-up (false) tab. Defaults to true. */
+  initialIsLogin?: boolean;
 }
 
 export function AuthScreen({
@@ -37,17 +39,8 @@ export function AuthScreen({
   onLoginComplete,
   onBack,
   userType: propUserType,
+  initialIsLogin = true,
 }: AuthScreenProps) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const storeUserType = useOnboardingStore((state) => state.userType);
   // Prefer the prop (set from URL params by onboarding.tsx) over the store value,
@@ -60,7 +53,26 @@ export function AuthScreen({
   const updateSponsorData = useOnboardingStore(
     (state) => state.updateSponsorData,
   );
+  // Pre-populate sign-up fields from the onboarding store so they survive
+  // navigation back from the questionnaire step.
+  const savedApplicantData = useOnboardingStore((state) => state.applicantData);
+  const savedSponsorData = useOnboardingStore((state) => state.sponsorData);
+  const savedData =
+    (propUserType ?? storeUserType) === "sponsor"
+      ? savedSponsorData
+      : savedApplicantData;
+
+  const [isLogin, setIsLogin] = useState(initialIsLogin);
+  const [firstName, setFirstName] = useState(savedData?.firstName ?? "");
+  const [lastName, setLastName] = useState(savedData?.lastName ?? "");
+  const [email, setEmail] = useState(savedData?.email ?? "");
+  const [password, setPassword] = useState(savedData?.password ?? "");
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
+  const showToast = useToastStore((state) => state.showToast);
 
   const loginMutation = useMutation<LoginResponse, Error>({
     mutationFn: async () => {
@@ -87,6 +99,8 @@ export function AuthScreen({
         },
       });
 
+      showToast("Welcome back!", "success");
+
       // Use onLoginComplete if provided (skips questionnaire), otherwise onComplete
       if (onLoginComplete) {
         onLoginComplete();
@@ -95,7 +109,10 @@ export function AuthScreen({
       }
     },
     onError: (error) => {
-      Alert.alert("Login Failed", error.message);
+      showToast(
+        error.message || "Login failed. Check your email and password.",
+        "error",
+      );
     },
   });
 
@@ -105,38 +122,40 @@ export function AuthScreen({
     },
     onSuccess: () => {
       setForgotPasswordSent(true);
+      showToast("Password reset email sent. Check your inbox.", "success");
+      handleCloseForgotPasswordModal();
     },
     onError: (error) => {
-      Alert.alert("Error", error.message);
+      showToast(
+        error.message || "Failed to send reset email. Try again.",
+        "error",
+      );
     },
   });
 
   const handleSubmit = () => {
     if (isLogin) {
       if (!email || !password) {
-        Alert.alert("Missing Fields", "Please enter email and password.");
+        showToast("Please enter your email and password.", "error");
         return;
       }
       loginMutation.mutate();
     } else {
       // Validate all registration fields before proceeding
       if (!firstName.trim()) {
-        Alert.alert("Missing Field", "Please enter your first name.");
+        showToast("Please enter your first name.", "error");
         return;
       }
       if (!lastName.trim()) {
-        Alert.alert("Missing Field", "Please enter your last name.");
+        showToast("Please enter your last name.", "error");
         return;
       }
       if (!email.trim()) {
-        Alert.alert("Missing Field", "Please enter your email address.");
+        showToast("Please enter your email address.", "error");
         return;
       }
       if (!password || password.length < 8) {
-        Alert.alert(
-          "Password Too Short",
-          "Password must be at least 8 characters.",
-        );
+        showToast("Password must be at least 8 characters.", "error");
         return;
       }
 
@@ -167,7 +186,7 @@ export function AuthScreen({
 
   const handleSendResetEmail = () => {
     if (!forgotPasswordEmail) {
-      Alert.alert("Missing Email", "Please enter your email address.");
+      showToast("Please enter your email address.", "error");
       return;
     }
     forgotPasswordMutation.mutate();

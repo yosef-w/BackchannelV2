@@ -1,6 +1,7 @@
 import { authApi } from "@/lib/auth-api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
@@ -129,6 +130,7 @@ export function SponsorQuestionnaire({
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
+  const showToast = useToastStore((state) => state.showToast);
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
@@ -184,10 +186,17 @@ export function SponsorQuestionnaire({
       setTimeout(() => {
         setIsSubmitting(false);
         onComplete();
+        // Delay toast until after the navigation transition finishes
+        setTimeout(() => {
+          showToast(
+            "Welcome! Finish your profile to start swiping.",
+            "success",
+          );
+        }, 500);
       }, 2200);
     },
     onError: (error: Error) => {
-      console.error("[SponsorQuestionnaire] Registration failed:", error);
+      console.warn("[SponsorQuestionnaire] Registration failed:", error);
       setIsSubmitting(false);
 
       // Handle specific error cases
@@ -197,14 +206,14 @@ export function SponsorQuestionnaire({
         errorMessage.includes("email already in use") ||
         errorMessage.includes("already exists")
       ) {
-        alert(
-          "This email is already registered.\n\n" +
-            "Please use a different email or go back to login with your existing account.",
+        showToast(
+          "This email is already registered. Please use a different email or sign in.",
+          "error",
         );
       } else if (errorMessage.includes("password")) {
-        alert("Password requirements not met.\n\n" + error.message);
+        showToast(`Password requirements not met. ${error.message}`, "error");
       } else {
-        alert(`Registration failed: ${error.message}`);
+        showToast(`Registration failed: ${error.message}`, "error");
       }
     },
   });
