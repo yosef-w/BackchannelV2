@@ -13,61 +13,19 @@
 
 | #     | Item                                          | Priority    | Status      | Type        |
 | ----- | --------------------------------------------- | ----------- | ----------- | ----------- |
-| §1    | `POST /api/auth/change-email/` implementation | 🟡 Medium   | 501 stub    | New flow    |
-| §2    | Redis caching — 5 uncached read functions     | 🔴 High     | Uncached    | Performance |
-| §3    | `POST /api/jobs/create-from-url/`             | 🔴 High     | Missing     | New endpoint |
-| §4.1  | Insights columns in sponsored read path       | 🔴 High     | Not in SELECT | Bug-ish    |
-| §4.2  | Accept insights on `sponsor_job` endpoint     | 🔴 High     | Missing fields | Endpoint extension |
+| §1    | Redis caching — 5 uncached read functions     | 🔴 High     | Uncached    | Performance |
+| §2    | `POST /api/jobs/create-from-url/`             | 🔴 High     | Missing     | New endpoint |
+| §3.1  | Insights columns in sponsored read path       | 🔴 High     | Not in SELECT | Bug-ish    |
+| §3.2  | Accept insights on `sponsor_job` endpoint     | 🔴 High     | Missing fields | Endpoint extension |
 | Opt A | Real work-email verification for sponsors     | 🟢 Optional | Fake delay  | New flow    |
 | Opt B | Notifications enhancements (5 sub-items)      | 🟢 Optional | Mostly working | Polish   |
 | Opt C | Enrich `/api/profiles/pack/` with bio/insights | 🟢 Optional | Workaround in place | Optimization |
 
-**🔴 = ship blockers** (frontend already calls these or expects this data) **·** **🟡 = unblocks UI we've gated** **·** **🟢 = polish, app works without them**
+**🔴 = ship blockers** (frontend already calls these or expects this data) **·** **🟢 = polish, app works without them**
 
 ---
 
-## §1 — Complete `POST /api/auth/change-email/`
-
-**Status:** 501 stub deployed (PR #16). Verified at [views_auth.py:242-250](../../Backchannel-backend/BackChannel-backend/bc_microservices/views_auth.py#L242) — still returning HTTP 501 as of HEAD.
-
-**Why we need it:** Email is the user's login credential and cannot be changed via a simple profile PATCH. The Edit Profile modal currently shows email as **read-only** with a lock icon. Until this endpoint returns 200, the frontend cannot expose a "Change Email" button.
-
-### Flow
-
-1. User submits new email + current password → `POST /api/auth/change-email/`
-2. Backend sends a verification link to the **new** email via the existing transactional email service (same SendGrid/SES integration used for password reset, PR #21)
-3. User clicks link → backend updates the email column on the PostgreSQL `users` table
-4. Frontend's next `GET /api/profile/` automatically returns the new email — no special handling needed
-
-### Request
-
-```json
-POST /api/auth/change-email/
-{
-  "new_email": "newemail@example.com",
-  "current_password": "secret"
-}
-```
-
-### Response (200)
-
-```json
-{ "message": "Verification email sent to newemail@example.com" }
-```
-
-### Done when
-
-- Endpoint returns 200 (not 501) for a valid request
-- Verification email actually sends
-- Click-through link updates `users.email` in Postgres
-
-### Frontend follow-up (already scoped)
-
-Replace the lock icon on the email field in the Edit Profile modal with a "Change Email" button that opens a dedicated modal calling this endpoint.
-
----
-
-## §2 — Redis Caching Gaps
+## §1 — Redis Caching Gaps
 
 **Status:** Redis is configured and the `cached_query` helper works correctly. The 6 highest-traffic reads are already cached. **5 functions still hit Postgres on every call.**
 
@@ -220,7 +178,7 @@ invalidate(f"sponsor_matches:{sponsor_id}", f"job_matches:{applicant_user_id}", 
 
 ---
 
-## §3 — `POST /api/jobs/create-from-url/`
+## §2 — `POST /api/jobs/create-from-url/`
 
 **Status:** Frontend ready, endpoint missing. `lib/api.ts` exports `createJobFromUrl()` and `components/JobsView.tsx` calls it from the redesigned create-listing flow.
 
@@ -288,15 +246,15 @@ POST /api/jobs/create-from-url/
 
 ---
 
-## §4 — Sponsored Job Back-Card: Surface Insights and Referral Note
+## §3 — Sponsored Job Back-Card: Surface Insights and Referral Note
 
 **Status:** Critical UX hole. Sponsors fill out insights expecting them to be visible; applicants need them to decide whether to apply. **None of it reaches the UI today.**
 
 **Frontend touchpoints:** `components/HomeView.tsx` (back-of-card sponsored branch, [HomeView.tsx:2627-2710](../components/HomeView.tsx#L2627-L2710)), `lib/api.ts`, `types/jobs.ts`.
 
-### §4.1 — Add insights to the sponsored read path
+### §3.1 — Add insights to the sponsored read path
 
-The four insights fields stored by the create-from-url flow (§3) are not currently selected by `fetch_sponsored_pack` or returned by `format_job_for_frontend_api`. **Even after §3 lands, the applicant deck would still render no insights.**
+The four insights fields stored by the create-from-url flow (§2) are not currently selected by `fetch_sponsored_pack` or returned by `format_job_for_frontend_api`. **Even after §2 lands, the applicant deck would still render no insights.**
 
 #### Required changes
 
@@ -332,7 +290,7 @@ The four insights fields stored by the create-from-url flow (§3) are not curren
 
 ---
 
-### §4.2 — Accept insights on `sponsor_job` (sponsoring an existing ATS job)
+### §3.2 — Accept insights on `sponsor_job` (sponsoring an existing ATS job)
 
 When a sponsor sponsors an existing `SILVER_JOBS` row from the browse feed, the current `sponsor_job` endpoint accepts only `relationship` and `canRefer`. **The frontend now sends a 3-step flow** — relationship → insights → confirm — and includes the four insights fields in the payload.
 
@@ -355,7 +313,7 @@ When a sponsor sponsors an existing `SILVER_JOBS` row from the browse feed, the 
      }
    }
    ```
-2. **Persist insights** to the same `job_postings` columns/JSONB used by §3.
+2. **Persist insights** to the same `job_postings` columns/JSONB used by §2.
 
 #### Done when
 
@@ -363,7 +321,7 @@ Sponsoring an ATS job from the browse feed creates a `JOB_POSTINGS` row with all
 
 ---
 
-### Combined impact of §4.1 + §4.2 + §3
+### Combined impact of §3.1 + §3.2 + §2
 
 Every sponsored back card — whether the job was created via `create-from-url` or by sponsoring an existing ATS job — will render:
 
@@ -512,3 +470,4 @@ up.BIO
 | 2026-04-27 | Added §4.3 (insights on `sponsor_job`). Frontend 3-step flow shipped same day. |
 | 2026-04-27 | Removed three Optionals (applications, profile stats, public profile stats) per scope decision. Renumbered surviving optionals to A, B, C. |
 | 2026-04-28 | Removed per-job referral note entirely (was old §4.2). Renumbered §4.3 → §4.2. The post-match referrals system in `MatchesView.tsx` / `lib/api.ts` is unaffected — that's a separate feature. |
+| 2026-04-30 | Removed §1 (`POST /api/auth/change-email/`) — descoped for beta. Renumbered §2 → §1, §3 → §2, §4 → §3. |
