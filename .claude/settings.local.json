@@ -13,7 +13,8 @@
       "Read(//private/tmp/**)",
       "Bash(grep -nA 2 \"def get_applicant_profile\\\\|def get_sponsor_profile\" /Users/yosefwolday/Desktop/Backchannel-backend/BackChannel-backend/bc_microservices/queries/profiles.py)",
       "Bash(grep -nA 1 \"def get_sponsor_matches\\\\|def get_received_profile_likes\\\\|def get_applicants_who_liked_job\" /Users/yosefwolday/Desktop/Backchannel-backend/BackChannel-backend/bc_microservices/queries/likes.py)",
-      "Bash(awk -F: '{print $1}')"
+      "Bash(awk -F: '{print $1}')",
+      "Bash(npm uninstall *)"
     ]
   }
 }

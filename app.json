@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "BackchannelV2",
+    "name": "Backchannel",
     "slug": "backchannelv2",
     "version": "1.0.0",
     "runtimeVersion": {
@@ -14,8 +14,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow access to the camera to capture your front and side profile scans.",
-        "NSPhotoLibraryUsageDescription": "Allow access to your photo library to select existing photos for analysis.",
+        "NSCameraUsageDescription": "Allow camera access to take a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Allow photo library access to select a profile photo or upload a resume.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.yosefwolday.backchannelv2"

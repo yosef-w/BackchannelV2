@@ -73,7 +73,7 @@ export default function RootLayout() {
         <View style={styles.root}>
           <StatusBar style="auto" />
 
-          {/* Main navigation stack for BackchannelV2 */}
+          {/* Main navigation stack for Backchannel */}
           <Stack initialRouteName="splash">
             <Stack.Screen name="splash" options={{ headerShown: false }} />
             <Stack.Screen name="choose-role" options={{ headerShown: false }} />
