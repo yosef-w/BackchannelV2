@@ -250,10 +250,13 @@ export function ApplicantQuestionnaire({
       setTimeout(() => {
         setIsSubmitting(false);
         onComplete();
-        // Delay toast until after the navigation transition finishes
+        // Delay toast until after the navigation transition finishes.
+        // Backend now sends a verification email automatically on register
+        // (PR #38, 2026-04-30). Verification is not enforced — we just
+        // surface it so users know to check their inbox.
         setTimeout(() => {
           showToast(
-            "Welcome! Finish your profile to start swiping.",
+            "Welcome! We sent a verification email — check your inbox.",
             "success",
           );
         }, 500);

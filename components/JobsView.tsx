@@ -772,10 +772,44 @@ export function JobsView() {
       refreshMyJobs(false);
 
       closeCreateModal();
-      showToast("Job listing published.", "success");
+
+      // If the backend used the LLM fallback path (no JSON-LD on the page),
+      // nudge the sponsor to double-check the auto-extracted fields. The
+      // structured path is high-confidence and doesn't need this hint.
+      if (response.source === "llm") {
+        showToast(
+          "Job published. Auto-extracted by AI — review the listing in My Jobs.",
+          "success",
+        );
+      } else {
+        showToast("Job listing published.", "success");
+      }
     } catch (err) {
       console.warn("[JobsView] Failed to create job from URL:", err);
-      showToast("Failed to publish job listing. Please try again.", "error");
+
+      // The LLM extraction path is rate-limited at 10 req/hour per user
+      // (PR #40). When the throttle trips we want to be explicit so the
+      // sponsor knows (a) what hit and (b) the workaround — pasting a
+      // LinkedIn / Greenhouse / Lever / Workday URL takes the structured
+      // path which doesn't count against the throttle.
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRateLimited =
+        msg.includes("429") ||
+        msg.toLowerCase().includes("throttl") ||
+        msg.toLowerCase().includes("rate limit") ||
+        msg.toLowerCase().includes("too many");
+
+      if (isRateLimited) {
+        showToast(
+          "AI extraction limit reached. Try again in an hour, or paste a LinkedIn/Greenhouse link (those skip AI).",
+          "error",
+        );
+      } else {
+        showToast(
+          "Failed to publish job listing. Please try again.",
+          "error",
+        );
+      }
     } finally {
       setIsCreatingJob(false);
     }

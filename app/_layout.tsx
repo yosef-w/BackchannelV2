@@ -87,6 +87,11 @@ export default function RootLayout() {
                 gestureEnabled: false,
               }}
             />
+            {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
+            <Stack.Screen
+              name="verify-email"
+              options={{ headerShown: false }}
+            />
           </Stack>
 
           {/* Global toast — overlays all screens */}

@@ -15,6 +15,23 @@ export interface JobApiSponsor {
   can_provide_direct_referral?: boolean;
 }
 
+/**
+ * Sponsor-authored "BackChannel Insights" attached to sponsored jobs.
+ * Returned by `format_job_for_frontend_api` since PR #40 (2026-05-05).
+ *
+ * Note the lowercase top-level key — this is the only non-UPPERCASE field on
+ * `JobApiResponse`. Sub-keys are camelCase per backend spec.
+ *
+ * The backend omits empty fields entirely (and the whole object if all four
+ * are blank), so every property is optional.
+ */
+export interface JobApiInsights {
+  dayToDay?: string;
+  teamCulture?: string;
+  idealCandidate?: string;
+  insiderInsights?: string;
+}
+
 export interface JobApiResponse {
   ID: number;
   TITLE: string;
@@ -36,6 +53,8 @@ export interface JobApiResponse {
   AI_JOB_SUMMARY: string;
   REQUIREMENTS_SUMMARY: string | null;
   CORE_RESPONSIBILITIES: string | null;
+  /** Sponsor-authored insights — present on sponsored jobs only. */
+  insights?: JobApiInsights;
   relevance_score: number;
   job_type?: "ats" | "sponsored";
   sponsor?: JobApiSponsor | null;
@@ -115,6 +134,13 @@ export interface Job {
     canRefer: boolean;
     userId?: string | number;
   } | null;
+  /**
+   * Sponsor-authored insights surfaced on the back of sponsored job cards.
+   * Aliased from `JobApiResponse.insights` (lowercase) so the existing render
+   * code in HomeView (which looks for `currentData.backchannelInsights`) and
+   * the mock-data shape both stay aligned.
+   */
+  backchannelInsights?: JobApiInsights;
 }
 
 /**
@@ -292,6 +318,21 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     requirementsSummary: apiJob.REQUIREMENTS_SUMMARY ?? null,
     coreResponsibilities: apiJob.CORE_RESPONSIBILITIES ?? null,
     relevanceScore: apiJob.relevance_score ?? 0,
+    // PR #40 sponsor-authored insights — backend already drops empty
+    // sub-fields and omits the object when all four are blank, so we just
+    // pass it through. We coerce to undefined when the object is missing
+    // *or* when every field happens to be empty (defensive — shouldn't
+    // normally happen given backend's filter).
+    backchannelInsights: (() => {
+      const ins = apiJob.insights;
+      if (!ins) return undefined;
+      const hasAny =
+        ins.dayToDay ||
+        ins.teamCulture ||
+        ins.idealCandidate ||
+        ins.insiderInsights;
+      return hasAny ? ins : undefined;
+    })(),
     // Add applicationUrl for HomeView compatibility
     applicationUrl: apiJob.URL,
     // Sponsor info — present when job_type === "sponsored"

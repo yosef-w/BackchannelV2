@@ -1480,6 +1480,25 @@ export function HomeView({
               ? JSON.parse(profile.POSITIONS)
               : [];
 
+            // PR #39 (Opt C, 2026-05-05): the pack endpoint now includes
+            // ap.INSIGHTS and up.BIO directly, so the back-of-card prompts +
+            // the richer "About" text render on first paint. The lazy
+            // `fetchFullProfileFor` call below still runs for the deeper
+            // sections (experiences / education / certifications / languages
+            // / achievements) which the pack does NOT include.
+            const bio: string =
+              profile.BIO || profile.REASON || "Looking for new opportunities";
+            let prompts: any[] = [];
+            if (profile.INSIGHTS) {
+              try {
+                const parsed = JSON.parse(profile.INSIGHTS);
+                if (Array.isArray(parsed)) prompts = parsed;
+              } catch {
+                // Malformed JSON — fall through with empty prompts; the
+                // lazy fetch will fill them in if it succeeds.
+              }
+            }
+
             return {
               ...profile, // Keep all original fields
               id: profile.USER_ID,
@@ -1487,7 +1506,8 @@ export function HomeView({
               location: profile.LOCATION || "",
               skills: skills,
               desiredRole: positions[0] || "Open to opportunities",
-              bio: profile.REASON || "Looking for new opportunities",
+              bio,
+              prompts,
               image:
                 profile.PHOTO_URL ||
                 "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
@@ -1529,9 +1549,11 @@ export function HomeView({
     }
   }, [userType, jobsLoading, jobs.length, profilesLoading, profiles.length]);
 
-  // Lazy-load the full applicant profile (insights, bio, experiences, etc.)
-  // on demand. The pack endpoint returns a minimal projection and omits
-  // INSIGHTS + BIO, so the back-of-card prompts are blank without this fetch.
+  // Lazy-load the deeper applicant profile (experiences, education,
+  // certifications, languages, achievements) on demand. As of PR #39 (Opt C,
+  // 2026-05-05) the pack endpoint already includes BIO + INSIGHTS so the
+  // back-of-card prompts and richer About text are populated upfront — this
+  // lazy fetch only fills in the heavier sections that the pack still omits.
   const fetchFullProfileFor = useCallback(
     async (userId: string) => {
       if (!userId || fullProfileCache[userId] || fullProfileLoading) return;

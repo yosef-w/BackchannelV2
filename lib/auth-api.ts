@@ -261,6 +261,36 @@ export const authApi = {
       newPassword,
     });
   },
+
+  /**
+   * Verify a user's email using the JWT token from the verification email link.
+   * Idempotent — verifying twice returns success both times.
+   * No auth header required (the token in the body carries identity).
+   * PR #38 (2026-04-30).
+   */
+  verifyEmail: async (token: string): Promise<{ message: string }> => {
+    return api.post<{ message: string }>(
+      "/api/auth/verify-email/",
+      { token },
+      true,
+    );
+  },
+
+  /**
+   * Re-send the verification email. Always returns 200 regardless of whether
+   * the email exists or is already verified (anti-enumeration). Rate-limited
+   * to 5 requests/hour per IP.
+   * PR #38 (2026-04-30).
+   */
+  resendVerificationEmail: async (
+    email: string,
+  ): Promise<{ message: string }> => {
+    return api.post<{ message: string }>(
+      "/api/auth/resend-verification/",
+      { email },
+      true,
+    );
+  },
   /**
    * Fetch current user's profile
    * Backend endpoint: GET /api/profile/

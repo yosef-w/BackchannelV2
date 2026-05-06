@@ -3,14 +3,15 @@
  * Lets an applicant report their current stage on an active referral and
  * optionally leave a note for their sponsor.
  *
- * Uses mock data — no backend integration yet.
- * Not dismissible by tapping outside; only exits via Submit.
+ * Wired to POST /api/referrals/<id>/checkin/ (PR #37, 2026-04-30).
+ * Not dismissible by tapping outside; only exits via Submit / Close.
  */
 
 import { BlurView } from "expo-blur";
-import { Check } from "lucide-react-native";
-import React, { useState } from "react";
+import { Check, X } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
     Modal,
     Platform,
     ScrollView,
@@ -25,17 +26,36 @@ import Animated, {
     SlideOutDown,
     ZoomIn,
 } from "react-native-reanimated";
+import {
+    ApplicantCheckInStage,
+    submitApplicantCheckIn,
+} from "../lib/api";
+import { useToastStore } from "../stores/useToastStore";
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-const MOCK_REFERRAL = {
-  company: "Stripe",
-  role: "Senior Product Designer",
-  sponsor: "Marcus Webb",
-  lastUpdatedDays: 14,
-  initialStageIndex: 0, // "Referred"
-};
+// ── Types ─────────────────────────────────────────────────────────────────────
+export interface CheckInReferral {
+  referralId: string;
+  jobTitle: string | null;
+  jobCompany: string | null;
+  sponsorFirstName: string | null;
+  sponsorLastName: string | null;
+  status: string; // "REFERRED" | "WITHDRAWN" | ...
+  createdAt: string;
+}
 
-const STAGES = [
+interface Props {
+  visible: boolean;
+  onDismiss: () => void;
+  /** All referrals the applicant has — withdrawn ones are filtered out internally. */
+  referrals: CheckInReferral[];
+  /** Optional: surface the loading state while parent is fetching referrals. */
+  loading?: boolean;
+}
+
+// ── Stage data ────────────────────────────────────────────────────────────────
+// Visual timeline stages (in order). Excludes the "ended" terminal value, which
+// is rendered separately as the inactive timeline state.
+const TIMELINE_STAGES: ApplicantCheckInStage[] = [
   "Referred",
   "Recruiter Screen",
   "HM Interview",
@@ -44,44 +64,131 @@ const STAGES = [
   "Hired",
 ];
 
-const STATUS_OPTIONS = [
-  { label: "Still waiting to hear back", stageIndex: 0 },
-  { label: "Had a recruiter screen", stageIndex: 1 },
-  { label: "Talking to the hiring manager", stageIndex: 2 },
-  { label: "In final rounds", stageIndex: 3 },
-  { label: "Received an offer", stageIndex: 4 },
-  { label: "Didn't move forward", stageIndex: -1 },
-];
-
-// ── Component ─────────────────────────────────────────────────────────────────
-interface Props {
-  visible: boolean;
-  onDismiss: () => void;
+interface StatusOption {
+  label: string;
+  stage: ApplicantCheckInStage;
+  /** Index into TIMELINE_STAGES, or -1 to indicate the pipeline ended. */
+  stageIndex: number;
 }
 
-export function ApplicantCheckInModal({ visible, onDismiss }: Props) {
-  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
-  const [activeStageIndex, setActiveStageIndex] = useState(
-    MOCK_REFERRAL.initialStageIndex,
+const STATUS_OPTIONS: StatusOption[] = [
+  { label: "Still waiting to hear back", stage: "Referred", stageIndex: 0 },
+  { label: "Had a recruiter screen", stage: "Recruiter Screen", stageIndex: 1 },
+  {
+    label: "Talking to the hiring manager",
+    stage: "HM Interview",
+    stageIndex: 2,
+  },
+  { label: "In final rounds", stage: "Final Round", stageIndex: 3 },
+  { label: "Received an offer", stage: "Offer", stageIndex: 4 },
+  { label: "Got hired!", stage: "Hired", stageIndex: 5 },
+  {
+    label: "Didn't move forward",
+    stage: "Didn't move forward",
+    stageIndex: -1,
+  },
+];
+
+const NOTE_MAX = 500;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function daysSince(iso: string): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24)));
+}
+
+function sponsorName(r: CheckInReferral): string {
+  const first = r.sponsorFirstName || "";
+  const last = r.sponsorLastName || "";
+  const full = `${first} ${last}`.trim();
+  return full || "your sponsor";
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+export function ApplicantCheckInModal({
+  visible,
+  onDismiss,
+  referrals,
+  loading = false,
+}: Props) {
+  const showToast = useToastStore((s) => s.showToast);
+
+  // Active = not withdrawn. Backend rejects check-ins on withdrawn referrals.
+  const activeReferrals = useMemo(
+    () =>
+      referrals.filter(
+        (r) => (r.status || "").toUpperCase() !== "WITHDRAWN",
+      ),
+    [referrals],
   );
+
+  const [activeReferralId, setActiveReferralId] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const currentReferral = useMemo(() => {
+    if (!activeReferralId) return null;
+    return activeReferrals.find((r) => r.referralId === activeReferralId) ?? null;
+  }, [activeReferralId, activeReferrals]);
+
+  const activeStageIndex =
+    selectedStatus !== null ? STATUS_OPTIONS[selectedStatus].stageIndex : 0;
+
+  // Default the active referral to the first one whenever the modal opens or
+  // the referral set changes.
+  useEffect(() => {
+    if (!visible) return;
+    if (activeReferrals.length === 0) {
+      setActiveReferralId(null);
+      return;
+    }
+    if (
+      !activeReferralId ||
+      !activeReferrals.find((r) => r.referralId === activeReferralId)
+    ) {
+      setActiveReferralId(activeReferrals[0].referralId);
+    }
+  }, [visible, activeReferrals, activeReferralId]);
+
+  // Reset transient state whenever the modal opens or the active referral changes
+  useEffect(() => {
+    if (!visible) return;
+    setSelectedStatus(null);
+    setNote("");
+    setSubmitted(false);
+  }, [visible, activeReferralId]);
 
   const handleSelect = (idx: number) => {
     setSelectedStatus(idx);
-    setActiveStageIndex(STATUS_OPTIONS[idx].stageIndex);
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => {
-      // Reset state for next open
-      setSubmitted(false);
-      setSelectedStatus(null);
-      setActiveStageIndex(MOCK_REFERRAL.initialStageIndex);
-      setNote("");
-      onDismiss();
-    }, 1600);
+  const handleClose = () => {
+    if (submitting) return;
+    onDismiss();
+  };
+
+  const handleSubmit = async () => {
+    if (!currentReferral || selectedStatus === null) return;
+    const opt = STATUS_OPTIONS[selectedStatus];
+    try {
+      setSubmitting(true);
+      await submitApplicantCheckIn(currentReferral.referralId, opt.stage, note);
+      setSubmitted(true);
+      // Auto-dismiss after the success animation plays
+      setTimeout(() => {
+        setSubmitted(false);
+        onDismiss();
+      }, 1600);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(msg || "Failed to submit check-in. Try again.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -103,6 +210,17 @@ export function ApplicantCheckInModal({ visible, onDismiss }: Props) {
           {/* Drag handle */}
           <View style={styles.handle} />
 
+          {/* Close button (always visible — modal is otherwise non-dismissible) */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleClose}
+            disabled={submitting}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <X color="#666" size={20} strokeWidth={2} />
+          </TouchableOpacity>
+
           {submitted ? (
             /* ── Success state ───────────────────────────────────────────── */
             <Animated.View
@@ -114,29 +232,97 @@ export function ApplicantCheckInModal({ visible, onDismiss }: Props) {
               </View>
               <Text style={styles.successTitle}>Update Sent!</Text>
               <Text style={styles.successSubtitle}>
-                {MOCK_REFERRAL.sponsor} will be notified of your progress.
+                {currentReferral
+                  ? `${sponsorName(currentReferral)} will be notified of your progress.`
+                  : "Your sponsor will be notified."}
               </Text>
             </Animated.View>
+          ) : loading ? (
+            /* ── Loading ─────────────────────────────────────────────────── */
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#000" />
+              <Text style={styles.emptyText}>Loading your referrals…</Text>
+            </View>
+          ) : activeReferrals.length === 0 ? (
+            /* ── Empty state ─────────────────────────────────────────────── */
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>No active referrals</Text>
+              <Text style={styles.emptyText}>
+                You don&apos;t have any active referrals to update right now.
+                Once a sponsor refers you, your pipeline will show up here.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyDismissBtn}
+                onPress={handleClose}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.emptyDismissBtnText}>Got it</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             /* ── Main content ────────────────────────────────────────────── */
             <ScrollView
               showsVerticalScrollIndicator={false}
               bounces={false}
               contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
             >
+              {/* Referral picker (only shown when 2+ active referrals) */}
+              {activeReferrals.length > 1 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.pickerRow}
+                >
+                  {activeReferrals.map((r) => {
+                    const isActive = r.referralId === activeReferralId;
+                    return (
+                      <TouchableOpacity
+                        key={r.referralId}
+                        style={[
+                          styles.pickerPill,
+                          isActive && styles.pickerPillActive,
+                        ]}
+                        onPress={() => setActiveReferralId(r.referralId)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.pickerPillText,
+                            isActive && styles.pickerPillTextActive,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {r.jobCompany || "Referral"}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+
               {/* Referral header */}
-              <View style={styles.referralHeader}>
-                <View style={styles.companyPill}>
-                  <Text style={styles.companyPillText}>
-                    {MOCK_REFERRAL.company}
+              {currentReferral && (
+                <View style={styles.referralHeader}>
+                  <View style={styles.companyPill}>
+                    <Text style={styles.companyPillText}>
+                      {currentReferral.jobCompany || "Company"}
+                    </Text>
+                  </View>
+                  <Text style={styles.roleText}>
+                    {currentReferral.jobTitle || "Referred role"}
+                  </Text>
+                  <Text style={styles.metaText}>
+                    via {sponsorName(currentReferral)}
+                    {(() => {
+                      const d = daysSince(currentReferral.createdAt);
+                      return d === null
+                        ? ""
+                        : ` · Referred ${d === 0 ? "today" : `${d} day${d === 1 ? "" : "s"} ago`}`;
+                    })()}
                   </Text>
                 </View>
-                <Text style={styles.roleText}>{MOCK_REFERRAL.role}</Text>
-                <Text style={styles.metaText}>
-                  via {MOCK_REFERRAL.sponsor} · Last updated{" "}
-                  {MOCK_REFERRAL.lastUpdatedDays} days ago
-                </Text>
-              </View>
+              )}
 
               <View style={styles.divider} />
 
@@ -144,11 +330,10 @@ export function ApplicantCheckInModal({ visible, onDismiss }: Props) {
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionLabel}>CURRENT STAGE</Text>
                 <View style={styles.timeline}>
-                  {STAGES.map((stage, idx) => {
+                  {TIMELINE_STAGES.map((stage, idx) => {
                     const isInactive = activeStageIndex < 0;
                     const isCompleted = !isInactive && idx < activeStageIndex;
                     const isActive = !isInactive && idx === activeStageIndex;
-                    // Connector before this item is filled when idx <= activeStageIndex
                     const connectorFilled =
                       !isInactive && idx <= activeStageIndex;
 
@@ -235,7 +420,7 @@ export function ApplicantCheckInModal({ visible, onDismiss }: Props) {
                 multiline
                 value={note}
                 onChangeText={setNote}
-                maxLength={300}
+                maxLength={NOTE_MAX}
                 textAlignVertical="top"
               />
 
@@ -243,15 +428,22 @@ export function ApplicantCheckInModal({ visible, onDismiss }: Props) {
               <TouchableOpacity
                 style={[
                   styles.submitBtn,
-                  selectedStatus === null && styles.submitBtnDisabled,
+                  (selectedStatus === null || submitting) &&
+                    styles.submitBtnDisabled,
                 ]}
                 onPress={handleSubmit}
-                disabled={selectedStatus === null}
+                disabled={selectedStatus === null || submitting}
                 activeOpacity={0.8}
               >
-                <Text style={styles.submitBtnText}>Submit Update</Text>
-                {selectedStatus !== null && (
-                  <Check color="#FFF" size={18} strokeWidth={2.5} />
+                {submitting ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <Text style={styles.submitBtnText}>Submit Update</Text>
+                    {selectedStatus !== null && (
+                      <Check color="#FFF" size={18} strokeWidth={2.5} />
+                    )}
+                  </>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -294,8 +486,47 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 24,
   },
+  closeButton: {
+    position: "absolute",
+    top: 16,
+    right: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F4F4F4",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
   scrollContent: {
     paddingBottom: 8,
+  },
+
+  // ── Picker (multi-referral) ────────────────────────────────────────────────
+  pickerRow: {
+    gap: 8,
+    paddingBottom: 16,
+  },
+  pickerPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    backgroundColor: "#FAFAFA",
+    maxWidth: 180,
+  },
+  pickerPillActive: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  pickerPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#444",
+  },
+  pickerPillTextActive: {
+    color: "#FFF",
   },
 
   // ── Referral header ─────────────────────────────────────────────────────────
@@ -357,7 +588,7 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: "#E5E5E5",
     alignSelf: "flex-start",
-    marginTop: 6, // align with center of 14px dot
+    marginTop: 6,
   },
   tConnectorFilled: {
     backgroundColor: "#000",
@@ -493,7 +724,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── Success state ────────────────────────────────────────────────────────────
+  // ── Success / Loading / Empty states ────────────────────────────────────────
   successContainer: {
     alignItems: "center",
     paddingVertical: 52,
@@ -519,5 +750,39 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     lineHeight: 22,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: 60,
+    gap: 14,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 12,
+    gap: 14,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#000",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  emptyDismissBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 24,
+    backgroundColor: "#000",
+  },
+  emptyDismissBtnText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

@@ -1,16 +1,18 @@
 /**
  * SponsorCheckInModal
  * Lets a sponsor triage their active referral pipeline — update the stage for
- * each candidate they've referred inline, then submit all changes at once.
+ * each candidate they've referred inline, then submit all changes at once via
+ * the batch check-in endpoint.
  *
- * Uses mock data — no backend integration yet.
+ * Wired to POST /api/referrals/checkin/batch/ (PR #37, 2026-04-30).
  * Not dismissible by tapping outside; only exits via Submit / Close.
  */
 
 import { BlurView } from "expo-blur";
-import { Check } from "lucide-react-native";
-import React, { useState } from "react";
+import { Check, X } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
     Modal,
     Platform,
     ScrollView,
@@ -24,87 +26,168 @@ import Animated, {
     SlideOutDown,
     ZoomIn,
 } from "react-native-reanimated";
+import {
+    SponsorCheckInStage,
+    SPONSOR_CHECKIN_STAGES,
+    submitSponsorBatchCheckIn,
+} from "../lib/api";
+import { useToastStore } from "../stores/useToastStore";
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-interface MockReferral {
-  id: number;
-  name: string;
-  role: string;
-  company: string;
-  currentStatus: string;
-  lastUpdatedDays: number;
+// ── Types ─────────────────────────────────────────────────────────────────────
+export interface SponsorCheckInReferral {
+  referralId: string;
+  applicantFirstName: string | null;
+  applicantLastName: string | null;
+  jobTitle: string | null;
+  jobCompany: string | null;
+  status: string; // "REFERRED" | "WITHDRAWN" | ...
+  createdAt: string;
 }
 
-const MOCK_REFERRALS: MockReferral[] = [
-  {
-    id: 0,
-    name: "Jordan Ellis",
-    role: "Frontend Engineer",
-    company: "Stripe",
-    currentStatus: "Referred",
-    lastUpdatedDays: 9,
-  },
-  {
-    id: 1,
-    name: "Priya Nair",
-    role: "Data Scientist",
-    company: "Notion",
-    currentStatus: "Recruiter Screen",
-    lastUpdatedDays: 4,
-  },
-  {
-    id: 2,
-    name: "Daniel Kim",
-    role: "Product Manager",
-    company: "Linear",
-    currentStatus: "HM Interview",
-    lastUpdatedDays: 2,
-  },
-];
-
-const INITIAL_STATUSES = MOCK_REFERRALS.map((r) => r.currentStatus);
-
-const STATUS_STAGES = [
-  "Referred",
-  "Recruiter Screen",
-  "HM Interview",
-  "Final Round",
-  "Offer",
-  "Hired",
-  "No Longer Active",
-];
-
-// ── Component ─────────────────────────────────────────────────────────────────
 interface Props {
   visible: boolean;
   onDismiss: () => void;
+  /** All referrals submitted by this sponsor — withdrawn ones are filtered out internally. */
+  referrals: SponsorCheckInReferral[];
+  /** Optional: surface the loading state while parent is fetching referrals. */
+  loading?: boolean;
 }
 
-export function SponsorCheckInModal({ visible, onDismiss }: Props) {
-  const [statuses, setStatuses] = useState<string[]>([...INITIAL_STATUSES]);
+// ── Constants ─────────────────────────────────────────────────────────────────
+const STATUS_STAGES = SPONSOR_CHECKIN_STAGES;
+
+/**
+ * Backend caps each batch request at 50 updates. We cap at the same number.
+ */
+const BATCH_LIMIT = 50;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function applicantName(r: SponsorCheckInReferral): string {
+  const first = r.applicantFirstName || "";
+  const last = r.applicantLastName || "";
+  const full = `${first} ${last}`.trim();
+  return full || "Applicant";
+}
+
+function daysSince(iso: string): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24)));
+}
+
+/**
+ * Map the (uppercase) referral.status from listReferrals into the closest
+ * sponsor check-in stage. Used as the initial value before the sponsor picks
+ * an update.
+ */
+function initialStageFor(r: SponsorCheckInReferral): SponsorCheckInStage {
+  const s = (r.status || "").toUpperCase();
+  if (s === "REFERRED" || s === "ACTIVE") return "Referred";
+  // Backend stores referrals in REFERRED/WITHDRAWN at row level; per-stage state
+  // lives in matching.referral_checkins. We default to "Referred" here and let
+  // the sponsor pick the latest known stage.
+  return "Referred";
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+export function SponsorCheckInModal({
+  visible,
+  onDismiss,
+  referrals,
+  loading = false,
+}: Props) {
+  const showToast = useToastStore((s) => s.showToast);
+
+  // Filter out withdrawn referrals — backend rejects check-ins on those.
+  const activeReferrals = useMemo(
+    () =>
+      referrals.filter(
+        (r) => (r.status || "").toUpperCase() !== "WITHDRAWN",
+      ),
+    [referrals],
+  );
+
+  // Map of referralId → currently selected stage. Initialised when the modal
+  // becomes visible or when the referral list changes underneath.
+  const [stageById, setStageById] = useState<
+    Record<string, SponsorCheckInStage>
+  >({});
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const hasChanges = statuses.some((s, i) => s !== INITIAL_STATUSES[i]);
+  // (Re-)initialise the stage map whenever the modal opens or referrals change.
+  useEffect(() => {
+    if (!visible) return;
+    const next: Record<string, SponsorCheckInStage> = {};
+    for (const r of activeReferrals) {
+      next[r.referralId] = initialStageFor(r);
+    }
+    setStageById(next);
+    setSubmitted(false);
+  }, [visible, activeReferrals]);
 
-  const handleSetStatus = (referralIdx: number, status: string) => {
-    setStatuses((prev) => {
-      const next = [...prev];
-      next[referralIdx] = status;
-      return next;
-    });
+  /**
+   * "Changed" = stage now differs from the initial value when the modal
+   * opened. We compute initial values inline rather than tracking a separate
+   * baseline state, since the baseline is deterministic from the referral row.
+   */
+  const changedUpdates = useMemo(() => {
+    return activeReferrals
+      .map((r) => {
+        const initial = initialStageFor(r);
+        const current = stageById[r.referralId];
+        if (!current || current === initial) return null;
+        return { referral_id: r.referralId, stage: current };
+      })
+      .filter(
+        (u): u is { referral_id: string; stage: SponsorCheckInStage } =>
+          u !== null,
+      );
+  }, [activeReferrals, stageById]);
+
+  const hasChanges = changedUpdates.length > 0;
+
+  const handleSetStatus = (referralId: string, stage: SponsorCheckInStage) => {
+    setStageById((prev) => ({ ...prev, [referralId]: stage }));
   };
 
-  const handleSubmit = () => {
+  const handleClose = () => {
+    if (submitting) return;
+    onDismiss();
+  };
+
+  const handleSubmit = async () => {
     if (!hasChanges) {
       onDismiss();
       return;
     }
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setStatuses([...INITIAL_STATUSES]);
-      onDismiss();
-    }, 1600);
+
+    // Backend rejects > 50 updates per call. Slice to the limit and surface a
+    // toast if any changes were dropped.
+    const toSubmit = changedUpdates.slice(0, BATCH_LIMIT);
+    const dropped = changedUpdates.length - toSubmit.length;
+
+    try {
+      setSubmitting(true);
+      await submitSponsorBatchCheckIn(toSubmit);
+      if (dropped > 0) {
+        showToast(
+          `Updated ${toSubmit.length} referrals; ${dropped} more will need a second pass.`,
+          "success",
+        );
+      }
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        onDismiss();
+      }, 1600);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(msg || "Failed to save updates. Try again.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -125,6 +208,17 @@ export function SponsorCheckInModal({ visible, onDismiss }: Props) {
         >
           {/* Drag handle */}
           <View style={styles.handle} />
+
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleClose}
+            disabled={submitting}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <X color="#666" size={20} strokeWidth={2} />
+          </TouchableOpacity>
 
           {submitted ? (
             /* ── Success state ───────────────────────────────────────────── */
@@ -151,87 +245,135 @@ export function SponsorCheckInModal({ visible, onDismiss }: Props) {
                 </Text>
               </View>
 
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                contentContainerStyle={styles.scrollContent}
-              >
-                {/* ── Referral cards ───────────────────────────────────── */}
-                {MOCK_REFERRALS.map((referral, rIdx) => (
-                  <View key={referral.id} style={styles.referralCard}>
-                    {/* Card header row */}
-                    <View style={styles.cardHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.candidateName}>
-                          {referral.name}
-                        </Text>
-                        <Text style={styles.candidateRole}>
-                          {referral.role} at {referral.company}
-                        </Text>
-                      </View>
-                      <View style={styles.cardHeaderRight}>
-                        <View style={styles.statusBadge}>
-                          <Text style={styles.statusBadgeText}>
-                            {statuses[rIdx]}
-                          </Text>
-                        </View>
-                        <Text style={styles.lastUpdated}>
-                          {referral.lastUpdatedDays}d ago
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Inline status chips */}
-                    <View style={styles.chipsRow}>
-                      {STATUS_STAGES.map((stage) => {
-                        const isSelected = statuses[rIdx] === stage;
-                        return (
-                          <TouchableOpacity
-                            key={stage}
-                            style={[
-                              styles.statusChip,
-                              isSelected && styles.statusChipSelected,
-                            ]}
-                            onPress={() => handleSetStatus(rIdx, stage)}
-                            activeOpacity={0.7}
-                          >
-                            <Text
-                              style={[
-                                styles.statusChipText,
-                                isSelected && styles.statusChipTextSelected,
-                              ]}
-                            >
-                              {stage}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                ))}
-
-                {/* ── Submit button ─────────────────────────────────────── */}
-                <TouchableOpacity
-                  style={[
-                    styles.submitBtn,
-                    !hasChanges && styles.submitBtnNoChanges,
-                  ]}
-                  onPress={handleSubmit}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.submitBtnText,
-                      !hasChanges && styles.submitBtnTextNoChanges,
-                    ]}
-                  >
-                    {hasChanges ? "Submit Updates" : "No Changes — Close"}
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color="#000" />
+                  <Text style={styles.emptyText}>Loading referrals…</Text>
+                </View>
+              ) : activeReferrals.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyTitle}>No active referrals</Text>
+                  <Text style={styles.emptyText}>
+                    You haven&apos;t submitted any referrals yet, or all of
+                    them have been withdrawn.
                   </Text>
-                  {hasChanges && (
-                    <Check color="#FFF" size={18} strokeWidth={2.5} />
-                  )}
-                </TouchableOpacity>
-              </ScrollView>
+                  <TouchableOpacity
+                    style={styles.emptyDismissBtn}
+                    onPress={handleClose}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.emptyDismissBtnText}>Got it</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  contentContainerStyle={styles.scrollContent}
+                >
+                  {/* ── Referral cards ───────────────────────────────────── */}
+                  {activeReferrals.map((referral) => {
+                    const currentStage =
+                      stageById[referral.referralId] ?? initialStageFor(referral);
+                    const days = daysSince(referral.createdAt);
+                    return (
+                      <View
+                        key={referral.referralId}
+                        style={styles.referralCard}
+                      >
+                        {/* Card header row */}
+                        <View style={styles.cardHeader}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.candidateName}>
+                              {applicantName(referral)}
+                            </Text>
+                            <Text style={styles.candidateRole}>
+                              {referral.jobTitle || "Role"}
+                              {referral.jobCompany
+                                ? ` at ${referral.jobCompany}`
+                                : ""}
+                            </Text>
+                          </View>
+                          <View style={styles.cardHeaderRight}>
+                            <View style={styles.statusBadge}>
+                              <Text style={styles.statusBadgeText}>
+                                {currentStage}
+                              </Text>
+                            </View>
+                            {days !== null && (
+                              <Text style={styles.lastUpdated}>
+                                {days === 0 ? "today" : `${days}d ago`}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Inline status chips */}
+                        <View style={styles.chipsRow}>
+                          {STATUS_STAGES.map((stage) => {
+                            const isSelected = currentStage === stage;
+                            return (
+                              <TouchableOpacity
+                                key={stage}
+                                style={[
+                                  styles.statusChip,
+                                  isSelected && styles.statusChipSelected,
+                                ]}
+                                onPress={() =>
+                                  handleSetStatus(referral.referralId, stage)
+                                }
+                                activeOpacity={0.7}
+                              >
+                                <Text
+                                  style={[
+                                    styles.statusChipText,
+                                    isSelected &&
+                                      styles.statusChipTextSelected,
+                                  ]}
+                                >
+                                  {stage}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
+                  })}
+
+                  {/* ── Submit button ─────────────────────────────────────── */}
+                  <TouchableOpacity
+                    style={[
+                      styles.submitBtn,
+                      !hasChanges && styles.submitBtnNoChanges,
+                      submitting && styles.submitBtnNoChanges,
+                    ]}
+                    onPress={handleSubmit}
+                    disabled={submitting}
+                    activeOpacity={0.8}
+                  >
+                    {submitting ? (
+                      <ActivityIndicator color="#000" />
+                    ) : (
+                      <>
+                        <Text
+                          style={[
+                            styles.submitBtnText,
+                            !hasChanges && styles.submitBtnTextNoChanges,
+                          ]}
+                        >
+                          {hasChanges
+                            ? `Submit ${changedUpdates.length} Update${changedUpdates.length === 1 ? "" : "s"}`
+                            : "No Changes — Close"}
+                        </Text>
+                        {hasChanges && (
+                          <Check color="#FFF" size={18} strokeWidth={2.5} />
+                        )}
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
             </>
           )}
         </Animated.View>
@@ -271,6 +413,18 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 16,
+    right: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F4F4F4",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
   },
 
   // ── Sheet header ────────────────────────────────────────────────────────────
@@ -404,7 +558,7 @@ const styles = StyleSheet.create({
     color: "#555",
   },
 
-  // ── Success state ────────────────────────────────────────────────────────────
+  // ── Success / Loading / Empty states ────────────────────────────────────────
   successContainer: {
     alignItems: "center",
     paddingVertical: 52,
@@ -430,5 +584,39 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     lineHeight: 22,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: 60,
+    gap: 14,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 12,
+    gap: 14,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#000",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  emptyDismissBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 24,
+    backgroundColor: "#000",
+  },
+  emptyDismissBtnText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

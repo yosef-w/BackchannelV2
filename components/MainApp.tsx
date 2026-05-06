@@ -28,9 +28,16 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from "react-native-reanimated";
-import { getUnreadNotificationCount, registerDevice } from "../lib/api";
+import {
+    getUnreadNotificationCount,
+    listReferrals,
+    registerDevice,
+} from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { ApplicantCheckInModal } from "./ApplicantCheckInModal";
+import {
+    ApplicantCheckInModal,
+    type CheckInReferral,
+} from "./ApplicantCheckInModal";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
@@ -38,7 +45,10 @@ import { MatchesView } from "./MatchesView";
 import { MessagesView } from "./MessagesView";
 import { NotificationsView } from "./NotificationsView";
 import { ProfileView } from "./ProfileView";
-import { SponsorCheckInModal } from "./SponsorCheckInModal";
+import {
+    SponsorCheckInModal,
+    type SponsorCheckInReferral,
+} from "./SponsorCheckInModal";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -132,12 +142,63 @@ export function MainApp({ userType }: MainAppProps) {
   const DEV_SHOW_CHECKIN_MODAL = false;
   const [showApplicantCheckIn, setShowApplicantCheckIn] = useState(false);
   const [showSponsorCheckIn, setShowSponsorCheckIn] = useState(false);
+  const [referrals, setReferrals] = useState<
+    CheckInReferral[] | SponsorCheckInReferral[]
+  >([]);
+  const [referralsLoading, setReferralsLoading] = useState(false);
+
+  /**
+   * Fetch referrals from /api/referrals/ and shape them into the props each
+   * check-in modal needs. We fetch fresh every time the user opens the
+   * check-in panel so the modal is never stale.
+   *
+   * The backend returns the same row shape for both roles; downstream consumers
+   * pick the fields relevant to them, so the same fetcher serves both modals.
+   */
+  const fetchReferralsForCheckIn = async () => {
+    try {
+      setReferralsLoading(true);
+      const response = await listReferrals({ limit: 50, offset: 0 });
+      const transformed = (response.referrals || []).map((r: any) => ({
+        referralId: r.REFERRAL_ID || r.referral_id || "",
+        jobTitle: r.JOB_TITLE || r.job_title || null,
+        jobCompany: r.JOB_COMPANY || r.job_company || null,
+        sponsorFirstName: r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
+        sponsorLastName: r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
+        applicantFirstName:
+          r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
+        applicantLastName:
+          r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
+        status: r.STATUS || r.status || "REFERRED",
+        createdAt: r.CREATED_AT || r.created_at || "",
+      }));
+      setReferrals(transformed);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // 404 means no referrals yet — that's an empty state, not an error
+      if (!msg.includes("404") && !msg.toLowerCase().includes("not found")) {
+        console.warn("[MainApp] Failed to fetch referrals:", err);
+      }
+      setReferrals([]);
+    } finally {
+      setReferralsLoading(false);
+    }
+  };
+
+  const handleOpenCheckIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (userType === "applicant") setShowApplicantCheckIn(true);
+    else setShowSponsorCheckIn(true);
+    // Fire fetch in the background — modal renders its own loading state.
+    fetchReferralsForCheckIn();
+  };
 
   useEffect(() => {
     if (!DEV_SHOW_CHECKIN_MODAL) return;
     const t = setTimeout(() => {
       if (userType === "applicant") setShowApplicantCheckIn(true);
       else setShowSponsorCheckIn(true);
+      fetchReferralsForCheckIn();
     }, 800);
     return () => clearTimeout(t);
   }, []);
@@ -318,11 +379,7 @@ export function MainApp({ userType }: MainAppProps) {
           <Text style={styles.appTitle}>Backchannel</Text>
           <View style={styles.topBarButtons}>
             <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                if (userType === "applicant") setShowApplicantCheckIn(true);
-                else setShowSponsorCheckIn(true);
-              }}
+              onPress={handleOpenCheckIn}
               activeOpacity={0.7}
               style={styles.headerIconButton}
             >
@@ -447,10 +504,14 @@ export function MainApp({ userType }: MainAppProps) {
       <ApplicantCheckInModal
         visible={showApplicantCheckIn}
         onDismiss={() => setShowApplicantCheckIn(false)}
+        referrals={referrals as CheckInReferral[]}
+        loading={referralsLoading}
       />
       <SponsorCheckInModal
         visible={showSponsorCheckIn}
         onDismiss={() => setShowSponsorCheckIn(false)}
+        referrals={referrals as SponsorCheckInReferral[]}
+        loading={referralsLoading}
       />
     </View>
   );

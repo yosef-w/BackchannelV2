@@ -1386,6 +1386,14 @@ export async function createJob(data: {
  * 💼 Create Job From URL (Sponsor)
  * Submit a job-posting URL with scraped content + sponsor's BackChannel insights.
  * Backend resolves the URL into a structured posting, then creates the sponsored job.
+ *
+ * Backend behavior (PR #40, 2026-05-05):
+ *  - When `structured` is present (with at least `title` + `company`), backend
+ *    maps fields directly → response `source === "structured"`.
+ *  - Otherwise it falls back to Anthropic Claude over `rawText` to extract
+ *    fields → response `source === "llm"`. The LLM path is throttled to
+ *    10 requests/hour per user; expect HTTP 429 once exceeded.
+ *
  * Uses POST /api/jobs/create-from-url/
  */
 export async function createJobFromUrl(data: {
@@ -1402,6 +1410,16 @@ export async function createJobFromUrl(data: {
   job_id: string;
   title: string;
   company: string;
+  /** The job listing URL the backend persisted as the canonical apply link. */
+  url: string;
+  /**
+   * How the backend filled in the job's structured fields:
+   *  - "structured": JSON-LD / og: tags from the scraped page were sufficient.
+   *  - "llm": Anthropic Claude extracted fields from `rawText`. Worth surfacing
+   *    a "review before publishing" hint to the sponsor when source === "llm",
+   *    since LLM extraction is fuzzier than JSON-LD.
+   */
+  source: "structured" | "llm";
   message: string;
   expires_at: string;
 }> {
@@ -1609,6 +1627,88 @@ export async function withdrawReferral(referralId: string): Promise<{
   status: string;
 }> {
   return api.patch(`/api/referrals/${referralId}/withdraw/`);
+}
+
+/**
+ * Backend referral pipeline stage enums (PR #37).
+ * The applicant and sponsor sides share the first 6 stages but diverge on the
+ * "ended" terminal value — applicants send "Didn't move forward", sponsors send
+ * "No Longer Active". Sending the wrong one for the role yields a 400.
+ */
+export const APPLICANT_CHECKIN_STAGES = [
+  "Referred",
+  "Recruiter Screen",
+  "HM Interview",
+  "Final Round",
+  "Offer",
+  "Hired",
+  "Didn't move forward",
+] as const;
+export type ApplicantCheckInStage = (typeof APPLICANT_CHECKIN_STAGES)[number];
+
+export const SPONSOR_CHECKIN_STAGES = [
+  "Referred",
+  "Recruiter Screen",
+  "HM Interview",
+  "Final Round",
+  "Offer",
+  "Hired",
+  "No Longer Active",
+] as const;
+export type SponsorCheckInStage = (typeof SPONSOR_CHECKIN_STAGES)[number];
+
+/**
+ * 📍 Submit Referral Check-In (Applicant)
+ * Records a new pipeline stage update for a referral the user is the applicant on.
+ * Note is optional, max 500 chars.
+ * Uses POST /api/referrals/<referral_id>/checkin/
+ */
+export async function submitApplicantCheckIn(
+  referralId: string,
+  stage: ApplicantCheckInStage,
+  note?: string,
+): Promise<{
+  checkin_id: string;
+  stage: string;
+  message: string;
+}> {
+  const body: { stage: string; note?: string } = { stage };
+  if (note && note.trim()) body.note = note.trim().slice(0, 500);
+  return api.post(`/api/referrals/${referralId}/checkin/`, body);
+}
+
+/**
+ * 📍 Batch Submit Referral Check-Ins (Sponsor)
+ * Sponsor updates pipeline stages on multiple referrals at once. Max 50/request.
+ * Uses POST /api/referrals/checkin/batch/
+ */
+export async function submitSponsorBatchCheckIn(
+  updates: Array<{ referral_id: string; stage: SponsorCheckInStage }>,
+): Promise<{
+  checkin_ids: string[];
+  count: number;
+  message: string;
+}> {
+  return api.post(`/api/referrals/checkin/batch/`, { updates });
+}
+
+/**
+ * 📜 Check-In History (Applicant or Sponsor)
+ * Returns the full immutable check-in timeline for a referral.
+ * Uses GET /api/referrals/<referral_id>/checkins/
+ */
+export async function getCheckInHistory(referralId: string): Promise<{
+  checkins: Array<{
+    CHECKIN_ID: string;
+    REFERRAL_ID: string;
+    SUBMITTED_BY: string;
+    ROLE: "Applicant" | "Sponsor";
+    STAGE: string;
+    NOTE: string | null;
+    CREATED_AT: string;
+  }>;
+}> {
+  return api.get(`/api/referrals/${referralId}/checkins/`);
 }
 
 /**
