@@ -27,6 +27,10 @@ import Animated, {
     ZoomIn,
 } from "react-native-reanimated";
 import {
+    trackApplicantCheckInSubmitted,
+    trackCheckInFailed,
+} from "../lib/analytics/mixpanel";
+import {
     ApplicantCheckInStage,
     submitApplicantCheckIn,
 } from "../lib/api";
@@ -177,6 +181,11 @@ export function ApplicantCheckInModal({
     try {
       setSubmitting(true);
       await submitApplicantCheckIn(currentReferral.referralId, opt.stage, note);
+      trackApplicantCheckInSubmitted({
+        referralId: currentReferral.referralId,
+        stage: opt.stage,
+        hasNote: note.trim().length > 0,
+      });
       setSubmitted(true);
       // Auto-dismiss after the success animation plays
       setTimeout(() => {
@@ -185,6 +194,7 @@ export function ApplicantCheckInModal({
       }, 1600);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      trackCheckInFailed({ role: "applicant", reason: msg || "unknown" });
       showToast(msg || "Failed to submit check-in. Try again.", "error");
     } finally {
       setSubmitting(false);

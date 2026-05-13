@@ -1,64 +1,73 @@
 import {
-    browseJobs,
-    createJobFromUrl,
-    getMyJobs,
-    sponsorJob,
-    unsponsorJob,
+  trackBrowseJobsViewed,
+  trackJobCreatedFromUrl,
+  trackJobCreateFromUrlFailed,
+  trackJobCreateFromUrlStarted,
+  trackJobSponsored,
+  trackJobSponsorStarted,
+  trackJobUnsponsored,
+} from "@/lib/analytics/mixpanel";
+import {
+  browseJobs,
+  createJobFromUrl,
+  getJobApplicantsLikes,
+  getMyJobs,
+  sponsorJob,
+  unsponsorJob,
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
-    Award,
-    Briefcase,
-    Check,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    DollarSign,
-    FileText,
-    Globe,
-    Lock,
-    MapPin,
-    MessageCircle,
-    MoreHorizontal,
-    Plus,
-    Send,
-    Share,
-    SlidersHorizontal,
-    Sparkles,
-    ThumbsDown,
-    Trash2,
-    Users,
-    X,
-    Zap,
+  Award,
+  Briefcase,
+  Check,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  FileText,
+  Globe,
+  Lock,
+  MapPin,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  Send,
+  Share,
+  Sparkles,
+  ThumbsDown,
+  Trash2,
+  Users,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-    FadeOut,
-    SlideInDown,
-    SlideOutDown,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
 
@@ -154,9 +163,6 @@ export function JobsView() {
   const setJobs = useJobsStore((state) => state.setJobs);
   const setLoading = useJobsStore((state) => state.setLoading);
   const setError = useJobsStore((state) => state.setError);
-  const getFilteredJobs = useJobsStore((state) => state.getFilteredJobs);
-  const toggleFilter = useJobsStore((state) => state.toggleFilter);
-  const storeFilters = useJobsStore((state) => state.filters);
   const addSponsoredJob = useJobsStore((state) => state.addSponsoredJob);
   const sponsoredJobs = useJobsStore((state) => state.sponsoredJobs);
   const myJobs = useJobsStore((state) => state.myJobs);
@@ -181,8 +187,6 @@ export function JobsView() {
   const [message, setMessage] = useState("");
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Filter State
-  const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"browse" | "sponsored">("browse");
   const [displayLimit, setDisplayLimit] = useState(20);
 
@@ -198,6 +202,7 @@ export function JobsView() {
 
         setLoading(true);
         console.log("[JobsView] Fetching browse jobs for sponsor...");
+        trackBrowseJobsViewed();
         const response = await browseJobs({ limit: 50 });
         console.log("[JobsView] Browse response:", response);
 
@@ -272,6 +277,41 @@ export function JobsView() {
     );
   }, [sponsoredJobs]);
 
+  // Workaround until backend adds LIKES_COUNT to /api/jobs/mine/ (see
+  // BACKEND_CHANGES_NEEDED.md §3). For each sponsored job we fan out to
+  // GET /api/jobs/<id>/likes/applicants/ and patch the count back into
+  // myJobs state. Failures fall back silently to the existing count so
+  // one bad job doesn't blank the whole list.
+  const enrichMyJobsWithApplicantCounts = async (jobIds: string[]) => {
+    if (jobIds.length === 0) return;
+    const results = await Promise.allSettled(
+      jobIds.map((id) => getJobApplicantsLikes(id)),
+    );
+    const counts = new Map<string, number>();
+    results.forEach((r, idx) => {
+      if (r.status === "fulfilled") {
+        const v = r.value;
+        counts.set(jobIds[idx], v.total_count ?? v.applicants?.length ?? 0);
+      } else {
+        console.warn(
+          `[JobsView] Applicant count fetch failed for ${jobIds[idx]}:`,
+          r.reason,
+        );
+      }
+    });
+    // setMyJobs from the Zustand store takes a Job[], not a functional
+    // updater — read the latest state via getState() to avoid clobbering
+    // any newer writes that happened while our N requests were in flight.
+    const latest = useJobsStore.getState().myJobs;
+    setMyJobs(
+      latest.map((job) =>
+        counts.has(job.id)
+          ? { ...job, applicants: counts.get(job.id) ?? 0 }
+          : job,
+      ),
+    );
+  };
+
   // Shared helper — fetch sponsor's own jobs and update store
   const refreshMyJobs = async (showLoadingSpinner = true) => {
     try {
@@ -312,6 +352,8 @@ export function JobsView() {
         isSponsored: true,
       }));
       setMyJobs(transformed);
+      // Fire and forget — counts will patch in once requests resolve.
+      enrichMyJobsWithApplicantCounts(transformed.map((j) => j.id));
     } catch (err) {
       console.warn("[JobsView] Failed to fetch my jobs:", err);
     } finally {
@@ -326,6 +368,7 @@ export function JobsView() {
     removeMyJob(job.id);
     try {
       await unsponsorJob(job.id);
+      trackJobUnsponsored({ jobId: job.id });
     } catch (err) {
       console.warn("[JobsView] Failed to unsponsor job:", err);
       // Revert by re-fetching the real list from backend
@@ -395,6 +438,7 @@ export function JobsView() {
           isSponsored: true,
         }));
         setMyJobs(transformed);
+        enrichMyJobsWithApplicantCounts(transformed.map((j) => j.id));
       } catch {
         // silent fail — will be corrected when user opens the tab
       }
@@ -407,59 +451,6 @@ export function JobsView() {
     const slide = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
     setActiveSlide(slide);
   };
-
-  const handleToggleFilter = (category: string, option: string) => {
-    // Map UI categories to store filter keys
-    const categoryMap: Record<string, keyof typeof storeFilters> = {
-      type: "type",
-      location: "location",
-      department: "department",
-      experience: "experience",
-    };
-
-    const storeCategory = categoryMap[category];
-    if (storeCategory && Array.isArray(storeFilters[storeCategory])) {
-      toggleFilter(storeCategory, option);
-    }
-  };
-
-  const FILTER_OPTIONS = [
-    {
-      id: "type",
-      label: "Job Type",
-      options: ["Full-time", "Contract", "Part-time", "Internship"],
-    },
-    {
-      id: "location",
-      label: "Location",
-      options: ["Remote", "On-site", "Hybrid", "Relocation Available"],
-    },
-    {
-      id: "department",
-      label: "Department",
-      options: [
-        "Engineering",
-        "Product",
-        "Design",
-        "Data Science",
-        "Sales",
-        "Marketing",
-      ],
-    },
-    {
-      id: "experience",
-      label: "Experience",
-      options: ["Entry Level", "Mid-Level", "Senior", "Lead/Principal"],
-    },
-  ];
-
-  // Get filtered jobs from store
-  const filteredJobs = getFilteredJobs();
-
-  // Calculate active filter count from store
-  const activeFilterCount = Object.values(storeFilters)
-    .filter((value) => Array.isArray(value))
-    .flat().length;
 
   const handleApplicantPress = (job: JobPosting) => {
     if (job.isSponsored) {
@@ -631,6 +622,7 @@ export function JobsView() {
     try {
       setIsSponsoring(true);
       console.log("[JobsView] Sponsoring job:", selectedJob.id);
+      trackJobSponsorStarted({ silverJobId: selectedJob.id });
       const response = await sponsorJob(selectedJob.id, {
         relationship,
         canRefer,
@@ -643,6 +635,19 @@ export function JobsView() {
       });
       console.log("[JobsView] Sponsorship successful:", response);
       console.log("[JobsView] New JOB_POSTINGS ID:", response.job_id);
+      const insightsCount = [
+        sponsorDayToDay,
+        sponsorTeamCulture,
+        sponsorIdealCandidate,
+        sponsorInsiderInsights,
+      ].filter((v) => v && v.trim().length > 0).length;
+      trackJobSponsored({
+        silverJobId: selectedJob.id,
+        newJobId: response.job_id,
+        relationship,
+        canRefer,
+        insightsCount,
+      });
 
       // Track sponsored job with BOTH IDs:
       // - jobId: JOB_POSTINGS ID (for API calls like likeProfile)
@@ -675,6 +680,7 @@ export function JobsView() {
   };
 
   const openCreateModal = () => {
+    trackJobCreateFromUrlStarted();
     setCreateFlowStep("url");
     setJobUrlInput("");
     setPreviewUrl("");
@@ -767,6 +773,17 @@ export function JobsView() {
       setIsCreatingJob(true);
       const response = await createJobFromUrl(payload);
       console.log("[JobsView] Job created from URL:", response);
+      const hasInsights = [
+        dayToDay,
+        teamCulture,
+        idealCandidate,
+        insiderInsights,
+      ].some((v) => v && v.trim().length > 0);
+      trackJobCreatedFromUrl({
+        jobId: response.job_id,
+        source: response.source ?? "unknown",
+        hasInsights,
+      });
 
       // Refresh "My Sponsored" so the badge + tab reflect the new posting
       refreshMyJobs(false);
@@ -799,16 +816,18 @@ export function JobsView() {
         msg.toLowerCase().includes("rate limit") ||
         msg.toLowerCase().includes("too many");
 
+      trackJobCreateFromUrlFailed({
+        reason: msg || "unknown",
+        rateLimited: isRateLimited,
+      });
+
       if (isRateLimited) {
         showToast(
           "AI extraction limit reached. Try again in an hour, or paste a LinkedIn/Greenhouse link (those skip AI).",
           "error",
         );
       } else {
-        showToast(
-          "Failed to publish job listing. Please try again.",
-          "error",
-        );
+        showToast("Failed to publish job listing. Please try again.", "error");
       }
     } finally {
       setIsCreatingJob(false);
@@ -847,19 +866,6 @@ export function JobsView() {
           style={styles.sectionTitleRow}
         >
           <Text style={styles.listSectionTitle}>Available Jobs</Text>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              activeFilterCount > 0 && styles.filterBtnActive,
-            ]}
-            onPress={() => setShowFilters(true)}
-            activeOpacity={0.7}
-          >
-            <SlidersHorizontal
-              size={20}
-              color={activeFilterCount > 0 ? "#FFF" : "#000"}
-            />
-          </TouchableOpacity>
         </Animated.View>
 
         {isLoading ? (
@@ -933,26 +939,6 @@ export function JobsView() {
               loadJobs();
             }}
           />
-        ) : filteredJobs.length === 0 ? (
-          <EmptyState
-            icon={
-              <SlidersHorizontal size={40} color="#000" strokeWidth={2.5} />
-            }
-            title="No jobs match your filters"
-            description="Try adjusting your search criteria to see more opportunities."
-            actionText="Clear Filters"
-            onAction={() => {
-              // Clear all filters
-              Object.keys(storeFilters).forEach((key) => {
-                const filterKey = key as keyof typeof storeFilters;
-                if (Array.isArray(storeFilters[filterKey])) {
-                  (storeFilters[filterKey] as string[]).forEach((option) => {
-                    toggleFilter(filterKey, option);
-                  });
-                }
-              });
-            }}
-          />
         ) : (
           <>
             {/* Tabs */}
@@ -981,7 +967,7 @@ export function JobsView() {
                       activeTab === "browse" && styles.activeTabBadgeText,
                     ]}
                   >
-                    {filteredJobs.length}
+                    {jobs.length}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -1021,7 +1007,7 @@ export function JobsView() {
             {/* Browse Jobs Tab */}
             {activeTab === "browse" && (
               <>
-                {filteredJobs.length === 0 ? (
+                {jobs.length === 0 ? (
                   <EmptyState
                     icon={
                       <Briefcase size={40} color="#000" strokeWidth={2.5} />
@@ -1033,7 +1019,7 @@ export function JobsView() {
                   />
                 ) : (
                   <>
-                    {filteredJobs.slice(0, displayLimit).map((job, index) => (
+                    {jobs.slice(0, displayLimit).map((job, index) => (
                       <Animated.View
                         key={job.id}
                         entering={FadeInUp.delay(100 + index * 40).duration(
@@ -1052,7 +1038,7 @@ export function JobsView() {
                     ))}
 
                     {/* Load More Button */}
-                    {filteredJobs.length > displayLimit && (
+                    {jobs.length > displayLimit && (
                       <TouchableOpacity
                         style={styles.loadMoreBtn}
                         onPress={() => setDisplayLimit((prev) => prev + 20)}
@@ -2015,10 +2001,33 @@ export function JobsView() {
                       {viewJobDetails.currentSponsors.map((sponsor, i) => (
                         <View key={i} style={styles.sponsorInfoCard}>
                           <View style={styles.sponsorCardContent}>
-                            <Image
-                              source={{ uri: sponsor.image }}
-                              style={styles.sponsorCardAvatar}
-                            />
+                            {sponsor.image ? (
+                              <Image
+                                source={{ uri: sponsor.image }}
+                                style={styles.sponsorCardAvatar}
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.sponsorCardAvatar,
+                                  {
+                                    backgroundColor: "#000",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  },
+                                ]}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "800",
+                                    color: "#FFF",
+                                  }}
+                                >
+                                  {(sponsor.name || "?")[0].toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
                             <View style={{ flex: 1 }}>
                               <Text style={styles.sponsorCardName}>
                                 {sponsor.name}
@@ -2134,74 +2143,6 @@ export function JobsView() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Filter Modal */}
-      <Modal visible={showFilters} animationType="slide" transparent>
-        <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill}>
-          <SafeAreaView style={{ flex: 1 }}>
-            <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Refine Feed</Text>
-              <TouchableOpacity
-                onPress={() => setShowFilters(false)}
-                style={styles.filterCloseModalBtn}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={styles.filterModalContent}>
-              {FILTER_OPTIONS.map((section) => (
-                <View key={section.id} style={styles.filterSection}>
-                  <Text style={styles.filterLabel}>{section.label}</Text>
-                  <View style={styles.filterOptionsRow}>
-                    {section.options.map((opt) => {
-                      const categoryKey =
-                        section.id as keyof typeof storeFilters;
-                      const filterValue = storeFilters[categoryKey];
-                      const isSelected =
-                        Array.isArray(filterValue) && filterValue.includes(opt);
-                      return (
-                        <TouchableOpacity
-                          key={opt}
-                          style={[
-                            styles.filterChip,
-                            isSelected && styles.filterChipSelected,
-                          ]}
-                          onPress={() => handleToggleFilter(section.id, opt)}
-                          activeOpacity={0.8}
-                        >
-                          <Text
-                            style={[
-                              styles.filterChipText,
-                              isSelected && styles.filterChipTextSelected,
-                            ]}
-                          >
-                            {opt}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-            <View style={styles.filterModalFooter}>
-              <TouchableOpacity
-                style={styles.filterApplyBtn}
-                onPress={() => setShowFilters(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.filterApplyBtnText}>Show Results</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterClearBtn}
-                onPress={() => useJobsStore.getState().clearFilters()}
-              >
-                <Text style={styles.filterClearBtnText}>Clear All</Text>
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </BlurView>
-      </Modal>
-
       <Modal
         animationType="fade"
         transparent={true}
@@ -2243,10 +2184,33 @@ export function JobsView() {
             >
               {selectedApplicantJob?.topApplicants?.map((applicant, i) => (
                 <View key={i} style={styles.applicantRow}>
-                  <Image
-                    source={{ uri: applicant.image }}
-                    style={styles.applicantAvatar}
-                  />
+                  {applicant.image ? (
+                    <Image
+                      source={{ uri: applicant.image }}
+                      style={styles.applicantAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.applicantAvatar,
+                        {
+                          backgroundColor: "#000",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 18,
+                          fontWeight: "800",
+                          color: "#FFF",
+                        }}
+                      >
+                        {(applicant.name || "?")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.applicantName}>{applicant.name}</Text>
                     <Text style={styles.applicantRole}>
@@ -2730,92 +2694,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  filterBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F5F5F5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterBtnActive: { backgroundColor: "#000" },
-  filterBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FF3B30",
-    borderWidth: 2,
-    borderColor: "#F5F5F5",
-  },
-
-  // Filter Modal Styles (copied 1:1 from HomeView)
-  filterModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  filterModalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
-  filterCloseModalBtn: {
-    padding: 4,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
-  },
-  filterModalContent: { padding: 28, paddingBottom: 40 },
-  filterSection: { marginBottom: 32 },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#999",
-    marginBottom: 16,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  filterOptionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  filterChipSelected: { backgroundColor: "#000", borderColor: "#000" },
-  filterChipText: { fontSize: 13, fontWeight: "600", color: "#000" },
-  filterChipTextSelected: { color: "#FFF" },
-  filterModalFooter: {
-    padding: 28,
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-    gap: 16,
-  },
-  filterApplyBtn: {
-    backgroundColor: "#000",
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  filterApplyBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  filterClearBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-  },
-  filterClearBtnText: { color: "#000", fontSize: 14, fontWeight: "600" },
   sponsoredHeaderRow: {
     flexDirection: "row",
     alignItems: "center",

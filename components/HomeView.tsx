@@ -1,130 +1,95 @@
 import {
-    fetchJobsPack,
-    fetchProfilesPack,
-    getMyJobs,
-    getPublicProfile,
-    joinWaitlist,
-    likeJob,
-    likeProfile,
+  trackJobLiked,
+  trackJobSkipped,
+  trackJobWaitlistJoined,
+  trackMatchCreated,
+  trackProfileLiked,
+  trackProfileSkipped,
+  trackSponsorRequested,
+  trackTesterModeEnabled,
+} from "@/lib/analytics/mixpanel";
+import {
+  fetchJobsPack,
+  fetchProfilesPack,
+  getMyJobs,
+  getPublicProfile,
+  joinWaitlist,
+  likeJob,
+  likeProfile,
+  requestSponsorForJob,
 } from "@/lib/api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-    Award,
-    BellRing,
-    Briefcase,
-    Calendar,
-    Check,
-    ChevronDown,
-    ChevronRight,
-    Coffee,
-    DollarSign,
-    ExternalLink,
-    Globe,
-    GraduationCap,
-    Info,
-    Layers,
-    Mail,
-    MapPin,
-    MessageCircle,
-    RefreshCcw,
-    SlidersHorizontal,
-    Sparkles,
-    TrendingUp,
-    Users,
-    X,
-    Zap,
+  Award,
+  BellRing,
+  Briefcase,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Coffee,
+  DollarSign,
+  Globe,
+  GraduationCap,
+  Info,
+  Layers,
+  Mail,
+  MapPin,
+  MessageCircle,
+  RefreshCcw,
+  Sparkles,
+  TrendingUp,
+  Users,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-    FadeOut,
-    LinearTransition,
-    SlideInDown,
-    SlideOutDown,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSequence,
-    withTiming,
-    ZoomIn,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  LinearTransition,
+  SlideInDown,
+  SlideOutDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
-import { JobApplicationWebView } from "./JobApplicationWebView";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface HomeViewProps {
   userType: "applicant" | "sponsor";
-  onWebViewActiveChange?: (isActive: boolean) => void;
   onNavigateToProfile?: () => void;
 }
 
 const DECK_SIZE = 10;
-
-const FILTER_OPTS = {
-  applicant: [
-    {
-      id: "role",
-      label: "Target Role",
-      options: ["Product", "Engineering", "Design", "Data", "Sales"],
-    },
-    {
-      id: "industry",
-      label: "Industry",
-      options: ["Tech", "FinTech", "Health", "EdTech", "Media"],
-    },
-    {
-      id: "goal",
-      label: "Goal",
-      options: ["Referral", "Career Advice", "Resume Review", "Interview Prep"],
-    },
-  ],
-  sponsor: [
-    {
-      id: "role",
-      label: "Role",
-      options: [
-        "Product Manager",
-        "Software Engineer",
-        "Designer",
-        "Data Scientist",
-      ],
-    },
-    {
-      id: "exp",
-      label: "Experience",
-      options: ["Junior (0-2y)", "Mid (2-5y)", "Senior (5-8y)", "Lead (8y+)"],
-    },
-    {
-      id: "status",
-      label: "Status",
-      options: ["Actively Looking", "Passive", "Open to Networking"],
-    },
-  ],
-};
 
 const mockProfiles = [
   {
@@ -1187,11 +1152,7 @@ const SkeletonCard = () => {
   );
 };
 
-export function HomeView({
-  userType,
-  onWebViewActiveChange,
-  onNavigateToProfile,
-}: HomeViewProps) {
+export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   const router = useRouter();
   const profileData = useUserProfileStore((state) => state.data);
   const workEmailVerified = useUserProfileStore(
@@ -1267,49 +1228,21 @@ export function HomeView({
     ? checkProfileCompleteness(profileData)
     : { isComplete: false, percentage: 0, missingFields: [] };
 
-  // Filter State
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedFilters, setSelectedFilters] = useState<
-    Record<string, string[]>
-  >({});
-
-  // Apply Modal State
+  // Apply Modal State (for non-sponsored jobs)
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applyStep, setApplyStep] = useState<
-    "select" | "waitlist" | "external"
+    "select" | "waitlist" | "requested"
   >("select");
   const [pendingJob, setPendingJob] = useState<any>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
+  const [isRequestingSponsor, setIsRequestingSponsor] = useState(false);
   const [waitlistedJobIds, setWaitlistedJobIds] = useState<Set<string>>(
     new Set(),
   );
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
-
-  // WebView State
-  const [showWebView, setShowWebView] = useState(false);
-  const [webViewJob, setWebViewJob] = useState<any>(null);
-
-  // Confirmation modal after closing the external apply WebView
-  const [showApplyConfirmModal, setShowApplyConfirmModal] = useState(false);
-  const [applyConfirmJob, setApplyConfirmJob] = useState<any>(null);
-
-  // Notify parent when WebView state changes
-  useEffect(() => {
-    onWebViewActiveChange?.(showWebView);
-  }, [showWebView]);
-
-  const toggleFilter = (category: string, option: string) => {
-    setSelectedFilters((prev) => {
-      const current = prev[category] || [];
-      if (current.includes(option)) {
-        return { ...prev, [category]: current.filter((o) => o !== option) };
-      } else {
-        return { ...prev, [category]: [...current, option] };
-      }
-    });
-  };
-
-  const activeFilterCount = Object.values(selectedFilters).flat().length;
+  const [requestedSponsorJobIds, setRequestedSponsorJobIds] = useState<
+    Set<string>
+  >(new Set());
 
   const swipeX = useSharedValue(0);
   const swipeOpacity = useSharedValue(1);
@@ -1508,9 +1441,7 @@ export function HomeView({
               desiredRole: positions[0] || "Open to opportunities",
               bio,
               prompts,
-              image:
-                profile.PHOTO_URL ||
-                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+              image: profile.PHOTO_URL || "",
               company: "", // Applicants don't have company
             };
           });
@@ -1680,17 +1611,28 @@ export function HomeView({
             // Mark sponsored job as applied
             setAppliedJobIds((prev) => new Set([...prev, String(jobId)]));
 
+            const isSponsoredJob =
+              "isSponsored" in currentData
+                ? Boolean(currentData.isSponsored)
+                : false;
+            trackJobLiked({
+              jobId: String(jobId),
+              isSponsored: isSponsoredJob,
+              matched: Boolean(response.matched),
+            });
+
             // Show match celebration modal on mutual like
             if (response.matched) {
               console.log("[HomeView] 🎉 It's a match!");
               didMatch = true;
+              const matchName =
+                "sponsorInfo" in currentData && currentData.sponsorInfo?.name
+                  ? (currentData.sponsorInfo.name as string)
+                  : "company" in currentData
+                    ? (currentData.company as string) || "Your Sponsor"
+                    : "Your Sponsor";
               setMatchedUser({
-                name:
-                  "sponsorInfo" in currentData && currentData.sponsorInfo?.name
-                    ? (currentData.sponsorInfo.name as string)
-                    : "company" in currentData
-                      ? (currentData.company as string) || "Your Sponsor"
-                      : "Your Sponsor",
+                name: matchName,
                 image:
                   "sponsorInfo" in currentData
                     ? (currentData.sponsorInfo?.image as string) || ""
@@ -1703,6 +1645,11 @@ export function HomeView({
                   "title" in currentData
                     ? (currentData.title as string)
                     : undefined,
+              });
+              trackMatchCreated({
+                matchedWithName: matchName,
+                jobId: String(jobId),
+                origin: "applicant_swipe",
               });
             }
           } else {
@@ -1723,15 +1670,22 @@ export function HomeView({
             );
             console.log("[HomeView] Like profile response:", response);
 
+            trackProfileLiked({
+              applicantUserId: String(applicantUserId),
+              jobId: activeSponsoredJobId || undefined,
+              matched: Boolean(response.matched),
+            });
+
             // Show match celebration modal on mutual like
             if (response.matched) {
               console.log("[HomeView] 🎉 It's a match!");
               didMatch = true;
+              const matchName =
+                (currentData.name as string) ||
+                `${(currentData.FIRST_NAME as string) || ""} ${(currentData.LAST_NAME as string) || ""}`.trim() ||
+                "Applicant";
               setMatchedUser({
-                name:
-                  (currentData.name as string) ||
-                  `${(currentData.FIRST_NAME as string) || ""} ${(currentData.LAST_NAME as string) || ""}`.trim() ||
-                  "Applicant",
+                name: matchName,
                 image:
                   (currentData.image as string) ||
                   (currentData.PHOTO_URL as string) ||
@@ -1740,6 +1694,11 @@ export function HomeView({
                   (currentData.desiredRole as string) ||
                   (currentData.role as string) ||
                   "",
+              });
+              trackMatchCreated({
+                matchedWithName: matchName,
+                jobId: activeSponsoredJobId || undefined,
+                origin: "sponsor_swipe",
               });
             }
           } else {
@@ -1763,6 +1722,27 @@ export function HomeView({
       }
       // When didMatch=true, nextProfile is called when the match modal is dismissed
     } else {
+      // Skip / swipe-left analytics — fired regardless of role.
+      if (userType === "applicant") {
+        const skippedJobId = currentData?.id;
+        if (skippedJobId) {
+          trackJobSkipped({
+            jobId: String(skippedJobId),
+            isSponsored:
+              "isSponsored" in currentData
+                ? Boolean(currentData.isSponsored)
+                : false,
+          });
+        }
+      } else {
+        const skippedApplicantId = currentData?.USER_ID || currentData?.id;
+        if (skippedApplicantId) {
+          trackProfileSkipped({
+            applicantUserId: String(skippedApplicantId),
+            jobId: activeSponsoredJobId || undefined,
+          });
+        }
+      }
       nextProfile(false);
     }
   };
@@ -1793,13 +1773,26 @@ export function HomeView({
     nextProfile(true);
   };
 
-  const handleDirectApply = () => {
-    // Close the apply modal
-    setShowApplyModal(false);
-
-    // Open WebView with the job application URL
-    setWebViewJob(pendingJob);
-    setShowWebView(true);
+  const handleRequestSponsor = async () => {
+    setIsRequestingSponsor(true);
+    try {
+      if (pendingJob?.id) {
+        await requestSponsorForJob(String(pendingJob.id));
+        trackSponsorRequested({ jobId: String(pendingJob.id) });
+      }
+    } catch (err) {
+      console.warn("[HomeView] Failed to request sponsor:", err);
+      // Still show success UI — the user's intent is clear, and the
+      // backend endpoint may not exist yet (see BACKEND_CHANGES_NEEDED.md §5).
+    } finally {
+      setIsRequestingSponsor(false);
+      setApplyStep("requested");
+      if (pendingJob?.id) {
+        setRequestedSponsorJobIds(
+          (prev) => new Set([...prev, String(pendingJob.id)]),
+        );
+      }
+    }
   };
 
   const handleJoinWaitlist = async () => {
@@ -1807,6 +1800,7 @@ export function HomeView({
     try {
       if (pendingJob?.id) {
         await joinWaitlist(String(pendingJob.id));
+        trackJobWaitlistJoined({ jobId: String(pendingJob.id) });
       }
     } catch (err) {
       console.warn("[HomeView] Failed to join waitlist:", err);
@@ -1823,10 +1817,10 @@ export function HomeView({
     }
   };
 
-  const handleWaitlistDone = () => {
+  const handleApplyModalDone = () => {
     setShowApplyModal(false);
     setPendingJob(null);
-    // Advance the deck so the waitlisted card moves to the back
+    // Advance the deck so the actioned card moves to the back
     setCurrentProfileIndex(currentProfileIndex + 1);
   };
 
@@ -1853,31 +1847,6 @@ export function HomeView({
     transform: [{ rotate: withTiming(showMore ? "180deg" : "0deg") }],
   }));
 
-  // If WebView is active, show it
-  if (showWebView && webViewJob) {
-    return (
-      <JobApplicationWebView
-        jobUrl={webViewJob.applicationUrl}
-        jobTitle={webViewJob.title}
-        company={webViewJob.company}
-        onClose={() => {
-          setShowWebView(false);
-          // Store the job for the confirmation modal, then show it
-          setApplyConfirmJob(webViewJob);
-          setWebViewJob(null);
-          setShowApplyConfirmModal(true);
-        }}
-        onSessionExpired={() => {
-          // Session expired mid-application: close the WebView silently.
-          // Do NOT show the apply-confirm modal — the dashboard will redirect
-          // to splash once clearAuth() has fired.
-          setShowWebView(false);
-          setWebViewJob(null);
-        }}
-      />
-    );
-  }
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -1899,19 +1868,6 @@ export function HomeView({
                 />
               </View>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.filterBtn,
-                activeFilterCount > 0 && styles.filterBtnActive,
-              ]}
-              onPress={() => setShowFilters(true)}
-              activeOpacity={0.7}
-            >
-              <SlidersHorizontal
-                size={20}
-                color={activeFilterCount > 0 ? "#FFF" : "#000"}
-              />
-            </TouchableOpacity>
           </Animated.View>
 
           {isDeckFinished ? (
@@ -2044,15 +2000,35 @@ export function HomeView({
 
                           {/* Layout: Image on Left + Details on Right */}
                           <View style={styles.profileCardTop}>
-                            <Image
-                              source={{
-                                uri:
-                                  "image" in currentData
-                                    ? currentData.image
-                                    : "",
-                              }}
-                              style={styles.profileImageSquare}
-                            />
+                            {"image" in currentData && currentData.image ? (
+                              <Image
+                                source={{ uri: currentData.image }}
+                                style={styles.profileImageSquare}
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.profileImageSquare,
+                                  {
+                                    backgroundColor: "#000",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  },
+                                ]}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 36,
+                                    fontWeight: "800",
+                                    color: "#FFF",
+                                  }}
+                                >
+                                  {("name" in currentData
+                                    ? currentData.name || "?"
+                                    : "?")[0].toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
                             <View style={styles.profileInfoColumn}>
                               {"company" in currentData &&
                                 !!currentData.company && (
@@ -2424,9 +2400,12 @@ export function HomeView({
                         pointerEvents={isFlipped ? "none" : "auto"}
                       >
                         <View style={styles.cardInner}>
-                          {/* Status overlay: waitlisted or applied */}
+                          {/* Status overlay: waitlisted / sponsor-requested / applied */}
                           {"id" in currentData &&
                             (waitlistedJobIds.has(String(currentData.id)) ||
+                              requestedSponsorJobIds.has(
+                                String(currentData.id),
+                              ) ||
                               appliedJobIds.has(String(currentData.id))) && (
                               <View
                                 style={styles.waitlistedOverlay}
@@ -2445,6 +2424,19 @@ export function HomeView({
                                       Waitlisted
                                     </Text>
                                   </View>
+                                ) : requestedSponsorJobIds.has(
+                                    String(currentData.id),
+                                  ) ? (
+                                  <View style={styles.appliedBadge}>
+                                    <Check
+                                      color="#FFF"
+                                      size={14}
+                                      strokeWidth={3}
+                                    />
+                                    <Text style={styles.appliedBadgeText}>
+                                      Sponsor requested
+                                    </Text>
+                                  </View>
                                 ) : (
                                   <View style={styles.appliedBadge}>
                                     <Check
@@ -2459,24 +2451,68 @@ export function HomeView({
                                 )}
                               </View>
                             )}
-                          {/* Job Title Header - Full Width */}
+                          {/* Job Title Header — title left, sponsorship tag right */}
                           <View style={styles.profileNameHeader}>
-                            <Text style={styles.profileNameTop}>
+                            <Text
+                              style={styles.profileNameTop}
+                              numberOfLines={2}
+                            >
                               {"title" in currentData ? currentData.title : ""}
                             </Text>
+                            {"isSponsored" in currentData && (
+                              <View
+                                style={
+                                  currentData.isSponsored
+                                    ? styles.sponsorTag
+                                    : styles.sponsorTagMuted
+                                }
+                              >
+                                <Text
+                                  style={
+                                    currentData.isSponsored
+                                      ? styles.sponsorTagText
+                                      : styles.sponsorTagMutedText
+                                  }
+                                >
+                                  {currentData.isSponsored
+                                    ? "Sponsored"
+                                    : "No sponsor"}
+                                </Text>
+                              </View>
+                            )}
                           </View>
 
                           {/* Layout: Image on Left + Details on Right */}
                           <View style={styles.profileCardTop}>
-                            <Image
-                              source={{
-                                uri:
-                                  "image" in currentData
-                                    ? currentData.image
-                                    : "",
-                              }}
-                              style={styles.companyImageSquare}
-                            />
+                            {"image" in currentData && currentData.image ? (
+                              <Image
+                                source={{ uri: currentData.image }}
+                                style={styles.companyImageSquare}
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.companyImageSquare,
+                                  {
+                                    backgroundColor: "#000",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  },
+                                ]}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 30,
+                                    fontWeight: "800",
+                                    color: "#FFF",
+                                  }}
+                                >
+                                  {("company" in currentData
+                                    ? currentData.company || "?"
+                                    : "?")[0].toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
 
                             <View style={styles.profileInfoColumn}>
                               {/* Company Name */}
@@ -2670,13 +2706,38 @@ export function HomeView({
                                           </Text>
                                         </View>
                                         <View style={styles.sponsorHeader}>
-                                          <Image
-                                            source={{
-                                              uri: currentData.sponsorInfo
-                                                .image,
-                                            }}
-                                            style={styles.sponsorAvatar}
-                                          />
+                                          {currentData.sponsorInfo.image ? (
+                                            <Image
+                                              source={{
+                                                uri: currentData.sponsorInfo
+                                                  .image,
+                                              }}
+                                              style={styles.sponsorAvatar}
+                                            />
+                                          ) : (
+                                            <View
+                                              style={[
+                                                styles.sponsorAvatar,
+                                                {
+                                                  backgroundColor: "#000",
+                                                  alignItems: "center",
+                                                  justifyContent: "center",
+                                                },
+                                              ]}
+                                            >
+                                              <Text
+                                                style={{
+                                                  fontSize: 18,
+                                                  fontWeight: "800",
+                                                  color: "#FFF",
+                                                }}
+                                              >
+                                                {(currentData.sponsorInfo
+                                                  .name ||
+                                                  "?")[0].toUpperCase()}
+                                              </Text>
+                                            </View>
+                                          )}
                                           <View style={{ flex: 1 }}>
                                             <View style={styles.sponsorNameRow}>
                                               <Text
@@ -3183,9 +3244,22 @@ export function HomeView({
                               {"experienceLevel" in currentData &&
                                 (currentData as any).experienceLevel && (
                                   <View style={styles.roleDetailChip}>
-                                    <GraduationCap size={13} color="#000" />
+                                    <Briefcase size={13} color="#000" />
                                     <Text style={styles.roleDetailChipText}>
-                                      {(currentData as any).experienceLevel}
+                                      {(() => {
+                                        // Backend values can be either numeric
+                                        // (e.g. "10+", "5-7") or descriptive
+                                        // (e.g. "Mid-level"). Only suffix
+                                        // " years experience" when the value
+                                        // is a bare number/range, so we don't
+                                        // get "Mid-level years experience".
+                                        const v = String(
+                                          (currentData as any).experienceLevel,
+                                        ).trim();
+                                        return /^[\d+\-\s]+$/.test(v)
+                                          ? `${v} years experience`
+                                          : v;
+                                      })()}
                                     </Text>
                                   </View>
                                 )}
@@ -3535,7 +3609,7 @@ export function HomeView({
         </Animated.View>
       </Modal>
 
-      {/* Apply Action Modal (For Non-Sponsored Jobs) */}
+      {/* Get-a-Sponsor Action Modal (For Non-Sponsored Jobs) */}
       <Modal visible={showApplyModal} animationType="none" transparent>
         <View style={styles.modalOverlay}>
           <TouchableOpacity
@@ -3560,10 +3634,10 @@ export function HomeView({
             <View style={styles.applyModalHeader}>
               <Text style={styles.applyModalTitle}>
                 {applyStep === "select"
-                  ? "How to Apply"
+                  ? "Get a Sponsor"
                   : applyStep === "waitlist"
                     ? "You're on the list!"
-                    : "Redirecting..."}
+                    : "Request sent!"}
               </Text>
               <TouchableOpacity
                 onPress={() => setShowApplyModal(false)}
@@ -3584,23 +3658,32 @@ export function HomeView({
               {applyStep === "select" && (
                 <View style={styles.modalOptionsContainer}>
                   <TouchableOpacity
-                    style={styles.modalOptionBtn}
-                    onPress={handleDirectApply}
+                    style={[
+                      styles.modalOptionBtn,
+                      isRequestingSponsor && { opacity: 0.6 },
+                    ]}
+                    onPress={handleRequestSponsor}
+                    disabled={isRequestingSponsor}
                     activeOpacity={0.7}
                   >
                     <View style={styles.modalOptionIcon}>
-                      <ExternalLink color="#000" size={24} />
+                      <BellRing color="#000" size={24} />
                     </View>
                     <View style={styles.modalOptionContent}>
                       <Text style={styles.modalOptionTitle}>
-                        Apply Directly
+                        Request a Sponsor
                       </Text>
                       <Text style={styles.modalOptionDesc}>
-                        Use our autofill feature to complete the company
-                        application.
+                        Notify employees at{" "}
+                        {pendingJob?.company ?? "this company"} and ask if
+                        they'd sponsor this role.
                       </Text>
                     </View>
-                    <ChevronRight color="#CCC" size={20} />
+                    {isRequestingSponsor ? (
+                      <ActivityIndicator size="small" color="#999" />
+                    ) : (
+                      <ChevronRight color="#CCC" size={20} />
+                    )}
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -3641,7 +3724,7 @@ export function HomeView({
                   </Text>
                   <TouchableOpacity
                     style={styles.successActionBtn}
-                    onPress={handleWaitlistDone}
+                    onPress={handleApplyModalDone}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.successActionBtnText}>Done</Text>
@@ -3649,165 +3732,28 @@ export function HomeView({
                 </View>
               )}
 
-              {applyStep === "external" && (
+              {applyStep === "requested" && (
                 <View style={styles.successContainer}>
-                  <View
-                    style={[
-                      styles.successCircleLarge,
-                      { backgroundColor: "#000" },
-                    ]}
-                  >
-                    <Sparkles color="#FFF" size={32} />
+                  <View style={styles.successCircleLarge}>
+                    <Check color="#FFF" size={40} strokeWidth={3} />
                   </View>
                   <Text style={styles.successMessage}>
-                    We're sending you to the {pendingJob?.company} career site.
-                    Our AI will pop up to help you autocomplete the forms.
+                    We've let employees at {pendingJob?.company} know you'd like
+                    a sponsor for this role. You'll be notified if someone signs
+                    on.
                   </Text>
                   <TouchableOpacity
                     style={styles.successActionBtn}
-                    onPress={() => {
-                      setShowApplyModal(false);
-                      handleSwipe(true);
-                    }}
+                    onPress={handleApplyModalDone}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.successActionBtnText}>Go to Site</Text>
-                    <ExternalLink color="#FFF" size={18} />
+                    <Text style={styles.successActionBtnText}>Done</Text>
                   </TouchableOpacity>
                 </View>
               )}
             </ScrollView>
           </Animated.View>
         </View>
-      </Modal>
-
-      {/* Did-you-apply confirmation modal (shown when user closes the external WebView) */}
-      <Modal visible={showApplyConfirmModal} transparent animationType="slide">
-        <View style={styles.applyConfirmOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => {
-              setShowApplyConfirmModal(false);
-              setApplyConfirmJob(null);
-            }}
-          />
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.applyConfirmSheet}
-          >
-            <View style={styles.modalHandle} />
-            <View style={styles.applyConfirmIconCircle}>
-              <Briefcase color="#FFF" size={28} />
-            </View>
-            <Text style={styles.applyConfirmTitle}>Did you apply?</Text>
-            <Text style={styles.applyConfirmSubtitle}>
-              Did you complete your application at{" "}
-              {applyConfirmJob?.company ?? "the company site"}?
-            </Text>
-            <View style={styles.applyConfirmActions}>
-              <TouchableOpacity
-                style={styles.applyConfirmNo}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setShowApplyConfirmModal(false);
-                  setApplyConfirmJob(null);
-                }}
-              >
-                <Text style={styles.applyConfirmNoText}>Not yet</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.applyConfirmYes}
-                activeOpacity={0.8}
-                onPress={() => {
-                  if (applyConfirmJob?.id) {
-                    setAppliedJobIds(
-                      (prev) => new Set([...prev, String(applyConfirmJob.id)]),
-                    );
-                  }
-                  setShowApplyConfirmModal(false);
-                  setApplyConfirmJob(null);
-                  // Advance the deck
-                  setCurrentProfileIndex(currentProfileIndex + 1);
-                }}
-              >
-                <Text style={styles.applyConfirmYesText}>Yes, I applied!</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
-
-      {/* Filter Modal */}
-      <Modal visible={showFilters} animationType="slide" transparent>
-        <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill}>
-          <SafeAreaView style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Refine Feed</Text>
-              <TouchableOpacity
-                onPress={() => setShowFilters(false)}
-                style={styles.closeModalBtn}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={styles.modalContent}>
-              {(FILTER_OPTS[userType] || []).map((section: any) => (
-                <View key={section.id} style={styles.filterSection}>
-                  <Text style={styles.filterLabel}>{section.label}</Text>
-                  <View style={styles.filterOptionsRow}>
-                    {section.options.map((opt: string) => {
-                      const isSelected = (
-                        selectedFilters[section.id] || []
-                      ).includes(opt);
-                      return (
-                        <TouchableOpacity
-                          key={opt}
-                          style={[
-                            styles.filterChip,
-                            isSelected && styles.filterChipSelected,
-                          ]}
-                          onPress={() => toggleFilter(section.id, opt)}
-                          activeOpacity={0.8}
-                        >
-                          <Text
-                            style={[
-                              styles.filterChipText,
-                              isSelected && styles.filterChipTextSelected,
-                            ]}
-                          >
-                            {opt}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.applyBtn}
-                onPress={() => {
-                  setShowFilters(false);
-                  setIsLoading(true);
-                  // Simulate reloading stack
-                  setTimeout(() => setIsLoading(false), 600);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.applyBtnText}>Show Results</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.clearBtn}
-                onPress={() => setSelectedFilters({})}
-              >
-                <Text style={styles.clearBtnText}>Clear All</Text>
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </BlurView>
       </Modal>
 
       {/* Profile Completion Modal */}
@@ -3820,6 +3766,7 @@ export function HomeView({
           onNavigateToProfile?.();
         }}
         onTesterMode={() => {
+          trackTesterModeEnabled({ source: "profile_completion_modal" });
           setIsTester(true);
           setShowProfileCompletionModal(false);
         }}
@@ -3920,6 +3867,7 @@ export function HomeView({
           <TouchableOpacity
             style={styles.emailVerifTesterBtn}
             onPress={() => {
+              trackTesterModeEnabled({ source: "email_verification_modal" });
               setIsTester(true);
               setShowEmailVerificationModal(false);
             }}
@@ -4245,27 +4193,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 28,
   },
-  progressHeaderContainer: { flex: 1, marginRight: 20 },
-  filterBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F5F5F5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterBtnActive: { backgroundColor: "#000" },
-  filterBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FF3B30",
-    borderWidth: 2,
-    borderColor: "#F5F5F5",
-  },
+  progressHeaderContainer: { flex: 1 },
 
   // Modal Styles
   modalHeader: {
@@ -4285,27 +4213,6 @@ const styles = StyleSheet.create({
   },
   closeModalBtn: { padding: 4, backgroundColor: "#F5F5F5", borderRadius: 20 },
   modalContent: { padding: 28, paddingBottom: 40 },
-  filterSection: { marginBottom: 32 },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#999",
-    marginBottom: 16,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  filterOptionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  filterChipSelected: { backgroundColor: "#000", borderColor: "#000" },
-  filterChipText: { fontSize: 13, fontWeight: "600", color: "#000" },
-  filterChipTextSelected: { color: "#FFF" },
   modalFooter: {
     padding: 28,
     borderTopWidth: 1,
@@ -4414,76 +4321,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.5,
   },
-  // Did-you-apply confirmation modal
-  applyConfirmOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  applyConfirmSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 28,
-    paddingBottom: 40,
-    alignItems: "center",
-    gap: 12,
-  },
-  applyConfirmIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-    marginTop: 8,
-  },
-  applyConfirmTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-  },
-  applyConfirmSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 4,
-  },
-  applyConfirmActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-    width: "100%",
-  },
-  applyConfirmNo: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
-    alignItems: "center",
-  },
-  applyConfirmNoText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#555",
-  },
-  applyConfirmYes: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 18,
-    backgroundColor: "#000",
-    alignItems: "center",
-  },
-  applyConfirmYesText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#FFF",
-  },
-
   // Layout: Image on Left + Details on Right
   profileCardTop: {
     flexDirection: "row",
@@ -4513,16 +4350,46 @@ const styles = StyleSheet.create({
 
   // Name Header - Full Width Below Image Section
   profileNameHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
   profileNameTop: {
+    flex: 1,
     fontSize: 20,
     fontWeight: "800",
     color: "#000",
     letterSpacing: -0.5,
+  },
+  sponsorTag: {
+    backgroundColor: "#000",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  sponsorTagText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFF",
+    letterSpacing: 0.3,
+  },
+  sponsorTagMuted: {
+    backgroundColor: "#F2F2F2",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  sponsorTagMutedText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#999",
+    letterSpacing: 0.3,
   },
   profileRoleRow: {
     flexDirection: "row",

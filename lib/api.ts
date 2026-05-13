@@ -1,7 +1,8 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import type { AutofillRequest, AutofillResponse } from "@/types/autofill";
 
-export const API_BASE_URL = "https://oyster-app-4pg5w.ondigitalocean.app";
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  "https://oyster-app-4pg5w.ondigitalocean.app";
 
 /**
  * 🌐 API Client with automatic auth header injection
@@ -230,19 +231,6 @@ class ApiClient {
  * 📦 Export singleton instance
  */
 export const api = new ApiClient(API_BASE_URL);
-
-/**
- * 🤖 AI-Powered Job Application Autofill
- * Sends form fields and user data to backend AI for intelligent filling
- */
-export async function generateAutofillAnswers(
-  request: AutofillRequest,
-): Promise<AutofillResponse> {
-  // Trailing slash is required — Django's APPEND_SLASH=True redirects POST
-  // requests to the slash URL via 301, which causes fetch to drop the
-  // Authorization header (RFC 7231 POST→GET redirect), resulting in 401.
-  return api.post<AutofillResponse>("/api/v1/autofill/generate/", request);
-}
 
 /**
  * 💼 Fetch Jobs Pack
@@ -482,6 +470,24 @@ export async function getInterestedSponsors(): Promise<
   }>
 > {
   return api.get("/api/likes/profiles/received/");
+}
+
+/**
+ * 💚 Like Back an Interested Sponsor (Applicant)
+ * The applicant accepts a sponsor's one-sided interest, which creates a
+ * mutual match (the backend resolves which of the sponsor's jobs to match on).
+ * Backend endpoint: POST /api/likes/profiles/received/<like_id>/accept/
+ *
+ * NOTE: backend endpoint not yet implemented — see BACKEND_CHANGES_NEEDED.md §6.
+ * Callers should treat failures gracefully.
+ */
+export async function likeBackSponsor(likeId: string): Promise<{
+  matched: boolean;
+  match_id?: string;
+  job_id?: string;
+  message: string;
+}> {
+  return api.post(`/api/likes/profiles/received/${likeId}/accept/`);
 }
 
 /**
@@ -1351,6 +1357,24 @@ export async function applyToJob(jobId: string): Promise<{
   message: string;
 }> {
   return api.post(`/api/jobs/${jobId}/apply/`);
+}
+
+/**
+ * 📣 Request a Sponsor for a Job (Applicant)
+ * Asks the backend to notify sponsors who work at the job's company,
+ * inviting them to sponsor this role / this applicant.
+ * Uses POST /api/jobs/<job_id>/request-sponsor/
+ *
+ * NOTE: backend endpoint not yet implemented — see BACKEND_CHANGES_NEEDED.md §5.
+ * Callers should treat failures gracefully (the user's intent is recorded
+ * client-side regardless).
+ */
+export async function requestSponsorForJob(jobId: string): Promise<{
+  job_id: string;
+  notified_count?: number;
+  message: string;
+}> {
+  return api.post(`/api/jobs/${jobId}/request-sponsor/`);
 }
 
 /**

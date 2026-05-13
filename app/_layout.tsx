@@ -1,6 +1,8 @@
 import { AppToast } from "@/components/ui/AppToast";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { initAnalytics, trackAppOpened } from "@/lib/analytics/mixpanel";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import {
     DarkTheme,
@@ -42,18 +44,28 @@ export default function RootLayout() {
     (state) => state.fetchFromBackend,
   );
   const accessToken = useAuthStore((state) => state.accessToken);
+  const initSubscriptions = useSubscriptionStore((state) => state.initialize);
 
   /**
-   * 🔄 Load persisted auth tokens and autofill data on app startup
+   * 🔄 Load persisted auth tokens and autofill data on app startup.
+   * Also boots Mixpanel and RevenueCat (when PREMIUM_ENABLED) and fires the
+   * App Opened event — all are fire-and-forget and never throw into the app
+   * boot path.
    */
   useEffect(() => {
     const initializeApp = async () => {
+      // Kick off analytics first; it's async but we don't await it because
+      // nothing downstream depends on it.
+      initAnalytics().then(() => trackAppOpened());
+      // Boot RevenueCat in the background. The store is a no-op when
+      // PREMIUM_ENABLED = false so this is safe to call unconditionally.
+      initSubscriptions();
       await loadTokens();
       await loadUserProfileData();
     };
 
     initializeApp();
-  }, [loadTokens, loadUserProfileData]);
+  }, [loadTokens, loadUserProfileData, initSubscriptions]);
 
   /**
    * 🔄 Fetch latest profile from backend if authenticated

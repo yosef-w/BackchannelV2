@@ -25,6 +25,12 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import {
+    trackResendVerificationRequested,
+    trackVerifyEmailFailed,
+    trackVerifyEmailOpened,
+    trackVerifyEmailSucceeded,
+} from "../lib/analytics/mixpanel";
 import { authApi } from "../lib/auth-api";
 
 type Status = "loading" | "success" | "alreadyVerified" | "error";
@@ -43,31 +49,37 @@ export default function VerifyEmailRoute() {
 
   useEffect(() => {
     const verify = async () => {
+      trackVerifyEmailOpened({
+        hasToken: typeof token === "string" && token.length > 0,
+      });
       if (!token || typeof token !== "string") {
         setStatus("error");
         setErrorMessage(
           "This verification link is missing its token. Please open the link directly from your email.",
         );
+        trackVerifyEmailFailed("missing_token");
         return;
       }
 
       try {
         const res = await authApi.verifyEmail(token);
         // Backend uses two distinct messages — both are 200 OK.
-        if (
+        const alreadyVerified =
           typeof res.message === "string" &&
-          res.message.toLowerCase().includes("already")
-        ) {
+          res.message.toLowerCase().includes("already");
+        if (alreadyVerified) {
           setStatus("alreadyVerified");
         } else {
           setStatus("success");
         }
+        trackVerifyEmailSucceeded({ alreadyVerified });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setStatus("error");
         setErrorMessage(
           msg || "We couldn't verify this link. It may have expired.",
         );
+        trackVerifyEmailFailed(msg || "unknown");
       }
     };
 
@@ -77,6 +89,7 @@ export default function VerifyEmailRoute() {
   const handleResend = async () => {
     const email = resendEmail.trim();
     if (!email) return;
+    trackResendVerificationRequested({ source: "verify_email_screen" });
     try {
       setResending(true);
       await authApi.resendVerificationEmail(email);

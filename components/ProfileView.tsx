@@ -3,72 +3,86 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-    AlertCircle,
-    Briefcase,
-    Camera,
-    Check,
-    CheckCircle2,
-    ChevronRight,
-    Edit,
-    FileText,
-    GraduationCap,
-    ImageIcon,
-    Lock,
-    LogOut,
-    MapPin,
-    Plus,
-    RefreshCw,
-    Target,
-    Trash2,
-    Upload,
-    X,
-    Zap,
+  AlertCircle,
+  Briefcase,
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Edit,
+  FileText,
+  GraduationCap,
+  ImageIcon,
+  Lock,
+  LogOut,
+  MapPin,
+  Plus,
+  RefreshCw,
+  Target,
+  Trash2,
+  Upload,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
+import { GOOGLE_PLACES_API_KEY, PREMIUM_ENABLED } from "../constants/config";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
-    changePassword,
-    classifyResume,
-    deactivateAccount,
-    getExtractedResumeText,
-    logout,
-    unregisterDevice,
-    updateApplicantProfile,
-    updateGeneralProfile,
-    updateSponsorProfile,
-    uploadAndParseResume,
-    uploadProfileImage,
+  resetUser,
+  trackAccountDeleted,
+  trackLogout,
+  trackPrivacyPolicyTapped,
+  trackProfileEditOpened,
+  trackProfileFieldUpdated,
+  trackProfilePhotoUploaded,
+  trackResumeReuploaded,
+  trackTermsTapped,
+} from "../lib/analytics/mixpanel";
+import {
+  changePassword,
+  classifyResume,
+  deactivateAccount,
+  getExtractedResumeText,
+  logout,
+  unregisterDevice,
+  updateApplicantProfile,
+  updateGeneralProfile,
+  updateSponsorProfile,
+  uploadAndParseResume,
+  uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import {
-    EducationEntry,
-    ProfessionalExperience,
-    useUserProfileStore,
+  EducationEntry,
+  ProfessionalExperience,
+  useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
+import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
 
 interface ProfileViewProps {
   userType: "applicant" | "sponsor";
@@ -128,6 +142,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const deviceToken = useAuthStore((state) => state.deviceToken);
   const clearUserProfileData = useUserProfileStore((state) => state.clearData);
+  const rcReset = useSubscriptionStore((state) => state.reset);
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+  const presentPaywall = useSubscriptionStore((state) => state.presentPaywall);
+  const presentCustomerCenter = useSubscriptionStore(
+    (state) => state.presentCustomerCenter,
+  );
   const userProfileData = useUserProfileStore((state) => state.data);
   const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
   const updateProfessional = useUserProfileStore(
@@ -593,6 +613,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleSaveField = async (field: string) => {
+    trackProfileFieldUpdated({ field });
     try {
       switch (field) {
         case "firstName":
@@ -763,6 +784,37 @@ export function ProfileView({ userType }: ProfileViewProps) {
     } catch (error) {
       console.warn("Failed to save field:", error);
       showToast("Failed to save changes. Please try again.", "error");
+    }
+  };
+
+  // Batch-save all 5 address fields after a Google Places selection.
+  // updateGeneralProfile already accepts the full set in one PATCH, and
+  // updatePersonal takes the merged address object — one network call each.
+  const handleSaveAddress = async (parsed: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  }) => {
+    try {
+      setStreet(parsed.street);
+      setCity(parsed.city);
+      setState(parsed.state);
+      setZip(parsed.zip);
+      setCountry(parsed.country);
+
+      await updatePersonal({
+        address: { ...userProfileData.personal.address, ...parsed },
+      });
+      await updateGeneralProfile(parsed);
+
+      setEditingField(null);
+      setTempValue("");
+      showToast("Address updated.", "success");
+    } catch (error) {
+      console.warn("Failed to save address:", error);
+      showToast("Failed to save address. Please try again.", "error");
     }
   };
 
@@ -1554,6 +1606,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     });
 
     if (!result.canceled && result.assets[0]) {
+      trackProfilePhotoUploaded({ source: "library" });
       handleImageSelected(result.assets[0].uri);
     }
   };
@@ -1569,6 +1622,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     });
 
     if (!result.canceled && result.assets[0]) {
+      trackProfilePhotoUploaded({ source: "camera" });
       handleImageSelected(result.assets[0].uri);
     }
   };
@@ -1701,6 +1755,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       setResumeUploadStep("uploading");
       setResumeUploadError(null);
+      trackResumeReuploaded();
 
       const form = new FormData();
       form.append("file", {
@@ -1886,6 +1941,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const confirmLogout = async () => {
     setShowLogoutModal(false);
+    trackLogout();
+    // Reset Mixpanel identity so subsequent events on this device aren't
+    // attributed to the previous user.
+    resetUser();
+    // Log out of RevenueCat so the device reverts to an anonymous RC customer.
+    rcReset();
     // Deactivate push token on the backend so no more notifications are
     // delivered to this device after logout.
     if (deviceToken) {
@@ -1933,6 +1994,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
             }
             try {
               await deactivateAccount();
+              trackAccountDeleted();
+              resetUser();
+              rcReset();
             } catch (err) {
               console.warn(
                 "[ProfileView] Deactivate account call failed:",
@@ -2477,7 +2541,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.blackBtn}
-            onPress={() => setShowEditProfile(true)}
+            onPress={() => {
+              trackProfileEditOpened({ section: "personal" });
+              setShowEditProfile(true);
+            }}
           >
             <Edit color="#FFF" size={16} />
             <Text style={styles.blackBtnText}>Edit Profile</Text>
@@ -2726,7 +2793,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <View style={styles.resumeDivider} />
           <TouchableOpacity
             style={styles.resumeManualLink}
-            onPress={() => setShowEditResume(true)}
+            onPress={() => {
+              trackProfileEditOpened({ section: "resume" });
+              setShowEditResume(true);
+            }}
           >
             <Edit size={14} color="#666" strokeWidth={2} />
             <Text style={styles.resumeManualLinkText}>
@@ -2743,13 +2813,19 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <View style={styles.settingsGroup}>
           <SettingItem
             label="Edit Profile Insights"
-            onPress={() => setShowEditInsights(true)}
+            onPress={() => {
+              trackProfileEditOpened({ section: "insights" });
+              setShowEditInsights(true);
+            }}
           />
           {userType === "applicant" && (
             <SettingItem
               label="Edit Resume Information"
               badgeCount={professionalMissingCount}
-              onPress={() => setShowEditResume(true)}
+              onPress={() => {
+                trackProfileEditOpened({ section: "resume" });
+                setShowEditResume(true);
+              }}
             />
           )}
           <SettingItem
@@ -2760,6 +2836,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
             label="Notifications"
             onPress={() => setShowNotifications(true)}
           />
+          {PREMIUM_ENABLED && (
+            <SettingItem
+              label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
+              onPress={async () => {
+                if (isPremium) {
+                  await presentCustomerCenter();
+                } else {
+                  await presentPaywall();
+                }
+              }}
+            />
+          )}
           <SettingItem
             label="Log Out"
             color="#000"
@@ -3249,6 +3337,38 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   )}
                 </View>
                 {editingField === "street" ? (
+                  GOOGLE_PLACES_API_KEY ? (
+                    // Places API (New) autocomplete. On selection we batch-save
+                    // all 5 address fields. Users can also tap "Or enter manually"
+                    // to fall back to free text — useful when Google misparses
+                    // unit numbers, or for addresses Google doesn't know about.
+                    <PlacesAutocomplete
+                      autoFocus
+                      inputStyle={styles.fieldInput}
+                      onSelect={handleSaveAddress}
+                      onError={(message) => showToast(message, "error")}
+                      onSwitchToManual={() => {
+                        setTempValue(street);
+                        setEditingField("street_manual");
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.editRow}>
+                      <TextInput
+                        style={styles.fieldInput}
+                        value={tempValue}
+                        onChangeText={setTempValue}
+                        autoFocus
+                      />
+                      <TouchableOpacity
+                        style={styles.saveBtn}
+                        onPress={() => handleSaveField("street")}
+                      >
+                        <Check color="#FFF" size={18} />
+                      </TouchableOpacity>
+                    </View>
+                  )
+                ) : editingField === "street_manual" ? (
                   <View style={styles.editRow}>
                     <TextInput
                       style={styles.fieldInput}
@@ -3855,6 +3975,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <TouchableOpacity
           style={styles.privacyActionCard}
           onPress={() => {
+            trackTermsTapped();
             setShowPrivacySecurity(false);
             setTimeout(() => setShowTerms(true), 300);
           }}
@@ -3875,6 +3996,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <TouchableOpacity
           style={styles.privacyActionCard}
           onPress={() => {
+            trackPrivacyPolicyTapped();
             setShowPrivacySecurity(false);
             setTimeout(() => setShowPrivacyPolicy(true), 300);
           }}

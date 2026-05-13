@@ -1,10 +1,16 @@
 import {
+  trackMatchMessageTapped,
+  trackReferralWithdrawn,
+  trackSponsorLikedBack,
+} from "@/lib/analytics/mixpanel";
+import {
   getInterestedSponsors,
   getLikedJobs,
   getMatches,
   getPublicProfile,
   getSponsorMatches,
   getWaitlistedJobs,
+  likeBackSponsor,
   listReferrals,
   withdrawReferral,
 } from "@/lib/api";
@@ -14,13 +20,16 @@ import {
   AlertTriangle,
   Award,
   Briefcase,
+  Check,
   CheckCircle,
   Clock,
   DollarSign,
   Heart,
+  Info,
   MapPin,
   MessageCircle,
   Sparkles,
+  TrendingUp,
   Users,
   Zap,
 } from "lucide-react-native";
@@ -46,8 +55,9 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
 } from "react-native-reanimated";
+import { DismissibleSheet } from "./ui/DismissibleSheet";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
@@ -110,6 +120,12 @@ interface JobOpportunity {
   salaryMin?: number;
   salaryMax?: number;
   salaryCurrency?: string;
+  // Rich detail fields. Backend may or may not return these on the
+  // liked-jobs endpoint yet — surface them when present so this modal
+  // matches the depth of HomeView's expanded job card.
+  coreResponsibilities?: string;
+  requirementsSummary?: string;
+  workArrangement?: string;
   sponsorInfo: {
     name: string;
     role: string;
@@ -198,6 +214,12 @@ export function MatchesView({
     useState<any>(null);
   const [interestedSponsorProfileLoading, setInterestedSponsorProfileLoading] =
     useState(false);
+  // likeId of the sponsor we're currently "liking back" (shows a spinner)
+  const [likingBackSponsorId, setLikingBackSponsorId] = useState<string | null>(
+    null,
+  );
+  // Bumped after a successful like-back to force matches/interested re-fetch
+  const [matchesRefreshKey, setMatchesRefreshKey] = useState(0);
 
   // Real matches state
   const [matches, setMatches] = useState<Match[]>([]);
@@ -271,7 +293,7 @@ export function MatchesView({
               image:
                 match.sponsor?.profile_image_url ||
                 match.SPONSOR_PHOTO_URL ||
-                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+                "",
               status: "connected",
               date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
               appliedRole:
@@ -313,9 +335,7 @@ export function MatchesView({
               name: applicantName || "Applicant",
               role: "Job Seeker",
               company: "",
-              image:
-                match.PHOTO_URL ||
-                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+              image: match.PHOTO_URL || "",
               status: "connected",
               date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
               appliedRole: match.TITLE || "",
@@ -341,7 +361,7 @@ export function MatchesView({
     };
 
     fetchMatches();
-  }, [userType]);
+  }, [userType, matchesRefreshKey]);
 
   // Fetch liked jobs for applicants
   useEffect(() => {
@@ -359,6 +379,23 @@ export function MatchesView({
         const likedJobsArray = Array.isArray(response)
           ? response
           : (response as any).liked_jobs || [];
+
+        // Backend can send arrays as either real arrays or JSONB-cast strings.
+        const parseArray = (v: any): string[] => {
+          if (!v) return [];
+          if (Array.isArray(v)) return v.filter((x) => typeof x === "string");
+          if (typeof v === "string") {
+            try {
+              const parsed = JSON.parse(v);
+              return Array.isArray(parsed)
+                ? parsed.filter((x) => typeof x === "string")
+                : [];
+            } catch {
+              return [];
+            }
+          }
+          return [];
+        };
 
         // Transform API response to JobOpportunity interface
         const transformedJobs: JobOpportunity[] = likedJobsArray.map(
@@ -382,8 +419,13 @@ export function MatchesView({
             experienceLevel: likedJob.EXPERIENCE_LEVEL || "",
             image: likedJob.SPONSOR_PHOTO_URL || "",
             description: likedJob.DESCRIPTION || "",
-            skills: [],
-            benefits: [],
+            // Rich fields — only present if backend returns them. Empty string
+            // / array means "hide that section" in the modal below.
+            coreResponsibilities: likedJob.CORE_RESPONSIBILITIES || "",
+            requirementsSummary: likedJob.REQUIREMENTS_SUMMARY || "",
+            workArrangement: likedJob.WORK_ARRANGEMENT || "",
+            skills: parseArray(likedJob.SKILLS),
+            benefits: parseArray(likedJob.BENEFITS || likedJob.HIGHLIGHTS),
             status: likedJob.STATUS || "ACTIVE",
             likedAt: likedJob.LIKED_AT || likedJob.liked_at || "",
             sponsorInfo: {
@@ -459,7 +501,7 @@ export function MatchesView({
     };
 
     fetchInterestedSponsors();
-  }, [userType]);
+  }, [userType, matchesRefreshKey]);
 
   // Fetch waitlisted jobs for applicants
   useEffect(() => {
@@ -582,10 +624,40 @@ export function MatchesView({
     setMessage("");
   };
 
+  // Applicant accepts a sponsor's one-sided interest → creates a mutual match.
+  // Backend endpoint may not exist yet (see BACKEND_CHANGES_NEEDED.md §6) — on
+  // failure we keep the sponsor in "Interested in You" and show an error toast.
+  const handleLikeBackSponsor = async (sponsor: InterestedSponsor) => {
+    setLikingBackSponsorId(sponsor.likeId);
+    try {
+      const res = await likeBackSponsor(sponsor.likeId);
+      trackSponsorLikedBack({ likeId: sponsor.likeId });
+      // Optimistically pull them out of "Interested in You"…
+      setInterestedSponsors((prev) =>
+        prev.filter((s) => s.likeId !== sponsor.likeId),
+      );
+      // …and re-fetch matches so they appear under "Matched Opportunities".
+      setMatchesRefreshKey((k) => k + 1);
+      closeAllModals();
+      showToast(
+        res.matched
+          ? `It's a match with ${sponsor.firstName}!`
+          : `You let ${sponsor.firstName} know you're interested.`,
+        "success",
+      );
+    } catch (err) {
+      console.warn("[MatchesView] Failed to like back sponsor:", err);
+      showToast("Couldn't do that right now. Please try again.", "error");
+    } finally {
+      setLikingBackSponsorId(null);
+    }
+  };
+
   const commitWithdrawReferral = async (referralId: string) => {
     setWithdrawingReferralId(referralId);
     try {
       await withdrawReferral(referralId);
+      trackReferralWithdrawn({ referralId });
     } catch (err) {
       console.warn("[MatchesView] Failed to withdraw referral:", err);
       // Revert the optimistic update on error
@@ -683,6 +755,10 @@ export function MatchesView({
                   ? "Loading..."
                   : `Interested Applicants (${matches.length})`}
               </Text>
+              <Text style={[styles.sectionSubtitle, { marginBottom: 15 }]}>
+                Applicants you've matched with — message them to start a
+                conversation
+              </Text>
               {matchesError && (
                 <Text
                   style={{
@@ -717,18 +793,42 @@ export function MatchesView({
                         activeOpacity={0.85}
                         onPress={() => openProfile(match, "view")}
                       >
-                        <Image
-                          source={{ uri: match.image }}
-                          style={styles.profileImage}
-                        />
+                        {match.image ? (
+                          <Image
+                            source={{ uri: match.image }}
+                            style={styles.profileImage}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.profileImage,
+                              {
+                                backgroundColor: "#000",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 26,
+                                fontWeight: "800",
+                                color: "#FFF",
+                              }}
+                            >
+                              {(match.name || "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
                       </TouchableOpacity>
                       <Text style={styles.cardName}>{match.name}</Text>
                       <Text style={styles.cardRole}>{match.role}</Text>
                       <TouchableOpacity
                         style={styles.messageBtn}
-                        onPress={() =>
-                          onNavigateToMessages?.(match.jobId ?? "")
-                        }
+                        onPress={() => {
+                          trackMatchMessageTapped({ jobId: match.jobId });
+                          onNavigateToMessages?.(match.jobId ?? "");
+                        }}
                       >
                         <MessageCircle
                           color="#FFF"
@@ -749,6 +849,9 @@ export function MatchesView({
                 {referralsLoading
                   ? "Loading Pipeline..."
                   : `Active Pipeline (${referrals.filter((r) => r.status === "REFERRED").length})`}
+              </Text>
+              <Text style={[styles.sectionSubtitle, { marginBottom: 12 }]}>
+                Applicants you've formally referred — track their status here
               </Text>
               {referralsError && (
                 <Text
@@ -806,8 +909,25 @@ export function MatchesView({
                           style={styles.listImage}
                         />
                       ) : (
-                        <View style={styles.listImagePlaceholder}>
-                          <Users size={20} color="#CCC" />
+                        <View
+                          style={[
+                            styles.listImage,
+                            {
+                              backgroundColor: "#000",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 20,
+                              fontWeight: "800",
+                              color: "#FFF",
+                            }}
+                          >
+                            {(applicantName || "?")[0].toUpperCase()}
+                          </Text>
                         </View>
                       )}
                       <View style={styles.listInfo}>
@@ -900,13 +1020,11 @@ export function MatchesView({
                       ? "Loading..."
                       : `Liked Jobs (${likedJobs.length})`}
                   </Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Sponsored jobs you swiped right on — waiting for the sponsor
+                    to respond
+                  </Text>
                 </View>
-                {likedJobs.length > 0 && (
-                  <View style={styles.pendingBadge}>
-                    <Sparkles size={12} color="#666" />
-                    <Text style={styles.pendingText}>Pending</Text>
-                  </View>
-                )}
               </View>
               {likedJobsError && (
                 <Text
@@ -982,7 +1100,7 @@ export function MatchesView({
                             <View style={styles.waitingBadge}>
                               <View style={styles.pulsingDot} />
                               <Text style={styles.waitingText}>
-                                Awaiting sponsor...
+                                Pending match...
                               </Text>
                             </View>
                           )}
@@ -1004,7 +1122,8 @@ export function MatchesView({
                       : `Waitlisted (${waitlistedJobs.length})`}
                   </Text>
                   <Text style={styles.sectionSubtitle}>
-                    You’ll be notified when a sponsor signs on
+                    Jobs without a sponsor yet — you’ll be notified the moment
+                    one signs on
                   </Text>
                 </View>
                 {waitlistedJobs.some((j) => j.is_now_sponsored) && (
@@ -1142,6 +1261,9 @@ export function MatchesView({
                 <Text style={styles.listSectionTitle}>
                   Matched Opportunities ({matches.length})
                 </Text>
+                <Text style={[styles.sectionSubtitle, { marginBottom: 15 }]}>
+                  You and the sponsor both said yes — start chatting
+                </Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1158,10 +1280,33 @@ export function MatchesView({
                         activeOpacity={0.85}
                         onPress={() => openProfile(match, "view")}
                       >
-                        <Image
-                          source={{ uri: match.image }}
-                          style={styles.profileImage}
-                        />
+                        {match.image ? (
+                          <Image
+                            source={{ uri: match.image }}
+                            style={styles.profileImage}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.profileImage,
+                              {
+                                backgroundColor: "#000",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 26,
+                                fontWeight: "800",
+                                color: "#FFF",
+                              }}
+                            >
+                              {(match.name || "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
                       </TouchableOpacity>
                       <Text style={styles.cardName}>{match.name}</Text>
                       <Text style={styles.cardRole}>{match.role}</Text>
@@ -1171,9 +1316,10 @@ export function MatchesView({
                       </View>
                       <TouchableOpacity
                         style={styles.messageBtn}
-                        onPress={() =>
-                          onNavigateToMessages?.(match.jobId ?? "")
-                        }
+                        onPress={() => {
+                          trackMatchMessageTapped({ jobId: match.jobId });
+                          onNavigateToMessages?.(match.jobId ?? "");
+                        }}
                       >
                         <MessageCircle
                           color="#FFF"
@@ -1198,7 +1344,8 @@ export function MatchesView({
                       : `Interested in You (${interestedSponsors.length})`}
                   </Text>
                   <Text style={styles.sectionSubtitle}>
-                    Sponsors who've shown interest in your profile
+                    Sponsors who swiped right on your profile — like them back
+                    to match
                   </Text>
                 </View>
               </View>
@@ -1417,266 +1564,211 @@ export function MatchesView({
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
+          <DismissibleSheet
+            onDismiss={closeAllModals}
             style={styles.modalContent}
           >
-            <View style={styles.modalHandle} />
-
             {selectedProfile && (
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                {/* Job opportunity tag */}
-                <View style={styles.jobRefTag}>
-                  <Text style={styles.jobRefLabel}>JOB OPPORTUNITY</Text>
-                  <View style={styles.jobRefBadge}>
-                    <Briefcase size={12} color="#000" />
-                    <Text style={styles.jobRefText}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: 8 }}
+              >
+                {/* ── Sponsor Identity ─────────────────────────────── */}
+                <View style={styles.smHeroRow}>
+                  {selectedProfile.image ? (
+                    <Image
+                      source={{ uri: selectedProfile.image }}
+                      style={styles.smAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.smAvatar,
+                        {
+                          backgroundColor: "#000",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 24,
+                          fontWeight: "800",
+                          color: "#FFF",
+                        }}
+                      >
+                        {(selectedProfile.name || "?")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.smName}>{selectedProfile.name}</Text>
+                    {!!(selectedProfile.role || selectedProfile.company) && (
+                      <Text style={styles.smMeta} numberOfLines={2}>
+                        {[selectedProfile.role, selectedProfile.company]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </Text>
+                    )}
+                    <View style={styles.smMatchedBadge}>
+                      <CheckCircle size={11} color="#00CB54" />
+                      <Text style={styles.smMatchedText}>Matched</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* ── Role / Job Context ───────────────────────────── */}
+                {!!(selectedProfile.appliedRole || selectedProfile.company) && (
+                  <View style={styles.smJobBlock}>
+                    <Text style={styles.smSectionLabel}>ROLE</Text>
+                    <Text style={styles.smJobTitle}>
                       {selectedProfile.appliedRole ||
                         sponsorPublicProfile?.sponsor_profile?.JOB_TITLE ||
                         "Open Role"}
                     </Text>
+                    {!!selectedProfile.company && (
+                      <Text style={styles.smJobCompany}>
+                        {selectedProfile.company}
+                      </Text>
+                    )}
                   </View>
-                </View>
+                )}
 
-                {/* Swipable Card Section */}
-                <View style={styles.swipableContainer}>
-                  <ScrollView
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
-                  >
-                    {/* Page 1: Sponsor Profile */}
-                    <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                      <View style={styles.infoCardHeader}>
-                        <Image
-                          source={{ uri: selectedProfile.image }}
-                          style={styles.modalAvatar}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.modalName}>
-                            {selectedProfile.name}
-                          </Text>
-                          {selectedProfile.role ? (
-                            <Text style={styles.sponsorSubtitle}>
-                              {selectedProfile.role}
-                              {selectedProfile.company
-                                ? ` @ ${selectedProfile.company}`
-                                : ""}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </View>
-
-                      <View style={styles.statsRow}>
-                        {selectedProfile.company ? (
-                          <View style={styles.statItem}>
-                            <Briefcase size={13} color="#000" />
-                            <Text style={styles.statLabel}>
-                              {selectedProfile.company}
+                {/* ── Sponsor Capabilities ─────────────────────────── */}
+                {sponsorPublicProfileLoading ? (
+                  <View style={styles.smLoadingRow}>
+                    <ActivityIndicator size="small" color="#999" />
+                    <Text style={styles.smLoadingText}>
+                      Loading sponsor details…
+                    </Text>
+                  </View>
+                ) : sponsorPublicProfile ? (
+                  <>
+                    {/* Capability pills */}
+                    {(sponsorPublicProfile?.sponsor_profile
+                      ?.OPEN_TO_REFERRALS ||
+                      sponsorPublicProfile?.sponsor_profile?.FINANCIAL_REWARD ||
+                      !!sponsorPublicProfile?.sponsor_profile?.DURATION) && (
+                      <View style={styles.smCapRow}>
+                        {sponsorPublicProfile.sponsor_profile
+                          .OPEN_TO_REFERRALS && (
+                          <View style={styles.smCapPill}>
+                            <Text style={styles.smCapPillText}>
+                              Open to Referrals
                             </Text>
                           </View>
-                        ) : null}
-                        <View style={styles.statItem}>
-                          <CheckCircle size={13} color="#00CB54" />
-                          <Text style={styles.statLabel}>Matched!</Text>
-                        </View>
-                      </View>
-
-                      <View
-                        style={[
-                          styles.statItem,
-                          {
-                            marginTop: 16,
-                            alignSelf: "flex-start",
-                            backgroundColor: "#F0F0F0",
-                          },
-                        ]}
-                      >
-                        <Briefcase size={12} color="#666" />
-                        <Text style={[styles.statLabel, { color: "#666" }]}>
-                          Role: {selectedProfile.appliedRole || "Open Role"}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Page 2: Key Insights — sponsor profile loaded via getPublicProfile(sponsorUserId) */}
-                    <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                      <View style={styles.insightsHeader}>
-                        <Sparkles size={20} color="#000" />
-                        <Text style={styles.insightsTitle}>Key Insights</Text>
-                      </View>
-
-                      {sponsorPublicProfileLoading ? (
-                        <View
-                          style={{
-                            flex: 1,
-                            justifyContent: "center",
-                            alignItems: "center",
-                          }}
-                        >
-                          <ActivityIndicator size="small" color="#000" />
-                        </View>
-                      ) : sponsorPublicProfile ? (
-                        <ScrollView
-                          showsVerticalScrollIndicator={false}
-                          bounces={false}
-                        >
-                          {/* Bio */}
-                          {!!sponsorPublicProfile.BIO && (
-                            <Text
-                              style={[styles.bioText, { marginBottom: 14 }]}
-                            >
-                              {sponsorPublicProfile.BIO}
+                        )}
+                        {sponsorPublicProfile.sponsor_profile
+                          .FINANCIAL_REWARD && (
+                          <View style={styles.smCapPill}>
+                            <Text style={styles.smCapPillText}>
+                              Financial Reward
                             </Text>
+                          </View>
+                        )}
+                        {!!sponsorPublicProfile.sponsor_profile.DURATION && (
+                          <View style={styles.smCapPill}>
+                            <Text style={styles.smCapPillText}>
+                              {sponsorPublicProfile.sponsor_profile.DURATION}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Companies can refer to */}
+                    {(sponsorPublicProfile?.sponsor_profile
+                      ?.COMPANIES_CAN_REFER_TO?.length ?? 0) > 0 && (
+                      <View style={styles.smBlock}>
+                        <Text style={styles.smSectionLabel}>CAN REFER TO</Text>
+                        <View style={styles.smChipRow}>
+                          {sponsorPublicProfile.sponsor_profile.COMPANIES_CAN_REFER_TO.map(
+                            (co: string, i: number) => (
+                              <View key={i} style={styles.smDarkChip}>
+                                <Text style={styles.smDarkChipText}>{co}</Text>
+                              </View>
+                            ),
                           )}
+                        </View>
+                      </View>
+                    )}
 
-                          {/* Capability badges */}
-                          <View style={styles.sponsorCapabilityRow}>
-                            {sponsorPublicProfile?.sponsor_profile
-                              ?.OPEN_TO_REFERRALS && (
-                              <View style={styles.sponsorCapBadge}>
-                                <CheckCircle size={11} color="#00CB54" />
-                                <Text style={styles.sponsorCapBadgeText}>
-                                  Open to Referrals
-                                </Text>
-                              </View>
-                            )}
-                            {sponsorPublicProfile?.sponsor_profile
-                              ?.FINANCIAL_REWARD && (
-                              <View style={styles.sponsorCapBadge}>
-                                <DollarSign size={11} color="#000" />
-                                <Text style={styles.sponsorCapBadgeText}>
-                                  Financial Reward
-                                </Text>
-                              </View>
-                            )}
-                            {!!sponsorPublicProfile?.sponsor_profile
-                              ?.DURATION && (
-                              <View style={styles.sponsorCapBadge}>
-                                <Award size={11} color="#000" />
-                                <Text style={styles.sponsorCapBadgeText}>
-                                  {
-                                    sponsorPublicProfile.sponsor_profile
-                                      .DURATION
-                                  }
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-
-                          {/* Companies can refer to */}
-                          {(sponsorPublicProfile?.sponsor_profile
-                            ?.COMPANIES_CAN_REFER_TO?.length ?? 0) > 0 && (
-                            <View style={styles.referCompaniesBlock}>
-                              <Text style={styles.referCompaniesLabel}>
-                                CAN REFER TO
+                    {/* Insight prompts */}
+                    {(sponsorPublicProfile?.sponsor_profile?.INSIGHTS?.length ??
+                      0) > 0 && (
+                      <View style={styles.smBlock}>
+                        <Text style={styles.smSectionLabel}>INSIGHTS</Text>
+                        {sponsorPublicProfile.sponsor_profile.INSIGHTS.map(
+                          (
+                            insight: { question: string; answer: string },
+                            idx: number,
+                          ) => (
+                            <View key={idx} style={styles.smInsightItem}>
+                              <Text style={styles.smInsightQ}>
+                                {insight.question}
                               </Text>
-                              <View style={styles.referCompaniesList}>
-                                {sponsorPublicProfile.sponsor_profile.COMPANIES_CAN_REFER_TO.map(
-                                  (co: string, i: number) => (
-                                    <View
-                                      key={i}
-                                      style={styles.referCompanyChip}
-                                    >
-                                      <Text style={styles.referCompanyText}>
-                                        {co}
-                                      </Text>
-                                    </View>
-                                  ),
-                                )}
-                              </View>
+                              <Text style={styles.smInsightA}>
+                                {insight.answer}
+                              </Text>
                             </View>
-                          )}
-
-                          {/* First insight / prompt */}
-                          {(sponsorPublicProfile?.sponsor_profile?.INSIGHTS
-                            ?.length ?? 0) > 0 &&
-                            sponsorPublicProfile.sponsor_profile.INSIGHTS.slice(
-                              0,
-                              1,
-                            ).map(
-                              (
-                                insight: { question: string; answer: string },
-                                idx: number,
-                              ) => (
-                                <View key={idx} style={styles.promptWrapper}>
-                                  <View style={styles.promptHeaderRow}>
-                                    <Zap size={14} color="#000" />
-                                    <Text style={styles.insightLabel}>
-                                      {insight.question}
-                                    </Text>
-                                  </View>
-                                  <Text style={styles.promptContent}>
-                                    {insight.answer}
-                                  </Text>
-                                </View>
-                              ),
-                            )}
-                        </ScrollView>
-                      ) : (
-                        // Fallback when SPONSOR_USER_ID is not yet in the API response
-                        <View
-                          style={{
-                            flex: 1,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            gap: 8,
-                            paddingHorizontal: 8,
-                          }}
-                        >
-                          <Users size={28} color="#DDD" />
-                          <Text
-                            style={{
-                              color: "#999",
-                              fontSize: 13,
-                              fontWeight: "600",
-                              textAlign: "center",
-                              lineHeight: 20,
-                            }}
-                          >
-                            Sponsor insights unavailable
+                          ),
+                        )}
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  /* Fallback when sponsorUserId is absent */
+                  <>
+                    {(selectedProfile.role ||
+                      selectedProfile.company ||
+                      selectedProfile.appliedRole) && (
+                      <View style={styles.smBlock}>
+                        <Text style={styles.smSectionLabel}>DETAILS</Text>
+                        {!!selectedProfile.role && (
+                          <Text style={styles.smFallbackLine}>
+                            {selectedProfile.role}
                           </Text>
-                          <Text
-                            style={{
-                              color: "#CCC",
-                              fontSize: 11,
-                              textAlign: "center",
-                              lineHeight: 16,
-                            }}
-                          >
-                            Message {selectedProfile?.name} to learn more
+                        )}
+                        {!!selectedProfile.company && (
+                          <Text style={styles.smFallbackLine}>
+                            {selectedProfile.company}
                           </Text>
-                        </View>
-                      )}
+                        )}
+                        {!!selectedProfile.appliedRole && (
+                          <Text style={styles.smFallbackLine}>
+                            Hiring for: {selectedProfile.appliedRole}
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                    <View style={styles.smFallbackNote}>
+                      <Text style={styles.smFallbackNoteText}>
+                        Message {selectedProfile.name?.split(" ")[0] ?? "them"}{" "}
+                        to learn more about this opportunity.
+                      </Text>
                     </View>
-                  </ScrollView>
+                  </>
+                )}
 
-                  {/* Pagination dots */}
-                  <View style={styles.pagination}>
-                    <View
-                      style={[
-                        styles.dot,
-                        activeSlide === 0
-                          ? styles.dotActive
-                          : styles.dotInactive,
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.dot,
-                        activeSlide === 1
-                          ? styles.dotActive
-                          : styles.dotInactive,
-                      ]}
-                    />
-                  </View>
-                </View>
+                {/* ── Message CTA ──────────────────────────────────── */}
+                <TouchableOpacity
+                  style={styles.smMessageBtn}
+                  onPress={() => {
+                    trackMatchMessageTapped({ jobId: selectedProfile.jobId });
+                    closeAllModals();
+                    onNavigateToMessages?.(selectedProfile.jobId ?? "");
+                  }}
+                >
+                  <MessageCircle color="#FFF" size={18} strokeWidth={2.5} />
+                  <Text style={styles.smMessageBtnText}>
+                    Message {selectedProfile.name?.split(" ")[0] ?? "Sponsor"}
+                  </Text>
+                </TouchableOpacity>
               </ScrollView>
             )}
-          </Animated.View>
+          </DismissibleSheet>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -1698,15 +1790,16 @@ export function MatchesView({
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
+          <DismissibleSheet
+            onDismiss={closeAllModals}
             style={styles.modalContent}
           >
-            <View style={styles.modalHandle} />
-
             {selectedJob && (
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: 8 }}
+              >
                 {/* Status + Liked Date Row */}
                 <View style={styles.jobModalTopRow}>
                   {selectedJob.status === "MATCHED" ? (
@@ -1718,7 +1811,7 @@ export function MatchesView({
                     <View style={styles.jobModalPendingBadge}>
                       <View style={styles.pulsingDot} />
                       <Text style={styles.jobModalPendingText}>
-                        Awaiting sponsor
+                        Pending match
                       </Text>
                     </View>
                   )}
@@ -1793,7 +1886,98 @@ export function MatchesView({
                   )}
                 </View>
 
-                {/* About the Role */}
+                {/* Role Details — work arrangement chip. Experience already
+                    lives in the comp strip above so we don't duplicate it. */}
+                {!!selectedJob.workArrangement && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Info size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Role Details
+                      </Text>
+                    </View>
+                    <View style={styles.skillsRow}>
+                      <View style={styles.roleDetailChip}>
+                        <MapPin size={13} color="#000" />
+                        <Text style={styles.roleDetailChipText}>
+                          {selectedJob.workArrangement}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Core Responsibilities */}
+                {!!selectedJob.coreResponsibilities && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Briefcase size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Core Responsibilities
+                      </Text>
+                    </View>
+                    <View style={styles.jobDetailCard}>
+                      <Text style={styles.jobDetailText}>
+                        {selectedJob.coreResponsibilities}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Requirements Overview */}
+                {!!selectedJob.requirementsSummary && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Award size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Requirements Overview
+                      </Text>
+                    </View>
+                    <View style={styles.jobDetailCard}>
+                      <Text style={styles.jobDetailText}>
+                        {selectedJob.requirementsSummary}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Required Skills */}
+                {selectedJob.skills.length > 0 && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <TrendingUp size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Required Skills
+                      </Text>
+                    </View>
+                    <View style={styles.skillsRow}>
+                      {selectedJob.skills.map((skill, idx) => (
+                        <View key={idx} style={styles.skillBadge}>
+                          <Text style={styles.skillBadgeText}>{skill}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Highlights / Benefits */}
+                {selectedJob.benefits.length > 0 && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Sparkles size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>Highlights</Text>
+                    </View>
+                    {selectedJob.benefits.map((benefit, idx) => (
+                      <View key={idx} style={styles.benefitRow}>
+                        <Check size={14} color="#00CB54" />
+                        <Text style={styles.benefitText}>{benefit}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* About the Role — full description, last because it's the
+                    longest free-form text. */}
                 {!!selectedJob.description && (
                   <View style={styles.jobSection}>
                     <Text style={styles.jobSectionTitle}>About the Role</Text>
@@ -1847,8 +2031,13 @@ export function MatchesView({
                   </View>
                 </View>
 
-                {/* Primary CTA */}
-                {onNavigateToMessages && !!selectedJob.jobId ? (
+                {/* Primary CTA. Messaging is gated on a mutual match —
+                    applicants can only DM the sponsor after status flips to
+                    "MATCHED". Before that, the CTA shows "Awaiting Sponsor"
+                    so the user knows why the action is unavailable. */}
+                {selectedJob.status === "MATCHED" &&
+                onNavigateToMessages &&
+                !!selectedJob.jobId ? (
                   <TouchableOpacity
                     style={styles.applyBtnLarge}
                     onPress={() => {
@@ -1867,16 +2056,17 @@ export function MatchesView({
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
-                    style={styles.applyBtnLarge}
+                    style={[styles.applyBtnLarge, { opacity: 0.6 }]}
                     onPress={closeAllModals}
+                    activeOpacity={0.6}
                   >
-                    <Heart color="#FFF" size={20} strokeWidth={2.5} />
-                    <Text style={styles.applyBtnLargeText}>Saved</Text>
+                    <Clock color="#FFF" size={20} strokeWidth={2.5} />
+                    <Text style={styles.applyBtnLargeText}>Pending Match</Text>
                   </TouchableOpacity>
                 )}
               </ScrollView>
             )}
-          </Animated.View>
+          </DismissibleSheet>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -1902,15 +2092,16 @@ export function MatchesView({
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
+          <DismissibleSheet
+            onDismiss={closeAllModals}
             style={styles.modalContent}
           >
-            <View style={styles.modalHandle} />
-
             {selectedInterestedSponsor && (
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: 8 }}
+              >
                 {/* "Expressed Interest" tag */}
                 <View style={styles.interestedModalTag}>
                   <Heart size={12} color="#E53E3E" />
@@ -2124,21 +2315,38 @@ export function MatchesView({
                       </View>
                     </View>
 
-                    {/* CTA */}
+                    {/* CTA — like back to close the loop and create a match */}
                     <TouchableOpacity
-                      style={[styles.applyBtnLarge, { marginTop: 20 }]}
-                      onPress={closeAllModals}
+                      style={[
+                        styles.applyBtnLarge,
+                        { marginTop: 20 },
+                        likingBackSponsorId ===
+                          selectedInterestedSponsor.likeId && { opacity: 0.6 },
+                      ]}
+                      onPress={() =>
+                        handleLikeBackSponsor(selectedInterestedSponsor)
+                      }
+                      disabled={
+                        likingBackSponsorId === selectedInterestedSponsor.likeId
+                      }
                     >
-                      <Heart color="#FFF" size={20} strokeWidth={2.5} />
-                      <Text style={styles.applyBtnLargeText}>
-                        I'm Interested
-                      </Text>
+                      {likingBackSponsorId ===
+                      selectedInterestedSponsor.likeId ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                      ) : (
+                        <>
+                          <Heart color="#FFF" size={20} strokeWidth={2.5} />
+                          <Text style={styles.applyBtnLargeText}>
+                            Like {selectedInterestedSponsor.firstName} Back
+                          </Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   </>
                 )}
               </ScrollView>
             )}
-          </Animated.View>
+          </DismissibleSheet>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -2160,14 +2368,16 @@ export function MatchesView({
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={[styles.modalContent, { maxHeight: "65%" }]}
+          <DismissibleSheet
+            onDismiss={closeAllModals}
+            style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.65 }]}
           >
-            <View style={styles.modalHandle} />
             {selectedWaitlistedJob && (
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: 8 }}
+              >
                 {/* Hero */}
                 <View style={styles.jobModalHero}>
                   <View
@@ -2300,7 +2510,7 @@ export function MatchesView({
                 </Text>
               </ScrollView>
             )}
-          </Animated.View>
+          </DismissibleSheet>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -2323,13 +2533,10 @@ export function MatchesView({
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={[styles.modalContent, { maxHeight: "60%" }]}
+          <DismissibleSheet
+            onDismiss={() => setConfirmingWithdrawReferral(null)}
+            style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.6 }]}
           >
-            <View style={styles.modalHandle} />
-
             {confirmingWithdrawReferral &&
               (() => {
                 const matchForReferral = matches.find(
@@ -2421,7 +2628,7 @@ export function MatchesView({
                   </View>
                 );
               })()}
-          </Animated.View>
+          </DismissibleSheet>
         </View>
       </Modal>
 
@@ -2686,7 +2893,12 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     padding: 28,
     paddingBottom: 40,
-    maxHeight: "90%",
+    // Sheet sizes to its content; only grows to fill (and scroll) when the
+    // content is taller than this cap — no empty whitespace for short modals.
+    // Absolute px (not "88%") so it doesn't depend on a parent with a fixed
+    // height — the GestureHandlerRootView wrapper inside DismissibleSheet is
+    // content-sized, and a % maxHeight against it would collapse to nothing.
+    maxHeight: SCREEN_HEIGHT * 0.88,
   },
   modalHandle: {
     width: 40,
@@ -2716,6 +2928,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   jobRefText: { fontSize: 12, fontWeight: "700" },
+  jobRefCompany: { fontSize: 11, color: "#666", marginTop: 4 },
   matchScoreTag: {
     flexDirection: "row",
     alignItems: "center",
@@ -2728,6 +2941,176 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   matchScoreText: { fontSize: 12, fontWeight: "800", color: "#00CB54" },
+
+  // ─── Sponsor Match Modal (sm) ─────────────────────────────────────────────
+  smHeroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 24,
+  },
+  smAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F0F0F0",
+  },
+  smName: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 2,
+  },
+  smMeta: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#666",
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  smMatchedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  smMatchedText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#00CB54",
+  },
+  smJobBlock: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    padding: 16,
+    marginBottom: 16,
+  },
+  smSectionLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#BBB",
+    letterSpacing: 1.2,
+    marginBottom: 6,
+  },
+  smJobTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 2,
+  },
+  smJobCompany: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#666",
+  },
+  smLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 20,
+  },
+  smLoadingText: {
+    fontSize: 13,
+    color: "#AAA",
+    fontWeight: "500",
+  },
+  smCapRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  smCapPill: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+  },
+  smCapPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#333",
+  },
+  smBlock: {
+    marginBottom: 20,
+  },
+  smChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  smDarkChip: {
+    backgroundColor: "#000",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  smDarkChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  smInsightItem: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    padding: 14,
+    marginBottom: 10,
+  },
+  smInsightQ: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#AAA",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  smInsightA: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#222",
+    lineHeight: 20,
+  },
+  smFallbackLine: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#444",
+    lineHeight: 22,
+  },
+  smFallbackNote: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    padding: 14,
+    marginBottom: 16,
+  },
+  smFallbackNoteText: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  smMessageBtn: {
+    backgroundColor: "#000",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 4,
+  },
+  smMessageBtnText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#FFF",
+  },
 
   swipableContainer: { width: CARD_WIDTH, alignSelf: "center" },
   infoCard: {
@@ -2841,6 +3224,75 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 20,
   },
+
+  // Liked-job modal: HomeView-mirrored detail sections
+  detailSection: {
+    backgroundColor: "#FFF",
+    padding: 20,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 15,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  detailSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  detailSectionTitle: {
+    fontWeight: "800",
+    fontSize: 13,
+    textTransform: "uppercase",
+    color: "#000",
+    letterSpacing: 0.8,
+  },
+  jobDetailCard: {
+    backgroundColor: "#FAFAFA",
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  jobDetailText: {
+    fontSize: 14,
+    color: "#555",
+    lineHeight: 21,
+  },
+  skillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  skillBadge: {
+    backgroundColor: "#F5F5F5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  roleDetailChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F5F5F5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  roleDetailChipText: { fontSize: 13, fontWeight: "600", color: "#000" },
 
   // Job Modal Styles
   jobModalHeader: {

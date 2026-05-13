@@ -26,6 +26,11 @@ import {
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import {
+    trackAllNotificationsMarkedRead,
+    trackNotificationMarkedRead,
+    trackNotificationTapped,
+} from "../lib/analytics/mixpanel";
+import {
     getNotifications,
     markAllNotificationsAsRead,
     markNotificationAsRead,
@@ -199,6 +204,9 @@ export function NotificationsView({
     );
     try {
       await markNotificationAsRead(notification.NOTIFICATION_ID);
+      trackNotificationMarkedRead({
+        notificationId: notification.NOTIFICATION_ID,
+      });
     } catch (err) {
       // Revert on failure — the gesture/tap shouldn't lie about state
       setNotifications((prev) =>
@@ -219,8 +227,10 @@ export function NotificationsView({
     if (isMarkingAll) return;
     setIsMarkingAll(true);
     try {
+      const unreadCount = notifications.filter((n) => !n.IS_READ).length;
       await markAllNotificationsAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, IS_READ: true })));
+      trackAllNotificationsMarkedRead({ count: unreadCount });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (err) {
       console.warn("[NotificationsView] Failed to mark all read:", err);
@@ -236,6 +246,10 @@ export function NotificationsView({
    */
   const handleNotificationPress = async (n: BackendNotification) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    trackNotificationTapped({
+      notificationId: n.NOTIFICATION_ID,
+      notificationType: n.TYPE,
+    });
     // Kick off mark-read in the background; don't await — routing shouldn't wait.
     markOneRead(n);
 

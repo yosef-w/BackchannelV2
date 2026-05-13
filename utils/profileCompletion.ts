@@ -38,11 +38,6 @@ export function checkProfileCompleteness(
       value: data.personal.profileImage,
     },
     {
-      key: "portfolio",
-      label: "Portfolio",
-      value: data.personal.portfolio,
-    },
-    {
       key: "street",
       label: "Street",
       value: data.personal.address.street,

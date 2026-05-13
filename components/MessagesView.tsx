@@ -1,4 +1,11 @@
 import {
+    trackConversationOpened,
+    trackMessageSent,
+    trackPublicProfileOpenedFromMessage,
+    trackReferralSubmitted,
+    trackUnmatchConfirmed,
+} from "@/lib/analytics/mixpanel";
+import {
     getBasicProfile,
     getConversationMessages,
     getConversations,
@@ -555,12 +562,20 @@ export function MessagesView({
     if (onConversationChange) {
       onConversationChange(conversationId ?? null);
     }
+    if (conversationId) {
+      const conv = conversations.find((c) => c.id === conversationId);
+      trackConversationOpened({
+        conversationId,
+        unreadCount: conv?.unreadCount,
+      });
+    }
   };
 
   const handleUnmatch = async () => {
     if (!selectedConversation) return;
     try {
       setIsUnmatching(true);
+      trackUnmatchConfirmed({ conversationId: selectedConversation });
       await unmatchConversation(selectedConversation);
       // Optimistically remove from local list
       setConversations((prev) =>
@@ -617,6 +632,10 @@ export function MessagesView({
 
       const response = await sendMessage(selectedConversation, messageToSend);
       console.log("[MessagesView] Message sent:", response);
+      trackMessageSent({
+        conversationId: selectedConversation,
+        messageLength: messageToSend.length,
+      });
 
       // Reconcile temp message: stamp serverId, keep stable id to avoid flicker
       setMessages((prev) => {
@@ -997,14 +1016,32 @@ export function MessagesView({
               onPress={() => setShowProfileModal(true)}
               activeOpacity={0.7}
             >
-              <Image
-                source={{
-                  uri:
-                    conversation.otherParticipant.profileImageUrl ||
-                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-                }}
-                style={styles.headerImage}
-              />
+              {conversation.otherParticipant.profileImageUrl ? (
+                <Image
+                  source={{
+                    uri: conversation.otherParticipant.profileImageUrl,
+                  }}
+                  style={styles.headerImage}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.headerImage,
+                    {
+                      backgroundColor: "#000",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
+                  >
+                    {(conversation.otherParticipant.name ||
+                      "?")[0].toUpperCase()}
+                  </Text>
+                </View>
+              )}
               <View style={styles.headerInfo}>
                 <Text style={styles.headerName}>
                   {conversation.otherParticipant.name}
@@ -1335,6 +1372,12 @@ export function MessagesView({
                       style={styles.fullProfileBtn}
                       onPress={() => {
                         setShowProfileModal(false);
+                        const otherUserId = conversation.otherParticipant?.id;
+                        if (otherUserId) {
+                          trackPublicProfileOpenedFromMessage({
+                            viewedUserId: String(otherUserId),
+                          });
+                        }
                         if (onShowPublicProfile) {
                           onShowPublicProfile(conversation);
                         }
@@ -1380,15 +1423,37 @@ export function MessagesView({
                         {/* Page 1 — Sponsor overview */}
                         <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
                           <View style={styles.infoCardHeader}>
-                            <Image
-                              source={{
-                                uri:
-                                  conversation.otherParticipant
-                                    .profileImageUrl ||
-                                  "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200",
-                              }}
-                              style={styles.modalAvatar}
-                            />
+                            {conversation.otherParticipant.profileImageUrl ? (
+                              <Image
+                                source={{
+                                  uri: conversation.otherParticipant
+                                    .profileImageUrl,
+                                }}
+                                style={styles.modalAvatar}
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.modalAvatar,
+                                  {
+                                    backgroundColor: "#000",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  },
+                                ]}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 22,
+                                    fontWeight: "800",
+                                    color: "#FFF",
+                                  }}
+                                >
+                                  {(conversation.otherParticipant.name ||
+                                    "?")[0].toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
                             <View style={{ flex: 1 }}>
                               <Text style={styles.modalName}>
                                 {conversation.otherParticipant.name}
@@ -1543,6 +1608,12 @@ export function MessagesView({
                       style={styles.fullProfileBtn}
                       onPress={() => {
                         setShowProfileModal(false);
+                        const otherUserId = conversation.otherParticipant?.id;
+                        if (otherUserId) {
+                          trackPublicProfileOpenedFromMessage({
+                            viewedUserId: String(otherUserId),
+                          });
+                        }
                         if (onShowPublicProfile) {
                           onShowPublicProfile(conversation);
                         }
@@ -2003,6 +2074,11 @@ export function MessagesView({
                             comfortable_attaching: comfortableAttaching,
                           },
                         });
+                        trackReferralSubmitted({
+                          conversationId: selectedConversation || "",
+                          jobId,
+                          applicantUserId,
+                        });
                         // Submission succeeded — move to success step
                         setReferralStep(3);
                       } catch (err) {
@@ -2361,14 +2437,36 @@ export function MessagesView({
                       style={styles.convItem}
                     >
                       <View style={styles.imgWrapper}>
-                        <Image
-                          source={{
-                            uri:
-                              conv.otherParticipant.profileImageUrl ||
-                              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-                          }}
-                          style={styles.convImg}
-                        />
+                        {conv.otherParticipant.profileImageUrl ? (
+                          <Image
+                            source={{
+                              uri: conv.otherParticipant.profileImageUrl,
+                            }}
+                            style={styles.convImg}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.convImg,
+                              {
+                                backgroundColor: "#000",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 22,
+                                fontWeight: "800",
+                                color: "#FFF",
+                              }}
+                            >
+                              {(conv.otherParticipant.name ||
+                                "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
                         {conv.unreadCount > 0 && (
                           <View style={styles.dotIndicator} />
                         )}
@@ -2415,14 +2513,37 @@ export function MessagesView({
                       style={[styles.convItem, styles.convItemHidden]}
                     >
                       <View style={styles.imgWrapper}>
-                        <Image
-                          source={{
-                            uri:
-                              conv.otherParticipant.profileImageUrl ||
-                              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-                          }}
-                          style={[styles.convImg, styles.convImgHidden]}
-                        />
+                        {conv.otherParticipant.profileImageUrl ? (
+                          <Image
+                            source={{
+                              uri: conv.otherParticipant.profileImageUrl,
+                            }}
+                            style={[styles.convImg, styles.convImgHidden]}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.convImg,
+                              styles.convImgHidden,
+                              {
+                                backgroundColor: "#000",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 22,
+                                fontWeight: "800",
+                                color: "#FFF",
+                              }}
+                            >
+                              {(conv.otherParticipant.name ||
+                                "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                       <View style={styles.convMain}>
                         <View style={styles.convHeader}>

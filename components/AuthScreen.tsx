@@ -16,9 +16,18 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import {
+    identifyUser,
+    trackForgotPasswordRequested,
+    trackLoginFailed,
+    trackLoginSubmitted,
+    trackLoginSucceeded,
+    trackSignUpFormSubmitted,
+} from "../lib/analytics/mixpanel";
 import { authApi, LoginResponse } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 
@@ -73,6 +82,7 @@ export function AuthScreen({
   const [showPassword, setShowPassword] = useState(false);
   const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
   const showToast = useToastStore((state) => state.showToast);
+  const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
 
   const loginMutation = useMutation<LoginResponse, Error>({
     mutationFn: async () => {
@@ -99,6 +109,22 @@ export function AuthScreen({
         },
       });
 
+      // Identify the user for the rest of their session, and stamp basic
+      // profile attributes onto the People record. Other profile fields will
+      // be filled in by `setUserProperties()` once the profile fetch
+      // completes elsewhere — keep this lean.
+      const role: "applicant" | "sponsor" =
+        data.role === "Sponsor" ? "sponsor" : "applicant";
+      identifyUser({
+        userId: String(data.user_id),
+        userType: role,
+        email: data.email,
+      });
+      trackLoginSucceeded(role);
+      // Link this backend user ID to their RevenueCat customer record so
+      // purchases can be restored across devices / reinstalls.
+      rcIdentifyUser(String(data.user_id));
+
       showToast("Welcome back!", "success");
 
       // Use onLoginComplete if provided (skips questionnaire), otherwise onComplete
@@ -109,6 +135,7 @@ export function AuthScreen({
       }
     },
     onError: (error) => {
+      trackLoginFailed(error.message || "unknown");
       showToast(
         error.message || "Login failed. Check your email and password.",
         "error",
@@ -139,6 +166,7 @@ export function AuthScreen({
         showToast("Please enter your email and password.", "error");
         return;
       }
+      trackLoginSubmitted();
       loginMutation.mutate();
     } else {
       // Validate all registration fields before proceeding
@@ -174,11 +202,16 @@ export function AuthScreen({
         updateApplicantData(authData);
       }
 
+      trackSignUpFormSubmitted(
+        userType === "sponsor" ? "sponsor" : "applicant",
+      );
+
       onComplete();
     }
   };
 
   const handleForgotPassword = () => {
+    trackForgotPasswordRequested();
     setShowForgotPasswordModal(true);
     setForgotPasswordSent(false);
     setForgotPasswordEmail("");

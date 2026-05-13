@@ -43,7 +43,26 @@ export function ApplicantPublicProfileView({
             <ChevronLeft color="#000" size={28} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.avatarWrapper}>
-            <Image source={{ uri: userData.image }} style={styles.avatar} />
+            {userData.image ? (
+              <Image source={{ uri: userData.image }} style={styles.avatar} />
+            ) : (
+              <View
+                style={[
+                  styles.avatar,
+                  {
+                    backgroundColor: "#000",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                ]}
+              >
+                <Text
+                  style={{ fontSize: 36, fontWeight: "800", color: "#FFF" }}
+                >
+                  {(userData.name || "?")[0].toUpperCase()}
+                </Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.name}>{userData.name}</Text>

@@ -17,7 +17,22 @@
       "Bash(npm uninstall *)",
       "Bash(echo \"exit: $?\")",
       "Bash(npx expo *)",
-      "Bash(grep -E \"^/Users.*\\(HomeView|JobsView|types/jobs\\\\.ts|lib/api\\\\.ts\\)$\" -A 3)"
+      "Bash(grep -E \"^/Users.*\\(HomeView|JobsView|types/jobs\\\\.ts|lib/api\\\\.ts\\)$\" -A 3)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(git -C /Users/yosefwolday/Desktop/BackchannelV2 check-ignore .env.development .env.production .env.test)",
+      "Bash(git -C /Users/yosefwolday/Desktop/BackchannelV2 status --short)",
+      "Bash(echo \"tsc=$?\")",
+      "Bash(awk '/sectionHeader: \\\\{/,/\\\\}/' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk '/sectionSubtitle: \\\\{/,/\\\\}/' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk '/listSectionTitle: \\\\{/,/\\\\}/' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk '/horizontalScroll: \\\\{/,/\\\\}/' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk '/horizontalScrollContent: \\\\{/,/\\\\}/' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(grep -n -B3 -A3 \"styles.modalContent, { maxHeight\" /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk -F: '$1 > 2070 && $1 < 2700')",
+      "Bash(grep -n \"styles.modalContent, { maxHeight\" /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(sed -n '2371,2384p' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(sed -n '2539,2552p' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk -F: '$1 > 2510')"
     ]
   }
 }

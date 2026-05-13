@@ -14,6 +14,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { trackSignUpRoleSelected } from "../lib/analytics/mixpanel";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
 
 interface ModeSelectionProps {
@@ -30,6 +31,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
   const handleSelect = (mode: "applicant" | "sponsor") => {
     setSelected(mode);
     setUserType(mode);
+    trackSignUpRoleSelected(mode);
     setTimeout(() => onSelect(mode), 200);
   };
 

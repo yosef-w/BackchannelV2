@@ -29,6 +29,11 @@ import Animated, {
     withSpring,
 } from "react-native-reanimated";
 import {
+    trackCheckInModalOpened,
+    trackPushNotificationTapped,
+    trackScreenViewed,
+} from "../lib/analytics/mixpanel";
+import {
     getUnreadNotificationCount,
     listReferrals,
     registerDevice,
@@ -189,6 +194,10 @@ export function MainApp({ userType }: MainAppProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (userType === "applicant") setShowApplicantCheckIn(true);
     else setShowSponsorCheckIn(true);
+    trackCheckInModalOpened({
+      role: userType,
+      referralCount: referrals.length,
+    });
     // Fire fetch in the background — modal renders its own loading state.
     fetchReferralsForCheckIn();
   };
@@ -310,6 +319,7 @@ export function MainApp({ userType }: MainAppProps) {
         if (!data) return;
 
         const type = data.type as string | undefined;
+        trackPushNotificationTapped({ pushType: type });
         if (type === "match" || type === "referral") {
           setActiveView("matches");
         } else if (type === "message") {
@@ -364,6 +374,9 @@ export function MainApp({ userType }: MainAppProps) {
       setPreviousView(activeView);
     }
     setActiveView(newView);
+    // Fire screen-view event on every tab switch. The screen names mirror
+    // ViewType ("home", "matches", etc.) so they map 1:1 to user-facing tabs.
+    trackScreenViewed(newView);
   };
 
   const visibleNavItems = navItems.filter((item) => {
@@ -409,7 +422,6 @@ export function MainApp({ userType }: MainAppProps) {
           {activeView === "home" && (
             <HomeView
               userType={userType}
-              onWebViewActiveChange={setIsBottomNavHidden}
               onNavigateToProfile={() => setActiveView("profile")}
             />
           )}

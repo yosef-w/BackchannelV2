@@ -27,6 +27,10 @@ import Animated, {
     ZoomIn,
 } from "react-native-reanimated";
 import {
+    trackCheckInFailed,
+    trackSponsorBatchCheckInSubmitted,
+} from "../lib/analytics/mixpanel";
+import {
     SponsorCheckInStage,
     SPONSOR_CHECKIN_STAGES,
     submitSponsorBatchCheckIn,
@@ -171,6 +175,7 @@ export function SponsorCheckInModal({
     try {
       setSubmitting(true);
       await submitSponsorBatchCheckIn(toSubmit);
+      trackSponsorBatchCheckInSubmitted({ updateCount: toSubmit.length });
       if (dropped > 0) {
         showToast(
           `Updated ${toSubmit.length} referrals; ${dropped} more will need a second pass.`,
@@ -184,6 +189,7 @@ export function SponsorCheckInModal({
       }, 1600);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      trackCheckInFailed({ role: "sponsor", reason: msg || "unknown" });
       showToast(msg || "Failed to save updates. Try again.", "error");
     } finally {
       setSubmitting(false);

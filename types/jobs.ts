@@ -309,7 +309,7 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     url: apiJob.URL,
     // Default values for UI
     applicants: 0,
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+    image: "",
     benefits: highlights,
     currentSponsors: [],
     isSponsored: apiJob.job_type === "sponsored",

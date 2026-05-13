@@ -14,10 +14,13 @@ import {
   UserCheck,
   X,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -35,10 +38,18 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { SKILLS_BY_INDUSTRY } from "../constants/skills";
+import {
+  identifyUser,
+  trackOnboardingCompleted,
+  trackResumeUploaded,
+  trackSignUpFailed,
+  trackSignUpSucceeded,
+} from "../lib/analytics/mixpanel";
 import { classifyResume, uploadAndParseResume } from "../lib/api";
 import { authApi } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 
@@ -145,6 +156,9 @@ export function ApplicantQuestionnaire({
   );
   const [tempAnswer, setTempAnswer] = useState("");
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const cardYPositions = useRef<number[]>([]);
+
   // Work preferences state
   const [selectedWorkPreferences, setSelectedWorkPreferences] = useState<
     string[]
@@ -158,6 +172,7 @@ export function ApplicantQuestionnaire({
     (state) => state.fetchFromBackend,
   );
   const showToast = useToastStore((state) => state.showToast);
+  const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
@@ -198,6 +213,21 @@ export function ApplicantQuestionnaire({
       // Save auth tokens
       await setAuthTokens(data.access_token, data.refresh_token, "Applicant");
 
+      // Identify the new user for the rest of their session and stamp basic
+      // profile attributes onto Mixpanel's People record.
+      identifyUser({
+        userId: String(data.user_id),
+        userType: "applicant",
+        email: applicantData.email ?? null,
+        firstName: applicantData.firstName ?? null,
+        lastName: applicantData.lastName ?? null,
+        currentRole: answers[1] ?? null,
+      });
+      trackSignUpSucceeded("applicant");
+      trackOnboardingCompleted("applicant");
+      // Link this backend user ID to their RevenueCat customer record.
+      rcIdentifyUser(String(data.user_id));
+
       // Load profile data into local store
       await loadFromProfile({
         firstName: applicantData.firstName,
@@ -227,6 +257,10 @@ export function ApplicantQuestionnaire({
           name: selectedFileAsset.name,
           type: selectedFileAsset.mimeType,
         } as any);
+        trackResumeUploaded({
+          source: "questionnaire",
+          fileSizeBytes: selectedFileAsset.size,
+        });
         uploadAndParseResume(form)
           .then(() => classifyResume())
           .then(() => {
@@ -265,6 +299,7 @@ export function ApplicantQuestionnaire({
     onError: (error: Error) => {
       console.warn("[ApplicantQuestionnaire] Registration failed:", error);
       setIsSubmitting(false);
+      trackSignUpFailed("applicant", error.message || "unknown");
 
       // Handle specific error cases
       const errorMessage = error.message.toLowerCase();
@@ -395,385 +430,425 @@ export function ApplicantQuestionnaire({
           <Animated.View style={[styles.progressBar, progressBarStyle]} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardView}
         >
-          <View style={styles.content}>
-            <Animated.View
-              key={currentQuestion}
-              entering={FadeInDown.duration(500)}
-            >
-              <Text style={styles.questionText}>{question.question}</Text>
+          <ScrollView
+            ref={scrollViewRef}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              <Animated.View
+                key={currentQuestion}
+                entering={FadeInDown.duration(500)}
+              >
+                <Text style={styles.questionText}>{question.question}</Text>
 
-              {question.type === "select" && (
-                <View style={styles.optionsContainer}>
-                  {question.options?.map((option) => {
-                    const isSelected = answers[currentQuestion] === option;
-                    const isEnabled = option === "Technology";
-                    return (
-                      <TouchableOpacity
-                        key={option}
-                        onPress={() =>
-                          isEnabled &&
-                          setAnswers({ ...answers, [currentQuestion]: option })
-                        }
-                        activeOpacity={isEnabled ? 0.7 : 1}
-                        style={[
-                          styles.optionCard,
-                          isSelected && styles.optionCardSelected,
-                          !isEnabled && styles.optionCardDisabled,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.optionText,
-                            isSelected && styles.textWhite,
-                            !isEnabled && styles.optionTextDisabled,
-                          ]}
-                        >
-                          {option}
-                        </Text>
-                        {isSelected ? (
-                          <Check color="#FFF" size={20} />
-                        ) : (
-                          <ChevronRight
-                            color={isEnabled ? "#CCC" : "#E0E0E0"}
-                            size={18}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                  <Text style={styles.comingSoonNote}>
-                    More industries are on their way — we're expanding beyond
-                    tech very soon.
-                  </Text>
-                </View>
-              )}
-
-              {question.type === "text" && (
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    placeholder={question.placeholder}
-                    placeholderTextColor="#BBB"
-                    value={answers[currentQuestion] || ""}
-                    onChangeText={(v) =>
-                      setAnswers({ ...answers, [currentQuestion]: v })
-                    }
-                    style={styles.textInput}
-                    autoFocus
-                  />
-                </View>
-              )}
-
-              {question.type === "skills" && (
-                <View>
-                  <View style={styles.searchWrapper}>
-                    <Search
-                      color="#AAA"
-                      size={20}
-                      style={{ marginRight: 10 }}
-                    />
-                    <TextInput
-                      placeholder="Search skills..."
-                      placeholderTextColor="#BBB"
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                      style={styles.searchInput}
-                    />
-                  </View>
-                  <View style={styles.skillsGrid}>
-                    {filteredSkills.map((skill) => {
-                      const isSelected = selectedSkills.includes(skill);
-                      return (
-                        <TouchableOpacity
-                          key={skill}
-                          onPress={() => toggleSkill(skill)}
-                          style={[
-                            styles.skillItem,
-                            isSelected && styles.skillItemSelected,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.skillText,
-                              isSelected && styles.textWhite,
-                            ]}
-                          >
-                            {skill}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                  <Text style={styles.selectionCount}>
-                    {selectedSkills.length} of 5 selected
-                  </Text>
-                </View>
-              )}
-
-              {question.type === "insights" && (
-                <View>
-                  {question.subtitle && (
-                    <Text style={styles.insightsSubtitle}>
-                      {question.subtitle}
-                    </Text>
-                  )}
-
-                  {/* Display selected insights */}
-                  {selectedInsights.map((insight, index) => (
-                    <Animated.View
-                      key={index}
-                      entering={FadeInDown.delay(index * 100)}
-                      style={styles.insightCard}
-                    >
-                      <View style={styles.insightCardHeader}>
-                        <View style={styles.insightQuestionBadge}>
-                          <Sparkles size={12} color="#000" />
-                          <Text style={styles.insightQuestion}>
-                            {insight.question}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setSelectedInsights(
-                              selectedInsights.filter((_, i) => i !== index),
-                            );
-                          }}
-                          style={styles.removeInsightBtn}
-                        >
-                          <X size={16} color="#999" />
-                        </TouchableOpacity>
-                      </View>
-
-                      <TextInput
-                        placeholder="Share your answer..."
-                        placeholderTextColor="#BBB"
-                        value={insight.answer}
-                        onChangeText={(text) => {
-                          const updated = [...selectedInsights];
-                          updated[index].answer = text;
-                          setSelectedInsights(updated);
-                        }}
-                        multiline
-                        style={styles.insightAnswerInput}
-                        maxLength={200}
-                      />
-                      <Text style={styles.charCount}>
-                        {insight.answer.length}/200
-                      </Text>
-                    </Animated.View>
-                  ))}
-
-                  {/* Add new insight button */}
-                  {selectedInsights.length < 3 && (
-                    <TouchableOpacity
-                      onPress={() => setShowQuestionPicker(!showQuestionPicker)}
-                      style={styles.addInsightBtn}
-                    >
-                      <Plus size={20} color="#000" />
-                      <Text style={styles.addInsightText}>
-                        {selectedInsights.length === 0
-                          ? "Choose your first question"
-                          : `Add question (${selectedInsights.length}/3)`}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Question picker */}
-                  {showQuestionPicker && (
-                    <Animated.View
-                      entering={FadeInDown}
-                      style={styles.questionPickerContainer}
-                    >
-                      <Text style={styles.pickerTitle}>Choose a question</Text>
-                      <ScrollView
-                        style={styles.questionsList}
-                        nestedScrollEnabled
-                      >
-                        {AVAILABLE_QUESTIONS.filter(
-                          (q) =>
-                            !selectedInsights.some(
-                              (insight) => insight.question === q,
-                            ),
-                        ).map((q) => (
-                          <TouchableOpacity
-                            key={q}
-                            onPress={() => {
-                              setSelectedInsights([
-                                ...selectedInsights,
-                                { question: q, answer: "" },
-                              ]);
-                              setShowQuestionPicker(false);
-                            }}
-                            style={styles.questionOption}
-                          >
-                            <Text style={styles.questionOptionText}>{q}</Text>
-                            <Plus size={18} color="#000" />
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </Animated.View>
-                  )}
-
-                  <Text style={styles.insightsHelper}>
-                    💡 These help sponsors get to know the real you beyond your
-                    resume
-                  </Text>
-                </View>
-              )}
-
-              {question.type === "workPreferences" && (
-                <View>
-                  {question.subtitle && (
-                    <Text style={styles.insightsSubtitle}>
-                      {question.subtitle}
-                    </Text>
-                  )}
-                  <View style={styles.skillsGrid}>
-                    {WORK_PREFERENCE_OPTIONS.map((option) => {
-                      const isSelected =
-                        selectedWorkPreferences.includes(option);
+                {question.type === "select" && (
+                  <View style={styles.optionsContainer}>
+                    {question.options?.map((option) => {
+                      const isSelected = answers[currentQuestion] === option;
+                      const isEnabled = option === "Technology";
                       return (
                         <TouchableOpacity
                           key={option}
-                          onPress={() => {
-                            setSelectedWorkPreferences(
-                              isSelected
-                                ? selectedWorkPreferences.filter(
-                                    (p) => p !== option,
-                                  )
-                                : [...selectedWorkPreferences, option],
-                            );
-                          }}
+                          onPress={() =>
+                            isEnabled &&
+                            setAnswers({
+                              ...answers,
+                              [currentQuestion]: option,
+                            })
+                          }
+                          activeOpacity={isEnabled ? 0.7 : 1}
                           style={[
-                            styles.skillItem,
-                            isSelected && styles.skillItemSelected,
+                            styles.optionCard,
+                            isSelected && styles.optionCardSelected,
+                            !isEnabled && styles.optionCardDisabled,
                           ]}
                         >
                           <Text
                             style={[
-                              styles.skillText,
+                              styles.optionText,
                               isSelected && styles.textWhite,
+                              !isEnabled && styles.optionTextDisabled,
                             ]}
                           >
                             {option}
                           </Text>
+                          {isSelected ? (
+                            <Check color="#FFF" size={20} />
+                          ) : (
+                            <ChevronRight
+                              color={isEnabled ? "#CCC" : "#E0E0E0"}
+                              size={18}
+                            />
+                          )}
                         </TouchableOpacity>
                       );
                     })}
+                    <Text style={styles.comingSoonNote}>
+                      We're starting with tech — other industries are coming
+                      soon.
+                    </Text>
                   </View>
-                  <Text style={styles.selectionCount}>
-                    {selectedWorkPreferences.length} selected
-                  </Text>
-                </View>
-              )}
+                )}
 
-              {question.type === "file" && (
-                <>
-                  {!selectedFileAsset ? (
-                    <TouchableOpacity
-                      onPress={handleFilePick}
-                      style={styles.fileContainer}
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.fileUploadIconWrap}>
-                        <Upload color="#000" size={28} strokeWidth={2} />
-                      </View>
-                      <Text style={styles.fileTitle}>
-                        Tap to upload your resume
-                      </Text>
-                      <Text style={styles.fileSubtitle}>
-                        PDF or Word · Max 10 MB
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Animated.View entering={FadeInDown.duration(400)}>
-                      <View style={styles.fileConfirmCard}>
-                        <View style={styles.fileIconCircle}>
-                          <FileText color="#FFF" size={26} strokeWidth={1.5} />
-                        </View>
-                        <View style={styles.fileConfirmInfo}>
-                          <Text
-                            style={styles.fileConfirmName}
-                            numberOfLines={2}
-                            ellipsizeMode="middle"
+                {question.type === "text" && (
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      placeholder={question.placeholder}
+                      placeholderTextColor="#BBB"
+                      value={answers[currentQuestion] || ""}
+                      onChangeText={(v) =>
+                        setAnswers({ ...answers, [currentQuestion]: v })
+                      }
+                      style={styles.textInput}
+                      autoFocus
+                    />
+                  </View>
+                )}
+
+                {question.type === "skills" && (
+                  <View>
+                    <View style={styles.searchWrapper}>
+                      <Search
+                        color="#AAA"
+                        size={20}
+                        style={{ marginRight: 10 }}
+                      />
+                      <TextInput
+                        placeholder="Search skills..."
+                        placeholderTextColor="#BBB"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        style={styles.searchInput}
+                      />
+                    </View>
+                    <View style={styles.skillsGrid}>
+                      {filteredSkills.map((skill) => {
+                        const isSelected = selectedSkills.includes(skill);
+                        return (
+                          <TouchableOpacity
+                            key={skill}
+                            onPress={() => toggleSkill(skill)}
+                            style={[
+                              styles.skillItem,
+                              isSelected && styles.skillItemSelected,
+                            ]}
                           >
-                            {selectedFileAsset.name}
-                          </Text>
-                          <Text style={styles.fileConfirmMeta}>
-                            {selectedFileAsset.size > 0
-                              ? (selectedFileAsset.size < 1024 * 1024
-                                  ? `${(selectedFileAsset.size / 1024).toFixed(0)} KB`
-                                  : `${(selectedFileAsset.size / (1024 * 1024)).toFixed(1)} MB`) +
-                                " · "
-                              : ""}
-                            {selectedFileAsset.mimeType?.includes("pdf")
-                              ? "PDF"
-                              : "Word Document"}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.fileRemoveBtn}
-                          onPress={() => {
-                            setSelectedFileAsset(null);
-                            setSelectedFile(null);
-                            setAnswers({
-                              ...answers,
-                              [currentQuestion]: undefined,
-                            });
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <X size={16} color="#666" strokeWidth={2.5} />
-                        </TouchableOpacity>
-                      </View>
+                            <Text
+                              style={[
+                                styles.skillText,
+                                isSelected && styles.textWhite,
+                              ]}
+                            >
+                              {skill}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.selectionCount}>
+                      {selectedSkills.length} of 5 selected
+                    </Text>
+                  </View>
+                )}
 
-                      <View style={styles.fileReadyRow}>
-                        <View style={styles.fileReadyCheck}>
-                          <Check size={12} color="#FFF" strokeWidth={3} />
+                {question.type === "insights" && (
+                  <View>
+                    {question.subtitle && (
+                      <Text style={styles.insightsSubtitle}>
+                        {question.subtitle}
+                      </Text>
+                    )}
+
+                    {/* Display selected insights */}
+                    {selectedInsights.map((insight, index) => (
+                      <Animated.View
+                        key={index}
+                        entering={FadeInDown.delay(index * 100)}
+                        style={styles.insightCard}
+                        onLayout={(e) => {
+                          cardYPositions.current[index] =
+                            e.nativeEvent.layout.y;
+                        }}
+                      >
+                        <View style={styles.insightCardHeader}>
+                          <View style={styles.insightQuestionBadge}>
+                            <Sparkles size={12} color="#000" />
+                            <Text style={styles.insightQuestion}>
+                              {insight.question}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setSelectedInsights(
+                                selectedInsights.filter((_, i) => i !== index),
+                              );
+                            }}
+                            style={styles.removeInsightBtn}
+                          >
+                            <X size={16} color="#999" />
+                          </TouchableOpacity>
                         </View>
-                        <Text style={styles.fileReadyText}>
-                          Ready to submit
+
+                        <TextInput
+                          placeholder="Share your answer..."
+                          placeholderTextColor="#BBB"
+                          value={insight.answer}
+                          onFocus={() => {
+                            const y = cardYPositions.current[index];
+                            if (y !== undefined) {
+                              scrollViewRef.current?.scrollTo({
+                                y,
+                                animated: true,
+                              });
+                            }
+                          }}
+                          onChangeText={(text) => {
+                            // Multiline TextInputs treat Return as a newline by
+                            // default. Treat it as "done" instead: dismiss the
+                            // keyboard and drop the newline char from the value.
+                            if (text.includes("\n")) {
+                              Keyboard.dismiss();
+                              text = text.replace(/\n/g, "");
+                            }
+                            const updated = [...selectedInsights];
+                            updated[index].answer = text;
+                            setSelectedInsights(updated);
+                          }}
+                          multiline
+                          returnKeyType="default"
+                          style={styles.insightAnswerInput}
+                          maxLength={200}
+                        />
+                        <Text style={styles.charCount}>
+                          {insight.answer.length}/200
                         </Text>
-                        <TouchableOpacity
-                          onPress={handleFilePick}
-                          activeOpacity={0.7}
+                      </Animated.View>
+                    ))}
+
+                    {/* Add new insight button */}
+                    {selectedInsights.length < 3 && (
+                      <TouchableOpacity
+                        onPress={() =>
+                          setShowQuestionPicker(!showQuestionPicker)
+                        }
+                        style={styles.addInsightBtn}
+                      >
+                        <Plus size={20} color="#000" />
+                        <Text style={styles.addInsightText}>
+                          {selectedInsights.length === 0
+                            ? "Choose your first question"
+                            : `Add question (${selectedInsights.length}/3)`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Question picker */}
+                    {showQuestionPicker && (
+                      <Animated.View
+                        entering={FadeInDown}
+                        style={styles.questionPickerContainer}
+                      >
+                        <Text style={styles.pickerTitle}>
+                          Choose a question
+                        </Text>
+                        <ScrollView
+                          style={styles.questionsList}
+                          nestedScrollEnabled
                         >
-                          <Text style={styles.fileChangeLink}>Change file</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </Animated.View>
-                  )}
+                          {AVAILABLE_QUESTIONS.filter(
+                            (q) =>
+                              !selectedInsights.some(
+                                (insight) => insight.question === q,
+                              ),
+                          ).map((q) => (
+                            <TouchableOpacity
+                              key={q}
+                              onPress={() => {
+                                setSelectedInsights([
+                                  ...selectedInsights,
+                                  { question: q, answer: "" },
+                                ]);
+                                setShowQuestionPicker(false);
+                              }}
+                              style={styles.questionOption}
+                            >
+                              <Text style={styles.questionOptionText}>{q}</Text>
+                              <Plus size={18} color="#000" />
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </Animated.View>
+                    )}
+
+                    <Text style={styles.insightsHelper}>
+                      💡 These help sponsors get to know the real you beyond
+                      your resume
+                    </Text>
+                  </View>
+                )}
+
+                {question.type === "workPreferences" && (
+                  <View>
+                    {question.subtitle && (
+                      <Text style={styles.insightsSubtitle}>
+                        {question.subtitle}
+                      </Text>
+                    )}
+                    <View style={styles.skillsGrid}>
+                      {WORK_PREFERENCE_OPTIONS.map((option) => {
+                        const isSelected =
+                          selectedWorkPreferences.includes(option);
+                        return (
+                          <TouchableOpacity
+                            key={option}
+                            onPress={() => {
+                              setSelectedWorkPreferences(
+                                isSelected
+                                  ? selectedWorkPreferences.filter(
+                                      (p) => p !== option,
+                                    )
+                                  : [...selectedWorkPreferences, option],
+                              );
+                            }}
+                            style={[
+                              styles.skillItem,
+                              isSelected && styles.skillItemSelected,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.skillText,
+                                isSelected && styles.textWhite,
+                              ]}
+                            >
+                              {option}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.selectionCount}>
+                      {selectedWorkPreferences.length} selected
+                    </Text>
+                  </View>
+                )}
+
+                {question.type === "file" && (
+                  <>
+                    {!selectedFileAsset ? (
+                      <TouchableOpacity
+                        onPress={handleFilePick}
+                        style={styles.fileContainer}
+                        activeOpacity={0.75}
+                      >
+                        <View style={styles.fileUploadIconWrap}>
+                          <Upload color="#000" size={28} strokeWidth={2} />
+                        </View>
+                        <Text style={styles.fileTitle}>
+                          Tap to upload your resume
+                        </Text>
+                        <Text style={styles.fileSubtitle}>
+                          PDF or Word · Max 10 MB
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Animated.View entering={FadeInDown.duration(400)}>
+                        <View style={styles.fileConfirmCard}>
+                          <View style={styles.fileIconCircle}>
+                            <FileText
+                              color="#FFF"
+                              size={26}
+                              strokeWidth={1.5}
+                            />
+                          </View>
+                          <View style={styles.fileConfirmInfo}>
+                            <Text
+                              style={styles.fileConfirmName}
+                              numberOfLines={2}
+                              ellipsizeMode="middle"
+                            >
+                              {selectedFileAsset.name}
+                            </Text>
+                            <Text style={styles.fileConfirmMeta}>
+                              {selectedFileAsset.size > 0
+                                ? (selectedFileAsset.size < 1024 * 1024
+                                    ? `${(selectedFileAsset.size / 1024).toFixed(0)} KB`
+                                    : `${(selectedFileAsset.size / (1024 * 1024)).toFixed(1)} MB`) +
+                                  " · "
+                                : ""}
+                              {selectedFileAsset.mimeType?.includes("pdf")
+                                ? "PDF"
+                                : "Word Document"}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.fileRemoveBtn}
+                            onPress={() => {
+                              setSelectedFileAsset(null);
+                              setSelectedFile(null);
+                              setAnswers({
+                                ...answers,
+                                [currentQuestion]: undefined,
+                              });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <X size={16} color="#666" strokeWidth={2.5} />
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.fileReadyRow}>
+                          <View style={styles.fileReadyCheck}>
+                            <Check size={12} color="#FFF" strokeWidth={3} />
+                          </View>
+                          <Text style={styles.fileReadyText}>
+                            Ready to submit
+                          </Text>
+                          <TouchableOpacity
+                            onPress={handleFilePick}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.fileChangeLink}>
+                              Change file
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </Animated.View>
+                    )}
+                  </>
+                )}
+              </Animated.View>
+            </View>
+          </ScrollView>
+
+          <View style={styles.footer}>
+            <TouchableOpacity
+              onPress={handleNext}
+              disabled={!canContinue || isSubmitting}
+              style={[
+                styles.nextButton,
+                (!canContinue || isSubmitting) && styles.nextButtonDisabled,
+              ]}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Text style={styles.nextButtonText}>
+                    {isLastQuestion ? "Complete Profile" : "Continue"}
+                  </Text>
+                  <ArrowRight color="#FFF" size={20} />
                 </>
               )}
-            </Animated.View>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            onPress={handleNext}
-            disabled={!canContinue || isSubmitting}
-            style={[
-              styles.nextButton,
-              (!canContinue || isSubmitting) && styles.nextButtonDisabled,
-            ]}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Text style={styles.nextButtonText}>
-                  {isLastQuestion ? "Complete Profile" : "Continue"}
-                </Text>
-                <ArrowRight color="#FFF" size={20} />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
 
       {showSuccess && (
@@ -809,6 +884,7 @@ export function ApplicantQuestionnaire({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   safeArea: { flex: 1 },
+  keyboardView: { flex: 1 },
   topNav: {
     flexDirection: "row",
     justifyContent: "space-between",

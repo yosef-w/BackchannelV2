@@ -1,39 +1,49 @@
+import {
+  identifyUser,
+  trackOnboardingCompleted,
+  trackSignUpFailed,
+  trackSignUpSucceeded,
+} from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
-    ArrowLeft,
-    ArrowRight,
-    Check,
-    Mail,
-    Plus,
-    Sparkles,
-    UserCheck,
-    X,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Mail,
+  Plus,
+  Sparkles,
+  UserCheck,
+  X,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    Layout,
-    useAnimatedStyle,
-    withTiming,
-    ZoomIn,
+  FadeIn,
+  FadeInDown,
+  Layout,
+  useAnimatedStyle,
+  withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 
 interface SponsorQuestionnaireProps {
@@ -126,11 +136,15 @@ export function SponsorQuestionnaire({
   >([]);
   const [showQuestionPicker, setShowQuestionPicker] = useState(false);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const cardYPositions = useRef<number[]>([]);
+
   const sponsorData = useOnboardingStore((state) => state.sponsorData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
   const showToast = useToastStore((state) => state.showToast);
+  const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
@@ -158,6 +172,25 @@ export function SponsorQuestionnaire({
 
       // Save auth tokens
       await setAuthTokens(data.access_token, data.refresh_token, "Sponsor");
+
+      // Identify the new sponsor for the rest of their session and stamp
+      // basic profile attributes onto Mixpanel's People record. The work
+      // email is collected here but `work_email_verified` is currently a
+      // cosmetic flag (see BACKEND_CHANGES_NEEDED.md §1).
+      identifyUser({
+        userId: String(data.user_id),
+        userType: "sponsor",
+        email: sponsorData.email ?? null,
+        firstName: sponsorData.firstName ?? null,
+        lastName: sponsorData.lastName ?? null,
+        company: answers[0] ?? null,
+        jobTitle: answers[1] ?? null,
+        workEmailVerified: false,
+      });
+      trackSignUpSucceeded("sponsor");
+      trackOnboardingCompleted("sponsor");
+      // Link this backend user ID to their RevenueCat customer record.
+      rcIdentifyUser(String(data.user_id));
 
       // Load profile data into local store
       await loadFromProfile({
@@ -201,6 +234,7 @@ export function SponsorQuestionnaire({
     onError: (error: Error) => {
       console.warn("[SponsorQuestionnaire] Registration failed:", error);
       setIsSubmitting(false);
+      trackSignUpFailed("sponsor", error.message || "unknown");
 
       // Handle specific error cases
       const errorMessage = error.message.toLowerCase();
@@ -275,202 +309,225 @@ export function SponsorQuestionnaire({
           <Animated.View style={[styles.progressBar, progressBarStyle]} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
         >
-          <Animated.View
-            key={currentQuestion}
-            layout={Layout.springify()}
-            entering={FadeInDown.duration(500)}
+          <ScrollView
+            ref={scrollViewRef}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.questionText}>{question.question}</Text>
+            <Animated.View
+              key={currentQuestion}
+              layout={Layout.springify()}
+              entering={FadeInDown.duration(500)}
+            >
+              <Text style={styles.questionText}>{question.question}</Text>
 
-            {question.type === "insights" ? (
-              <View>
-                {question.subtitle && (
-                  <Text style={styles.insightsSubtitle}>
-                    {question.subtitle}
-                  </Text>
-                )}
+              {question.type === "insights" ? (
+                <View>
+                  {question.subtitle && (
+                    <Text style={styles.insightsSubtitle}>
+                      {question.subtitle}
+                    </Text>
+                  )}
 
-                {/* Display selected insights */}
-                {selectedInsights.map((insight, index) => (
-                  <Animated.View
-                    key={index}
-                    entering={FadeInDown.delay(index * 100)}
-                    style={styles.insightCard}
-                  >
-                    <View style={styles.insightCardHeader}>
-                      <View style={styles.insightQuestionBadge}>
-                        <Sparkles size={12} color="#000" />
-                        <Text style={styles.insightQuestion}>
-                          {insight.question}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSelectedInsights(
-                            selectedInsights.filter((_, i) => i !== index),
-                          );
-                        }}
-                        style={styles.removeInsightBtn}
-                      >
-                        <X size={16} color="#999" />
-                      </TouchableOpacity>
-                    </View>
-
-                    <TextInput
-                      placeholder="Share your answer..."
-                      placeholderTextColor="#BBB"
-                      value={insight.answer}
-                      onChangeText={(text) => {
-                        const updated = [...selectedInsights];
-                        updated[index].answer = text;
-                        setSelectedInsights(updated);
+                  {/* Display selected insights */}
+                  {selectedInsights.map((insight, index) => (
+                    <Animated.View
+                      key={index}
+                      entering={FadeInDown.delay(index * 100)}
+                      style={styles.insightCard}
+                      onLayout={(e) => {
+                        cardYPositions.current[index] = e.nativeEvent.layout.y;
                       }}
-                      multiline
-                      style={styles.insightAnswerInput}
-                      maxLength={200}
-                    />
-                    <Text style={styles.charCount}>
-                      {insight.answer.length}/200
-                    </Text>
-                  </Animated.View>
-                ))}
-
-                {/* Add new insight button */}
-                {selectedInsights.length < 3 && (
-                  <TouchableOpacity
-                    onPress={() => setShowQuestionPicker(!showQuestionPicker)}
-                    style={styles.addInsightBtn}
-                  >
-                    <Plus size={20} color="#000" />
-                    <Text style={styles.addInsightText}>
-                      {selectedInsights.length === 0
-                        ? "Choose your first question"
-                        : `Add question (${selectedInsights.length}/3)`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Question picker */}
-                {showQuestionPicker && (
-                  <Animated.View
-                    entering={FadeInDown}
-                    style={styles.questionPickerContainer}
-                  >
-                    <Text style={styles.pickerTitle}>Choose a question</Text>
-                    <ScrollView
-                      style={styles.questionsList}
-                      nestedScrollEnabled
                     >
-                      {AVAILABLE_QUESTIONS.filter(
-                        (q) =>
-                          !selectedInsights.some(
-                            (insight) => insight.question === q,
-                          ),
-                      ).map((q) => (
+                      <View style={styles.insightCardHeader}>
+                        <View style={styles.insightQuestionBadge}>
+                          <Sparkles size={12} color="#000" />
+                          <Text style={styles.insightQuestion}>
+                            {insight.question}
+                          </Text>
+                        </View>
                         <TouchableOpacity
-                          key={q}
                           onPress={() => {
-                            setSelectedInsights([
-                              ...selectedInsights,
-                              { question: q, answer: "" },
-                            ]);
-                            setShowQuestionPicker(false);
+                            setSelectedInsights(
+                              selectedInsights.filter((_, i) => i !== index),
+                            );
                           }}
-                          style={styles.questionOption}
+                          style={styles.removeInsightBtn}
                         >
-                          <Text style={styles.questionOptionText}>{q}</Text>
-                          <Plus size={18} color="#000" />
+                          <X size={16} color="#999" />
                         </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </Animated.View>
-                )}
+                      </View>
 
-                <Text style={styles.insightsHelper}>
-                  💡 These help candidates understand your mentorship style and
-                  what it's like to work with you
-                </Text>
-              </View>
-            ) : question.type === "text" || question.type === "email" ? (
-              <View style={styles.inputWrapper}>
-                {question.type === "email" && (
-                  <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
-                )}
-                <TextInput
-                  placeholder={question.placeholder}
-                  placeholderTextColor="#BBB"
-                  value={answers[currentQuestion] || ""}
-                  onChangeText={(v) =>
-                    setAnswers({ ...answers, [currentQuestion]: v })
-                  }
-                  style={styles.textInput}
-                  autoFocus
-                  keyboardType={
-                    question.type === "email" ? "email-address" : "default"
-                  }
-                  autoCapitalize="none"
-                />
-              </View>
-            ) : (
-              <View style={styles.optionsContainer}>
-                {question.options?.map((option) => {
-                  const isSelected = answers[currentQuestion] === option;
-                  return (
+                      <TextInput
+                        placeholder="Share your answer..."
+                        placeholderTextColor="#BBB"
+                        value={insight.answer}
+                        onFocus={() => {
+                          const y = cardYPositions.current[index];
+                          if (y !== undefined) {
+                            scrollViewRef.current?.scrollTo({
+                              y,
+                              animated: true,
+                            });
+                          }
+                        }}
+                        onChangeText={(text) => {
+                          if (text.includes("\n")) {
+                            Keyboard.dismiss();
+                            text = text.replace(/\n/g, "");
+                          }
+                          const updated = [...selectedInsights];
+                          updated[index].answer = text;
+                          setSelectedInsights(updated);
+                        }}
+                        multiline
+                        returnKeyType="default"
+                        style={styles.insightAnswerInput}
+                        maxLength={200}
+                      />
+                      <Text style={styles.charCount}>
+                        {insight.answer.length}/200
+                      </Text>
+                    </Animated.View>
+                  ))}
+
+                  {/* Add new insight button */}
+                  {selectedInsights.length < 3 && (
                     <TouchableOpacity
-                      key={option}
-                      onPress={() =>
-                        setAnswers({
-                          ...answers,
-                          [currentQuestion]: option,
-                        })
-                      }
-                      style={[
-                        styles.optionCard,
-                        isSelected && styles.optionCardSelected,
-                      ]}
+                      onPress={() => setShowQuestionPicker(!showQuestionPicker)}
+                      style={styles.addInsightBtn}
                     >
-                      <Text
+                      <Plus size={20} color="#000" />
+                      <Text style={styles.addInsightText}>
+                        {selectedInsights.length === 0
+                          ? "Choose your first question"
+                          : `Add question (${selectedInsights.length}/3)`}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Question picker */}
+                  {showQuestionPicker && (
+                    <Animated.View
+                      entering={FadeInDown}
+                      style={styles.questionPickerContainer}
+                    >
+                      <Text style={styles.pickerTitle}>Choose a question</Text>
+                      <ScrollView
+                        style={styles.questionsList}
+                        nestedScrollEnabled
+                      >
+                        {AVAILABLE_QUESTIONS.filter(
+                          (q) =>
+                            !selectedInsights.some(
+                              (insight) => insight.question === q,
+                            ),
+                        ).map((q) => (
+                          <TouchableOpacity
+                            key={q}
+                            onPress={() => {
+                              setSelectedInsights([
+                                ...selectedInsights,
+                                { question: q, answer: "" },
+                              ]);
+                              setShowQuestionPicker(false);
+                            }}
+                            style={styles.questionOption}
+                          >
+                            <Text style={styles.questionOptionText}>{q}</Text>
+                            <Plus size={18} color="#000" />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </Animated.View>
+                  )}
+
+                  <Text style={styles.insightsHelper}>
+                    💡 These help candidates understand your mentorship style
+                    and what it's like to work with you
+                  </Text>
+                </View>
+              ) : question.type === "text" || question.type === "email" ? (
+                <View style={styles.inputWrapper}>
+                  {question.type === "email" && (
+                    <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                  )}
+                  <TextInput
+                    placeholder={question.placeholder}
+                    placeholderTextColor="#BBB"
+                    value={answers[currentQuestion] || ""}
+                    onChangeText={(v) =>
+                      setAnswers({ ...answers, [currentQuestion]: v })
+                    }
+                    style={styles.textInput}
+                    autoFocus
+                    keyboardType={
+                      question.type === "email" ? "email-address" : "default"
+                    }
+                    autoCapitalize="none"
+                  />
+                </View>
+              ) : (
+                <View style={styles.optionsContainer}>
+                  {question.options?.map((option) => {
+                    const isSelected = answers[currentQuestion] === option;
+                    return (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() =>
+                          setAnswers({
+                            ...answers,
+                            [currentQuestion]: option,
+                          })
+                        }
                         style={[
-                          styles.optionText,
-                          isSelected && styles.textWhite,
+                          styles.optionCard,
+                          isSelected && styles.optionCardSelected,
                         ]}
                       >
-                        {option}
-                      </Text>
-                      {isSelected && <Check color="#FFF" size={20} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </Animated.View>
-        </ScrollView>
+                        <Text
+                          style={[
+                            styles.optionText,
+                            isSelected && styles.textWhite,
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                        {isSelected && <Check color="#FFF" size={20} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </Animated.View>
+          </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            onPress={handleNext}
-            disabled={!canContinue || isSubmitting}
-            style={[
-              styles.nextButton,
-              (!canContinue || isSubmitting) && styles.nextButtonDisabled,
-            ]}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Text style={styles.nextButtonText}>
-                  {isLastQuestion ? "Complete Profile" : "Continue"}
-                </Text>
-                <ArrowRight color="#FFF" size={20} />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+          <View style={styles.footer}>
+            <TouchableOpacity
+              onPress={handleNext}
+              disabled={!canContinue || isSubmitting}
+              style={[
+                styles.nextButton,
+                (!canContinue || isSubmitting) && styles.nextButtonDisabled,
+              ]}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Text style={styles.nextButtonText}>
+                    {isLastQuestion ? "Complete Profile" : "Continue"}
+                  </Text>
+                  <ArrowRight color="#FFF" size={20} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
 
       {showSuccess && (
