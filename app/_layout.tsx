@@ -13,7 +13,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 /**
  * Create ONE QueryClient for the entire app.
@@ -82,7 +83,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClientRef.current}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <View style={styles.root}>
+        <GestureHandlerRootView style={styles.root}>
           <StatusBar style="auto" />
 
           {/* Main navigation stack for Backchannel */}
@@ -108,7 +109,7 @@ export default function RootLayout() {
 
           {/* Global toast — overlays all screens */}
           <AppToast />
-        </View>
+        </GestureHandlerRootView>
       </ThemeProvider>
     </QueryClientProvider>
   );

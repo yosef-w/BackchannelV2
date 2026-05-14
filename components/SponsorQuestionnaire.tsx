@@ -215,17 +215,32 @@ export function SponsorQuestionnaire({
       // Show success modal
       setShowSuccess(true);
 
+      // Fire-and-forget the work-email verification send (PR #42). The
+      // backend hands out a JWT scoped to `purpose: "work_email_verification"`
+      // and emails it to the work email the sponsor just provided. Sponsors
+      // are gated out of the swipe deck in HomeView until they click it.
+      // Failures here aren't blocking — they can re-trigger via Profile.
+      if (answers[7]) {
+        authApi
+          .sendWorkEmailVerification(String(answers[7]))
+          .catch((err) =>
+            console.warn(
+              "[SponsorQuestionnaire] Failed to send work-email verification:",
+              err,
+            ),
+          );
+      }
+
       // Navigate to dashboard after 2.2 seconds
       setTimeout(() => {
         setIsSubmitting(false);
         onComplete();
-        // Delay toast until after the navigation transition finishes.
-        // Backend now sends a verification email automatically on register
-        // (PR #38, 2026-04-30). Verification is not enforced — we just
-        // surface it so users know to check their inbox.
+        // Delay toast until after the navigation transition finishes. Two
+        // emails are now in flight: the login-email verification (PR #38)
+        // and the work-email verification we just kicked off (PR #42).
         setTimeout(() => {
           showToast(
-            "Welcome! We sent a verification email — check your inbox.",
+            "Welcome! Check your inbox — we sent two verification emails (login + work).",
             "success",
           );
         }, 500);
@@ -256,6 +271,7 @@ export function SponsorQuestionnaire({
   });
 
   const handleFinalSubmit = () => {
+    Keyboard.dismiss();
     setIsSubmitting(true);
     createProfileMutation.mutate();
   };

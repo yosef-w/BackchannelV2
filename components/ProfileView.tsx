@@ -3,82 +3,84 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-  AlertCircle,
-  Briefcase,
-  Camera,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  Edit,
-  FileText,
-  GraduationCap,
-  ImageIcon,
-  Lock,
-  LogOut,
-  MapPin,
-  Plus,
-  RefreshCw,
-  Target,
-  Trash2,
-  Upload,
-  X,
-  Zap,
+    AlertCircle,
+    Briefcase,
+    Camera,
+    Check,
+    CheckCircle2,
+    ChevronRight,
+    Edit,
+    FileText,
+    GraduationCap,
+    ImageIcon,
+    Lock,
+    LogOut,
+    MapPin,
+    Plus,
+    RefreshCw,
+    Target,
+    Trash2,
+    Upload,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY, PREMIUM_ENABLED } from "../constants/config";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
-  resetUser,
-  trackAccountDeleted,
-  trackLogout,
-  trackPrivacyPolicyTapped,
-  trackProfileEditOpened,
-  trackProfileFieldUpdated,
-  trackProfilePhotoUploaded,
-  trackResumeReuploaded,
-  trackTermsTapped,
+    resetUser,
+    trackAccountDeleted,
+    trackLogout,
+    trackPrivacyPolicyTapped,
+    trackProfileEditOpened,
+    trackProfileFieldUpdated,
+    trackProfilePhotoUploaded,
+    trackResumeReuploaded,
+    trackTermsTapped,
 } from "../lib/analytics/mixpanel";
 import {
-  changePassword,
-  classifyResume,
-  deactivateAccount,
-  getExtractedResumeText,
-  logout,
-  unregisterDevice,
-  updateApplicantProfile,
-  updateGeneralProfile,
-  updateSponsorProfile,
-  uploadAndParseResume,
-  uploadProfileImage,
+    changePassword,
+    classifyResume,
+    deactivateAccount,
+    getExtractedResumeText,
+    logout,
+    unregisterDevice,
+    updateApplicantProfile,
+    updateGeneralProfile,
+    updateSponsorProfile,
+    uploadAndParseResume,
+    uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useJobsStore } from "../stores/useJobsStore";
+import { useOnboardingStore } from "../stores/useOnboardingStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import {
-  EducationEntry,
-  ProfessionalExperience,
-  useUserProfileStore,
+    EducationEntry,
+    ProfessionalExperience,
+    useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
@@ -140,6 +142,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   // Store access - must come before any useMemo that depends on it
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const resetJobsStore = useJobsStore((state) => state.reset);
+  const clearOnboarding = useOnboardingStore((state) => state.clearProfile);
   const deviceToken = useAuthStore((state) => state.deviceToken);
   const clearUserProfileData = useUserProfileStore((state) => state.clearData);
   const rcReset = useSubscriptionStore((state) => state.reset);
@@ -1967,6 +1971,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // Clear local auth state and user data
     await clearAuth();
     await clearUserProfileData();
+    // Reset all user-specific store state so the next login starts fresh.
+    // Without this, card index, job lists, and onboarding data from the
+    // previous session bleed into the new user's experience.
+    resetJobsStore();
+    clearOnboarding();
     router.replace("/splash");
   };
 
@@ -4537,7 +4546,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         )}
         {userType === "sponsor" && (
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Someone Liked Your Job</Text>
+            <Text style={styles.toggleLabel}>Someone Applied to Your Job</Text>
             <Switch
               value={isNotifEnabled("job_like")}
               onValueChange={(v) => handleNotifToggle("job_like", v)}

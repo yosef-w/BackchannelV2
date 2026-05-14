@@ -18,6 +18,7 @@ import {
   likeProfile,
   requestSponsorForJob,
 } from "@/lib/api";
+import { authApi } from "@/lib/auth-api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
@@ -50,6 +51,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -59,6 +61,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -81,6 +84,7 @@ import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
+import { DismissibleSheet } from "./ui/DismissibleSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -1224,18 +1228,31 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     useState(false);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
   const [emailVerifyError, setEmailVerifyError] = useState("");
+  // Inline-edit state for the work-email shown in the verification modal.
+  // The backend's send endpoint embeds the supplied email into the JWT and
+  // (on link click) persists it to sponsor_profiles.work_email along with
+  // setting verified=TRUE — so one call corrects typos AND triggers
+  // verification. `pendingWorkEmail` overrides what's displayed in the modal
+  // until the next profile fetch syncs the verified value back.
+  const [isEditingWorkEmail, setIsEditingWorkEmail] = useState(false);
+  const [editedWorkEmail, setEditedWorkEmail] = useState("");
+  const [pendingWorkEmail, setPendingWorkEmail] = useState<string | null>(null);
   const profileCompletion = profileData
     ? checkProfileCompleteness(profileData)
     : { isComplete: false, percentage: 0, missingFields: [] };
 
   // Apply Modal State (for non-sponsored jobs)
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const [applyStep, setApplyStep] = useState<
-    "select" | "waitlist" | "requested"
-  >("select");
+  const [applyStep, setApplyStep] = useState<"select" | "requested">("select");
   const [pendingJob, setPendingJob] = useState<any>(null);
-  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
   const [isRequestingSponsor, setIsRequestingSponsor] = useState(false);
+  // Server-rendered message for the "requested" success step. The backend
+  // returns context-aware copy (count of sponsors notified, "already has a
+  // sponsor", "no sponsors at this company yet", etc.) — surface it verbatim
+  // so the user sees the actual outcome.
+  const [sponsorRequestMessage, setSponsorRequestMessage] = useState<
+    string | null
+  >(null);
   const [waitlistedJobIds, setWaitlistedJobIds] = useState<Set<string>>(
     new Set(),
   );
@@ -1773,48 +1790,35 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     nextProfile(true);
   };
 
-  const handleRequestSponsor = async () => {
+  // Combined "Get a Sponsor" — fires both APIs in parallel. Request-sponsor
+  // pushes notifications to employees at the company; join-waitlist makes
+  // sure the applicant is queued for a notification when *anyone* sponsors
+  // the job (whether through our outbound notification or any other path).
+  // Promise.allSettled so a single failure doesn't lose the other half.
+  const handleGetSponsor = async () => {
+    if (!pendingJob?.id) return;
+    const jobId = String(pendingJob.id);
     setIsRequestingSponsor(true);
-    try {
-      if (pendingJob?.id) {
-        await requestSponsorForJob(String(pendingJob.id));
-        trackSponsorRequested({ jobId: String(pendingJob.id) });
-      }
-    } catch (err) {
-      console.warn("[HomeView] Failed to request sponsor:", err);
-      // Still show success UI — the user's intent is clear, and the
-      // backend endpoint may not exist yet (see BACKEND_CHANGES_NEEDED.md §5).
-    } finally {
-      setIsRequestingSponsor(false);
-      setApplyStep("requested");
-      if (pendingJob?.id) {
-        setRequestedSponsorJobIds(
-          (prev) => new Set([...prev, String(pendingJob.id)]),
-        );
-      }
+    setSponsorRequestMessage(null);
+    const [requestRes] = await Promise.allSettled([
+      requestSponsorForJob(jobId),
+      joinWaitlist(jobId),
+    ]);
+    trackSponsorRequested({ jobId });
+    trackJobWaitlistJoined({ jobId });
+    if (requestRes.status === "fulfilled") {
+      // Backend's context-aware copy: count of sponsors, "already has a
+      // sponsor", "no sponsors at this company yet", duplicate request, etc.
+      setSponsorRequestMessage(requestRes.value.message ?? null);
+    } else {
+      console.warn("[HomeView] request-sponsor failed:", requestRes.reason);
     }
-  };
-
-  const handleJoinWaitlist = async () => {
-    setIsJoiningWaitlist(true);
-    try {
-      if (pendingJob?.id) {
-        await joinWaitlist(String(pendingJob.id));
-        trackJobWaitlistJoined({ jobId: String(pendingJob.id) });
-      }
-    } catch (err) {
-      console.warn("[HomeView] Failed to join waitlist:", err);
-      // Still show success UI — the user's intent is clear
-    } finally {
-      setIsJoiningWaitlist(false);
-      setApplyStep("waitlist");
-      // Mark this job as waitlisted so the card is visually disabled
-      if (pendingJob?.id) {
-        setWaitlistedJobIds(
-          (prev) => new Set([...prev, String(pendingJob.id)]),
-        );
-      }
-    }
+    setIsRequestingSponsor(false);
+    setApplyStep("requested");
+    // Track both client-side sets so the card overlay reflects either kind
+    // of pending state — waitlisted badge OR sponsor-requested badge.
+    setRequestedSponsorJobIds((prev) => new Set([...prev, jobId]));
+    setWaitlistedJobIds((prev) => new Set([...prev, jobId]));
   };
 
   const handleApplyModalDone = () => {
@@ -3601,7 +3605,9 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                   onPress={handleMatchModalDismiss}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.matchSkipBtnText}>Keep Swiping</Text>
+                  <Text style={styles.matchSkipBtnText}>
+                    Continue Exploring
+                  </Text>
                 </TouchableOpacity>
               </Animated.View>
             </Animated.View>
@@ -3633,11 +3639,7 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
 
             <View style={styles.applyModalHeader}>
               <Text style={styles.applyModalTitle}>
-                {applyStep === "select"
-                  ? "Get a Sponsor"
-                  : applyStep === "waitlist"
-                    ? "You're on the list!"
-                    : "Request sent!"}
+                {applyStep === "select" ? "Get a Sponsor" : "Request sent!"}
               </Text>
               <TouchableOpacity
                 onPress={() => setShowApplyModal(false)}
@@ -3657,12 +3659,17 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
               {applyStep === "select" && (
                 <View style={styles.modalOptionsContainer}>
+                  {/* Single combined action — both "request a sponsor"
+                      (notify employees at the company) AND "join waitlist"
+                      (get notified when any sponsor signs on) fire in
+                      parallel. They were redundant from the user's point of
+                      view; one button, two backend writes. */}
                   <TouchableOpacity
                     style={[
                       styles.modalOptionBtn,
                       isRequestingSponsor && { opacity: 0.6 },
                     ]}
-                    onPress={handleRequestSponsor}
+                    onPress={handleGetSponsor}
                     disabled={isRequestingSponsor}
                     activeOpacity={0.7}
                   >
@@ -3670,13 +3677,11 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                       <BellRing color="#000" size={24} />
                     </View>
                     <View style={styles.modalOptionContent}>
-                      <Text style={styles.modalOptionTitle}>
-                        Request a Sponsor
-                      </Text>
+                      <Text style={styles.modalOptionTitle}>Get a Sponsor</Text>
                       <Text style={styles.modalOptionDesc}>
-                        Notify employees at{" "}
-                        {pendingJob?.company ?? "this company"} and ask if
-                        they'd sponsor this role.
+                        We'll let employees at{" "}
+                        {pendingJob?.company ?? "this company"} know and notify
+                        you the moment someone signs on.
                       </Text>
                     </View>
                     {isRequestingSponsor ? (
@@ -3684,50 +3689,6 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                     ) : (
                       <ChevronRight color="#CCC" size={20} />
                     )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.modalOptionBtn,
-                      isJoiningWaitlist && { opacity: 0.6 },
-                    ]}
-                    onPress={handleJoinWaitlist}
-                    disabled={isJoiningWaitlist}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.modalOptionIcon}>
-                      <Users color="#000" size={24} />
-                    </View>
-                    <View style={styles.modalOptionContent}>
-                      <Text style={styles.modalOptionTitle}>Join Waitlist</Text>
-                      <Text style={styles.modalOptionDesc}>
-                        Get notified first when a sponsor becomes available.
-                      </Text>
-                    </View>
-                    {isJoiningWaitlist ? (
-                      <ActivityIndicator size="small" color="#999" />
-                    ) : (
-                      <ChevronRight color="#CCC" size={20} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {applyStep === "waitlist" && (
-                <View style={styles.successContainer}>
-                  <View style={styles.successCircleLarge}>
-                    <Check color="#FFF" size={40} strokeWidth={3} />
-                  </View>
-                  <Text style={styles.successMessage}>
-                    You are next in line for {pendingJob?.company}. We'll notify
-                    you as soon as a sponsor is ready to review referrals.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.successActionBtn}
-                    onPress={handleApplyModalDone}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.successActionBtnText}>Done</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -3738,9 +3699,7 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                     <Check color="#FFF" size={40} strokeWidth={3} />
                   </View>
                   <Text style={styles.successMessage}>
-                    We've let employees at {pendingJob?.company} know you'd like
-                    a sponsor for this role. You'll be notified if someone signs
-                    on.
+                    {`This role doesn't have a dedicated sponsor yet, but your request has been sent to everyone we have available at ${pendingJob?.company ?? "this company"}. If someone is able to sponsor you for this role, you'll be notified right away.`}
                   </Text>
                   <TouchableOpacity
                     style={styles.successActionBtn}
@@ -3772,110 +3731,267 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
         }}
       />
 
-      {/* Email Verification Modal — sponsors must verify work email before swiping */}
+      {/* Email Verification Modal — sponsors must verify work email before
+          swiping. Soft gate: closing the modal just blocks swiping; the user
+          can still navigate to other tabs (Profile etc.) to fix things. */}
       <Modal
         visible={showEmailVerificationModal}
         transparent
-        animationType="fade"
+        animationType="none"
+        onRequestClose={() => setShowEmailVerificationModal(false)}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={() => {}}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.emailVerifOverlay}
         >
-          <BlurView
-            intensity={60}
+          <TouchableOpacity
             style={StyleSheet.absoluteFill}
-            tint="dark"
-          />
-        </TouchableOpacity>
-
-        <Animated.View
-          entering={SlideInDown}
-          exiting={SlideOutDown}
-          style={styles.emailVerifModal}
-        >
-          <View style={styles.emailVerifIconCircle}>
-            <Mail color="#FFF" size={32} strokeWidth={1.5} />
-          </View>
-
-          <Text style={styles.emailVerifTitle}>Verify Your Work Email</Text>
-
-          <Text style={styles.emailVerifSubtitle}>
-            To start discovering candidates, verify the link we sent to{" "}
-            <Text style={styles.emailVerifAddress}>
-              {profileData.personal.workEmail || "your work address"}
-            </Text>
-          </Text>
-
-          <View style={styles.emailVerifInfoBox}>
-            <Text style={styles.emailVerifInfoText}>
-              This keeps the network trusted — every candidate knows they're
-              talking to a real, verified professional.
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.emailVerifPrimaryBtn}
-            onPress={() => Linking.openURL("message:")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.emailVerifPrimaryBtnText}>Open Email App</Text>
-            <ChevronRight color="#FFF" size={20} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.emailVerifSecondaryBtn}
-            onPress={async () => {
-              setEmailVerifyLoading(true);
-              setEmailVerifyError("");
-              try {
-                await fetchFromBackend();
-                const isNowVerified =
-                  useUserProfileStore.getState().workEmailVerified;
-                if (isNowVerified) {
-                  setShowEmailVerificationModal(false);
-                } else {
-                  setEmailVerifyError(
-                    "Still pending — please click the link in your inbox.",
-                  );
-                }
-              } catch {
-                setEmailVerifyError(
-                  "Could not check status. Please try again.",
-                );
-              } finally {
-                setEmailVerifyLoading(false);
-              }
-            }}
-            disabled={emailVerifyLoading}
-            activeOpacity={0.8}
-          >
-            {emailVerifyLoading ? (
-              <ActivityIndicator size="small" color="#000" />
-            ) : (
-              <Text style={styles.emailVerifSecondaryBtnText}>
-                I've Verified My Email
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          {emailVerifyError ? (
-            <Text style={styles.emailVerifErrorText}>{emailVerifyError}</Text>
-          ) : null}
-
-          <TouchableOpacity
-            style={styles.emailVerifTesterBtn}
+            activeOpacity={1}
             onPress={() => {
-              trackTesterModeEnabled({ source: "email_verification_modal" });
-              setIsTester(true);
+              // Reset the inline edit state so the modal reopens fresh.
+              setIsEditingWorkEmail(false);
+              setEditedWorkEmail("");
+              setEmailVerifyError("");
               setShowEmailVerificationModal(false);
             }}
-            activeOpacity={0.8}
           >
-            <Text style={styles.emailVerifTesterBtnText}>I am a tester</Text>
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
           </TouchableOpacity>
-        </Animated.View>
+
+          <DismissibleSheet
+            onDismiss={() => {
+              setIsEditingWorkEmail(false);
+              setEditedWorkEmail("");
+              setEmailVerifyError("");
+              setShowEmailVerificationModal(false);
+            }}
+            fullSheetGesture
+            style={styles.emailVerifModal}
+          >
+            <View style={styles.emailVerifIconCircle}>
+              <Mail color="#FFF" size={32} strokeWidth={1.5} />
+            </View>
+
+            <Text style={styles.emailVerifTitle}>Verify Your Work Email</Text>
+
+            {(() => {
+              const displayedEmail =
+                pendingWorkEmail ?? profileData.personal.workEmail ?? "";
+              if (isEditingWorkEmail) {
+                return (
+                  <View style={styles.emailVerifEditBlock}>
+                    <Text style={styles.emailVerifEditLabel}>
+                      Update your work email
+                    </Text>
+                    <TextInput
+                      value={editedWorkEmail}
+                      onChangeText={setEditedWorkEmail}
+                      placeholder="name@company.com"
+                      placeholderTextColor="#BBB"
+                      style={styles.emailVerifEditInput}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoFocus
+                    />
+                    <View style={styles.emailVerifEditActions}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setIsEditingWorkEmail(false);
+                          setEditedWorkEmail("");
+                          setEmailVerifyError("");
+                        }}
+                        style={styles.emailVerifEditCancel}
+                        activeOpacity={0.7}
+                        disabled={emailVerifyLoading}
+                      >
+                        <Text style={styles.emailVerifEditCancelText}>
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={async () => {
+                          const trimmed = editedWorkEmail.trim();
+                          if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
+                            setEmailVerifyError(
+                              "That doesn't look like a valid email.",
+                            );
+                            return;
+                          }
+                          setEmailVerifyLoading(true);
+                          setEmailVerifyError("");
+                          try {
+                            // One call: backend embeds this email in the JWT,
+                            // sends verification to it, and (on link click)
+                            // persists it as work_email AND flips verified=TRUE.
+                            await authApi.sendWorkEmailVerification(trimmed);
+                            setPendingWorkEmail(trimmed);
+                            setIsEditingWorkEmail(false);
+                            setEditedWorkEmail("");
+                            setEmailVerifyError(`Sent! Check ${trimmed}.`);
+                          } catch (err) {
+                            const msg =
+                              err instanceof Error
+                                ? err.message
+                                : "Couldn't send.";
+                            setEmailVerifyError(
+                              msg.toLowerCase().includes("rate")
+                                ? "Too many sends — please wait a bit and try again."
+                                : "Couldn't send to that address. Please try again.",
+                            );
+                          } finally {
+                            setEmailVerifyLoading(false);
+                          }
+                        }}
+                        style={styles.emailVerifEditSave}
+                        activeOpacity={0.8}
+                        disabled={emailVerifyLoading}
+                      >
+                        {emailVerifyLoading ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <Text style={styles.emailVerifEditSaveText}>
+                            Save & resend
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              }
+              return (
+                <>
+                  <Text style={styles.emailVerifSubtitle}>
+                    To start discovering candidates, verify the link we sent to{" "}
+                    <Text style={styles.emailVerifAddress}>
+                      {displayedEmail || "your work address"}
+                    </Text>
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditedWorkEmail(displayedEmail);
+                      setIsEditingWorkEmail(true);
+                      setEmailVerifyError("");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.emailVerifEditLink}>
+                      Wrong email? Update it
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+
+            <View style={styles.emailVerifInfoBox}>
+              <Text style={styles.emailVerifInfoText}>
+                This keeps the network trusted — every candidate knows they're
+                talking to a real, verified professional.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.emailVerifPrimaryBtn}
+              onPress={() => Linking.openURL("message:")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emailVerifPrimaryBtnText}>
+                Open Email App
+              </Text>
+              <ChevronRight color="#FFF" size={20} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.emailVerifSecondaryBtn}
+              onPress={async () => {
+                setEmailVerifyLoading(true);
+                setEmailVerifyError("");
+                try {
+                  await fetchFromBackend();
+                  const isNowVerified =
+                    useUserProfileStore.getState().workEmailVerified;
+                  if (isNowVerified) {
+                    setShowEmailVerificationModal(false);
+                  } else {
+                    setEmailVerifyError(
+                      "Still pending — please click the link in your inbox.",
+                    );
+                  }
+                } catch {
+                  setEmailVerifyError(
+                    "Could not check status. Please try again.",
+                  );
+                } finally {
+                  setEmailVerifyLoading(false);
+                }
+              }}
+              disabled={emailVerifyLoading}
+              activeOpacity={0.8}
+            >
+              {emailVerifyLoading ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <Text style={styles.emailVerifSecondaryBtnText}>
+                  I've Verified My Email
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {emailVerifyError ? (
+              <Text style={styles.emailVerifErrorText}>{emailVerifyError}</Text>
+            ) : null}
+
+            {/* Resend (PR #42) — re-trigger the verification email if the user
+              never received it. Prefers the in-modal pendingWorkEmail (the
+              corrected address from the "Update it" flow) over whatever's on
+              file. Backend rate-limits to 5/hour per user. */}
+            <TouchableOpacity
+              style={styles.emailVerifTesterBtn}
+              onPress={async () => {
+                const workEmail =
+                  pendingWorkEmail ?? profileData.personal.workEmail;
+                if (!workEmail) {
+                  setEmailVerifyError(
+                    "We don't have a work email on file. Tap 'Update it' to add one.",
+                  );
+                  return;
+                }
+                setEmailVerifyError("");
+                try {
+                  await authApi.sendWorkEmailVerification(workEmail);
+                  setEmailVerifyError("Sent! Check your inbox.");
+                } catch (err) {
+                  const msg =
+                    err instanceof Error ? err.message : "Couldn't resend.";
+                  setEmailVerifyError(
+                    msg.toLowerCase().includes("rate")
+                      ? "Too many resends — please wait a bit and try again."
+                      : "Couldn't resend. Please try again.",
+                  );
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emailVerifTesterBtnText}>Resend email</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.emailVerifTesterBtn}
+              onPress={() => {
+                trackTesterModeEnabled({ source: "email_verification_modal" });
+                setIsTester(true);
+                setShowEmailVerificationModal(false);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emailVerifTesterBtnText}>I am a tester</Text>
+            </TouchableOpacity>
+          </DismissibleSheet>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Description Modal */}
@@ -5989,12 +6105,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Email Verification Modal
+  // Email Verification Modal — overlay anchors the sheet to the bottom of
+  // the screen via flex; the sheet itself is content-sized.
+  emailVerifOverlay: { flex: 1, justifyContent: "flex-end" },
   emailVerifModal: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: "#FFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -6087,5 +6201,74 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  // Inline "Wrong email? Update it" affordance + edit form for fixing typos
+  // in the modal without leaving the verification flow. Muted gray to match
+  // the modal's neutral palette (no bright accent — the existing primary CTA
+  // already owns the visual emphasis).
+  emailVerifEditLink: {
+    color: "#666",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 6,
+    textDecorationLine: "underline",
+  },
+  emailVerifEditBlock: {
+    width: "100%",
+    marginVertical: 8,
+  },
+  emailVerifEditLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#666",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  emailVerifEditInput: {
+    width: "100%",
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#000",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+  },
+  emailVerifEditActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+  },
+  emailVerifEditCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emailVerifEditCancelText: {
+    color: "#666",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  emailVerifEditSave: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emailVerifEditSaveText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

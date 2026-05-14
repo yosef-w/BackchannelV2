@@ -4,17 +4,18 @@ import {
     Award,
     Bell,
     Briefcase,
-    Check,
     CheckCircle,
     Heart,
     MessageCircle,
     RefreshCw,
     Star,
+    Trash2,
     UserPlus,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     Platform,
     RefreshControl,
     ScrollView,
@@ -31,6 +32,8 @@ import {
     trackNotificationTapped,
 } from "../lib/analytics/mixpanel";
 import {
+    clearReadNotifications,
+    deleteNotification,
     getNotifications,
     markAllNotificationsAsRead,
     markNotificationAsRead,
@@ -66,6 +69,11 @@ type BackendNotification = {
   RELATED_JOB_ID: string | null;
   RELATED_CONVERSATION_ID: string | null;
   CREATED_AT: string;
+  // Denormalized metadata from PR #43.
+  RELATED_USER_NAME: string | null;
+  RELATED_USER_PHOTO_URL: string | null;
+  RELATED_JOB_TITLE: string | null;
+  RELATED_JOB_COMPANY: string | null;
 };
 
 /**
@@ -146,6 +154,7 @@ export function NotificationsView({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [isClearingRead, setIsClearingRead] = useState(false);
   const showToast = useToastStore((state) => state.showToast);
 
   // Bump this counter every 30s so relative-time strings refresh on screen
@@ -182,6 +191,37 @@ export function NotificationsView({
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Live polling via the ?since= query param shipped in PR #43. Every 20s
+  // we ask the server for rows created strictly after the newest one we have
+  // and prepend any new arrivals. Cheaper than a full refetch and means the
+  // list updates without the user pulling to refresh.
+  const latestCreatedAtRef = useRef<string | null>(null);
+  useEffect(() => {
+    latestCreatedAtRef.current = notifications[0]?.CREATED_AT ?? null;
+  }, [notifications]);
+
+  useEffect(() => {
+    const id = setInterval(async () => {
+      const since = latestCreatedAtRef.current;
+      if (!since) return; // initial load handles the no-rows case
+      try {
+        const response = await getNotifications({ limit: 50, since });
+        const fresh = response.notifications;
+        if (fresh.length === 0) return;
+        setNotifications((prev) => {
+          const seen = new Set(prev.map((n) => n.NOTIFICATION_ID));
+          const newOnes = fresh.filter(
+            (n) => !seen.has(n.NOTIFICATION_ID),
+          );
+          return newOnes.length > 0 ? [...newOnes, ...prev] : prev;
+        });
+      } catch {
+        // Silent — the next pull-to-refresh will catch any missed rows.
+      }
+    }, 20_000);
+    return () => clearInterval(id);
+  }, []);
 
   const handlePullToRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -240,6 +280,46 @@ export function NotificationsView({
     }
   };
 
+  // Deletes a single notification via DELETE /api/notifications/<id>/.
+  // Optimistically removes from state — restores on failure so the row
+  // doesn't lie about its existence.
+  const handleDeleteNotification = useCallback(
+    async (n: BackendNotification) => {
+      const previous = notifications;
+      setNotifications((prev) =>
+        prev.filter((row) => row.NOTIFICATION_ID !== n.NOTIFICATION_ID),
+      );
+      try {
+        await deleteNotification(n.NOTIFICATION_ID);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (err) {
+        console.warn("[NotificationsView] Failed to delete:", err);
+        setNotifications(previous);
+        showToast("Couldn't delete that. Please try again.", "error");
+      }
+    },
+    [notifications, showToast],
+  );
+
+  // Bulk-delete every notification that's already read.
+  const handleClearRead = async () => {
+    if (isClearingRead) return;
+    setIsClearingRead(true);
+    const previous = notifications;
+    // Optimistic — pull the read rows out immediately.
+    setNotifications((prev) => prev.filter((n) => !n.IS_READ));
+    try {
+      await clearReadNotifications();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (err) {
+      console.warn("[NotificationsView] Failed to clear read:", err);
+      setNotifications(previous);
+      showToast("Couldn't clear read notifications.", "error");
+    } finally {
+      setIsClearingRead(false);
+    }
+  };
+
   /**
    * Tap: mark-read (if unread) + deep-link to the related surface.
    * Falls through to a tab switch when a specific target isn't available.
@@ -284,21 +364,16 @@ export function NotificationsView({
     }
   };
 
-  /**
-   * Swipe-left action: mark-read with a committed gesture.
-   * The child row closes its own Swipeable via its internal ref.
-   * (True dismiss requires a backend DELETE endpoint — see
-   * docs/BACKEND_CHANGES_NEEDED.md "Optional E".)
-   */
+  // Swipe-left → delete (PR #43). Backed by DELETE /api/notifications/<id>/.
   const handleSwipeCommit = useCallback(
     (n: BackendNotification) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      markOneRead(n);
+      handleDeleteNotification(n);
     },
-    [markOneRead],
+    [handleDeleteNotification],
   );
 
   const hasUnread = notifications.some((n) => !n.IS_READ);
+  const hasRead = notifications.some((n) => n.IS_READ);
 
   /** Group rows into time buckets, preserving newest-first ordering. */
   const sections = useMemo(() => {
@@ -343,20 +418,39 @@ export function NotificationsView({
           <Text style={styles.title}>Notifications</Text>
         </View>
 
-        <TouchableOpacity
-          onPress={handleMarkAllRead}
-          disabled={!hasUnread || isMarkingAll}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.markAllRead,
-              (!hasUnread || isMarkingAll) && { opacity: 0.4 },
-            ]}
+        {hasUnread ? (
+          <TouchableOpacity
+            onPress={handleMarkAllRead}
+            disabled={isMarkingAll}
+            activeOpacity={0.7}
           >
-            {isMarkingAll ? "Marking…" : "Mark all"}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.markAllRead,
+                isMarkingAll && { opacity: 0.4 },
+              ]}
+            >
+              {isMarkingAll ? "Marking…" : "Mark all"}
+            </Text>
+          </TouchableOpacity>
+        ) : hasRead ? (
+          <TouchableOpacity
+            onPress={handleClearRead}
+            disabled={isClearingRead}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.markAllRead,
+                isClearingRead && { opacity: 0.4 },
+              ]}
+            >
+              {isClearingRead ? "Clearing…" : "Clear read"}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 60 }} />
+        )}
       </View>
 
       {/* Loading state */}
@@ -396,6 +490,18 @@ export function NotificationsView({
                     NOTIFICATION_CONFIG[notification.TYPE] ?? DEFAULT_CONFIG;
                   const { Icon, accent } = config;
 
+                  // Backend (PR #43) supplies denormalized RELATED_* metadata
+                  // when present. Prefer the related user's avatar over the
+                  // generic type-icon; the icon falls back when no photo.
+                  const hasAvatar = !!notification.RELATED_USER_PHOTO_URL;
+                  const jobContext =
+                    notification.RELATED_JOB_TITLE &&
+                    notification.RELATED_JOB_COMPANY
+                      ? `${notification.RELATED_JOB_TITLE} · ${notification.RELATED_JOB_COMPANY}`
+                      : notification.RELATED_JOB_TITLE ||
+                        notification.RELATED_JOB_COMPANY ||
+                        null;
+
                   const card = (
                     <View
                       style={[
@@ -408,14 +514,41 @@ export function NotificationsView({
                       )}
 
                       <View style={styles.notificationContent}>
-                        <View
-                          style={[
-                            styles.iconContainer,
-                            { backgroundColor: accent },
-                          ]}
-                        >
-                          <Icon color="#ffffff" size={20} strokeWidth={2.5} />
-                        </View>
+                        {hasAvatar ? (
+                          <View style={styles.avatarWrapper}>
+                            <Image
+                              source={{
+                                uri:
+                                  notification.RELATED_USER_PHOTO_URL ??
+                                  undefined,
+                              }}
+                              style={styles.avatarImage}
+                            />
+                            {/* Type badge in the corner so users still see what
+                                kind of event it is at a glance. */}
+                            <View
+                              style={[
+                                styles.avatarTypeBadge,
+                                { backgroundColor: accent },
+                              ]}
+                            >
+                              <Icon
+                                color="#ffffff"
+                                size={10}
+                                strokeWidth={2.5}
+                              />
+                            </View>
+                          </View>
+                        ) : (
+                          <View
+                            style={[
+                              styles.iconContainer,
+                              { backgroundColor: accent },
+                            ]}
+                          >
+                            <Icon color="#ffffff" size={20} strokeWidth={2.5} />
+                          </View>
+                        )}
 
                         <View style={styles.textContainer}>
                           <View style={styles.titleRow}>
@@ -435,6 +568,14 @@ export function NotificationsView({
                           >
                             {notification.BODY}
                           </Text>
+                          {!!jobContext && (
+                            <Text
+                              style={styles.notificationJobContext}
+                              numberOfLines={1}
+                            >
+                              {jobContext}
+                            </Text>
+                          )}
                         </View>
                       </View>
                     </View>
@@ -455,32 +596,26 @@ export function NotificationsView({
                       key={notification.NOTIFICATION_ID}
                       entering={FadeInUp.delay(rowIdx * 40).duration(350)}
                     >
-                      {notification.IS_READ ? (
-                        touchable
-                      ) : (
-                        <ReanimatedSwipeable
-                          friction={2}
-                          rightThreshold={48}
-                          overshootRight={false}
-                          renderRightActions={() => (
-                            <View style={styles.swipeActionContainer}>
-                              <View style={styles.swipeAction}>
-                                <Check
-                                  color="#FFF"
-                                  size={18}
-                                  strokeWidth={2.5}
-                                />
-                                <Text style={styles.swipeActionText}>Read</Text>
-                              </View>
+                      <ReanimatedSwipeable
+                        friction={2}
+                        rightThreshold={48}
+                        overshootRight={false}
+                        renderRightActions={() => (
+                          <View style={styles.swipeActionContainer}>
+                            <View style={styles.swipeActionDelete}>
+                              <Trash2
+                                color="#FFF"
+                                size={18}
+                                strokeWidth={2.5}
+                              />
+                              <Text style={styles.swipeActionText}>Delete</Text>
                             </View>
-                          )}
-                          onSwipeableOpen={() =>
-                            handleSwipeCommit(notification)
-                          }
-                        >
-                          {touchable}
-                        </ReanimatedSwipeable>
-                      )}
+                          </View>
+                        )}
+                        onSwipeableOpen={() => handleSwipeCommit(notification)}
+                      >
+                        {touchable}
+                      </ReanimatedSwipeable>
                     </Animated.View>
                   );
                 })}
@@ -663,6 +798,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  avatarWrapper: {
+    width: 44,
+    height: 44,
+    position: "relative",
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F2F2F2",
+  },
+  // Small type-icon badge in the corner of the avatar — preserves the visual
+  // signal of "what kind of event" when we show a person's photo instead of
+  // the generic icon.
+  avatarTypeBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
   textContainer: {
     flex: 1,
     minWidth: 0,
@@ -691,12 +852,30 @@ const styles = StyleSheet.create({
     color: "#666",
     lineHeight: 20,
   },
+  notificationJobContext: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#999",
+    marginTop: 4,
+  },
   swipeActionContainer: {
     justifyContent: "center",
     paddingLeft: 8,
   },
   swipeAction: {
     backgroundColor: "#000",
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 22,
+    height: "100%",
+    minWidth: 92,
+  },
+  // Destructive variant used when swiping deletes the row (PR #43).
+  swipeActionDelete: {
+    backgroundColor: "#DC2626",
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",

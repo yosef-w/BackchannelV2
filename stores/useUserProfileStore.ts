@@ -825,12 +825,15 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });
 
-      // Update work email verification status.
-      // Defaults to true when WORK_EMAIL_VERIFIED is not yet returned by the backend
-      // (will enforce correctly once Optional D is deployed).
+      // Update work email verification status. Backend now ships this field
+      // (PR #42 — `sponsor_profiles.work_email_verified`), so read it
+      // verbatim — strictly `=== true` to avoid passing unverified sponsors
+      // through. Applicants don't have a sponsor_profile, so the value is
+      // undefined for them; defaulting to false there is harmless because
+      // the HomeView gate only checks this flag for sponsors.
       const workEmailVerifiedRaw = (profile as any).sponsor_profile
         ?.WORK_EMAIL_VERIFIED;
-      set({ workEmailVerified: workEmailVerifiedRaw === false ? false : true });
+      set({ workEmailVerified: workEmailVerifiedRaw === true });
 
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(autofillData));

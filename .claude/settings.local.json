@@ -32,7 +32,13 @@
       "Bash(grep -n \"styles.modalContent, { maxHeight\" /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
       "Bash(sed -n '2371,2384p' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
       "Bash(sed -n '2539,2552p' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
-      "Bash(awk -F: '$1 > 2510')"
+      "Bash(awk -F: '$1 > 2510')",
+      "Bash(git -C /Users/yosefwolday/Desktop/Backchannel-backend/BackChannel-backend log --oneline -25)",
+      "Bash(grep -E \"\\(NotificationsView|HomeView|MatchesView|SponsorQuestionnaire|JobsView|api\\\\.ts|auth-api\\\\.ts|useUserProfileStore\\)\\\\.tsx?$\" -A2)",
+      "Bash(grep -nE \"verify-work-email|notifications.*clear|notifications/<.*>/$|request-sponsor|profiles/received.*accept|since\" /Users/yosefwolday/Desktop/Backchannel-backend/BackChannel-backend/django_bc/urls.py /Users/yosefwolday/Desktop/Backchannel-backend/BackChannel-backend/bc_microservices/views_notifications.py)",
+      "Bash(git -C /Users/yosefwolday/Desktop/BackchannelV2 ls-files)",
+      "Bash(grep -n \"^    Text,$\\\\|^    TouchableOpacity,\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(awk 'NR>=4040 && NR<=4060 {print NR\": \"$0}' /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)"
     ]
   }
 }

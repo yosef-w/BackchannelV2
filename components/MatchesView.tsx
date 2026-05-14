@@ -7,11 +7,15 @@ import {
   getInterestedSponsors,
   getLikedJobs,
   getMatches,
+  getNotifications,
   getPublicProfile,
   getSponsorMatches,
   getWaitlistedJobs,
   likeBackSponsor,
+  likeProfile,
   listReferrals,
+  markNotificationAsRead,
+  sponsorJob,
   withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
@@ -19,6 +23,7 @@ import { BlurView } from "expo-blur";
 import {
   AlertTriangle,
   Award,
+  BellRing,
   Briefcase,
   Check,
   CheckCircle,
@@ -31,6 +36,7 @@ import {
   Sparkles,
   TrendingUp,
   Users,
+  X,
   Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -38,6 +44,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   NativeScrollEvent,
@@ -46,10 +53,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import Animated, {
+  FadeIn,
   FadeInRight,
   FadeInUp,
   SlideInDown,
@@ -124,7 +133,6 @@ interface JobOpportunity {
   // liked-jobs endpoint yet — surface them when present so this modal
   // matches the depth of HomeView's expanded job card.
   coreResponsibilities?: string;
-  requirementsSummary?: string;
   workArrangement?: string;
   sponsorInfo: {
     name: string;
@@ -132,6 +140,23 @@ interface JobOpportunity {
     image: string;
     canRefer: boolean;
   };
+}
+
+/**
+ * Incoming sponsor-request notification for a sponsor — the applicant has
+ * asked someone at their company to sponsor a specific job. Surfaced as a
+ * dedicated section on the Matches screen so it's actionable in one place
+ * rather than buried in the notifications list.
+ */
+interface SponsorRequest {
+  notificationId: string;
+  applicantUserId: string;
+  applicantName: string;
+  applicantPhoto: string | null;
+  jobId: string;
+  jobTitle: string;
+  jobCompany: string;
+  createdAt: string;
 }
 
 interface InterestedSponsor {
@@ -220,6 +245,30 @@ export function MatchesView({
   );
   // Bumped after a successful like-back to force matches/interested re-fetch
   const [matchesRefreshKey, setMatchesRefreshKey] = useState(0);
+
+  // Sponsor-requests state — applicants asking sponsors at the company to
+  // sponsor a specific job. Source is notifications filtered by type;
+  // when a dedicated GET endpoint ships this will be swapped out cleanly.
+  const [sponsorRequests, setSponsorRequests] = useState<SponsorRequest[]>([]);
+  const [sponsorRequestsLoading, setSponsorRequestsLoading] = useState(false);
+  const [sponsorRequestsError, setSponsorRequestsError] = useState<
+    string | null
+  >(null);
+  const [selectedSponsorRequest, setSelectedSponsorRequest] =
+    useState<SponsorRequest | null>(null);
+  const [isConnectingToApplicant, setIsConnectingToApplicant] = useState(false);
+
+  // ── Sponsor-request multi-step flow state ──────────────────────────────
+  // Step 1 = overview, 2 = confirm (relationship + canRefer), 3 = insights, 4 = success
+  const [srStep, setSrStep] = useState(1);
+  const [srRelationship, setSrRelationship] = useState<string | null>(null);
+  const [srCanRefer, setSrCanRefer] = useState<boolean | null>(null);
+  const [srDayToDay, setSrDayToDay] = useState("");
+  const [srTeamCulture, setSrTeamCulture] = useState("");
+  const [srIdealCandidate, setSrIdealCandidate] = useState("");
+  const [srInsiderInsights, setSrInsiderInsights] = useState("");
+  const [srSponsoring, setSrSponsoring] = useState(false);
+  const [srNewJobId, setSrNewJobId] = useState<string | null>(null);
 
   // Real matches state
   const [matches, setMatches] = useState<Match[]>([]);
@@ -419,13 +468,14 @@ export function MatchesView({
             experienceLevel: likedJob.EXPERIENCE_LEVEL || "",
             image: likedJob.SPONSOR_PHOTO_URL || "",
             description: likedJob.DESCRIPTION || "",
-            // Rich fields — only present if backend returns them. Empty string
-            // / array means "hide that section" in the modal below.
-            coreResponsibilities: likedJob.CORE_RESPONSIBILITIES || "",
-            requirementsSummary: likedJob.REQUIREMENTS_SUMMARY || "",
+            // ATS-enriched fields from PR #41 — COALESCE'd from the sponsored
+            // posting first, ats.silver_jobs second. Manually-created jobs
+            // without a reference_job_id come back null and the sections stay
+            // hidden.
+            coreResponsibilities: likedJob.RESPONSIBILITIES || "",
             workArrangement: likedJob.WORK_ARRANGEMENT || "",
-            skills: parseArray(likedJob.SKILLS),
-            benefits: parseArray(likedJob.BENEFITS || likedJob.HIGHLIGHTS),
+            skills: parseArray(likedJob.KEY_SKILLS),
+            benefits: parseArray(likedJob.BENEFITS),
             status: likedJob.STATUS || "ACTIVE",
             likedAt: likedJob.LIKED_AT || likedJob.liked_at || "",
             sponsorInfo: {
@@ -501,6 +551,55 @@ export function MatchesView({
     };
 
     fetchInterestedSponsors();
+  }, [userType, matchesRefreshKey]);
+
+  // Fetch sponsor-requests (sponsor view) — applicants asking employees at
+  // the sponsor's company to sponsor a job. Until a dedicated endpoint
+  // exists (see BACKEND_CHANGES_NEEDED.md) we derive these from the
+  // notifications feed: type === "sponsor_request" + IS_READ === false so a
+  // request drops off as soon as the sponsor connects with the applicant.
+  useEffect(() => {
+    const fetchSponsorRequests = async () => {
+      if (userType !== "sponsor") return;
+      try {
+        setSponsorRequestsLoading(true);
+        const response = await getNotifications({ limit: 50 });
+        const requests: SponsorRequest[] = response.notifications
+          .filter((n) => n.TYPE === "sponsor_request" && !n.IS_READ)
+          .filter(
+            (n) =>
+              !!n.RELATED_USER_ID &&
+              !!n.RELATED_JOB_ID &&
+              !!n.RELATED_USER_NAME,
+          )
+          .map((n) => ({
+            notificationId: n.NOTIFICATION_ID,
+            applicantUserId: n.RELATED_USER_ID as string,
+            applicantName: n.RELATED_USER_NAME as string,
+            applicantPhoto: n.RELATED_USER_PHOTO_URL,
+            jobId: n.RELATED_JOB_ID as string,
+            jobTitle: n.RELATED_JOB_TITLE ?? "Untitled role",
+            jobCompany: n.RELATED_JOB_COMPANY ?? "",
+            createdAt: n.CREATED_AT,
+          }));
+        setSponsorRequests(requests);
+        setSponsorRequestsError(null);
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Failed to load sponsor requests";
+        if (msg.includes("404") || msg.includes("Not found")) {
+          setSponsorRequests([]);
+        } else {
+          console.warn("[MatchesView] Failed to fetch sponsor requests:", err);
+          setSponsorRequestsError(msg);
+        }
+      } finally {
+        setSponsorRequestsLoading(false);
+      }
+    };
+    fetchSponsorRequests();
   }, [userType, matchesRefreshKey]);
 
   // Fetch waitlisted jobs for applicants
@@ -621,30 +720,142 @@ export function MatchesView({
     setSelectedInterestedSponsor(null);
     setInterestedSponsorProfile(null);
     setSelectedWaitlistedJob(null);
+    setSelectedSponsorRequest(null);
+    // Reset sponsor-request flow state
+    setSrStep(1);
+    setSrRelationship(null);
+    setSrCanRefer(null);
+    setSrDayToDay("");
+    setSrTeamCulture("");
+    setSrIdealCandidate("");
+    setSrInsiderInsights("");
+    setSrSponsoring(false);
+    setSrNewJobId(null);
     setMessage("");
   };
 
+  // Sponsor completes the full sponsorship + connect flow from the sponsor
+  // request modal. Steps:
+  //   1 → overview (already rendered in the sheet)
+  //   2 → relationship + canRefer
+  //   3 → insider insights
+  //   4 → success
+  // On step 3 submit: call sponsorJob() then likeProfile() using the new
+  // JOB_POSTINGS id so the applicant immediately sees the sponsor in
+  // "Wants to Connect With You" (or gets a mutual match if prior interest).
+  const handleSponsorAndConnect = async (request: SponsorRequest) => {
+    if (!srRelationship || srCanRefer === null) return;
+    setSrSponsoring(true);
+    try {
+      // Step A: sponsor the silver job → get a new JOB_POSTINGS id
+      const sponsorRes = await sponsorJob(request.jobId, {
+        relationship: srRelationship,
+        canRefer: srCanRefer,
+        insights: {
+          dayToDay: srDayToDay,
+          teamCulture: srTeamCulture,
+          idealCandidate: srIdealCandidate,
+          insiderInsights: srInsiderInsights,
+        },
+      });
+      const newJobId = sponsorRes.job_id;
+      setSrNewJobId(newJobId);
+
+      // Step B: like the applicant's profile so they see the sponsor under
+      // "Wants to Connect With You" (or get an instant match if they already
+      // expressed interest in the role).
+      await likeProfile(request.applicantUserId, newJobId);
+
+      // Step C: mark the source notification read so the request disappears.
+      markNotificationAsRead(request.notificationId).catch(() => {});
+      setSponsorRequests((prev) =>
+        prev.filter((r) => r.notificationId !== request.notificationId),
+      );
+      setMatchesRefreshKey((k) => k + 1);
+
+      // Advance to success screen
+      setSrStep(4);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[MatchesView] Sponsor-and-connect failed:", err);
+      showToast(
+        msg.toLowerCase().includes("already") ||
+          msg.toLowerCase().includes("duplicate")
+          ? "You're already sponsoring this job. We've connected you with the applicant."
+          : "Something went wrong. Please try again.",
+        "error",
+      );
+    } finally {
+      setSrSponsoring(false);
+    }
+  };
+
+  // Legacy single-tap connect (no longer exposed in UI — kept for reference)
+  const handleConnectToApplicant = async (request: SponsorRequest) => {
+    setIsConnectingToApplicant(true);
+    try {
+      const res = await likeProfile(request.applicantUserId, request.jobId);
+      // Mark the source notification read so the request drops off the
+      // section immediately (and won't reappear on next fetch).
+      markNotificationAsRead(request.notificationId).catch((err) =>
+        console.warn(
+          "[MatchesView] Failed to mark sponsor-request notification read:",
+          err,
+        ),
+      );
+      setSponsorRequests((prev) =>
+        prev.filter((r) => r.notificationId !== request.notificationId),
+      );
+      setMatchesRefreshKey((k) => k + 1);
+      closeAllModals();
+      showToast(
+        res.matched
+          ? `It's a match with ${request.applicantName.split(" ")[0]}!`
+          : `Sent — ${request.applicantName.split(" ")[0]} will see you under Interested in You.`,
+        res.matched ? "success" : "info",
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[MatchesView] Failed to connect to applicant:", err);
+      // The likeProfile backend requires the sponsor to own the job. If they
+      // don't (common, since request-sponsor notifies all employees at the
+      // company), surface a clear next step instead of a generic error.
+      const looksLikeNotOwned =
+        msg.includes("404") ||
+        msg.includes("403") ||
+        msg.toLowerCase().includes("not owned") ||
+        msg.toLowerCase().includes("not found");
+      showToast(
+        looksLikeNotOwned
+          ? "You need to sponsor this job first — head to the Jobs tab."
+          : "Couldn't connect right now. Please try again.",
+        "error",
+      );
+    } finally {
+      setIsConnectingToApplicant(false);
+    }
+  };
+
   // Applicant accepts a sponsor's one-sided interest → creates a mutual match.
-  // Backend endpoint may not exist yet (see BACKEND_CHANGES_NEEDED.md §6) — on
-  // failure we keep the sponsor in "Interested in You" and show an error toast.
+  // Backend resolves which of the sponsor's active jobs to match on and
+  // returns a context-aware `message` (includes the job title on success,
+  // or e.g. "This sponsor doesn't have any active jobs right now" on failure
+  // to find a match target). Surface that message verbatim.
   const handleLikeBackSponsor = async (sponsor: InterestedSponsor) => {
     setLikingBackSponsorId(sponsor.likeId);
     try {
       const res = await likeBackSponsor(sponsor.likeId);
       trackSponsorLikedBack({ likeId: sponsor.likeId });
-      // Optimistically pull them out of "Interested in You"…
-      setInterestedSponsors((prev) =>
-        prev.filter((s) => s.likeId !== sponsor.likeId),
-      );
-      // …and re-fetch matches so they appear under "Matched Opportunities".
-      setMatchesRefreshKey((k) => k + 1);
+      if (res.matched) {
+        // Pull them out of "Interested in You" and re-fetch matches so they
+        // appear under "Matched Opportunities".
+        setInterestedSponsors((prev) =>
+          prev.filter((s) => s.likeId !== sponsor.likeId),
+        );
+        setMatchesRefreshKey((k) => k + 1);
+      }
       closeAllModals();
-      showToast(
-        res.matched
-          ? `It's a match with ${sponsor.firstName}!`
-          : `You let ${sponsor.firstName} know you're interested.`,
-        "success",
-      );
+      showToast(res.message, res.matched ? "success" : "info");
     } catch (err) {
       console.warn("[MatchesView] Failed to like back sponsor:", err);
       showToast("Couldn't do that right now. Please try again.", "error");
@@ -748,6 +959,105 @@ export function MatchesView({
         {userType === "sponsor" ? (
           /* SPONSOR VIEW */
           <>
+            {/* Sponsor Requests — applicants asking employees at the company
+                to sponsor a job for them. Top of funnel: incoming asks. */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.listSectionTitle}>
+                {sponsorRequestsLoading
+                  ? "Loading..."
+                  : `Sponsor Requests (${sponsorRequests.length})`}
+              </Text>
+              <Text style={[styles.sectionSubtitle, { marginBottom: 15 }]}>
+                Applicants asking you to sponsor a role at your company
+              </Text>
+              {sponsorRequestsError && (
+                <Text
+                  style={{
+                    color: "#FF3B30",
+                    marginBottom: 12,
+                    paddingHorizontal: 20,
+                  }}
+                >
+                  {sponsorRequestsError}
+                </Text>
+              )}
+              {!sponsorRequestsLoading && sponsorRequests.length === 0 ? (
+                <View style={styles.emptyLikedSection}>
+                  <View style={styles.emptyIconContainer}>
+                    <BellRing size={32} color="#CCC" />
+                  </View>
+                  <Text style={styles.emptyLikedTitle}>No requests yet</Text>
+                  <Text style={styles.emptyLikedText}>
+                    When applicants ask for sponsorship on a job at your
+                    company, they'll show up here.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalScrollContent}
+                  style={styles.horizontalScroll}
+                >
+                  {sponsorRequests.map((req, index) => (
+                    <Animated.View
+                      key={req.notificationId}
+                      entering={FadeInRight.delay(index * 100)}
+                      style={styles.card}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedSponsorRequest(req)}
+                      >
+                        {req.applicantPhoto ? (
+                          <Image
+                            source={{ uri: req.applicantPhoto }}
+                            style={styles.profileImage}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.profileImage,
+                              {
+                                backgroundColor: "#F2F2F2",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 24,
+                                fontWeight: "700",
+                                color: "#999",
+                              }}
+                            >
+                              {(req.applicantName || "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={styles.cardName}>{req.applicantName}</Text>
+                        <Text style={styles.cardRole} numberOfLines={2}>
+                          {req.jobTitle}
+                        </Text>
+                        {!!req.jobCompany && (
+                          <Text
+                            style={[
+                              styles.cardRole,
+                              { color: "#999", fontSize: 12 },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {req.jobCompany}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </Animated.View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
             {/* Interested Applicants */}
             <View style={styles.sectionContainer}>
               <Text style={styles.listSectionTitle}>
@@ -1018,10 +1328,10 @@ export function MatchesView({
                   <Text style={styles.listSectionTitle}>
                     {likedJobsLoading
                       ? "Loading..."
-                      : `Liked Jobs (${likedJobs.length})`}
+                      : `Applied Jobs (${likedJobs.length})`}
                   </Text>
                   <Text style={styles.sectionSubtitle}>
-                    Sponsored jobs you swiped right on — waiting for the sponsor
+                    Jobs you've expressed interest in — waiting for the sponsor
                     to respond
                   </Text>
                 </View>
@@ -1042,9 +1352,11 @@ export function MatchesView({
                   <View style={styles.emptyIconContainer}>
                     <Heart size={32} color="#CCC" />
                   </View>
-                  <Text style={styles.emptyLikedTitle}>No Liked Jobs Yet</Text>
+                  <Text style={styles.emptyLikedTitle}>
+                    No Applications Yet
+                  </Text>
                   <Text style={styles.emptyLikedText}>
-                    Start swiping right on jobs you're interested in!
+                    Start exploring jobs and express your interest!
                   </Text>
                 </View>
               ) : (
@@ -1122,8 +1434,8 @@ export function MatchesView({
                       : `Waitlisted (${waitlistedJobs.length})`}
                   </Text>
                   <Text style={styles.sectionSubtitle}>
-                    Jobs without a sponsor yet — you’ll be notified the moment
-                    one signs on
+                    Jobs you’ve asked to be sponsored — we’ll notify you the
+                    moment a sponsor signs on
                   </Text>
                 </View>
                 {waitlistedJobs.some((j) => j.is_now_sponsored) && (
@@ -1344,8 +1656,8 @@ export function MatchesView({
                       : `Interested in You (${interestedSponsors.length})`}
                   </Text>
                   <Text style={styles.sectionSubtitle}>
-                    Sponsors who swiped right on your profile — like them back
-                    to match
+                    Sponsors who swiped right on your profile — connect back to
+                    match
                   </Text>
                 </View>
               </View>
@@ -1369,8 +1681,8 @@ export function MatchesView({
                   </View>
                   <Text style={styles.emptyLikedTitle}>No Sponsors Yet</Text>
                   <Text style={styles.emptyLikedText}>
-                    Keep building your profile — sponsors who swipe right on you
-                    will appear here.
+                    Keep building your profile — sponsors who want to connect
+                    with you will appear here.
                   </Text>
                 </View>
               ) : (
@@ -1924,23 +2236,6 @@ export function MatchesView({
                   </View>
                 )}
 
-                {/* Requirements Overview */}
-                {!!selectedJob.requirementsSummary && (
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailSectionHeader}>
-                      <Award size={16} color="#000" />
-                      <Text style={styles.detailSectionTitle}>
-                        Requirements Overview
-                      </Text>
-                    </View>
-                    <View style={styles.jobDetailCard}>
-                      <Text style={styles.jobDetailText}>
-                        {selectedJob.requirementsSummary}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
                 {/* Required Skills */}
                 {selectedJob.skills.length > 0 && (
                   <View style={styles.detailSection}>
@@ -2106,7 +2401,7 @@ export function MatchesView({
                 <View style={styles.interestedModalTag}>
                   <Heart size={12} color="#E53E3E" />
                   <Text style={styles.interestedModalTagText}>
-                    Expressed interest in your profile
+                    Wants to connect with you
                     {selectedInterestedSponsor.likedAt
                       ? ` · ${getRelativeTime(selectedInterestedSponsor.likedAt)}`
                       : ""}
@@ -2315,7 +2610,7 @@ export function MatchesView({
                       </View>
                     </View>
 
-                    {/* CTA — like back to close the loop and create a match */}
+                    {/* CTA — connect back to close the loop and create a match */}
                     <TouchableOpacity
                       style={[
                         styles.applyBtnLarge,
@@ -2337,7 +2632,7 @@ export function MatchesView({
                         <>
                           <Heart color="#FFF" size={20} strokeWidth={2.5} />
                           <Text style={styles.applyBtnLargeText}>
-                            Like {selectedInterestedSponsor.firstName} Back
+                            Connect with {selectedInterestedSponsor.firstName}
                           </Text>
                         </>
                       )}
@@ -2509,6 +2804,429 @@ export function MatchesView({
                   {getRelativeTime(selectedWaitlistedJob.waitlisted_at)}
                 </Text>
               </ScrollView>
+            )}
+          </DismissibleSheet>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Sponsor-Request Modal — sponsor's view of an incoming request from
+          an applicant. Mirrors the styling of the Interested-Sponsor modal
+          (header tag → hero → context card → primary CTA) so the two
+          incoming-interest flows feel symmetrical across roles. */}
+      <Modal
+        visible={!!selectedSponsorRequest}
+        transparent
+        animationType="none"
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeAllModals}
+          >
+            <BlurView
+              intensity={30}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <DismissibleSheet
+            onDismiss={closeAllModals}
+            style={styles.modalContent}
+          >
+            {selectedSponsorRequest && (
+              <>
+                {/* ── Step indicator (steps 2 & 3 only) ───────────────── */}
+                {srStep === 2 && (
+                  <View style={styles.srStepRow}>
+                    <TouchableOpacity
+                      onPress={() => setSrStep(1)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <X size={20} color="#999" />
+                    </TouchableOpacity>
+                    <View style={styles.srStepDots}>
+                      <View style={[styles.srDot, styles.srDotActive]} />
+                      <View style={styles.srDot} />
+                    </View>
+                    <Text style={styles.srStepLabel}>Step 1 of 2</Text>
+                  </View>
+                )}
+                {srStep === 3 && (
+                  <View style={styles.srStepRow}>
+                    <TouchableOpacity
+                      onPress={() => setSrStep(2)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <X size={20} color="#999" />
+                    </TouchableOpacity>
+                    <View style={styles.srStepDots}>
+                      <View style={[styles.srDot, styles.srDotActive]} />
+                      <View style={[styles.srDot, styles.srDotActive]} />
+                    </View>
+                    <Text style={styles.srStepLabel}>Step 2 of 2</Text>
+                  </View>
+                )}
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={{ paddingBottom: 8 }}
+                >
+                  {/* ── STEP 1: Overview ─────────────────────────────── */}
+                  {srStep === 1 && (
+                    <>
+                      {/* Header tag */}
+                      <View style={styles.interestedModalTag}>
+                        <BellRing size={12} color="#000" />
+                        <Text style={styles.interestedModalTagText}>
+                          Asked for sponsorship
+                          {selectedSponsorRequest.createdAt
+                            ? ` · ${getRelativeTime(selectedSponsorRequest.createdAt)}`
+                            : ""}
+                        </Text>
+                      </View>
+
+                      {/* Applicant hero */}
+                      <View style={styles.sponsorRequestHero}>
+                        {selectedSponsorRequest.applicantPhoto ? (
+                          <Image
+                            source={{
+                              uri: selectedSponsorRequest.applicantPhoto,
+                            }}
+                            style={styles.sponsorRequestAvatar}
+                          />
+                        ) : (
+                          <View style={styles.sponsorRequestInitial}>
+                            <Text style={styles.sponsorRequestInitialText}>
+                              {(selectedSponsorRequest.applicantName ||
+                                "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={styles.sponsorRequestName}>
+                          {selectedSponsorRequest.applicantName}
+                        </Text>
+                        <Text style={styles.srOverviewSub}>
+                          is asking you to sponsor this role for them
+                        </Text>
+                      </View>
+
+                      {/* Job context card */}
+                      <View style={styles.sponsorRequestJobCard}>
+                        <View style={styles.sponsorRequestJobIconCircle}>
+                          <Briefcase color="#FFF" size={18} strokeWidth={2.2} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.sponsorRequestJobLabel}>
+                            WANTS SPONSORSHIP FOR
+                          </Text>
+                          <Text
+                            style={styles.sponsorRequestJobTitle}
+                            numberOfLines={2}
+                          >
+                            {selectedSponsorRequest.jobTitle}
+                          </Text>
+                          {!!selectedSponsorRequest.jobCompany && (
+                            <Text style={styles.sponsorRequestJobCompany}>
+                              {selectedSponsorRequest.jobCompany}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+
+                      {/* What happens callout */}
+                      <View style={[styles.srCallout, { marginTop: 20 }]}>
+                        <Text style={styles.srCalloutTitle}>
+                          💡 How this works
+                        </Text>
+                        <Text style={styles.srCalloutText}>
+                          Sponsoring this role puts your name behind the job and
+                          gives{" "}
+                          {selectedSponsorRequest.applicantName.split(" ")[0]}{" "}
+                          your insider perspective. Once you sponsor, they'll
+                          see you under "Wants to Connect With You" and can
+                          message you directly.
+                        </Text>
+                      </View>
+
+                      {/* Primary CTA → step 2 */}
+                      <TouchableOpacity
+                        style={styles.applyBtnLarge}
+                        onPress={() => setSrStep(2)}
+                      >
+                        <Briefcase color="#FFF" size={20} strokeWidth={2.5} />
+                        <Text style={styles.applyBtnLargeText}>
+                          Sponsor & Connect
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.srDismissBtn}
+                        onPress={closeAllModals}
+                      >
+                        <Text style={styles.srDismissBtnText}>
+                          Not right now
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {/* ── STEP 2: Relationship + Can Refer ─────────────── */}
+                  {srStep === 2 && (
+                    <>
+                      <Text style={styles.srStepTitle}>
+                        Confirm Sponsorship
+                      </Text>
+                      <Text style={styles.srStepSub}>
+                        Help us understand your role and referral capability
+                      </Text>
+
+                      <View style={styles.srFormSection}>
+                        <Text style={styles.srFieldLabel}>
+                          Your relationship to this role
+                        </Text>
+                        {["Hiring Manager", "Team Member", "Other"].map(
+                          (item) => (
+                            <TouchableOpacity
+                              key={item}
+                              style={styles.srRadioOption}
+                              onPress={() => setSrRelationship(item)}
+                              activeOpacity={0.7}
+                            >
+                              <View style={styles.srRadioLeft}>
+                                <View
+                                  style={[
+                                    styles.srRadioCircle,
+                                    srRelationship === item &&
+                                      styles.srRadioCircleActive,
+                                  ]}
+                                />
+                                <Text
+                                  style={[
+                                    styles.srRadioText,
+                                    srRelationship === item &&
+                                      styles.srRadioTextActive,
+                                  ]}
+                                >
+                                  {item}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          ),
+                        )}
+                      </View>
+
+                      <View style={styles.srFormSection}>
+                        <Text style={styles.srFieldLabel}>
+                          Can you provide a referral?
+                        </Text>
+                        <View style={styles.srSideBySide}>
+                          {[
+                            { label: "Yes", value: true },
+                            { label: "No", value: false },
+                          ].map(({ label, value }) => (
+                            <TouchableOpacity
+                              key={label}
+                              style={styles.srHalfOption}
+                              onPress={() => setSrCanRefer(value)}
+                              activeOpacity={0.7}
+                            >
+                              <View
+                                style={[
+                                  styles.srRadioCircle,
+                                  srCanRefer === value &&
+                                    styles.srRadioCircleActive,
+                                ]}
+                              />
+                              <Text
+                                style={[
+                                  styles.srRadioText,
+                                  srCanRefer === value &&
+                                    styles.srRadioTextActive,
+                                ]}
+                              >
+                                {label}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.applyBtnLarge,
+                          (!srRelationship || srCanRefer === null) && {
+                            opacity: 0.35,
+                          },
+                        ]}
+                        disabled={!srRelationship || srCanRefer === null}
+                        onPress={() => setSrStep(3)}
+                      >
+                        <Text style={styles.applyBtnLargeText}>Continue</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {/* ── STEP 3: Insider Insights ──────────────────────── */}
+                  {srStep === 3 && (
+                    <>
+                      <Text style={styles.srStepTitle}>
+                        Add Insider Insights
+                      </Text>
+                      <Text style={styles.srStepSub}>
+                        Share the inside story candidates won't find anywhere
+                        else. All fields are optional.
+                      </Text>
+
+                      <View style={styles.srCallout}>
+                        <Text style={styles.srCalloutTitle}>
+                          💡 Why This Matters
+                        </Text>
+                        <Text style={styles.srCalloutText}>
+                          Unlike traditional job boards, Backchannel gives
+                          candidates real insider knowledge — which means better
+                          applicants and fewer surprises on both sides.
+                        </Text>
+                      </View>
+
+                      {[
+                        {
+                          label: "The Real Day-to-Day",
+                          hint: "What does this role actually look like beyond the job description?",
+                          placeholder:
+                            "Be honest about daily work — meetings, focus time, pace, autonomy...",
+                          value: srDayToDay,
+                          setter: setSrDayToDay,
+                        },
+                        {
+                          label: "Team Culture & Dynamics",
+                          hint: "Give candidates a real sense of who they'll be working with.",
+                          placeholder:
+                            "Team size, seniority mix, remote vs. in-office norms, collaboration style...",
+                          value: srTeamCulture,
+                          setter: setSrTeamCulture,
+                        },
+                        {
+                          label: "Who Actually Thrives Here",
+                          hint: "What matters more than what's on the resume?",
+                          placeholder:
+                            "Mindset, soft skills, working style, previous backgrounds that tend to succeed...",
+                          value: srIdealCandidate,
+                          setter: setSrIdealCandidate,
+                        },
+                        {
+                          label: "Everything Else Worth Knowing",
+                          hint: "Interview process, growth path, comp notes, anything candidates should know.",
+                          placeholder:
+                            "Interview format, timeline, promotion path, equity situation...",
+                          value: srInsiderInsights,
+                          setter: setSrInsiderInsights,
+                        },
+                      ].map(({ label, hint, placeholder, value, setter }) => (
+                        <View key={label} style={styles.srFormSection}>
+                          <Text style={styles.srFieldLabel}>{label}</Text>
+                          <Text style={styles.srFieldHint}>{hint}</Text>
+                          <TextInput
+                            style={styles.srTextInput}
+                            placeholder={placeholder}
+                            placeholderTextColor="#999"
+                            value={value}
+                            onChangeText={setter}
+                            multiline
+                            numberOfLines={4}
+                            onSubmitEditing={() => Keyboard.dismiss()}
+                          />
+                        </View>
+                      ))}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.applyBtnLarge,
+                          srSponsoring && { opacity: 0.6 },
+                        ]}
+                        disabled={srSponsoring}
+                        onPress={() =>
+                          handleSponsorAndConnect(selectedSponsorRequest)
+                        }
+                      >
+                        {srSponsoring ? (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                          <>
+                            <Check color="#FFF" size={20} strokeWidth={2.5} />
+                            <Text style={styles.applyBtnLargeText}>
+                              Confirm Sponsorship
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {/* ── STEP 4: Success ───────────────────────────────── */}
+                  {srStep === 4 && (
+                    <Animated.View
+                      entering={FadeIn}
+                      style={styles.srSuccessContainer}
+                    >
+                      <View style={styles.srSuccessIconCircle}>
+                        <Check color="#FFF" size={36} strokeWidth={3} />
+                      </View>
+                      <Text style={styles.srSuccessTitle}>
+                        Sponsorship Confirmed!
+                      </Text>
+                      <Text style={styles.srSuccessDesc}>
+                        You're now sponsoring{" "}
+                        <Text style={{ fontWeight: "800" }}>
+                          {selectedSponsorRequest.jobTitle}
+                        </Text>
+                        .{"\n\n"}
+                        {
+                          selectedSponsorRequest.applicantName.split(" ")[0]
+                        }{" "}
+                        will see you under "Wants to Connect With You" and can
+                        message you directly once they connect back.
+                      </Text>
+
+                      {/* Message now — only available if we already have a\n                          matched jobId back from the sponsorJob call */}
+                      {srNewJobId && onNavigateToMessages && (
+                        <TouchableOpacity
+                          style={[styles.applyBtnLarge, { marginBottom: 12 }]}
+                          onPress={() => {
+                            const jid = srNewJobId;
+                            closeAllModals();
+                            onNavigateToMessages(jid);
+                          }}
+                        >
+                          <MessageCircle
+                            color="#FFF"
+                            size={20}
+                            strokeWidth={2.5}
+                          />
+                          <Text style={styles.applyBtnLargeText}>
+                            Message Now
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      <TouchableOpacity
+                        style={styles.srDismissBtn}
+                        onPress={closeAllModals}
+                      >
+                        <Text style={styles.srDismissBtnText}>
+                          Back to Matches
+                        </Text>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  )}
+                </ScrollView>
+              </>
             )}
           </DismissibleSheet>
         </KeyboardAvoidingView>
@@ -2826,6 +3544,78 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 48,
     gap: 12,
+  },
+  // Sponsor-request modal — applicant hero block (photo + name).
+  sponsorRequestHero: {
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  sponsorRequestAvatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#F2F2F2",
+    marginBottom: 12,
+  },
+  sponsorRequestInitial: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#F2F2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  sponsorRequestInitialText: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#999",
+  },
+  sponsorRequestName: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
+  // Job context card — what the applicant wants sponsored.
+  sponsorRequestJobCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#F8F9FB",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    padding: 16,
+    borderRadius: 16,
+  },
+  sponsorRequestJobIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sponsorRequestJobLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  sponsorRequestJobTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
+    lineHeight: 21,
+  },
+  sponsorRequestJobCompany: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 2,
   },
   interestedLoadingText: {
     fontSize: 14,
@@ -3991,5 +4781,141 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#BBB",
     marginTop: 3,
+  },
+
+  // ─── Sponsor-Request Multi-Step Flow ─────────────────────────────────────────
+  srStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  srStepDots: { flexDirection: "row", gap: 6 },
+  srDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#E5E5E5",
+  },
+  srDotActive: { backgroundColor: "#000", width: 24, borderRadius: 4 },
+  srStepLabel: { fontSize: 12, fontWeight: "700", color: "#999" },
+  srOverviewSub: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  srCallout: {
+    backgroundColor: "#F0F0F0",
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    borderLeftWidth: 4,
+    borderLeftColor: "#000",
+  },
+  srCalloutTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 8,
+  },
+  srCalloutText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  srDismissBtn: { alignItems: "center", marginTop: 14, paddingVertical: 8 },
+  srDismissBtnText: { fontSize: 14, color: "#999", fontWeight: "600" },
+  srStepTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 6,
+  },
+  srStepSub: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  srFormSection: { marginBottom: 24 },
+  srFieldLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 12,
+  },
+  srFieldHint: {
+    fontSize: 13,
+    color: "#999",
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  srRadioOption: {
+    backgroundColor: "#F9F9F9",
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    marginBottom: 12,
+  },
+  srRadioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  srRadioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#CCC",
+  },
+  srRadioCircleActive: { borderColor: "#000", borderWidth: 6 },
+  srRadioText: { fontSize: 15, color: "#666", fontWeight: "600" },
+  srRadioTextActive: { color: "#000", fontWeight: "600" },
+  srSideBySide: { flexDirection: "row", gap: 12 },
+  srHalfOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 18,
+    borderRadius: 16,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#EEE",
+  },
+  srTextInput: {
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    borderRadius: 12,
+    padding: 16,
+    paddingTop: 16,
+    fontSize: 15,
+    color: "#000",
+    minHeight: 110,
+    textAlignVertical: "top",
+  },
+  srSuccessContainer: {
+    alignItems: "center",
+    paddingVertical: 20,
+    width: "100%",
+  },
+  srSuccessIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  srSuccessTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 10,
+    color: "#000",
+  },
+  srSuccessDesc: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 30,
+    paddingHorizontal: 20,
   },
 });

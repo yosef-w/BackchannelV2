@@ -330,6 +330,8 @@ export async function getMyJobs(): Promise<{
     RELATIONSHIP: string | null;
     CAN_REFER: boolean;
     LOGO_URL: string | null;
+    LIKES_COUNT: number; // applicants who have liked this job (ACTIVE | MATCHED)
+    REFERENCE_JOB_ID?: string | null;
   }>;
   total_count: number;
 }> {
@@ -441,6 +443,12 @@ export async function getLikedJobs(): Promise<
     SALARY_CURRENCY: string | null;
     EXPERIENCE_LEVEL: string | null;
     DESCRIPTION: string | null;
+    // ATS-enriched fields (PR #41). KEY_SKILLS/BENEFITS arrive as JSON strings
+    // when sourced from silver_jobs (JSONB::TEXT cast); already-arrays otherwise.
+    KEY_SKILLS: string | string[] | null;
+    BENEFITS: string | string[] | null;
+    RESPONSIBILITIES: string | null;
+    WORK_ARRANGEMENT: string | null;
     SPONSOR_FIRST_NAME: string | null;
     SPONSOR_LAST_NAME: string | null;
     SPONSOR_PHOTO_URL: string | null;
@@ -476,14 +484,15 @@ export async function getInterestedSponsors(): Promise<
  * 💚 Like Back an Interested Sponsor (Applicant)
  * The applicant accepts a sponsor's one-sided interest, which creates a
  * mutual match (the backend resolves which of the sponsor's jobs to match on).
- * Backend endpoint: POST /api/likes/profiles/received/<like_id>/accept/
+ * Backend endpoint: POST /api/likes/profiles/received/<like_id>/accept/ (PR #45)
  *
- * NOTE: backend endpoint not yet implemented — see BACKEND_CHANGES_NEEDED.md §6.
- * Callers should treat failures gracefully.
+ * On `matched: true`, `message` is a context-aware string like
+ * "It's a match! You've been connected for Senior Engineer" — surface it to
+ * the user verbatim instead of constructing one client-side.
  */
 export async function likeBackSponsor(likeId: string): Promise<{
   matched: boolean;
-  match_id?: string;
+  like_id?: string;
   job_id?: string;
   message: string;
 }> {
@@ -1053,11 +1062,22 @@ export async function getNotifications(params?: {
   limit?: number;
   offset?: number;
   unread_only?: boolean;
+  /** ISO 8601 timestamp — server returns only rows created strictly after this. */
+  since?: string;
 }): Promise<{
   notifications: Array<{
     NOTIFICATION_ID: string;
     USER_ID: string;
-    TYPE: "match" | "message" | "referral" | "connection" | "profile_update";
+    TYPE:
+      | "match"
+      | "message"
+      | "referral"
+      | "job_like"
+      | "waitlist"
+      | "sponsor_request"
+      | "connection"
+      | "profile_update"
+      | string;
     TITLE: string;
     BODY: string;
     IS_READ: boolean;
@@ -1065,6 +1085,12 @@ export async function getNotifications(params?: {
     RELATED_JOB_ID: string | null;
     RELATED_CONVERSATION_ID: string | null;
     CREATED_AT: string;
+    // Denormalized metadata from PR #43 — backend resolves these via LEFT JOIN
+    // so we don't need N+1 lookups to render richer notification cards.
+    RELATED_USER_NAME: string | null;
+    RELATED_USER_PHOTO_URL: string | null;
+    RELATED_JOB_TITLE: string | null;
+    RELATED_JOB_COMPANY: string | null;
   }>;
   total_count: number;
 }> {
@@ -1078,6 +1104,9 @@ export async function getNotifications(params?: {
   if (params?.unread_only !== undefined) {
     queryParams.append("unread_only", String(params.unread_only));
   }
+  if (params?.since !== undefined) {
+    queryParams.append("since", params.since);
+  }
 
   const queryString = queryParams.toString();
   const endpoint = queryString
@@ -1085,6 +1114,27 @@ export async function getNotifications(params?: {
     : "/api/notifications/";
 
   return api.get(endpoint);
+}
+
+/**
+ * 🔔 Delete a Notification (PR #43)
+ * Hard-deletes a single notification owned by the authenticated user.
+ */
+export async function deleteNotification(notificationId: string): Promise<{
+  message: string;
+}> {
+  return api.delete(`/api/notifications/${notificationId}/`);
+}
+
+/**
+ * 🔔 Clear Read Notifications (PR #43)
+ * Bulk-delete all the authenticated user's already-read notifications.
+ * Requires `?only=read` — backend returns 400 without it.
+ */
+export async function clearReadNotifications(): Promise<{
+  deleted_count: number;
+}> {
+  return api.delete("/api/notifications/clear/?only=read");
 }
 
 /**
@@ -1361,17 +1411,19 @@ export async function applyToJob(jobId: string): Promise<{
 
 /**
  * 📣 Request a Sponsor for a Job (Applicant)
- * Asks the backend to notify sponsors who work at the job's company,
- * inviting them to sponsor this role / this applicant.
- * Uses POST /api/jobs/<job_id>/request-sponsor/
+ * Notifies sponsors at the job's company and asks them to sponsor this
+ * role. Idempotent — repeat requests for the same (user, job) are deduped
+ * server-side and return notified_count: 0.
  *
- * NOTE: backend endpoint not yet implemented — see BACKEND_CHANGES_NEEDED.md §5.
- * Callers should treat failures gracefully (the user's intent is recorded
- * client-side regardless).
+ * Uses POST /api/jobs/<job_id>/request-sponsor/ (PR #44).
+ *
+ * The `message` is context-aware (count of sponsors notified, "already has
+ * a sponsor", "no sponsors at company yet", duplicate request, etc.) —
+ * surface it to the user verbatim.
  */
 export async function requestSponsorForJob(jobId: string): Promise<{
   job_id: string;
-  notified_count?: number;
+  notified_count: number;
   message: string;
 }> {
   return api.post(`/api/jobs/${jobId}/request-sponsor/`);

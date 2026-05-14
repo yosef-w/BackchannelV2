@@ -10,7 +10,6 @@ import {
 import {
   browseJobs,
   createJobFromUrl,
-  getJobApplicantsLikes,
   getMyJobs,
   sponsorJob,
   unsponsorJob,
@@ -277,41 +276,6 @@ export function JobsView() {
     );
   }, [sponsoredJobs]);
 
-  // Workaround until backend adds LIKES_COUNT to /api/jobs/mine/ (see
-  // BACKEND_CHANGES_NEEDED.md §3). For each sponsored job we fan out to
-  // GET /api/jobs/<id>/likes/applicants/ and patch the count back into
-  // myJobs state. Failures fall back silently to the existing count so
-  // one bad job doesn't blank the whole list.
-  const enrichMyJobsWithApplicantCounts = async (jobIds: string[]) => {
-    if (jobIds.length === 0) return;
-    const results = await Promise.allSettled(
-      jobIds.map((id) => getJobApplicantsLikes(id)),
-    );
-    const counts = new Map<string, number>();
-    results.forEach((r, idx) => {
-      if (r.status === "fulfilled") {
-        const v = r.value;
-        counts.set(jobIds[idx], v.total_count ?? v.applicants?.length ?? 0);
-      } else {
-        console.warn(
-          `[JobsView] Applicant count fetch failed for ${jobIds[idx]}:`,
-          r.reason,
-        );
-      }
-    });
-    // setMyJobs from the Zustand store takes a Job[], not a functional
-    // updater — read the latest state via getState() to avoid clobbering
-    // any newer writes that happened while our N requests were in flight.
-    const latest = useJobsStore.getState().myJobs;
-    setMyJobs(
-      latest.map((job) =>
-        counts.has(job.id)
-          ? { ...job, applicants: counts.get(job.id) ?? 0 }
-          : job,
-      ),
-    );
-  };
-
   // Shared helper — fetch sponsor's own jobs and update store
   const refreshMyJobs = async (showLoadingSpinner = true) => {
     try {
@@ -343,7 +307,7 @@ export function JobsView() {
         workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
         isRemote: j.REMOTE_OPTION,
         url: "",
-        applicants: 0,
+        applicants: j.LIKES_COUNT ?? 0,
         image:
           j.LOGO_URL ||
           "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
@@ -352,8 +316,6 @@ export function JobsView() {
         isSponsored: true,
       }));
       setMyJobs(transformed);
-      // Fire and forget — counts will patch in once requests resolve.
-      enrichMyJobsWithApplicantCounts(transformed.map((j) => j.id));
     } catch (err) {
       console.warn("[JobsView] Failed to fetch my jobs:", err);
     } finally {
@@ -429,7 +391,7 @@ export function JobsView() {
           workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
           isRemote: j.REMOTE_OPTION,
           url: "",
-          applicants: 0,
+          applicants: j.LIKES_COUNT ?? 0,
           image:
             j.LOGO_URL ||
             "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
@@ -438,7 +400,6 @@ export function JobsView() {
           isSponsored: true,
         }));
         setMyJobs(transformed);
-        enrichMyJobsWithApplicantCounts(transformed.map((j) => j.id));
       } catch {
         // silent fail — will be corrected when user opens the tab
       }

@@ -49,6 +49,9 @@ interface JobsState {
   setProgress: (progress: number) => void;
   resetNavigation: () => void;
 
+  // Reset all state (called on logout)
+  reset: () => void;
+
   // Computed
   getJobById: (id: string) => Job | undefined;
 }
@@ -103,6 +106,20 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   setProgress: (progress) => set({ progress }),
 
   resetNavigation: () => set({ currentIndex: 0, progress: 1 }),
+
+  reset: () =>
+    set({
+      jobs: [],
+      isLoading: false,
+      error: null,
+      lastFetched: null,
+      sponsoredJobs: [],
+      activeSponsoredJobId: null,
+      myJobs: [],
+      isMyJobsLoading: false,
+      currentIndex: 0,
+      progress: 1,
+    }),
 
   getJobById: (id) => {
     return get().jobs.find((job) => job.id === id);

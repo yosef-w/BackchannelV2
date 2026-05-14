@@ -291,6 +291,25 @@ export const authApi = {
       true,
     );
   },
+
+  /**
+   * Send a work-email verification link to a sponsor's claimed company email.
+   * Distinct from the login-email verification — this proves "Jane actually
+   * works at Stripe" by emailing the address she claims. The verify-email
+   * endpoint then branches on the JWT's `purpose` claim to flip
+   * `sponsor_profiles.work_email_verified`.
+   *
+   * Auth: required (sponsor session). Rate-limited 5/hour per user.
+   * PR #42.
+   */
+  sendWorkEmailVerification: async (
+    workEmail: string,
+  ): Promise<{ message: string }> => {
+    return api.post<{ message: string }>(
+      "/api/auth/verify-work-email/send/",
+      { work_email: workEmail },
+    );
+  },
   /**
    * Fetch current user's profile
    * Backend endpoint: GET /api/profile/

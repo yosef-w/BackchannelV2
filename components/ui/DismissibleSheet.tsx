@@ -36,25 +36,31 @@ interface DismissibleSheetProps {
   onDismiss: () => void;
   style?: ViewStyle | ViewStyle[];
   children: React.ReactNode;
+  /**
+   * When true, the *entire* sheet surface is draggable instead of just the
+   * handle pill. Use this for sheets WITHOUT inner ScrollViews — a scroll
+   * gesture inside the sheet would fight the dismiss gesture otherwise. The
+   * pan only activates after 10 px of vertical movement, so taps on inner
+   * buttons still register normally.
+   */
+  fullSheetGesture?: boolean;
 }
 
 export function DismissibleSheet({
   onDismiss,
   style,
   children,
+  fullSheetGesture = false,
 }: DismissibleSheetProps) {
   const translateY = useSharedValue(0);
 
-  const pan = Gesture.Pan()
+  let pan = Gesture.Pan()
     .onUpdate((e) => {
       // Only let the sheet move downward.
       translateY.value = Math.max(0, e.translationY);
     })
     .onEnd((e) => {
       if (e.translationY > DISMISS_DISTANCE || e.velocityY > DISMISS_VELOCITY) {
-        // Continue the motion off-screen, then unmount via onDismiss. The
-        // parent's `exiting` (SlideOutDown) is a no-op by then — the sheet is
-        // already gone — so there's no double animation.
         translateY.value = withTiming(
           SCREEN_HEIGHT,
           { duration: 220 },
@@ -63,29 +69,53 @@ export function DismissibleSheet({
           },
         );
       } else {
-        // Not far/fast enough — snap back.
         translateY.value = withSpring(0, { damping: 20, stiffness: 220 });
       }
     });
+  if (fullSheetGesture) {
+    // 10 px tolerance: a quick tap stays a tap; a deliberate swipe past 10 px
+    // of downward movement activates the dismiss gesture and the underlying
+    // button (if any) is released without firing.
+    pan = pan.activeOffsetY(10);
+  }
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
+  // Handle pill (always visible — universal "drag me" affordance).
+  const handle = (
+    <View style={styles.handleZone}>
+      <View style={styles.handle} />
+    </View>
+  );
+
+  // In full-sheet mode the GestureDetector wraps the whole Animated.View, so
+  // the handle inherits the gesture automatically (no need to wrap it again).
+  // In handle-only mode the GestureDetector wraps just the handle so inner
+  // buttons / scrollviews aren't hijacked.
+  const sheet = (
+    <Animated.View
+      entering={SlideInDown}
+      exiting={SlideOutDown}
+      style={[style, animatedStyle]}
+    >
+      {fullSheetGesture ? (
+        handle
+      ) : (
+        <GestureDetector gesture={pan}>{handle}</GestureDetector>
+      )}
+      {children}
+    </Animated.View>
+  );
+
   return (
     <GestureHandlerRootView style={styles.root}>
-      <Animated.View
-        entering={SlideInDown}
-        exiting={SlideOutDown}
-        style={[style, animatedStyle]}
-      >
-        <GestureDetector gesture={pan}>
-          <View style={styles.handleZone}>
-            <View style={styles.handle} />
-          </View>
-        </GestureDetector>
-        {children}
-      </Animated.View>
+      {fullSheetGesture ? (
+        <GestureDetector gesture={pan}>{sheet}</GestureDetector>
+      ) : (
+        sheet
+      )}
     </GestureHandlerRootView>
   );
 }
