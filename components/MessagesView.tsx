@@ -901,9 +901,15 @@ export function MessagesView({
     };
   };
 
+  /** Normalize a backend ISO string to UTC (append 'Z' when no offset present). */
+  const normalizeToUtc = (s: string): string => {
+    const t = s.trim();
+    return /Z$/i.test(t) || /[+-]\d{2}:?\d{2}$/.test(t) ? s : `${s}Z`;
+  };
+
   // Day header formatter for message thread dividers
   const formatDayHeader = (timestamp: string) => {
-    const date = new Date(timestamp);
+    const date = new Date(normalizeToUtc(timestamp));
     const now = new Date();
     const todayDate = new Date(
       now.getFullYear(),
@@ -939,9 +945,11 @@ export function MessagesView({
 
   // Helper function to format time
   const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
+    const date = new Date(normalizeToUtc(timestamp));
     const now = new Date();
     const diff = now.getTime() - date.getTime();
+    // Guard against clock skew / future timestamps.
+    if (diff < 0) return "just now";
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);

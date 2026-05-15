@@ -86,7 +86,7 @@ import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface HomeViewProps {
   userType: "applicant" | "sponsor";
@@ -1165,6 +1165,15 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   const fetchFromBackend = useUserProfileStore(
     (state) => state.fetchFromBackend,
   );
+  const pendingWorkEmail = useUserProfileStore(
+    (state) => state.pendingWorkEmail,
+  );
+  const setPendingWorkEmail = useUserProfileStore(
+    (state) => state.setPendingWorkEmail,
+  );
+  const updatePersonalStore = useUserProfileStore(
+    (state) => state.updatePersonal,
+  );
 
   // Jobs store
   const jobs = useJobsStore((state) => state.jobs);
@@ -1181,6 +1190,14 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   );
   const setActiveSponsoredJobId = useJobsStore(
     (state) => state.setActiveSponsoredJobId,
+  );
+  // Job-switcher (sponsor-only) — lets a sponsor with multiple sponsored
+  // roles pick which one the deck represents. Switching changes
+  // activeSponsoredJobId, which both re-fetches the profile pack for that
+  // role AND becomes the JOB_ID stamped on every like the sponsor creates.
+  const [showJobSwitcher, setShowJobSwitcher] = useState(false);
+  const activeSponsoredJob = sponsoredJobs.find(
+    (j) => j.jobId === activeSponsoredJobId,
   );
 
   // Profiles state (for sponsors)
@@ -1232,11 +1249,13 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   // The backend's send endpoint embeds the supplied email into the JWT and
   // (on link click) persists it to sponsor_profiles.work_email along with
   // setting verified=TRUE — so one call corrects typos AND triggers
-  // verification. `pendingWorkEmail` overrides what's displayed in the modal
-  // until the next profile fetch syncs the verified value back.
+  // verification. The `pendingWorkEmail` value lives in useUserProfileStore
+  // (AsyncStorage-persisted) so the latest address the user submitted
+  // survives tab switches, app relaunches, and full profile re-fetches —
+  // it's cleared only when the backend confirms verification of that same
+  // address.
   const [isEditingWorkEmail, setIsEditingWorkEmail] = useState(false);
   const [editedWorkEmail, setEditedWorkEmail] = useState("");
-  const [pendingWorkEmail, setPendingWorkEmail] = useState<string | null>(null);
   const profileCompletion = profileData
     ? checkProfileCompleteness(profileData)
     : { isComplete: false, percentage: 0, missingFields: [] };
@@ -1324,25 +1343,27 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
 
   // Bootstrap sponsor state on mount — ensures activeSponsoredJobId is set
   // even when the user lands on the dashboard before visiting the jobs tab.
+  // Adds every sponsored job to the store (no REFERENCE_JOB_ID filter — that
+  // would exclude manually-created jobs and cause the role dropdown to show
+  // fewer roles than the "My Sponsored" tab on the Jobs board).
   useEffect(() => {
     if (userType !== "sponsor") return;
-    // Skip if we already have sponsored jobs in the store (e.g. navigated back)
     if (activeSponsoredJobId) return;
     const bootstrap = async () => {
       try {
         const response = await getMyJobs();
         if (!response.jobs?.length) return;
         response.jobs.forEach((j: any) => {
-          if (j.REFERENCE_JOB_ID) {
-            addSponsoredJob({
-              jobId: String(j.JOB_ID),
-              atsJobId: String(j.REFERENCE_JOB_ID),
-              title: j.TITLE || "",
-              company: j.COMPANY || "",
-            });
-          }
+          addSponsoredJob({
+            jobId: String(j.JOB_ID),
+            // Empty string for manually-created jobs that have no ATS source.
+            atsJobId: j.REFERENCE_JOB_ID ? String(j.REFERENCE_JOB_ID) : "",
+            title: j.TITLE || "",
+            company: j.COMPANY || "",
+          });
         });
-        // Set the first job as active so the profile fetch proceeds
+        // Set the first job as active — it's now guaranteed to be in
+        // sponsoredJobs since the filter is gone.
         const firstJob = response.jobs[0];
         if (firstJob) {
           setActiveSponsoredJobId(String(firstJob.JOB_ID));
@@ -1872,6 +1893,29 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                 />
               </View>
             </View>
+            {/* Job switcher — sponsor-only. Hidden when the sponsor has no
+                sponsored jobs (deck shows the empty state). Always tappable
+                so the sponsor can change roles whenever, even with just one
+                job currently sponsored. */}
+            {userType === "sponsor" && sponsoredJobs.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setShowJobSwitcher(true)}
+                activeOpacity={0.7}
+                style={styles.jobSwitcherPill}
+              >
+                <View style={{ flexShrink: 1 }}>
+                  <Text style={styles.jobSwitcherLabel}>ROLE</Text>
+                  <Text
+                    style={styles.jobSwitcherTitle}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {activeSponsoredJob?.title || "Select a role"}
+                  </Text>
+                </View>
+                <ChevronDown color="#666" size={16} style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
+            )}
           </Animated.View>
 
           {isDeckFinished ? (
@@ -3731,6 +3775,89 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
         }}
       />
 
+      {/* Job Switcher Modal — sponsor picks which sponsored role the deck
+          represents. Selection updates activeSponsoredJobId (re-fetches the
+          profile pack relevant to that role) and resets the deck index so
+          they start from card 1 of the new pack. */}
+      <Modal visible={showJobSwitcher} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.jobSwitcherOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowJobSwitcher(false)}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <DismissibleSheet
+            onDismiss={() => setShowJobSwitcher(false)}
+            fullSheetGesture
+            style={styles.jobSwitcherSheet}
+          >
+            <Text style={styles.jobSwitcherSheetTitle}>Switch role</Text>
+            <Text style={styles.jobSwitcherSheetSubtitle}>
+              Pick which sponsored role to review applicants for. We'll match
+              them with that role when you swipe right.
+            </Text>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              style={{ marginTop: 8 }}
+            >
+              {sponsoredJobs.map((job) => {
+                const isActive = job.jobId === activeSponsoredJobId;
+                return (
+                  <TouchableOpacity
+                    key={job.jobId}
+                    style={[
+                      styles.jobSwitcherRow,
+                      isActive && styles.jobSwitcherRowActive,
+                    ]}
+                    onPress={() => {
+                      if (!isActive) {
+                        setActiveSponsoredJobId(job.jobId);
+                        // Fresh pack for the new role — start at card 1.
+                        resetNavigation();
+                      }
+                      setShowJobSwitcher(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={styles.jobSwitcherRowTitle}
+                        numberOfLines={1}
+                      >
+                        {job.title || "Untitled role"}
+                      </Text>
+                      {!!job.company && (
+                        <Text
+                          style={styles.jobSwitcherRowCompany}
+                          numberOfLines={1}
+                        >
+                          {job.company}
+                        </Text>
+                      )}
+                    </View>
+                    {isActive && (
+                      <Check color="#000" size={18} strokeWidth={2.5} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </DismissibleSheet>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Email Verification Modal — sponsors must verify work email before
           swiping. Soft gate: closing the modal just blocks swiping; the user
           can still navigate to other tabs (Profile etc.) to fix things. */}
@@ -3830,6 +3957,10 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                             // persists it as work_email AND flips verified=TRUE.
                             await authApi.sendWorkEmailVerification(trimmed);
                             setPendingWorkEmail(trimmed);
+                            // Also update data.personal.workEmail so ProfileView
+                            // reflects the new address immediately without
+                            // waiting for a full profile refetch from the backend.
+                            await updatePersonalStore({ workEmail: trimmed });
                             setIsEditingWorkEmail(false);
                             setEditedWorkEmail("");
                             setEmailVerifyError(`Sent! Check ${trimmed}.`);
@@ -4308,8 +4439,94 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 28,
+    gap: 12,
   },
   progressHeaderContainer: { flex: 1 },
+  // Compact pill on the right side of the header. Fixed max-width keeps the
+  // progress bar visible; the title truncates with ellipsis if long.
+  jobSwitcherPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    maxWidth: 160,
+  },
+  jobSwitcherLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  jobSwitcherTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+  },
+  // Modal: bottom sheet, content-sized, listing all sponsored jobs.
+  // Matches the matches-screen modal aesthetic (40px top radius, 28px
+  // padding) for visual consistency with the other DismissibleSheets.
+  jobSwitcherOverlay: { flex: 1, justifyContent: "flex-end" },
+  jobSwitcherSheet: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    padding: 28,
+    paddingBottom: 40,
+    // Absolute px (not "70%") because the sheet sits inside
+    // DismissibleSheet's GestureHandlerRootView wrapper, which is
+    // content-sized. A % maxHeight against it would resolve to 0 / clip
+    // content — same fix we applied to MatchesView's modalContent.
+    maxHeight: SCREEN_HEIGHT * 0.7,
+  },
+  jobSwitcherSheetTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.3,
+    marginTop: 4,
+  },
+  jobSwitcherSheetSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666",
+    lineHeight: 20,
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  jobSwitcherRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    backgroundColor: "#FFF",
+    marginBottom: 8,
+  },
+  // Subtle active state — black border (no fill) so the row reads as
+  // "currently selected" without competing with content underneath.
+  jobSwitcherRowActive: {
+    borderColor: "#000",
+    borderWidth: 2,
+  },
+  jobSwitcherRowTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+  },
+  jobSwitcherRowCompany: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#666",
+    marginTop: 2,
+  },
 
   // Modal Styles
   modalHeader: {

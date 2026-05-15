@@ -353,16 +353,18 @@ export function JobsView() {
     const initMyJobs = async () => {
       try {
         const response = await getMyJobs();
-        // Populate sponsoredJobs for green border tracking in browse tab
+        // Populate sponsoredJobs (powers green-border tracking in browse
+        // AND the role-switcher dropdown on HomeView). All sponsored jobs
+        // are added — manually-created ones (no REFERENCE_JOB_ID) get an
+        // empty atsJobId, which is fine for the dropdown and harmless for
+        // the green-border logic (empty atsJobId won't match any browse row).
         response.jobs.forEach((j: any) => {
-          if (j.REFERENCE_JOB_ID) {
-            addSponsoredJob({
-              jobId: String(j.JOB_ID),
-              atsJobId: String(j.REFERENCE_JOB_ID),
-              title: j.TITLE || "",
-              company: j.COMPANY || "",
-            });
-          }
+          addSponsoredJob({
+            jobId: String(j.JOB_ID),
+            atsJobId: j.REFERENCE_JOB_ID ? String(j.REFERENCE_JOB_ID) : "",
+            title: j.TITLE || "",
+            company: j.COMPANY || "",
+          });
         });
         // Also transform and store as myJobs so the badge count is correct immediately
         const transformed: Job[] = response.jobs.map((j: any) => ({
@@ -1925,10 +1927,10 @@ export function JobsView() {
                 <View style={styles.jobSection}>
                   <Text style={styles.jobSectionTitle}>Required Skills</Text>
                   {(viewJobDetails.skills || []).length > 0 ? (
-                    <View style={styles.skillsContainer}>
+                    <View style={styles.jobModalSkillsRow}>
                       {viewJobDetails.skills.map((skill, i) => (
-                        <View key={i} style={styles.skillChip}>
-                          <Text style={styles.skillText}>{skill}</Text>
+                        <View key={i} style={styles.jobModalSkillChip}>
+                          <Text style={styles.jobModalSkillText}>{skill}</Text>
                         </View>
                       ))}
                     </View>
@@ -3307,6 +3309,25 @@ const styles = StyleSheet.create({
     color: "#AAA",
     fontStyle: "italic",
     fontWeight: "500" as const,
+  },
+  jobModalSkillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  jobModalSkillChip: {
+    backgroundColor: "#F8F9FB",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  jobModalSkillText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+    letterSpacing: 0.2,
   },
   benefitRow: {
     flexDirection: "row",

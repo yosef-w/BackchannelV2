@@ -11,7 +11,11 @@ interface JobsState {
   // Sponsored jobs tracking (for sponsors)
   sponsoredJobs: Array<{
     jobId: string; // JOB_POSTINGS ID (from backend response)
-    atsJobId: string; // Original ATS/SILVER_JOBS ID
+    // Original ATS/SILVER_JOBS ID — empty for manually-created jobs that
+    // weren't sponsored from an ATS listing (they're still real sponsored
+    // jobs the sponsor owns; they just don't have an ATS reference to track
+    // against the browse list for green-border display).
+    atsJobId: string;
     title: string;
     company: string;
   }>;
@@ -82,11 +86,24 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   setError: (error) => set({ error, isLoading: false }),
 
   // Sponsored jobs actions
+  // Dedupe by jobId — HomeView's bootstrap and JobsView's initMyJobs both
+  // call this for the same response, and a render that maps over the array
+  // (e.g. the job switcher dropdown) would throw on duplicate React keys.
+  // We still re-set activeSponsoredJobId so the "last sponsored becomes
+  // active" behavior is preserved when the same job is added more than once.
   addSponsoredJob: (job) =>
-    set((state) => ({
-      sponsoredJobs: [...state.sponsoredJobs, job],
-      activeSponsoredJobId: job.jobId, // Set as active when sponsored
-    })),
+    set((state) => {
+      const alreadyPresent = state.sponsoredJobs.some(
+        (sj) => sj.jobId === job.jobId,
+      );
+      if (alreadyPresent) {
+        return { activeSponsoredJobId: job.jobId };
+      }
+      return {
+        sponsoredJobs: [...state.sponsoredJobs, job],
+        activeSponsoredJobId: job.jobId,
+      };
+    }),
 
   setActiveSponsoredJobId: (jobId) => set({ activeSponsoredJobId: jobId }),
 

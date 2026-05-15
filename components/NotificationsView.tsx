@@ -12,7 +12,13 @@ import {
     Trash2,
     UserPlus,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import {
     ActivityIndicator,
     Image,
@@ -101,8 +107,19 @@ const NOTIFICATION_CONFIG: Record<
 
 const DEFAULT_CONFIG = { Icon: Bell, accent: "#000" };
 
+/** Normalize a backend ISO string to UTC by appending 'Z' when no timezone
+ * offset is present. Without this, JS treats the string as local time, which
+ * makes timestamps from UTC backends appear hours in the future for users
+ * behind UTC and produces negative diffs (e.g. "-1d ago"). */
+function normalizeToUtc(s: string): string {
+  const t = s.trim();
+  return /Z$/i.test(t) || /[+-]\d{2}:?\d{2}$/.test(t) ? s : `${s}Z`;
+}
+
 function formatRelativeTime(isoString: string): string {
-  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMs = Date.now() - new Date(normalizeToUtc(isoString)).getTime();
+  // Guard against clock skew / future timestamps.
+  if (diffMs < 0) return "Just now";
   const diffMins = Math.floor(diffMs / 60_000);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
@@ -110,7 +127,7 @@ function formatRelativeTime(isoString: string): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return new Date(isoString).toLocaleDateString("en-US", {
+  return new Date(normalizeToUtc(isoString)).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
@@ -125,7 +142,7 @@ const SECTION_LABELS: Record<SectionKey, string> = {
 };
 
 function bucketForDate(iso: string): SectionKey {
-  const created = new Date(iso);
+  const created = new Date(normalizeToUtc(iso));
   const now = new Date();
 
   const startOfToday = new Date(
@@ -211,9 +228,7 @@ export function NotificationsView({
         if (fresh.length === 0) return;
         setNotifications((prev) => {
           const seen = new Set(prev.map((n) => n.NOTIFICATION_ID));
-          const newOnes = fresh.filter(
-            (n) => !seen.has(n.NOTIFICATION_ID),
-          );
+          const newOnes = fresh.filter((n) => !seen.has(n.NOTIFICATION_ID));
           return newOnes.length > 0 ? [...newOnes, ...prev] : prev;
         });
       } catch {
@@ -425,10 +440,7 @@ export function NotificationsView({
             activeOpacity={0.7}
           >
             <Text
-              style={[
-                styles.markAllRead,
-                isMarkingAll && { opacity: 0.4 },
-              ]}
+              style={[styles.markAllRead, isMarkingAll && { opacity: 0.4 }]}
             >
               {isMarkingAll ? "Marking…" : "Mark all"}
             </Text>
@@ -440,10 +452,7 @@ export function NotificationsView({
             activeOpacity={0.7}
           >
             <Text
-              style={[
-                styles.markAllRead,
-                isClearingRead && { opacity: 0.4 },
-              ]}
+              style={[styles.markAllRead, isClearingRead && { opacity: 0.4 }]}
             >
               {isClearingRead ? "Clearing…" : "Clear read"}
             </Text>

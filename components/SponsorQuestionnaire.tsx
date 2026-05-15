@@ -98,7 +98,7 @@ const questions = [
     id: 5,
     question: "Have you given professional referrals in the past?",
     type: "select",
-    options: ["Frequently", "A few times", "Never yet"],
+    options: ["Frequently", "A few times", "Not yet"],
   },
   {
     id: 6,
@@ -560,13 +560,13 @@ export function SponsorQuestionnaire({
                 entering={FadeInDown.delay(400)}
                 style={styles.successTitle}
               >
-                Verified & Ready
+                Profile Complete
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.delay(600)}
                 style={styles.successSub}
               >
-                Your professional profile is live. Welcome to the network.
+                Your sponsor account is ready. Welcome to the network.
               </Animated.Text>
             </View>
           </BlurView>

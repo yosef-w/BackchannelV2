@@ -3,74 +3,75 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-    AlertCircle,
-    Briefcase,
-    Camera,
-    Check,
-    CheckCircle2,
-    ChevronRight,
-    Edit,
-    FileText,
-    GraduationCap,
-    ImageIcon,
-    Lock,
-    LogOut,
-    MapPin,
-    Plus,
-    RefreshCw,
-    Target,
-    Trash2,
-    Upload,
-    X,
-    Zap,
+  AlertCircle,
+  Briefcase,
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Edit,
+  FileText,
+  GraduationCap,
+  ImageIcon,
+  Lock,
+  LogOut,
+  MapPin,
+  Plus,
+  RefreshCw,
+  Target,
+  Trash2,
+  Upload,
+  X,
+  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY, PREMIUM_ENABLED } from "../constants/config";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
-    resetUser,
-    trackAccountDeleted,
-    trackLogout,
-    trackPrivacyPolicyTapped,
-    trackProfileEditOpened,
-    trackProfileFieldUpdated,
-    trackProfilePhotoUploaded,
-    trackResumeReuploaded,
-    trackTermsTapped,
+  resetUser,
+  trackAccountDeleted,
+  trackLogout,
+  trackPrivacyPolicyTapped,
+  trackProfileEditOpened,
+  trackProfileFieldUpdated,
+  trackProfilePhotoUploaded,
+  trackResumeReuploaded,
+  trackTermsTapped,
 } from "../lib/analytics/mixpanel";
 import {
-    changePassword,
-    classifyResume,
-    deactivateAccount,
-    getExtractedResumeText,
-    logout,
-    unregisterDevice,
-    updateApplicantProfile,
-    updateGeneralProfile,
-    updateSponsorProfile,
-    uploadAndParseResume,
-    uploadProfileImage,
+  changeEmail,
+  changePassword,
+  classifyResume,
+  deactivateAccount,
+  getExtractedResumeText,
+  logout,
+  unregisterDevice,
+  updateApplicantProfile,
+  updateGeneralProfile,
+  updateSponsorProfile,
+  uploadAndParseResume,
+  uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useJobsStore } from "../stores/useJobsStore";
@@ -78,9 +79,9 @@ import { useOnboardingStore } from "../stores/useOnboardingStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import {
-    EducationEntry,
-    ProfessionalExperience,
-    useUserProfileStore,
+  EducationEntry,
+  ProfessionalExperience,
+  useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
@@ -146,6 +147,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const clearOnboarding = useOnboardingStore((state) => state.clearProfile);
   const deviceToken = useAuthStore((state) => state.deviceToken);
   const clearUserProfileData = useUserProfileStore((state) => state.clearData);
+  const pendingWorkEmail = useUserProfileStore(
+    (state) => state.pendingWorkEmail,
+  );
   const rcReset = useSubscriptionStore((state) => state.reset);
   const isPremium = useSubscriptionStore((state) => state.isPremium);
   const presentPaywall = useSubscriptionStore((state) => state.presentPaywall);
@@ -195,6 +199,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [showEmailChange, setShowEmailChange] = useState(false);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
 
@@ -219,6 +224,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  // Email change modal state
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailChanging, setEmailChanging] = useState(false);
+
   // Editable profile state
   const [name, setName] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -227,6 +238,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [company, setCompany] = useState("");
   const [location, setLocation] = useState("");
   const [email, setEmail] = useState("");
+  const [workEmail, setWorkEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState("");
@@ -358,6 +370,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
           `${userProfileData.personal.firstName} ${userProfileData.personal.lastName}`.trim(),
       );
       setEmail(userProfileData.personal.email);
+      // Prefer pendingWorkEmail (set when sponsor edits in the verification
+      // modal) so the display stays current even before backend confirmation.
+      setWorkEmail(
+        userProfileData.personal.workEmail || pendingWorkEmail || "",
+      );
       setPhone(userProfileData.personal.phone);
       setProfileImage(userProfileData.personal.profileImage || null);
       setPortfolio(userProfileData.personal.portfolio);
@@ -780,6 +797,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
             },
           });
           await updateGeneralProfile({ country: tempValue });
+          break;
+        case "workEmail":
+          // workEmail is now read-only in the editor — managed via onboarding.
           break;
       }
       setEditingField(null);
@@ -1540,6 +1560,43 @@ export function ProfileView({ userType }: ProfileViewProps) {
     );
   };
 
+  const handleEmailChange = async () => {
+    setEmailError("");
+    if (!newEmail || !emailPassword) {
+      setEmailError("New email and current password are required");
+      return;
+    }
+    // Basic email format check
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+    setEmailChanging(true);
+    try {
+      await changeEmail(newEmail.trim(), emailPassword);
+      setEmail(newEmail.trim());
+      await updatePersonal({ email: newEmail.trim() });
+      setNewEmail("");
+      setEmailPassword("");
+      setShowEmailChange(false);
+      showToast("Email updated successfully.", "success");
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (
+        msg.includes("501") ||
+        msg.toLowerCase().includes("not yet implemented")
+      ) {
+        setEmailError(
+          "Email changes aren't available yet. Please contact support.",
+        );
+      } else {
+        setEmailError(msg || "Failed to update email. Please try again.");
+      }
+    } finally {
+      setEmailChanging(false);
+    }
+  };
+
   const handlePasswordChange = async () => {
     setPasswordError("");
 
@@ -1688,9 +1745,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const formatRelativeTime = (isoString: string): string => {
-    const date = new Date(isoString);
+    // Normalize to UTC: backends often omit the timezone suffix, causing JS to
+    // parse as local time and producing negative diffs for users behind UTC.
+    const t = isoString.trim();
+    const normalized =
+      /Z$/i.test(t) || /[+-]\d{2}:?\d{2}$/.test(t)
+        ? isoString
+        : `${isoString}Z`;
+    const date = new Date(normalized);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
+    // Guard against clock skew / future timestamps.
+    if (diffMs < 0) return "just now";
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return "just now";
     if (diffMins < 60) return `${diffMins}m ago`;
@@ -3189,27 +3255,55 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
               )}
 
-              {/* Email — read-only (tied to auth account, requires dedicated change-email flow) */}
+              {/* Email — tap to open change-email modal */}
               <View style={styles.editField}>
                 <View style={styles.fieldLabelRow}>
                   <Text style={styles.fieldLabel}>EMAIL</Text>
                 </View>
-                <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
-                  <Text style={styles.fieldText}>{email}</Text>
-                  <Lock color="#999" size={16} />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: "#999",
-                    marginTop: 4,
-                    fontStyle: "italic",
+                <TouchableOpacity
+                  style={styles.fieldDisplay}
+                  onPress={() => {
+                    setNewEmail("");
+                    setEmailPassword("");
+                    setEmailError("");
+                    setShowEmailChange(true);
                   }}
                 >
-                  Email cannot be changed here. Contact support to update your
-                  email.
-                </Text>
+                  <Text style={styles.fieldText}>{email}</Text>
+                  <Edit color="#666" size={16} />
+                </TouchableOpacity>
               </View>
+
+              {/* Work Email — sponsor only, read-only (set via questionnaire / onboarding) */}
+              {userType === "sponsor" && (
+                <View style={styles.editField}>
+                  <View style={styles.fieldLabelRow}>
+                    <Text style={styles.fieldLabel}>WORK EMAIL</Text>
+                  </View>
+                  <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
+                    <Text
+                      style={[
+                        styles.fieldText,
+                        !workEmail && { color: "#999", fontStyle: "italic" },
+                      ]}
+                    >
+                      {workEmail || "Not set"}
+                    </Text>
+                    <Lock color="#999" size={16} />
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: "#999",
+                      marginTop: 4,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Your corporate email — helps verify your employer. Cannot be
+                    changed here. Contact support to update it.
+                  </Text>
+                </View>
+              )}
 
               {/* Phone */}
               <View style={styles.editField}>
@@ -4373,6 +4467,113 @@ export function ProfileView({ userType }: ProfileViewProps) {
       </SimpleModal>
 
       {/* PASSWORD CHANGE MODAL */}
+      <Modal visible={showEmailChange} transparent animationType="fade">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowEmailChange(false)}
+          >
+            <BlurView
+              intensity={60}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <Animated.View
+            entering={SlideInDown}
+            exiting={SlideOutDown}
+            style={styles.modalContent}
+            pointerEvents="auto"
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Change Email</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowEmailChange(false);
+                  setEmailError("");
+                  setNewEmail("");
+                  setEmailPassword("");
+                }}
+              >
+                <X color="#000" size={24} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Enter your new email address and current password to confirm.
+            </Text>
+
+            <View style={{ gap: 20 }}>
+              {/* New Email */}
+              <View>
+                <Text style={styles.fieldLabel}>NEW EMAIL</Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Enter new email address"
+                    placeholderTextColor="#BBB"
+                    value={newEmail}
+                    onChangeText={setNewEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+
+              {/* Current Password */}
+              <View>
+                <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
+                <View style={styles.passwordInputWrapper}>
+                  <Lock color="#AAA" size={18} />
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Enter current password"
+                    placeholderTextColor="#BBB"
+                    value={emailPassword}
+                    onChangeText={setEmailPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
+
+              {/* Error */}
+              {emailError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{emailError}</Text>
+                </View>
+              ) : null}
+
+              {/* Submit */}
+              <TouchableOpacity
+                style={[
+                  styles.blackBtn,
+                  {
+                    width: "100%",
+                    justifyContent: "center",
+                    borderWidth: 0,
+                    marginTop: 8,
+                    opacity: emailChanging ? 0.6 : 1,
+                  },
+                ]}
+                onPress={handleEmailChange}
+                disabled={emailChanging}
+              >
+                <Text style={styles.blackBtnText}>
+                  {emailChanging ? "Updating..." : "Update Email"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <Modal visible={showPasswordChange} transparent animationType="fade">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}

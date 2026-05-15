@@ -148,11 +148,21 @@ interface UserProfileStore {
   workEmailVerified: boolean;
   setWorkEmailVerified: (verified: boolean) => void;
 
+  // Sponsor's pending (unverified) work email — what they typed into the
+  // "Update it" flow on the verification modal but haven't yet confirmed via
+  // the emailed link. Persists across mount/unmount and app launches so the
+  // modal always reflects the latest address the user submitted, even after
+  // navigating away. Cleared once fetchFromBackend sees the backend has
+  // accepted the same address as verified.
+  pendingWorkEmail: string | null;
+  setPendingWorkEmail: (email: string | null) => Promise<void>;
+
   loadFromStorage: () => Promise<void>;
   clearData: () => Promise<void>;
 }
 
 const STORAGE_KEY = "autofill_data";
+const PENDING_WORK_EMAIL_KEY = "pending_work_email";
 
 const defaultData: AutofillData = {
   personal: {
@@ -224,6 +234,20 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   needsSync: false,
   workEmailVerified: false,
   setWorkEmailVerified: (verified) => set({ workEmailVerified: verified }),
+
+  pendingWorkEmail: null,
+  setPendingWorkEmail: async (email) => {
+    set({ pendingWorkEmail: email });
+    try {
+      if (email) {
+        await AsyncStorage.setItem(PENDING_WORK_EMAIL_KEY, email);
+      } else {
+        await AsyncStorage.removeItem(PENDING_WORK_EMAIL_KEY);
+      }
+    } catch (error) {
+      console.warn("Failed to persist pending work email:", error);
+    }
+  },
 
   updatePersonal: async (updates) => {
     const newData = { ...get().data };
@@ -833,7 +857,29 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // the HomeView gate only checks this flag for sponsors.
       const workEmailVerifiedRaw = (profile as any).sponsor_profile
         ?.WORK_EMAIL_VERIFIED;
-      set({ workEmailVerified: workEmailVerifiedRaw === true });
+      const isVerified = workEmailVerifiedRaw === true;
+      set({ workEmailVerified: isVerified });
+
+      // Clear pendingWorkEmail only when the backend has confirmed the same
+      // address — otherwise keep it so the modal continues to reflect the
+      // user's last submitted address. If the user updated to "B" but the
+      // backend still shows verified "A", we should keep "B" pending.
+      const backendWorkEmail =
+        ((profile as any).sponsor_profile?.WORK_EMAIL as string | undefined) ||
+        "";
+      const { pendingWorkEmail } = get();
+      if (
+        pendingWorkEmail &&
+        isVerified &&
+        backendWorkEmail.toLowerCase() === pendingWorkEmail.toLowerCase()
+      ) {
+        set({ pendingWorkEmail: null });
+        try {
+          await AsyncStorage.removeItem(PENDING_WORK_EMAIL_KEY);
+        } catch (error) {
+          console.warn("Failed to clear pending work email:", error);
+        }
+      }
 
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(autofillData));
@@ -848,10 +894,24 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
   loadFromStorage: async () => {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const [stored, storedPending] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(PENDING_WORK_EMAIL_KEY),
+      ]);
+      const patch: Partial<{
+        data: AutofillData;
+        isLoaded: boolean;
+        pendingWorkEmail: string | null;
+      }> = {};
       if (stored) {
-        const data = JSON.parse(stored);
-        set({ data, isLoaded: true });
+        patch.data = JSON.parse(stored);
+        patch.isLoaded = true;
+      }
+      if (storedPending) {
+        patch.pendingWorkEmail = storedPending;
+      }
+      if (Object.keys(patch).length > 0) {
+        set(patch);
       }
     } catch (error) {
       console.warn("Failed to load autofill data:", error);
@@ -860,7 +920,10 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
   clearData: async () => {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEY),
+        AsyncStorage.removeItem(PENDING_WORK_EMAIL_KEY),
+      ]);
     } catch (error) {
       console.warn("Failed to clear autofill data:", error);
     }
@@ -873,6 +936,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       syncError: null,
       needsSync: false,
       workEmailVerified: false,
+      pendingWorkEmail: null,
     });
   },
 }));

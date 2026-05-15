@@ -272,6 +272,17 @@ export async function browseJobs(filters?: {
 }
 
 /**
+ * 🔍 Get Job Detail (Silver Job)
+ * Retrieves full details for a single ATS/silver job by ID.
+ * Used by the sponsor-request flow so a sponsor can review the role
+ * before agreeing to sponsor.
+ * Uses GET /api/jobs/silver/<job_id>/
+ */
+export async function getJobDetail(jobId: string): Promise<any> {
+  return api.get<any>(`/api/jobs/silver/${jobId}/`);
+}
+
+/**
  * ⚡ Sponsor a Job
  * Sponsor an ATS job (creates a JOB_POSTINGS entry)
  *
@@ -474,7 +485,13 @@ export async function getInterestedSponsors(): Promise<
     SPONSOR_PHOTO_URL: string | null;
     SPONSOR_JOB_TITLE: string | null;
     SPONSOR_COMPANY: string | null;
+    // JOB_ID is the role the sponsor liked the applicant FOR (sponsors can
+    // toggle which sponsored role the deck represents via the job-switcher
+    // on HomeView). JOB_TITLE/JOB_COMPANY arrive once BACKEND_CHANGES_NEEDED.md
+    // §4 ships — until then they may be missing.
     JOB_ID?: string;
+    JOB_TITLE?: string | null;
+    JOB_COMPANY?: string | null;
   }>
 > {
   return api.get("/api/likes/profiles/received/");
@@ -1321,6 +1338,24 @@ export async function uploadAndParseResume(
 // ============================================================
 // 🔐 AUTH — ACCOUNT MANAGEMENT
 // ============================================================
+
+/**
+ * 🔐 Change Email
+ * Request an email address change for the authenticated user.
+ * Uses POST /api/auth/change-email/
+ *
+ * Backend requires both new_email and password for security.
+ * Returns 501 until the backend verification flow is implemented.
+ */
+export async function changeEmail(
+  newEmail: string,
+  password: string,
+): Promise<{ message: string }> {
+  return api.post("/api/auth/change-email/", {
+    new_email: newEmail,
+    password,
+  });
+}
 
 /**
  * 🔐 Change Password

@@ -5,6 +5,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import {
   getInterestedSponsors,
+  getJobDetail,
   getLikedJobs,
   getMatches,
   getNotifications,
@@ -27,6 +28,8 @@ import {
   Briefcase,
   Check,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   DollarSign,
   Heart,
@@ -168,7 +171,14 @@ interface InterestedSponsor {
   role: string;
   company: string;
   image: string;
+  // The role the sponsor liked the applicant FOR — distinct from `role` /
+  // `company` (which describe the sponsor's own job/employer). Empty strings
+  // when the backend hasn't yet wired §4 of BACKEND_CHANGES_NEEDED.md (or
+  // for legacy profile-likes that pre-date the JOB_ID-carrying change). UI
+  // renders the role-context line only when both are present.
   jobId?: string;
+  jobTitle: string;
+  jobCompany: string;
 }
 
 interface WaitlistedJob {
@@ -193,11 +203,40 @@ const QUICK_REPLIES = [
   "Impressive skills!",
 ];
 
+/** Parse a skills field that may be a JSON array string or comma-separated. */
+function parseSkillsField(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed))
+        return parsed.map((s: unknown) => String(s).trim()).filter(Boolean);
+    } catch {}
+  }
+  return trimmed
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 const getRelativeTime = (dateStr: string): string => {
   if (!dateStr) return "";
   const now = new Date();
-  const date = new Date(dateStr);
+  // Backends often return ISO strings without a timezone suffix (e.g.
+  // "2026-05-15T14:30:00"). Without a marker JS parses them as *local* time,
+  // which makes the diff negative for users behind UTC and produces nonsense
+  // like "-1d ago". Append 'Z' to force UTC interpretation when no offset is
+  // present.
+  const hasTimezone =
+    /Z$/i.test(dateStr.trim()) || /[+-]\d{2}:?\d{2}$/.test(dateStr.trim());
+  const normalized = hasTimezone ? dateStr : `${dateStr}Z`;
+  const date = new Date(normalized);
+  if (isNaN(date.getTime())) return "";
   const diffMs = now.getTime() - date.getTime();
+  // Guard against minor clock skew or future timestamps — anything within the
+  // same day should just read "Today" rather than a negative value.
+  if (diffMs < 0) return "Today";
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
@@ -257,6 +296,12 @@ export function MatchesView({
   const [selectedSponsorRequest, setSelectedSponsorRequest] =
     useState<SponsorRequest | null>(null);
   const [isConnectingToApplicant, setIsConnectingToApplicant] = useState(false);
+
+  // ── Sponsor-request job detail (full role data fetched on tap) ────────
+  const [srJobDetailVisible, setSrJobDetailVisible] = useState(false);
+  const [srJobDetailLoading, setSrJobDetailLoading] = useState(false);
+  const [srJobDetailError, setSrJobDetailError] = useState<string | null>(null);
+  const [srJobDetail, setSrJobDetail] = useState<any>(null);
 
   // ── Sponsor-request multi-step flow state ──────────────────────────────
   // Step 1 = overview, 2 = confirm (relationship + canRefer), 3 = insights, 4 = success
@@ -528,6 +573,12 @@ export function MatchesView({
             company: s.SPONSOR_COMPANY || "",
             image: s.SPONSOR_PHOTO_URL || "",
             jobId: s.JOB_ID || "",
+            // Job context (§4 in BACKEND_CHANGES_NEEDED.md). Lights up the
+            // role-line UI below once the backend persists JOB_ID on
+            // profile-likes and the received-likes query exposes the
+            // joined job's title/company.
+            jobTitle: s.JOB_TITLE || "",
+            jobCompany: s.JOB_COMPANY || "",
           })),
         );
       } catch (err) {
@@ -714,6 +765,25 @@ export function MatchesView({
     }
   };
 
+  /** Fetch full role detail for the currently selected sponsor request. */
+  const openSrJobDetail = async () => {
+    if (!selectedSponsorRequest?.jobId) return;
+    setSrJobDetailVisible(true);
+    setSrJobDetailLoading(true);
+    setSrJobDetailError(null);
+    setSrJobDetail(null);
+    try {
+      const detail = await getJobDetail(selectedSponsorRequest.jobId);
+      setSrJobDetail(detail);
+    } catch (err) {
+      setSrJobDetailError(
+        err instanceof Error ? err.message : "Failed to load role details",
+      );
+    } finally {
+      setSrJobDetailLoading(false);
+    }
+  };
+
   const closeAllModals = () => {
     setSelectedProfile(null);
     setSelectedJob(null);
@@ -721,6 +791,9 @@ export function MatchesView({
     setInterestedSponsorProfile(null);
     setSelectedWaitlistedJob(null);
     setSelectedSponsorRequest(null);
+    setSrJobDetailVisible(false);
+    setSrJobDetail(null);
+    setSrJobDetailError(null);
     // Reset sponsor-request flow state
     setSrStep(1);
     setSrRelationship(null);
@@ -1723,6 +1796,20 @@ export function MatchesView({
                             {sponsor.company}
                           </Text>
                         )}
+                        {/* Role the sponsor liked the applicant FOR. Hidden
+                            until backend §4 ships JOB_TITLE / JOB_COMPANY. */}
+                        {!!(sponsor.jobTitle || sponsor.jobCompany) && (
+                          <Text
+                            style={styles.interestedSponsorJobContext}
+                            numberOfLines={1}
+                          >
+                            Wants you for {sponsor.jobTitle}
+                            {sponsor.jobTitle && sponsor.jobCompany
+                              ? " · "
+                              : ""}
+                            {sponsor.jobCompany}
+                          </Text>
+                        )}
                         {!!sponsor.likedAt && (
                           <View style={styles.interestedSponsorTimestamp}>
                             <Heart size={10} color="#E53E3E" />
@@ -2461,6 +2548,32 @@ export function MatchesView({
                             </View>
                           </View>
 
+                          {/* Role the sponsor liked the applicant FOR. Pill
+                              sits under the sponsor identity. Hidden until
+                              backend §4 ships JOB_TITLE / JOB_COMPANY on
+                              received-likes. */}
+                          {!!(
+                            selectedInterestedSponsor.jobTitle ||
+                            selectedInterestedSponsor.jobCompany
+                          ) && (
+                            <View style={styles.likedForPill}>
+                              <Text style={styles.likedForLabel}>
+                                WANTS YOU FOR
+                              </Text>
+                              <Text
+                                style={styles.likedForValue}
+                                numberOfLines={2}
+                              >
+                                {selectedInterestedSponsor.jobTitle}
+                                {selectedInterestedSponsor.jobTitle &&
+                                selectedInterestedSponsor.jobCompany
+                                  ? " · "
+                                  : ""}
+                                {selectedInterestedSponsor.jobCompany}
+                              </Text>
+                            </View>
+                          )}
+
                           {/* Location */}
                           {!!interestedSponsorProfile?.LOCATION && (
                             <View
@@ -2913,12 +3026,16 @@ export function MatchesView({
                           {selectedSponsorRequest.applicantName}
                         </Text>
                         <Text style={styles.srOverviewSub}>
-                          is asking you to sponsor this role for them
+                          is requesting your sponsorship for this role
                         </Text>
                       </View>
 
-                      {/* Job context card */}
-                      <View style={styles.sponsorRequestJobCard}>
+                      {/* Job context card — tappable to review the full role */}
+                      <TouchableOpacity
+                        style={styles.sponsorRequestJobCard}
+                        onPress={openSrJobDetail}
+                        activeOpacity={0.75}
+                      >
                         <View style={styles.sponsorRequestJobIconCircle}>
                           <Briefcase color="#FFF" size={18} strokeWidth={2.2} />
                         </View>
@@ -2937,21 +3054,28 @@ export function MatchesView({
                               {selectedSponsorRequest.jobCompany}
                             </Text>
                           )}
+                          <Text style={styles.srJobCardTapHint}>
+                            Tap to review this role
+                          </Text>
                         </View>
-                      </View>
+                        <ChevronRight color="#CCC" size={18} />
+                      </TouchableOpacity>
 
                       {/* What happens callout */}
                       <View style={[styles.srCallout, { marginTop: 20 }]}>
                         <Text style={styles.srCalloutTitle}>
-                          💡 How this works
+                          How This Works
                         </Text>
                         <Text style={styles.srCalloutText}>
-                          Sponsoring this role puts your name behind the job and
-                          gives{" "}
-                          {selectedSponsorRequest.applicantName.split(" ")[0]}{" "}
-                          your insider perspective. Once you sponsor, they'll
-                          see you under "Wants to Connect With You" and can
-                          message you directly.
+                          By sponsoring this role, you're putting your
+                          professional backing behind{" "}
+                          {selectedSponsorRequest.applicantName.split(" ")[0]}
+                          's application. Once you do,{" "}
+                          {
+                            selectedSponsorRequest.applicantName.split(" ")[0]
+                          }{" "}
+                          will be able to connect with you directly — opening
+                          the door to communicate and provide a referral.
                         </Text>
                       </View>
 
@@ -3232,6 +3356,196 @@ export function MatchesView({
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Sponsor-Request Job Detail Modal — full role data before committing to sponsor */}
+      <Modal visible={srJobDetailVisible} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setSrJobDetailVisible(false)}
+          >
+            <BlurView
+              intensity={30}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <DismissibleSheet
+            onDismiss={() => setSrJobDetailVisible(false)}
+            style={styles.modalContent}
+          >
+            {/* Header row — back to request */}
+            <TouchableOpacity
+              style={styles.srJobDetailBackRow}
+              onPress={() => setSrJobDetailVisible(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <ChevronLeft size={18} color="#000" />
+              <Text style={styles.srJobDetailBackText}>Back to Request</Text>
+            </TouchableOpacity>
+
+            {srJobDetailLoading ? (
+              <View style={styles.interestedLoadingContainer}>
+                <ActivityIndicator size="large" color="#000" />
+                <Text style={styles.interestedLoadingText}>
+                  Loading role details…
+                </Text>
+              </View>
+            ) : srJobDetailError ? (
+              <View style={styles.interestedLoadingContainer}>
+                <AlertTriangle size={32} color="#E53E3E" />
+                <Text style={styles.srJobDetailErrorTitle}>
+                  Could not load role details
+                </Text>
+                <Text style={styles.srJobDetailErrorSub}>
+                  {srJobDetailError}
+                </Text>
+              </View>
+            ) : srJobDetail ? (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: 8 }}
+              >
+                {/* Hero — company initial, title, company, location */}
+                <View style={styles.jobModalHero}>
+                  <View style={styles.jobModalHeroInitial}>
+                    <Text style={styles.jobModalHeroInitialText}>
+                      {(srJobDetail.ORGANIZATION || "?")[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.jobModalHeroTitle}>
+                    {srJobDetail.TITLE}
+                  </Text>
+                  <Text style={styles.jobModalHeroCompany}>
+                    {srJobDetail.ORGANIZATION}
+                  </Text>
+                  {!!srJobDetail.FULL_LOCATION && (
+                    <View style={styles.jobModalLocationRow}>
+                      <MapPin size={13} color="#999" />
+                      <Text style={styles.jobModalLocationText}>
+                        {srJobDetail.FULL_LOCATION}
+                      </Text>
+                      {srJobDetail.IS_REMOTE && (
+                        <View style={styles.jobRemoteBadge}>
+                          <Text style={styles.jobRemoteText}>Remote</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Compensation + experience strip */}
+                {(srJobDetail.SALARY_ANNUAL_MIN ||
+                  srJobDetail.EXPERIENCE_LEVEL) && (
+                  <View style={styles.jobModalCompStrip}>
+                    {!!(
+                      srJobDetail.SALARY_ANNUAL_MIN &&
+                      srJobDetail.SALARY_ANNUAL_MAX
+                    ) && (
+                      <View style={styles.jobModalCompCell}>
+                        <DollarSign size={14} color="#555" />
+                        <View>
+                          <Text style={styles.jobModalCompLabel}>SALARY</Text>
+                          <Text style={styles.jobModalCompValue}>
+                            {`$${Math.round(srJobDetail.SALARY_ANNUAL_MIN / 1000)}k – $${Math.round(srJobDetail.SALARY_ANNUAL_MAX / 1000)}k`}
+                            {srJobDetail.SALARY_CURRENCY &&
+                            srJobDetail.SALARY_CURRENCY !== "USD"
+                              ? ` ${srJobDetail.SALARY_CURRENCY}`
+                              : ""}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                    {!!srJobDetail.EXPERIENCE_LEVEL && (
+                      <View
+                        style={[
+                          styles.jobModalCompCell,
+                          srJobDetail.SALARY_ANNUAL_MIN &&
+                            styles.jobModalCompCellBorder,
+                        ]}
+                      >
+                        <Briefcase size={14} color="#555" />
+                        <View>
+                          <Text style={styles.jobModalCompLabel}>
+                            EXPERIENCE
+                          </Text>
+                          <Text style={styles.jobModalCompValue}>
+                            {srJobDetail.EXPERIENCE_LEVEL}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Role details — employment type + remote chip */}
+                {!!(srJobDetail.EMPLOYMENT_TYPES || srJobDetail.IS_REMOTE) && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Info size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Role Details
+                      </Text>
+                    </View>
+                    <View style={styles.skillsRow}>
+                      {!!srJobDetail.EMPLOYMENT_TYPES && (
+                        <View style={styles.roleDetailChip}>
+                          <Text style={styles.roleDetailChipText}>
+                            {srJobDetail.EMPLOYMENT_TYPES}
+                          </Text>
+                        </View>
+                      )}
+                      {srJobDetail.IS_REMOTE && (
+                        <View style={styles.roleDetailChip}>
+                          <MapPin size={13} color="#000" />
+                          <Text style={styles.roleDetailChipText}>Remote</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Required skills */}
+                {parseSkillsField(srJobDetail.SKILLS).length > 0 && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <TrendingUp size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Required Skills
+                      </Text>
+                    </View>
+                    <View style={styles.skillsRow}>
+                      {parseSkillsField(srJobDetail.SKILLS).map(
+                        (skill: string, idx: number) => (
+                          <View key={idx} style={styles.skillBadge}>
+                            <Text style={styles.skillBadgeText}>{skill}</Text>
+                          </View>
+                        ),
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Description */}
+                {!!srJobDetail.DESCRIPTION_TEXT && (
+                  <View style={styles.jobSection}>
+                    <Text style={styles.jobSectionTitle}>About the Role</Text>
+                    <Text style={styles.jobSectionText}>
+                      {srJobDetail.DESCRIPTION_TEXT}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            ) : null}
+          </DismissibleSheet>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Withdraw Referral Confirmation Modal */}
       <Modal
         visible={!!confirmingWithdrawReferral}
@@ -3502,6 +3816,14 @@ const styles = StyleSheet.create({
   interestedSponsorInfo: { flex: 1, gap: 2 },
   interestedSponsorName: { fontSize: 15, fontWeight: "700", color: "#000" },
   interestedSponsorRole: { fontSize: 12, color: "#888", fontWeight: "500" },
+  // "Wants you for X · Y" — tighter than the sponsor identity line, slight
+  // top spacing to separate it as its own piece of info.
+  interestedSponsorJobContext: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: "600",
+    marginTop: 4,
+  },
   interestedSponsorTimestamp: {
     flexDirection: "row",
     alignItems: "center",
@@ -3510,7 +3832,7 @@ const styles = StyleSheet.create({
   },
   interestedSponsorTimestampText: {
     fontSize: 11,
-    color: "#E53E3E",
+    color: "#888",
     fontWeight: "600",
   },
   interestedSponsorCta: {
@@ -3932,6 +4254,32 @@ const styles = StyleSheet.create({
   modalName: { fontSize: 20, fontWeight: "800" },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
+  // "Wants you for [role]" pill on the sponsor-profile modal. Sits below
+  // the sponsor identity row; muted gray to match the card's job-context
+  // styling. Stays hidden when the backend doesn't supply jobTitle/jobCompany.
+  likedForPill: {
+    backgroundColor: "#F8F9FB",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  likedForLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  likedForValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    lineHeight: 19,
+  },
   sponsorSubtitle: {
     fontSize: 14,
     color: "#666",
@@ -4822,6 +5170,38 @@ const styles = StyleSheet.create({
   srCalloutText: { fontSize: 14, color: "#555", lineHeight: 22 },
   srDismissBtn: { alignItems: "center", marginTop: 14, paddingVertical: 8 },
   srDismissBtnText: { fontSize: 14, color: "#999", fontWeight: "600" },
+  srJobCardTapHint: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#AAA",
+    marginTop: 6,
+    letterSpacing: 0.2,
+  },
+  srJobDetailBackRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+    marginBottom: 18,
+  },
+  srJobDetailBackText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+  },
+  srJobDetailErrorTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#E53E3E",
+    marginTop: 12,
+    textAlign: "center" as const,
+  },
+  srJobDetailErrorSub: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 4,
+    textAlign: "center" as const,
+    lineHeight: 19,
+  },
   srStepTitle: {
     fontSize: 22,
     fontWeight: "800",
