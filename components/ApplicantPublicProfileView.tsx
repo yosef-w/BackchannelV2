@@ -250,7 +250,15 @@ export function ApplicantPublicProfileView({
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
               <Briefcase size={15} color="#000" strokeWidth={2} />
-              <Text style={styles.sectionTitle}>PROFESSIONAL EXPERIENCE</Text>
+              {/* marginBottom override — the standalone sectionTitle has
+                  marginBottom:16 (needed when the label sits directly above
+                  content), but inside a flex row that bottom margin makes
+                  the text sit higher than the icon. The wrapping row's own
+                  marginBottom already handles the separation to the cards
+                  below. Same override applies to every resumeSectionHeader. */}
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                PROFESSIONAL EXPERIENCE
+              </Text>
             </View>
             {experiences.map((exp: any, idx: number) => (
               <View key={idx} style={styles.resumeCard}>
@@ -279,7 +287,9 @@ export function ApplicantPublicProfileView({
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
               <GraduationCap size={15} color="#000" strokeWidth={2} />
-              <Text style={styles.sectionTitle}>EDUCATION</Text>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                EDUCATION
+              </Text>
             </View>
             {educationEntries.map((edu: any, idx: number) => (
               <View key={idx} style={styles.resumeCard}>
@@ -308,7 +318,9 @@ export function ApplicantPublicProfileView({
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
               <Award size={15} color="#000" strokeWidth={2} />
-              <Text style={styles.sectionTitle}>CERTIFICATIONS</Text>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                CERTIFICATIONS
+              </Text>
             </View>
             <View style={styles.tagCloud}>
               {certifications.map((cert: any, idx: number) => (
@@ -331,7 +343,9 @@ export function ApplicantPublicProfileView({
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
               <Sparkles size={15} color="#000" strokeWidth={2} />
-              <Text style={styles.sectionTitle}>KEY INSIGHTS</Text>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                KEY INSIGHTS
+              </Text>
             </View>
             {insights.map(
               (insight: { question: string; answer: string }, idx: number) => (
@@ -349,7 +363,9 @@ export function ApplicantPublicProfileView({
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
               <Globe size={15} color="#000" strokeWidth={2} />
-              <Text style={styles.sectionTitle}>LANGUAGES</Text>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                LANGUAGES
+              </Text>
             </View>
             <View style={styles.tagCloud}>
               {languages.map((lang: any, idx: number) => (
@@ -369,7 +385,9 @@ export function ApplicantPublicProfileView({
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
               <Sparkles size={15} color="#000" strokeWidth={2} />
-              <Text style={styles.sectionTitle}>ACHIEVEMENTS & AWARDS</Text>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                ACHIEVEMENTS & AWARDS
+              </Text>
             </View>
             <View style={styles.achievementsCard}>
               <Text style={styles.achievementsText}>{achievements}</Text>

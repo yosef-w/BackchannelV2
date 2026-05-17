@@ -18,6 +18,12 @@ interface JobsState {
     atsJobId: string;
     title: string;
     company: string;
+    // Backend's LIKES_COUNT for this job (applicants in ACTIVE or MATCHED
+    // status). Drives both the HomeView role-switcher's smart default
+    // (open to the role with the highest count) and the count badges
+    // rendered in the picker sheet. Hydrated from getMyJobs(); freshly
+    // sponsored jobs default to 0.
+    likesCount?: number;
   }>;
   activeSponsoredJobId: string | null;
 
@@ -40,6 +46,7 @@ interface JobsState {
     atsJobId: string;
     title: string;
     company: string;
+    likesCount?: number;
   }) => void;
   setActiveSponsoredJobId: (jobId: string | null) => void;
 
@@ -88,20 +95,43 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   // Sponsored jobs actions
   // Dedupe by jobId — HomeView's bootstrap and JobsView's initMyJobs both
   // call this for the same response, and a render that maps over the array
-  // (e.g. the job switcher dropdown) would throw on duplicate React keys.
-  // We still re-set activeSponsoredJobId so the "last sponsored becomes
-  // active" behavior is preserved when the same job is added more than once.
+  // would throw on duplicate React keys.
+  //
+  // Behavior:
+  //   - Already present → merge in updated fields (likesCount can change
+  //     between fetches). Don't touch activeSponsoredJobId.
+  //   - New entry, no active set yet → set this one active.
+  //   - New entry, already have an active → leave active alone. Callers
+  //     that explicitly want to switch context (e.g., right after the
+  //     sponsor sponsors a brand-new job) should call
+  //     setActiveSponsoredJobId themselves.
+  //
+  // The "leave active alone on re-add" rule is what lets HomeView's smart
+  // default survive a subsequent JobsView initMyJobs re-fetch — otherwise
+  // the last job in the response would always claim active.
   addSponsoredJob: (job) =>
     set((state) => {
-      const alreadyPresent = state.sponsoredJobs.some(
+      const idx = state.sponsoredJobs.findIndex(
         (sj) => sj.jobId === job.jobId,
       );
-      if (alreadyPresent) {
-        return { activeSponsoredJobId: job.jobId };
+      if (idx >= 0) {
+        const updated = [...state.sponsoredJobs];
+        updated[idx] = {
+          ...updated[idx],
+          ...job,
+          // Preserve the previous likesCount if the new payload doesn't
+          // supply one (e.g., the sponsor-new flow that doesn't know the
+          // count yet).
+          likesCount:
+            job.likesCount !== undefined
+              ? job.likesCount
+              : updated[idx].likesCount,
+        };
+        return { sponsoredJobs: updated };
       }
       return {
         sponsoredJobs: [...state.sponsoredJobs, job],
-        activeSponsoredJobId: job.jobId,
+        activeSponsoredJobId: state.activeSponsoredJobId || job.jobId,
       };
     }),
 

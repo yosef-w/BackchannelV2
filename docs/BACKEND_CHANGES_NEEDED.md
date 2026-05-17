@@ -351,3 +351,247 @@ Sponsor-request notifications always carry a `RELATED_JOB_ID` that points to `at
 ### Frontend impact (when this ships)
 
 The frontend is fully wired — no changes required on our side when this endpoint is added. `getJobDetail(jobId)` will start resolving instead of 404-ing and the detail sheet will populate automatically.
+
+---
+
+## §7 — `GET /api/jobs/browse/` — Accept `?company=…` to filter by any company in `COMPANIES_CAN_REFER_TO` 🟡 Feature gap
+
+**Frontend file:** `components/JobsView.tsx` → company-switcher pill on the Browse tab
+**API function:** `lib/api.ts` → `browseJobs({ company, ... })`
+**Backend files:**
+- `bc_microservices/views_jobs.py` → `browse_jobs` view
+- `bc_microservices/services/jobs.py` → `browse_jobs` service
+- `bc_microservices/queries/jobs.py` → `browse_silver_jobs`
+
+### Context
+
+Sponsors can list multiple companies they're able to refer candidates to (`sponsor_profiles.COMPANIES_CAN_REFER_TO` — a JSON array). The Browse tab currently only shows ATS jobs at the sponsor's *own* employer (`sponsor_profiles.COMPANY`) because the service hard-codes the filter to `get_sponsor_company(sponsor_id)` ([services/jobs.py:724-734](https://example.com)).
+
+We've shipped a UI company-switcher pill on the Browse tab so a sponsor with, say, Stripe (signup company) + ["Plaid", "Mercury"] (refer-list) can flip between which company's roles they're browsing. The frontend already sends `?company=<name>` on the request. Until this lands, the param is silently ignored by the backend and the result set falls back to the sponsor's own company — harmless (the default selection is also their own company) but the feature is inert.
+
+### What's missing
+
+`browse_jobs` doesn't accept a `company` query parameter, and even if it did, the service wouldn't validate the requested company against the sponsor's refer-list before using it.
+
+### Required changes
+
+**1. View layer** — accept the new query param ([views_jobs.py:135-138](https://example.com)):
+
+```python
+@api_view(['GET'])
+@permission_classes([IsSponsor])
+def browse_jobs(request):
+    filters = {k: request.query_params.get(k) for k in ('title', 'location', 'remote') if request.query_params.get(k)}
+    requested_company = request.query_params.get('company')  # NEW
+    limit, offset = parse_pagination(request)
+    return _respond(jobs_svc.browse_jobs(request.user.id, filters, limit, offset, company=requested_company))
+```
+
+**2. Service layer** — validate the requested company against the union of `COMPANIES_CAN_REFER_TO` and the signup `COMPANY`, then use it:
+
+```python
+import json
+from ..queries import profiles as prof_q
+
+def browse_jobs(sponsor_id, filters=None, limit=DEFAULT_PAGE_LIMIT, offset=0, company=None):
+    """Browse SILVER_JOBS, filtered to a company the sponsor is allowed to refer to."""
+    sponsor = prof_q.get_sponsor_profile(sponsor_id) or {}
+    own = (sponsor.get('COMPANY') or '').strip()
+
+    # COMPANIES_CAN_REFER_TO comes back as TEXT (cast in profiles.py:88).
+    # Parse defensively — accept null, JSON list, or already-listified value.
+    raw = sponsor.get('COMPANIES_CAN_REFER_TO')
+    refer_list = []
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                refer_list = [str(x) for x in parsed if x]
+        except (ValueError, TypeError):
+            pass
+    elif isinstance(raw, list):
+        refer_list = [str(x) for x in raw if x]
+
+    # Always include the signup company in the allowed set, even if the
+    # sponsor removed it from COMPANIES_CAN_REFER_TO (defense-in-depth;
+    # the frontend also locks it).
+    allowed = {c.strip().lower() for c in refer_list if c.strip()}
+    if own:
+        allowed.add(own.lower())
+
+    if company:
+        if company.strip().lower() not in allowed:
+            return Result.forbidden(
+                "You can't browse roles at that company"
+            )
+        # Single-company filter (existing path).
+        normalized = _normalize_company(company)
+        rows, total = jobs_q.browse_silver_jobs(normalized, filters, limit, offset)
+    elif allowed:
+        # NEW: no company param → "All companies" mode. Filter SILVER_JOBS
+        # to every company in the sponsor's allowed set (refer-list ∪
+        # signup company). This is now the default the frontend hits when
+        # the sponsor has multiple refer companies.
+        normalized_list = [_normalize_company(c) for c in allowed if c]
+        rows, total = jobs_q.browse_silver_jobs_multi(
+            normalized_list, filters, limit, offset
+        )
+    else:
+        return Result.bad_request(
+            "Please add your company to your sponsor profile before browsing jobs"
+        )
+
+    return Result.success(sanitize_for_json({
+        "jobs": rows, "total_count": total, "limit": limit, "offset": offset,
+    }))
+```
+
+**3.5. Query layer — new `browse_silver_jobs_multi` for "All companies" mode** ([queries/jobs.py](https://example.com)). Mirrors the existing `browse_silver_jobs` but accepts a list and uses `ILIKE ANY` against the normalized organization names:
+
+```python
+def browse_silver_jobs_multi(organizations, filters=None, limit=DEFAULT_PAGE_LIMIT, offset=0):
+    """Browse SILVER_JOBS across multiple allowed companies. Returns (rows, total_count)."""
+    filters = filters or {}
+    if not organizations:
+        return [], 0
+    # Wrap each org in % wildcards for case-insensitive substring match,
+    # mirroring how browse_silver_jobs builds its single-company ILIKE.
+    patterns = [f"%{o}%" for o in organizations]
+    q = """
+    SELECT JOB_ID, TITLE, ORGANIZATION, FULL_LOCATION, DESCRIPTION_TEXT,
+           EMPLOYMENT_TYPES, IS_REMOTE, SALARY_ANNUAL_MIN, SALARY_ANNUAL_MAX,
+           SALARY_CURRENCY, EXPERIENCE_LEVEL, SKILLS::TEXT, DATE_POSTED,
+           COUNT(*) OVER() AS _total_count
+    FROM ats.silver_jobs
+    WHERE is_active = TRUE
+      AND TITLE IS NOT NULL AND TRIM(TITLE) != ''
+      AND DESCRIPTION_TEXT IS NOT NULL AND TRIM(DESCRIPTION_TEXT) != ''
+      AND UPPER(ORGANIZATION) ILIKE ANY (ARRAY[%s])
+    """ % ",".join(["UPPER(%s)"] * len(patterns))
+    params = list(patterns)
+    # … then append title/location/remote/limit/offset same as the single-company version
+```
+
+**3. Query layer** — no new helper needed. `prof_q.get_sponsor_profile(sponsor_id)` already returns both `COMPANY` and `COMPANIES_CAN_REFER_TO` ([queries/profiles.py:81-98](https://example.com)) and is cached (`sponsor_profile:<user_id>`, TTL_MEDIUM), so reusing it is cheap. This also replaces the existing `jobs_q.get_sponsor_company(sponsor_id)` call in the current `browse_jobs` service — one fewer DB hit.
+
+### Validation rules (server-side)
+
+- The `company` value sent from the client is compared **case-insensitively** after `.strip()` against the union of `COMPANIES_CAN_REFER_TO` and `COMPANY`. If not in the set, return 403.
+- The signup company (`sponsor_profiles.COMPANY`) is **always implicitly allowed**, even if it's not in `COMPANIES_CAN_REFER_TO`. The frontend locks the signup company in the "Companies I Can Refer To" editor so it can't be removed, but the backend should defense-in-depth this in case an older client wrote a list without it.
+- The SILVER_JOBS organization filter still runs through `_normalize_company` so suffix variants ("Stripe" vs "Stripe, Inc.") match correctly.
+
+### Frontend impact (when this ships)
+
+No frontend changes required — the pill, sheet, and `?company=…` param are already wired. Two modes are already live on the frontend:
+
+- **Specific company selected** → sends `?company=<name>`. Backend validates and filters to that single company. ✅
+- **"All companies" selected (default for sponsors with >1 refer company)** → sends NO `company` param. Backend should treat the missing param as "filter to every company in the sponsor's allowed set". Until this ships, the missing-param fallback narrows to just the signup company — harmless degradation.
+
+---
+
+## §8 — Tighten the HomeView role-switcher signal: pending-only counts + likers-first deck ordering 🟡 Feature gap
+
+**Frontend file:** `components/HomeView.tsx` → role-switcher badge + card deck powered by `fetchProfilesPack`
+**API functions:** `lib/api.ts` → `getMyJobs()` (badge source), `fetchProfilesPack(jobId)` (deck source)
+**Backend files:**
+- `bc_microservices/queries/jobs.py` → `get_jobs_by_sponsor` (LIKES_COUNT subquery)
+- `bc_microservices/queries/profiles.py` → `fetch_profile_pack`
+
+### Context
+
+The HomeView role switcher shows a count badge next to each sponsored role — meant to answer "where should I work next?" Tapping a role switches the card deck to that role's profile pack.
+
+Two issues with the current behavior that make the signal misleading:
+
+**1. The count is too broad.** `LIKES_COUNT` ([queries/jobs.py:471](https://example.com)) counts every applicant in `STATUS IN ('ACTIVE', 'MATCHED')`. So a role with 5 already-matched applicants and 0 pending shows `5` — implying activity that doesn't actually need the sponsor's attention. The count should reflect *unactioned* interest, not lifetime activity.
+
+**2. The deck doesn't honor the badge.** When a sponsor taps a role, `fetch_profile_pack` ([queries/profiles.py:174](https://example.com)) returns *every* applicant in the database minus those the sponsor has already seen for that job, with no preference for applicants who liked the role. So the badge promises "12 people want you" but the deck shows them a general discovery pool — the 12 likers may not even appear in the first batch. The badge and the experience downstream are disconnected.
+
+### What's missing
+
+Two coordinated changes:
+
+- **§8a:** Filter `LIKES_COUNT` to `STATUS = 'ACTIVE'` only (drop matched).
+- **§8b:** Order `fetch_profile_pack` so applicants who actively liked the role come first, then the rest of the pool.
+
+Together these make the badge a genuine "next-up" signal: tap the role and the first N cards in the deck are the people the badge counted.
+
+### Required changes
+
+**§8a — Update LIKES_COUNT subquery** in `get_jobs_by_sponsor` ([queries/jobs.py:471](https://example.com)):
+
+```python
+# Before
+(SELECT COUNT(*) FROM matching.likes l2
+ WHERE l2.JOB_ID = j.JOB_ID
+   AND l2.STATUS IN ('ACTIVE', 'MATCHED')) AS LIKES_COUNT,
+
+# After — pending-only signal
+(SELECT COUNT(*) FROM matching.likes l2
+ WHERE l2.JOB_ID = j.JOB_ID
+   AND l2.STATUS = 'ACTIVE') AS LIKES_COUNT,
+```
+
+One word change. Same column name (`LIKES_COUNT`) so no API contract drift.
+
+**§8b — Order `fetch_profile_pack` to surface active likers first** ([queries/profiles.py:174](https://example.com)):
+
+```python
+def fetch_profile_pack(sponsor_id, job_id, limit=DEFAULT_PROFILE_PACK_LIMIT):
+    """Fetch applicant profiles the sponsor hasn't seen for this job.
+    Applicants who actively liked this specific job are surfaced first
+    (high-conviction matches), then the broader discovery pool fills
+    out the rest of the pack."""
+    seen = get_seen_profile_ids(sponsor_id, job_id)
+
+    q = """
+    SELECT ap.APPLICANT_PROFILE_ID, ap.USER_ID, ap.PROFILE_ID, ap.INDUSTRY,
+           ap.RANGE_MILES, ap.REASON, ap.POSITIONS::TEXT, ap.SKILLS::TEXT, ap.RESUME_DATA::TEXT,
+           ap.INSIGHTS::TEXT,
+           up.FIRST_NAME, up.LAST_NAME, up.LOCATION, up.PHOTO_URL,
+           up.PHONE_NUMBER, up.DATE_OF_BIRTH, up.ROLE_TYPE, up.INTERNATIONAL_CODE,
+           up.BIO,
+           -- 1 if this applicant actively liked the role, else 0. Used for
+           -- ORDER BY so likers float to the top of the pack.
+           CASE WHEN EXISTS (
+             SELECT 1 FROM matching.likes l
+             WHERE l.USER_ID = ap.USER_ID
+               AND l.JOB_ID = %s
+               AND l.STATUS = 'ACTIVE'
+           ) THEN 1 ELSE 0 END AS LIKED_THIS_JOB
+    FROM user_info.applicant_profiles ap
+    JOIN user_info.user_profiles up ON ap.PROFILE_ID = up.PROFILE_ID
+    """
+    params = [job_id]
+    if seen:
+        placeholders = ",".join(["%s"] * len(seen))
+        q += f" WHERE ap.USER_ID NOT IN ({placeholders})"
+        params.extend(list(seen))
+    # Likers first (LIKED_THIS_JOB DESC), then arbitrary stable order
+    # within each bucket.
+    q += " ORDER BY LIKED_THIS_JOB DESC, ap.PROFILE_ID LIMIT %s"
+    params.append(int(limit))
+
+    df = execute_query(q, tuple(params))
+    return df.to_dict('records') if df is not None and not df.empty else []
+```
+
+Notes:
+- The new `LIKED_THIS_JOB` column is **for ordering only** — frontend doesn't need it. The frontend already handles each card the same way regardless of how it was ranked.
+- Could go further and `ORDER BY` by like recency (`l.CREATED_AT DESC` for likers) as a v2; for v1, "likers first, then rest" is the meaningful signal.
+
+### Why both changes together
+
+Either one alone is misleading:
+
+| Scenario | Just §8a (count fix) | Just §8b (order fix) | §8a + §8b together |
+|---|---|---|---|
+| Sponsor sees badge `12` and taps in | First 12 cards are random — badge promised something the deck didn't deliver | Badge counts already-matched too — number is bigger than the actual "next-up" pool | First 12 cards ARE the 12 likers. Badge is honest. ✅ |
+
+Shipping both at once preserves the coherent UX. Splitting them creates a window where the badge and deck disagree.
+
+### Frontend impact (when this ships)
+
+No frontend changes required. The role-switcher badge displays `job.likesCount` verbatim — it'll automatically reflect the new pending-only number. The card deck consumes the profile-pack response in order — it'll automatically render likers first.
+
+Once both ship: the muted-zero badge variant (already wired in [HomeView.tsx](components/HomeView.tsx) — gray pill when count is 0) will become more honest too. A role with 5 active matches + 0 pending will correctly show `0` (muted), signaling "no new decisions waiting" instead of falsely implying activity.

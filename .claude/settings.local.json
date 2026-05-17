@@ -39,7 +39,18 @@
       "Bash(git -C /Users/yosefwolday/Desktop/BackchannelV2 ls-files)",
       "Bash(grep -n \"^    Text,$\\\\|^    TouchableOpacity,\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
       "Bash(awk 'NR>=4040 && NR<=4060 {print NR\": \"$0}' /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
-      "Bash(awk '/^## §4 /,/^## §5 /' /Users/yosefwolday/Desktop/BackchannelV2/docs/BACKEND_CHANGES_NEEDED.md)"
+      "Bash(awk '/^## §4 /,/^## §5 /' /Users/yosefwolday/Desktop/BackchannelV2/docs/BACKEND_CHANGES_NEEDED.md)",
+      "Bash(awk 'NR>=1998 && NR<=2361' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk 'NR==1999 {start=1; print; next} start && /<\\\\/Modal>$/ {print; exit} start {print}' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(awk 'NR>=1999 && /<\\\\/Modal>$/ {print NR; exit}' /Users/yosefwolday/Desktop/BackchannelV2/components/MatchesView.tsx)",
+      "Bash(sed -i.bak '1999,2362d' components/MatchesView.tsx)",
+      "Bash(sed -n '1995,2005p' components/MatchesView.tsx)",
+      "Bash(awk 'NR==2548 {start=1} start {print NR\": \"$0; if \\($0 ~ /<\\\\/Modal>$/\\) {exit}}' /Users/yosefwolday/Desktop/BackchannelV2/components/JobsView.tsx)",
+      "Bash(sed -i.bak '2548,2844d' components/JobsView.tsx)",
+      "Bash(sed -n '2545,2555p' components/JobsView.tsx)",
+      "Bash(awk 'NR==1242 {start=1} start {print NR; if \\($0 ~ /<\\\\/Modal>$/\\) {exit}}' /Users/yosefwolday/Desktop/BackchannelV2/components/MessagesView.tsx)",
+      "Bash(sed -i.bak '1242,1655d' components/MessagesView.tsx)",
+      "Bash(sed -n '1238,1248p' components/MessagesView.tsx)"
     ]
   }
 }

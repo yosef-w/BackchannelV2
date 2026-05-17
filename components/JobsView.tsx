@@ -10,12 +10,15 @@ import {
 import {
   browseJobs,
   createJobFromUrl,
+  getJobApplicantsLikes,
   getMyJobs,
+  likeProfile,
   sponsorJob,
   unsponsorJob,
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
@@ -23,6 +26,7 @@ import {
   Briefcase,
   Check,
   CheckCircle,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   DollarSign,
@@ -69,8 +73,10 @@ import Animated, {
   SlideOutDown,
 } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
+import { DismissibleSheet } from "./ui/DismissibleSheet";
+import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
@@ -124,6 +130,10 @@ interface Applicant {
   experience: string;
   skills: string[];
   appliedRole: string;
+  // Enriched fields populated from `getPublicProfile` when the sponsor taps
+  // the message icon. The lightweight list endpoint doesn't include these.
+  bio?: string;
+  location?: string;
   insights?: {
     funFact: string;
   };
@@ -163,6 +173,9 @@ export function JobsView() {
   const setLoading = useJobsStore((state) => state.setLoading);
   const setError = useJobsStore((state) => state.setError);
   const addSponsoredJob = useJobsStore((state) => state.addSponsoredJob);
+  const setActiveSponsoredJobId = useJobsStore(
+    (state) => state.setActiveSponsoredJobId,
+  );
   const sponsoredJobs = useJobsStore((state) => state.sponsoredJobs);
   const myJobs = useJobsStore((state) => state.myJobs);
   const isMyJobsLoading = useJobsStore((state) => state.isMyJobsLoading);
@@ -178,31 +191,113 @@ export function JobsView() {
 
   const [selectedApplicantJob, setSelectedApplicantJob] =
     useState<JobPosting | null>(null);
+  // Backend-fetched applicants for the selected sponsored job, mapped to
+  // the local Applicant shape. The legacy `selectedApplicantJob.topApplicants`
+  // field was never populated by any fetch path — switching to a dedicated
+  // state slot is cleaner and lets us track loading/error explicitly.
+  const [jobApplicants, setJobApplicants] = useState<Applicant[]>([]);
+  const [isLoadingApplicants, setIsLoadingApplicants] = useState(false);
+  const [applicantsError, setApplicantsError] = useState<string | null>(null);
   const [showSponsorGate, setShowSponsorGate] = useState<JobPosting | null>(
     null,
   );
   const [selectedApplicantForMessage, setSelectedApplicantForMessage] =
     useState<Applicant | null>(null);
+  // Public-profile fetch state lives inside ProfileDetailSheet now.
+  // JOB_POSTINGS id that scopes the match. We need it for `likeProfile`
+  // because the backend ties the match to a specific role. Set when the
+  // sponsor opens the Top Applicants list and preserved through to the
+  // messaging modal's Match button.
+  const [matchJobPostingsId, setMatchJobPostingsId] = useState<string | null>(
+    null,
+  );
+  const [isMatching, setIsMatching] = useState(false);
+  // Vestigial: kept so existing close handlers still compile. The free-form
+  // message UI was removed when we replaced "Quick Reply + Send" with a
+  // single Match button (matching is the prerequisite for messaging — chats
+  // happen in MatchesView after the match exists).
   const [message, setMessage] = useState("");
   const [activeSlide, setActiveSlide] = useState(0);
 
   const [activeTab, setActiveTab] = useState<"browse" | "sponsored">("browse");
   const [displayLimit, setDisplayLimit] = useState(20);
 
-  // Fetch browse jobs on mount (for sponsors)
+  // Company switcher (Browse tab). Sponsors with multiple entries in
+  // `COMPANIES_CAN_REFER_TO` can flip between them; the selection is sent to
+  // the backend as ?company=… and dictates which SILVER_JOBS rows come back.
+  //
+  // ALL_COMPANIES is a frontend-only sentinel meaning "no company filter —
+  // show roles across every company the sponsor can refer to" (their refer
+  // list ∪ their signup company). When it's the active selection we omit
+  // the `?company=` query param entirely; the backend treats a missing
+  // company as "all of my allowed companies" once BACKEND_CHANGES_NEEDED §7
+  // ships the multi-company filter. Until then it falls back to the
+  // sponsor's signup company alone — harmless because that's still inside
+  // their allowed set.
+  const ALL_COMPANIES = "__ALL__";
+  const profileSponsorCompanies = useUserProfileStore(
+    (state) => state.data.sponsorCompanies,
+  );
+  const profileOwnCompany = useUserProfileStore(
+    (state) => state.data.professional.company,
+  );
+  const browseCompanies = React.useMemo(() => {
+    const own = (profileOwnCompany || "").trim();
+    const rest = (profileSponsorCompanies || [])
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .filter((c) => !own || c.toLowerCase() !== own.toLowerCase());
+    return own ? [own, ...rest] : rest;
+  }, [profileOwnCompany, profileSponsorCompanies]);
+  const [activeBrowseCompany, setActiveBrowseCompany] = useState<string | null>(
+    null,
+  );
+  const [showCompanySwitcher, setShowCompanySwitcher] = useState(false);
+
+  // Default selection: "All companies" when the sponsor has multiple
+  // entries (maximizes discovery on first open). When they only have one
+  // company (= just their employer), default to that single company since
+  // "All" would be the same set.
+  useEffect(() => {
+    if (activeBrowseCompany) return;
+    if (browseCompanies.length === 0) return;
+    setActiveBrowseCompany(
+      browseCompanies.length > 1 ? ALL_COMPANIES : browseCompanies[0],
+    );
+  }, [browseCompanies, activeBrowseCompany]);
+
+  // Fetch browse jobs on mount, and re-fetch whenever the active browse
+  // company changes (sponsor switched companies via the dropdown).
+  //
+  // We only send `?company=…` when a specific company is selected. When
+  // the sponsor has "All companies" picked we OMIT the param — the backend
+  // treats a missing company as "filter to every company in this sponsor's
+  // refer-list ∪ signup company" (per BACKEND_CHANGES_NEEDED §7). Until
+  // that backend change ships, the missing-param fallback narrows to just
+  // the signup company, which is still inside the allowed set — so the
+  // worst case is "All" returns less than it should rather than something
+  // wrong.
   useEffect(() => {
     const loadJobs = async () => {
       try {
-        // Skip if we already have jobs (prevents re-fetch on navigation)
-        if (jobs.length > 0) {
-          console.log("[JobsView] Jobs already loaded, skipping fetch");
+        // Wait until we have a chosen company so the fetch is scoped from
+        // the first request (avoids a flash of "all-companies" results).
+        if (!activeBrowseCompany && browseCompanies.length > 0) {
           return;
         }
 
         setLoading(true);
-        console.log("[JobsView] Fetching browse jobs for sponsor...");
+        console.log(
+          "[JobsView] Fetching browse jobs for sponsor; company=",
+          activeBrowseCompany,
+        );
         trackBrowseJobsViewed();
-        const response = await browseJobs({ limit: 50 });
+        const useSpecificCompany =
+          activeBrowseCompany && activeBrowseCompany !== ALL_COMPANIES;
+        const response = await browseJobs({
+          limit: 50,
+          ...(useSpecificCompany ? { company: activeBrowseCompany } : {}),
+        });
         console.log("[JobsView] Browse response:", response);
 
         // Transform SILVER_JOBS (browse) response to Job format
@@ -261,7 +356,10 @@ export function JobsView() {
     };
 
     loadJobs();
-  }, []); // Run once on mount — isSponsored flags are synced by the effect below
+    // Re-fetch whenever the sponsor switches the active browse company.
+    // isSponsored flags are synced by a separate effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrowseCompany]);
 
   // Sync isSponsored flags on browse jobs whenever sponsoredJobs changes
   // (e.g. after initMyJobs populates sponsoredJobs, or after sponsor/unsponsor).
@@ -364,6 +462,7 @@ export function JobsView() {
             atsJobId: j.REFERENCE_JOB_ID ? String(j.REFERENCE_JOB_ID) : "",
             title: j.TITLE || "",
             company: j.COMPANY || "",
+            likesCount: Number(j.LIKES_COUNT) || 0,
           });
         });
         // Also transform and store as myJobs so the badge count is correct immediately
@@ -415,11 +514,71 @@ export function JobsView() {
     setActiveSlide(slide);
   };
 
-  const handleApplicantPress = (job: JobPosting) => {
-    if (job.isSponsored) {
-      setSelectedApplicantJob(job);
-    } else {
+  // Tapped the message icon on a row → open the messaging modal with what we
+  // already have, then fetch the full public profile in the background and
+  // merge BIO / LOCATION / current role + company / years experience /
+  // Opens the applicant detail modal. The shared ProfileDetailSheet owns
+  // its own public-profile fetch now, so we just hand off the lightweight
+  // applicant seed and the sheet hydrates the bio / location / skills /
+  // insights itself.
+  const openMessagingModal = (applicant: Applicant) => {
+    setSelectedApplicantForMessage(applicant);
+  };
+
+  const handleApplicantPress = async (job: JobPosting) => {
+    if (!job.isSponsored) {
       setShowSponsorGate(job);
+      return;
+    }
+    // Open modal immediately with a loading state, fetch in parallel.
+    // Resolve which JOB_POSTINGS id to query — the Browse tab carries the
+    // ATS/SILVER_JOBS id, but the backend endpoint expects the JOB_POSTINGS
+    // id. Look it up via the sponsoredJobs index (same trick used by the
+    // unsponsor flow below).
+    const sponsoredEntry = sponsoredJobs.find(
+      (sj) => sj.atsJobId === job.id || sj.jobId === job.id,
+    );
+    const jobPostingsId = sponsoredEntry?.jobId ?? job.id;
+    setSelectedApplicantJob(job);
+    // Preserve the JOB_POSTINGS id for the eventual Match button — the
+    // messaging modal needs it but doesn't have access to `job` directly.
+    setMatchJobPostingsId(jobPostingsId);
+    setJobApplicants([]);
+    setApplicantsError(null);
+    setIsLoadingApplicants(true);
+    try {
+      const response = await getJobApplicantsLikes(jobPostingsId);
+      const mapped: Applicant[] = (response.applicants || []).map((a) => {
+        const fullName = [a.FIRST_NAME, a.LAST_NAME]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        const positions = parseSkillsField(a.POSITIONS);
+        const skills = parseSkillsField(a.SKILLS);
+        const targetRole = positions[0] || a.INDUSTRY || "Applicant";
+        return {
+          id: a.APPLICANT_USER_ID,
+          name: fullName || "Applicant",
+          role: targetRole,
+          // Backend doesn't return current employer in this payload — show
+          // their location as the secondary line instead so the row isn't
+          // "Senior PM @ " with a dangling separator.
+          company: a.LOCATION || "",
+          image: a.PHOTO_URL || "",
+          matchScore: 0,
+          experience: "",
+          skills,
+          appliedRole: job.title,
+        };
+      });
+      setJobApplicants(mapped);
+    } catch (err) {
+      console.warn("[JobsView] Failed to fetch job applicants:", err);
+      setApplicantsError(
+        err instanceof Error ? err.message : "Couldn't load applicants",
+      );
+    } finally {
+      setIsLoadingApplicants(false);
     }
   };
 
@@ -620,7 +779,14 @@ export function JobsView() {
         atsJobId: selectedJob.id, // Store original ATS job ID
         title: selectedJob.title,
         company: selectedJob.company,
+        // Brand-new sponsored job — no applicants yet by definition.
+        likesCount: 0,
       });
+      // Explicitly set the just-sponsored job as active. The store's
+      // addSponsoredJob no longer auto-switches active when something is
+      // already set, so we have to do it here to preserve the
+      // "just-sponsored becomes the HomeView focus" behavior.
+      setActiveSponsoredJobId(response.job_id);
 
       // Update the job to mark it as sponsored (optimistic)
       const updatedJobs = jobs.map((job) =>
@@ -904,67 +1070,110 @@ export function JobsView() {
           />
         ) : (
           <>
-            {/* Tabs */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === "browse" && styles.activeTab]}
-                onPress={() => setActiveTab("browse")}
-              >
-                <Text
+            {/* Action bar — iOS-style segmented control on the left for
+                Browse/My Sponsored, ghost filter chip on the right showing
+                which company's roles the Browse tab is scoped to. The filter
+                only renders on Browse (it's irrelevant on My Sponsored) and
+                only becomes tappable when there's >1 company to choose from. */}
+            <View style={styles.actionBar}>
+              <View style={styles.segmentedControl}>
+                <TouchableOpacity
                   style={[
-                    styles.tabText,
-                    activeTab === "browse" && styles.activeTabText,
+                    styles.segment,
+                    activeTab === "browse" && styles.segmentActive,
                   ]}
-                >
-                  Browse Jobs
-                </Text>
-                <View
-                  style={[
-                    styles.tabBadge,
-                    activeTab === "browse" && styles.activeTabBadge,
-                  ]}
+                  onPress={() => setActiveTab("browse")}
+                  activeOpacity={0.8}
                 >
                   <Text
                     style={[
-                      styles.tabBadgeText,
-                      activeTab === "browse" && styles.activeTabBadgeText,
+                      styles.segmentText,
+                      activeTab === "browse" && styles.segmentTextActive,
                     ]}
                   >
-                    {jobs.length}
+                    Browse
                   </Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  activeTab === "sponsored" && styles.activeTab,
-                ]}
-                onPress={() => setActiveTab("sponsored")}
-              >
-                <Text
+                  <View
+                    style={[
+                      styles.segmentBadge,
+                      activeTab === "browse" && styles.segmentBadgeActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentBadgeText,
+                        activeTab === "browse" &&
+                          styles.segmentBadgeTextActive,
+                      ]}
+                    >
+                      {jobs.length}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={[
-                    styles.tabText,
-                    activeTab === "sponsored" && styles.activeTabText,
+                    styles.segment,
+                    activeTab === "sponsored" && styles.segmentActive,
                   ]}
-                >
-                  My Sponsored
-                </Text>
-                <View
-                  style={[
-                    styles.tabBadge,
-                    activeTab === "sponsored" && styles.activeTabBadge,
-                  ]}
+                  onPress={() => setActiveTab("sponsored")}
+                  activeOpacity={0.8}
                 >
                   <Text
                     style={[
-                      styles.tabBadgeText,
-                      activeTab === "sponsored" && styles.activeTabBadgeText,
+                      styles.segmentText,
+                      activeTab === "sponsored" && styles.segmentTextActive,
                     ]}
                   >
-                    {myJobs.length}
+                    My Sponsored
                   </Text>
-                </View>
-              </TouchableOpacity>
+                  <View
+                    style={[
+                      styles.segmentBadge,
+                      activeTab === "sponsored" && styles.segmentBadgeActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentBadgeText,
+                        activeTab === "sponsored" &&
+                          styles.segmentBadgeTextActive,
+                      ]}
+                    >
+                      {myJobs.length}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+              {activeTab === "browse" && browseCompanies.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (browseCompanies.length > 1) {
+                      setShowCompanySwitcher(true);
+                    }
+                  }}
+                  activeOpacity={browseCompanies.length > 1 ? 0.6 : 1}
+                  style={styles.ghostFilter}
+                >
+                  {browseCompanies.length > 1 && (
+                    <ChevronDown color="#666" size={14} />
+                  )}
+                  <Text
+                    style={styles.ghostFilterText}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {/* Terse "All" in the pill — clear in context (sitting
+                        right next to the company filter chevron) and saves
+                        ~75px of horizontal room versus "All companies",
+                        which lets the segmented control to the left
+                        breathe. The picker sheet still shows the full
+                        "All companies" label on the row for clarity. */}
+                    {activeBrowseCompany === ALL_COMPANIES
+                      ? "All"
+                      : activeBrowseCompany || browseCompanies[0]}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Browse Jobs Tab */}
@@ -2110,13 +2319,21 @@ export function JobsView() {
         animationType="fade"
         transparent={true}
         visible={!!selectedApplicantJob}
-        onRequestClose={() => setSelectedApplicantJob(null)}
+        onRequestClose={() => {
+          setSelectedApplicantJob(null);
+          setJobApplicants([]);
+          setApplicantsError(null);
+        }}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => setSelectedApplicantJob(null)}
+            onPress={() => {
+              setSelectedApplicantJob(null);
+              setJobApplicants([]);
+              setApplicantsError(null);
+            }}
           >
             <BlurView
               intensity={30}
@@ -2134,7 +2351,11 @@ export function JobsView() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalMainTitle}>Top Applicants</Text>
               <TouchableOpacity
-                onPress={() => setSelectedApplicantJob(null)}
+                onPress={() => {
+                  setSelectedApplicantJob(null);
+                  setJobApplicants([]);
+                  setApplicantsError(null);
+                }}
                 style={styles.closeButton}
               >
                 <X color="#000" size={24} />
@@ -2145,65 +2366,104 @@ export function JobsView() {
               contentContainerStyle={{ paddingBottom: 20 }}
               showsVerticalScrollIndicator={false}
             >
-              {selectedApplicantJob?.topApplicants?.map((applicant, i) => (
-                <View key={i} style={styles.applicantRow}>
-                  {applicant.image ? (
-                    <Image
-                      source={{ uri: applicant.image }}
-                      style={styles.applicantAvatar}
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        styles.applicantAvatar,
-                        {
-                          backgroundColor: "#000",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 18,
-                          fontWeight: "800",
-                          color: "#FFF",
-                        }}
-                      >
-                        {(applicant.name || "?")[0].toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.applicantName}>{applicant.name}</Text>
-                    <Text style={styles.applicantRole}>
-                      {applicant.role} @ {applicant.company}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.messageApplicantBtn}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      setSelectedApplicantJob(null);
-                      setTimeout(() => {
-                        setSelectedApplicantForMessage(applicant);
-                      }, 100);
+              {isLoadingApplicants ? (
+                <View style={{ padding: 40, alignItems: "center" }}>
+                  <ActivityIndicator size="small" color="#000" />
+                  <Text
+                    style={{
+                      marginTop: 12,
+                      color: "#999",
+                      fontSize: 13,
+                      fontWeight: "600",
                     }}
-                    activeOpacity={0.7}
                   >
-                    <MessageCircle color="#FFF" size={16} strokeWidth={2.5} />
-                  </TouchableOpacity>
+                    Loading applicants…
+                  </Text>
                 </View>
-              ))}
-              {(!selectedApplicantJob?.topApplicants ||
-                selectedApplicantJob.topApplicants.length === 0) && (
+              ) : applicantsError ? (
+                <View style={{ padding: 20, alignItems: "center" }}>
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      color: "#DC2626",
+                      fontSize: 14,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {applicantsError}
+                  </Text>
+                </View>
+              ) : jobApplicants.length === 0 ? (
                 <View style={{ padding: 20, alignItems: "center" }}>
                   <Text
                     style={{ textAlign: "center", color: "#999", fontSize: 16 }}
                   >
-                    No applicants data available.
+                    No applicants yet.
                   </Text>
                 </View>
+              ) : (
+                jobApplicants.map((applicant, i) => (
+                  // Entire row is the tap target — opens the applicant
+                  // profile detail modal. Larger hit area than just the
+                  // chevron, and matches MatchesView's "tap the card"
+                  // affordance for consistency.
+                  <TouchableOpacity
+                    key={applicant.id || i}
+                    style={styles.applicantRow}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setSelectedApplicantJob(null);
+                      setTimeout(() => {
+                        openMessagingModal(applicant);
+                      }, 100);
+                    }}
+                  >
+                    {applicant.image ? (
+                      <Image
+                        source={{ uri: applicant.image }}
+                        style={styles.applicantAvatar}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.applicantAvatar,
+                          {
+                            backgroundColor: "#000",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: "800",
+                            color: "#FFF",
+                          }}
+                        >
+                          {(applicant.name || "?")[0].toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.applicantName}>{applicant.name}</Text>
+                      <Text style={styles.applicantRole}>
+                        {applicant.company
+                          ? `${applicant.role} · ${applicant.company}`
+                          : applicant.role}
+                      </Text>
+                    </View>
+                    {/* Chevron now a visual affordance only — the entire
+                        row above handles the tap. */}
+                    <View style={styles.messageApplicantBtn}>
+                      <ChevronRight
+                        color="#FFF"
+                        size={18}
+                        strokeWidth={2.5}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                ))
               )}
             </ScrollView>
           </Animated.View>
@@ -2272,227 +2532,184 @@ export function JobsView() {
         </View>
       </Modal>
 
-      {/* Applicant Messaging Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={!!selectedApplicantForMessage}
-        onRequestClose={() => {
-          setSelectedApplicantForMessage(null);
-          setMessage("");
-          setActiveSlide(0);
-        }}
-      >
+      {/* Top Applicants → Applicant Detail Sheet — sponsor reviews an
+          applicant who liked their role. Powered by the shared
+          ProfileDetailSheet (matches MatchesView's layout exactly). The
+          primary CTA flips the like pair to MATCHED via likeProfile(). */}
+      {selectedApplicantForMessage && (
+        <ProfileDetailSheet
+          visible={!!selectedApplicantForMessage}
+          onDismiss={() => {
+            setSelectedApplicantForMessage(null);
+            setMatchJobPostingsId(null);
+            setMessage("");
+            setActiveSlide(0);
+          }}
+          userId={selectedApplicantForMessage.id}
+          variant="applicant"
+          initial={{
+            name: selectedApplicantForMessage.name,
+            image: selectedApplicantForMessage.image,
+            role: selectedApplicantForMessage.role,
+            company: selectedApplicantForMessage.company,
+          }}
+          badge={{ label: "Liked your role" }}
+          roleContext={
+            selectedApplicantForMessage.appliedRole
+              ? {
+                  label: "INTERESTED IN",
+                  title: selectedApplicantForMessage.appliedRole,
+                }
+              : undefined
+          }
+          primaryCta={{
+            label: `Match with ${selectedApplicantForMessage.name.split(" ")[0]}`,
+            icon: <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />,
+            loading: isMatching,
+            disabled: !matchJobPostingsId,
+            onPress: async () => {
+              if (!matchJobPostingsId) return;
+              const applicant = selectedApplicantForMessage;
+              if (!applicant) return;
+              setIsMatching(true);
+              try {
+                const result = await likeProfile(
+                  applicant.id,
+                  matchJobPostingsId,
+                );
+                const firstName =
+                  applicant.name.split(" ")[0] || "this applicant";
+                if (result.matched) {
+                  showToast(
+                    `Matched with ${firstName}! Find them in your Matches.`,
+                    "success",
+                  );
+                } else {
+                  showToast(result.message || "Interest sent.", "success");
+                }
+                setSelectedApplicantForMessage(null);
+                setMatchJobPostingsId(null);
+                setMessage("");
+                setActiveSlide(0);
+              } catch (err) {
+                console.warn("[JobsView] Match failed:", err);
+                showToast(
+                  err instanceof Error
+                    ? err.message
+                    : "Couldn't match. Please try again.",
+                  "error",
+                );
+              } finally {
+                setIsMatching(false);
+              }
+            },
+          }}
+        />
+      )}
+
+      {/* Company Switcher Modal — sponsor picks which company's ATS roles to
+          browse. Mirrors the HomeView role-switcher: bottom sheet, swipe-down
+          to dismiss, picks update activeBrowseCompany which re-fires the
+          browse fetch. */}
+      <Modal visible={showCompanySwitcher} transparent animationType="none">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
+          style={styles.companySwitcherOverlay}
         >
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => {
-              setSelectedApplicantForMessage(null);
-              setMessage("");
-              setActiveSlide(0);
-            }}
+            onPress={() => setShowCompanySwitcher(false)}
           >
             <BlurView
-              intensity={30}
+              intensity={60}
               style={StyleSheet.absoluteFill}
               tint="dark"
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
+          <DismissibleSheet
+            onDismiss={() => setShowCompanySwitcher(false)}
+            fullSheetGesture
+            style={styles.companySwitcherSheet}
           >
-            <View style={styles.modalHandle} />
+            <Text style={styles.companySwitcherSheetTitle}>
+              Switch company
+            </Text>
+            <Text style={styles.companySwitcherSheetSubtitle}>
+              Pick which company's open roles to browse, or "All companies"
+              to see roles across every company you can refer to.
+            </Text>
 
-            {selectedApplicantForMessage && (
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                <View style={styles.jobRefTag}>
-                  <Text style={styles.jobRefLabel}>INTERESTED IN</Text>
-                  <View style={styles.jobRefBadge}>
-                    <Briefcase size={12} color="#000" />
-                    <Text style={styles.jobRefText}>
-                      {selectedApplicantForMessage.appliedRole}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              style={{ marginTop: 8 }}
+            >
+              {/* "All companies" — pinned to the top. Renders only when
+                  the sponsor has more than one allowed company (otherwise
+                  it'd be the same set as the single company below). */}
+              {browseCompanies.length > 1 && (
+                <TouchableOpacity
+                  key={ALL_COMPANIES}
+                  style={[
+                    styles.companySwitcherRow,
+                    activeBrowseCompany === ALL_COMPANIES &&
+                      styles.companySwitcherRowActive,
+                  ]}
+                  onPress={() => {
+                    if (activeBrowseCompany !== ALL_COMPANIES) {
+                      setActiveBrowseCompany(ALL_COMPANIES);
+                      setDisplayLimit(20);
+                    }
+                    setShowCompanySwitcher(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={styles.companySwitcherRowTitle}
+                      numberOfLines={1}
+                    >
+                      All companies
                     </Text>
                   </View>
-                </View>
-
-                {/* Swipable Card Section */}
-                <View style={styles.swipableContainer}>
-                  <ScrollView
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
+                </TouchableOpacity>
+              )}
+              {browseCompanies.map((c) => {
+                const isActive =
+                  !!activeBrowseCompany &&
+                  activeBrowseCompany !== ALL_COMPANIES &&
+                  c.toLowerCase() === activeBrowseCompany.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={c}
+                    style={[
+                      styles.companySwitcherRow,
+                      isActive && styles.companySwitcherRowActive,
+                    ]}
+                    onPress={() => {
+                      if (!isActive) {
+                        setActiveBrowseCompany(c);
+                        setDisplayLimit(20);
+                      }
+                      setShowCompanySwitcher(false);
+                    }}
+                    activeOpacity={0.7}
                   >
-                    {/* Front: Bio & Resume */}
-                    <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                      <View style={styles.infoCardHeader}>
-                        <Image
-                          source={{ uri: selectedApplicantForMessage.image }}
-                          style={styles.modalAvatar}
-                        />
-                        <View>
-                          <Text style={styles.modalName}>
-                            {selectedApplicantForMessage.name}
-                          </Text>
-                          <View style={styles.locationRow}>
-                            <MapPin size={12} color="#AAA" />
-                            <Text style={styles.locationText}>
-                              New York, NY
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                      <Text style={styles.bioText} numberOfLines={3}>
-                        Senior {selectedApplicantForMessage.role} with a focus
-                        on scaling user-centric products at{" "}
-                        {selectedApplicantForMessage.company}.
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={styles.companySwitcherRowTitle}
+                        numberOfLines={1}
+                      >
+                        {c}
                       </Text>
-                      <View style={styles.skillsContainer}>
-                        {(selectedApplicantForMessage.skills || []).map(
-                          (s, i) => (
-                            <View key={i} style={styles.skillChip}>
-                              <Text style={styles.skillText}>{s}</Text>
-                            </View>
-                          ),
-                        )}
-                      </View>
-                      <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                          <Award size={14} color="#000" />
-                          <Text style={styles.statLabel}>
-                            {selectedApplicantForMessage.experience}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.resumeBtn}
-                          activeOpacity={0.7}
-                        >
-                          <FileText size={14} color="#FFF" />
-                          <Text style={styles.resumeBtnText}>View Resume</Text>
-                        </TouchableOpacity>
-                      </View>
                     </View>
-
-                    {/* Back: Key Insights */}
-                    <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                      <View style={styles.insightsHeader}>
-                        <Sparkles size={20} color="#000" />
-                        <Text style={styles.insightsTitle}>Key Insights</Text>
-                      </View>
-
-                      {selectedApplicantForMessage.insights && (
-                        <View style={styles.insightSection}>
-                          <Text style={styles.insightLabel}>QUICK HIT</Text>
-                          <Text style={styles.insightContent}>
-                            {selectedApplicantForMessage.insights.funFact}
-                          </Text>
-                        </View>
-                      )}
-
-                      {selectedApplicantForMessage.prompts?.map(
-                        (prompt, idx) => (
-                          <View key={idx} style={styles.promptWrapper}>
-                            <View style={styles.promptHeaderRow}>
-                              <Zap size={14} color="#000" />
-                              <Text style={styles.insightLabel}>
-                                {prompt.question}
-                              </Text>
-                            </View>
-                            <Text style={styles.promptContent}>
-                              {prompt.answer}
-                            </Text>
-                          </View>
-                        ),
-                      )}
-
-                      <View
-                        style={[
-                          styles.statItem,
-                          { marginTop: "auto", alignSelf: "flex-start" },
-                        ]}
-                      >
-                        <CheckCircle size={14} color="#00CB54" />
-                        <Text style={styles.statLabel}>Fully Verified</Text>
-                      </View>
-                    </View>
-                  </ScrollView>
-
-                  {/* Indicators */}
-                  <View style={styles.pagination}>
-                    <View
-                      style={[
-                        styles.dot,
-                        activeSlide === 0
-                          ? styles.dotActive
-                          : styles.dotInactive,
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.dot,
-                        activeSlide === 1
-                          ? styles.dotActive
-                          : styles.dotInactive,
-                      ]}
-                    />
-                  </View>
-                </View>
-
-                {/* Messaging Section */}
-                <Animated.View entering={FadeInUp} style={{ marginTop: 24 }}>
-                  <Text style={styles.inputLabel}>Quick Reply</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.replyScroll}
-                    contentContainerStyle={{ gap: 8 }}
-                  >
-                    {[
-                      "Nice to meet you!",
-                      "Great profile!",
-                      "Let's chat!",
-                      "Impressive background!",
-                    ].map((r, i) => (
-                      <TouchableOpacity
-                        key={i}
-                        style={styles.replyChip}
-                        onPress={() => setMessage(r)}
-                      >
-                        <Text style={styles.replyChipText}>{r}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.messageInput}
-                      placeholder="Write a message..."
-                      value={message}
-                      onChangeText={setMessage}
-                      multiline
-                    />
-                    <TouchableOpacity
-                      style={styles.sendBtn}
-                      onPress={() => {
-                        setSelectedApplicantForMessage(null);
-                        setMessage("");
-                        setActiveSlide(0);
-                      }}
-                    >
-                      <Send color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-              </ScrollView>
-            )}
-          </Animated.View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </DismissibleSheet>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -3647,6 +3864,165 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Match CTA — replaces the in-modal messaging UI. Matches the visual
+  // weight of HomeView's "Sponsor & Connect" so the action feels equally
+  // committal (it kicks off the same notification + conversation flow).
+  matchHintText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#666",
+    lineHeight: 19,
+    marginBottom: 14,
+  },
+  matchBtn: {
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  matchBtnText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  // Applicant-profile modal styles (ap*) — these are 1:1 copies of
+  // MatchesView's `sm*` styles. Keep them in sync if the MatchesView
+  // sponsor-detail modal styles change.
+  apHeroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 20,
+  },
+  apAvatar: { width: 68, height: 68, borderRadius: 34 },
+  apName: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.4,
+  },
+  apMeta: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#666",
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  apInterestedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    marginTop: 8,
+    backgroundColor: "#E6FAEE",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  apInterestedText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#00CB54",
+    letterSpacing: 0.2,
+  },
+  apJobBlock: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    padding: 16,
+    marginBottom: 16,
+  },
+  apSectionLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#BBB",
+    letterSpacing: 1.2,
+    marginBottom: 6,
+  },
+  apJobTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 2,
+  },
+  apBodyText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#444",
+    lineHeight: 22,
+  },
+  apLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 20,
+  },
+  apLoadingText: { fontSize: 13, color: "#AAA", fontWeight: "500" },
+  apCapRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  apCapPill: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+  },
+  apCapPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
+  apBlock: { marginBottom: 20 },
+  apChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  apDarkChip: {
+    backgroundColor: "#000",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  apDarkChipText: { fontSize: 12, fontWeight: "700", color: "#FFF" },
+  apInsightItem: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    padding: 14,
+    marginBottom: 10,
+  },
+  apInsightQ: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#AAA",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  apInsightA: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#222",
+    lineHeight: 20,
+  },
+  apFallbackNote: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    padding: 14,
+    marginBottom: 16,
+  },
+  apFallbackNoteText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+    lineHeight: 19,
+  },
 
   // Gate Modal
   gateModalOverlay: {
@@ -3831,57 +4207,84 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Tabs
-  tabContainer: {
+  // Action bar — holds the segmented tab control on the left and the
+  // ghost-style company filter on the right, all in one row.
+  actionBar: {
     flexDirection: "row",
-    gap: 12,
+    alignItems: "center",
+    gap: 10,
     marginBottom: 24,
     paddingHorizontal: 4,
   },
-  tab: {
+  // Segmented control: a single rounded track with inset active segment.
+  // The 3px inner padding creates a 2-3px gap around the active pill so it
+  // visually floats inside the track (iOS-style).
+  segmentedControl: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#F0F0F0",
+    borderRadius: 12,
+    padding: 3,
+  },
+  segment: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "#F8F9FA",
-    borderWidth: 1.5,
-    borderColor: "#F0F0F0",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
-  activeTab: {
+  segmentActive: {
     backgroundColor: "#000",
-    borderColor: "#000",
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: "600",
+  segmentText: {
+    fontSize: 13,
+    fontWeight: "700",
     color: "#666",
     letterSpacing: -0.2,
   },
-  activeTabText: {
+  segmentTextActive: {
     color: "#FFF",
   },
-  tabBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    backgroundColor: "#E5E5E5",
-    minWidth: 24,
+  segmentBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: "#E0E0E0",
+    minWidth: 20,
     alignItems: "center",
   },
-  activeTabBadge: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  segmentBadgeActive: {
+    backgroundColor: "rgba(255, 255, 255, 0.22)",
   },
-  tabBadgeText: {
+  segmentBadgeText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#666",
   },
-  activeTabBadgeText: {
+  segmentBadgeTextActive: {
     color: "#FFF",
+  },
+  // Ghost filter — borderless chip sitting next to the segmented control,
+  // showing which company is scoping the Browse tab. Renders a chevron
+  // only when there's more than one company to choose from (otherwise it's
+  // an informational label, not an interactive picker).
+  ghostFilter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    maxWidth: 130,
+  },
+  ghostFilterText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+    letterSpacing: -0.2,
+    flexShrink: 1,
   },
 
   // Load More Button
@@ -3904,5 +4307,49 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
     letterSpacing: -0.2,
+  },
+  companySwitcherOverlay: { flex: 1, justifyContent: "flex-end" },
+  companySwitcherSheet: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    padding: 28,
+    paddingBottom: 40,
+    maxHeight: SCREEN_HEIGHT * 0.7,
+  },
+  companySwitcherSheetTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.3,
+    marginTop: 4,
+  },
+  companySwitcherSheetSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666",
+    lineHeight: 20,
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  companySwitcherRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8F9FB",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 8,
+  },
+  companySwitcherRowActive: {
+    backgroundColor: "#FFF",
+    borderColor: "#000",
+  },
+  companySwitcherRowTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
   },
 });

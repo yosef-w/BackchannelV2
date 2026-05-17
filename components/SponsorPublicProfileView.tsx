@@ -93,30 +93,7 @@ export function SponsorPublicProfileView({
     userData?.jobContext?.jobTitle || userData?.appliedRole;
   const matchedCompany = userData?.jobContext?.company || company;
 
-  // Extract just the numeric/range portion of a duration string so it never
-  // wraps onto a second line in the stats cell.
-  // e.g. "5 years" → "5"  |  "5-10 years" → "5-10"  |  "< 1 year" → "<1"
-  const extractYearsNumeric = (d: string): string => {
-    const trimmed = d.trim();
-    // Match a leading number or range like "5", "5-10", "5–10", "5+", "<1", ">10"
-    const m = trimmed.match(/^[<>]?\s*[\d][\d\-–+]*/);
-    return m ? m[0].replace(/\s/g, "") : trimmed.replace(/\s*years?\s*/i, "");
-  };
-
-  // ── Stats (2 cells, no wrapping risk) ────────────────────────────────────
-  const stats = [
-    {
-      label: "YRS AT CO.",
-      value: duration ? extractYearsNumeric(String(duration)) : "—",
-    },
-    {
-      label: "REFERRED",
-      // sp.INDIVIDUALS_REFERRED will be populated once the backend exposes
-      // the sponsor's total referral count on the public profile endpoint.
-      value:
-        sp.INDIVIDUALS_REFERRED != null ? String(sp.INDIVIDUALS_REFERRED) : "—",
-    },
-  ];
+  // Stats grid removed — DURATION is shown inline in the header now.
 
   return (
     <View style={styles.container}>
@@ -153,6 +130,7 @@ export function SponsorPublicProfileView({
               <Text style={styles.infoText}>
                 {jobTitle}
                 {company ? ` @ ${company}` : ""}
+                {duration ? ` · ${duration}` : ""}
               </Text>
             </View>
           ) : null}
@@ -178,23 +156,11 @@ export function SponsorPublicProfileView({
           ) : null}
         </View>
 
-        {/* ── Stats Grid ──────────────────────────────────────────────── */}
-        {!loadingProfile ? (
-          <View style={styles.statsGrid}>
-            {stats.map((stat, index) => (
-              <React.Fragment key={stat.label}>
-                {index > 0 && <View style={styles.statDivider} />}
-                <Animated.View
-                  entering={FadeInUp.delay(index * 100).duration(400)}
-                  style={styles.statBox}
-                >
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </Animated.View>
-              </React.Fragment>
-            ))}
-          </View>
-        ) : (
+        {/* Stats grid removed — the only quantified field we have is
+            DURATION (now inlined into the header role line) and the
+            former "REFERRED" cell was never populated by the backend.
+            See conversation history if/when INDIVIDUALS_REFERRED ships. */}
+        {loadingProfile && (
           <View style={styles.loadingRow}>
             <ActivityIndicator color="#000" size="small" />
             <Text style={styles.loadingText}>Loading profile details…</Text>
@@ -589,17 +555,20 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
   },
+  // Companies-can-refer-to chips — neutral grays so they match the brand
+  // and stay consistent with the same tags rendered in ProfileView's
+  // sponsor section. (Was light-blue Tailwind-style chips before.)
   companyTag: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "#F9F9F9",
     borderWidth: 1.5,
-    borderColor: "#BFDBFE",
+    borderColor: "#E5E5E5",
   },
   companyText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1E40AF",
+    color: "#666",
   },
 });

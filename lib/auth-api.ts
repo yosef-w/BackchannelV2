@@ -311,6 +311,26 @@ export const authApi = {
     );
   },
   /**
+   * Persist a sponsor's work email to `sponsor_profiles.work_email` and mark
+   * `work_email_verified = FALSE` server-side. Separate from the
+   * verification-link send because the send endpoint only embeds the email
+   * in a JWT — the DB column itself isn't written until the user clicks the
+   * verification link. Call this in tandem with `sendWorkEmailVerification`
+   * when the user updates their work email from the verification modal so
+   * the backend reflects the new address immediately (unverified), and on
+   * link-click it gets re-saved as verified.
+   *
+   * Backend: PATCH /api/profile/sponsor/update/ (accepts `work_email`).
+   */
+  updateWorkEmail: async (
+    workEmail: string,
+  ): Promise<{ message: string; updated_fields: string[] }> => {
+    return api.patch<{ message: string; updated_fields: string[] }>(
+      "/api/profile/sponsor/update/",
+      { work_email: workEmail },
+    );
+  },
+  /**
    * Fetch current user's profile
    * Backend endpoint: GET /api/profile/
    */

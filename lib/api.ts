@@ -248,13 +248,21 @@ export async function fetchJobsPack(): Promise<any[]> {
 /**
  * � Browse Jobs (Sponsor)
  * Browse available ATS jobs (SILVER_JOBS) for sponsoring
- * Optional filters: title, location, remote, limit
+ * Optional filters: title, location, remote, limit, company.
+ *
+ * `company` lets a sponsor browse roles at any company in their
+ * `COMPANIES_CAN_REFER_TO` list (not just their own employer). Once
+ * BACKEND_CHANGES_NEEDED.md §6 ships, the backend will validate the
+ * requested company is in the sponsor's refer-list before filtering. Until
+ * then the parameter is silently ignored and the backend falls back to
+ * `sponsor_profiles.COMPANY` — sending it is harmless.
  */
 export async function browseJobs(filters?: {
   title?: string;
   location?: string;
   remote?: boolean;
   limit?: number;
+  company?: string;
 }): Promise<{ jobs: any[]; total_count: number }> {
   const params = new URLSearchParams();
   if (filters?.title) params.append("title", filters.title);
@@ -262,6 +270,7 @@ export async function browseJobs(filters?: {
   if (filters?.remote !== undefined)
     params.append("remote", String(filters.remote));
   if (filters?.limit) params.append("limit", String(filters.limit));
+  if (filters?.company) params.append("company", filters.company);
 
   const queryString = params.toString();
   const endpoint = queryString
@@ -1587,23 +1596,29 @@ export async function unsponsorJob(jobId: string): Promise<{
  * 👥 Get Applicants Who Liked a Job (Sponsor)
  * Returns all applicant profiles who liked a specific sponsored job.
  * Uses GET /api/jobs/<job_id>/likes/applicants/
+ *
+ * Field shape matches the SQL in
+ * bc_microservices/queries/likes.py:get_applicants_who_liked_job —
+ * APPLICANT_USER_ID is the user id (aliased from `l.USER_ID`), and
+ * SKILLS / POSITIONS / RESUME_DATA come back as JSON-encoded TEXT strings,
+ * so the caller has to parse them defensively.
  */
 export async function getJobApplicantsLikes(jobId: string): Promise<{
   job_id: string;
   applicants: Array<{
-    LIKE_ID: string;
-    USER_ID: string;
-    FIRST_NAME: string;
-    LAST_NAME: string;
-    PHOTO_URL: string | null;
-    LOCATION: string | null;
-    SKILLS: string[];
-    POSITIONS: string[];
-    INDUSTRY: string;
-    RESUME_DATA: any;
+    APPLICANT_USER_ID: string;
     LIKED_AT: string;
+    STATUS: "ACTIVE" | "MATCHED";
+    FIRST_NAME: string | null;
+    LAST_NAME: string | null;
+    LOCATION: string | null;
+    ROLE_TYPE: string | null;
+    PHOTO_URL: string | null;
+    SKILLS: string | null;
+    POSITIONS: string | null;
+    INDUSTRY: string | null;
+    RESUME_DATA: string | null;
   }>;
-  total_count: number;
 }> {
   return api.get(`/api/jobs/${jobId}/likes/applicants/`);
 }

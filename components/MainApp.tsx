@@ -135,6 +135,13 @@ export function MainApp({ userType }: MainAppProps) {
   const [pendingMessageJobId, setPendingMessageJobId] = useState<string | null>(
     null,
   );
+  // Parallel hint to pendingMessageJobId — the counterpart user id, used by
+  // MessagesView to disambiguate when a sponsor has multiple matched
+  // applicants on the same job (every one of those conversations shares the
+  // same jobId, so jobId alone isn't enough to pick the right thread).
+  const [pendingMessageUserId, setPendingMessageUserId] = useState<
+    string | null
+  >(null);
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const setDeviceToken = useAuthStore((state) => state.setDeviceToken);
@@ -336,8 +343,9 @@ export function MainApp({ userType }: MainAppProps) {
     return () => subscription.remove();
   }, [isAuthenticated]);
 
-  const handleNavigateToMessages = (jobId: string) => {
+  const handleNavigateToMessages = (jobId: string, userId?: string) => {
     setPendingMessageJobId(jobId || null);
+    setPendingMessageUserId(userId || null);
     setActiveView("messages");
   };
 
@@ -447,7 +455,11 @@ export function MainApp({ userType }: MainAppProps) {
                 selectedConversationId={selectedConversationId}
                 onConversationChange={setSelectedConversationId}
                 pendingJobId={pendingMessageJobId}
-                onPendingJobConsumed={() => setPendingMessageJobId(null)}
+                pendingUserId={pendingMessageUserId}
+                onPendingJobConsumed={() => {
+                  setPendingMessageJobId(null);
+                  setPendingMessageUserId(null);
+                }}
               />
             </View>
           )}

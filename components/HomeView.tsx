@@ -1346,6 +1346,13 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   // Adds every sponsored job to the store (no REFERENCE_JOB_ID filter — that
   // would exclude manually-created jobs and cause the role dropdown to show
   // fewer roles than the "My Sponsored" tab on the Jobs board).
+  //
+  // SMART DEFAULT: after populating the store, set the active role to the
+  // one with the highest LIKES_COUNT (most pending applicants). The
+  // sponsor lands on whatever role has the most work to do, instead of
+  // whatever the backend happened to return first. Ties break by response
+  // order (which is CREATED_AT DESC, so the most-recent role wins among
+  // jobs with the same count — including the "all zero" cold-start case).
   useEffect(() => {
     if (userType !== "sponsor") return;
     if (activeSponsoredJobId) return;
@@ -1360,13 +1367,22 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
             atsJobId: j.REFERENCE_JOB_ID ? String(j.REFERENCE_JOB_ID) : "",
             title: j.TITLE || "",
             company: j.COMPANY || "",
+            likesCount: Number(j.LIKES_COUNT) || 0,
           });
         });
-        // Set the first job as active — it's now guaranteed to be in
-        // sponsoredJobs since the filter is gone.
-        const firstJob = response.jobs[0];
-        if (firstJob) {
-          setActiveSponsoredJobId(String(firstJob.JOB_ID));
+        // Pick the role with the highest LIKES_COUNT as the smart default.
+        // Reduce-with-strict-greater-than gives us "ties go to first seen"
+        // → first in the response (most recent) wins ties, including the
+        // all-zero case.
+        const winner = response.jobs.reduce(
+          (best: any, j: any) =>
+            Number(j.LIKES_COUNT || 0) > Number(best.LIKES_COUNT || 0)
+              ? j
+              : best,
+          response.jobs[0],
+        );
+        if (winner) {
+          setActiveSponsoredJobId(String(winner.JOB_ID));
         }
       } catch {
         // silent fail — dashboard will show empty state with CTA
@@ -3814,6 +3830,7 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
             >
               {sponsoredJobs.map((job) => {
                 const isActive = job.jobId === activeSponsoredJobId;
+                const count = job.likesCount ?? 0;
                 return (
                   <TouchableOpacity
                     key={job.jobId}
@@ -3847,9 +3864,26 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                         </Text>
                       )}
                     </View>
-                    {isActive && (
-                      <Check color="#000" size={18} strokeWidth={2.5} />
-                    )}
+                    {/* Pending-applicant signal — same pill shape across
+                        every row so the eye can scan high/low counts
+                        easily. Active counts render as black-bg/white-fg
+                        ("12"); zero is the same shape but muted gray ("0").
+                        Visual rhythm beats descriptive copy here. */}
+                    <View
+                      style={[
+                        styles.jobSwitcherCountBadge,
+                        count === 0 && styles.jobSwitcherCountBadgeMuted,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.jobSwitcherCountBadgeText,
+                          count === 0 && styles.jobSwitcherCountBadgeTextMuted,
+                        ]}
+                      >
+                        {count}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -3952,14 +3986,25 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                           setEmailVerifyLoading(true);
                           setEmailVerifyError("");
                           try {
-                            // One call: backend embeds this email in the JWT,
-                            // sends verification to it, and (on link click)
-                            // persists it as work_email AND flips verified=TRUE.
-                            await authApi.sendWorkEmailVerification(trimmed);
-                            setPendingWorkEmail(trimmed);
-                            // Also update data.personal.workEmail so ProfileView
+                            // Two coordinated backend calls + a local mirror:
+                            //   1. PATCH sponsor profile so the backend
+                            //      persists work_email immediately and
+                            //      auto-flips work_email_verified=FALSE
+                            //      (services/profiles.py:162). Without this
+                            //      the column doesn't update until the user
+                            //      clicks the verification link.
+                            //   2. Send the verification email — backend
+                            //      embeds the email in a JWT; on link click
+                            //      it re-saves and flips verified=TRUE.
+                            // Run them in parallel since they're independent.
+                            await Promise.all([
+                              authApi.updateWorkEmail(trimmed),
+                              authApi.sendWorkEmailVerification(trimmed),
+                            ]);
+                            await setPendingWorkEmail(trimmed);
+                            // Mirror to data.personal.workEmail so ProfileView
                             // reflects the new address immediately without
-                            // waiting for a full profile refetch from the backend.
+                            // waiting for a full profile refetch.
                             await updatePersonalStore({ workEmail: trimmed });
                             setIsEditingWorkEmail(false);
                             setEditedWorkEmail("");
@@ -4526,6 +4571,30 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#666",
     marginTop: 2,
+  },
+  // Count badge — pending applicants for a sponsored role. Same shape
+  // regardless of count so the eye finds the high numbers fast; zero
+  // counts use the muted variant below.
+  jobSwitcherCountBadge: {
+    backgroundColor: "#000",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  jobSwitcherCountBadgeMuted: {
+    backgroundColor: "#F0F0F0",
+  },
+  jobSwitcherCountBadgeText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  jobSwitcherCountBadgeTextMuted: {
+    color: "#999",
   },
 
   // Modal Styles
@@ -6401,7 +6470,7 @@ const styles = StyleSheet.create({
   },
   emailVerifErrorText: {
     fontSize: 13,
-    color: "#EF4444",
+    color: "#DC2626",
     textAlign: "center",
     marginTop: 4,
     marginBottom: 4,

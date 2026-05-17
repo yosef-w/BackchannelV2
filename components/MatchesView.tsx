@@ -68,13 +68,17 @@ import Animated, {
   SlideOutDown,
 } from "react-native-reanimated";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
+import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
 interface Match {
-  id: number;
+  // String (was number) — backend LIKE_IDs are UUIDs, and coercing them
+  // through Number() returned NaN→0 for every match, which produced
+  // duplicate React keys the moment a user had more than one match.
+  id: string;
   name: string;
   role: string;
   company: string;
@@ -112,7 +116,8 @@ interface Referral {
 }
 
 interface JobOpportunity {
-  id: number;
+  // String (was number) — see Match.id note above; LIKE_IDs are UUIDs.
+  id: string;
   title: string;
   company: string;
   location: string;
@@ -252,16 +257,21 @@ export function MatchesView({
   onNavigateToMessages,
 }: {
   userType?: "applicant" | "sponsor";
-  onNavigateToMessages?: (jobId: string) => void;
+  // Second arg is the counterpart user id (the OTHER participant in the
+  // conversation — sponsor for an applicant caller, applicant for a sponsor
+  // caller). Required to disambiguate when a sponsor has multiple matched
+  // applicants on the same job, since every one of those conversations
+  // shares the same jobId. Optional for legacy call sites where there can
+  // only ever be one conversation per job (applicant→sponsor direction).
+  onNavigateToMessages?: (jobId: string, userId?: string) => void;
 }) {
   const [selectedProfile, setSelectedProfile] = useState<Match | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobOpportunity | null>(null);
   const [modalMode, setModalMode] = useState<"view" | "message">("view");
   const [activeSlide, setActiveSlide] = useState(0);
   const [message, setMessage] = useState("");
-  const [sponsorPublicProfile, setSponsorPublicProfile] = useState<any>(null);
-  const [sponsorPublicProfileLoading, setSponsorPublicProfileLoading] =
-    useState(false);
+  // Public-profile fetch state for the matched-profile modal moved into
+  // the shared ProfileDetailSheet component — no longer needed here.
 
   // Interested sponsors state (sponsors who liked the applicant, no match yet)
   const [interestedSponsors, setInterestedSponsors] = useState<
@@ -376,7 +386,7 @@ export function MatchesView({
             const matchedAt = match.matched_at || match.MATCHED_AT;
 
             return {
-              id: Number(match.id || match.LIKE_ID) || 0,
+              id: String(match.id || match.LIKE_ID || ""),
               name: sponsorName || "Sponsor",
               role: match.sponsor?.role || match.SPONSOR_JOB_TITLE || "Sponsor",
               company:
@@ -408,10 +418,19 @@ export function MatchesView({
           console.log("[MatchesView] Sponsor matches:", response);
 
           // Transform API response to Match interface
-          const transformedMatches: Match[] = response.matches.map((match) => {
+          const transformedMatches: Match[] = response.matches.map((m) => {
+            // The Postgres adapter uppercases every returned column name
+            // (pg_utils.py:110), so SQL aliases written lowercase like
+            // `applicant_user_id` and `matched_at` come back as
+            // APPLICANT_USER_ID / MATCHED_AT. Read uppercase first, fall
+            // back to lowercase to stay tolerant if the backend ever
+            // changes the adapter behavior.
+            const match = m as any;
             const applicantName =
               `${match.FIRST_NAME || ""} ${match.LAST_NAME || ""}`.trim();
-            const matchedAt = match.matched_at;
+            const matchedAt = match.MATCHED_AT || match.matched_at;
+            const applicantUserId =
+              match.APPLICANT_USER_ID || match.applicant_user_id || "";
 
             // SKILLS arrives as a JSON-encoded string from Snowflake ::TEXT cast
             let skills: string[] = [];
@@ -425,7 +444,7 @@ export function MatchesView({
             }
 
             return {
-              id: Number(match.LIKE_ID) || 0,
+              id: String(match.LIKE_ID || ""),
               name: applicantName || "Applicant",
               role: "Job Seeker",
               company: "",
@@ -436,7 +455,7 @@ export function MatchesView({
               experience: "",
               skills,
               jobId: match.JOB_ID || "",
-              applicantUserId: match.applicant_user_id || "",
+              applicantUserId,
               insights: undefined,
               prompts: undefined,
             };
@@ -494,7 +513,9 @@ export function MatchesView({
         // Transform API response to JobOpportunity interface
         const transformedJobs: JobOpportunity[] = likedJobsArray.map(
           (likedJob: any) => ({
-            id: likedJob.LIKE_ID || likedJob.id || Math.random(),
+            id: String(
+              likedJob.LIKE_ID || likedJob.id || `tmp-${Math.random()}`,
+            ),
             likeId: likedJob.LIKE_ID || "",
             jobId: likedJob.JOB_ID || "",
             title: likedJob.TITLE || likedJob.job_title || "Untitled Position",
@@ -725,19 +746,12 @@ export function MatchesView({
   };
 
   const openProfile = (profile: Match, mode: "view" | "message") => {
+    // The matched-profile modal is now the shared ProfileDetailSheet,
+    // which owns its own public-profile fetch. We just need to flag
+    // which profile is selected; the sheet handles the rest.
     setModalMode(mode);
     setSelectedProfile(profile);
     setActiveSlide(0);
-    setSponsorPublicProfile(null);
-    // Fetch the sponsor's full public profile for the Key Insights page.
-    // SPONSOR_USER_ID is returned by GET /api/matches/ as of April 2026.
-    if (profile.sponsorUserId) {
-      setSponsorPublicProfileLoading(true);
-      getPublicProfile(String(profile.sponsorUserId))
-        .then((p) => setSponsorPublicProfile(p))
-        .catch(() => {}) // silently fall through to placeholder UI
-        .finally(() => setSponsorPublicProfileLoading(false));
-    }
   };
 
   const openJob = (job: JobOpportunity) => {
@@ -1046,7 +1060,7 @@ export function MatchesView({
               {sponsorRequestsError && (
                 <Text
                   style={{
-                    color: "#FF3B30",
+                    color: "#DC2626",
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -1145,7 +1159,7 @@ export function MatchesView({
               {matchesError && (
                 <Text
                   style={{
-                    color: "#FF3B30",
+                    color: "#DC2626",
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -1210,7 +1224,10 @@ export function MatchesView({
                         style={styles.messageBtn}
                         onPress={() => {
                           trackMatchMessageTapped({ jobId: match.jobId });
-                          onNavigateToMessages?.(match.jobId ?? "");
+                          onNavigateToMessages?.(
+                            match.jobId ?? "",
+                            match.sponsorUserId,
+                          );
                         }}
                       >
                         <MessageCircle
@@ -1238,7 +1255,7 @@ export function MatchesView({
               </Text>
               {referralsError && (
                 <Text
-                  style={{ color: "#FF3B30", marginBottom: 12, fontSize: 13 }}
+                  style={{ color: "#DC2626", marginBottom: 12, fontSize: 13 }}
                 >
                   {referralsError}
                 </Text>
@@ -1412,7 +1429,7 @@ export function MatchesView({
               {likedJobsError && (
                 <Text
                   style={{
-                    color: "#FF3B30",
+                    color: "#DC2626",
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -1529,7 +1546,7 @@ export function MatchesView({
               {waitlistedJobsError && (
                 <Text
                   style={{
-                    color: "#FF3B30",
+                    color: "#DC2626",
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -1703,7 +1720,10 @@ export function MatchesView({
                         style={styles.messageBtn}
                         onPress={() => {
                           trackMatchMessageTapped({ jobId: match.jobId });
-                          onNavigateToMessages?.(match.jobId ?? "");
+                          onNavigateToMessages?.(
+                            match.jobId ?? "",
+                            match.applicantUserId,
+                          );
                         }}
                       >
                         <MessageCircle
@@ -1738,7 +1758,7 @@ export function MatchesView({
               {interestedSponsorsError && (
                 <Text
                   style={{
-                    color: "#FF3B30",
+                    color: "#DC2626",
                     marginBottom: 12,
                     fontSize: 13,
                   }}
@@ -1844,7 +1864,7 @@ export function MatchesView({
 
               {referralsError && (
                 <Text
-                  style={{ color: "#FF3B30", fontSize: 13, marginBottom: 12 }}
+                  style={{ color: "#DC2626", fontSize: 13, marginBottom: 12 }}
                 >
                   {referralsError}
                 </Text>
@@ -1945,231 +1965,51 @@ export function MatchesView({
         )}
       </ScrollView>
 
-      {/* Sponsor Profile Modal (for Applicants) */}
-      <Modal visible={!!selectedProfile} transparent animationType="none">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeAllModals}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={closeAllModals}
-            style={styles.modalContent}
-          >
-            {selectedProfile && (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                contentContainerStyle={{ paddingBottom: 8 }}
-              >
-                {/* ── Sponsor Identity ─────────────────────────────── */}
-                <View style={styles.smHeroRow}>
-                  {selectedProfile.image ? (
-                    <Image
-                      source={{ uri: selectedProfile.image }}
-                      style={styles.smAvatar}
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        styles.smAvatar,
-                        {
-                          backgroundColor: "#000",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 24,
-                          fontWeight: "800",
-                          color: "#FFF",
-                        }}
-                      >
-                        {(selectedProfile.name || "?")[0].toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.smName}>{selectedProfile.name}</Text>
-                    {!!(selectedProfile.role || selectedProfile.company) && (
-                      <Text style={styles.smMeta} numberOfLines={2}>
-                        {[selectedProfile.role, selectedProfile.company]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </Text>
-                    )}
-                    <View style={styles.smMatchedBadge}>
-                      <CheckCircle size={11} color="#00CB54" />
-                      <Text style={styles.smMatchedText}>Matched</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* ── Role / Job Context ───────────────────────────── */}
-                {!!(selectedProfile.appliedRole || selectedProfile.company) && (
-                  <View style={styles.smJobBlock}>
-                    <Text style={styles.smSectionLabel}>ROLE</Text>
-                    <Text style={styles.smJobTitle}>
-                      {selectedProfile.appliedRole ||
-                        sponsorPublicProfile?.sponsor_profile?.JOB_TITLE ||
-                        "Open Role"}
-                    </Text>
-                    {!!selectedProfile.company && (
-                      <Text style={styles.smJobCompany}>
-                        {selectedProfile.company}
-                      </Text>
-                    )}
-                  </View>
-                )}
-
-                {/* ── Sponsor Capabilities ─────────────────────────── */}
-                {sponsorPublicProfileLoading ? (
-                  <View style={styles.smLoadingRow}>
-                    <ActivityIndicator size="small" color="#999" />
-                    <Text style={styles.smLoadingText}>
-                      Loading sponsor details…
-                    </Text>
-                  </View>
-                ) : sponsorPublicProfile ? (
-                  <>
-                    {/* Capability pills */}
-                    {(sponsorPublicProfile?.sponsor_profile
-                      ?.OPEN_TO_REFERRALS ||
-                      sponsorPublicProfile?.sponsor_profile?.FINANCIAL_REWARD ||
-                      !!sponsorPublicProfile?.sponsor_profile?.DURATION) && (
-                      <View style={styles.smCapRow}>
-                        {sponsorPublicProfile.sponsor_profile
-                          .OPEN_TO_REFERRALS && (
-                          <View style={styles.smCapPill}>
-                            <Text style={styles.smCapPillText}>
-                              Open to Referrals
-                            </Text>
-                          </View>
-                        )}
-                        {sponsorPublicProfile.sponsor_profile
-                          .FINANCIAL_REWARD && (
-                          <View style={styles.smCapPill}>
-                            <Text style={styles.smCapPillText}>
-                              Financial Reward
-                            </Text>
-                          </View>
-                        )}
-                        {!!sponsorPublicProfile.sponsor_profile.DURATION && (
-                          <View style={styles.smCapPill}>
-                            <Text style={styles.smCapPillText}>
-                              {sponsorPublicProfile.sponsor_profile.DURATION}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-
-                    {/* Companies can refer to */}
-                    {(sponsorPublicProfile?.sponsor_profile
-                      ?.COMPANIES_CAN_REFER_TO?.length ?? 0) > 0 && (
-                      <View style={styles.smBlock}>
-                        <Text style={styles.smSectionLabel}>CAN REFER TO</Text>
-                        <View style={styles.smChipRow}>
-                          {sponsorPublicProfile.sponsor_profile.COMPANIES_CAN_REFER_TO.map(
-                            (co: string, i: number) => (
-                              <View key={i} style={styles.smDarkChip}>
-                                <Text style={styles.smDarkChipText}>{co}</Text>
-                              </View>
-                            ),
-                          )}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Insight prompts */}
-                    {(sponsorPublicProfile?.sponsor_profile?.INSIGHTS?.length ??
-                      0) > 0 && (
-                      <View style={styles.smBlock}>
-                        <Text style={styles.smSectionLabel}>INSIGHTS</Text>
-                        {sponsorPublicProfile.sponsor_profile.INSIGHTS.map(
-                          (
-                            insight: { question: string; answer: string },
-                            idx: number,
-                          ) => (
-                            <View key={idx} style={styles.smInsightItem}>
-                              <Text style={styles.smInsightQ}>
-                                {insight.question}
-                              </Text>
-                              <Text style={styles.smInsightA}>
-                                {insight.answer}
-                              </Text>
-                            </View>
-                          ),
-                        )}
-                      </View>
-                    )}
-                  </>
-                ) : (
-                  /* Fallback when sponsorUserId is absent */
-                  <>
-                    {(selectedProfile.role ||
-                      selectedProfile.company ||
-                      selectedProfile.appliedRole) && (
-                      <View style={styles.smBlock}>
-                        <Text style={styles.smSectionLabel}>DETAILS</Text>
-                        {!!selectedProfile.role && (
-                          <Text style={styles.smFallbackLine}>
-                            {selectedProfile.role}
-                          </Text>
-                        )}
-                        {!!selectedProfile.company && (
-                          <Text style={styles.smFallbackLine}>
-                            {selectedProfile.company}
-                          </Text>
-                        )}
-                        {!!selectedProfile.appliedRole && (
-                          <Text style={styles.smFallbackLine}>
-                            Hiring for: {selectedProfile.appliedRole}
-                          </Text>
-                        )}
-                      </View>
-                    )}
-                    <View style={styles.smFallbackNote}>
-                      <Text style={styles.smFallbackNoteText}>
-                        Message {selectedProfile.name?.split(" ")[0] ?? "them"}{" "}
-                        to learn more about this opportunity.
-                      </Text>
-                    </View>
-                  </>
-                )}
-
-                {/* ── Message CTA ──────────────────────────────────── */}
-                <TouchableOpacity
-                  style={styles.smMessageBtn}
-                  onPress={() => {
-                    trackMatchMessageTapped({ jobId: selectedProfile.jobId });
-                    closeAllModals();
-                    onNavigateToMessages?.(selectedProfile.jobId ?? "");
-                  }}
-                >
-                  <MessageCircle color="#FFF" size={18} strokeWidth={2.5} />
-                  <Text style={styles.smMessageBtnText}>
-                    Message {selectedProfile.name?.split(" ")[0] ?? "Sponsor"}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* Matched-profile detail sheet — applicants see sponsor capabilities,
+          sponsors see applicant bio/skills/insights. Powered by the shared
+          ProfileDetailSheet, which owns its own public-profile fetch and
+          renders the standardized layout. */}
+      {selectedProfile && (
+        <ProfileDetailSheet
+          visible={!!selectedProfile}
+          onDismiss={closeAllModals}
+          userId={String(
+            userType === "sponsor"
+              ? selectedProfile.applicantUserId || ""
+              : selectedProfile.sponsorUserId || "",
+          )}
+          variant={userType === "sponsor" ? "applicant" : "sponsor"}
+          initial={{
+            name: selectedProfile.name,
+            image: selectedProfile.image,
+            role: selectedProfile.role,
+            company: selectedProfile.company,
+          }}
+          badge={{ label: "Matched" }}
+          roleContext={
+            selectedProfile.appliedRole
+              ? {
+                  label: "ROLE",
+                  title: selectedProfile.appliedRole,
+                  company: selectedProfile.company,
+                }
+              : undefined
+          }
+          primaryCta={{
+            label: `Message ${selectedProfile.name?.split(" ")[0] ?? (userType === "sponsor" ? "Applicant" : "Sponsor")}`,
+            icon: <MessageCircle color="#FFF" size={18} strokeWidth={2.5} />,
+            onPress: () => {
+              trackMatchMessageTapped({ jobId: selectedProfile.jobId });
+              closeAllModals();
+              onNavigateToMessages?.(
+                selectedProfile.jobId ?? "",
+                selectedProfile.applicantUserId ||
+                  selectedProfile.sponsorUserId,
+              );
+            },
+          }}
+        />
+      )}
 
       {/* Job Details Modal (for Liked Jobs) */}
       <Modal visible={!!selectedJob} transparent animationType="none">
@@ -3325,7 +3165,10 @@ export function MatchesView({
                           onPress={() => {
                             const jid = srNewJobId;
                             closeAllModals();
-                            onNavigateToMessages(jid);
+                            onNavigateToMessages(
+                              jid,
+                              selectedSponsorRequest?.applicantUserId,
+                            );
                           }}
                         >
                           <MessageCircle

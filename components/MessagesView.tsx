@@ -42,6 +42,7 @@ import {
     Dimensions,
     Image,
     Keyboard,
+    KeyboardAvoidingView,
     Linking,
     Modal,
     NativeScrollEvent,
@@ -63,6 +64,8 @@ import Animated, {
     useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DismissibleSheet } from "./ui/DismissibleSheet";
+import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -75,6 +78,10 @@ interface MessagesViewProps {
   selectedConversationId?: string | null;
   onConversationChange?: (conversationId: string | null) => void;
   pendingJobId?: string | null;
+  // Counterpart user id — when present, the auto-navigate effect picks the
+  // conversation matching BOTH jobId AND otherParticipant.id, which is
+  // required for sponsors with multiple matched applicants on the same job.
+  pendingUserId?: string | null;
   onPendingJobConsumed?: () => void;
 }
 
@@ -85,6 +92,7 @@ export function MessagesView({
   selectedConversationId: externalSelectedConversationId,
   onConversationChange,
   pendingJobId,
+  pendingUserId,
   onPendingJobConsumed,
 }: MessagesViewProps) {
   // Store current user ID from profile API to determine which participant to show
@@ -206,6 +214,11 @@ export function MessagesView({
 
           return {
             id: c.CONVERSATION_ID,
+            // Backend returns 'ACTIVE' or 'CLOSED' (closed = unmatched). The
+            // list endpoint returns BOTH statuses, so we need this field
+            // to split the list into Active vs Past Connections and to
+            // block sending in a closed thread.
+            status: (c.STATUS as "ACTIVE" | "CLOSED") || "ACTIVE",
             name:
               `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
               "Unknown",
@@ -308,6 +321,8 @@ export function MessagesView({
     const otherPersonCompany = isCurrentUserApplicant ? c.SPONSOR_COMPANY : "";
     return {
       id: c.CONVERSATION_ID,
+      // Backend returns 'ACTIVE' or 'CLOSED' (closed = unmatched).
+      status: (c.STATUS as "ACTIVE" | "CLOSED") || "ACTIVE",
       name:
         `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
         "Unknown",
@@ -597,17 +612,27 @@ export function MessagesView({
     }
   };
 
-  // Auto-navigate to a conversation thread when coming from Matches tab via pendingJobId
+  // Auto-navigate to a conversation thread when coming from Matches tab via
+  // pendingJobId. When `pendingUserId` is also supplied (matches list cards
+  // pass it now), match on BOTH jobId AND counterpart user id — necessary
+  // because a sponsor with multiple matched applicants on the same job has
+  // multiple conversations sharing that jobId, and find()-by-jobId-alone
+  // would always pick the first one. Falls back to jobId-only when no
+  // user hint is provided (older call sites that don't disambiguate).
   useEffect(() => {
     if (!pendingJobId || conversations.length === 0) return;
-    const conv = conversations.find(
-      (c) => c.jobContext?.jobId === pendingJobId,
-    );
+    const conv = pendingUserId
+      ? conversations.find(
+          (c) =>
+            c.jobContext?.jobId === pendingJobId &&
+            c.otherParticipant?.id === pendingUserId,
+        )
+      : conversations.find((c) => c.jobContext?.jobId === pendingJobId);
     if (conv) {
       handleConversationSelect(conv.id);
       onPendingJobConsumed?.();
     }
-  }, [pendingJobId, conversations]);
+  }, [pendingJobId, pendingUserId, conversations]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedConversation || sendingMessage) return;
@@ -757,7 +782,7 @@ export function MessagesView({
       reviewing: { backgroundColor: "#F59E0B" },
       interview_scheduled: { backgroundColor: "#10B981" },
       offer: { backgroundColor: "#8B5CF6" },
-      rejected: { backgroundColor: "#EF4444" },
+      rejected: { backgroundColor: "#DC2626" },
     };
     return (
       colors[status as keyof typeof colors] || { backgroundColor: "#9CA3AF" }
@@ -1065,31 +1090,41 @@ export function MessagesView({
               </View>
             </TouchableOpacity>
             <View style={styles.headerActions}>
-              {userType === "sponsor" ? (
-                <TouchableOpacity
-                  style={styles.headerReferBtn}
-                  onPress={openReferral}
-                  activeOpacity={0.7}
-                >
-                  <UserCheck color="#000" size={20} />
-                  <Text style={styles.headerReferText}>Refer</Text>
-                </TouchableOpacity>
-              ) : conversation.applicationStatus ? (
-                <TouchableOpacity
-                  style={styles.headerStatusBtn}
-                  onPress={() => setShowApplicationDetail(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.headerStatusText}>Status</Text>
-                </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity
-                style={styles.headerMoreBtn}
-                onPress={() => setShowUnmatchMenu(true)}
-                activeOpacity={0.7}
-              >
-                <MoreHorizontal color="#000" size={20} />
-              </TouchableOpacity>
+              {/* Hide the Refer button and three-dots (unmatch) menu on
+                  closed threads — the action is moot (you can't refer
+                  someone you're no longer matched with, and you can't
+                  unmatch what's already unmatched). The profile-image and
+                  name tap target above stays live so the profile sheet
+                  still opens. */}
+              {conversation.status !== "CLOSED" && (
+                <>
+                  {userType === "sponsor" ? (
+                    <TouchableOpacity
+                      style={styles.headerReferBtn}
+                      onPress={openReferral}
+                      activeOpacity={0.7}
+                    >
+                      <UserCheck color="#000" size={20} />
+                      <Text style={styles.headerReferText}>Refer</Text>
+                    </TouchableOpacity>
+                  ) : conversation.applicationStatus ? (
+                    <TouchableOpacity
+                      style={styles.headerStatusBtn}
+                      onPress={() => setShowApplicationDetail(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.headerStatusText}>Status</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity
+                    style={styles.headerMoreBtn}
+                    onPress={() => setShowUnmatchMenu(true)}
+                    activeOpacity={0.7}
+                  >
+                    <MoreHorizontal color="#000" size={20} />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
           <ScrollView
@@ -1109,7 +1144,7 @@ export function MessagesView({
             ) : messagesError ? (
               <View style={{ padding: 40, alignItems: "center" }}>
                 <Text
-                  style={{ color: "#FF3B30", fontSize: 15, marginBottom: 8 }}
+                  style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}
                 >
                   Failed to load messages
                 </Text>
@@ -1195,449 +1230,117 @@ export function MessagesView({
               })
             )}
           </ScrollView>
-          <View style={styles.inputArea}>
-            <TextInput
-              value={messageText}
-              onChangeText={setMessageText}
-              placeholder="Write a message..."
-              placeholderTextColor="#BBB"
-              style={styles.textInput}
-              multiline
-              onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
-            />
-            <TouchableOpacity
-              style={[
-                styles.sendBtn,
-                (!messageText.trim() || sendingMessage) && { opacity: 0.5 },
-              ]}
-              onPress={handleSendMessage}
-              disabled={!messageText.trim() || sendingMessage}
-            >
-              <Send color="#FFF" size={18} strokeWidth={2.5} />
-            </TouchableOpacity>
-          </View>
+          {conversation.status === "CLOSED" ? (
+            // Closed-thread notice — replaces the input area entirely so
+            // the user can't even attempt to type. Matches the backend's
+            // behavior (it rejects sends with "conversation is closed");
+            // surfacing it pre-emptively avoids the "I typed it but it
+            // never sent" confusion.
+            <View style={styles.closedNotice}>
+              <Text style={styles.closedNoticeText}>
+                This conversation has been closed. You are no longer matched.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.inputArea}>
+              <TextInput
+                value={messageText}
+                onChangeText={setMessageText}
+                placeholder="Write a message..."
+                placeholderTextColor="#BBB"
+                style={styles.textInput}
+                multiline
+                onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.sendBtn,
+                  (!messageText.trim() || sendingMessage) && { opacity: 0.5 },
+                ]}
+                onPress={handleSendMessage}
+                disabled={!messageText.trim() || sendingMessage}
+              >
+                <Send color="#FFF" size={18} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+          )}
         </Animated.View>
 
-        {/* PROFILE MODAL — content branches on userType:
-              sponsor = viewing applicant (skills, resume, referral button)
-              applicant = viewing sponsor (title/company, job context, no resume/referral)
-              Using animationType="slide" lets React Native handle the
-              show/hide animation natively, avoiding the Reanimated
-              SlideInDown/SlideOutDown ghost-overlay freeze. */}
-        <Modal visible={showProfileModal} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => setShowProfileModal(false)}
-            >
-              <BlurView
-                intensity={30}
-                style={StyleSheet.absoluteFill}
-                tint="dark"
-              />
-            </TouchableOpacity>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                {userType === "sponsor" ? (
-                  /* ── SPONSOR is viewing an APPLICANT'S profile ── */
-                  <>
-                    <View style={styles.jobRefTag}>
-                      <Text style={styles.jobRefLabel}>INTERESTED IN</Text>
-                      <View style={styles.jobRefBadge}>
-                        <Briefcase size={12} color="#000" />
-                        <Text style={styles.jobRefText}>
-                          {conversation.jobContext?.jobTitle ||
-                            conversation.appliedRole ||
-                            ""}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.swipableContainer}>
-                      <ScrollView
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                      >
-                        {/* Page 1 — Applicant overview */}
-                        <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                          <View style={styles.infoCardHeader}>
-                            <Image
-                              source={{
-                                uri: conversation.otherParticipant
-                                  .profileImageUrl,
-                              }}
-                              style={styles.modalAvatar}
-                            />
-                            <View>
-                              <Text style={styles.modalName}>
-                                {conversation.otherParticipant.name}
-                              </Text>
-                              <View style={styles.locationRow}>
-                                <MapPin size={12} color="#AAA" />
-                                <Text style={styles.locationText}>
-                                  {conversation.otherParticipant.role ||
-                                    "Job Seeker"}
-                                </Text>
-                              </View>
-                            </View>
-                          </View>
-                          <Text style={styles.bioText} numberOfLines={3}>
-                            {conversation.otherParticipant.role
-                              ? `${conversation.otherParticipant.role} seeking new opportunities and looking for a warm referral.`
-                              : "Experienced professional seeking a referral opportunity."}
-                          </Text>
-                          <View style={styles.skillsContainer}>
-                            {(conversation.skills || []).map(
-                              (s: string, i: number) => (
-                                <View key={i} style={styles.skillChip}>
-                                  <Text style={styles.skillText}>{s}</Text>
-                                </View>
-                              ),
-                            )}
-                          </View>
-                          <View style={styles.statsRow}>
-                            <View style={styles.statItem}>
-                              <Award size={14} color="#000" />
-                              <Text style={styles.statLabel}>
-                                {conversation.experience || "N/A"}
-                              </Text>
-                            </View>
-                            <TouchableOpacity
-                              style={styles.resumeBtn}
-                              activeOpacity={0.7}
-                            >
-                              <FileText size={14} color="#FFF" />
-                              <Text style={styles.resumeBtnText}>
-                                View Resume
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                        {/* Page 2 — Key Insights */}
-                        <View
-                          style={[
-                            styles.infoCard,
-                            {
-                              width: CARD_WIDTH,
-                              backgroundColor: "#F9F9F9",
-                              borderWidth: 1,
-                              borderColor: "#F0F0F0",
-                            },
-                          ]}
-                        >
-                          <ScrollView showsVerticalScrollIndicator={false}>
-                            {conversation.prompts?.map(
-                              (prompt: any, idx: number) => (
-                                <View
-                                  key={idx}
-                                  style={styles.promptCardInModal}
-                                >
-                                  <View style={styles.promptIconRowInModal}>
-                                    <View style={styles.promptIconCircle}>
-                                      {idx === 0 ? (
-                                        <Check size={14} color="#000" />
-                                      ) : (
-                                        <Award size={14} color="#000" />
-                                      )}
-                                    </View>
-                                    <Text style={styles.promptQuestionInModal}>
-                                      {prompt.question}
-                                    </Text>
-                                  </View>
-                                  <Text style={styles.promptAnswerInModal}>
-                                    {prompt.answer}
-                                  </Text>
-                                </View>
-                              ),
-                            )}
-                          </ScrollView>
-                        </View>
-                      </ScrollView>
-                      <View style={styles.pagination}>
-                        <View
-                          style={[
-                            styles.dot,
-                            activeSlide === 0
-                              ? styles.dotActive
-                              : styles.dotInactive,
-                          ]}
-                        />
-                        <View
-                          style={[
-                            styles.dot,
-                            activeSlide === 1
-                              ? styles.dotActive
-                              : styles.dotInactive,
-                          ]}
-                        />
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.fullProfileBtn}
-                      onPress={() => {
-                        setShowProfileModal(false);
-                        const otherUserId = conversation.otherParticipant?.id;
-                        if (otherUserId) {
-                          trackPublicProfileOpenedFromMessage({
-                            viewedUserId: String(otherUserId),
-                          });
-                        }
-                        if (onShowPublicProfile) {
-                          onShowPublicProfile(conversation);
-                        }
-                      }}
-                    >
-                      <User color="#FFF" size={18} />
-                      <Text style={styles.fullProfileBtnText}>
-                        View Full Profile
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.referFromModalBtn}
-                      onPress={openReferral}
-                    >
-                      <UserCheck color="#000" size={18} />
-                      <Text style={styles.referFromModalBtnText}>
-                        Provide Referral
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  /* ── APPLICANT is viewing a SPONSOR'S profile ── */
-                  <>
-                    <View style={styles.jobRefTag}>
-                      <Text style={styles.jobRefLabel}>CONNECTED ON</Text>
-                      <View style={styles.jobRefBadge}>
-                        <Briefcase size={12} color="#000" />
-                        <Text style={styles.jobRefText}>
-                          {conversation.jobContext?.jobTitle ||
-                            conversation.appliedRole ||
-                            ""}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.swipableContainer}>
-                      <ScrollView
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                      >
-                        {/* Page 1 — Sponsor overview */}
-                        <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                          <View style={styles.infoCardHeader}>
-                            {conversation.otherParticipant.profileImageUrl ? (
-                              <Image
-                                source={{
-                                  uri: conversation.otherParticipant
-                                    .profileImageUrl,
-                                }}
-                                style={styles.modalAvatar}
-                              />
-                            ) : (
-                              <View
-                                style={[
-                                  styles.modalAvatar,
-                                  {
-                                    backgroundColor: "#000",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  },
-                                ]}
-                              >
-                                <Text
-                                  style={{
-                                    fontSize: 22,
-                                    fontWeight: "800",
-                                    color: "#FFF",
-                                  }}
-                                >
-                                  {(conversation.otherParticipant.name ||
-                                    "?")[0].toUpperCase()}
-                                </Text>
-                              </View>
-                            )}
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.modalName}>
-                                {conversation.otherParticipant.name}
-                              </Text>
-                              {(conversation.otherParticipant.role ||
-                                conversation.otherParticipant.company) && (
-                                <Text
-                                  style={styles.sponsorTitleText}
-                                  numberOfLines={1}
-                                >
-                                  {[
-                                    conversation.otherParticipant.role,
-                                    conversation.otherParticipant.company,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" @ ")}
-                                </Text>
-                              )}
-                            </View>
-                          </View>
+        {/* PROFILE SHEET — opened when the user taps the participant's
+            name or avatar at the top of the thread. Powered by the shared
+            ProfileDetailSheet so it matches the layout we use on
+            MatchesView and JobsView. Sponsor side gets two CTAs (View
+            Full Profile + Provide Referral); applicant side gets just
+            View Full Profile. */}
+        {conversation && (
+          <ProfileDetailSheet
+            visible={showProfileModal}
+            onDismiss={() => setShowProfileModal(false)}
+            userId={String(conversation.otherParticipant?.id || "")}
+            variant={userType === "sponsor" ? "applicant" : "sponsor"}
+            initial={{
+              name: conversation.otherParticipant?.name || "",
+              image: conversation.otherParticipant?.profileImageUrl,
+              role: conversation.otherParticipant?.role,
+              company: conversation.otherParticipant?.company,
+            }}
+            roleContext={
+              conversation.jobContext?.jobTitle
+                ? {
+                    label:
+                      userType === "sponsor" ? "INTERESTED IN" : "CONNECTED ON",
+                    title: conversation.jobContext.jobTitle,
+                    company: conversation.jobContext.company,
+                  }
+                : undefined
+            }
+            primaryCta={
+              userType === "sponsor"
+                ? {
+                    label: "Provide Referral",
+                    icon: <UserCheck color="#FFF" size={18} strokeWidth={2.5} />,
+                    onPress: openReferral,
+                  }
+                : {
+                    label: "View Full Profile",
+                    icon: <User color="#FFF" size={18} strokeWidth={2.5} />,
+                    onPress: () => {
+                      setShowProfileModal(false);
+                      const otherUserId = conversation.otherParticipant?.id;
+                      if (otherUserId) {
+                        trackPublicProfileOpenedFromMessage({
+                          viewedUserId: String(otherUserId),
+                        });
+                      }
+                      if (onShowPublicProfile) {
+                        onShowPublicProfile(conversation);
+                      }
+                    },
+                  }
+            }
+            secondaryCta={
+              userType === "sponsor"
+                ? {
+                    label: "View Full Profile",
+                    icon: <User color="#000" size={18} strokeWidth={2.5} />,
+                    onPress: () => {
+                      setShowProfileModal(false);
+                      const otherUserId = conversation.otherParticipant?.id;
+                      if (otherUserId) {
+                        trackPublicProfileOpenedFromMessage({
+                          viewedUserId: String(otherUserId),
+                        });
+                      }
+                      if (onShowPublicProfile) {
+                        onShowPublicProfile(conversation);
+                      }
+                    },
+                  }
+                : undefined
+            }
+          />
+        )}
 
-                          {/* Referring for row */}
-                          <View style={styles.sponsorReferringRow}>
-                            <View style={styles.sponsorReferringIcon}>
-                              <Briefcase size={14} color="#000" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.sponsorReferringLabel}>
-                                Referring for
-                              </Text>
-                              <Text
-                                style={styles.sponsorReferringValue}
-                                numberOfLines={1}
-                              >
-                                {conversation.jobContext?.jobTitle ||
-                                  "Open Position"}
-                                {conversation.jobContext?.company
-                                  ? ` at ${conversation.jobContext.company}`
-                                  : ""}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Status badges */}
-                          <View style={styles.sponsorBadgeRow}>
-                            <View style={styles.sponsorOpenBadge}>
-                              <ShieldCheck size={13} color="#059669" />
-                              <Text style={styles.sponsorOpenBadgeText}>
-                                Open to Referrals
-                              </Text>
-                            </View>
-                            <View style={styles.sponsorMatchBadge}>
-                              <Check size={13} color="#000" />
-                              <Text style={styles.sponsorMatchBadgeText}>
-                                Active Match
-                              </Text>
-                            </View>
-                          </View>
-
-                          <Text style={styles.sponsorTipText}>
-                            Tap "View Full Profile" to see{" "}
-                            {conversation.otherParticipant.name?.split(
-                              " ",
-                            )[0] ?? "their"}{" "}
-                            background, referral history, and key insights.
-                          </Text>
-                        </View>
-
-                        {/* Page 2 — Key Insights */}
-                        <View
-                          style={[
-                            styles.infoCard,
-                            {
-                              width: CARD_WIDTH,
-                              backgroundColor: "#F9F9F9",
-                              borderWidth: 1,
-                              borderColor: "#F0F0F0",
-                            },
-                          ]}
-                        >
-                          {conversation.prompts?.length ? (
-                            <ScrollView showsVerticalScrollIndicator={false}>
-                              {conversation.prompts.map(
-                                (prompt: any, idx: number) => (
-                                  <View
-                                    key={idx}
-                                    style={styles.promptCardInModal}
-                                  >
-                                    <View style={styles.promptIconRowInModal}>
-                                      <View style={styles.promptIconCircle}>
-                                        {idx === 0 ? (
-                                          <Check size={14} color="#000" />
-                                        ) : (
-                                          <Award size={14} color="#000" />
-                                        )}
-                                      </View>
-                                      <Text
-                                        style={styles.promptQuestionInModal}
-                                      >
-                                        {prompt.question}
-                                      </Text>
-                                    </View>
-                                    <Text style={styles.promptAnswerInModal}>
-                                      {prompt.answer}
-                                    </Text>
-                                  </View>
-                                ),
-                              )}
-                            </ScrollView>
-                          ) : (
-                            <View style={styles.sponsorInsightsEmpty}>
-                              <View style={styles.sponsorInsightsIconCircle}>
-                                <Award size={22} color="#000" />
-                              </View>
-                              <Text style={styles.sponsorInsightsEmptyTitle}>
-                                Key Insights
-                              </Text>
-                              <Text style={styles.sponsorInsightsEmptyText}>
-                                View{" "}
-                                {conversation.otherParticipant.name?.split(
-                                  " ",
-                                )[0] ?? "their"}{" "}
-                                full profile to see their background,
-                                motivations, and referral experience.
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </ScrollView>
-                      <View style={styles.pagination}>
-                        <View
-                          style={[
-                            styles.dot,
-                            activeSlide === 0
-                              ? styles.dotActive
-                              : styles.dotInactive,
-                          ]}
-                        />
-                        <View
-                          style={[
-                            styles.dot,
-                            activeSlide === 1
-                              ? styles.dotActive
-                              : styles.dotInactive,
-                          ]}
-                        />
-                      </View>
-                    </View>
-
-                    {/* Applicant only gets View Full Profile — no resume or referral button */}
-                    <TouchableOpacity
-                      style={styles.fullProfileBtn}
-                      onPress={() => {
-                        setShowProfileModal(false);
-                        const otherUserId = conversation.otherParticipant?.id;
-                        if (otherUserId) {
-                          trackPublicProfileOpenedFromMessage({
-                            viewedUserId: String(otherUserId),
-                          });
-                        }
-                        if (onShowPublicProfile) {
-                          onShowPublicProfile(conversation);
-                        }
-                      }}
-                    >
-                      <User color="#FFF" size={18} />
-                      <Text style={styles.fullProfileBtnText}>
-                        View Full Profile
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
         <Modal visible={showReferralFlow} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <TouchableOpacity
@@ -2328,9 +2031,15 @@ export function MessagesView({
             );
           })()}
 
-        {/* UNMATCH ACTION SHEET */}
-        <Modal visible={showUnmatchMenu} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
+        {/* UNMATCH ACTION SHEET — same visual + motion pattern as the
+            profile detail sheet: fade-in blur backdrop, swipe-down
+            dismissible bottom sheet, no native slide animation. Keeps the
+            modal language consistent across the message thread. */}
+        <Modal visible={showUnmatchMenu} transparent animationType="none">
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalOverlay}
+          >
             <TouchableOpacity
               style={StyleSheet.absoluteFill}
               activeOpacity={1}
@@ -2342,8 +2051,11 @@ export function MessagesView({
                 tint="dark"
               />
             </TouchableOpacity>
-            <View style={styles.unmatchSheet}>
-              <View style={styles.modalHandle} />
+
+            <DismissibleSheet
+              onDismiss={() => !isUnmatching && setShowUnmatchMenu(false)}
+              style={styles.unmatchSheet}
+            >
               <Text style={styles.unmatchSheetTitle}>
                 {conversation.otherParticipant.name}
               </Text>
@@ -2361,7 +2073,7 @@ export function MessagesView({
                 activeOpacity={0.7}
               >
                 {isUnmatching ? (
-                  <ActivityIndicator size="small" color="#EF4444" />
+                  <ActivityIndicator size="small" color="#FFF" />
                 ) : (
                   <Text style={styles.unmatchActionText}>Unmatch</Text>
                 )}
@@ -2374,15 +2086,31 @@ export function MessagesView({
               >
                 <Text style={styles.unmatchCancelText}>Cancel</Text>
               </TouchableOpacity>
-            </View>
-          </View>
+            </DismissibleSheet>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     );
   }
 
-  const activeConversations = conversations.filter((conv) => !conv.isHidden);
-  const hiddenConversations = conversations.filter((conv) => conv.isHidden);
+  // Split conversations into three buckets:
+  //   - Active: open, ongoing threads
+  //   - Past Connections: unmatched (status === 'CLOSED') — read-only,
+  //     surfaced separately so users see prior matches haven't vanished
+  //   - Hidden: inactive 30+ days (existing concept, kept as-is)
+  // The backend's GET /api/messages/conversations/ returns CLOSED threads
+  // alongside ACTIVE ones with no status filter, so partitioning client-side
+  // is correct (and avoids breaking other surfaces that may rely on the
+  // unfiltered list).
+  const activeConversations = conversations.filter(
+    (conv) => conv.status !== "CLOSED" && !conv.isHidden,
+  );
+  const pastConversations = conversations.filter(
+    (conv) => conv.status === "CLOSED",
+  );
+  const hiddenConversations = conversations.filter(
+    (conv) => conv.status !== "CLOSED" && conv.isHidden,
+  );
 
   return (
     <ScrollView
@@ -2402,7 +2130,7 @@ export function MessagesView({
         </View>
       ) : conversationsError ? (
         <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: "#FF3B30", fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}>
             Failed to load conversations
           </Text>
           <Text style={{ color: "#999", fontSize: 13, textAlign: "center" }}>
@@ -2495,6 +2223,82 @@ export function MessagesView({
                         <Text style={styles.convMsg} numberOfLines={1}>
                           {conv.lastMessage?.content ||
                             "Start a conversation..."}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Past Connections — unmatched conversations (status === 'CLOSED').
+              Visually muted with the same convItemHidden styles so they
+              read as "archived". Still tappable so users can review the
+              prior thread, but the send-message input below is disabled. */}
+          {pastConversations.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                PAST CONNECTIONS ({pastConversations.length})
+              </Text>
+              <View style={styles.list}>
+                {pastConversations.map((conv, index) => (
+                  <Animated.View
+                    key={conv.id}
+                    entering={FadeInDown.delay(index * 50)}
+                  >
+                    <TouchableOpacity
+                      onPress={() => handleConversationSelect(conv.id)}
+                      style={[styles.convItem, styles.convItemHidden]}
+                    >
+                      <View style={styles.imgWrapper}>
+                        {conv.otherParticipant.profileImageUrl ? (
+                          <Image
+                            source={{
+                              uri: conv.otherParticipant.profileImageUrl,
+                            }}
+                            style={[styles.convImg, styles.convImgHidden]}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.convImg,
+                              styles.convImgHidden,
+                              {
+                                backgroundColor: "#000",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 22,
+                                fontWeight: "800",
+                                color: "#FFF",
+                              }}
+                            >
+                              {(conv.otherParticipant.name ||
+                                "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.convMain}>
+                        <View style={styles.convHeader}>
+                          <Text
+                            style={[styles.convName, styles.convNameHidden]}
+                            numberOfLines={1}
+                          >
+                            {conv.otherParticipant.name}
+                          </Text>
+                          <Text style={styles.unmatchedTag}>UNMATCHED</Text>
+                        </View>
+                        <Text
+                          style={[styles.convMsg, styles.convMsgHidden]}
+                          numberOfLines={1}
+                        >
+                          {conv.lastMessage?.content || "No messages"}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -2669,6 +2473,37 @@ const styles = StyleSheet.create({
   convTime: { fontSize: 10, fontWeight: "800", color: "#BBB" },
   convMsg: { fontSize: 14, color: "#666" },
   convMsgHidden: { color: "#AAA" },
+  // Tag rendered in the timestamp slot of a Past Connections row so the
+  // user knows why the conversation is muted (vs the "30+ days inactive"
+  // hidden state).
+  unmatchedTag: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#999",
+    letterSpacing: 0.8,
+    backgroundColor: "#F0F0F0",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  // In-thread banner shown in place of the message input when the
+  // conversation has been unmatched/closed.
+  closedNotice: {
+    backgroundColor: "#F8F9FB",
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    alignItems: "center",
+  },
+  closedNoticeText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+    textAlign: "center",
+    lineHeight: 19,
+  },
   chatContainer: { flex: 1, backgroundColor: "#FFF" },
   chatHeader: {
     flexDirection: "row",
@@ -3403,11 +3238,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 28,
   },
+  // Unmatch CTA — solid black to match the rest of the app's primary
+  // action pattern (Match button, Send button, etc.). The destructive
+  // context is communicated by the modal subtitle ("This cannot be
+  // undone."), not by the button color — keeps the brand palette
+  // consistent across surfaces.
   unmatchActionBtn: {
     paddingVertical: 17,
     borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: "#EF4444",
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -3415,7 +3254,7 @@ const styles = StyleSheet.create({
   unmatchActionText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#EF4444",
+    color: "#FFF",
   },
   unmatchCancelBtn: {
     paddingVertical: 17,

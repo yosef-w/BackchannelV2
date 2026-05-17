@@ -546,7 +546,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       reviewing: { backgroundColor: "#F59E0B" },
       interview_scheduled: { backgroundColor: "#10B981" },
       offer: { backgroundColor: "#8B5CF6" },
-      rejected: { backgroundColor: "#EF4444" },
+      rejected: { backgroundColor: "#DC2626" },
     };
     return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
   };
@@ -958,6 +958,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
         break;
       }
       case "companies": {
+        // The sponsor's signup company can't be removed — the X button is
+        // replaced with a Lock icon in the UI, but guard here too so a stale
+        // index or future caller can't bypass it.
+        const target = companiesCanReferTo[index];
+        if (
+          company &&
+          target &&
+          target.trim().toLowerCase() === company.trim().toLowerCase()
+        ) {
+          return;
+        }
         const updatedCompanies = companiesCanReferTo.filter(
           (_, i) => i !== index,
         );
@@ -3784,16 +3795,34 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     COMPANIES I CAN REFER TO
                   </Text>
                   <View style={styles.tagsContainer}>
-                    {companiesCanReferTo.map((tag, index) => (
-                      <View key={index} style={styles.editableTag}>
-                        <Text style={styles.editableTagText}>{tag}</Text>
-                        <TouchableOpacity
-                          onPress={() => handleRemoveTag("companies", index)}
-                        >
-                          <X color="#000" size={14} />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
+                    {companiesCanReferTo.map((tag, index) => {
+                      // The sponsor's signup company is locked — they can add
+                      // companies they can also refer to, but their primary
+                      // company always stays in the list (the jobs board uses
+                      // it as the default browse filter and the rest of the
+                      // app keys off it). Compare case-insensitively against
+                      // the trimmed signup company.
+                      const isOwnCompany =
+                        !!company &&
+                        tag.trim().toLowerCase() ===
+                          company.trim().toLowerCase();
+                      return (
+                        <View key={index} style={styles.editableTag}>
+                          <Text style={styles.editableTagText}>{tag}</Text>
+                          {isOwnCompany ? (
+                            <Lock color="#999" size={12} />
+                          ) : (
+                            <TouchableOpacity
+                              onPress={() =>
+                                handleRemoveTag("companies", index)
+                              }
+                            >
+                              <X color="#000" size={14} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
                   <View style={styles.addTagRow}>
                     <TextInput
@@ -4127,10 +4156,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <View style={styles.privacyActionContent}>
             <Text style={styles.deleteActionTitle}>Delete Account</Text>
             <Text style={styles.privacyActionSubtitle}>
-              Permanently delete your account and data
+              Remove your account permanently
             </Text>
           </View>
-          <ChevronRight color="#666" size={20} />
+          <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
       </SimpleModal>
 
@@ -4891,7 +4920,7 @@ function EditInsightsModal({
                 <View style={styles.insightCardHeader}>
                   <Text style={styles.insightQuestion}>{insight.question}</Text>
                   <TouchableOpacity onPress={() => onRemoveInsight(index)}>
-                    <Trash2 color="#FF3B30" size={18} />
+                    <Trash2 color="#DC2626" size={18} />
                   </TouchableOpacity>
                 </View>
 
@@ -5342,7 +5371,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#EF4444",
+    backgroundColor: "#DC2626",
   },
 
   // Modal Styles
@@ -5453,7 +5482,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   fieldLabelIncomplete: {
-    color: "#EF4444",
+    color: "#DC2626",
   },
   fieldLabelRow: {
     flexDirection: "row",
@@ -5463,7 +5492,7 @@ const styles = StyleSheet.create({
   requiredStar: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#EF4444",
+    color: "#DC2626",
     lineHeight: 16,
   },
   fieldDisplay: {
@@ -5828,22 +5857,25 @@ const styles = StyleSheet.create({
     color: "#000",
     marginTop: 4,
   },
+  // Delete-account card — same shape as the sibling privacy cards but a
+  // tick darker on the background so it visually pulls forward from the
+  // row above. The native Alert confirmation in handleDeleteAccount is
+  // still the actual safety net.
   deleteActionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#000",
+    backgroundColor: "#EBEBEB",
     padding: 16,
     borderRadius: 12,
-    marginTop: 24,
-    borderWidth: 2,
-    borderColor: "#333",
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#DEDEDE",
   },
   deleteActionTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#FFF",
+    color: "#000",
     marginBottom: 2,
-    letterSpacing: 0.5,
   },
   passwordInputWrapper: {
     flexDirection: "row",
@@ -5871,7 +5903,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: "#FF3B30",
+    color: "#DC2626",
     fontWeight: "600",
     textAlign: "center",
   },
