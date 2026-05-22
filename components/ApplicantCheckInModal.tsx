@@ -12,6 +12,7 @@ import { Check, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Dimensions,
     Modal,
     Platform,
     ScrollView,
@@ -26,14 +27,12 @@ import Animated, {
     SlideOutDown,
     ZoomIn,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     trackApplicantCheckInSubmitted,
     trackCheckInFailed,
 } from "../lib/analytics/mixpanel";
-import {
-    ApplicantCheckInStage,
-    submitApplicantCheckIn,
-} from "../lib/api";
+import { ApplicantCheckInStage, submitApplicantCheckIn } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -94,6 +93,7 @@ const STATUS_OPTIONS: StatusOption[] = [
 ];
 
 const NOTE_MAX = 500;
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function daysSince(iso: string): number | null {
@@ -118,13 +118,12 @@ export function ApplicantCheckInModal({
   loading = false,
 }: Props) {
   const showToast = useToastStore((s) => s.showToast);
+  const insets = useSafeAreaInsets();
 
   // Active = not withdrawn. Backend rejects check-ins on withdrawn referrals.
   const activeReferrals = useMemo(
     () =>
-      referrals.filter(
-        (r) => (r.status || "").toUpperCase() !== "WITHDRAWN",
-      ),
+      referrals.filter((r) => (r.status || "").toUpperCase() !== "WITHDRAWN"),
     [referrals],
   );
 
@@ -134,10 +133,15 @@ export function ApplicantCheckInModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const fallbackReferral = activeReferrals[0] ?? null;
+
   const currentReferral = useMemo(() => {
-    if (!activeReferralId) return null;
-    return activeReferrals.find((r) => r.referralId === activeReferralId) ?? null;
-  }, [activeReferralId, activeReferrals]);
+    if (!activeReferralId) return fallbackReferral;
+    return (
+      activeReferrals.find((r) => r.referralId === activeReferralId) ??
+      fallbackReferral
+    );
+  }, [activeReferralId, activeReferrals, fallbackReferral]);
 
   const activeStageIndex =
     selectedStatus !== null ? STATUS_OPTIONS[selectedStatus].stageIndex : 0;
@@ -165,6 +169,46 @@ export function ApplicantCheckInModal({
     setNote("");
     setSubmitted(false);
   }, [visible, activeReferralId]);
+
+  // Debug: inspect the exact referral payload and selected referral rendered
+  // by this modal.
+  useEffect(() => {
+    if (!visible || !__DEV__) return;
+    const filteredOutReferrals = referrals.filter(
+      (r) => (r.status || "").toUpperCase() === "WITHDRAWN",
+    );
+    console.log("[ApplicantCheckInModal] referral debug", {
+      totalReferrals: referrals.length,
+      activeReferralsCount: activeReferrals.length,
+      filteredOutCount: filteredOutReferrals.length,
+      allStatuses: referrals.map((r) => ({
+        referralId: r.referralId,
+        status: r.status,
+      })),
+      activeReferralId,
+      currentReferral,
+      activeReferralSummaries: activeReferrals.map((r) => ({
+        referralId: r.referralId,
+        status: r.status,
+        jobTitle: r.jobTitle,
+        jobCompany: r.jobCompany,
+        sponsorFirstName: r.sponsorFirstName,
+        sponsorLastName: r.sponsorLastName,
+      })),
+      filteredOutSummaries: filteredOutReferrals.map((r) => ({
+        referralId: r.referralId,
+        status: r.status,
+        jobTitle: r.jobTitle,
+        jobCompany: r.jobCompany,
+      })),
+    });
+  }, [
+    visible,
+    referrals.length,
+    activeReferrals,
+    activeReferralId,
+    currentReferral,
+  ]);
 
   const handleSelect = (idx: number) => {
     setSelectedStatus(idx);
@@ -215,7 +259,16 @@ export function ApplicantCheckInModal({
         <Animated.View
           entering={SlideInDown}
           exiting={SlideOutDown}
-          style={styles.sheet}
+          style={[
+            styles.sheet,
+            {
+              paddingBottom: Math.max(24, insets.bottom + 16),
+              height:
+                Platform.OS === "ios"
+                  ? SCREEN_HEIGHT * 0.94
+                  : SCREEN_HEIGHT * 0.92,
+            },
+          ]}
         >
           {/* Drag handle */}
           <View style={styles.handle} />
@@ -272,9 +325,13 @@ export function ApplicantCheckInModal({
           ) : (
             /* ── Main content ────────────────────────────────────────────── */
             <ScrollView
+              style={styles.mainScroll}
               showsVerticalScrollIndicator={false}
               bounces={false}
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: Math.max(40, insets.bottom + 24) },
+              ]}
               keyboardShouldPersistTaps="handled"
             >
               {/* Referral picker (only shown when 2+ active referrals) */}
@@ -476,8 +533,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     paddingTop: 12,
     paddingHorizontal: 28,
-    paddingBottom: 40,
-    maxHeight: "90%",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -509,7 +564,11 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   scrollContent: {
+    flexGrow: 1,
     paddingBottom: 8,
+  },
+  mainScroll: {
+    flex: 1,
   },
 
   // ── Picker (multi-referral) ────────────────────────────────────────────────

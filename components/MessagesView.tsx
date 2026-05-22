@@ -1,67 +1,64 @@
 import {
-    trackConversationOpened,
-    trackMessageSent,
-    trackPublicProfileOpenedFromMessage,
-    trackReferralSubmitted,
-    trackUnmatchConfirmed,
+  trackConversationOpened,
+  trackMessageSent,
+  trackPublicProfileOpenedFromMessage,
+  trackReferralSubmitted,
+  trackUnmatchConfirmed,
 } from "@/lib/analytics/mixpanel";
 import {
-    getBasicProfile,
-    getConversationMessages,
-    getConversations,
-    getPublicProfile,
-    sendMessage,
-    submitReferral,
-    unmatchConversation,
+  getBasicProfile,
+  getConversationMessages,
+  getConversations,
+  getPublicProfile,
+  listReferrals,
+  sendMessage,
+  submitReferral,
+  unmatchConversation,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
-    ArrowLeft,
-    Award,
-    Briefcase,
-    Check,
-    CheckCircle,
-    ChevronRight,
-    ClipboardCheck,
-    Clock,
-    FileText,
-    MapPin,
-    MessageCircle,
-    MoreHorizontal,
-    Send,
-    ShieldCheck,
-    User,
-    UserCheck,
-    X,
+  ArrowLeft,
+  CheckCircle,
+  ChevronRight,
+  ClipboardCheck,
+  Clock,
+  FileText,
+  MessageCircle,
+  MoreHorizontal,
+  Send,
+  ShieldCheck,
+  User,
+  UserCheck,
+  X
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInDown,
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
-    useAnimatedKeyboard,
-    useAnimatedStyle,
+  FadeInDown,
+  FadeInUp,
+  SlideInDown,
+  SlideOutDown,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -138,9 +135,42 @@ export function MessagesView({
   const [referralProfile, setReferralProfile] = useState<any>(null);
   const [referralProfileLoading, setReferralProfileLoading] = useState(false);
 
+  // Tracks which (applicantUserId:jobId) pairs have already been referred so
+  // the header button reflects the referral status without a separate lookup.
+  const [referredSet, setReferredSet] = useState<Set<string>>(new Set());
+
   // Unmatch
   const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
   const [isUnmatching, setIsUnmatching] = useState(false);
+
+  // Refs mirror state for use inside the long-lived inbox WebSocket handler,
+  // which is created once and must read the *current* values without the
+  // socket reconnecting every time selection or the list changes.
+  const selectedConversationRef = useRef<string | null>(selectedConversation);
+  const conversationsRef = useRef<any[]>(conversations);
+  const prevSelectedRef = useRef<string | null>(selectedConversation);
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  // Fetch existing referrals (sponsor only) so the button reflects prior
+  // referrals correctly even before the sponsor submits a new one.
+  useEffect(() => {
+    if (userType !== "sponsor") return;
+    listReferrals({ limit: 100 })
+      .then((res) => {
+        const keys = (res.referrals || [])
+          .filter((r) => r.STATUS === "REFERRED")
+          .map((r) => `${r.APPLICANT_USER_ID}:${r.JOB_ID}`);
+        setReferredSet(new Set(keys));
+      })
+      .catch(() => {
+        // Non-fatal — button just stays in the default state
+      });
+  }, [userType]);
 
   // Fetch current user profile to get USER_ID
   useEffect(() => {
@@ -156,139 +186,15 @@ export function MessagesView({
     fetchCurrentUser();
   }, []);
 
-  // Fetch conversations on mount
+  // Fetch conversations once the current user is known. The actual fetch
+  // lives in `refreshConversations` (defined below) so it can be reused by
+  // the inbox WebSocket and the refetch-on-return fallback.
   useEffect(() => {
-    const fetchConversations = async () => {
-      if (!currentUserId) {
-        console.log("[MessagesView] Waiting for current user ID...");
-        return;
-      }
-
-      try {
-        setConversationsLoading(true);
-        console.log("[MessagesView] Fetching conversations...");
-
-        const response = await getConversations({ limit: 20, offset: 0 });
-        console.log("[MessagesView] Conversations response:", response);
-
-        setConversationsTotalCount(
-          response.total_count ?? response.conversations.length,
-        );
-
-        // Transform UPPERCASE PostgreSQL fields to our UI format
-        // Determine which participant is "the other person" based on current user ID
-        const transformedConversations = response.conversations.map((conv) => {
-          const c = conv as any; // backend returns richer fields than typed stub
-          const isCurrentUserApplicant = c.APPLICANT_USER_ID === currentUserId;
-
-          // Show the OTHER person's info
-          const otherPersonFirstName = isCurrentUserApplicant
-            ? c.SPONSOR_FIRST_NAME
-            : c.APPLICANT_FIRST_NAME;
-          const otherPersonLastName = isCurrentUserApplicant
-            ? c.SPONSOR_LAST_NAME
-            : c.APPLICANT_LAST_NAME;
-          const otherPersonPhoto = isCurrentUserApplicant
-            ? c.SPONSOR_PHOTO_URL
-            : c.APPLICANT_PHOTO_URL;
-          const otherPersonId = isCurrentUserApplicant
-            ? c.SPONSOR_USER_ID
-            : c.APPLICANT_USER_ID;
-          const otherPersonRole = isCurrentUserApplicant
-            ? c.SPONSOR_JOB_TITLE
-            : c.APPLICANT_POSITIONS
-              ? (() => {
-                  try {
-                    const arr = JSON.parse(c.APPLICANT_POSITIONS);
-                    return Array.isArray(arr) && arr.length
-                      ? arr[0]
-                      : "Job Seeker";
-                  } catch {
-                    return "Job Seeker";
-                  }
-                })()
-              : "Job Seeker";
-          const otherPersonCompany = isCurrentUserApplicant
-            ? c.SPONSOR_COMPANY
-            : "";
-
-          return {
-            id: c.CONVERSATION_ID,
-            // Backend returns 'ACTIVE' or 'CLOSED' (closed = unmatched). The
-            // list endpoint returns BOTH statuses, so we need this field
-            // to split the list into Active vs Past Connections and to
-            // block sending in a closed thread.
-            status: (c.STATUS as "ACTIVE" | "CLOSED") || "ACTIVE",
-            name:
-              `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
-              "Unknown",
-            role: otherPersonRole || "Unknown Role",
-            company: otherPersonCompany || c.COMPANY || "Unknown Company",
-            profileImageUrl: otherPersonPhoto,
-            skills: c.SKILLS
-              ? Array.isArray(c.SKILLS)
-                ? c.SKILLS
-                : [c.SKILLS]
-              : [],
-            experience: c.YEARS_EXPERIENCE
-              ? `${c.YEARS_EXPERIENCE} years`
-              : "N/A",
-            otherParticipant: {
-              id: otherPersonId,
-              name:
-                `${otherPersonFirstName || ""} ${otherPersonLastName || ""}`.trim() ||
-                "Unknown",
-              profileImageUrl: otherPersonPhoto,
-              role: otherPersonRole || undefined,
-              company: otherPersonCompany || undefined,
-            },
-            lastMessage: c.LAST_BODY
-              ? {
-                  content: c.LAST_BODY,
-                  senderId: "",
-                  createdAt: c.LAST_AT || new Date().toISOString(),
-                  isRead: true,
-                }
-              : undefined,
-            unreadCount:
-              (isCurrentUserApplicant && c.APPLICANT_HAS_UNREAD) ||
-              (!isCurrentUserApplicant && c.SPONSOR_HAS_UNREAD)
-                ? 1
-                : 0,
-            jobContext: {
-              jobId: c.JOB_ID,
-              jobTitle: c.TITLE,
-              company: c.COMPANY || "",
-            },
-            createdAt: new Date().toISOString(),
-          };
-        });
-
-        setConversations(transformedConversations);
-      } catch (err) {
-        console.warn("[MessagesView] Failed to fetch conversations:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch conversations";
-
-        // If 404, backend might not have implemented endpoint yet or no conversations exist
-        if (
-          errorMessage.includes("Not found") ||
-          errorMessage.includes("404")
-        ) {
-          console.log(
-            "[MessagesView] Conversations endpoint not available or no conversations exist - showing empty state",
-          );
-          setConversations([]);
-          setConversationsError(null); // Don't show error for 404, just empty state
-        } else {
-          setConversationsError(errorMessage);
-        }
-      } finally {
-        setConversationsLoading(false);
-      }
-    };
-
-    fetchConversations();
+    if (!currentUserId) {
+      console.log("[MessagesView] Waiting for current user ID...");
+      return;
+    }
+    refreshConversations();
   }, [currentUserId]);
 
   // Build a transformed conversation object from raw API response (shared by initial fetch + load more)
@@ -360,6 +266,41 @@ export function MessagesView({
       },
       createdAt: new Date().toISOString(),
     };
+  };
+
+  // Re-fetch the conversation list. `silent` skips the full-screen loading
+  // state and the error screen — used by background refreshers (the inbox
+  // socket, returning to the list from a thread) so the list updates without
+  // a visible flash and a transient network error never wipes a good list.
+  const refreshConversations = async (silent = false) => {
+    if (!currentUserId) return;
+    try {
+      if (!silent) setConversationsLoading(true);
+      const response = await getConversations({ limit: 20, offset: 0 });
+      setConversationsTotalCount(
+        response.total_count ?? response.conversations.length,
+      );
+      setConversations(
+        response.conversations.map((conv) =>
+          transformConversation(conv as any),
+        ),
+      );
+      setConversationsError(null);
+    } catch (err) {
+      console.warn("[MessagesView] Failed to fetch conversations:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch conversations";
+      // 404 = endpoint not available yet or no conversations — show the
+      // empty state, not an error.
+      if (errorMessage.includes("Not found") || errorMessage.includes("404")) {
+        setConversations([]);
+        setConversationsError(null);
+      } else if (!silent) {
+        setConversationsError(errorMessage);
+      }
+    } finally {
+      if (!silent) setConversationsLoading(false);
+    }
   };
 
   const loadMoreConversations = async () => {
@@ -451,6 +392,25 @@ export function MessagesView({
                 return [...prev, newMessage];
               });
 
+              // Keep the inbox list's last-message preview in sync so the
+              // conversation row updates live instead of going stale until
+              // the list is refetched (e.g. on a tab switch).
+              setConversations((prev) =>
+                prev.map((c) =>
+                  c.id === selectedConversation
+                    ? {
+                        ...c,
+                        lastMessage: {
+                          content: newMessage.content,
+                          senderId: newMessage.senderId,
+                          createdAt: newMessage.createdAt,
+                          isRead: true,
+                        },
+                      }
+                    : c,
+                ),
+              );
+
               // Scroll to bottom when new message arrives
               setTimeout(() => scrollToBottom(true), 100);
             } else if (data.type === "error") {
@@ -496,6 +456,127 @@ export function MessagesView({
       }
     };
   }, [selectedConversation]);
+
+  // ── Inbox-wide live updates ────────────────────────────────────────────
+  // A single per-user WebSocket (ws/inbox/) kept open the whole time the
+  // Messages tab is mounted. The backend pushes an `inbox.update` event
+  // whenever ANY of this user's conversations gets a new message, so the
+  // conversation-list previews stay live — even for threads that aren't
+  // open. The per-conversation chat socket above only covers the thread
+  // currently being viewed.
+  //
+  // Until the backend ships the `ws/inbox/` route (see §11 in
+  // docs/BACKEND_CHANGES_NEEDED.md) the connection just fails and retries
+  // quietly — the inbox still works via the on-mount fetch, the in-thread
+  // message mirroring, and the refetch-on-return fallback below.
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    let attempt = 0;
+    let hasConnectedOnce = false;
+
+    const applyInboxUpdate = (data: any) => {
+      const convId = data.conversation_id;
+      if (!convId) return;
+
+      // Message landed in a conversation not in our list yet (e.g. a
+      // brand-new match's first message) — pull the fresh list instead.
+      if (!conversationsRef.current.some((c) => c.id === convId)) {
+        refreshConversations(true);
+        return;
+      }
+
+      const isFromMe = String(data.sender_user_id) === String(currentUserId);
+      const isOpen = selectedConversationRef.current === convId;
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                lastMessage: {
+                  content: data.body,
+                  senderId: data.sender_user_id,
+                  createdAt: data.created_at,
+                  isRead: true,
+                },
+                // Flag unread only when it's from the other person and we're
+                // not already looking at that thread.
+                unreadCount: !isFromMe && !isOpen ? 1 : c.unreadCount,
+              }
+            : c,
+        ),
+      );
+    };
+
+    const connect = () => {
+      if (cancelled) return;
+      const accessToken = useAuthStore.getState().accessToken;
+      if (!accessToken) return;
+
+      try {
+        const wsUrl = `wss://oyster-app-4pg5w.ondigitalocean.app/ws/inbox/?token=${accessToken}`;
+        ws = new WebSocket(wsUrl);
+      } catch (err) {
+        console.warn("[MessagesView] Inbox WebSocket failed to open:", err);
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = () => {
+        attempt = 0;
+        // After a reconnect, refetch to catch anything missed while down.
+        if (hasConnectedOnce) refreshConversations(true);
+        hasConnectedOnce = true;
+        console.log("[MessagesView] Inbox WebSocket connected");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "inbox.update") applyInboxUpdate(data);
+        } catch (err) {
+          console.warn("[MessagesView] Bad inbox WebSocket payload:", err);
+        }
+      };
+
+      ws.onerror = () => {
+        // `onclose` fires right after and handles reconnect.
+      };
+
+      ws.onclose = (event) => {
+        if (cancelled) return;
+        // 4001 = bad token, 4003 = forbidden — don't hammer reconnect on
+        // an auth failure that won't fix itself.
+        if (event.code === 4001 || event.code === 4003) {
+          console.warn(
+            "[MessagesView] Inbox WebSocket rejected:",
+            event.code,
+          );
+          return;
+        }
+        scheduleReconnect();
+      };
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      attempt += 1;
+      // Exponential backoff, capped at 30s.
+      const delay = Math.min(30000, 1000 * 2 ** attempt);
+      reconnectTimer = setTimeout(connect, delay);
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
+  }, [currentUserId]);
 
   // Fetch messages when conversation is selected
   useEffect(() => {
@@ -592,9 +673,17 @@ export function MessagesView({
       setIsUnmatching(true);
       trackUnmatchConfirmed({ conversationId: selectedConversation });
       await unmatchConversation(selectedConversation);
-      // Optimistically remove from local list
+      // Mark the conversation CLOSED rather than dropping it. This moves it
+      // into the "Past Connections" section (instead of making it vanish),
+      // and keeps `selectedConversation` pointing at a row that still
+      // exists — so the thread can't flash a "Conversation not found"
+      // screen in the render between this update and navigating away.
       setConversations((prev) =>
-        prev.filter((c) => c.id !== selectedConversation),
+        prev.map((c) =>
+          c.id === selectedConversation
+            ? { ...c, status: "CLOSED" as const }
+            : c,
+        ),
       );
       setShowUnmatchMenu(false);
       handleConversationSelect(null);
@@ -648,6 +737,23 @@ export function MessagesView({
 
     // Optimistically add message to UI
     setMessages((prev) => [...prev, tempMessage]);
+    // Mirror it into the inbox list so the conversation row's preview and
+    // timestamp update immediately, without waiting for a list refetch.
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === selectedConversation
+          ? {
+              ...c,
+              lastMessage: {
+                content: tempMessage.content,
+                senderId: tempMessage.senderId,
+                createdAt: tempMessage.createdAt,
+                isRead: true,
+              },
+            }
+          : c,
+      ),
+    );
     const messageToSend = messageText.trim();
     setMessageText("");
 
@@ -723,6 +829,18 @@ export function MessagesView({
       setTimeout(() => scrollToBottom(false), 100);
     }
     return () => onThreadActiveChange?.(false);
+  }, [selectedConversation]);
+
+  // Refetch the list when the user backs out of a thread to the inbox.
+  // The inbox socket already keeps previews live; this is a cheap, instant
+  // fallback that also clears the unread dot on the thread just exited
+  // (the backend marks it read when its messages were fetched).
+  useEffect(() => {
+    const wasInThread = prevSelectedRef.current;
+    prevSelectedRef.current = selectedConversation;
+    if (wasInThread && !selectedConversation) {
+      refreshConversations(true);
+    }
   }, [selectedConversation]);
 
   useEffect(() => {
@@ -1099,14 +1217,39 @@ export function MessagesView({
               {conversation.status !== "CLOSED" && (
                 <>
                   {userType === "sponsor" ? (
-                    <TouchableOpacity
-                      style={styles.headerReferBtn}
-                      onPress={openReferral}
-                      activeOpacity={0.7}
-                    >
-                      <UserCheck color="#000" size={20} />
-                      <Text style={styles.headerReferText}>Refer</Text>
-                    </TouchableOpacity>
+                    (() => {
+                      const applicantId = conversation.otherParticipant?.id;
+                      const jobId = conversation.jobContext?.jobId;
+                      const alreadyReferred =
+                        !!(applicantId && jobId) &&
+                        referredSet.has(`${applicantId}:${jobId}`);
+                      return alreadyReferred ? (
+                        <View style={styles.headerReferBtn}>
+                          <CheckCircle
+                            color="#000"
+                            size={17}
+                            strokeWidth={2.5}
+                          />
+                          <Text
+                            style={[
+                              styles.headerReferText,
+                              styles.headerReferTextDone,
+                            ]}
+                          >
+                            Referred
+                          </Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.headerReferBtn}
+                          onPress={openReferral}
+                          activeOpacity={0.7}
+                        >
+                          <UserCheck color="#000" size={20} />
+                          <Text style={styles.headerReferText}>Refer</Text>
+                        </TouchableOpacity>
+                      );
+                    })()
                   ) : conversation.applicationStatus ? (
                     <TouchableOpacity
                       style={styles.headerStatusBtn}
@@ -1298,7 +1441,9 @@ export function MessagesView({
               userType === "sponsor"
                 ? {
                     label: "Provide Referral",
-                    icon: <UserCheck color="#FFF" size={18} strokeWidth={2.5} />,
+                    icon: (
+                      <UserCheck color="#FFF" size={18} strokeWidth={2.5} />
+                    ),
                     onPress: openReferral,
                   }
                 : {
@@ -1790,6 +1935,13 @@ export function MessagesView({
                           jobId,
                           applicantUserId,
                         });
+                        // Mark this pair as referred so the header button
+                        // updates immediately without a re-fetch.
+                        setReferredSet((prev) => {
+                          const next = new Set(prev);
+                          next.add(`${applicantUserId}:${jobId}`);
+                          return next;
+                        });
                         // Submission succeeded — move to success step
                         setReferralStep(3);
                       } catch (err) {
@@ -2060,8 +2212,9 @@ export function MessagesView({
                 {conversation.otherParticipant.name}
               </Text>
               <Text style={styles.unmatchSheetSubtitle}>
-                Unmatching will permanently close this conversation and remove
-                it from your inbox. This cannot be undone.
+                Unmatching permanently ends your match and closes this
+                conversation. It moves to Past Connections as read-only and
+                can't be undone.
               </Text>
               <TouchableOpacity
                 style={[
@@ -2533,7 +2686,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
   },
+  headerReferBtnDone: {},
   headerReferText: { fontSize: 13, fontWeight: "700" },
+  headerReferTextDone: { color: "#000" },
   headerStatusBtn: {
     flexDirection: "row",
     alignItems: "center",

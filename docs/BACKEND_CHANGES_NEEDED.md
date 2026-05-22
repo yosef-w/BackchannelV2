@@ -1,6 +1,6 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-05-14
+**Last updated:** 2026-05-22
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
@@ -276,7 +276,7 @@ def fetch_profile_pack(sponsor_id, job_id, limit=DEFAULT_PROFILE_PACK_LIMIT):
 
 ### Fix
 
-This is the _mirror_ of what's already implemented for the jobs deck: [`services/jobs.py:get_job_pack`](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L519) uses `score_job_for_user(job, profile)` to rank ATS jobs against the applicant's profile. The same scoring concept just needs to run in the opposite direction — rank applicants against a job — inside `get_profile_pack`/`fetch_profile_pack`.
+This is the _mirror_ of what's already implemented for the jobs deck: [`services/jobs.py:get_job_pack`](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L520) uses `score_job_for_user(job, profile)` to rank ATS jobs against the applicant's profile. The same scoring concept just needs to run in the opposite direction — rank applicants against a job — inside `get_profile_pack`/`fetch_profile_pack`.
 
 Concretely:
 
@@ -354,141 +354,6 @@ The frontend is fully wired — no changes required on our side when this endpoi
 
 ---
 
-## §7 — `GET /api/jobs/browse/` — Accept `?company=…` to filter by any company in `COMPANIES_CAN_REFER_TO` 🟡 Feature gap
-
-**Frontend file:** `components/JobsView.tsx` → company-switcher pill on the Browse tab
-**API function:** `lib/api.ts` → `browseJobs({ company, ... })`
-**Backend files:**
-- `bc_microservices/views_jobs.py` → `browse_jobs` view
-- `bc_microservices/services/jobs.py` → `browse_jobs` service
-- `bc_microservices/queries/jobs.py` → `browse_silver_jobs`
-
-### Context
-
-Sponsors can list multiple companies they're able to refer candidates to (`sponsor_profiles.COMPANIES_CAN_REFER_TO` — a JSON array). The Browse tab currently only shows ATS jobs at the sponsor's *own* employer (`sponsor_profiles.COMPANY`) because the service hard-codes the filter to `get_sponsor_company(sponsor_id)` ([services/jobs.py:724-734](https://example.com)).
-
-We've shipped a UI company-switcher pill on the Browse tab so a sponsor with, say, Stripe (signup company) + ["Plaid", "Mercury"] (refer-list) can flip between which company's roles they're browsing. The frontend already sends `?company=<name>` on the request. Until this lands, the param is silently ignored by the backend and the result set falls back to the sponsor's own company — harmless (the default selection is also their own company) but the feature is inert.
-
-### What's missing
-
-`browse_jobs` doesn't accept a `company` query parameter, and even if it did, the service wouldn't validate the requested company against the sponsor's refer-list before using it.
-
-### Required changes
-
-**1. View layer** — accept the new query param ([views_jobs.py:135-138](https://example.com)):
-
-```python
-@api_view(['GET'])
-@permission_classes([IsSponsor])
-def browse_jobs(request):
-    filters = {k: request.query_params.get(k) for k in ('title', 'location', 'remote') if request.query_params.get(k)}
-    requested_company = request.query_params.get('company')  # NEW
-    limit, offset = parse_pagination(request)
-    return _respond(jobs_svc.browse_jobs(request.user.id, filters, limit, offset, company=requested_company))
-```
-
-**2. Service layer** — validate the requested company against the union of `COMPANIES_CAN_REFER_TO` and the signup `COMPANY`, then use it:
-
-```python
-import json
-from ..queries import profiles as prof_q
-
-def browse_jobs(sponsor_id, filters=None, limit=DEFAULT_PAGE_LIMIT, offset=0, company=None):
-    """Browse SILVER_JOBS, filtered to a company the sponsor is allowed to refer to."""
-    sponsor = prof_q.get_sponsor_profile(sponsor_id) or {}
-    own = (sponsor.get('COMPANY') or '').strip()
-
-    # COMPANIES_CAN_REFER_TO comes back as TEXT (cast in profiles.py:88).
-    # Parse defensively — accept null, JSON list, or already-listified value.
-    raw = sponsor.get('COMPANIES_CAN_REFER_TO')
-    refer_list = []
-    if isinstance(raw, str):
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, list):
-                refer_list = [str(x) for x in parsed if x]
-        except (ValueError, TypeError):
-            pass
-    elif isinstance(raw, list):
-        refer_list = [str(x) for x in raw if x]
-
-    # Always include the signup company in the allowed set, even if the
-    # sponsor removed it from COMPANIES_CAN_REFER_TO (defense-in-depth;
-    # the frontend also locks it).
-    allowed = {c.strip().lower() for c in refer_list if c.strip()}
-    if own:
-        allowed.add(own.lower())
-
-    if company:
-        if company.strip().lower() not in allowed:
-            return Result.forbidden(
-                "You can't browse roles at that company"
-            )
-        # Single-company filter (existing path).
-        normalized = _normalize_company(company)
-        rows, total = jobs_q.browse_silver_jobs(normalized, filters, limit, offset)
-    elif allowed:
-        # NEW: no company param → "All companies" mode. Filter SILVER_JOBS
-        # to every company in the sponsor's allowed set (refer-list ∪
-        # signup company). This is now the default the frontend hits when
-        # the sponsor has multiple refer companies.
-        normalized_list = [_normalize_company(c) for c in allowed if c]
-        rows, total = jobs_q.browse_silver_jobs_multi(
-            normalized_list, filters, limit, offset
-        )
-    else:
-        return Result.bad_request(
-            "Please add your company to your sponsor profile before browsing jobs"
-        )
-
-    return Result.success(sanitize_for_json({
-        "jobs": rows, "total_count": total, "limit": limit, "offset": offset,
-    }))
-```
-
-**3.5. Query layer — new `browse_silver_jobs_multi` for "All companies" mode** ([queries/jobs.py](https://example.com)). Mirrors the existing `browse_silver_jobs` but accepts a list and uses `ILIKE ANY` against the normalized organization names:
-
-```python
-def browse_silver_jobs_multi(organizations, filters=None, limit=DEFAULT_PAGE_LIMIT, offset=0):
-    """Browse SILVER_JOBS across multiple allowed companies. Returns (rows, total_count)."""
-    filters = filters or {}
-    if not organizations:
-        return [], 0
-    # Wrap each org in % wildcards for case-insensitive substring match,
-    # mirroring how browse_silver_jobs builds its single-company ILIKE.
-    patterns = [f"%{o}%" for o in organizations]
-    q = """
-    SELECT JOB_ID, TITLE, ORGANIZATION, FULL_LOCATION, DESCRIPTION_TEXT,
-           EMPLOYMENT_TYPES, IS_REMOTE, SALARY_ANNUAL_MIN, SALARY_ANNUAL_MAX,
-           SALARY_CURRENCY, EXPERIENCE_LEVEL, SKILLS::TEXT, DATE_POSTED,
-           COUNT(*) OVER() AS _total_count
-    FROM ats.silver_jobs
-    WHERE is_active = TRUE
-      AND TITLE IS NOT NULL AND TRIM(TITLE) != ''
-      AND DESCRIPTION_TEXT IS NOT NULL AND TRIM(DESCRIPTION_TEXT) != ''
-      AND UPPER(ORGANIZATION) ILIKE ANY (ARRAY[%s])
-    """ % ",".join(["UPPER(%s)"] * len(patterns))
-    params = list(patterns)
-    # … then append title/location/remote/limit/offset same as the single-company version
-```
-
-**3. Query layer** — no new helper needed. `prof_q.get_sponsor_profile(sponsor_id)` already returns both `COMPANY` and `COMPANIES_CAN_REFER_TO` ([queries/profiles.py:81-98](https://example.com)) and is cached (`sponsor_profile:<user_id>`, TTL_MEDIUM), so reusing it is cheap. This also replaces the existing `jobs_q.get_sponsor_company(sponsor_id)` call in the current `browse_jobs` service — one fewer DB hit.
-
-### Validation rules (server-side)
-
-- The `company` value sent from the client is compared **case-insensitively** after `.strip()` against the union of `COMPANIES_CAN_REFER_TO` and `COMPANY`. If not in the set, return 403.
-- The signup company (`sponsor_profiles.COMPANY`) is **always implicitly allowed**, even if it's not in `COMPANIES_CAN_REFER_TO`. The frontend locks the signup company in the "Companies I Can Refer To" editor so it can't be removed, but the backend should defense-in-depth this in case an older client wrote a list without it.
-- The SILVER_JOBS organization filter still runs through `_normalize_company` so suffix variants ("Stripe" vs "Stripe, Inc.") match correctly.
-
-### Frontend impact (when this ships)
-
-No frontend changes required — the pill, sheet, and `?company=…` param are already wired. Two modes are already live on the frontend:
-
-- **Specific company selected** → sends `?company=<name>`. Backend validates and filters to that single company. ✅
-- **"All companies" selected (default for sponsors with >1 refer company)** → sends NO `company` param. Backend should treat the missing param as "filter to every company in the sponsor's allowed set". Until this ships, the missing-param fallback narrows to just the signup company — harmless degradation.
-
----
-
 ## §8 — Tighten the HomeView role-switcher signal: pending-only counts + likers-first deck ordering 🟡 Feature gap
 
 **Frontend file:** `components/HomeView.tsx` → role-switcher badge + card deck powered by `fetchProfilesPack`
@@ -503,9 +368,9 @@ The HomeView role switcher shows a count badge next to each sponsored role — m
 
 Two issues with the current behavior that make the signal misleading:
 
-**1. The count is too broad.** `LIKES_COUNT` ([queries/jobs.py:471](https://example.com)) counts every applicant in `STATUS IN ('ACTIVE', 'MATCHED')`. So a role with 5 already-matched applicants and 0 pending shows `5` — implying activity that doesn't actually need the sponsor's attention. The count should reflect *unactioned* interest, not lifetime activity.
+**1. The count is too broad.** `LIKES_COUNT` ([`queries/jobs.py:473`](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/jobs.py#L473)) counts every applicant in `STATUS IN ('ACTIVE', 'MATCHED')`. So a role with 5 already-matched applicants and 0 pending shows `5` — implying activity that doesn't actually need the sponsor's attention. The count should reflect *unactioned* interest, not lifetime activity.
 
-**2. The deck doesn't honor the badge.** When a sponsor taps a role, `fetch_profile_pack` ([queries/profiles.py:174](https://example.com)) returns *every* applicant in the database minus those the sponsor has already seen for that job, with no preference for applicants who liked the role. So the badge promises "12 people want you" but the deck shows them a general discovery pool — the 12 likers may not even appear in the first batch. The badge and the experience downstream are disconnected.
+**2. The deck doesn't honor the badge.** When a sponsor taps a role, `fetch_profile_pack` ([`queries/profiles.py:174`](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/profiles.py#L174)) returns *every* applicant in the database minus those the sponsor has already seen for that job, with no preference for applicants who liked the role. So the badge promises "12 people want you" but the deck shows them a general discovery pool — the 12 likers may not even appear in the first batch. The badge and the experience downstream are disconnected.
 
 ### What's missing
 
@@ -518,7 +383,7 @@ Together these make the badge a genuine "next-up" signal: tap the role and the f
 
 ### Required changes
 
-**§8a — Update LIKES_COUNT subquery** in `get_jobs_by_sponsor` ([queries/jobs.py:471](https://example.com)):
+**§8a — Update LIKES_COUNT subquery** in `get_jobs_by_sponsor` ([`queries/jobs.py:473`](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/jobs.py#L473)):
 
 ```python
 # Before
@@ -534,7 +399,7 @@ Together these make the badge a genuine "next-up" signal: tap the role and the f
 
 One word change. Same column name (`LIKES_COUNT`) so no API contract drift.
 
-**§8b — Order `fetch_profile_pack` to surface active likers first** ([queries/profiles.py:174](https://example.com)):
+**§8b — Order `fetch_profile_pack` to surface active likers first** ([`queries/profiles.py:174`](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/profiles.py#L174)):
 
 ```python
 def fetch_profile_pack(sponsor_id, job_id, limit=DEFAULT_PROFILE_PACK_LIMIT):
@@ -595,3 +460,468 @@ Shipping both at once preserves the coherent UX. Splitting them creates a window
 No frontend changes required. The role-switcher badge displays `job.likesCount` verbatim — it'll automatically reflect the new pending-only number. The card deck consumes the profile-pack response in order — it'll automatically render likers first.
 
 Once both ship: the muted-zero badge variant (already wired in [HomeView.tsx](components/HomeView.tsx) — gray pill when count is 0) will become more honest too. A role with 5 active matches + 0 pending will correctly show `0` (muted), signaling "no new decisions waiting" instead of falsely implying activity.
+
+---
+
+## §9 — Expose the sponsor's verified status on the public profile 🟢 Small add
+
+**Frontend file:** `components/HomeView.tsx` → "Meet your sponsor" back face on applicant job cards
+**API function:** `lib/api.ts` → `getPublicProfile(userId)`
+**Backend files:**
+- `bc_microservices/queries/profiles.py` → `get_public_profile`
+- `bc_microservices/services/profiles.py` → `get_public_profile` (variant parsing — not affected)
+
+### Context
+
+The applicant job card's back face was redesigned into a "Meet your sponsor" panel — sponsor identity, a trust strip, and a couple of the sponsor's own Q&A insights. One of the trust signals is a **"Verified employee"** badge, shown when the sponsor has verified their work email (`sponsor_profiles.WORK_EMAIL_VERIFIED`).
+
+The frontend fetches the sponsor via `getPublicProfile(sponsorUserId)` and is already wired to render the badge — it reads `WORK_EMAIL_VERIFIED` (top-level or under `sponsor_profile`) and shows the badge when it's `true`.
+
+### What's missing
+
+`get_public_profile` ([`queries/profiles.py:218`](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/profiles.py#L218)) doesn't select `WORK_EMAIL_VERIFIED`. The sponsor branch currently selects:
+
+```sql
+SELECT COMPANY, JOB_TITLE, LINKED_IN, DURATION,
+       COMPANIES_CAN_REFER_TO::TEXT, SKILLS::TEXT, INSIGHTS::TEXT
+FROM user_info.sponsor_profiles
+WHERE USER_ID = %s
+```
+
+So the verified badge stays hidden — no data to drive it.
+
+### Required change
+
+Add `WORK_EMAIL_VERIFIED` to the sponsor-branch SELECT:
+
+```sql
+SELECT COMPANY, JOB_TITLE, LINKED_IN, DURATION, WORK_EMAIL_VERIFIED,
+       COMPANIES_CAN_REFER_TO::TEXT, SKILLS::TEXT, INSIGHTS::TEXT
+FROM user_info.sponsor_profiles
+WHERE USER_ID = %s
+```
+
+It lands in the response under `sponsor_profile.WORK_EMAIL_VERIFIED` as a boolean. No service-layer change needed (it's a scalar, not a variant/JSON column).
+
+### Privacy note
+
+`WORK_EMAIL_VERIFIED` is a boolean — it does not leak the work email itself. Safe for a public-profile payload. The actual `WORK_EMAIL` value is correctly already excluded.
+
+### Frontend impact (when this ships)
+
+None. The "Meet your sponsor" panel already reads `WORK_EMAIL_VERIFIED` defensively (both top-level and nested under `sponsor_profile`) and renders the green "Verified employee" badge when it's `true`. The moment the column is in the response, the badge lights up.
+
+---
+
+## §10 — Include `user_id` in the job's `sponsor` object 🔴 Bug — blocks "Meet your sponsor"
+
+**Frontend file:** `components/HomeView.tsx` → "Meet your sponsor" back face
+**Frontend type:** `types/jobs.ts` → `JobApiSponsor.user_id` (already declared, already consumed)
+**Backend file:** `bc_microservices/queries/jobs.py` → `get_sponsor_info`
+
+### What's wrong
+
+The job-pack payload's `sponsor` object is built by `get_sponsor_info(sponsor_id)` ([`queries/jobs.py:77`](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/jobs.py#L77)). It returns:
+
+```python
+return {
+    'name': ...,
+    'first_name': ...,
+    'last_name': ...,
+    'job_title': ...,
+    'photo_url': ...,
+    'years_at_company': ...,
+    'duration': ...,
+    'can_provide_direct_referral': ...,
+}
+```
+
+There is **no `user_id`** — even though the function receives `sponsor_id` as its argument.
+
+The frontend's "Meet your sponsor" back face needs the sponsor's user id to call `getPublicProfile(sponsorUserId)` and load the sponsor's bio, Q&A insights, and verified status. `transformJobApiResponse` already maps `userId: apiJob.sponsor.user_id` and the `JobApiSponsor` type already declares `user_id` — so the frontend is fully wired and just receives `undefined`.
+
+**Symptom:** The sponsor's Q&A insights never render on the back of any sponsored job card. Confirmed with the demo sponsor "Emily Rodriguez", who has two valid insight Q&A in `seed_demo_data.py` and in `sponsor_profiles.INSIGHTS` — the data is correct end-to-end on the backend; it simply can't be fetched because the frontend never gets her `user_id`.
+
+### Fix (one line)
+
+In `get_sponsor_info`'s returned dict, add the id it already has in scope:
+
+```python
+return {
+    'user_id': sponsor_id,
+    'name': f"{d.get('FIRST_NAME', '')} {d.get('LAST_NAME', '')}".strip(),
+    'first_name': d.get('FIRST_NAME'),
+    ...
+}
+```
+
+No schema change, no migration. The `sponsor_info:{sponsor_id}` cache key may need a bump/clear so cached entries pick up the new field.
+
+### Frontend impact (when this ships)
+
+None. The "Meet your sponsor" panel, the sponsor-profile fetch (`fetchSponsorProfileFor`), and the `JobApiSponsor.user_id` type are all already in place. The moment `user_id` is in the payload, the sponsor's Q&A insights (and, with §9, the verified badge) populate automatically.
+
+---
+
+## §11 — Real-time inbox: a per-user WebSocket so the conversation list updates live 🟡 Feature gap
+
+**Frontend file:** `components/MessagesView.tsx` → conversation-list (inbox) screen
+**Backend files:**
+- `bc_microservices/consumers.py` → new `InboxConsumer`
+- `bc_microservices/routing.py` → new `ws/inbox/` route
+- `bc_microservices/services/messaging.py` → `send_message` broadcast extension
+
+### Context
+
+The Messages screen has two surfaces: the **inbox** (list of conversations, each row showing a last-message preview) and the **thread** (one open conversation).
+
+The thread is already real-time — `ChatConsumer` joins `chat_{conversation_id}` and `send_message` broadcasts every message into that group, so an open thread updates live.
+
+The **inbox is not.** `GET /api/messages/conversations/` is fetched once when the screen mounts; nothing updates the list afterward. The `ChatConsumer` is scoped to a single conversation, so while a user sits on the inbox (no thread open) there is no live channel at all. A new message — even one the user just sent and backed out of — doesn't appear in the row preview until the list is refetched (today that only happens on a full screen remount, i.e. a tab switch).
+
+The frontend has been patched to mirror messages into the list while a thread is open, and to refetch the list when backing out of a thread. That covers the common path. The one case it cannot cover frontend-only: **a message arriving in a conversation while the user is idle on the inbox with no thread open** — there is simply no socket listening. That is what this section adds.
+
+### Why this is a small change
+
+All the hard infrastructure already exists and is proven in production:
+
+- **Django Channels + a Redis channel layer** — already running (`ChatConsumer`).
+- **JWT WebSocket auth** — `JWTAuthMiddleware` ([`ws_auth.py`](../../Backchannel-backend/BackChannel-backend/bc_microservices/ws_auth.py)) reads `?token=<jwt>` off the query string for **any** WebSocket path and attaches `scope["user"]`. A new route needs zero auth work.
+- **A broadcast hook on every message** — `send_message` already calls `_broadcast_to_group()` after persisting, for both REST- and WebSocket-sent messages.
+
+The new consumer is the same pattern as `ChatConsumer`, just scoped to a **user** (`inbox_{user_id}`) instead of a conversation. No new dependencies, no schema change, no migration, no infra change (same ASGI app, same Redis).
+
+### Required changes
+
+#### 1. New `InboxConsumer` — `bc_microservices/consumers.py`
+
+```python
+def _inbox_group_name(user_id):
+    return f"inbox_{user_id}"
+
+
+class InboxConsumer(AsyncJsonWebsocketConsumer):
+    """Per-user WebSocket scoped to the authenticated user's whole inbox.
+
+    Unlike ChatConsumer (one conversation), this joins a single user-scoped
+    group (``inbox_{user_id}``) and receives a lightweight ``inbox.update``
+    event whenever ANY of that user's conversations gets a new message.
+    Powers the live conversation-list previews on MessagesView. The socket
+    is push-only — clients never send on it.
+    """
+
+    async def connect(self):
+        user = self.scope.get("user")
+        if user is None:
+            await self.close(code=4001)
+            return
+
+        self.group_name = _inbox_group_name(user.id)
+        try:
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "channel_layer.group_add failed for %s", self.group_name
+            )
+            await self.close(code=4500)
+            return
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        if hasattr(self, "group_name"):
+            try:
+                await self.channel_layer.group_discard(
+                    self.group_name, self.channel_name
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "channel_layer.group_discard failed for %s", self.group_name
+                )
+
+    async def inbox_update(self, event):
+        """Handler for ``inbox.update`` events from the channel layer."""
+        await self.send_json({
+            "type": "inbox.update",
+            "conversation_id": event["conversation_id"],
+            "message_id": event["message_id"],
+            "sender_user_id": event["sender_user_id"],
+            "body": event["body"],
+            "created_at": event["created_at"],
+        })
+```
+
+Note: no participant check is needed — a user only ever joins **their own** group, derived from the authenticated `scope["user"]`. (Channels maps the event `type` `"inbox.update"` to the `inbox_update` method automatically.)
+
+#### 2. New route — `bc_microservices/routing.py`
+
+```python
+websocket_urlpatterns = [
+    re_path(
+        r"ws/chat/(?P<conversation_id>[0-9a-f\-]+)/$",
+        consumers.ChatConsumer.as_asgi(),
+    ),
+    re_path(r"ws/inbox/$", consumers.InboxConsumer.as_asgi()),  # NEW
+]
+```
+
+No `asgi.py` change — `JWTAuthMiddleware` already wraps the whole `URLRouter`.
+
+#### 3. Broadcast `inbox.update` on send — `bc_microservices/services/messaging.py`
+
+`send_message` already loads `conv = msg_q.get_conversation_detail(conversation_id)` (which returns `APPLICANT_USER_ID` and `SPONSOR_USER_ID`) and already calls `_broadcast_to_group(...)`. Add one sibling call right after it:
+
+```python
+    _broadcast_to_group(conversation_id, message_id, user_id, body)
+    _broadcast_to_inboxes(conversation_id, conv, message_id, user_id, body)  # NEW
+```
+
+And add the helper, mirroring `_broadcast_to_group`:
+
+```python
+def _broadcast_to_inboxes(conversation_id, conv, message_id, sender_user_id, body):
+    """Push an inbox.update event to BOTH participants' inbox groups.
+
+    Broadcasting to the sender too is intentional and harmless — it keeps
+    multi-device sessions in sync; the frontend applies the update
+    idempotently.
+    """
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        layer = get_channel_layer()
+        if layer is None:
+            return
+        payload = {
+            "type": "inbox.update",
+            "conversation_id": str(conversation_id),
+            "message_id": str(message_id),
+            "sender_user_id": str(sender_user_id),
+            "body": body,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        for uid in (conv["APPLICANT_USER_ID"], conv["SPONSOR_USER_ID"]):
+            async_to_sync(layer.group_send)(f"inbox_{uid}", payload)
+    except Exception:
+        logger.debug("Inbox broadcast failed", exc_info=True)
+```
+
+### Event payload (server → client)
+
+```json
+{
+  "type": "inbox.update",
+  "conversation_id": "uuid",
+  "message_id": "uuid",
+  "sender_user_id": "uuid",
+  "body": "the message text",
+  "created_at": "2026-05-21T18:42:03.119Z"
+}
+```
+
+This is deliberately minimal. The frontend already holds each conversation in its list, so it only needs the preview text + timestamp + who sent it. **Unread state is computed client-side** — the frontend flags a row unread only when `sender_user_id` isn't the current user *and* that thread isn't currently open — so the payload carries no per-recipient unread field. If `conversation_id` isn't in the client's list yet (a brand-new match's first message), the frontend refetches `GET /api/messages/conversations/` to pick up the new row.
+
+### Notes / edge cases
+
+- **Closed conversations** — `send_message` already rejects sends on `CLOSED` threads before the broadcast, so no `inbox.update` ever fires for one. No special handling needed.
+- **Timestamp consistency (optional polish)** — `_broadcast_to_group` and `_broadcast_to_inboxes` each generate their own `datetime.now()`, so the `chat.message` and `inbox.update` events for the same message carry timestamps a few ms apart. Harmless (it only feeds a relative "2m ago" label). If you want them identical, generate the timestamp once in `send_message` and pass it into both helpers — or, better, have `insert_message` return the real DB `CREATED_AT` and broadcast that.
+- **Token rotation** — same as the chat socket: the connection stays valid once authenticated; on reconnect the client re-reads the current access token.
+
+### Frontend impact
+
+Already done — no further frontend work when this ships. `MessagesView` opens `wss://.../ws/inbox/?token=<jwt>` while the Messages tab is mounted, applies `inbox.update` events to the conversation list, and reconnects with backoff. Until this backend lands, the socket simply fails to connect and retries quietly in the background — the inbox still works via the existing on-mount fetch, the in-thread mirroring, and the refetch-on-return fallback. Shipping the backend turns the idle-inbox case from "updates on next refetch" into "updates instantly."
+
+---
+
+## §12 — Capture an unsponsor reason and act on it to prune stale ATS listings 🟡 Feature gap
+
+**Frontend file:** `components/JobsView.tsx` → job-card "⋯" menu → "Unsponsor Job" → reason step
+**API function:** `lib/api.ts` → `unsponsorJob(jobId, reason?, reasonDetail?)`
+**Backend files:**
+- `bc_microservices/views_jobs.py` → `unsponsor_job` view ([line 363](../../Backchannel-backend/BackChannel-backend/bc_microservices/views_jobs.py#L363))
+- `bc_microservices/services/jobs.py` → `unsponsor_job` service ([line 849](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L849))
+- `bc_microservices/queries/jobs.py` → silver-jobs flagging helper (new)
+
+### Context
+
+When a sponsor unsponsors a job from the job-card "⋯" menu, the modal now has a second step: **"Why are you unsponsoring?"** — a single-select list. The frontend sends the choice on the existing unsponsor call as query params:
+
+```
+DELETE /api/jobs/<job_id>/unsponsor/?reason=<value>&reason_detail=<text>
+```
+
+- `reason` — one of: `role_filled`, `posting_expired`, `cannot_refer`, `poor_applicant_fit`, `wrong_role`, `other`.
+- `reason_detail` — optional free text (URL-encoded), used mainly when `reason = other`.
+- Both are **optional** — the job-detail screen's "Remove Sponsorship" button and any older client still call unsponsor with no params, and that must keep working.
+
+The point of collecting this: two reasons are **job-health signals**, not just sponsor preferences — `posting_expired` and `role_filled` mean the underlying ATS listing is dead and should stop being surfaced to *everyone*, not just removed from this one sponsor's list.
+
+### What's wrong / missing
+
+1. The view ([`unsponsor_job`](../../Backchannel-backend/BackChannel-backend/bc_microservices/views_jobs.py#L363)) is `request=None` and ignores `request.query_params` entirely — `reason` is dropped on the floor.
+2. The service `unsponsor_job(sponsor_id, job_id)` has no `reason` parameter and nowhere to record it.
+3. **The bigger issue** — the service calls `revert_waitlist_to_active(ref_id)` **unconditionally** ([services/jobs.py:865](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L865)). That puts the ATS listing back into circulation. For `posting_expired` / `role_filled` that's exactly backwards: the job is dead, and reactivating its waitlist re-surfaces a stale listing to other sponsors.
+
+### Required changes
+
+#### 1. View — read the query params
+
+```python
+@api_view(['DELETE'])
+@permission_classes([IsSponsor])
+def unsponsor_job(request, job_id):
+    reason = request.query_params.get('reason')
+    reason_detail = request.query_params.get('reason_detail')
+    return _respond(
+        jobs_svc.unsponsor_job(request.user.id, job_id, reason, reason_detail)
+    )
+```
+
+#### 2. Service — accept, validate, persist the reason
+
+```python
+ALLOWED_UNSPONSOR_REASONS = {
+    'role_filled', 'posting_expired', 'cannot_refer',
+    'poor_applicant_fit', 'wrong_role', 'other',
+}
+
+def unsponsor_job(sponsor_id, job_id, reason=None, reason_detail=None):
+    ...
+    # Normalize an unknown / missing reason to 'other' rather than rejecting —
+    # never block an unsponsor on a bad reason string.
+    if reason not in ALLOWED_UNSPONSOR_REASONS:
+        reason = 'other' if reason else None
+
+    with transaction():
+        likes_q.withdraw_likes_for_job(job_id)
+        msg_q.close_conversations_for_job(job_id)
+        ref_id = jobs_q.delete_sponsored_job(job_id, sponsor_id)
+
+        # The job is dead at the source — don't recirculate it.
+        job_is_dead = reason in ('posting_expired', 'role_filled')
+        if ref_id and not job_is_dead:
+            jobs_q.revert_waitlist_to_active(ref_id)
+        if ref_id and reason == 'posting_expired':
+            # Stop surfacing the expired listing in Browse for everyone.
+            jobs_q.deactivate_silver_job(ref_id)
+
+        if reason:
+            jobs_q.record_unsponsor_event(
+                sponsor_id, job_id, ref_id, reason, reason_detail,
+            )
+```
+
+#### 3. Query layer
+
+- **`record_unsponsor_event(sponsor_id, job_id, ref_job_id, reason, reason_detail)`** — `delete_sponsored_job` hard-deletes the `job_postings` row, so the reason can't live on the job. A small audit table is the clean home:
+
+  ```sql
+  CREATE TABLE jobs.unsponsor_events (
+      EVENT_ID       UUID PRIMARY KEY,
+      SPONSOR_ID     ...  NOT NULL,
+      JOB_ID         ...  NOT NULL,   -- the (now-deleted) job_postings id
+      REF_JOB_ID     ...,             -- ats.silver_jobs id, when known
+      REASON         TEXT NOT NULL,
+      REASON_DETAIL  TEXT,
+      CREATED_AT     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  ```
+
+  This also gives you the analytics to see which reasons dominate.
+
+- **`deactivate_silver_job(ref_id)`** — `UPDATE ats.silver_jobs SET is_active = FALSE WHERE JOB_ID = %s`. (Mirror of whatever browse already uses — `browse_silver_jobs` filters on `is_active = TRUE`, so flipping this flag prunes the listing from Browse with no delete.)
+
+### Notes / decisions for the backend
+
+- **`role_filled` pruning** — I've scoped the hard prune (`deactivate_silver_job`) to `posting_expired` only, since "filled" is a strong signal but slightly less certain than "the posting is gone." Both skip `revert_waitlist_to_active`. If you'd rather also deactivate the silver job on `role_filled`, that's a one-line change — your call.
+- **One sponsor's word vs. the shared feed** — a single sponsor saying "expired" deactivates the listing for everyone. For a closed beta that's fine and desirable (fast cleanup). At scale you may want a threshold (N reports, or only trusted sponsors) before pruning — worth revisiting then, not now.
+- Unknown/missing `reason` is normalized, never rejected — unsponsoring must never fail because of a bad reason string.
+
+### Frontend impact
+
+None remaining — the reason step, the 6 options, and the `unsponsorJob(jobId, reason, reasonDetail)` call are all already shipped. The params are sent now; the backend can ignore them until this lands, and the unsponsor itself keeps working in the meantime.
+
+---
+
+# 🧭 Recommendation — Push notification delivery
+
+> **This is a recommendation, not a change order.** The frontend team surfaced a gap in how message push notifications are delivered and is proposing an approach. Unlike the §-items above, the final architecture call here belongs to the backend team — this section lays out the problem and the options so that decision can be made with full context.
+
+### The problem
+
+Sending a message already triggers the push path: `send_message` → `create_notification(notif_type='message', ...)` → `push_svc.send_push(...)` on a background thread. The code path exists and fires on every message (REST **and** WebSocket sends).
+
+But it almost certainly doesn't *deliver*, because of a **token-format mismatch**:
+
+- The **frontend** registers an **Expo push token** (`ExponentPushToken[...]`) — it calls `Notifications.getExpoPushTokenAsync()` ([components/MainApp.tsx](../components/MainApp.tsx)).
+- The **backend** ([`services/push.py`](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/push.py)) delivers via **raw Firebase Cloud Messaging** (`firebase-admin` → `messaging.send()`), which requires a **native FCM registration token**.
+
+An Expo token is not an FCM token. `messaging.send()` rejects it as `InvalidArgumentError`, and the backend's own error handler then **deactivates that token** — so the device silently loses its registration on top of never getting the push.
+
+Two further conditions gate delivery regardless: `send_push` no-ops unless `FIREBASE_CREDENTIALS_*` is set, and a recipient who disabled the `message` notification type is (correctly) skipped.
+
+### The two ways to fix it
+
+**Option A — backend sends via the Expo Push Service.** Rewrite `send_push` to POST tokens to `https://exp.host/--/api/v2/push/send` instead of calling `firebase-admin`. Expo relays on to APNs + FCM.
+
+**Option B — frontend switches to native FCM tokens.** Frontend calls `getDevicePushTokenAsync()` instead, keeping `firebase-admin` on the backend. Despite sounding like "just a frontend change," it isn't: Android needs `google-services.json` wired into the native build, and **iOS is a blocker** — `getDevicePushTokenAsync()` returns an APNs token there, not an FCM token, so `firebase-admin` still can't consume it without adding the Firebase client SDK (`@react-native-firebase/messaging`) — a new native dependency + `GoogleService-Info.plist` + an APNs key uploaded to the Firebase console. It spreads across frontend code, native build config, and Firebase setup.
+
+### Our recommendation: Option A
+
+This app is an Expo app (`expo-dev-client`, EAS `projectId`). The Expo Push Service is the idiomatic, production-grade pairing for that stack — free, unlimited, and used by apps well past this app's scale. Why we'd recommend it:
+
+- **Contained** — one function in one file (~40–60 lines), no frontend change, no schema change, no migration. It *removes* the `firebase-admin` dependency rather than adding one.
+- **Uniform** — one code path covers iOS + Android; Expo holds the APNs/FCM credentials.
+- **Right-sized for prod & scale** — handles batching (100 tokens/request) and scales well past launch. The current `firebase-admin` setup is effectively a half-finished native approach grafted onto an Expo frontend; Option A makes the backend match the stack the app is actually built on.
+
+If the backend team has a specific reason to standardize on raw FCM (e.g. existing Firebase-centric infrastructure), Option B is legitimate — it's just a larger, multi-surface effort, not a frontend tweak. That trade-off is the backend team's to weigh.
+
+### What Option A would involve (for effort estimation)
+
+Rewrite [`services/push.py`](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/push.py) → `send_push`:
+
+```python
+import requests
+
+EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+
+def send_push(user_id, title, body, data=None):
+    """Send a push to all of a user's active devices via the Expo Push Service."""
+    from ..queries import devices as devices_q
+    tokens = [t["DEVICE_TOKEN"] for t in devices_q.get_active_tokens(user_id)]
+    if not tokens:
+        return
+
+    clean_data = {k: str(v) for k, v in (data or {}).items() if v is not None}
+    messages = [
+        {"to": tok, "title": title, "body": body,
+         "data": clean_data, "sound": "default"}
+        for tok in tokens
+    ]
+    # Expo accepts up to 100 messages per request.
+    for i in range(0, len(messages), 100):
+        batch = messages[i:i + 100]
+        try:
+            resp = requests.post(EXPO_PUSH_URL, json=batch, timeout=10)
+            tickets = resp.json().get("data", [])
+            for msg, ticket in zip(batch, tickets):
+                if (ticket.get("status") == "error"
+                        and ticket.get("details", {}).get("error")
+                        == "DeviceNotRegistered"):
+                    devices_q.deactivate_token(msg["to"])
+        except Exception:
+            logger.exception("Expo push failed for user %s", user_id)
+```
+
+- The `register_device` endpoint, the `devices` table, the `_push_executor` background dispatch, and the `create_notification` call site all stay exactly as they are.
+- `firebase-admin` and the `FIREBASE_CREDENTIALS_*` env vars can be dropped.
+- **Optional hardening (recommended for prod, not required for v1):** Expo returns *tickets* immediately and *receipts* a few seconds later — polling the receipts endpoint (`/--/api/v2/push/getReceipts`) is how you catch delivery failures and `DeviceNotRegistered` cases that only surface post-send. Worth a follow-up; not a launch blocker.
+
+### Production prerequisite (true for either option)
+
+Push in production needs the **APNs key + FCM credentials** registered so the relay can reach Apple/Google. With Option A that's a one-time upload to **EAS credentials** (`eas credentials`) — the standard home for an Expo app's push credentials.
+
+### Frontend impact
+
+None for Option A — the frontend already registers Expo push tokens, which is exactly what the Expo Push Service consumes. Message push notifications start working the moment the backend switches.

@@ -3,45 +3,45 @@ import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { useLocalSearchParams } from "expo-router";
 import {
-    Bell,
-    Briefcase,
-    ClipboardCheck,
-    Home,
-    MessageCircle,
-    Star,
-    User,
+  Bell,
+  Briefcase,
+  ClipboardCheck,
+  Home,
+  MessageCircle,
+  Star,
+  User,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeInDown,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from "react-native-reanimated";
 import {
-    trackCheckInModalOpened,
-    trackPushNotificationTapped,
-    trackScreenViewed,
+  trackCheckInModalOpened,
+  trackPushNotificationTapped,
+  trackScreenViewed,
 } from "../lib/analytics/mixpanel";
 import {
-    getUnreadNotificationCount,
-    listReferrals,
-    registerDevice,
+  getUnreadNotificationCount,
+  listReferrals,
+  registerDevice,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
-    ApplicantCheckInModal,
-    type CheckInReferral,
+  ApplicantCheckInModal,
+  type CheckInReferral,
 } from "./ApplicantCheckInModal";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { HomeView } from "./HomeView";
@@ -51,8 +51,8 @@ import { MessagesView } from "./MessagesView";
 import { NotificationsView } from "./NotificationsView";
 import { ProfileView } from "./ProfileView";
 import {
-    SponsorCheckInModal,
-    type SponsorCheckInReferral,
+  SponsorCheckInModal,
+  type SponsorCheckInReferral,
 } from "./SponsorCheckInModal";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
@@ -158,6 +158,66 @@ export function MainApp({ userType }: MainAppProps) {
     CheckInReferral[] | SponsorCheckInReferral[]
   >([]);
   const [referralsLoading, setReferralsLoading] = useState(false);
+  const referralsRequestIdRef = useRef(0);
+
+  // Accept both legacy and newer backend key variants so check-in modals stay
+  // resilient across backend response-shape drift.
+  const pickField = (row: any, keys: string[]): any => {
+    for (const k of keys) {
+      const v = row?.[k];
+      if (v !== undefined && v !== null && v !== "") return v;
+    }
+    return null;
+  };
+
+  const normalizeReferralRow = (r: any) => ({
+    referralId: String(
+      pickField(r, ["REFERRAL_ID", "referral_id", "referralId", "id"]) || "",
+    ),
+    jobTitle: pickField(r, [
+      "JOB_TITLE",
+      "job_title",
+      "jobTitle",
+      // Fallbacks used by adjacent matching/messaging payloads.
+      "SPONSOR_JOB_TITLE",
+      "sponsor_job_title",
+      "ROLE_TITLE",
+      "role_title",
+    ]),
+    jobCompany: pickField(r, [
+      "JOB_COMPANY",
+      "job_company",
+      "jobCompany",
+      "SPONSOR_COMPANY",
+      "sponsor_company",
+      "COMPANY",
+      "company",
+    ]),
+    sponsorFirstName: pickField(r, [
+      "SPONSOR_FIRST_NAME",
+      "sponsor_first_name",
+      "sponsorFirstName",
+    ]),
+    sponsorLastName: pickField(r, [
+      "SPONSOR_LAST_NAME",
+      "sponsor_last_name",
+      "sponsorLastName",
+    ]),
+    applicantFirstName: pickField(r, [
+      "APPLICANT_FIRST_NAME",
+      "applicant_first_name",
+      "applicantFirstName",
+    ]),
+    applicantLastName: pickField(r, [
+      "APPLICANT_LAST_NAME",
+      "applicant_last_name",
+      "applicantLastName",
+    ]),
+    status: String(pickField(r, ["STATUS", "status"]) || "REFERRED"),
+    createdAt: String(
+      pickField(r, ["CREATED_AT", "created_at", "createdAt"]) || "",
+    ),
+  });
 
   /**
    * Fetch referrals from /api/referrals/ and shape them into the props each
@@ -168,37 +228,68 @@ export function MainApp({ userType }: MainAppProps) {
    * pick the fields relevant to them, so the same fetcher serves both modals.
    */
   const fetchReferralsForCheckIn = async () => {
+    const requestId = ++referralsRequestIdRef.current;
     try {
       setReferralsLoading(true);
+      if (__DEV__) {
+        console.log("[MainApp] fetchReferralsForCheckIn:start", {
+          requestId,
+          userType,
+        });
+      }
       const response = await listReferrals({ limit: 50, offset: 0 });
-      const transformed = (response.referrals || []).map((r: any) => ({
-        referralId: r.REFERRAL_ID || r.referral_id || "",
-        jobTitle: r.JOB_TITLE || r.job_title || null,
-        jobCompany: r.JOB_COMPANY || r.job_company || null,
-        sponsorFirstName: r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
-        sponsorLastName: r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
-        applicantFirstName:
-          r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
-        applicantLastName:
-          r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
-        status: r.STATUS || r.status || "REFERRED",
-        createdAt: r.CREATED_AT || r.created_at || "",
-      }));
+      const rows = Array.isArray((response as any)?.referrals)
+        ? (response as any).referrals
+        : [];
+      const normalizedRows = rows.map((r: any) => normalizeReferralRow(r));
+      const transformed = normalizedRows.filter((r: any) => !!r.referralId);
+      const droppedNoId = normalizedRows.filter(
+        (r: any) => !r.referralId,
+      ).length;
+
+      if (__DEV__) {
+        console.log("[MainApp] fetchReferralsForCheckIn:result", {
+          requestId,
+          rawCount: rows.length,
+          transformedCount: transformed.length,
+          droppedNoId,
+          statuses: transformed.map((r: any) => r.status),
+          sample: transformed.slice(0, 3).map((r: any) => ({
+            referralId: r.referralId,
+            jobTitle: r.jobTitle,
+            jobCompany: r.jobCompany,
+            sponsorFirstName: r.sponsorFirstName,
+            status: r.status,
+          })),
+        });
+      }
+
+      // Ignore stale in-flight responses when the modal is opened multiple times.
+      if (requestId !== referralsRequestIdRef.current) return;
       setReferrals(transformed);
     } catch (err) {
+      if (requestId !== referralsRequestIdRef.current) return;
       const msg = err instanceof Error ? err.message : String(err);
+      if (__DEV__) {
+        console.log("[MainApp] fetchReferralsForCheckIn:error", {
+          requestId,
+          message: msg,
+        });
+      }
       // 404 means no referrals yet — that's an empty state, not an error
       if (!msg.includes("404") && !msg.toLowerCase().includes("not found")) {
         console.warn("[MainApp] Failed to fetch referrals:", err);
       }
       setReferrals([]);
     } finally {
+      if (requestId !== referralsRequestIdRef.current) return;
       setReferralsLoading(false);
     }
   };
 
   const handleOpenCheckIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setReferralsLoading(true);
     if (userType === "applicant") setShowApplicantCheckIn(true);
     else setShowSponsorCheckIn(true);
     trackCheckInModalOpened({

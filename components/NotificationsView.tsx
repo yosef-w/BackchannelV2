@@ -22,7 +22,6 @@ import React, {
 import {
     ActivityIndicator,
     Image,
-    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -83,29 +82,22 @@ type BackendNotification = {
 };
 
 /**
- * Per-type visual + routing config.
- *
- * Colors are drawn ONLY from the existing app palette:
- *   #000     — primary black (used everywhere)
- *   #2563EB  — existing accent blue (HomeView)
- *   #00CB54  — existing confirmation green (HomeView checkmarks)
- *
- * No new hues are introduced.
+ * Per-type icon mapping. Icons render monochrome (black glyph on a light
+ * gray circle) — the brand is predominantly black/white, so the icon
+ * SHAPE plus the notification title carry the "what happened" signal
+ * rather than colored chips. Keeps the screen calm and editorial.
  */
-const NOTIFICATION_CONFIG: Record<
-  string,
-  { Icon: React.ComponentType<any>; accent: string }
-> = {
-  match: { Icon: Heart, accent: "#000" },
-  message: { Icon: MessageCircle, accent: "#2563EB" },
-  referral: { Icon: Award, accent: "#00CB54" },
-  job_like: { Icon: Star, accent: "#000" },
-  waitlist: { Icon: Briefcase, accent: "#00CB54" },
-  connection: { Icon: UserPlus, accent: "#000" },
-  profile_update: { Icon: CheckCircle, accent: "#000" },
+const NOTIFICATION_ICON: Record<string, React.ComponentType<any>> = {
+  match: Heart,
+  message: MessageCircle,
+  referral: Award,
+  job_like: Star,
+  waitlist: Briefcase,
+  connection: UserPlus,
+  profile_update: CheckCircle,
 };
 
-const DEFAULT_CONFIG = { Icon: Bell, accent: "#000" };
+const DEFAULT_ICON = Bell;
 
 /** Normalize a backend ISO string to UTC by appending 'Z' when no timezone
  * offset is present. Without this, JS treats the string as local time, which
@@ -406,6 +398,8 @@ export function NotificationsView({
       .map((k) => ({ key: k, label: SECTION_LABELS[k], rows: buckets[k] }));
   }, [notifications]);
 
+  const unreadCount = notifications.filter((n) => !n.IS_READ).length;
+
   return (
     <ScrollView
       style={styles.container}
@@ -419,47 +413,54 @@ export function NotificationsView({
         />
       }
     >
-      {/* Header */}
+      {/* ── Header — flat, no card. Plain back arrow, large title, an
+          unread-count subtitle, and one understated action pill. ── */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={onBack}
-          activeOpacity={0.7}
+          activeOpacity={0.6}
           style={styles.backButton}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ArrowLeft color="#000" size={22} />
+          <ArrowLeft color="#000" size={24} strokeWidth={2.5} />
         </TouchableOpacity>
 
-        <View style={styles.headerTitle}>
-          <Text style={styles.title}>Notifications</Text>
-        </View>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Notifications</Text>
+            <Text style={styles.subtitle}>
+              {isLoading
+                ? "Loading…"
+                : unreadCount > 0
+                  ? `${unreadCount} unread`
+                  : "You're all caught up"}
+            </Text>
+          </View>
 
-        {hasUnread ? (
-          <TouchableOpacity
-            onPress={handleMarkAllRead}
-            disabled={isMarkingAll}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[styles.markAllRead, isMarkingAll && { opacity: 0.4 }]}
+          {hasUnread ? (
+            <TouchableOpacity
+              onPress={handleMarkAllRead}
+              disabled={isMarkingAll}
+              activeOpacity={0.7}
+              style={[styles.actionPill, isMarkingAll && { opacity: 0.4 }]}
             >
-              {isMarkingAll ? "Marking…" : "Mark all"}
-            </Text>
-          </TouchableOpacity>
-        ) : hasRead ? (
-          <TouchableOpacity
-            onPress={handleClearRead}
-            disabled={isClearingRead}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[styles.markAllRead, isClearingRead && { opacity: 0.4 }]}
+              <Text style={styles.actionPillText}>
+                {isMarkingAll ? "Marking…" : "Mark all read"}
+              </Text>
+            </TouchableOpacity>
+          ) : hasRead ? (
+            <TouchableOpacity
+              onPress={handleClearRead}
+              disabled={isClearingRead}
+              activeOpacity={0.7}
+              style={[styles.actionPill, isClearingRead && { opacity: 0.4 }]}
             >
-              {isClearingRead ? "Clearing…" : "Clear read"}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 60 }} />
-        )}
+              <Text style={styles.actionPillText}>
+                {isClearingRead ? "Clearing…" : "Clear read"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
       {/* Loading state */}
@@ -472,14 +473,17 @@ export function NotificationsView({
       {/* Error state */}
       {!isLoading && error && (
         <View style={styles.centeredState}>
-          <Text style={styles.errorText}>Failed to load notifications</Text>
+          <View style={styles.stateIconCircle}>
+            <Bell color="#BBB" size={28} strokeWidth={2} />
+          </View>
+          <Text style={styles.errorText}>Couldn't load notifications</Text>
           <TouchableOpacity
             onPress={() => fetchNotifications()}
             style={styles.retryButton}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <RefreshCw color="#000" size={16} />
-            <Text style={styles.retryText}>Retry</Text>
+            <RefreshCw color="#FFF" size={15} strokeWidth={2.5} />
+            <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -495,9 +499,9 @@ export function NotificationsView({
               <Text style={styles.sectionLabel}>{section.label}</Text>
               <View style={styles.notificationsList}>
                 {section.rows.map((notification, rowIdx) => {
-                  const config =
-                    NOTIFICATION_CONFIG[notification.TYPE] ?? DEFAULT_CONFIG;
-                  const { Icon, accent } = config;
+                  const Icon =
+                    NOTIFICATION_ICON[notification.TYPE] ?? DEFAULT_ICON;
+                  const isUnread = !notification.IS_READ;
 
                   // Backend (PR #43) supplies denormalized RELATED_* metadata
                   // when present. Prefer the related user's avatar over the
@@ -511,99 +515,71 @@ export function NotificationsView({
                         notification.RELATED_JOB_COMPANY ||
                         null;
 
-                  const card = (
-                    <View
+                  const row = (
+                    <TouchableOpacity
+                      activeOpacity={0.6}
+                      onPress={() => handleNotificationPress(notification)}
                       style={[
-                        styles.notificationCard,
-                        !notification.IS_READ && styles.notificationCardUnread,
+                        styles.row,
+                        isUnread ? styles.rowUnread : styles.rowRead,
                       ]}
                     >
-                      {!notification.IS_READ && (
-                        <View style={styles.unreadIndicator} />
+                      {/* Leading avatar or monochrome icon */}
+                      {hasAvatar ? (
+                        <Image
+                          source={{
+                            uri:
+                              notification.RELATED_USER_PHOTO_URL ?? undefined,
+                          }}
+                          style={styles.avatar}
+                        />
+                      ) : (
+                        <View style={styles.iconCircle}>
+                          <Icon color="#1A1A1A" size={20} strokeWidth={2.3} />
+                        </View>
                       )}
 
-                      <View style={styles.notificationContent}>
-                        {hasAvatar ? (
-                          <View style={styles.avatarWrapper}>
-                            <Image
-                              source={{
-                                uri:
-                                  notification.RELATED_USER_PHOTO_URL ??
-                                  undefined,
-                              }}
-                              style={styles.avatarImage}
-                            />
-                            {/* Type badge in the corner so users still see what
-                                kind of event it is at a glance. */}
-                            <View
-                              style={[
-                                styles.avatarTypeBadge,
-                                { backgroundColor: accent },
-                              ]}
-                            >
-                              <Icon
-                                color="#ffffff"
-                                size={10}
-                                strokeWidth={2.5}
-                              />
-                            </View>
-                          </View>
-                        ) : (
-                          <View
-                            style={[
-                              styles.iconContainer,
-                              { backgroundColor: accent },
-                            ]}
-                          >
-                            <Icon color="#ffffff" size={20} strokeWidth={2.5} />
-                          </View>
-                        )}
-
-                        <View style={styles.textContainer}>
-                          <View style={styles.titleRow}>
-                            <Text
-                              style={styles.notificationTitle}
-                              numberOfLines={1}
-                            >
-                              {notification.TITLE}
-                            </Text>
-                            <Text style={styles.notificationTime}>
-                              {formatRelativeTime(notification.CREATED_AT)}
-                            </Text>
-                          </View>
-                          <Text
-                            style={styles.notificationMessage}
-                            numberOfLines={2}
-                          >
-                            {notification.BODY}
+                      {/* Text column */}
+                      <View style={styles.rowText}>
+                        <Text
+                          style={[
+                            styles.rowTitle,
+                            !isUnread && styles.rowTitleRead,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {notification.TITLE}
+                        </Text>
+                        <Text style={styles.rowBody} numberOfLines={2}>
+                          {notification.BODY}
+                        </Text>
+                        <View style={styles.rowMeta}>
+                          <Text style={styles.rowTime}>
+                            {formatRelativeTime(notification.CREATED_AT)}
                           </Text>
                           {!!jobContext && (
-                            <Text
-                              style={styles.notificationJobContext}
-                              numberOfLines={1}
-                            >
-                              {jobContext}
-                            </Text>
+                            <>
+                              <View style={styles.metaDot} />
+                              <Text
+                                style={styles.rowContext}
+                                numberOfLines={1}
+                              >
+                                {jobContext}
+                              </Text>
+                            </>
                           )}
                         </View>
                       </View>
-                    </View>
-                  );
 
-                  const touchable = (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={styles.notificationCardWrapper}
-                      onPress={() => handleNotificationPress(notification)}
-                    >
-                      {card}
+                      {/* Single unread signal — a small filled dot. */}
+                      {isUnread && <View style={styles.unreadDot} />}
                     </TouchableOpacity>
                   );
 
                   return (
                     <Animated.View
                       key={notification.NOTIFICATION_ID}
-                      entering={FadeInUp.delay(rowIdx * 40).duration(350)}
+                      entering={FadeInUp.delay(rowIdx * 40).duration(320)}
                     >
                       <ReanimatedSwipeable
                         friction={2}
@@ -623,7 +599,7 @@ export function NotificationsView({
                         )}
                         onSwipeableOpen={() => handleSwipeCommit(notification)}
                       >
-                        {touchable}
+                        {row}
                       </ReanimatedSwipeable>
                     </Animated.View>
                   );
@@ -637,14 +613,13 @@ export function NotificationsView({
       {/* Empty state — user has no notifications at all */}
       {!isLoading && !error && notifications.length === 0 && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No notifications yet</Text>
-        </View>
-      )}
-
-      {/* All-caught-up banner — shown only when list is non-empty and all read */}
-      {!isLoading && !error && notifications.length > 0 && !hasUnread && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>You&apos;re all caught up</Text>
+          <View style={styles.stateIconCircle}>
+            <Bell color="#BBB" size={30} strokeWidth={2} />
+          </View>
+          <Text style={styles.emptyStateTitle}>No notifications yet</Text>
+          <Text style={styles.emptyStateText}>
+            Matches, messages, and referral updates will show up here.
+          </Text>
         </View>
       )}
     </ScrollView>
@@ -654,245 +629,205 @@ export function NotificationsView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#FFF",
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 120,
   },
+
+  // ── Header — flat, sits directly on the white background ──
   header: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    marginBottom: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    alignItems: "center",
+    width: 32,
+    height: 32,
+    alignItems: "flex-start",
     justifyContent: "center",
+    marginBottom: 12,
   },
-  headerTitle: {
-    flex: 1,
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   title: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: "800",
     color: "#000",
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
-  markAllRead: {
+  subtitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+    marginTop: 3,
+  },
+  actionPill: {
+    backgroundColor: "#F4F4F5",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  actionPillText: {
     fontSize: 13,
     fontWeight: "700",
     color: "#000",
+    letterSpacing: -0.1,
   },
+
+  // ── States ──
   centeredState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: 80,
+  },
+  stateIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F4F4F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
   errorText: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "#666",
+    fontWeight: "700",
+    color: "#000",
     marginBottom: 16,
     textAlign: "center",
   },
   retryButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F0F0F0",
+    gap: 7,
+    backgroundColor: "#000",
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingVertical: 11,
+    borderRadius: 999,
   },
   retryText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    fontWeight: "700",
+    color: "#FFF",
   },
+
+  // ── Section grouping ──
   sectionSpacer: {
-    marginTop: 20,
+    marginTop: 26,
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: "700",
-    color: "#999",
-    letterSpacing: 0.8,
-    marginBottom: 10,
+    fontWeight: "800",
+    color: "#BBB",
+    letterSpacing: 1,
+    marginBottom: 8,
     marginLeft: 4,
   },
   notificationsList: {
-    gap: 12,
+    gap: 4,
   },
-  notificationCardWrapper: {
-    marginBottom: 0,
-  },
-  notificationCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    position: "relative",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  notificationCardUnread: {
-    borderColor: "#000",
-    borderWidth: 1.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  unreadIndicator: {
-    position: "absolute",
-    top: -1,
-    left: -1,
-    width: 4,
-    height: "102%",
-    backgroundColor: "#000",
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-  },
-  notificationContent: {
+
+  // ── Notification row — flat, no shadow. Unread rows lift via a subtle
+  //    gray fill; read rows are transparent and recede. One signal. ──
+  row: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 14,
-    paddingLeft: 6,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center",
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 18,
   },
-  avatarWrapper: {
-    width: 44,
-    height: 44,
-    position: "relative",
+  rowUnread: {
+    backgroundColor: "#F5F6F8",
   },
-  avatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  rowRead: {
+    backgroundColor: "transparent",
+  },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: "#F2F2F2",
   },
-  // Small type-icon badge in the corner of the avatar — preserves the visual
-  // signal of "what kind of event" when we show a person's photo instead of
-  // the generic icon.
-  avatarTypeBadge: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  iconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#F4F4F5",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#FFF",
   },
-  textContainer: {
+  rowText: {
     flex: 1,
     minWidth: 0,
   },
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 4,
-    gap: 8,
-  },
-  notificationTitle: {
+  rowTitle: {
     fontSize: 15,
     fontWeight: "700",
     color: "#000",
-    flex: 1,
+    letterSpacing: -0.2,
   },
-  notificationTime: {
-    fontSize: 12,
+  // Read rows soften the title so unread ones lead the eye.
+  rowTitleRead: {
     fontWeight: "600",
-    color: "#999",
+    color: "#444",
   },
-  notificationMessage: {
-    fontSize: 14,
+  rowBody: {
+    fontSize: 13.5,
     fontWeight: "500",
-    color: "#666",
-    lineHeight: 20,
+    color: "#777",
+    lineHeight: 19,
+    marginTop: 2,
   },
-  notificationJobContext: {
+  rowMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 5,
+  },
+  rowTime: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#999",
-    marginTop: 4,
+    color: "#AAA",
   },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "#CCC",
+  },
+  rowContext: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#AAA",
+    flexShrink: 1,
+  },
+  unreadDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: "#000",
+  },
+
+  // ── Swipe-to-delete ──
   swipeActionContainer: {
     justifyContent: "center",
     paddingLeft: 8,
   },
-  swipeAction: {
-    backgroundColor: "#000",
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 22,
-    height: "100%",
-    minWidth: 92,
-  },
-  // Destructive variant used when swiping deletes the row (PR #43).
   swipeActionDelete: {
     backgroundColor: "#DC2626",
-    borderRadius: 16,
+    borderRadius: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingHorizontal: 22,
     height: "100%",
-    minWidth: 92,
+    minWidth: 96,
   },
   swipeActionText: {
     color: "#FFF",
@@ -900,14 +835,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.3,
   },
+
+  // ── Empty state ──
   emptyState: {
     alignItems: "center",
-    paddingVertical: 40,
-    marginTop: 20,
+    paddingVertical: 70,
+  },
+  emptyStateTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
   emptyStateText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
     color: "#999",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 40,
   },
 });
+

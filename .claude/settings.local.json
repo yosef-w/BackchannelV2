@@ -50,7 +50,19 @@
       "Bash(sed -n '2545,2555p' components/JobsView.tsx)",
       "Bash(awk 'NR==1242 {start=1} start {print NR; if \\($0 ~ /<\\\\/Modal>$/\\) {exit}}' /Users/yosefwolday/Desktop/BackchannelV2/components/MessagesView.tsx)",
       "Bash(sed -i.bak '1242,1655d' components/MessagesView.tsx)",
-      "Bash(sed -n '1238,1248p' components/MessagesView.tsx)"
+      "Bash(sed -n '1238,1248p' components/MessagesView.tsx)",
+      "Bash(awk 'NR>=2828 && NR<=3100 { if \\(/^                                  \\\\\\)\\\\}$/\\) { print NR\": \"$0; exit } }' /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(sed -i.bak '2828,3082d' components/HomeView.tsx)",
+      "Bash(sed -n '2823,2832p' components/HomeView.tsx)",
+      "Bash(grep -n \"Lightbulb size\\\\|Insights$\\\\|Insights<\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"Lightbulb\\\\|Job Insights\\\\|>$\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(sed -n '150,210p' bc_microservices/services/messaging.py)",
+      "Bash(grep -rn \"unmatch\" bc_microservices/views*.py bc_microservices/urls.py)",
+      "Bash(sed -n '203,240p' bc_microservices/queries/messaging.py)",
+      "Bash(sed -n '344,365p' bc_microservices/views_jobs.py)",
+      "Bash(sed -n '845,876p' bc_microservices/services/jobs.py)",
+      "Bash(awk 'NR>218 && /^def /{print NR\": \"$0; exit}' bc_microservices/queries/profiles.py)",
+      "Bash(awk 'NR>=77 && NR<=140 && /^def /{print NR\": \"$0}' bc_microservices/queries/jobs.py)"
     ]
   }
 }

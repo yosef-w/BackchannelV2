@@ -316,6 +316,16 @@ export function trackResendVerificationRequested(args: {
 
 // ─── Feed: applicant (jobs deck) ──────────────────────────────────────────────
 
+export function trackJobCardViewed(args: {
+  jobId: string;
+  isSponsored: boolean;
+}): void {
+  safeTrack("Job Card Viewed", {
+    job_id: args.jobId,
+    is_sponsored: args.isSponsored,
+  });
+}
+
 export function trackJobCardFlipped(args: {
   jobId: string;
   isSponsored: boolean;
@@ -359,6 +369,16 @@ export function trackSponsorRequested(args: { jobId: string }): void {
 }
 
 // ─── Feed: sponsor (applicants deck) ──────────────────────────────────────────
+
+export function trackProfileCardViewed(args: {
+  applicantUserId: string;
+  jobId?: string;
+}): void {
+  safeTrack("Profile Card Viewed", {
+    applicant_user_id: args.applicantUserId,
+    job_id: args.jobId,
+  });
+}
 
 export function trackProfileCardFlipped(args: {
   applicantUserId: string;
@@ -412,6 +432,16 @@ export function trackMatchMessageTapped(args: { jobId?: string }): void {
 
 export function trackSponsorLikedBack(args: { likeId: string }): void {
   safeTrack("Sponsor Liked Back", { like_id: args.likeId });
+}
+
+export function trackApplicantLikedBack(args: {
+  applicantUserId: string;
+  jobId: string;
+}): void {
+  safeTrack("Applicant Liked Back", {
+    applicant_user_id: args.applicantUserId,
+    job_id: args.jobId,
+  });
 }
 
 export function trackLikedJobRemoved(args: { jobId: string }): void {
@@ -498,8 +528,14 @@ export function trackJobSponsored(args: {
   });
 }
 
-export function trackJobUnsponsored(args: { jobId: string }): void {
-  safeTrack("Job Unsponsored", { job_id: args.jobId });
+export function trackJobUnsponsored(args: {
+  jobId: string;
+  reason?: string;
+}): void {
+  safeTrack("Job Unsponsored", {
+    job_id: args.jobId,
+    ...(args.reason ? { reason: args.reason } : {}),
+  });
 }
 
 export function trackJobCreateFromUrlStarted(): void {

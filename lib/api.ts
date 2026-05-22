@@ -262,7 +262,6 @@ export async function browseJobs(filters?: {
   location?: string;
   remote?: boolean;
   limit?: number;
-  company?: string;
 }): Promise<{ jobs: any[]; total_count: number }> {
   const params = new URLSearchParams();
   if (filters?.title) params.append("title", filters.title);
@@ -270,7 +269,6 @@ export async function browseJobs(filters?: {
   if (filters?.remote !== undefined)
     params.append("remote", String(filters.remote));
   if (filters?.limit) params.append("limit", String(filters.limit));
-  if (filters?.company) params.append("company", filters.company);
 
   const queryString = params.toString();
   const endpoint = queryString
@@ -1403,7 +1401,7 @@ export async function deactivateAccount(): Promise<{ message: string }> {
  * Uses POST /api/jobs/feed/record/
  *
  * @param jobId  - ID of the job card that was acted on
- * @param action - "liked" | "passed" | "seen"
+ * @param action - "liked" | "passed" | "viewed"
  */
 export async function recordJobFeedAction(
   jobId: string,
@@ -1419,7 +1417,7 @@ export async function recordJobFeedAction(
  *
  * @param jobId           - Sponsor's active job context
  * @param applicantUserId - Profile that was acted on
- * @param action          - "liked" | "passed" | "seen"
+ * @param action          - "liked" | "passed" | "viewed"
  */
 export async function recordProfileFeedAction(
   jobId: string,
@@ -1585,11 +1583,26 @@ export async function deactivateJob(jobId: string): Promise<{
  * Permanently removes a sponsored job posting (hard delete).
  * Unlike deactivateJob (soft-delete), unsponsor allows re-sponsoring the same ATS listing later.
  * Uses DELETE /api/jobs/<job_id>/unsponsor/
+ *
+ * `reason` (and optional free-text `reasonDetail`) are passed as query params
+ * so the backend can act on them — e.g. prune listings unsponsored as
+ * "posting_expired". See §12 in docs/BACKEND_CHANGES_NEEDED.md. Both are
+ * optional; callers without a reason (e.g. the job-detail screen) still work.
  */
-export async function unsponsorJob(jobId: string): Promise<{
+export async function unsponsorJob(
+  jobId: string,
+  reason?: string,
+  reasonDetail?: string,
+): Promise<{
   message: string;
 }> {
-  return api.delete(`/api/jobs/${jobId}/unsponsor/`);
+  const params: string[] = [];
+  if (reason) params.push(`reason=${encodeURIComponent(reason)}`);
+  if (reasonDetail && reasonDetail.trim()) {
+    params.push(`reason_detail=${encodeURIComponent(reasonDetail.trim())}`);
+  }
+  const qs = params.length ? `?${params.join("&")}` : "";
+  return api.delete(`/api/jobs/${jobId}/unsponsor/${qs}`);
 }
 
 /**

@@ -36,6 +36,7 @@ export interface NotificationPreferences {
   referral?: boolean;
   waitlist?: boolean;
   job_like?: boolean;
+  sponsor_request?: boolean;
 }
 
 export interface AutofillData {

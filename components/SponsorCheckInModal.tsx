@@ -13,6 +13,7 @@ import { Check, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Dimensions,
     Modal,
     Platform,
     ScrollView,
@@ -26,13 +27,14 @@ import Animated, {
     SlideOutDown,
     ZoomIn,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     trackCheckInFailed,
     trackSponsorBatchCheckInSubmitted,
 } from "../lib/analytics/mixpanel";
 import {
-    SponsorCheckInStage,
     SPONSOR_CHECKIN_STAGES,
+    SponsorCheckInStage,
     submitSponsorBatchCheckIn,
 } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
@@ -64,6 +66,7 @@ const STATUS_STAGES = SPONSOR_CHECKIN_STAGES;
  * Backend caps each batch request at 50 updates. We cap at the same number.
  */
 const BATCH_LIMIT = 50;
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function applicantName(r: SponsorCheckInReferral): string {
@@ -102,13 +105,12 @@ export function SponsorCheckInModal({
   loading = false,
 }: Props) {
   const showToast = useToastStore((s) => s.showToast);
+  const insets = useSafeAreaInsets();
 
   // Filter out withdrawn referrals — backend rejects check-ins on those.
   const activeReferrals = useMemo(
     () =>
-      referrals.filter(
-        (r) => (r.status || "").toUpperCase() !== "WITHDRAWN",
-      ),
+      referrals.filter((r) => (r.status || "").toUpperCase() !== "WITHDRAWN"),
     [referrals],
   );
 
@@ -210,7 +212,16 @@ export function SponsorCheckInModal({
         <Animated.View
           entering={SlideInDown}
           exiting={SlideOutDown}
-          style={styles.sheet}
+          style={[
+            styles.sheet,
+            {
+              paddingBottom: Math.max(24, insets.bottom + 16),
+              height:
+                Platform.OS === "ios"
+                  ? SCREEN_HEIGHT * 0.94
+                  : SCREEN_HEIGHT * 0.92,
+            },
+          ]}
         >
           {/* Drag handle */}
           <View style={styles.handle} />
@@ -260,8 +271,8 @@ export function SponsorCheckInModal({
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyTitle}>No active referrals</Text>
                   <Text style={styles.emptyText}>
-                    You haven&apos;t submitted any referrals yet, or all of
-                    them have been withdrawn.
+                    You haven&apos;t submitted any referrals yet, or all of them
+                    have been withdrawn.
                   </Text>
                   <TouchableOpacity
                     style={styles.emptyDismissBtn}
@@ -273,14 +284,19 @@ export function SponsorCheckInModal({
                 </View>
               ) : (
                 <ScrollView
+                  style={styles.mainScroll}
                   showsVerticalScrollIndicator={false}
                   bounces={false}
-                  contentContainerStyle={styles.scrollContent}
+                  contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: Math.max(40, insets.bottom + 24) },
+                  ]}
                 >
                   {/* ── Referral cards ───────────────────────────────────── */}
                   {activeReferrals.map((referral) => {
                     const currentStage =
-                      stageById[referral.referralId] ?? initialStageFor(referral);
+                      stageById[referral.referralId] ??
+                      initialStageFor(referral);
                     const days = daysSince(referral.createdAt);
                     return (
                       <View
@@ -333,8 +349,7 @@ export function SponsorCheckInModal({
                                 <Text
                                   style={[
                                     styles.statusChipText,
-                                    isSelected &&
-                                      styles.statusChipTextSelected,
+                                    isSelected && styles.statusChipTextSelected,
                                   ]}
                                 >
                                   {stage}
@@ -400,8 +415,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     paddingTop: 12,
     paddingHorizontal: 28,
-    paddingBottom: 44,
-    maxHeight: "92%",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -452,8 +465,12 @@ const styles = StyleSheet.create({
 
   // ── Scroll content ──────────────────────────────────────────────────────────
   scrollContent: {
+    flexGrow: 1,
     gap: 12,
     paddingBottom: 8,
+  },
+  mainScroll: {
+    flex: 1,
   },
 
   // ── Referral card ───────────────────────────────────────────────────────────

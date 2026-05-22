@@ -3,75 +3,75 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
-  AlertCircle,
-  Briefcase,
-  Camera,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  Edit,
-  FileText,
-  GraduationCap,
-  ImageIcon,
-  Lock,
-  LogOut,
-  MapPin,
-  Plus,
-  RefreshCw,
-  Target,
-  Trash2,
-  Upload,
-  X,
-  Zap,
+    AlertCircle,
+    Briefcase,
+    Camera,
+    Check,
+    CheckCircle2,
+    ChevronRight,
+    Edit,
+    FileText,
+    GraduationCap,
+    ImageIcon,
+    Lock,
+    LogOut,
+    MapPin,
+    Plus,
+    RefreshCw,
+    Target,
+    Trash2,
+    Upload,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY, PREMIUM_ENABLED } from "../constants/config";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
 import {
-  resetUser,
-  trackAccountDeleted,
-  trackLogout,
-  trackPrivacyPolicyTapped,
-  trackProfileEditOpened,
-  trackProfileFieldUpdated,
-  trackProfilePhotoUploaded,
-  trackResumeReuploaded,
-  trackTermsTapped,
+    resetUser,
+    trackAccountDeleted,
+    trackLogout,
+    trackPrivacyPolicyTapped,
+    trackProfileEditOpened,
+    trackProfileFieldUpdated,
+    trackProfilePhotoUploaded,
+    trackResumeReuploaded,
+    trackTermsTapped,
 } from "../lib/analytics/mixpanel";
 import {
-  changeEmail,
-  changePassword,
-  classifyResume,
-  deactivateAccount,
-  getExtractedResumeText,
-  logout,
-  unregisterDevice,
-  updateApplicantProfile,
-  updateGeneralProfile,
-  updateSponsorProfile,
-  uploadAndParseResume,
-  uploadProfileImage,
+    changeEmail,
+    changePassword,
+    classifyResume,
+    deactivateAccount,
+    getExtractedResumeText,
+    logout,
+    unregisterDevice,
+    updateApplicantProfile,
+    updateGeneralProfile,
+    updateSponsorProfile,
+    uploadAndParseResume,
+    uploadProfileImage,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useJobsStore } from "../stores/useJobsStore";
@@ -79,9 +79,9 @@ import { useOnboardingStore } from "../stores/useOnboardingStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import {
-  EducationEntry,
-  ProfessionalExperience,
-  useUserProfileStore,
+    EducationEntry,
+    ProfessionalExperience,
+    useUserProfileStore,
 } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
@@ -111,7 +111,6 @@ interface SponsorProfile {
   bio: string;
   expertiseLabel: string;
   expertise: string[];
-  companiesCanReferTo: string[];
   successStories: { name: string; result: string }[];
 }
 
@@ -303,7 +302,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [expertise, setExpertise] = useState<string[]>([]);
   const [workPreferences, setWorkPreferences] = useState<string[]>([]);
   const [desiredRoles, setDesiredRoles] = useState<string[]>([]);
-  const [companiesCanReferTo, setCompaniesCanReferTo] = useState<string[]>([]);
 
   // Profile insights state
   const [profileInsights, setProfileInsights] = useState<ProfileInsight[]>([]);
@@ -325,11 +323,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const showToast = useToastStore((state) => state.showToast);
 
   const isNotifEnabled = (
-    key: "match" | "message" | "referral" | "waitlist" | "job_like",
+    key: "match" | "message" | "referral" | "waitlist" | "job_like" | "sponsor_request",
   ) => notificationPreferences[key] !== false;
 
   const handleNotifToggle = async (
-    key: "match" | "message" | "referral" | "waitlist" | "job_like",
+    key: "match" | "message" | "referral" | "waitlist" | "job_like" | "sponsor_request",
     next: boolean,
   ) => {
     setNotifSaving(key);
@@ -472,12 +470,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (userProfileData.achievements) {
       setAchievements(userProfileData.achievements);
     }
-    if (
-      userProfileData.sponsorCompanies &&
-      userProfileData.sponsorCompanies.length > 0
-    ) {
-      setCompaniesCanReferTo(userProfileData.sponsorCompanies);
-    }
   }, [userProfileData]);
 
   // Auto-save certifications when they change
@@ -601,7 +593,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     bio,
     expertiseLabel: "I Can Help With",
     expertise,
-    companiesCanReferTo,
     successStories: [
       { name: "Sarah M.", result: "Landed PM role at Meta" },
       { name: "David K.", result: "Senior Engineer at Google" },
@@ -843,7 +834,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleAddTag = async (
-    type: "expertise" | "workPreferences" | "desiredRoles" | "companies",
+    type: "expertise" | "workPreferences" | "desiredRoles",
     skillValue?: string,
   ) => {
     const valueToAdd = skillValue || newTag.trim();
@@ -900,14 +891,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         }
         break;
       }
-      case "companies": {
-        const newCompanies = [...companiesCanReferTo, valueToAdd];
-        setCompaniesCanReferTo(newCompanies);
-        if (userType === "sponsor") {
-          await updateSponsorProfile({ companies_can_refer_to: newCompanies });
-        }
-        break;
-      }
     }
     setNewTag("");
   };
@@ -924,7 +907,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleRemoveTag = async (
-    type: "expertise" | "workPreferences" | "desiredRoles" | "companies",
+    type: "expertise" | "workPreferences" | "desiredRoles",
     index: number,
   ) => {
     switch (type) {
@@ -954,29 +937,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         await updateDesiredRolesStore(updatedRoles);
         if (userType === "applicant") {
           await updateApplicantProfile({ desired_roles: updatedRoles });
-        }
-        break;
-      }
-      case "companies": {
-        // The sponsor's signup company can't be removed — the X button is
-        // replaced with a Lock icon in the UI, but guard here too so a stale
-        // index or future caller can't bypass it.
-        const target = companiesCanReferTo[index];
-        if (
-          company &&
-          target &&
-          target.trim().toLowerCase() === company.trim().toLowerCase()
-        ) {
-          return;
-        }
-        const updatedCompanies = companiesCanReferTo.filter(
-          (_, i) => i !== index,
-        );
-        setCompaniesCanReferTo(updatedCompanies);
-        if (userType === "sponsor") {
-          await updateSponsorProfile({
-            companies_can_refer_to: updatedCompanies,
-          });
         }
         break;
       }
@@ -2702,24 +2662,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         )}
 
         {/* Sponsor-Specific Sections */}
-        {userType === "sponsor" && (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Companies I Can Refer To</Text>
-              {sponsorData.companiesCanReferTo.length > 0 ? (
-                <View style={styles.tagCloud}>
-                  {sponsorData.companiesCanReferTo.map((company) => (
-                    <View key={company} style={styles.companyTag}>
-                      <Text style={styles.companyText}>{company}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyHint}>No companies added yet</Text>
-              )}
-            </View>
-          </>
-        )}
+        {userType === "sponsor" && <></>}
       </>
 
       {/* Resume Upload Section — Applicant Only */}
@@ -3789,58 +3732,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               )}
 
               {/* Sponsor-specific fields */}
-              {userType === "sponsor" && (
-                <View style={styles.editField}>
-                  <Text style={styles.fieldLabel}>
-                    COMPANIES I CAN REFER TO
-                  </Text>
-                  <View style={styles.tagsContainer}>
-                    {companiesCanReferTo.map((tag, index) => {
-                      // The sponsor's signup company is locked — they can add
-                      // companies they can also refer to, but their primary
-                      // company always stays in the list (the jobs board uses
-                      // it as the default browse filter and the rest of the
-                      // app keys off it). Compare case-insensitively against
-                      // the trimmed signup company.
-                      const isOwnCompany =
-                        !!company &&
-                        tag.trim().toLowerCase() ===
-                          company.trim().toLowerCase();
-                      return (
-                        <View key={index} style={styles.editableTag}>
-                          <Text style={styles.editableTagText}>{tag}</Text>
-                          {isOwnCompany ? (
-                            <Lock color="#999" size={12} />
-                          ) : (
-                            <TouchableOpacity
-                              onPress={() =>
-                                handleRemoveTag("companies", index)
-                              }
-                            >
-                              <X color="#000" size={14} />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      );
-                    })}
-                  </View>
-                  <View style={styles.addTagRow}>
-                    <TextInput
-                      style={styles.tagInput}
-                      placeholder="Add company..."
-                      value={newTag}
-                      onChangeText={setNewTag}
-                      onSubmitEditing={() => handleAddTag("companies")}
-                    />
-                    <TouchableOpacity
-                      style={styles.addTagBtn}
-                      onPress={() => handleAddTag("companies")}
-                    >
-                      <Plus color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
+              {userType === "sponsor" && <View />}
             </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
@@ -4775,16 +4667,32 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </>
         )}
         {userType === "sponsor" && (
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Someone Applied to Your Job</Text>
-            <Switch
-              value={isNotifEnabled("job_like")}
-              onValueChange={(v) => handleNotifToggle("job_like", v)}
-              disabled={notifSaving === "job_like"}
-              trackColor={{ false: "#E5E5E5", true: "#000" }}
-              thumbColor="#FFF"
-            />
-          </View>
+          <>
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>
+                Someone Applied to Your Job
+              </Text>
+              <Switch
+                value={isNotifEnabled("job_like")}
+                onValueChange={(v) => handleNotifToggle("job_like", v)}
+                disabled={notifSaving === "job_like"}
+                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                thumbColor="#FFF"
+              />
+            </View>
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>
+                Someone Requested Your Sponsorship
+              </Text>
+              <Switch
+                value={isNotifEnabled("sponsor_request")}
+                onValueChange={(v) => handleNotifToggle("sponsor_request", v)}
+                disabled={notifSaving === "sponsor_request"}
+                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                thumbColor="#FFF"
+              />
+            </View>
+          </>
         )}
       </SimpleModal>
     </ScrollView>

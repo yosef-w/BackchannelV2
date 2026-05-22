@@ -1,13 +1,16 @@
 import {
+  trackApplicantLikedBack,
   trackMatchMessageTapped,
   trackReferralWithdrawn,
   trackSponsorLikedBack,
 } from "@/lib/analytics/mixpanel";
 import {
   getInterestedSponsors,
+  getJobApplicantsLikes,
   getJobDetail,
   getLikedJobs,
   getMatches,
+  getMyJobs,
   getNotifications,
   getPublicProfile,
   getSponsorMatches,
@@ -111,6 +114,11 @@ interface Referral {
   applicantFirstName: string | null;
   applicantLastName: string | null;
   applicantPhotoUrl: string | null;
+  // The role-aware /referrals endpoint returns the OTHER party — so for an
+  // applicant viewing received referrals these hold the sponsor's identity.
+  sponsorFirstName: string | null;
+  sponsorLastName: string | null;
+  sponsorPhotoUrl: string | null;
   jobTitle: string | null;
   jobCompany: string | null;
 }
@@ -165,6 +173,21 @@ interface SponsorRequest {
   jobTitle: string;
   jobCompany: string;
   createdAt: string;
+}
+
+interface InterestedApplicant {
+  applicantUserId: string;
+  likedAt: string;
+  name: string;
+  image: string;
+  roleType: string;
+  location: string;
+  industry: string;
+  skills: string[];
+  // The job they liked
+  jobId: string;
+  jobTitle: string;
+  jobCompany: string;
 }
 
 interface InterestedSponsor {
@@ -267,11 +290,29 @@ export function MatchesView({
 }) {
   const [selectedProfile, setSelectedProfile] = useState<Match | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobOpportunity | null>(null);
+  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
+    null,
+  );
   const [modalMode, setModalMode] = useState<"view" | "message">("view");
   const [activeSlide, setActiveSlide] = useState(0);
   const [message, setMessage] = useState("");
   // Public-profile fetch state for the matched-profile modal moved into
   // the shared ProfileDetailSheet component — no longer needed here.
+
+  // Interested applicants state (applicants who liked a sponsored job, sponsor hasn't liked back)
+  const [interestedApplicants, setInterestedApplicants] = useState<
+    InterestedApplicant[]
+  >([]);
+  const [interestedApplicantsLoading, setInterestedApplicantsLoading] =
+    useState(false);
+  const [interestedApplicantsError, setInterestedApplicantsError] = useState<
+    string | null
+  >(null);
+  const [selectedInterestedApplicant, setSelectedInterestedApplicant] =
+    useState<InterestedApplicant | null>(null);
+  const [likingApplicantId, setLikingApplicantId] = useState<string | null>(
+    null,
+  );
 
   // Interested sponsors state (sponsors who liked the applicant, no match yet)
   const [interestedSponsors, setInterestedSponsors] = useState<
@@ -674,6 +715,93 @@ export function MatchesView({
     fetchSponsorRequests();
   }, [userType, matchesRefreshKey]);
 
+  // Fetch interested applicants (sponsor view) — applicants who swiped right
+  // on one of the sponsor's active jobs but the sponsor hasn't liked them back.
+  // Queries all active sponsored jobs in parallel, then flattens and deduplicates.
+  useEffect(() => {
+    const fetchInterestedApplicants = async () => {
+      if (userType !== "sponsor") return;
+
+      try {
+        setInterestedApplicantsLoading(true);
+        setInterestedApplicantsError(null);
+
+        // Get the sponsor's own active jobs
+        const myJobsRes = await getMyJobs();
+        const activeJobs = (myJobsRes.jobs || []).filter((j) => j.IS_ACTIVE);
+
+        if (activeJobs.length === 0) {
+          setInterestedApplicants([]);
+          return;
+        }
+
+        // Fetch applicant likes for each active job in parallel
+        const results = await Promise.allSettled(
+          activeJobs.map((job) =>
+            getJobApplicantsLikes(job.JOB_ID).then((res) => ({
+              jobId: job.JOB_ID,
+              jobTitle: job.TITLE,
+              jobCompany: job.COMPANY,
+              applicants: res.applicants,
+            })),
+          ),
+        );
+
+        // Flatten fulfilled results, filter to ACTIVE (not yet matched),
+        // and deduplicate by applicant user ID (keep the most recent like)
+        const seen = new Set<string>();
+        const all: InterestedApplicant[] = [];
+        for (const result of results) {
+          if (result.status !== "fulfilled") continue;
+          const { jobId, jobTitle, jobCompany, applicants } = result.value;
+          for (const a of applicants) {
+            if (a.STATUS !== "ACTIVE") continue;
+            if (seen.has(a.APPLICANT_USER_ID)) continue;
+            seen.add(a.APPLICANT_USER_ID);
+            all.push({
+              applicantUserId: a.APPLICANT_USER_ID,
+              likedAt: a.LIKED_AT,
+              name:
+                a.FIRST_NAME && a.LAST_NAME
+                  ? `${a.FIRST_NAME} ${a.LAST_NAME}`
+                  : a.FIRST_NAME || "Applicant",
+              image: a.PHOTO_URL || "",
+              roleType: a.ROLE_TYPE || "",
+              location: a.LOCATION || "",
+              industry: a.INDUSTRY || "",
+              skills: parseSkillsField(a.SKILLS),
+              jobId,
+              jobTitle,
+              jobCompany,
+            });
+          }
+        }
+
+        // Sort by most recently liked
+        all.sort(
+          (a, b) =>
+            new Date(b.likedAt).getTime() - new Date(a.likedAt).getTime(),
+        );
+        setInterestedApplicants(all);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
+          setInterestedApplicants([]);
+        } else {
+          console.warn(
+            "[MatchesView] Failed to fetch interested applicants:",
+            err,
+          );
+          setInterestedApplicantsError(msg);
+        }
+      } finally {
+        setInterestedApplicantsLoading(false);
+      }
+    };
+
+    fetchInterestedApplicants();
+  }, [userType, matchesRefreshKey]);
+
   // Fetch waitlisted jobs for applicants
   useEffect(() => {
     const fetchWaitlistedJobs = async () => {
@@ -720,6 +848,12 @@ export function MatchesView({
               r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
             applicantPhotoUrl:
               r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
+            sponsorFirstName:
+              r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
+            sponsorLastName:
+              r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
+            sponsorPhotoUrl:
+              r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
             jobTitle: r.JOB_TITLE || r.job_title || null,
             jobCompany: r.JOB_COMPANY || r.job_company || null,
           }),
@@ -801,8 +935,10 @@ export function MatchesView({
   const closeAllModals = () => {
     setSelectedProfile(null);
     setSelectedJob(null);
+    setSelectedReferral(null);
     setSelectedInterestedSponsor(null);
     setInterestedSponsorProfile(null);
+    setSelectedInterestedApplicant(null);
     setSelectedWaitlistedJob(null);
     setSelectedSponsorRequest(null);
     setSrJobDetailVisible(false);
@@ -874,6 +1010,39 @@ export function MatchesView({
       );
     } finally {
       setSrSponsoring(false);
+    }
+  };
+
+  // Sponsor connects with an applicant who already liked their job → creates
+  // a mutual match. Removes applicant from the interested list and bumps the
+  // matches section so they appear under "Interested Applicants".
+  const handleLikeBackApplicant = async (applicant: InterestedApplicant) => {
+    setLikingApplicantId(applicant.applicantUserId);
+    try {
+      const res = await likeProfile(applicant.applicantUserId, applicant.jobId);
+      trackApplicantLikedBack({
+        applicantUserId: applicant.applicantUserId,
+        jobId: applicant.jobId,
+      });
+      if (res.matched) {
+        setInterestedApplicants((prev) =>
+          prev.filter((a) => a.applicantUserId !== applicant.applicantUserId),
+        );
+        setMatchesRefreshKey((k) => k + 1);
+      }
+      closeAllModals();
+      showToast(
+        res.matched
+          ? `It's a match with ${applicant.name.split(" ")[0]}!`
+          : res.message ||
+              `Sent — ${applicant.name.split(" ")[0]} will be notified.`,
+        res.matched ? "success" : "info",
+      );
+    } catch (err) {
+      console.warn("[MatchesView] Failed to like back applicant:", err);
+      showToast("Couldn't do that right now. Please try again.", "error");
+    } finally {
+      setLikingApplicantId(null);
     }
   };
 
@@ -1142,6 +1311,120 @@ export function MatchesView({
                     </Animated.View>
                   ))}
                 </ScrollView>
+              )}
+            </View>
+
+            {/* Interested in Your Jobs — applicants who swiped right but
+                sponsor hasn't connected back yet. Mirrors the applicant's
+                "Interested in You" section. */}
+            <View style={styles.listSection}>
+              <View style={styles.sectionHeader}>
+                <View>
+                  <Text style={styles.listSectionTitle}>
+                    {interestedApplicantsLoading
+                      ? "Loading..."
+                      : `Interested in Your Jobs (${interestedApplicants.length})`}
+                  </Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Applicants who swiped right on your jobs — connect back to
+                    match
+                  </Text>
+                </View>
+              </View>
+
+              {interestedApplicantsError && (
+                <Text
+                  style={{
+                    color: "#DC2626",
+                    marginBottom: 12,
+                    fontSize: 13,
+                  }}
+                >
+                  {interestedApplicantsError}
+                </Text>
+              )}
+
+              {!interestedApplicantsLoading &&
+              interestedApplicants.length === 0 ? (
+                <View style={styles.emptySponsorsContainer}>
+                  <View style={styles.emptyIconContainer}>
+                    <Heart size={32} color="#CCC" />
+                  </View>
+                  <Text style={styles.emptyLikedTitle}>No Interest Yet</Text>
+                  <Text style={styles.emptyLikedText}>
+                    Applicants who swipe right on your jobs will appear here.
+                    Keep your jobs visible!
+                  </Text>
+                </View>
+              ) : (
+                interestedApplicants.map((applicant, index) => (
+                  <Animated.View
+                    key={applicant.applicantUserId}
+                    entering={FadeInUp.delay(index * 80)}
+                  >
+                    <TouchableOpacity
+                      style={styles.interestedSponsorCard}
+                      activeOpacity={0.85}
+                      onPress={() => setSelectedInterestedApplicant(applicant)}
+                    >
+                      {applicant.image ? (
+                        <Image
+                          source={{ uri: applicant.image }}
+                          style={styles.interestedSponsorAvatar}
+                        />
+                      ) : (
+                        <View style={styles.interestedSponsorInitial}>
+                          <Text style={styles.interestedSponsorInitialText}>
+                            {(applicant.name || "A")[0].toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+
+                      <View style={styles.interestedSponsorInfo}>
+                        <Text style={styles.interestedSponsorName}>
+                          {applicant.name}
+                        </Text>
+                        {!!(applicant.roleType || applicant.location) && (
+                          <Text
+                            style={styles.interestedSponsorRole}
+                            numberOfLines={1}
+                          >
+                            {applicant.roleType}
+                            {applicant.roleType && applicant.location
+                              ? " · "
+                              : ""}
+                            {applicant.location}
+                          </Text>
+                        )}
+                        {!!applicant.jobTitle && (
+                          <Text
+                            style={styles.interestedSponsorJobContext}
+                            numberOfLines={1}
+                          >
+                            Interested in {applicant.jobTitle}
+                            {applicant.jobCompany
+                              ? ` · ${applicant.jobCompany}`
+                              : ""}
+                          </Text>
+                        )}
+                        {!!applicant.likedAt && (
+                          <View style={styles.interestedSponsorTimestamp}>
+                            <Heart size={10} color="#E53E3E" />
+                            <Text style={styles.interestedSponsorTimestampText}>
+                              {getRelativeTime(applicant.likedAt)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.interestedSponsorCta}>
+                        <Text style={styles.interestedSponsorCtaText}>
+                          View
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))
               )}
             </View>
 
@@ -1488,11 +1771,11 @@ export function MatchesView({
                           )}
                           {job.status === "MATCHED" ? (
                             <View style={styles.waitingBadge}>
-                              <CheckCircle size={10} color="#00CB54" />
+                              <CheckCircle size={10} color="#000" />
                               <Text
                                 style={[
                                   styles.waitingText,
-                                  { color: "#00CB54" },
+                                  { color: "#000" },
                                 ]}
                               >
                                 Matched!
@@ -1532,11 +1815,11 @@ export function MatchesView({
                   <View
                     style={[
                       styles.pendingBadge,
-                      { backgroundColor: "#F0FFF4", borderColor: "#BBF7D0" },
+                      { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
                     ]}
                   >
-                    <Sparkles size={12} color="#00CB54" />
-                    <Text style={[styles.pendingText, { color: "#00CB54" }]}>
+                    <Sparkles size={12} color="#000" />
+                    <Text style={[styles.pendingText, { color: "#000" }]}>
                       Sponsored!
                     </Text>
                   </View>
@@ -1588,14 +1871,7 @@ export function MatchesView({
                         onPress={() => setSelectedWaitlistedJob(job)}
                       >
                         <View style={styles.jobCardInfo}>
-                          <View
-                            style={[
-                              styles.likedJobInitial,
-                              job.is_now_sponsored && {
-                                backgroundColor: "#00CB54",
-                              },
-                            ]}
-                          >
+                          <View style={styles.likedJobInitial}>
                             <Text style={styles.likedJobInitialText}>
                               {(job.organization || "?")[0].toUpperCase()}
                             </Text>
@@ -1621,11 +1897,11 @@ export function MatchesView({
                                 styles.waitingBadgeSponsored,
                               ]}
                             >
-                              <CheckCircle size={10} color="#00CB54" />
+                              <CheckCircle size={10} color="#000" />
                               <Text
                                 style={[
                                   styles.waitingText,
-                                  { color: "#00CB54" },
+                                  { color: "#000" },
                                 ]}
                               >
                                 Now Sponsored!
@@ -1638,11 +1914,11 @@ export function MatchesView({
                                 styles.waitingBadgeWaitlist,
                               ]}
                             >
-                              <Clock size={10} color="#D97706" />
+                              <Clock size={10} color="#666" />
                               <Text
                                 style={[
                                   styles.waitingText,
-                                  { color: "#D97706" },
+                                  { color: "#666" },
                                 ]}
                               >
                                 Waiting for sponsor
@@ -1713,7 +1989,7 @@ export function MatchesView({
                       <Text style={styles.cardName}>{match.name}</Text>
                       <Text style={styles.cardRole}>{match.role}</Text>
                       <View style={styles.matchBadgeCard}>
-                        <CheckCircle size={14} color="#00CB54" />
+                        <CheckCircle size={14} color="#000" />
                         <Text style={styles.matchBadgeText}>Matched!</Text>
                       </View>
                       <TouchableOpacity
@@ -1890,72 +2166,94 @@ export function MatchesView({
                 referrals.map((referral, index) => {
                   const isReferred = referral.status === "REFERRED";
                   const sponsorName =
-                    [referral.applicantFirstName, referral.applicantLastName]
+                    [referral.sponsorFirstName, referral.sponsorLastName]
                       .filter(Boolean)
-                      .join(" ") || "Sponsor";
-                  // For applicants the "applicantFirstName" field from the API
-                  // actually holds the SPONSOR name (since the role-aware endpoint
-                  // returns the other party's name). Use sponsorUserId for display.
+                      .join(" ") || "Your sponsor";
                   return (
                     <Animated.View
                       key={`recv-referral-${referral.referralId || index}`}
                       entering={FadeInUp.delay(index * 80)}
-                      style={[
-                        styles.listItem,
-                        !isReferred && styles.listItemWithdrawn,
-                      ]}
                     >
-                      <View style={styles.listImagePlaceholder}>
-                        <Award
-                          size={20}
-                          color={isReferred ? "#00CB54" : "#CCC"}
-                        />
-                      </View>
-                      <View style={styles.listInfo}>
-                        <Text
-                          style={[
-                            styles.listName,
-                            !isReferred && styles.listNameWithdrawn,
-                          ]}
-                        >
-                          {referral.jobTitle || "Open Role"}
-                        </Text>
-                        <Text style={styles.pipelineRoleText}>
-                          {referral.jobCompany
-                            ? `at ${referral.jobCompany}`
-                            : "Role referred"}
-                        </Text>
-                        <View
-                          style={
-                            isReferred
-                              ? styles.referralBadgeReferred
-                              : styles.referralBadgeWithdrawn
-                          }
-                        >
-                          <View
-                            style={[
-                              styles.statusDot,
-                              isReferred
-                                ? styles.statusDotReferred
-                                : styles.statusDotWithdrawn,
-                            ]}
-                          />
-                          <Text
-                            style={
-                              isReferred
-                                ? styles.referralStatusTextReferred
-                                : styles.referralStatusTextWithdrawn
-                            }
-                          >
-                            {isReferred ? "Referred" : "Withdrawn"}
-                          </Text>
+                      <TouchableOpacity
+                        activeOpacity={0.88}
+                        onPress={() => setSelectedReferral(referral)}
+                        style={[
+                          styles.referralCard,
+                          !isReferred && styles.referralCardWithdrawn,
+                        ]}
+                      >
+                        {/* Row 1 — company + role */}
+                        <View style={styles.referralCardTop}>
+                          <View style={styles.referralCardInitial}>
+                            <Text style={styles.referralCardInitialText}>
+                              {(referral.jobCompany || "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={styles.referralCardJobTitle}
+                              numberOfLines={1}
+                            >
+                              {referral.jobTitle || "Open Role"}
+                            </Text>
+                            <Text
+                              style={styles.referralCardCompany}
+                              numberOfLines={1}
+                            >
+                              {referral.jobCompany || "Company"}
+                            </Text>
+                          </View>
+                          <ChevronRight size={18} color="#CCC" />
                         </View>
-                        {!!referral.createdAt && (
-                          <Text style={styles.referralDateText}>
-                            {getRelativeTime(referral.createdAt)}
+
+                        <View style={styles.referralCardDivider} />
+
+                        {/* Row 2 — sponsor + status */}
+                        <View style={styles.referralCardBottom}>
+                          {referral.sponsorPhotoUrl ? (
+                            <Image
+                              source={{ uri: referral.sponsorPhotoUrl }}
+                              style={styles.referralCardSponsorAvatar}
+                            />
+                          ) : (
+                            <View style={styles.referralCardSponsorInitial}>
+                              <Text
+                                style={styles.referralCardSponsorInitialText}
+                              >
+                                {sponsorName[0].toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <Text
+                            style={styles.referralCardSponsorText}
+                            numberOfLines={1}
+                          >
+                            Referred by {sponsorName}
+                            {!!referral.createdAt &&
+                              ` · ${getRelativeTime(referral.createdAt)}`}
                           </Text>
-                        )}
-                      </View>
+                          <View style={styles.refPill}>
+                            <View
+                              style={[
+                                styles.refPillDot,
+                                isReferred
+                                  ? styles.refPillDotReferred
+                                  : styles.refPillDotWithdrawn,
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.refPillText,
+                                isReferred
+                                  ? styles.refPillTextReferred
+                                  : styles.refPillTextWithdrawn,
+                              ]}
+                            >
+                              {isReferred ? "Referred" : "Withdrawn"}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
                     </Animated.View>
                   );
                 })
@@ -2011,7 +2309,47 @@ export function MatchesView({
         />
       )}
 
-      {/* Job Details Modal (for Liked Jobs) */}
+      {/* Interested applicant detail sheet — sponsor tapped on an applicant
+          who liked their job but hasn't been connected with yet. Connect CTA
+          calls likeProfile to create a match. */}
+      {selectedInterestedApplicant && (
+        <ProfileDetailSheet
+          visible={!!selectedInterestedApplicant}
+          onDismiss={() => setSelectedInterestedApplicant(null)}
+          userId={selectedInterestedApplicant.applicantUserId}
+          variant="applicant"
+          initial={{
+            name: selectedInterestedApplicant.name,
+            image: selectedInterestedApplicant.image,
+            role: selectedInterestedApplicant.roleType,
+          }}
+          badge={{
+            label: "Interested in Your Job",
+            color: "#E53E3E",
+            bgColor: "#FFF5F5",
+          }}
+          roleContext={
+            selectedInterestedApplicant.jobTitle
+              ? {
+                  label: "INTERESTED IN",
+                  title: selectedInterestedApplicant.jobTitle,
+                  company: selectedInterestedApplicant.jobCompany,
+                }
+              : undefined
+          }
+          primaryCta={{
+            label:
+              likingApplicantId === selectedInterestedApplicant.applicantUserId
+                ? "Connecting..."
+                : `Connect with ${selectedInterestedApplicant.name.split(" ")[0]}`,
+            icon: <Heart color="#FFF" size={18} strokeWidth={2.5} />,
+            loading:
+              likingApplicantId === selectedInterestedApplicant.applicantUserId,
+            onPress: () => handleLikeBackApplicant(selectedInterestedApplicant),
+          }}
+        />
+      )}
+
       <Modal visible={!!selectedJob} transparent animationType="none">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -2043,7 +2381,7 @@ export function MatchesView({
                 <View style={styles.jobModalTopRow}>
                   {selectedJob.status === "MATCHED" ? (
                     <View style={styles.jobModalMatchedBadge}>
-                      <CheckCircle size={12} color="#00CB54" />
+                      <CheckCircle size={12} color="#000" />
                       <Text style={styles.jobModalMatchedText}>Matched!</Text>
                     </View>
                   ) : (
@@ -2191,7 +2529,7 @@ export function MatchesView({
                     </View>
                     {selectedJob.benefits.map((benefit, idx) => (
                       <View key={idx} style={styles.benefitRow}>
-                        <Check size={14} color="#00CB54" />
+                        <Check size={14} color="#000" />
                         <Text style={styles.benefitText}>{benefit}</Text>
                       </View>
                     ))}
@@ -2218,7 +2556,7 @@ export function MatchesView({
                     </Text>
                     {selectedJob.status === "MATCHED" && (
                       <View style={styles.jobMatchedSponsorBadge}>
-                        <CheckCircle size={10} color="#00CB54" />
+                        <CheckCircle size={10} color="#000" />
                         <Text style={styles.jobMatchedSponsorText}>
                           Matched Sponsor
                         </Text>
@@ -2288,6 +2626,177 @@ export function MatchesView({
                 )}
               </ScrollView>
             )}
+          </DismissibleSheet>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Referral detail sheet — applicant taps a "Referrals Received" card.
+          Mirrors the Applied-Jobs job modal: hero, sponsor card, and details. */}
+      <Modal visible={!!selectedReferral} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeAllModals}
+          >
+            <BlurView
+              intensity={30}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <DismissibleSheet
+            onDismiss={closeAllModals}
+            style={styles.modalContent}
+          >
+            {selectedReferral &&
+              (() => {
+                const r = selectedReferral;
+                const isReferred = r.status === "REFERRED";
+                const sponsorName =
+                  [r.sponsorFirstName, r.sponsorLastName]
+                    .filter(Boolean)
+                    .join(" ") || "Your sponsor";
+                const sponsorFirst = r.sponsorFirstName?.trim() || "Sponsor";
+                const company = r.jobCompany || "the company";
+                const canMessage =
+                  isReferred && !!onNavigateToMessages && !!r.jobId;
+                return (
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    bounces={false}
+                    contentContainerStyle={{ paddingBottom: 8 }}
+                  >
+                    {/* Status + date */}
+                    <View style={styles.jobModalTopRow}>
+                      <View style={styles.refPill}>
+                        <View
+                          style={[
+                            styles.refPillDot,
+                            isReferred
+                              ? styles.refPillDotReferred
+                              : styles.refPillDotWithdrawn,
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.refPillText,
+                            isReferred
+                              ? styles.refPillTextReferred
+                              : styles.refPillTextWithdrawn,
+                          ]}
+                        >
+                          {isReferred ? "Referred" : "Withdrawn"}
+                        </Text>
+                      </View>
+                      {!!r.createdAt && (
+                        <Text style={styles.jobModalLikedDate}>
+                          Referred{" "}
+                          {new Date(r.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Hero — company + role */}
+                    <View style={styles.jobModalHero}>
+                      <View style={styles.jobModalHeroInitial}>
+                        <Text style={styles.jobModalHeroInitialText}>
+                          {(r.jobCompany || "?")[0].toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text style={styles.jobModalHeroTitle}>
+                        {r.jobTitle || "Open Role"}
+                      </Text>
+                      <Text style={styles.jobModalHeroCompany}>
+                        {r.jobCompany || "Company"}
+                      </Text>
+                    </View>
+
+                    {/* Referred By — the sponsor */}
+                    <View style={styles.sponsorInfoCard}>
+                      <View style={styles.sponsorCardHeader}>
+                        <Award size={16} color="#000" />
+                        <Text style={styles.sponsorCardTitle}>Referred By</Text>
+                      </View>
+                      <View style={styles.sponsorCardContent}>
+                        {r.sponsorPhotoUrl ? (
+                          <Image
+                            source={{ uri: r.sponsorPhotoUrl }}
+                            style={styles.sponsorCardAvatar}
+                          />
+                        ) : (
+                          <View style={styles.jobSponsorInitialAvatar}>
+                            <Text style={styles.jobSponsorInitialText}>
+                              {sponsorName[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.sponsorCardName}>
+                            {sponsorName}
+                          </Text>
+                          <Text style={styles.sponsorCardRole}>
+                            {isReferred
+                              ? "Referred you for this role"
+                              : "Withdrew this referral"}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* What this means */}
+                    <View style={styles.detailSection}>
+                      <View style={styles.detailSectionHeader}>
+                        <Info size={16} color="#000" />
+                        <Text style={styles.detailSectionTitle}>
+                          What This Means
+                        </Text>
+                      </View>
+                      <Text style={styles.jobDetailText}>
+                        {isReferred
+                          ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
+                          : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
+                      </Text>
+                    </View>
+
+                    {/* CTA */}
+                    {canMessage ? (
+                      <TouchableOpacity
+                        style={styles.applyBtnLarge}
+                        onPress={() => {
+                          const jid = r.jobId;
+                          closeAllModals();
+                          onNavigateToMessages?.(jid);
+                        }}
+                      >
+                        <MessageCircle
+                          color="#FFF"
+                          size={20}
+                          strokeWidth={2.5}
+                        />
+                        <Text style={styles.applyBtnLargeText}>
+                          Message {sponsorFirst}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.applyBtnLarge}
+                        onPress={closeAllModals}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.applyBtnLargeText}>Got It</Text>
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                );
+              })()}
           </DismissibleSheet>
         </KeyboardAvoidingView>
       </Modal>
@@ -2438,7 +2947,7 @@ export function MatchesView({
                             {interestedSponsorProfile?.sponsor_profile
                               ?.OPEN_TO_REFERRALS && (
                               <View style={styles.sponsorCapBadge}>
-                                <CheckCircle size={11} color="#00CB54" />
+                                <CheckCircle size={11} color="#000" />
                                 <Text style={styles.sponsorCapBadgeText}>
                                   Open to Referrals
                                 </Text>
@@ -2536,7 +3045,7 @@ export function MatchesView({
                               { alignSelf: "flex-start", marginTop: 16 },
                             ]}
                           >
-                            <CheckCircle size={14} color="#00CB54" />
+                            <CheckCircle size={14} color="#000" />
                             <Text style={styles.statLabel}>Active Sponsor</Text>
                           </View>
                         </View>
@@ -2628,14 +3137,7 @@ export function MatchesView({
               >
                 {/* Hero */}
                 <View style={styles.jobModalHero}>
-                  <View
-                    style={[
-                      styles.jobModalHeroInitial,
-                      selectedWaitlistedJob.is_now_sponsored && {
-                        backgroundColor: "#00CB54",
-                      },
-                    ]}
-                  >
+                  <View style={styles.jobModalHeroInitial}>
                     <Text style={styles.jobModalHeroInitialText}>
                       {(selectedWaitlistedJob.organization ||
                         "?")[0].toUpperCase()}
@@ -2666,9 +3168,9 @@ export function MatchesView({
                 {selectedWaitlistedJob.is_now_sponsored ? (
                   <View
                     style={{
-                      backgroundColor: "#F0FFF4",
+                      backgroundColor: "#F4F4F5",
                       borderWidth: 1,
-                      borderColor: "#BBF7D0",
+                      borderColor: "#E5E5E5",
                       borderRadius: 18,
                       padding: 18,
                       marginBottom: 20,
@@ -2677,13 +3179,13 @@ export function MatchesView({
                       gap: 14,
                     }}
                   >
-                    <CheckCircle size={22} color="#00CB54" />
+                    <CheckCircle size={22} color="#000" />
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
                           fontSize: 15,
                           fontWeight: "800",
-                          color: "#00CB54",
+                          color: "#000",
                           marginBottom: 4,
                         }}
                       >
@@ -2705,9 +3207,9 @@ export function MatchesView({
                 ) : (
                   <View
                     style={{
-                      backgroundColor: "#FFFBEB",
+                      backgroundColor: "#F4F4F5",
                       borderWidth: 1,
-                      borderColor: "#FDE68A",
+                      borderColor: "#E5E5E5",
                       borderRadius: 18,
                       padding: 18,
                       marginBottom: 20,
@@ -2716,13 +3218,13 @@ export function MatchesView({
                       gap: 14,
                     }}
                   >
-                    <Clock size={22} color="#D97706" />
+                    <Clock size={22} color="#666" />
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
                           fontSize: 15,
                           fontWeight: "800",
-                          color: "#D97706",
+                          color: "#666",
                           marginBottom: 4,
                         }}
                       >
@@ -3888,14 +4390,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: "#F4F4F5",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     alignSelf: "flex-start",
     marginBottom: 20,
   },
-  matchScoreText: { fontSize: 12, fontWeight: "800", color: "#00CB54" },
+  matchScoreText: { fontSize: 12, fontWeight: "800", color: "#000" },
 
   // ─── Sponsor Match Modal (sm) ─────────────────────────────────────────────
   smHeroRow: {
@@ -3932,7 +4434,7 @@ const styles = StyleSheet.create({
   smMatchedText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#00CB54",
+    color: "#000",
   },
   smJobBlock: {
     backgroundColor: "#F8F9FB",
@@ -4356,7 +4858,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: "#F4F4F5",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -4549,7 +5051,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: "#F4F4F5",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
@@ -4558,7 +5060,7 @@ const styles = StyleSheet.create({
   matchBadgeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#00CB54",
+    color: "#000",
   },
   jobModalTopRow: {
     flexDirection: "row",
@@ -4570,9 +5072,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: "#F4F4F5",
     borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderColor: "#E5E5E5",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
@@ -4580,7 +5082,7 @@ const styles = StyleSheet.create({
   jobModalMatchedText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#00CB54",
+    color: "#000",
   },
   jobModalPendingBadge: {
     flexDirection: "row",
@@ -4696,7 +5198,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: "#F4F4F5",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -4704,7 +5206,7 @@ const styles = StyleSheet.create({
   jobMatchedSponsorText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#00CB54",
+    color: "#000",
   },
   jobSponsorInitialAvatar: {
     width: 40,
@@ -4721,16 +5223,16 @@ const styles = StyleSheet.create({
   },
   // Waitlisted Jobs
   waitlistedJobCardSponsored: {
-    borderColor: "#BBF7D0",
-    backgroundColor: "#F0FFF4",
+    borderColor: "#E5E5E5",
+    backgroundColor: "#F4F4F5",
   },
   waitingBadgeWaitlist: {
-    backgroundColor: "#FFFBEB",
-    borderColor: "#FDE68A",
+    backgroundColor: "#F4F4F5",
+    borderColor: "#E5E5E5",
   },
   waitingBadgeSponsored: {
-    backgroundColor: "#F0FFF4",
-    borderColor: "#BBF7D0",
+    backgroundColor: "#F4F4F5",
+    borderColor: "#E5E5E5",
   },
 
   // Pipeline empty state
@@ -4786,8 +5288,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignSelf: "flex-start",
     marginTop: 5,
-    backgroundColor: "#F0FFF4",
-    borderColor: "#BBF7D0",
+    backgroundColor: "#F4F4F5",
+    borderColor: "#E5E5E5",
   },
   referralBadgeWithdrawn: {
     flexDirection: "row",
@@ -4803,7 +5305,7 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
   },
   statusDotReferred: {
-    backgroundColor: "#00CB54",
+    backgroundColor: "#000",
   },
   statusDotWithdrawn: {
     backgroundColor: "#BBB",
@@ -4811,13 +5313,97 @@ const styles = StyleSheet.create({
   referralStatusTextReferred: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: "#065F46",
+    color: "#000",
   },
   referralStatusTextWithdrawn: {
     fontSize: 11,
     fontWeight: "600" as const,
     color: "#999",
   },
+  // ─── Referrals Received — applicant card ───
+  referralCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  referralCardWithdrawn: { opacity: 0.55 },
+  referralCardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  referralCardInitial: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  referralCardInitialText: { fontSize: 19, fontWeight: "800", color: "#FFF" },
+  referralCardJobTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
+  referralCardCompany: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 2,
+  },
+  referralCardDivider: {
+    height: 1,
+    backgroundColor: "#F0F0F0",
+    marginVertical: 12,
+  },
+  referralCardBottom: { flexDirection: "row", alignItems: "center", gap: 8 },
+  referralCardSponsorAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#EEE",
+  },
+  referralCardSponsorInitial: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  referralCardSponsorInitialText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFF",
+  },
+  referralCardSponsorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#888",
+  },
+  // Monochrome status pill — Referred = black, Withdrawn = grey.
+  refPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#F4F4F5",
+    borderWidth: 1,
+    borderColor: "#ECECEC",
+  },
+  refPillDot: { width: 6, height: 6, borderRadius: 3 },
+  refPillDotReferred: { backgroundColor: "#000" },
+  refPillDotWithdrawn: { backgroundColor: "#BBB" },
+  refPillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
+  refPillTextReferred: { color: "#000" },
+  refPillTextWithdrawn: { color: "#999" },
   pipelineActions: {
     alignItems: "flex-end",
     justifyContent: "center",
@@ -4952,13 +5538,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   undoToastBtn: {
-    backgroundColor: "#00CB54",
+    // White on the dark (#1A1A1A) toast — a black button would vanish.
+    backgroundColor: "#FFF",
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
   undoToastBtnText: {
-    color: "#FFF",
+    color: "#000",
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,

@@ -18,30 +18,26 @@ import {
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
-import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
+import { formatSalary, parseEmploymentType } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
-  Award,
   Briefcase,
   Check,
   CheckCircle,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   DollarSign,
-  FileText,
   Globe,
+  Info,
   Lock,
   MapPin,
-  MessageCircle,
   MoreHorizontal,
   Plus,
-  Send,
-  Share,
   Sparkles,
   ThumbsDown,
   Trash2,
+  TrendingUp,
   Users,
   X,
   Zap,
@@ -130,6 +126,10 @@ interface Applicant {
   experience: string;
   skills: string[];
   appliedRole: string;
+  // Like status from getJobApplicantsLikes — "MATCHED" means the sponsor has
+  // already matched with this applicant, so the detail sheet shows an inert
+  // "Matched" status instead of a "Match with…" CTA.
+  status?: "ACTIVE" | "MATCHED";
   // Enriched fields populated from `getPublicProfile` when the sponsor taps
   // the message icon. The lightweight list endpoint doesn't include these.
   bio?: string;
@@ -142,6 +142,18 @@ interface Applicant {
     answer: string;
   }[];
 }
+
+// Reasons a sponsor can pick when unsponsoring a job. `value` is sent to the
+// backend (see §12 in docs/BACKEND_CHANGES_NEEDED.md) — "posting_expired" and
+// "role_filled" in particular let the backend prune stale ATS listings.
+const UNSPONSOR_REASONS: { value: string; label: string }[] = [
+  { value: "role_filled", label: "The role has been filled" },
+  { value: "posting_expired", label: "The job posting expired or was closed" },
+  { value: "cannot_refer", label: "I can no longer refer for this role" },
+  { value: "poor_applicant_fit", label: "Not getting the right applicants" },
+  { value: "wrong_role", label: "I sponsored the wrong role" },
+  { value: "other", label: "Other" },
+];
 
 /** Robustly parse a skills/requirements string that may be a JSON array or comma-separated list. */
 function parseSkillsField(raw: string | null | undefined): string[] {
@@ -159,6 +171,47 @@ function parseSkillsField(raw: string | null | undefined): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+/**
+ * Clean rich/HTML-ish job text so UI surfaces render human-readable copy.
+ * We keep line breaks for long-form fields and collapse noisy whitespace.
+ */
+function cleanJobText(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const withBreaks = raw
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/\s*(p|div|li|h1|h2|h3|h4|h5|h6)\s*>/gi, "\n")
+    .replace(/<\s*li[^>]*>/gi, "- ");
+
+  const noTags = withBreaks.replace(/<[^>]+>/g, " ");
+  const decoded = noTags
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'");
+
+  return decoded
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Format raw experience level values (e.g. "2-5", "5+", "0-2") into readable labels. */
+function formatExperienceLevel(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const s = raw.trim();
+  if (!s || s.toLowerCase() === "null") return "";
+  // Already human-readable (contains letters beyond a pure digit/range/plus)
+  if (/[a-zA-Z]/.test(s)) return s;
+  // Numeric ranges from SILVER_JOBS
+  if (s === "0-2") return "Entry Level (0–2 yrs)";
+  if (s === "2-5") return "Mid-Level (2–5 yrs)";
+  if (s === "5+") return "Senior (5+ yrs)";
+  return s;
 }
 
 // Extend Job type with UI-specific fields (JobPosting is now just an alias)
@@ -186,8 +239,14 @@ export function JobsView() {
 
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewJobDetails, setViewJobDetails] = useState<JobPosting | null>(null);
+
   const [menuJob, setMenuJob] = useState<JobPosting | null>(null);
   const [isUnsponsoringId, setIsUnsponsoringId] = useState<string | null>(null);
+  // Menu-modal step 2 — "why are you unsponsoring?" Tapping "Unsponsor Job"
+  // flips `showUnsponsorReasons` on instead of unsponsoring immediately.
+  const [showUnsponsorReasons, setShowUnsponsorReasons] = useState(false);
+  const [unsponsorReason, setUnsponsorReason] = useState<string | null>(null);
+  const [unsponsorReasonDetail, setUnsponsorReasonDetail] = useState("");
 
   const [selectedApplicantJob, setSelectedApplicantJob] =
     useState<JobPosting | null>(null);
@@ -222,82 +281,14 @@ export function JobsView() {
   const [activeTab, setActiveTab] = useState<"browse" | "sponsored">("browse");
   const [displayLimit, setDisplayLimit] = useState(20);
 
-  // Company switcher (Browse tab). Sponsors with multiple entries in
-  // `COMPANIES_CAN_REFER_TO` can flip between them; the selection is sent to
-  // the backend as ?company=… and dictates which SILVER_JOBS rows come back.
-  //
-  // ALL_COMPANIES is a frontend-only sentinel meaning "no company filter —
-  // show roles across every company the sponsor can refer to" (their refer
-  // list ∪ their signup company). When it's the active selection we omit
-  // the `?company=` query param entirely; the backend treats a missing
-  // company as "all of my allowed companies" once BACKEND_CHANGES_NEEDED §7
-  // ships the multi-company filter. Until then it falls back to the
-  // sponsor's signup company alone — harmless because that's still inside
-  // their allowed set.
-  const ALL_COMPANIES = "__ALL__";
-  const profileSponsorCompanies = useUserProfileStore(
-    (state) => state.data.sponsorCompanies,
-  );
-  const profileOwnCompany = useUserProfileStore(
-    (state) => state.data.professional.company,
-  );
-  const browseCompanies = React.useMemo(() => {
-    const own = (profileOwnCompany || "").trim();
-    const rest = (profileSponsorCompanies || [])
-      .map((c) => c.trim())
-      .filter(Boolean)
-      .filter((c) => !own || c.toLowerCase() !== own.toLowerCase());
-    return own ? [own, ...rest] : rest;
-  }, [profileOwnCompany, profileSponsorCompanies]);
-  const [activeBrowseCompany, setActiveBrowseCompany] = useState<string | null>(
-    null,
-  );
-  const [showCompanySwitcher, setShowCompanySwitcher] = useState(false);
-
-  // Default selection: "All companies" when the sponsor has multiple
-  // entries (maximizes discovery on first open). When they only have one
-  // company (= just their employer), default to that single company since
-  // "All" would be the same set.
-  useEffect(() => {
-    if (activeBrowseCompany) return;
-    if (browseCompanies.length === 0) return;
-    setActiveBrowseCompany(
-      browseCompanies.length > 1 ? ALL_COMPANIES : browseCompanies[0],
-    );
-  }, [browseCompanies, activeBrowseCompany]);
-
-  // Fetch browse jobs on mount, and re-fetch whenever the active browse
-  // company changes (sponsor switched companies via the dropdown).
-  //
-  // We only send `?company=…` when a specific company is selected. When
-  // the sponsor has "All companies" picked we OMIT the param — the backend
-  // treats a missing company as "filter to every company in this sponsor's
-  // refer-list ∪ signup company" (per BACKEND_CHANGES_NEEDED §7). Until
-  // that backend change ships, the missing-param fallback narrows to just
-  // the signup company, which is still inside the allowed set — so the
-  // worst case is "All" returns less than it should rather than something
-  // wrong.
+  // Fetch browse jobs on mount.
   useEffect(() => {
     const loadJobs = async () => {
       try {
-        // Wait until we have a chosen company so the fetch is scoped from
-        // the first request (avoids a flash of "all-companies" results).
-        if (!activeBrowseCompany && browseCompanies.length > 0) {
-          return;
-        }
-
         setLoading(true);
-        console.log(
-          "[JobsView] Fetching browse jobs for sponsor; company=",
-          activeBrowseCompany,
-        );
+        console.log("[JobsView] Fetching browse jobs for sponsor");
         trackBrowseJobsViewed();
-        const useSpecificCompany =
-          activeBrowseCompany && activeBrowseCompany !== ALL_COMPANIES;
-        const response = await browseJobs({
-          limit: 50,
-          ...(useSpecificCompany ? { company: activeBrowseCompany } : {}),
-        });
+        const response = await browseJobs({ limit: 50 });
         console.log("[JobsView] Browse response:", response);
 
         // Transform SILVER_JOBS (browse) response to Job format
@@ -314,20 +305,28 @@ export function JobsView() {
               company: job.ORGANIZATION,
               location: job.FULL_LOCATION,
               locations: [job.FULL_LOCATION],
-              type: job.EMPLOYMENT_TYPES || "Full-time",
+              type: parseEmploymentType(job.EMPLOYMENT_TYPES),
               salary:
-                job.SALARY_ANNUAL_MIN && job.SALARY_ANNUAL_MAX
-                  ? `$${Math.round(job.SALARY_ANNUAL_MIN / 1000)}k - $${Math.round(job.SALARY_ANNUAL_MAX / 1000)}k`
+                formatSalary(
+                  job.SALARY_ANNUAL_MIN,
+                  job.SALARY_ANNUAL_MAX,
+                  job.SALARY_CURRENCY,
+                ) !== "Salary not specified"
+                  ? formatSalary(
+                      job.SALARY_ANNUAL_MIN,
+                      job.SALARY_ANNUAL_MAX,
+                      job.SALARY_CURRENCY,
+                    )
                   : "Competitive",
               salaryMin: job.SALARY_ANNUAL_MIN,
               salaryMax: job.SALARY_ANNUAL_MAX,
               salaryCurrency: job.SALARY_CURRENCY || "USD",
               postedAt: new Date(job.DATE_POSTED).toLocaleDateString(),
-              description: job.DESCRIPTION_TEXT || "",
-              summary: job.DESCRIPTION_TEXT?.substring(0, 150) || "",
+              description: cleanJobText(job.DESCRIPTION_TEXT),
+              summary: cleanJobText(job.DESCRIPTION_TEXT).substring(0, 150),
               skills: parseSkillsField(job.SKILLS),
               highlights: [],
-              experienceLevel: job.EXPERIENCE_LEVEL || "Mid-level",
+              experienceLevel: formatExperienceLevel(job.EXPERIENCE_LEVEL),
               workArrangement: job.IS_REMOTE ? "Remote" : "On-site",
               isRemote: job.IS_REMOTE,
               url: "",
@@ -356,10 +355,9 @@ export function JobsView() {
     };
 
     loadJobs();
-    // Re-fetch whenever the sponsor switches the active browse company.
     // isSponsored flags are synced by a separate effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrowseCompany]);
+  }, []);
 
   // Sync isSponsored flags on browse jobs whenever sponsoredJobs changes
   // (e.g. after initMyJobs populates sponsoredJobs, or after sponsor/unsponsor).
@@ -385,23 +383,27 @@ export function JobsView() {
         company: j.COMPANY,
         location: j.LOCATION,
         locations: [j.LOCATION],
-        type: j.EMPLOYMENT_TYPE || "Full-time",
+        type: parseEmploymentType(j.EMPLOYMENT_TYPE),
         salary:
           j.SALARY_MIN && j.SALARY_MAX
-            ? `$${Math.round(j.SALARY_MIN / 1000)}k – $${Math.round(j.SALARY_MAX / 1000)}k`
+            ? formatSalary(
+                j.SALARY_MIN,
+                j.SALARY_MAX,
+                j.SALARY_CURRENCY || "USD",
+              )
             : "Competitive",
-        salaryMin: j.SALARY_MIN ?? undefined,
-        salaryMax: j.SALARY_MAX ?? undefined,
+        salaryMin: j.SALARY_MIN ?? null,
+        salaryMax: j.SALARY_MAX ?? null,
         salaryCurrency: j.SALARY_CURRENCY || "USD",
         postedAt: j.CREATED_AT
           ? new Date(j.CREATED_AT).toLocaleDateString()
           : "",
-        description: j.DESCRIPTION || "",
-        summary: j.DESCRIPTION?.substring(0, 150) || "",
-        skills: parseSkillsField(j.REQUIREMENTS),
-        requirements: j.REQUIREMENTS || "",
+        description: cleanJobText(j.DESCRIPTION),
+        summary: cleanJobText(j.DESCRIPTION).substring(0, 150),
+        skills: parseSkillsField(cleanJobText(j.REQUIREMENTS)),
+        requirements: cleanJobText(j.REQUIREMENTS),
         highlights: [],
-        experienceLevel: j.EXPERIENCE_LEVEL || "Mid-level",
+        experienceLevel: formatExperienceLevel(j.EXPERIENCE_LEVEL),
         workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
         isRemote: j.REMOTE_OPTION,
         url: "",
@@ -421,14 +423,27 @@ export function JobsView() {
     }
   };
 
-  const handleUnsponsor = async (job: JobPosting) => {
+  // Closes the menu modal and resets the unsponsor-reason step so it always
+  // reopens on the first step.
+  const closeMenu = () => {
     setMenuJob(null);
+    setShowUnsponsorReasons(false);
+    setUnsponsorReason(null);
+    setUnsponsorReasonDetail("");
+  };
+
+  const handleUnsponsor = async (
+    job: JobPosting,
+    reason: string,
+    reasonDetail?: string,
+  ) => {
+    closeMenu();
     setIsUnsponsoringId(job.id);
     // Optimistic remove from store so the list updates immediately
     removeMyJob(job.id);
     try {
-      await unsponsorJob(job.id);
-      trackJobUnsponsored({ jobId: job.id });
+      await unsponsorJob(job.id, reason, reasonDetail);
+      trackJobUnsponsored({ jobId: job.id, reason });
     } catch (err) {
       console.warn("[JobsView] Failed to unsponsor job:", err);
       // Revert by re-fetching the real list from backend
@@ -472,23 +487,27 @@ export function JobsView() {
           company: j.COMPANY,
           location: j.LOCATION,
           locations: [j.LOCATION],
-          type: j.EMPLOYMENT_TYPE || "Full-time",
+          type: parseEmploymentType(j.EMPLOYMENT_TYPE),
           salary:
             j.SALARY_MIN && j.SALARY_MAX
-              ? `$${Math.round(j.SALARY_MIN / 1000)}k – $${Math.round(j.SALARY_MAX / 1000)}k`
+              ? formatSalary(
+                  j.SALARY_MIN,
+                  j.SALARY_MAX,
+                  j.SALARY_CURRENCY || "USD",
+                )
               : "Competitive",
-          salaryMin: j.SALARY_MIN ?? undefined,
-          salaryMax: j.SALARY_MAX ?? undefined,
+          salaryMin: j.SALARY_MIN ?? null,
+          salaryMax: j.SALARY_MAX ?? null,
           salaryCurrency: j.SALARY_CURRENCY || "USD",
           postedAt: j.CREATED_AT
             ? new Date(j.CREATED_AT).toLocaleDateString()
             : "",
-          description: j.DESCRIPTION || "",
-          summary: j.DESCRIPTION?.substring(0, 150) || "",
-          skills: parseSkillsField(j.REQUIREMENTS),
-          requirements: j.REQUIREMENTS || "",
+          description: cleanJobText(j.DESCRIPTION),
+          summary: cleanJobText(j.DESCRIPTION).substring(0, 150),
+          skills: parseSkillsField(cleanJobText(j.REQUIREMENTS)),
+          requirements: cleanJobText(j.REQUIREMENTS),
           highlights: [],
-          experienceLevel: j.EXPERIENCE_LEVEL || "Mid-level",
+          experienceLevel: formatExperienceLevel(j.EXPERIENCE_LEVEL),
           workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
           isRemote: j.REMOTE_OPTION,
           url: "",
@@ -569,6 +588,7 @@ export function JobsView() {
           experience: "",
           skills,
           appliedRole: job.title,
+          status: a.STATUS,
         };
       });
       setJobApplicants(mapped);
@@ -891,12 +911,37 @@ export function JobsView() {
   };
 
   const handleCreateJob = async () => {
+    const cleanedStructured: Record<string, string | null> | null =
+      jobScrapedData?.structured
+        ? {
+            ...jobScrapedData.structured,
+            // JSON-LD descriptions often contain inline HTML.
+            description: cleanJobText(jobScrapedData.structured.description),
+          }
+        : null;
+
     const payload = {
       url: jobScrapedData?.url ?? previewUrl,
-      structured: jobScrapedData?.structured ?? null,
+      structured: cleanedStructured,
       rawText: jobScrapedData?.rawText ?? "",
       insights: { dayToDay, teamCulture, idealCandidate, insiderInsights },
     };
+
+    if (__DEV__) {
+      const structuredForLog = payload.structured as Record<
+        string,
+        string | null
+      > | null;
+      console.log("[JobsView] create-from-url payload", {
+        url: payload.url,
+        hasStructured: !!structuredForLog,
+        structuredTitle: structuredForLog?.title,
+        structuredCompany: structuredForLog?.company,
+        structuredDescriptionPreview:
+          structuredForLog?.description?.slice(0, 220) || "",
+        rawTextLength: payload.rawText.length,
+      });
+    }
 
     try {
       setIsCreatingJob(true);
@@ -1070,11 +1115,8 @@ export function JobsView() {
           />
         ) : (
           <>
-            {/* Action bar — iOS-style segmented control on the left for
-                Browse/My Sponsored, ghost filter chip on the right showing
-                which company's roles the Browse tab is scoped to. The filter
-                only renders on Browse (it's irrelevant on My Sponsored) and
-                only becomes tappable when there's >1 company to choose from. */}
+            {/* Action bar — iOS-style segmented control toggling the
+                Browse / My Sponsored tabs. */}
             <View style={styles.actionBar}>
               <View style={styles.segmentedControl}>
                 <TouchableOpacity
@@ -1102,8 +1144,7 @@ export function JobsView() {
                     <Text
                       style={[
                         styles.segmentBadgeText,
-                        activeTab === "browse" &&
-                          styles.segmentBadgeTextActive,
+                        activeTab === "browse" && styles.segmentBadgeTextActive,
                       ]}
                     >
                       {jobs.length}
@@ -1144,36 +1185,6 @@ export function JobsView() {
                   </View>
                 </TouchableOpacity>
               </View>
-              {activeTab === "browse" && browseCompanies.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    if (browseCompanies.length > 1) {
-                      setShowCompanySwitcher(true);
-                    }
-                  }}
-                  activeOpacity={browseCompanies.length > 1 ? 0.6 : 1}
-                  style={styles.ghostFilter}
-                >
-                  {browseCompanies.length > 1 && (
-                    <ChevronDown color="#666" size={14} />
-                  )}
-                  <Text
-                    style={styles.ghostFilterText}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {/* Terse "All" in the pill — clear in context (sitting
-                        right next to the company filter chevron) and saves
-                        ~75px of horizontal room versus "All companies",
-                        which lets the segmented control to the left
-                        breathe. The picker sheet still shows the full
-                        "All companies" label on the row for clarity. */}
-                    {activeBrowseCompany === ALL_COMPANIES
-                      ? "All"
-                      : activeBrowseCompany || browseCompanies[0]}
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Browse Jobs Tab */}
@@ -1943,14 +1954,14 @@ export function JobsView() {
       <Modal
         visible={!!menuJob}
         transparent
-        animationType="fade"
-        onRequestClose={() => setMenuJob(null)}
+        animationType="none"
+        onRequestClose={closeMenu}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => setMenuJob(null)}
+            onPress={closeMenu}
           >
             <BlurView
               intensity={30}
@@ -1959,84 +1970,143 @@ export function JobsView() {
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
+          <DismissibleSheet
+            onDismiss={closeMenu}
+            style={[
+              styles.modalContent,
+              // Absolute maxHeight — a "%" value resolves against the
+              // gesture-root wrapper (which is content-sized), so the sheet
+              // mis-measures and floats above the bottom. Absolute doesn't.
+              { maxHeight: SCREEN_HEIGHT * 0.9 },
+            ]}
           >
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalMainTitle}>Job Options</Text>
-              <TouchableOpacity
-                onPress={() => setMenuJob(null)}
-                style={styles.closeButton}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
+            {/* Job context — title + company so the user knows which card they tapped */}
+            {menuJob && (
+              <View style={styles.menuSheetJobHeader}>
+                <Text style={styles.menuSheetJobTitle} numberOfLines={1}>
+                  {menuJob.title}
+                </Text>
+                <Text style={styles.menuSheetJobCompany} numberOfLines={1}>
+                  {menuJob.company}
+                </Text>
+              </View>
+            )}
 
-            <View style={{ gap: 10, marginTop: 8 }}>
-              <TouchableOpacity
-                style={styles.menuOptionCard}
-                onPress={() => setMenuJob(null)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.menuIconContainer}>
-                  <Share size={18} color="#000" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.menuOptionTitle}>Share Job</Text>
-                  <Text style={styles.menuOptionDesc}>
-                    Send this opportunity to others
+            {showUnsponsorReasons ? (
+              /* Step 2 — capture WHY before removing the listing, so the
+                 backend can prune stale jobs (see §12 in
+                 docs/BACKEND_CHANGES_NEEDED.md). */
+              <View style={{ flexShrink: 1, paddingBottom: 8 }}>
+                <Text style={styles.unsponsorReasonHeading}>
+                  Why are you unsponsoring?
+                </Text>
+                <Text style={styles.unsponsorReasonSub}>
+                  This helps us keep job listings accurate and up to date.
+                </Text>
+                <ScrollView
+                  style={{ flexShrink: 1 }}
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {UNSPONSOR_REASONS.map((reason) => {
+                    const selected = unsponsorReason === reason.value;
+                    return (
+                      <TouchableOpacity
+                        key={reason.value}
+                        style={styles.reasonRow}
+                        onPress={() => setUnsponsorReason(reason.value)}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          style={[
+                            styles.radioOuter,
+                            selected && styles.radioOuterActive,
+                          ]}
+                        >
+                          {selected && <View style={styles.radioInner} />}
+                        </View>
+                        <Text style={styles.reasonLabel}>{reason.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {unsponsorReason === "other" && (
+                    <TextInput
+                      style={styles.reasonOtherInput}
+                      placeholder="Tell us more (optional)"
+                      placeholderTextColor="#BBB"
+                      value={unsponsorReasonDetail}
+                      onChangeText={setUnsponsorReasonDetail}
+                      multiline
+                    />
+                  )}
+                </ScrollView>
+                <TouchableOpacity
+                  style={[
+                    styles.unsponsorConfirmBtn,
+                    !unsponsorReason && { opacity: 0.4 },
+                  ]}
+                  disabled={!unsponsorReason}
+                  onPress={() =>
+                    menuJob &&
+                    unsponsorReason &&
+                    handleUnsponsor(
+                      menuJob,
+                      unsponsorReason,
+                      unsponsorReasonDetail,
+                    )
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.unsponsorConfirmBtnText}>
+                    Unsponsor Job
                   </Text>
-                </View>
-              </TouchableOpacity>
-
-              {activeTab === "sponsored" && menuJob ? (
-                <TouchableOpacity
-                  style={styles.menuOptionCard}
-                  onPress={() => handleUnsponsor(menuJob)}
-                  disabled={isUnsponsoringId === menuJob?.id}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.menuIconContainer}>
-                    <Trash2 size={18} color="#000" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
-                    <Text style={styles.menuOptionDesc}>
-                      Remove this listing from your sponsored jobs
-                    </Text>
-                  </View>
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.menuOptionCard}
-                  onPress={() => setMenuJob(null)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.menuIconContainer}>
-                    <ThumbsDown size={18} color="#666" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuOptionTitle}>Not Interested</Text>
-                    <Text style={styles.menuOptionDesc}>
-                      Hide this job from your feed
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-          </Animated.View>
+              </View>
+            ) : (
+              <View style={{ gap: 10, paddingBottom: 8 }}>
+                {activeTab === "sponsored" && menuJob ? (
+                  <TouchableOpacity
+                    style={styles.menuOptionCard}
+                    onPress={() => setShowUnsponsorReasons(true)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.menuIconContainer}>
+                      <Trash2 size={18} color="#666" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
+                      <Text style={styles.menuOptionDesc}>
+                        Remove this listing from your sponsored jobs
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.menuOptionCard}
+                    onPress={closeMenu}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.menuIconContainer}>
+                      <ThumbsDown size={18} color="#666" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuOptionTitle}>Not Interested</Text>
+                      <Text style={styles.menuOptionDesc}>
+                        Hide this job from your feed
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </DismissibleSheet>
         </View>
       </Modal>
 
       {/* Job Details Modal */}
       <Modal visible={!!viewJobDetails} transparent animationType="none">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
+        <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
@@ -2049,171 +2119,242 @@ export function JobsView() {
             />
           </TouchableOpacity>
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
+          <DismissibleSheet
+            onDismiss={() => setViewJobDetails(null)}
+            style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.88 }]}
           >
-            <View style={styles.modalHandle} />
-
             {viewJobDetails && (
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                {/* Job Header */}
-                <View style={styles.jobModalHeader}>
-                  <Image
-                    source={{ uri: viewJobDetails.image }}
-                    style={styles.jobModalImage}
-                  />
-                  <View style={styles.jobModalInfo}>
-                    <Text style={styles.jobModalCompany}>
-                      {viewJobDetails.company}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: 8 }}
+              >
+                {/* Hero: Company Initial + Title + Company + Location */}
+                <View style={styles.jobModalHero}>
+                  <View style={styles.jobModalHeroInitial}>
+                    <Text style={styles.jobModalHeroInitialText}>
+                      {(viewJobDetails.company || "?")[0].toUpperCase()}
                     </Text>
-                    <Text style={styles.jobModalTitle}>
-                      {viewJobDetails.title}
-                    </Text>
-                    <View style={styles.jobModalMeta}>
-                      <View style={styles.jobModalMetaItem}>
-                        <MapPin size={12} color="#999" />
-                        <Text style={styles.jobModalMetaText}>
-                          {viewJobDetails.location || "Location not specified"}
-                        </Text>
-                      </View>
-                      <View style={styles.jobModalMetaItem}>
-                        <DollarSign size={12} color="#999" />
-                        <Text style={styles.jobModalMetaText}>
-                          {viewJobDetails.salary || "Salary not specified"}
+                  </View>
+                  <Text style={styles.jobModalHeroTitle}>
+                    {viewJobDetails.title}
+                  </Text>
+                  <Text style={styles.jobModalHeroCompany}>
+                    {viewJobDetails.company}
+                  </Text>
+                  {!!viewJobDetails.location && (
+                    <View style={styles.jobModalLocationRow}>
+                      <MapPin size={13} color="#999" />
+                      <Text style={styles.jobModalLocationText}>
+                        {viewJobDetails.location}
+                      </Text>
+                      {viewJobDetails.isRemote && (
+                        <View style={styles.jobRemoteBadge}>
+                          <Text style={styles.jobRemoteText}>Remote</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Compensation Strip */}
+                <View style={styles.jobModalCompStrip}>
+                  <View style={styles.jobModalCompCell}>
+                    <DollarSign size={14} color="#555" />
+                    <View style={{ flex: 1, flexShrink: 1 }}>
+                      <Text style={styles.jobModalCompLabel}>SALARY</Text>
+                      <Text style={styles.jobModalCompValue}>
+                        {viewJobDetails.salaryMin && viewJobDetails.salaryMax
+                          ? formatSalary(
+                              viewJobDetails.salaryMin,
+                              viewJobDetails.salaryMax,
+                              viewJobDetails.salaryCurrency,
+                            )
+                          : viewJobDetails.salary || "Not specified"}
+                      </Text>
+                    </View>
+                  </View>
+                  {!!viewJobDetails.experienceLevel && (
+                    <View
+                      style={[
+                        styles.jobModalCompCell,
+                        styles.jobModalCompCellBorder,
+                      ]}
+                    >
+                      <Briefcase size={14} color="#555" />
+                      <View style={{ flex: 1, flexShrink: 1 }}>
+                        <Text style={styles.jobModalCompLabel}>EXPERIENCE</Text>
+                        <Text style={styles.jobModalCompValue}>
+                          {viewJobDetails.experienceLevel}
                         </Text>
                       </View>
                     </View>
-                    {/* Info badges: type · experience · arrangement */}
-                    <View style={styles.jobModalBadges}>
-                      {!!viewJobDetails.type && (
-                        <View style={styles.jobModalBadge}>
-                          <Text style={styles.jobModalBadgeText}>
-                            {viewJobDetails.type}
-                          </Text>
-                        </View>
-                      )}
-                      {!!viewJobDetails.experienceLevel && (
-                        <View style={styles.jobModalBadge}>
-                          <Text style={styles.jobModalBadgeText}>
-                            {viewJobDetails.experienceLevel}
-                          </Text>
-                        </View>
-                      )}
+                  )}
+                </View>
+
+                {/* Role Details — work arrangement + employment type chips */}
+                {(!!viewJobDetails.workArrangement ||
+                  !!viewJobDetails.type) && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Info size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Role Details
+                      </Text>
+                    </View>
+                    <View style={styles.skillsRow}>
                       {!!viewJobDetails.workArrangement && (
-                        <View style={styles.jobModalBadge}>
-                          <Text style={styles.jobModalBadgeText}>
+                        <View style={styles.roleDetailChip}>
+                          <MapPin size={13} color="#000" />
+                          <Text style={styles.roleDetailChipText}>
                             {viewJobDetails.workArrangement}
+                          </Text>
+                        </View>
+                      )}
+                      {!!viewJobDetails.type && (
+                        <View style={styles.roleDetailChip}>
+                          <Briefcase size={13} color="#000" />
+                          <Text style={styles.roleDetailChipText}>
+                            {viewJobDetails.type}
                           </Text>
                         </View>
                       )}
                     </View>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => setViewJobDetails(null)}
-                    style={styles.closeButton}
-                  >
-                    <X color="#000" size={24} />
-                  </TouchableOpacity>
-                </View>
+                )}
 
-                {/* Job Description */}
-                <View style={styles.jobSection}>
-                  <Text style={styles.jobSectionTitle}>About the Role</Text>
-                  {viewJobDetails.description ? (
-                    <Text style={styles.jobSectionText}>
-                      {viewJobDetails.description}
-                    </Text>
-                  ) : (
-                    <Text style={styles.jobSectionEmpty}>
-                      No description available
-                    </Text>
-                  )}
-                </View>
+                {/* Core Responsibilities */}
+                {!!viewJobDetails.coreResponsibilities && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Briefcase size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Core Responsibilities
+                      </Text>
+                    </View>
+                    <View style={styles.jobDetailCard}>
+                      <Text style={styles.jobDetailText}>
+                        {viewJobDetails.coreResponsibilities}
+                      </Text>
+                    </View>
+                  </View>
+                )}
 
-                {/* Skills */}
-                <View style={styles.jobSection}>
-                  <Text style={styles.jobSectionTitle}>Required Skills</Text>
-                  {(viewJobDetails.skills || []).length > 0 ? (
-                    <View style={styles.jobModalSkillsRow}>
+                {/* Required Skills */}
+                {(viewJobDetails.skills || []).length > 0 && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <TrendingUp size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>
+                        Required Skills
+                      </Text>
+                    </View>
+                    <View style={styles.skillsRow}>
                       {viewJobDetails.skills.map((skill, i) => (
-                        <View key={i} style={styles.jobModalSkillChip}>
-                          <Text style={styles.jobModalSkillText}>{skill}</Text>
+                        <View key={i} style={styles.skillBadge}>
+                          <Text style={styles.skillBadgeText}>{skill}</Text>
                         </View>
                       ))}
                     </View>
-                  ) : viewJobDetails.requirements ? (
-                    <Text style={styles.jobSectionText}>
-                      {viewJobDetails.requirements}
-                    </Text>
-                  ) : (
-                    <Text style={styles.jobSectionEmpty}>Not specified</Text>
-                  )}
-                </View>
+                  </View>
+                )}
 
-                {/* Benefits — only shown when data is available */}
+                {/* Requirements text fallback when no structured skills */}
+                {(viewJobDetails.skills || []).length === 0 &&
+                  !!viewJobDetails.requirements && (
+                    <View style={styles.detailSection}>
+                      <View style={styles.detailSectionHeader}>
+                        <TrendingUp size={16} color="#000" />
+                        <Text style={styles.detailSectionTitle}>
+                          Requirements
+                        </Text>
+                      </View>
+                      <View style={styles.jobDetailCard}>
+                        <Text style={styles.jobDetailText}>
+                          {viewJobDetails.requirements}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                {/* Benefits / Highlights */}
                 {(viewJobDetails.benefits || []).length > 0 && (
-                  <View style={styles.jobSection}>
-                    <Text style={styles.jobSectionTitle}>Benefits</Text>
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <Sparkles size={16} color="#000" />
+                      <Text style={styles.detailSectionTitle}>Highlights</Text>
+                    </View>
                     {viewJobDetails.benefits.map((benefit, i) => (
                       <View key={i} style={styles.benefitRow}>
-                        <CheckCircle size={14} color="#00CB54" />
+                        <Check size={14} color="#00CB54" />
                         <Text style={styles.benefitText}>{benefit}</Text>
                       </View>
                     ))}
                   </View>
                 )}
 
-                {/* Job Sponsors — only shown when data is available */}
-                {(viewJobDetails.currentSponsors || []).length > 0 && (
+                {/* About the Role — full description last (longest free-form text) */}
+                {!!viewJobDetails.description && (
                   <View style={styles.jobSection}>
-                    <Text style={styles.jobSectionTitle}>Job Sponsors</Text>
+                    <Text style={styles.jobSectionTitle}>About the Role</Text>
+                    <Text style={styles.jobSectionText}>
+                      {viewJobDetails.description}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Job Sponsors */}
+                {(viewJobDetails.currentSponsors || []).length > 0 && (
+                  <View style={styles.sponsorInfoCard}>
+                    <View style={styles.sponsorCardHeader}>
+                      <Users size={16} color="#000" />
+                      <Text style={styles.sponsorCardTitle}>Job Sponsors</Text>
+                    </View>
                     <View style={{ gap: 12 }}>
                       {viewJobDetails.currentSponsors.map((sponsor, i) => (
-                        <View key={i} style={styles.sponsorInfoCard}>
-                          <View style={styles.sponsorCardContent}>
-                            {sponsor.image ? (
-                              <Image
-                                source={{ uri: sponsor.image }}
-                                style={styles.sponsorCardAvatar}
-                              />
-                            ) : (
-                              <View
-                                style={[
-                                  styles.sponsorCardAvatar,
-                                  {
-                                    backgroundColor: "#000",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  },
-                                ]}
+                        <View key={i} style={styles.sponsorCardContent}>
+                          {sponsor.image ? (
+                            <Image
+                              source={{ uri: sponsor.image }}
+                              style={styles.sponsorCardAvatar}
+                            />
+                          ) : (
+                            <View
+                              style={[
+                                styles.sponsorCardAvatar,
+                                {
+                                  backgroundColor: "#000",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 16,
+                                  fontWeight: "800",
+                                  color: "#FFF",
+                                }}
                               >
-                                <Text
-                                  style={{
-                                    fontSize: 16,
-                                    fontWeight: "800",
-                                    color: "#FFF",
-                                  }}
-                                >
-                                  {(sponsor.name || "?")[0].toUpperCase()}
-                                </Text>
-                              </View>
-                            )}
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.sponsorCardName}>
-                                {sponsor.name}
+                                {(sponsor.name || "?")[0].toUpperCase()}
                               </Text>
+                            </View>
+                          )}
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.sponsorCardName}>
+                              {sponsor.name}
+                            </Text>
+                            {!!sponsor.role && (
                               <Text style={styles.sponsorCardRole}>
                                 {sponsor.role}
                               </Text>
-                            </View>
-                            {sponsor.canRefer && (
-                              <View style={styles.canReferBadge}>
-                                <CheckCircle size={12} color="#00CB54" />
-                              </View>
                             )}
                           </View>
+                          {sponsor.canRefer && (
+                            <View style={styles.canReferBadge}>
+                              <CheckCircle size={12} color="#00CB54" />
+                            </View>
+                          )}
                         </View>
                       ))}
                     </View>
@@ -2223,10 +2364,6 @@ export function JobsView() {
                 {/* Action Button */}
                 {viewJobDetails.isSponsored ? (
                   (() => {
-                    // Browse-tab jobs have id = ATS/SILVER_JOBS ID → match via atsJobId.
-                    // My Sponsored tab jobs have id = JOB_POSTINGS ID → match via jobId.
-                    // Fall back to viewJobDetails.id directly — for myJobs it IS
-                    // already the JOB_POSTINGS ID the API expects.
                     const sponsoredEntry = sponsoredJobs.find(
                       (sj) =>
                         sj.atsJobId === viewJobDetails.id ||
@@ -2253,10 +2390,7 @@ export function JobsView() {
                           onPress={() => {
                             if (!jobPostingsId || isBusy) return;
                             setIsUnsponsoringId(jobPostingsId);
-                            // Optimistic updates
                             removeMyJob(jobPostingsId);
-                            // setJobs MUST receive an array, not a callback —
-                            // the store action does set({ jobs }) directly.
                             setJobs(
                               jobs.map((j) =>
                                 j.id === viewJobDetails.id
@@ -2311,8 +2445,8 @@ export function JobsView() {
                 )}
               </ScrollView>
             )}
-          </Animated.View>
-        </KeyboardAvoidingView>
+          </DismissibleSheet>
+        </View>
       </Modal>
 
       <Modal
@@ -2453,14 +2587,21 @@ export function JobsView() {
                           : applicant.role}
                       </Text>
                     </View>
+                    {/* "Matched" status tag — a sibling of the info column
+                        so the row's alignItems:"center" keeps it vertically
+                        centered against the avatar, not pinned to the name. */}
+                    {applicant.status === "MATCHED" && (
+                      <View style={styles.applicantMatchedTag}>
+                        <CheckCircle size={11} color="#000" />
+                        <Text style={styles.applicantMatchedTagText}>
+                          Matched
+                        </Text>
+                      </View>
+                    )}
                     {/* Chevron now a visual affordance only — the entire
                         row above handles the tap. */}
                     <View style={styles.messageApplicantBtn}>
-                      <ChevronRight
-                        color="#FFF"
-                        size={18}
-                        strokeWidth={2.5}
-                      />
+                      <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
                     </View>
                   </TouchableOpacity>
                 ))
@@ -2553,7 +2694,12 @@ export function JobsView() {
             role: selectedApplicantForMessage.role,
             company: selectedApplicantForMessage.company,
           }}
-          badge={{ label: "Liked your role" }}
+          badge={
+            selectedApplicantForMessage.status === "MATCHED"
+              ? // Monochrome to match the "Matched" tag on the list row.
+                { label: "Matched", color: "#000", bgColor: "#F4F4F5" }
+              : { label: "Liked your role" }
+          }
           roleContext={
             selectedApplicantForMessage.appliedRole
               ? {
@@ -2562,156 +2708,68 @@ export function JobsView() {
                 }
               : undefined
           }
-          primaryCta={{
-            label: `Match with ${selectedApplicantForMessage.name.split(" ")[0]}`,
-            icon: <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />,
-            loading: isMatching,
-            disabled: !matchJobPostingsId,
-            onPress: async () => {
-              if (!matchJobPostingsId) return;
-              const applicant = selectedApplicantForMessage;
-              if (!applicant) return;
-              setIsMatching(true);
-              try {
-                const result = await likeProfile(
-                  applicant.id,
-                  matchJobPostingsId,
-                );
-                const firstName =
-                  applicant.name.split(" ")[0] || "this applicant";
-                if (result.matched) {
-                  showToast(
-                    `Matched with ${firstName}! Find them in your Matches.`,
-                    "success",
-                  );
-                } else {
-                  showToast(result.message || "Interest sent.", "success");
+          primaryCta={
+            selectedApplicantForMessage.status === "MATCHED"
+              ? {
+                  // Already matched — show an inert status button rather
+                  // than asking the sponsor to match again.
+                  label: "Matched",
+                  icon: (
+                    <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />
+                  ),
+                  disabled: true,
+                  onPress: () => {},
                 }
-                setSelectedApplicantForMessage(null);
-                setMatchJobPostingsId(null);
-                setMessage("");
-                setActiveSlide(0);
-              } catch (err) {
-                console.warn("[JobsView] Match failed:", err);
-                showToast(
-                  err instanceof Error
-                    ? err.message
-                    : "Couldn't match. Please try again.",
-                  "error",
-                );
-              } finally {
-                setIsMatching(false);
-              }
-            },
-          }}
+              : {
+                  label: `Match with ${selectedApplicantForMessage.name.split(" ")[0]}`,
+                  icon: (
+                    <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />
+                  ),
+                  loading: isMatching,
+                  disabled: !matchJobPostingsId,
+                  onPress: async () => {
+                    if (!matchJobPostingsId) return;
+                    const applicant = selectedApplicantForMessage;
+                    if (!applicant) return;
+                    setIsMatching(true);
+                    try {
+                      const result = await likeProfile(
+                        applicant.id,
+                        matchJobPostingsId,
+                      );
+                      const firstName =
+                        applicant.name.split(" ")[0] || "this applicant";
+                      if (result.matched) {
+                        showToast(
+                          `Matched with ${firstName}! Find them in your Matches.`,
+                          "success",
+                        );
+                      } else {
+                        showToast(
+                          result.message || "Interest sent.",
+                          "success",
+                        );
+                      }
+                      setSelectedApplicantForMessage(null);
+                      setMatchJobPostingsId(null);
+                      setMessage("");
+                      setActiveSlide(0);
+                    } catch (err) {
+                      console.warn("[JobsView] Match failed:", err);
+                      showToast(
+                        err instanceof Error
+                          ? err.message
+                          : "Couldn't match. Please try again.",
+                        "error",
+                      );
+                    } finally {
+                      setIsMatching(false);
+                    }
+                  },
+                }
+          }
         />
       )}
-
-      {/* Company Switcher Modal — sponsor picks which company's ATS roles to
-          browse. Mirrors the HomeView role-switcher: bottom sheet, swipe-down
-          to dismiss, picks update activeBrowseCompany which re-fires the
-          browse fetch. */}
-      <Modal visible={showCompanySwitcher} transparent animationType="none">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.companySwitcherOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowCompanySwitcher(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={() => setShowCompanySwitcher(false)}
-            fullSheetGesture
-            style={styles.companySwitcherSheet}
-          >
-            <Text style={styles.companySwitcherSheetTitle}>
-              Switch company
-            </Text>
-            <Text style={styles.companySwitcherSheetSubtitle}>
-              Pick which company's open roles to browse, or "All companies"
-              to see roles across every company you can refer to.
-            </Text>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              style={{ marginTop: 8 }}
-            >
-              {/* "All companies" — pinned to the top. Renders only when
-                  the sponsor has more than one allowed company (otherwise
-                  it'd be the same set as the single company below). */}
-              {browseCompanies.length > 1 && (
-                <TouchableOpacity
-                  key={ALL_COMPANIES}
-                  style={[
-                    styles.companySwitcherRow,
-                    activeBrowseCompany === ALL_COMPANIES &&
-                      styles.companySwitcherRowActive,
-                  ]}
-                  onPress={() => {
-                    if (activeBrowseCompany !== ALL_COMPANIES) {
-                      setActiveBrowseCompany(ALL_COMPANIES);
-                      setDisplayLimit(20);
-                    }
-                    setShowCompanySwitcher(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={styles.companySwitcherRowTitle}
-                      numberOfLines={1}
-                    >
-                      All companies
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-              {browseCompanies.map((c) => {
-                const isActive =
-                  !!activeBrowseCompany &&
-                  activeBrowseCompany !== ALL_COMPANIES &&
-                  c.toLowerCase() === activeBrowseCompany.toLowerCase();
-                return (
-                  <TouchableOpacity
-                    key={c}
-                    style={[
-                      styles.companySwitcherRow,
-                      isActive && styles.companySwitcherRowActive,
-                    ]}
-                    onPress={() => {
-                      if (!isActive) {
-                        setActiveBrowseCompany(c);
-                        setDisplayLimit(20);
-                      }
-                      setShowCompanySwitcher(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={styles.companySwitcherRowTitle}
-                        numberOfLines={1}
-                      >
-                        {c}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   );
 }
@@ -3452,6 +3510,91 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   menuOptionDesc: { fontSize: 13, color: "#666", fontWeight: "500" },
+  // ── Unsponsor-reason step ──
+  unsponsorReasonHeading: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 4,
+  },
+  unsponsorReasonSub: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+    marginBottom: 10,
+  },
+  reasonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F5",
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#DDD",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioOuterActive: { borderColor: "#000" },
+  radioInner: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: "#000",
+  },
+  reasonLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#000",
+  },
+  reasonOtherInput: {
+    marginTop: 14,
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    padding: 14,
+    fontSize: 14,
+    color: "#000",
+    minHeight: 72,
+    textAlignVertical: "top",
+  },
+  unsponsorConfirmBtn: {
+    marginTop: 16,
+    backgroundColor: "#000",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unsponsorConfirmBtnText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  menuSheetJobHeader: {
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+    marginBottom: 16,
+  },
+  menuSheetJobTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: 2,
+  },
+  menuSheetJobCompany: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
 
   // Modal
   modalHandle: {
@@ -3462,54 +3605,155 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 20,
   },
-  jobModalHeader: {
-    flexDirection: "row",
-    gap: 12,
+  // ─── Job Details Modal ──────────────────────────────────────────────────────
+  jobModalHero: {
+    alignItems: "center",
     marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
-  jobModalImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F5",
+  jobModalHeroInitial: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
-  jobModalInfo: { flex: 1 },
-  jobModalCompany: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
+  jobModalHeroInitialText: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#FFF",
   },
-  jobModalTitle: {
-    fontSize: 18,
+  jobModalHeroTitle: {
+    fontSize: 22,
     fontWeight: "800",
     color: "#000",
+    textAlign: "center",
+    marginBottom: 6,
+    letterSpacing: -0.5,
+  },
+  jobModalHeroCompany: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#555",
     marginBottom: 8,
   },
-  jobModalMeta: { flexDirection: "row", gap: 12 },
-  jobModalMetaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  jobModalMetaText: { fontSize: 12, color: "#999", fontWeight: "600" },
-  jobModalBadges: {
+  jobModalLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  jobModalLocationText: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "500",
+  },
+  jobRemoteBadge: {
+    backgroundColor: "#F0F4FF",
+    borderWidth: 1,
+    borderColor: "#D0DDFF",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 4,
+  },
+  jobRemoteText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4060D0",
+  },
+  jobModalCompStrip: {
+    flexDirection: "row",
+    backgroundColor: "#F8F9FA",
+    borderRadius: 18,
+    marginBottom: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#EEEEEE",
+  },
+  jobModalCompCell: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 16,
+  },
+  jobModalCompCellBorder: {
+    borderLeftWidth: 1,
+    borderLeftColor: "#EEEEEE",
+  },
+  jobModalCompLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#BBB",
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  jobModalCompValue: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#000",
+  },
+  detailSection: {
+    marginBottom: 24,
+  },
+  detailSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  detailSectionTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#000",
+  },
+  skillsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
-    marginTop: 8,
+    gap: 8,
   },
-  jobModalBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
+  skillBadge: {
+    backgroundColor: "#F8F9FB",
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: "#EEE",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
-  jobModalBadgeText: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: "#555",
+  skillBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+    letterSpacing: 0.2,
+  },
+  roleDetailChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  roleDetailChipText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+  },
+  jobDetailCard: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#EEEEEE",
+  },
+  jobDetailText: {
+    fontSize: 14,
+    color: "#333",
+    lineHeight: 21,
+    fontWeight: "500",
   },
   jobSection: { marginBottom: 24 },
   jobSectionTitle: {
@@ -3526,25 +3770,6 @@ const styles = StyleSheet.create({
     color: "#AAA",
     fontStyle: "italic",
     fontWeight: "500" as const,
-  },
-  jobModalSkillsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  jobModalSkillChip: {
-    backgroundColor: "#F8F9FB",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  jobModalSkillText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: 0.2,
   },
   benefitRow: {
     flexDirection: "row",
@@ -3659,6 +3884,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEE",
   },
   applicantName: { fontSize: 16, fontWeight: "700", color: "#000" },
+  // Monochrome "Matched" status tag — black icon/text on a light-gray pill,
+  // matching the app's black/gray palette.
+  applicantMatchedTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F4F4F5",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  applicantMatchedTagText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+    color: "#000",
+  },
   applicantRole: { fontSize: 13, color: "#666", marginTop: 2 },
   messageApplicantBtn: {
     backgroundColor: "#000",
@@ -4307,49 +4549,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
     letterSpacing: -0.2,
-  },
-  companySwitcherOverlay: { flex: 1, justifyContent: "flex-end" },
-  companySwitcherSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 28,
-    paddingBottom: 40,
-    maxHeight: SCREEN_HEIGHT * 0.7,
-  },
-  companySwitcherSheetTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
-    marginTop: 4,
-  },
-  companySwitcherSheetSubtitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#666",
-    lineHeight: 20,
-    marginTop: 6,
-    marginBottom: 16,
-  },
-  companySwitcherRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F8F9FB",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 8,
-  },
-  companySwitcherRowActive: {
-    backgroundColor: "#FFF",
-    borderColor: "#000",
-  },
-  companySwitcherRowTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
   },
 });
