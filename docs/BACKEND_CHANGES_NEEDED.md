@@ -925,3 +925,42 @@ Push in production needs the **APNs key + FCM credentials** registered so the re
 ### Frontend impact
 
 None for Option A — the frontend already registers Expo push tokens, which is exactly what the Expo Push Service consumes. Message push notifications start working the moment the backend switches.
+
+---
+
+# ⚠️ Verify — Confirm work-email verification emails actually send
+
+> **This is a deployment / environment check, not a code change.** The work-email verification flow (PR #42) is fully implemented and correct in code — there is nothing to build. This item exists because whether the emails *actually reach sponsors* depends on environment configuration that can't be confirmed from the source.
+
+### Context
+
+When a sponsor signs up, the frontend calls `POST /api/auth/verify-work-email/send/`; the backend mints a purpose-scoped JWT and emails a verification link to the claimed work address. The code path is complete: route → `auth_svc.send_work_email_verification` → `email_svc.send_work_email_verification` → Django `send_mail`.
+
+### Why this needs a manual check
+
+Django's email layer **degrades silently**. In [`django_bc/settings.py`](../../Backchannel-backend/BackChannel-backend/django_bc/settings.py#L206):
+
+```python
+_email_host = os.environ.get("EMAIL_HOST", "")
+if not _email_host ...:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+```
+
+If `EMAIL_HOST` is **not set in the deployed environment**, Django falls back to the *console backend* — every "verification email" is merely printed to the server log and **never delivered**. There's no error and no exception; `send_mail` reports success. The same applies to *all* transactional email (welcome, password reset, login verification) — they all share `services/email.py`.
+
+### What to confirm in the deployed environment
+
+1. **SMTP env vars are set** on the backend host (DigitalOcean): `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`. Resend values, per `.env.example`:
+   ```
+   EMAIL_HOST=smtp.resend.com
+   EMAIL_HOST_USER=resend
+   EMAIL_HOST_PASSWORD=re_YourApiKeyHere
+   ```
+2. **The sending domain is verified in Resend.** `DEFAULT_FROM_EMAIL` defaults to `noreply@backchannel.app` — Resend rejects mail from a domain that isn't verified in its dashboard. Confirm the from-address domain is verified.
+3. **End-to-end smoke test.** Run a real sponsor signup against the deployed backend and confirm the work-email verification message lands in an inbox. The logs tell the two outcomes apart — `services/email.py` logs `Email sent to <addr>` on success and `Failed to send email to <addr>` on SMTP failure.
+
+### Not a code issue
+
+To be explicit: there is no backend application code to change here. If verification emails aren't arriving, the cause is the `EMAIL_*` environment variables or Resend domain verification — not the codebase.

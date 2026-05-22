@@ -62,7 +62,12 @@
       "Bash(sed -n '344,365p' bc_microservices/views_jobs.py)",
       "Bash(sed -n '845,876p' bc_microservices/services/jobs.py)",
       "Bash(awk 'NR>218 && /^def /{print NR\": \"$0; exit}' bc_microservices/queries/profiles.py)",
-      "Bash(awk 'NR>=77 && NR<=140 && /^def /{print NR\": \"$0}' bc_microservices/queries/jobs.py)"
+      "Bash(awk 'NR>=77 && NR<=140 && /^def /{print NR\": \"$0}' bc_microservices/queries/jobs.py)",
+      "Bash(grep -rn \"verify-work-email\\\\|verify_work_email\\\\|work_email\" bc_microservices/urls.py)",
+      "Bash(grep -rln \"verify_work_email\\\\|work_email_verification\\\\|WORK_EMAIL_VERIFIED\" bc_microservices/*.py bc_microservices/services/*.py bc_microservices/queries/*.py)",
+      "Bash(find . -path ./node_modules -prune -o -name \"*.html\" -path \"*email*\" -print)",
+      "Bash(grep -niE \"email|smtp|resend|from_email|frontend_url\" .env.example)",
+      "Bash(grep -rn \"EMAIL_\\\\|RESEND\\\\|DEFAULT_FROM\\\\|FRONTEND_URL\\\\|EMAIL_BACKEND\" django_bc/settings.py)"
     ]
   }
 }
