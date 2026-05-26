@@ -45,7 +45,7 @@ export function ProfileCompletionModal({
         style={styles.modalContent}
       >
         <View style={styles.iconContainer}>
-          <AlertCircle color="#1E40AF" size={48} />
+          <AlertCircle color="#666" size={48} />
         </View>
 
         <Text style={styles.title}>Complete Your Profile</Text>
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#BFDBFE",
+    backgroundColor: "#E5E5E5",
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#1E40AF",
+    backgroundColor: "#666",
     marginRight: 12,
   },
   missingText: {

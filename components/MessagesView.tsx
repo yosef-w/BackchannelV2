@@ -20,15 +20,20 @@ import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
   ArrowLeft,
+  Briefcase,
   CheckCircle,
   ChevronRight,
   ClipboardCheck,
   Clock,
   FileText,
+  Globe,
+  GraduationCap,
+  MapPin,
   MessageCircle,
   MoreHorizontal,
   Send,
   ShieldCheck,
+  Sparkles,
   User,
   UserCheck,
   X
@@ -64,7 +69,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
@@ -896,10 +901,10 @@ export function MessagesView({
 
   const getStatusDotColor = (status: string) => {
     const colors = {
-      applied: { backgroundColor: "#3B82F6" },
-      reviewing: { backgroundColor: "#F59E0B" },
-      interview_scheduled: { backgroundColor: "#10B981" },
-      offer: { backgroundColor: "#8B5CF6" },
+      applied: { backgroundColor: "#666" },
+      reviewing: { backgroundColor: "#666" },
+      interview_scheduled: { backgroundColor: "#000" },
+      offer: { backgroundColor: "#000" },
       rejected: { backgroundColor: "#DC2626" },
     };
     return (
@@ -909,14 +914,14 @@ export function MessagesView({
 
   const getStatusBadgeStyle = (status: string) => {
     const styles = {
-      applied: { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
-      reviewing: { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" },
+      applied: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
       interview_scheduled: {
-        backgroundColor: "#D1FAE5",
-        borderColor: "#A7F3D0",
+        backgroundColor: "#F4F4F5",
+        borderColor: "#E5E5E5",
       },
-      offer: { backgroundColor: "#EDE9FE", borderColor: "#DDD6FE" },
-      rejected: { backgroundColor: "#FEE2E2", borderColor: "#FECACA" },
+      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
     };
     return (
       styles[status as keyof typeof styles] || {
@@ -928,11 +933,11 @@ export function MessagesView({
 
   const getStatusTextColor = (status: string) => {
     const colors = {
-      applied: { color: "#1E40AF" },
-      reviewing: { color: "#B45309" },
-      interview_scheduled: { color: "#065F46" },
-      offer: { color: "#5B21B6" },
-      rejected: { color: "#991B1B" },
+      applied: { color: "#666" },
+      reviewing: { color: "#666" },
+      interview_scheduled: { color: "#000" },
+      offer: { color: "#000" },
+      rejected: { color: "#DC2626" },
     };
     return colors[status as keyof typeof colors] || { color: "#374151" };
   };
@@ -1533,7 +1538,7 @@ export function MessagesView({
                     >
                       <View style={styles.vettingCheck}>
                         {hasMessaged ? (
-                          <CheckCircle size={18} color="#00CB54" />
+                          <CheckCircle size={18} color="#000" />
                         ) : (
                           <CheckCircle size={18} color="#E5E5E5" />
                         )}
@@ -1549,7 +1554,7 @@ export function MessagesView({
                     >
                       <View style={styles.vettingCheck}>
                         {feelsConfident ? (
-                          <CheckCircle size={18} color="#00CB54" />
+                          <CheckCircle size={18} color="#000" />
                         ) : (
                           <CheckCircle size={18} color="#E5E5E5" />
                         )}
@@ -1565,7 +1570,7 @@ export function MessagesView({
                     >
                       <View style={styles.vettingCheck}>
                         {knowsBackground ? (
-                          <CheckCircle size={18} color="#00CB54" />
+                          <CheckCircle size={18} color="#000" />
                         ) : (
                           <CheckCircle size={18} color="#E5E5E5" />
                         )}
@@ -1583,7 +1588,7 @@ export function MessagesView({
                     >
                       <View style={styles.vettingCheck}>
                         {comfortableAttaching ? (
-                          <CheckCircle size={18} color="#00CB54" />
+                          <CheckCircle size={18} color="#000" />
                         ) : (
                           <CheckCircle size={18} color="#E5E5E5" />
                         )}
@@ -1611,16 +1616,10 @@ export function MessagesView({
               )}
               {referralStep === 2 && (
                 <Animated.View entering={FadeInUp} style={styles.stepContent}>
-                  <Text style={styles.stepSubtitle}>Review & Confirm</Text>
-                  <Text style={styles.stepDesc}>
-                    Use the applicant's information below to enter their details
-                    into your company's ATS or job portal. Copy the relevant
-                    fields carefully to ensure the referral is submitted
-                    successfully on their behalf.
-                  </Text>
                   <ScrollView
                     style={styles.summaryScroll}
                     showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 8 }}
                   >
                     {referralProfileLoading ? (
                       <View style={styles.referralProfileLoading}>
@@ -1630,264 +1629,307 @@ export function MessagesView({
                         </Text>
                       </View>
                     ) : (
-                      <View style={styles.candidateInfoCard}>
-                        {/* ── ATS hint banner ── */}
-                        <View style={styles.atsBanner}>
-                          <FileText size={13} color="#1E40AF" strokeWidth={2} />
-                          <Text style={styles.atsBannerText}>
-                            Enter these details into your ATS portal when
-                            submitting the referral.
-                          </Text>
-                        </View>
-
-                        {/* ── Header: avatar + name + current role ── */}
-                        <View style={styles.candidateHeader}>
-                          {referralProfile?.PHOTO_URL ||
-                          conversation.profileImageUrl ? (
-                            <Image
-                              source={{
-                                uri:
-                                  referralProfile?.PHOTO_URL ||
-                                  conversation.profileImageUrl,
-                              }}
-                              style={styles.candidateAvatar}
-                            />
-                          ) : (
-                            <View
-                              style={[
-                                styles.candidateAvatar,
-                                styles.candidateAvatarFallback,
-                              ]}
-                            >
-                              <User color="#999" size={24} />
-                            </View>
-                          )}
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.candidateName}>
-                              {referralProfile
-                                ? `${referralProfile.FIRST_NAME || ""} ${referralProfile.LAST_NAME || ""}`.trim()
-                                : conversation.otherParticipant?.name ||
-                                  conversation.name}
-                            </Text>
-                            <Text style={styles.candidateRole}>
-                              {referralProfile?.applicant_profile
-                                ?.CURRENT_ROLE ||
-                                conversation.otherParticipant?.role ||
-                                conversation.role ||
-                                ""}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* ── Applying For ── */}
-                        <View style={styles.infoSection}>
-                          <Text style={styles.infoSectionTitle}>
-                            APPLYING FOR
-                          </Text>
-                          <Text style={styles.infoSectionValue}>
-                            {conversation.jobContext?.jobTitle || "—"}
-                          </Text>
-                          {conversation.jobContext?.company ? (
-                            <Text
-                              style={[
-                                styles.infoSectionValue,
-                                { color: "#666" },
-                              ]}
-                            >
-                              {conversation.jobContext.company}
-                            </Text>
-                          ) : null}
-                        </View>
-
-                        {/* ── Professional Summary ── */}
-                        {referralProfile?.BIO ? (
-                          <View style={styles.infoSection}>
-                            <Text style={styles.infoSectionTitle}>
-                              PROFESSIONAL SUMMARY
-                            </Text>
-                            <Text
-                              style={[
-                                styles.infoSectionValue,
-                                { lineHeight: 20, color: "#444" },
-                              ]}
-                            >
-                              {referralProfile.BIO}
-                            </Text>
-                          </View>
-                        ) : null}
-
-                        {/* ── Location ── */}
-                        {[referralProfile?.CITY, referralProfile?.STATE]
+                      (() => {
+                        const photo =
+                          referralProfile?.PHOTO_URL ||
+                          conversation.profileImageUrl;
+                        const name = referralProfile
+                          ? `${referralProfile.FIRST_NAME || ""} ${
+                              referralProfile.LAST_NAME || ""
+                            }`.trim()
+                          : conversation.otherParticipant?.name ||
+                            conversation.name;
+                        const currentRole =
+                          referralProfile?.applicant_profile?.CURRENT_ROLE ||
+                          conversation.otherParticipant?.role ||
+                          conversation.role ||
+                          "";
+                        const location = [
+                          referralProfile?.CITY,
+                          referralProfile?.STATE,
+                        ]
                           .filter(Boolean)
-                          .join(", ") ? (
-                          <View style={styles.infoSection}>
-                            <Text style={styles.infoSectionTitle}>
-                              LOCATION
-                            </Text>
-                            <Text style={styles.infoSectionValue}>
-                              {[referralProfile?.CITY, referralProfile?.STATE]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </Text>
-                          </View>
-                        ) : null}
-
-                        {/* ── Experience ── */}
-                        <View style={styles.infoSection}>
-                          <Text style={styles.infoSectionTitle}>
-                            EXPERIENCE
-                          </Text>
-                          {referralProfile?.applicant_profile
-                            ?.YEARS_EXPERIENCE ? (
-                            <Text style={styles.infoSectionValue}>
-                              {
-                                referralProfile.applicant_profile
-                                  .YEARS_EXPERIENCE
-                              }{" "}
-                              years in industry
-                            </Text>
-                          ) : conversation.experience &&
-                            conversation.experience !== "N/A" ? (
-                            <Text style={styles.infoSectionValue}>
-                              {conversation.experience} in industry
-                            </Text>
-                          ) : null}
-                          {(
-                            referralProfile?.applicant_profile
-                              ?.PROFESSIONAL_EXPERIENCES || []
-                          )
-                            .slice(0, 2)
-                            .map((exp: any, idx: number) => (
-                              <Text key={idx} style={styles.infoSectionValue}>
-                                {exp.jobTitle} @ {exp.company}
-                                {exp.current
-                                  ? " (Current)"
-                                  : exp.endDate
-                                    ? ` · ${exp.endDate}`
-                                    : ""}
-                              </Text>
-                            ))}
-                        </View>
-
-                        {/* ── Education ── */}
-                        {(
+                          .join(", ");
+                        const industry =
+                          referralProfile?.applicant_profile?.INDUSTRY || "";
+                        const yearsExp =
+                          referralProfile?.applicant_profile?.YEARS_EXPERIENCE;
+                        const jobTitle =
+                          conversation.jobContext?.jobTitle || "";
+                        const company = conversation.jobContext?.company || "";
+                        const bio = referralProfile?.BIO;
+                        const experiences: any[] =
                           referralProfile?.applicant_profile
-                            ?.EDUCATION_ENTRIES || []
-                        ).length > 0 ? (
-                          <View style={styles.infoSection}>
-                            <Text style={styles.infoSectionTitle}>
-                              EDUCATION
-                            </Text>
-                            {(
-                              referralProfile.applicant_profile
-                                .EDUCATION_ENTRIES as any[]
-                            )
-                              .slice(0, 2)
-                              .map((edu: any, idx: number) => (
-                                <Text key={idx} style={styles.infoSectionValue}>
-                                  {[edu.degree, edu.major]
-                                    .filter(Boolean)
-                                    .join(" in ")}
-                                  {edu.university ? ` — ${edu.university}` : ""}
-                                </Text>
-                              ))}
-                          </View>
-                        ) : null}
-
-                        {/* ── Key Skills ── */}
-                        {(
+                            ?.PROFESSIONAL_EXPERIENCES || [];
+                        const education: any[] =
+                          referralProfile?.applicant_profile
+                            ?.EDUCATION_ENTRIES || [];
+                        const skills: string[] =
                           referralProfile?.applicant_profile?.SKILLS ||
                           conversation.skills ||
-                          []
-                        ).length > 0 ? (
-                          <View style={styles.infoSection}>
-                            <Text style={styles.infoSectionTitle}>
-                              KEY SKILLS
-                            </Text>
-                            <View style={styles.skillsRow}>
-                              {(
-                                referralProfile?.applicant_profile?.SKILLS ||
-                                conversation.skills ||
-                                []
-                              ).map((skill: string, idx: number) => (
-                                <View key={idx} style={styles.skillBadge}>
-                                  <Text style={styles.skillBadgeText}>
-                                    {skill}
+                          [];
+                        const portfolioUrl = referralProfile?.PORTFOLIO_URL;
+
+                        return (
+                          <View style={{ gap: 12 }}>
+                            {/* ATS hint banner — monochrome, modern */}
+                            <View style={styles.atsBanner}>
+                              <FileText size={14} color="#666" strokeWidth={2} />
+                              <Text style={styles.atsBannerText}>
+                                Enter these details into your ATS portal when
+                                submitting the referral.
+                              </Text>
+                            </View>
+
+                            {/* Hero: avatar + name + current role + quick chips */}
+                            <View style={styles.candidateHero}>
+                              {photo ? (
+                                <Image
+                                  source={{ uri: photo }}
+                                  style={styles.candidateHeroAvatar}
+                                />
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.candidateHeroAvatar,
+                                    styles.candidateHeroAvatarFallback,
+                                  ]}
+                                >
+                                  <User color="#999" size={32} />
+                                </View>
+                              )}
+                              <Text
+                                style={styles.candidateHeroName}
+                                numberOfLines={1}
+                              >
+                                {name}
+                              </Text>
+                              {!!currentRole && (
+                                <Text
+                                  style={styles.candidateHeroRole}
+                                  numberOfLines={1}
+                                >
+                                  {currentRole}
+                                </Text>
+                              )}
+                              {(!!location ||
+                                !!industry ||
+                                !!yearsExp) && (
+                                <View style={styles.candidateChipsRow}>
+                                  {!!location && (
+                                    <View style={styles.candidateChip}>
+                                      <MapPin size={11} color="#666" />
+                                      <Text style={styles.candidateChipText}>
+                                        {location}
+                                      </Text>
+                                    </View>
+                                  )}
+                                  {!!industry && (
+                                    <View style={styles.candidateChip}>
+                                      <Briefcase size={11} color="#666" />
+                                      <Text style={styles.candidateChipText}>
+                                        {industry}
+                                      </Text>
+                                    </View>
+                                  )}
+                                  {!!yearsExp && (
+                                    <View style={styles.candidateChip}>
+                                      <Clock size={11} color="#666" />
+                                      <Text style={styles.candidateChipText}>
+                                        {yearsExp} yrs
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              )}
+                            </View>
+
+                            {/* APPLYING FOR — role-context card */}
+                            {!!jobTitle && (
+                              <View style={styles.refContext}>
+                                <Text style={styles.refContextLabel}>
+                                  APPLYING FOR
+                                </Text>
+                                <Text style={styles.refContextTitle}>
+                                  {jobTitle}
+                                </Text>
+                                {!!company && (
+                                  <Text style={styles.refContextCompany}>
+                                    {company}
+                                  </Text>
+                                )}
+                              </View>
+                            )}
+
+                            {/* Professional Summary */}
+                            {!!bio && (
+                              <View style={styles.refSection}>
+                                <View style={styles.refSectionHeader}>
+                                  <FileText size={16} color="#000" />
+                                  <Text style={styles.refSectionTitle}>
+                                    Professional Summary
                                   </Text>
                                 </View>
-                              ))}
-                            </View>
-                          </View>
-                        ) : null}
+                                <Text style={styles.refSectionBody}>{bio}</Text>
+                              </View>
+                            )}
 
-                        {/* ── Industry ── */}
-                        {referralProfile?.applicant_profile?.INDUSTRY ? (
-                          <View style={styles.infoSection}>
-                            <Text style={styles.infoSectionTitle}>
-                              INDUSTRY
-                            </Text>
-                            <Text style={styles.infoSectionValue}>
-                              {referralProfile.applicant_profile.INDUSTRY}
-                            </Text>
-                          </View>
-                        ) : null}
+                            {/* Experience — full list */}
+                            {(experiences.length > 0 || !!yearsExp) && (
+                              <View style={styles.refSection}>
+                                <View style={styles.refSectionHeader}>
+                                  <Briefcase size={16} color="#000" />
+                                  <Text style={styles.refSectionTitle}>
+                                    Experience
+                                  </Text>
+                                </View>
+                                {!!yearsExp && (
+                                  <Text style={styles.refSectionMeta}>
+                                    {yearsExp} years in industry
+                                  </Text>
+                                )}
+                                {experiences.map(
+                                  (exp: any, idx: number) => (
+                                    <View
+                                      key={idx}
+                                      style={[
+                                        styles.refEntryRow,
+                                        idx > 0 && styles.refEntryRowDivider,
+                                      ]}
+                                    >
+                                      <Text style={styles.refEntryTitle}>
+                                        {exp.jobTitle || "Role"}
+                                      </Text>
+                                      <Text style={styles.refEntryMeta}>
+                                        {exp.company || ""}
+                                        {exp.current
+                                          ? " · Current"
+                                          : exp.endDate
+                                            ? ` · ${exp.endDate}`
+                                            : ""}
+                                      </Text>
+                                    </View>
+                                  ),
+                                )}
+                              </View>
+                            )}
 
-                        {/* ── LinkedIn (tappable) ── */}
-                        {referralProfile?.LINKED_IN ? (
-                          <View style={styles.infoSection}>
-                            <Text style={styles.infoSectionTitle}>
-                              LINKEDIN
-                            </Text>
-                            <TouchableOpacity
-                              onPress={() =>
-                                Linking.openURL(
-                                  referralProfile.LINKED_IN,
-                                ).catch(() => {})
-                              }
-                              activeOpacity={0.7}
-                            >
-                              <Text style={styles.infoSectionLink}>
-                                {referralProfile.LINKED_IN}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        ) : null}
+                            {/* Education — full list */}
+                            {education.length > 0 && (
+                              <View style={styles.refSection}>
+                                <View style={styles.refSectionHeader}>
+                                  <GraduationCap size={16} color="#000" />
+                                  <Text style={styles.refSectionTitle}>
+                                    Education
+                                  </Text>
+                                </View>
+                                {education.map((edu: any, idx: number) => {
+                                  const degreeLine = [edu.degree, edu.major]
+                                    .filter(Boolean)
+                                    .join(" in ");
+                                  const head =
+                                    degreeLine ||
+                                    edu.university ||
+                                    "Education";
+                                  const meta = degreeLine ? edu.university : "";
+                                  return (
+                                    <View
+                                      key={idx}
+                                      style={[
+                                        styles.refEntryRow,
+                                        idx > 0 && styles.refEntryRowDivider,
+                                      ]}
+                                    >
+                                      <Text style={styles.refEntryTitle}>
+                                        {head}
+                                      </Text>
+                                      {!!meta && (
+                                        <Text style={styles.refEntryMeta}>
+                                          {meta}
+                                        </Text>
+                                      )}
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            )}
 
-                        {/* ── Portfolio ── */}
-                        {referralProfile?.PORTFOLIO_URL ? (
-                          <View style={styles.infoSection}>
-                            <Text style={styles.infoSectionTitle}>
-                              PORTFOLIO
-                            </Text>
-                            <TouchableOpacity
-                              onPress={() =>
-                                Linking.openURL(
-                                  referralProfile.PORTFOLIO_URL,
-                                ).catch(() => {})
-                              }
-                              activeOpacity={0.7}
-                            >
-                              <Text style={styles.infoSectionLink}>
-                                {referralProfile.PORTFOLIO_URL}
-                              </Text>
-                            </TouchableOpacity>
+                            {/* Key Skills */}
+                            {skills.length > 0 && (
+                              <View style={styles.refSection}>
+                                <View style={styles.refSectionHeader}>
+                                  <Sparkles size={16} color="#000" />
+                                  <Text style={styles.refSectionTitle}>
+                                    Key Skills
+                                  </Text>
+                                </View>
+                                <View style={styles.skillsRow}>
+                                  {skills.map(
+                                    (skill: string, idx: number) => (
+                                      <View
+                                        key={idx}
+                                        style={styles.skillBadge}
+                                      >
+                                        <Text style={styles.skillBadgeText}>
+                                          {skill}
+                                        </Text>
+                                      </View>
+                                    ),
+                                  )}
+                                </View>
+                              </View>
+                            )}
+
+                            {/* Portfolio */}
+                            {!!portfolioUrl && (
+                              <View style={styles.refSection}>
+                                <View style={styles.refSectionHeader}>
+                                  <Globe size={16} color="#000" />
+                                  <Text style={styles.refSectionTitle}>
+                                    Portfolio
+                                  </Text>
+                                </View>
+                                <TouchableOpacity
+                                  onPress={() =>
+                                    Linking.openURL(portfolioUrl).catch(
+                                      () => {},
+                                    )
+                                  }
+                                  activeOpacity={0.7}
+                                  style={styles.refPortfolio}
+                                >
+                                  <Text
+                                    style={styles.refPortfolioText}
+                                    numberOfLines={1}
+                                  >
+                                    {portfolioUrl}
+                                  </Text>
+                                  <Globe size={14} color="#666" />
+                                </TouchableOpacity>
+                              </View>
+                            )}
                           </View>
-                        ) : null}
-                      </View>
+                        );
+                      })()
                     )}
-                    <View style={styles.finalChecklist}>
-                      <Text style={styles.checklistTitle}>
-                        Final Confirmation
-                      </Text>
-                      <View style={styles.checkRow}>
+                    {/* Final Confirmation — always shown, even while
+                        the candidate profile is still loading */}
+                    <View style={[styles.refSection, { marginTop: 12 }]}>
+                      <View style={styles.refSectionHeader}>
                         <ShieldCheck size={16} color="#000" />
-                        <Text style={styles.checkText}>
+                        <Text style={styles.refSectionTitle}>
+                          Final Confirmation
+                        </Text>
+                      </View>
+                      <View style={styles.refFinalRow}>
+                        <View style={styles.refFinalBullet} />
+                        <Text style={styles.refFinalText}>
                           This referral is binding within our system.
                         </Text>
                       </View>
-                      <View style={styles.checkRow}>
-                        <ShieldCheck size={16} color="#000" />
-                        <Text style={styles.checkText}>
+                      <View style={styles.refFinalRow}>
+                        <View style={styles.refFinalBullet} />
+                        <Text style={styles.refFinalText}>
                           Your reputation score may be affected by the outcome.
                         </Text>
                       </View>
@@ -1989,7 +2031,7 @@ export function MessagesView({
               {referralStep === 3 && (
                 <Animated.View entering={FadeInDown} style={styles.successStep}>
                   <View style={styles.successIcon}>
-                    <CheckCircle size={60} color="#00CB54" />
+                    <CheckCircle size={60} color="#000" />
                   </View>
                   <Text style={styles.successTitle}>Referral Submitted!</Text>
                   <Text style={styles.successDesc}>
@@ -2986,14 +3028,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#ECFDF5",
+    backgroundColor: "#F4F4F5",
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   sponsorOpenBadgeText: {
     fontSize: 12,
-    color: "#059669",
+    color: "#000",
     fontWeight: "700",
   },
   sponsorMatchBadge: {
@@ -3080,7 +3122,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnDisabled: { backgroundColor: "#E5E5E5" },
   primaryBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  summaryScroll: { maxHeight: 450, marginBottom: 10 },
+  summaryScroll: { maxHeight: SCREEN_HEIGHT * 0.6, marginBottom: 10 },
   summaryCard: {
     backgroundColor: "#F8F9FB",
     padding: 20,
@@ -3103,73 +3145,238 @@ const styles = StyleSheet.create({
   },
   summarySkills: { flexDirection: "row", flexWrap: "wrap" },
   summarySkillText: { fontSize: 13, color: "#666", fontWeight: "600" },
-  candidateInfoCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  candidateHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
-  },
-  candidateAvatar: { width: 60, height: 60, borderRadius: 30 },
-  candidateName: { fontSize: 20, fontWeight: "800", marginBottom: 4 },
-  candidateRole: { fontSize: 14, color: "#666" },
-  infoSection: { marginBottom: 20 },
-  infoSectionTitle: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#999",
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  infoSectionValue: { fontSize: 15, color: "#000", marginBottom: 4 },
-  infoSectionLink: {
-    fontSize: 14,
-    color: "#1E40AF",
-    textDecorationLine: "underline",
-    marginBottom: 4,
-  },
+  // ── Referral Step 2 — modern detail-sheet aesthetic ─────────────────
+
+  // ATS hint banner — monochrome, modern
   atsBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#EFF6FF",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
     gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: "#F4F4F5",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#BFDBFE",
+    borderColor: "#ECECEC",
   },
   atsBannerText: {
-    fontSize: 12,
-    color: "#1E40AF",
     flex: 1,
-    lineHeight: 18,
-    fontWeight: "500",
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+    lineHeight: 17,
   },
-  skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
-  skillBadge: {
-    backgroundColor: "#FFF",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+
+  // Hero — centered avatar + name + role + quick-stats chips
+  candidateHero: {
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  candidateHeroAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    marginBottom: 14,
+    backgroundColor: "#EEE",
+  },
+  candidateHeroAvatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F4F4F5",
+  },
+  candidateHeroName: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 4,
+    letterSpacing: -0.4,
+  },
+  candidateHeroRole: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
+  },
+  candidateChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+  candidateChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: "#F4F4F5",
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: "#ECECEC",
   },
-  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  finalChecklist: { marginTop: 20, gap: 10 },
-  checklistTitle: { fontSize: 14, fontWeight: "800", marginBottom: 5 },
-  checkRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  checkText: { fontSize: 12, color: "#666", fontWeight: "500" },
+  candidateChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#666",
+  },
+
+  // APPLYING FOR — role-context card (mirrors ProfileDetailSheet roleContext)
+  refContext: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  refContextLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: "#999",
+    marginBottom: 6,
+  },
+  refContextTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#000",
+  },
+  refContextCompany: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 2,
+  },
+
+  // Detail sections — mirror the MatchesView detailSection aesthetic
+  refSection: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+      android: { elevation: 1 },
+    }),
+  },
+  refSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingBottom: 10,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  refSectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#000",
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+  },
+  refSectionBody: {
+    fontSize: 14,
+    color: "#444",
+    lineHeight: 20,
+  },
+  refSectionMeta: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+
+  // Experience / Education entry rows (stack with subtle dividers)
+  refEntryRow: {
+    paddingVertical: 8,
+  },
+  refEntryRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: "#F4F4F5",
+  },
+  refEntryTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 2,
+  },
+  refEntryMeta: {
+    fontSize: 13,
+    color: "#666",
+  },
+
+  // Portfolio link tile
+  refPortfolio: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  refPortfolioText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#000",
+  },
+
+  // Skills badges (shared within refSection)
+  skillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  skillBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#F4F4F5",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#ECECEC",
+  },
+  skillBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#000",
+  },
+
+  // Final Confirmation rows
+  refFinalRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    paddingVertical: 5,
+  },
+  refFinalBullet: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#000",
+    marginTop: 8,
+  },
+  refFinalText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#444",
+    fontWeight: "500",
+    lineHeight: 19,
+  },
   confirmBtn: {
     backgroundColor: "#000",
     paddingVertical: 18,
@@ -3307,11 +3514,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFF9E6",
+    backgroundColor: "#F4F4F5",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: "#E5E5E5",
   },
   nextActionText: { flex: 1, fontSize: 14, fontWeight: "700", color: "#000" },
   messageBtn: {
@@ -3337,11 +3544,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     fontWeight: "400" as const,
-  },
-  candidateAvatarFallback: {
-    backgroundColor: "#E0E0E0",
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
   },
   referralErrorBox: {
     backgroundColor: "#FEF2F2",

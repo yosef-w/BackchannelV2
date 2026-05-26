@@ -1409,7 +1409,7 @@ export function MatchesView({
                         )}
                         {!!applicant.likedAt && (
                           <View style={styles.interestedSponsorTimestamp}>
-                            <Heart size={10} color="#E53E3E" />
+                            <Heart size={10} color="#DC2626" />
                             <Text style={styles.interestedSponsorTimestampText}>
                               {getRelativeTime(applicant.likedAt)}
                             </Text>
@@ -2108,7 +2108,7 @@ export function MatchesView({
                         )}
                         {!!sponsor.likedAt && (
                           <View style={styles.interestedSponsorTimestamp}>
-                            <Heart size={10} color="#E53E3E" />
+                            <Heart size={10} color="#DC2626" />
                             <Text style={styles.interestedSponsorTimestampText}>
                               {getRelativeTime(sponsor.likedAt)}
                             </Text>
@@ -2325,8 +2325,8 @@ export function MatchesView({
           }}
           badge={{
             label: "Interested in Your Job",
-            color: "#E53E3E",
-            bgColor: "#FFF5F5",
+            color: "#DC2626",
+            bgColor: "#FEF2F2",
           }}
           roleContext={
             selectedInterestedApplicant.jobTitle
@@ -2835,7 +2835,7 @@ export function MatchesView({
               >
                 {/* "Expressed Interest" tag */}
                 <View style={styles.interestedModalTag}>
-                  <Heart size={12} color="#E53E3E" />
+                  <Heart size={12} color="#DC2626" />
                   <Text style={styles.interestedModalTagText}>
                     Wants to connect with you
                     {selectedInterestedSponsor.likedAt
@@ -3742,7 +3742,7 @@ export function MatchesView({
               </View>
             ) : srJobDetailError ? (
               <View style={styles.interestedLoadingContainer}>
-                <AlertTriangle size={32} color="#E53E3E" />
+                <AlertTriangle size={32} color="#DC2626" />
                 <Text style={styles.srJobDetailErrorTitle}>
                   Could not load role details
                 </Text>
@@ -4193,9 +4193,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFF5F5",
+    backgroundColor: "#FEF2F2",
     borderWidth: 1,
-    borderColor: "#FED7D7",
+    borderColor: "#FECACA",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -4204,7 +4204,7 @@ const styles = StyleSheet.create({
   },
   interestedModalTagText: {
     fontSize: 12,
-    color: "#E53E3E",
+    color: "#DC2626",
     fontWeight: "700",
   },
   interestedLoadingContainer: {
@@ -5149,9 +5149,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   jobRemoteBadge: {
-    backgroundColor: "#F0F4FF",
+    backgroundColor: "#F4F4F5",
     borderWidth: 1,
-    borderColor: "#D0DDFF",
+    borderColor: "#E5E5E5",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -5160,7 +5160,7 @@ const styles = StyleSheet.create({
   jobRemoteText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#4060D0",
+    color: "#000",
   },
   jobModalCompStrip: {
     flexDirection: "row",
@@ -5414,8 +5414,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 9,
     borderWidth: 1.5,
-    borderColor: "#FFCDD2",
-    backgroundColor: "#FFF5F5",
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
     alignItems: "center",
     justifyContent: "center",
     minWidth: 74,
@@ -5460,10 +5460,10 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   withdrawWarningCard: {
-    backgroundColor: "#FFF5F5",
+    backgroundColor: "#FEF2F2",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FFE5E5",
+    borderColor: "#FEF2F2",
     padding: 16,
     marginBottom: 24,
     gap: 10,
@@ -5483,7 +5483,7 @@ const styles = StyleSheet.create({
   withdrawWarningText: {
     flex: 1,
     fontSize: 13,
-    color: "#7F1D1D",
+    color: "#DC2626",
     lineHeight: 19,
     fontWeight: "600",
   },
@@ -5621,7 +5621,7 @@ const styles = StyleSheet.create({
   srJobDetailErrorTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#E53E3E",
+    color: "#DC2626",
     marginTop: 12,
     textAlign: "center" as const,
   },

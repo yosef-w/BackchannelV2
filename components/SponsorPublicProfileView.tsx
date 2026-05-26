@@ -4,7 +4,6 @@ import {
     Briefcase,
     Check,
     ChevronLeft,
-    ExternalLink,
     MapPin,
     ShieldCheck,
     Sparkles,
@@ -13,7 +12,6 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Image,
-    Linking,
     Platform,
     ScrollView,
     StatusBar,
@@ -80,7 +78,6 @@ export function SponsorPublicProfileView({
   const locationStr = [city, state, country].filter(Boolean).join(", ");
 
   const bio = fullProfile?.BIO;
-  const linkedIn = fullProfile?.LINKED_IN;
 
   const duration = sp.DURATION;
   const openToReferrals = sp.OPEN_TO_REFERRALS as boolean | undefined;
@@ -143,17 +140,6 @@ export function SponsorPublicProfileView({
           ) : null}
 
           {bio ? <Text style={styles.bio}>{bio}</Text> : null}
-
-          {linkedIn ? (
-            <TouchableOpacity
-              style={styles.linkedInBtn}
-              onPress={() => Linking.openURL(linkedIn).catch(() => {})}
-              activeOpacity={0.7}
-            >
-              <ExternalLink size={14} color="#0A66C2" strokeWidth={2} />
-              <Text style={styles.linkedInText}>LinkedIn Profile</Text>
-            </TouchableOpacity>
-          ) : null}
         </View>
 
         {/* Stats grid removed — the only quantified field we have is
@@ -192,7 +178,7 @@ export function SponsorPublicProfileView({
                 {openToReferrals === false ? (
                   <Award size={11} color="#DC2626" strokeWidth={2.5} />
                 ) : (
-                  <ShieldCheck size={11} color="#059669" strokeWidth={2.5} />
+                  <ShieldCheck size={11} color="#000" strokeWidth={2.5} />
                 )}
                 <Text
                   style={[
@@ -346,24 +332,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 10,
   },
-  linkedInBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: "#BFDBFE",
-    backgroundColor: "#EFF6FF",
-  },
-  linkedInText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#0A66C2",
-  },
-
   // ── Stats Grid ────────────────────────────────────────────────────────────
   statsGrid: {
     flexDirection: "row",
@@ -384,7 +352,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   statValueOpen: {
-    color: "#059669",
+    color: "#000",
     fontSize: 18,
   },
   statValueClosed: {
@@ -479,7 +447,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   statusPillOpen: {
-    backgroundColor: "#ECFDF5",
+    backgroundColor: "#F4F4F5",
   },
   statusPillClosed: {
     backgroundColor: "#FEF2F2",
@@ -489,7 +457,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   statusPillTextOpen: {
-    color: "#059669",
+    color: "#000",
   },
   statusPillTextClosed: {
     color: "#DC2626",

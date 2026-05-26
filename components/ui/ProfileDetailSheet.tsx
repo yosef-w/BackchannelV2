@@ -303,18 +303,18 @@ export function ProfileDetailSheet({
                       style={[
                         styles.statusBadge,
                         {
-                          backgroundColor: badge.bgColor ?? "#E6FAEE",
+                          backgroundColor: badge.bgColor ?? "#F4F4F5",
                         },
                       ]}
                     >
                       <CheckCircle
                         size={11}
-                        color={badge.color ?? "#00CB54"}
+                        color={badge.color ?? "#000"}
                       />
                       <Text
                         style={[
                           styles.statusBadgeText,
-                          { color: badge.color ?? "#00CB54" },
+                          { color: badge.color ?? "#000" },
                         ]}
                       >
                         {badge.label}

@@ -288,14 +288,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "#F4F4F5",
     borderWidth: 1.5,
-    borderColor: "#DBEAFE",
+    borderColor: "#F4F4F5",
   },
   preferenceText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1E40AF",
+    color: "#666",
   },
   roleTag: {
     flexDirection: "row",

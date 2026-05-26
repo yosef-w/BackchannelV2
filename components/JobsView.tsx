@@ -981,8 +981,8 @@ export function JobsView() {
       // The LLM extraction path is rate-limited at 10 req/hour per user
       // (PR #40). When the throttle trips we want to be explicit so the
       // sponsor knows (a) what hit and (b) the workaround — pasting a
-      // LinkedIn / Greenhouse / Lever / Workday URL takes the structured
-      // path which doesn't count against the throttle.
+      // Greenhouse / Lever / Workday URL takes the structured path which
+      // doesn't count against the throttle.
       const msg = err instanceof Error ? err.message : String(err);
       const isRateLimited =
         msg.includes("429") ||
@@ -997,7 +997,7 @@ export function JobsView() {
 
       if (isRateLimited) {
         showToast(
-          "AI extraction limit reached. Try again in an hour, or paste a LinkedIn/Greenhouse link (those skip AI).",
+          "AI extraction limit reached. Try again in an hour, or paste a Greenhouse / Lever link (those skip AI).",
           "error",
         );
       } else {
@@ -1641,8 +1641,7 @@ export function JobsView() {
             </View>
 
             <Text style={styles.urlHintText}>
-              Works with LinkedIn, Greenhouse, Lever, Workday, and most job
-              boards.
+              Works with Greenhouse, Lever, Workday, and most job boards.
             </Text>
 
             {/* Preview Button */}
@@ -2286,7 +2285,7 @@ export function JobsView() {
                     </View>
                     {viewJobDetails.benefits.map((benefit, i) => (
                       <View key={i} style={styles.benefitRow}>
-                        <Check size={14} color="#00CB54" />
+                        <Check size={14} color="#000" />
                         <Text style={styles.benefitText}>{benefit}</Text>
                       </View>
                     ))}
@@ -2352,7 +2351,7 @@ export function JobsView() {
                           </View>
                           {sponsor.canRefer && (
                             <View style={styles.canReferBadge}>
-                              <CheckCircle size={12} color="#00CB54" />
+                              <CheckCircle size={12} color="#000" />
                             </View>
                           )}
                         </View>
@@ -2375,7 +2374,7 @@ export function JobsView() {
                     return (
                       <View style={styles.unsponsorBtnContainer}>
                         <View style={styles.unsponsorBtn}>
-                          <Check color="#16a34a" size={18} strokeWidth={3} />
+                          <Check color="#000" size={18} strokeWidth={3} />
                           <Text style={styles.unsponsorBtnText}>
                             Already Sponsoring
                           </Text>
@@ -2803,7 +2802,7 @@ function JobCard({
       {/* Already-sponsoring banner — only shown in browse tab for sponsored jobs */}
       {isSponsored && onSponsor !== undefined && (
         <View style={styles.sponsoredBanner} pointerEvents="none">
-          <Check color="#16a34a" size={12} strokeWidth={3} />
+          <Check color="#000" size={12} strokeWidth={3} />
           <Text style={styles.sponsoredBannerText}>Already Sponsoring</Text>
         </View>
       )}
@@ -2948,23 +2947,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EFEFEF",
   },
-  sponsoredCardBorder: { borderColor: "#16a34a", borderWidth: 1.5 },
+  sponsoredCardBorder: { borderColor: "#000", borderWidth: 1.5 },
   sponsoredBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 24,
     paddingVertical: 9,
-    backgroundColor: "#f0fdf4",
+    backgroundColor: "#F4F4F5",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderBottomWidth: 1,
-    borderBottomColor: "#bbf7d0",
+    borderBottomColor: "#E5E5E5",
   },
   sponsoredBannerText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: "#16a34a",
+    color: "#000",
     letterSpacing: -0.2,
   },
   cardShadow: {
@@ -3650,9 +3649,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   jobRemoteBadge: {
-    backgroundColor: "#F0F4FF",
+    backgroundColor: "#F4F4F5",
     borderWidth: 1,
-    borderColor: "#D0DDFF",
+    borderColor: "#E5E5E5",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -3661,7 +3660,7 @@ const styles = StyleSheet.create({
   jobRemoteText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#4060D0",
+    color: "#000",
   },
   jobModalCompStrip: {
     flexDirection: "row",
@@ -3811,7 +3810,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: "#F4F4F5",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -3916,7 +3915,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   matchScoreBadge: {
-    backgroundColor: "#F0F9F0",
+    backgroundColor: "#F4F4F5",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -3924,7 +3923,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  matchScoreText: { color: "#006633", fontWeight: "800", fontSize: 12 },
+  matchScoreText: { color: "#000", fontWeight: "800", fontSize: 12 },
 
   // Swipeable Card Modal Styles (from MatchesView)
   jobRefTag: {
@@ -4160,7 +4159,7 @@ const styles = StyleSheet.create({
     gap: 4,
     alignSelf: "flex-start",
     marginTop: 8,
-    backgroundColor: "#E6FAEE",
+    backgroundColor: "#F4F4F5",
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -4168,7 +4167,7 @@ const styles = StyleSheet.create({
   apInterestedText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#00CB54",
+    color: "#000",
     letterSpacing: 0.2,
   },
   apJobBlock: {

@@ -783,7 +783,6 @@ export async function getProfile(): Promise<{
   ROLE_TYPE: "Applicant" | "Sponsor";
   IS_JOB_SEEKER: boolean;
   IS_SPONSOR: boolean;
-  LINKED_IN: string | null;
   PORTFOLIO_URL: string | null;
   DATE_OF_BIRTH: string | null;
   applicant_profile?: {
@@ -839,7 +838,6 @@ export async function getBasicProfile(): Promise<{
  * - first_name: string
  * - last_name: string
  * - international_code: string
- * - linked_in: string
  * - portfolio_url: string
  * - date_of_birth: string
  * - bio: string (max 2000 chars)
@@ -856,7 +854,6 @@ export async function updateGeneralProfile(updates: {
   first_name?: string;
   last_name?: string;
   international_code?: string;
-  linked_in?: string;
   portfolio_url?: string;
   date_of_birth?: string;
   bio?: string;
@@ -959,7 +956,6 @@ export async function updateApplicantProfile(updates: {
  * - company: string
  * - job_title: string
  * - work_email: string
- * - linked_in: string
  * - duration: string
  * - financial_reward: boolean (accepts "yes"/"no", true/false)
  * - referral_eligible: boolean
@@ -972,7 +968,6 @@ export async function updateSponsorProfile(updates: {
   company?: string;
   job_title?: string;
   work_email?: string;
-  linked_in?: string;
   duration?: string;
   financial_reward?: boolean;
   referral_eligible?: boolean;
@@ -1012,7 +1007,6 @@ export async function getPublicProfile(userId: string): Promise<{
   CITY: string | null;
   STATE: string | null;
   COUNTRY: string | null;
-  LINKED_IN: string | null;
   PORTFOLIO_URL: string | null;
   applicant_profile?: {
     INDUSTRY: string;
@@ -1853,7 +1847,7 @@ export async function getCheckInHistory(referralId: string): Promise<{
 /**
  * 👤 Update User Profile (General Fields)
  * PATCH /api/profile/update/
- * Accepted fields: first_name, last_name, phone_number, linked_in, portfolio_url,
+ * Accepted fields: first_name, last_name, phone_number, portfolio_url,
  *                  bio, street, city, state, zip, country, location, photo_url,
  *                  date_of_birth, international_code, notification_preferences
  */

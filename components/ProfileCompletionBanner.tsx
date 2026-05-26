@@ -24,7 +24,7 @@ export function ProfileCompletionBanner({
   return (
     <Animated.View entering={FadeInDown.delay(300)} style={styles.banner}>
       <View style={styles.iconContainer}>
-        <AlertCircle color="#F59E0B" size={24} />
+        <AlertCircle color="#666" size={24} />
       </View>
 
       <View style={styles.content}>
@@ -64,13 +64,13 @@ export function ProfileCompletionBanner({
 const styles = StyleSheet.create({
   banner: {
     flexDirection: "row",
-    backgroundColor: "#FEF3C7",
+    backgroundColor: "#F4F4F5",
     borderRadius: 16,
     padding: 16,
     marginHorizontal: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: "#E5E5E5",
   },
   iconContainer: {
     width: 48,
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   percentageText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#F59E0B",
+    color: "#666",
   },
   subtitle: {
     fontSize: 13,

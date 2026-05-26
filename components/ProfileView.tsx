@@ -534,10 +534,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const getStatusDotColor = (status: string) => {
     const colors = {
-      applied: { backgroundColor: "#3B82F6" },
-      reviewing: { backgroundColor: "#F59E0B" },
-      interview_scheduled: { backgroundColor: "#10B981" },
-      offer: { backgroundColor: "#8B5CF6" },
+      applied: { backgroundColor: "#666" },
+      reviewing: { backgroundColor: "#666" },
+      interview_scheduled: { backgroundColor: "#000" },
+      offer: { backgroundColor: "#000" },
       rejected: { backgroundColor: "#DC2626" },
     };
     return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
@@ -546,13 +546,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const getStatusBadgeStyle = (status: string) => {
     const styles = {
       applied: { backgroundColor: "#F9F9F9", borderColor: "#E5E5E5" },
-      reviewing: { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" },
+      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
       interview_scheduled: {
-        backgroundColor: "#D1FAE5",
-        borderColor: "#A7F3D0",
+        backgroundColor: "#F4F4F5",
+        borderColor: "#E5E5E5",
       },
-      offer: { backgroundColor: "#EDE9FE", borderColor: "#DDD6FE" },
-      rejected: { backgroundColor: "#FEE2E2", borderColor: "#FECACA" },
+      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
     };
     return (
       styles[status as keyof typeof styles] || {
@@ -565,10 +565,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const getStatusTextColor = (status: string) => {
     const colors = {
       applied: { color: "#000" },
-      reviewing: { color: "#B45309" },
-      interview_scheduled: { color: "#047857" },
-      offer: { color: "#6D28D9" },
-      rejected: { color: "#B91C1C" },
+      reviewing: { color: "#666" },
+      interview_scheduled: { color: "#000" },
+      offer: { color: "#000" },
+      rejected: { color: "#DC2626" },
     };
     return colors[status as keyof typeof colors] || { color: "#666" };
   };
@@ -1285,7 +1285,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isNameMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                  isNameMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={cert.name}
                 onChangeText={(text) =>
@@ -1316,7 +1316,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isOrgMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                  isOrgMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={cert.organization}
                 onChangeText={(text) =>
@@ -1347,7 +1347,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isYearMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                  isYearMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={cert.year}
                 onChangeText={(text) =>
@@ -1463,7 +1463,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isLanguageMissing && {
-                    borderColor: "#FCA5A5",
+                    borderColor: "#FECACA",
                     borderWidth: 2,
                   },
                 ]}
@@ -1497,7 +1497,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isProficiencyMissing && {
-                    borderColor: "#FCA5A5",
+                    borderColor: "#FECACA",
                     borderWidth: 2,
                   },
                 ]}
@@ -2166,7 +2166,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isJobTitleMissing && {
-                    borderColor: "#FCA5A5",
+                    borderColor: "#FECACA",
                     borderWidth: 2,
                   },
                 ]}
@@ -2200,7 +2200,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isCompanyMissing && {
-                    borderColor: "#FCA5A5",
+                    borderColor: "#FECACA",
                     borderWidth: 2,
                   },
                 ]}
@@ -2234,7 +2234,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isStartDateMissing && {
-                    borderColor: "#FCA5A5",
+                    borderColor: "#FECACA",
                     borderWidth: 2,
                   },
                 ]}
@@ -2395,7 +2395,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isDegreeMissing && { borderColor: "#FCA5A5", borderWidth: 2 },
+                  isDegreeMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={education.degree}
                 onChangeText={(text) =>
@@ -2440,7 +2440,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isUniversityMissing && {
-                    borderColor: "#FCA5A5",
+                    borderColor: "#FECACA",
                     borderWidth: 2,
                   },
                 ]}
@@ -2474,7 +2474,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isGradYearMissing && {
-                    borderColor: "#FCA5A5",
+                    borderColor: "#FECACA",
                     borderWidth: 2,
                   },
                 ]}
@@ -2771,7 +2771,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               style={styles.resumeSuccessCard}
             >
               <View style={styles.resumeSuccessHeader}>
-                <CheckCircle2 size={20} color="#16A34A" strokeWidth={2.5} />
+                <CheckCircle2 size={20} color="#000" strokeWidth={2.5} />
                 <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
               </View>
               {resumeFieldsUpdated.length > 0 && (
@@ -5803,11 +5803,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   errorContainer: {
-    backgroundColor: "#FFF5F5",
+    backgroundColor: "#FEF2F2",
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#FFE5E5",
+    borderColor: "#FEF2F2",
   },
   errorText: {
     fontSize: 14,
@@ -6204,11 +6204,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFF9E6",
+    backgroundColor: "#F4F4F5",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: "#E5E5E5",
   },
   nextActionText: {
     flex: 1,
@@ -6369,9 +6369,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "#FEF2F2",
     borderWidth: 1,
-    borderColor: "#FCA5A5",
+    borderColor: "#FECACA",
   },
   entryDeleteBtnText: {
     color: "#DC2626",
@@ -6511,7 +6511,7 @@ const styles = StyleSheet.create({
   },
   resumeStatusText: {
     fontSize: 12,
-    color: "#16A34A",
+    color: "#000",
     fontWeight: "700",
   },
   resumeUploadBtn: {
@@ -6581,9 +6581,9 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   resumeSuccessCard: {
-    backgroundColor: "#F0FDF4",
+    backgroundColor: "#F4F4F5",
     borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderColor: "#E5E5E5",
     borderRadius: 14,
     padding: 16,
     gap: 10,
@@ -6596,7 +6596,7 @@ const styles = StyleSheet.create({
   resumeSuccessTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#15803D",
+    color: "#000",
   },
   resumeSuccessSubtitle: {
     fontSize: 13,
@@ -6609,17 +6609,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   resumeFieldPill: {
-    backgroundColor: "#DCFCE7",
+    backgroundColor: "#F4F4F5",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderColor: "#E5E5E5",
   },
   resumeFieldPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#15803D",
+    color: "#000",
   },
   resumeUploadAgainBtn: {
     flexDirection: "row",
@@ -6639,7 +6639,7 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: "#FEF2F2",
     borderWidth: 1,
-    borderColor: "#FCA5A5",
+    borderColor: "#FECACA",
     borderRadius: 14,
     padding: 14,
   },
