@@ -20,7 +20,6 @@ import React, {
     useState,
 } from "react";
 import {
-    ActivityIndicator,
     Image,
     RefreshControl,
     ScrollView,
@@ -466,7 +465,19 @@ export function NotificationsView({
       {/* Loading state */}
       {isLoading && (
         <View style={styles.centeredState}>
-          <ActivityIndicator size="large" color="#000" />
+          <View style={styles.stateIconCircle}>
+            <Bell color="#BBB" size={28} strokeWidth={2} />
+          </View>
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: "#AAA",
+              marginTop: 4,
+            }}
+          >
+            Loading notifications…
+          </Text>
         </View>
       )}
 
@@ -560,10 +571,7 @@ export function NotificationsView({
                           {!!jobContext && (
                             <>
                               <View style={styles.metaDot} />
-                              <Text
-                                style={styles.rowContext}
-                                numberOfLines={1}
-                              >
+                              <Text style={styles.rowContext} numberOfLines={1}>
                                 {jobContext}
                               </Text>
                             </>
@@ -857,4 +865,3 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
 });
-

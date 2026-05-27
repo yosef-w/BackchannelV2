@@ -1,73 +1,73 @@
 import {
-  trackApplicantLikedBack,
-  trackMatchMessageTapped,
-  trackReferralWithdrawn,
-  trackSponsorLikedBack,
+    trackApplicantLikedBack,
+    trackMatchMessageTapped,
+    trackReferralWithdrawn,
+    trackSponsorLikedBack,
 } from "@/lib/analytics/mixpanel";
 import {
-  getInterestedSponsors,
-  getJobApplicantsLikes,
-  getJobDetail,
-  getLikedJobs,
-  getMatches,
-  getMyJobs,
-  getPublicProfile,
-  getSponsorMatches,
-  getSponsorRequests,
-  getWaitlistedJobs,
-  likeBackSponsor,
-  likeProfile,
-  listReferrals,
-  sponsorJob,
-  withdrawReferral,
+    getInterestedSponsors,
+    getJobApplicantsLikes,
+    getJobDetail,
+    getLikedJobs,
+    getMatches,
+    getMyJobs,
+    getPublicProfile,
+    getSponsorMatches,
+    getSponsorRequests,
+    getWaitlistedJobs,
+    likeBackSponsor,
+    likeProfile,
+    listReferrals,
+    sponsorJob,
+    withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
-  AlertTriangle,
-  Award,
-  BellRing,
-  Briefcase,
-  Check,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  DollarSign,
-  Heart,
-  Info,
-  MapPin,
-  MessageCircle,
-  Sparkles,
-  TrendingUp,
-  Users,
-  X,
-  Zap,
+    AlertTriangle,
+    Award,
+    BellRing,
+    Briefcase,
+    Check,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    DollarSign,
+    Heart,
+    Info,
+    MapPin,
+    MessageCircle,
+    Sparkles,
+    TrendingUp,
+    Users,
+    X,
+    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInRight,
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
+    FadeIn,
+    FadeInRight,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
 } from "react-native-reanimated";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -895,19 +895,13 @@ export function MatchesView({
               r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
             sponsorFirstName:
               r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
-            sponsorLastName:
-              r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
-            sponsorPhotoUrl:
-              r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
+            sponsorLastName: r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
+            sponsorPhotoUrl: r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
             jobTitle: r.JOB_TITLE || r.job_title || null,
             jobCompany: r.JOB_COMPANY || r.job_company || null,
             // Forward-compat — backend doesn't ship logos on /api/referrals/
             // yet; component falls back to initial when this is null.
-            jobLogoUrl:
-              r.LOGO_URL ||
-              r.logo_url ||
-              r.ORGANIZATION_LOGO ||
-              null,
+            jobLogoUrl: r.LOGO_URL || r.logo_url || r.ORGANIZATION_LOGO || null,
           }),
         );
         setReferrals(transformed);
@@ -1850,10 +1844,7 @@ export function MatchesView({
                             <View style={styles.waitingBadge}>
                               <CheckCircle size={10} color="#000" />
                               <Text
-                                style={[
-                                  styles.waitingText,
-                                  { color: "#000" },
-                                ]}
+                                style={[styles.waitingText, { color: "#000" }]}
                               >
                                 Matched!
                               </Text>
@@ -1979,10 +1970,7 @@ export function MatchesView({
                             >
                               <CheckCircle size={10} color="#000" />
                               <Text
-                                style={[
-                                  styles.waitingText,
-                                  { color: "#000" },
-                                ]}
+                                style={[styles.waitingText, { color: "#000" }]}
                               >
                                 Now Sponsored!
                               </Text>
@@ -1996,10 +1984,7 @@ export function MatchesView({
                             >
                               <Clock size={10} color="#666" />
                               <Text
-                                style={[
-                                  styles.waitingText,
-                                  { color: "#666" },
-                                ]}
+                                style={[styles.waitingText, { color: "#666" }]}
                               >
                                 Waiting for sponsor
                               </Text>
@@ -2935,7 +2920,18 @@ export function MatchesView({
 
                 {interestedSponsorProfileLoading ? (
                   <View style={styles.interestedLoadingContainer}>
-                    <ActivityIndicator size="large" color="#000" />
+                    <View
+                      style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 32,
+                        backgroundColor: "#F4F4F5",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Users color="#BBB" size={28} strokeWidth={2} />
+                    </View>
                     <Text style={styles.interestedLoadingText}>
                       Loading profile…
                     </Text>
@@ -3834,7 +3830,18 @@ export function MatchesView({
 
             {srJobDetailLoading ? (
               <View style={styles.interestedLoadingContainer}>
-                <ActivityIndicator size="large" color="#000" />
+                <View
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    backgroundColor: "#F4F4F5",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Briefcase color="#BBB" size={28} strokeWidth={1.8} />
+                </View>
                 <Text style={styles.interestedLoadingText}>
                   Loading role details…
                 </Text>

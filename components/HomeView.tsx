@@ -37,18 +37,13 @@ import {
   Coffee,
   DollarSign,
   Globe,
-  GraduationCap,
   Heart,
   Info,
-  Layers,
-  Lightbulb,
   Mail,
   MapPin,
   MessageCircle,
   RefreshCcw,
   Sparkles,
-  TrendingUp,
-  Users,
   X,
   Zap,
 } from "lucide-react-native";
@@ -61,7 +56,6 @@ import {
   Linking,
   Modal,
   Platform,
-  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -76,9 +70,9 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   FadeOut,
-  LinearTransition,
   SlideInDown,
   SlideOutDown,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -98,6 +92,22 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 interface HomeViewProps {
   userType: "applicant" | "sponsor";
   onNavigateToProfile?: () => void;
+  /**
+   * Shared value that drives the floating bottom nav bar's translateY in
+   * MainApp. HomeView writes to it on scroll so the bar slides off-screen
+   * as the user scrolls into a profile (revealing the sticky Pass/Connect
+   * action bar) and reappears when they return to the top. Optional so
+   * HomeView can still render standalone without breaking.
+   */
+  navTranslateY?: import("react-native-reanimated").SharedValue<number>;
+  /**
+   * Companion shared value for the TOP header (progress bar + role
+   * switcher). Mirrors `navTranslateY` but moves the header upward
+   * off-screen as the user scrolls down, reappearing when they return
+   * to the top. HomeView writes to both from the same scroll handler so
+   * header (up) and nav (down) move in sync.
+   */
+  headerTranslateY?: import("react-native-reanimated").SharedValue<number>;
 }
 
 const DECK_SIZE = 10;
@@ -983,187 +993,255 @@ const SkeletonCard = () => {
   const shimmerStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <View style={styles.cardOuter}>
-      <View style={styles.cardInner}>
-        {/* Name Header Shimmer */}
+    // flex:1 + alignSelf:"stretch" fills fullEmptyContainer top-to-bottom and
+    // edge-to-edge, defeating its justifyContent:"center"/alignItems:"center".
+    // paddingTop/paddingBottom mirror profileScrollContent so the skeleton hero
+    // lands at the exact same Y position as a real profile's hero avatar.
+    <ScrollView
+      style={{ flex: 1, alignSelf: "stretch" }}
+      contentContainerStyle={{ paddingTop: 4, paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+      scrollEnabled={false}
+    >
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 24 }}>
+        {/* 96×96 circular avatar */}
         <Animated.View
           style={[
             {
-              backgroundColor: "#EEE",
-              height: 24,
-              marginHorizontal: 20,
-              marginTop: 20,
-              marginBottom: 14,
+              width: 96,
+              height: 96,
+              borderRadius: 48,
+              backgroundColor: "#EBEBEB",
+            },
+            shimmerStyle,
+          ]}
+        />
+        {/* Name shimmer ~60% */}
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#EBEBEB",
+              width: "58%",
+              height: 26,
+              borderRadius: 6,
+              marginTop: 16,
+            },
+            shimmerStyle,
+          ]}
+        />
+        {/* Subtitle shimmer ~38% */}
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#EBEBEB",
+              width: "38%",
+              height: 16,
+              borderRadius: 4,
+              marginTop: 8,
+            },
+            shimmerStyle,
+          ]}
+        />
+        {/* Fact-pill row */}
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 7,
+            marginTop: 14,
+            justifyContent: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          {([80, 90, 75, 65] as number[]).map((w, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                {
+                  backgroundColor: "#EBEBEB",
+                  width: w,
+                  height: 28,
+                  borderRadius: 999,
+                },
+                shimmerStyle,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* ── Divider ──────────────────────────────────────────────── */}
+      <View
+        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+      />
+
+      {/* ── ABOUT section ────────────────────────────────────────── */}
+      <View style={{ paddingVertical: 18 }}>
+        {/* Section label */}
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#F0F0F0",
+              width: "28%",
+              height: 11,
+              borderRadius: 4,
+              marginBottom: 10,
+            },
+            shimmerStyle,
+          ]}
+        />
+        {/* 3 body-text lines */}
+        <View style={{ gap: 8 }}>
+          <Animated.View
+            style={[
+              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              shimmerStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              shimmerStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              {
+                backgroundColor: "#EBEBEB",
+                width: "70%",
+                height: 15,
+                borderRadius: 4,
+              },
+              shimmerStyle,
+            ]}
+          />
+        </View>
+      </View>
+
+      {/* ── Divider ──────────────────────────────────────────────── */}
+      <View
+        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+      />
+
+      {/* ── AT-A-GLANCE stats strip ───────────────────────────────── */}
+      <View style={{ paddingVertical: 18 }}>
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#F0F0F0",
+              width: "38%",
+              height: 11,
+              borderRadius: 4,
+              marginBottom: 10,
+            },
+            shimmerStyle,
+          ]}
+        />
+        {/* 3-cell strip — single block that mirrors hingeStatsRow shape */}
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#F4F4F5",
+              borderRadius: 16,
+              height: 64,
+              overflow: "hidden",
+            },
+            shimmerStyle,
+          ]}
+        />
+      </View>
+
+      {/* ── Divider ──────────────────────────────────────────────── */}
+      <View
+        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+      />
+
+      {/* ── INSIGHTS section ─────────────────────────────────────── */}
+      <View style={{ paddingVertical: 18, gap: 10 }}>
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#F0F0F0",
+              width: "32%",
+              height: 11,
               borderRadius: 4,
             },
             shimmerStyle,
           ]}
         />
+        {/* 2 insight card placeholders matching hingeInsightCard shape */}
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#F4F4F5",
+              borderRadius: 14,
+              height: 80,
+              borderWidth: 1,
+              borderColor: "#EFEFEF",
+            },
+            shimmerStyle,
+          ]}
+        />
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#F4F4F5",
+              borderRadius: 14,
+              height: 80,
+              borderWidth: 1,
+              borderColor: "#EFEFEF",
+            },
+            shimmerStyle,
+          ]}
+        />
+      </View>
 
-        {/* Image + Details Row */}
-        <View style={{ flexDirection: "row", gap: 16, paddingHorizontal: 20 }}>
-          {/* Square Image Shimmer */}
-          <Animated.View
-            style={[
-              {
-                backgroundColor: "#EEE",
-                width: 110,
-                height: 110,
-                borderRadius: 16,
-              },
-              shimmerStyle,
-            ]}
-          />
+      {/* ── Divider ──────────────────────────────────────────────── */}
+      <View
+        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+      />
 
-          {/* Details Column */}
-          <View style={{ flex: 1, gap: 8 }}>
+      {/* ── TOP SKILLS chips ─────────────────────────────────────── */}
+      <View style={{ paddingVertical: 18 }}>
+        <Animated.View
+          style={[
+            {
+              backgroundColor: "#F0F0F0",
+              width: "30%",
+              height: 11,
+              borderRadius: 4,
+              marginBottom: 10,
+            },
+            shimmerStyle,
+          ]}
+        />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {([70, 90, 60, 80, 75] as number[]).map((w, i) => (
             <Animated.View
-              style={[
-                { backgroundColor: "#EEE", height: 18, borderRadius: 4 },
-                shimmerStyle,
-              ]}
-            />
-            <Animated.View
+              key={i}
               style={[
                 {
-                  backgroundColor: "#EEE",
-                  height: 24,
-                  width: "60%",
-                  borderRadius: 12,
+                  backgroundColor: "#EBEBEB",
+                  width: w,
+                  height: 30,
+                  borderRadius: 999,
                 },
                 shimmerStyle,
               ]}
             />
-            <Animated.View
-              style={[
-                {
-                  backgroundColor: "#EEE",
-                  height: 16,
-                  width: "80%",
-                  borderRadius: 4,
-                },
-                shimmerStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  backgroundColor: "#EEE",
-                  height: 16,
-                  width: "50%",
-                  borderRadius: 4,
-                },
-                shimmerStyle,
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* About Section Shimmer */}
-        <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
-          <Animated.View
-            style={[
-              {
-                backgroundColor: "#F5F5F5",
-                height: 14,
-                width: 60,
-                marginBottom: 8,
-                borderRadius: 4,
-              },
-              shimmerStyle,
-            ]}
-          />
-          <Animated.View
-            style={[
-              {
-                backgroundColor: "#F9F9F9",
-                height: 16,
-                marginBottom: 6,
-                borderRadius: 4,
-              },
-              shimmerStyle,
-            ]}
-          />
-          <Animated.View
-            style={[
-              {
-                backgroundColor: "#F9F9F9",
-                height: 16,
-                width: "90%",
-                borderRadius: 4,
-              },
-              shimmerStyle,
-            ]}
-          />
-        </View>
-
-        {/* Skills Shimmer */}
-        <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
-          <Animated.View
-            style={[
-              {
-                backgroundColor: "#F5F5F5",
-                height: 14,
-                width: 80,
-                marginBottom: 8,
-                borderRadius: 4,
-              },
-              shimmerStyle,
-            ]}
-          />
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            <Animated.View
-              style={[
-                {
-                  backgroundColor: "#F5F5F5",
-                  height: 28,
-                  width: 80,
-                  borderRadius: 14,
-                },
-                shimmerStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  backgroundColor: "#F5F5F5",
-                  height: 28,
-                  width: 100,
-                  borderRadius: 14,
-                },
-                shimmerStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  backgroundColor: "#F5F5F5",
-                  height: 28,
-                  width: 90,
-                  borderRadius: 14,
-                },
-                shimmerStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  backgroundColor: "#F5F5F5",
-                  height: 28,
-                  width: 70,
-                  borderRadius: 14,
-                },
-                shimmerStyle,
-              ]}
-            />
-          </View>
+          ))}
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
-export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
+export function HomeView({
+  userType,
+  onNavigateToProfile,
+  navTranslateY,
+  headerTranslateY,
+}: HomeViewProps) {
   const router = useRouter();
   const profileData = useUserProfileStore((state) => state.data);
   const workEmailVerified = useUserProfileStore(
@@ -1185,6 +1263,7 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   // Jobs store
   const jobs = useJobsStore((state) => state.jobs);
   const jobsLoading = useJobsStore((state) => state.isLoading);
+  const jobsError = useJobsStore((state) => state.error);
   const setJobs = useJobsStore((state) => state.setJobs);
   const setJobsLoading = useJobsStore((state) => state.setLoading);
   const setJobsError = useJobsStore((state) => state.setError);
@@ -1211,6 +1290,13 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profilesError, setProfilesError] = useState<string | null>(null);
+  // Which sponsored-job id the current `profiles` list belongs to.
+  // The empty state ("No applicants yet") needs this to distinguish
+  // "we genuinely fetched and got zero" from "we haven't fetched for
+  // this role yet". Without it, switching roles flashes the empty
+  // state for one render between the role change and the effect
+  // firing, and a failed fetch leaves the empty state stuck.
+  const [profilesJobId, setProfilesJobId] = useState<string | null>(null);
   // Cache of lazily-fetched full profiles keyed by USER_ID
   const [fullProfileCache, setFullProfileCache] = useState<Record<string, any>>(
     {},
@@ -1253,15 +1339,14 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     role: string;
     jobTitle?: string;
   } | null>(null);
-  const [isFlipped, setIsFlipped] = useState(false);
+  // 2026-05-26 redesign: the card-flip metaphor was retired in favor of a
+  // Hinge-style vertical scroll. All content (front-face hero + former
+  // back-face content + former "show more" expanded section) now lives in
+  // a single scrollable column, so the flip and show-more toggles are
+  // gone — but a few modals (full bio / full job description) are still
+  // useful for very long copy, so their visibility state stays.
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showFullBio, setShowFullBio] = useState(false);
-  const [showMore, setShowMore] = useState(false);
-  // Whether the card-front ABOUT text overflowed its line clamp. Driven by
-  // onTextLayout (precise) so the "Read more / View More" button shows
-  // exactly when the text is cut off — not based on an unreliable char
-  // count. Re-evaluates automatically as the user swipes to each card.
-  const [aboutTruncated, setAboutTruncated] = useState(false);
 
   // Profile completion state
   const [showProfileCompletionModal, setShowProfileCompletionModal] =
@@ -1308,22 +1393,32 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     Set<string>
   >(new Set());
 
-  const swipeX = useSharedValue(0);
+  // Drives the cross-fade between profiles. The old swipeX horizontal
+  // translation + rotateY card-flip shared values were removed with the
+  // card UI; only the opacity-driven fade survives the redesign.
   const swipeOpacity = useSharedValue(1);
-  const rotateY = useSharedValue(0);
-  const animatedProgress = useSharedValue(0);
   const matchRingScale = useSharedValue(0.8);
   const matchRingOpacity = useSharedValue(0);
-
+  // Tracks the previous scroll Y on the worklet thread so the scroll
+  // handler can derive direction (scroll-up vs scroll-down) frame-by-
+  // frame. Used by the Hinge-style nav-bar hide animation below.
+  const prevScrollY = useSharedValue(0);
+  // Pulsing LIVE dot for the "No Applicants Yet" empty state. Loops
+  // a gentle opacity oscillation so the indicator reads as active /
+  // running, the way streaming UIs and status dashboards do it.
+  const livePulse = useSharedValue(1);
   useEffect(() => {
-    animatedProgress.value = withTiming(
-      Math.min(progress, DECK_SIZE) / DECK_SIZE,
-      { duration: 600 },
+    livePulse.value = withRepeat(
+      withSequence(
+        withTiming(0.35, { duration: 900 }),
+        withTiming(1, { duration: 900 }),
+      ),
+      -1,
+      false,
     );
-  }, [progress]);
-
-  const progressBarStyle = useAnimatedStyle(() => ({
-    width: `${animatedProgress.value * 100}%`,
+  }, [livePulse]);
+  const livePulseStyle = useAnimatedStyle(() => ({
+    opacity: livePulse.value,
   }));
 
   // Pulse-ring that radiates outward from both avatars when a mutual match fires
@@ -1348,11 +1443,19 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   const applicantJobs = userType === "applicant" ? jobs : mockJobs;
   // For sponsors: use real profiles, don't fall back to mock data
   const sponsorProfiles = userType === "sponsor" ? profiles : mockProfiles;
+  // Only fire the empty state when we've actually fetched FOR THE CURRENT
+  // ROLE and got zero back. Without this gate the state flashes during
+  // role transitions (new id is set, effect hasn't yet flipped loading)
+  // and sticks permanently if the fetch errors before profiles is
+  // written — both of which manifest as "Your sponsored job is live,
+  // but no applicants have shown interest yet" appearing on every role.
   const hasNoApplicants =
     userType === "sponsor" &&
     sponsoredJobs.length > 0 &&
     profiles.length === 0 &&
-    !profilesLoading;
+    !profilesLoading &&
+    profilesJobId === activeSponsoredJobId &&
+    !profilesError;
 
   console.log("[HomeView] Using data:", {
     userType,
@@ -1368,6 +1471,22 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
       ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
       : applicantJobs[currentProfileIndex % applicantJobs.length];
   const isDeckFinished = progress > DECK_SIZE;
+
+  // True only when real cards are loaded and being displayed.
+  // Used to dim the progress bar + show an em-dash placeholder
+  // when the deck isn't active (empty/error/loading states).
+  const deckIsActive =
+    !isDeckFinished &&
+    !isLoading &&
+    !(userType === "sponsor" && sponsoredJobs.length === 0) &&
+    !hasNoApplicants &&
+    !(
+      userType === "sponsor" &&
+      profilesError != null &&
+      profiles.length === 0
+    ) &&
+    !(userType === "applicant" && jobsError != null && jobs.length === 0) &&
+    !(userType === "applicant" && !jobsLoading && jobs.length === 0);
 
   // Bootstrap sponsor state on mount — ensures activeSponsoredJobId is set
   // even when the user lands on the dashboard before visiting the jobs tab.
@@ -1420,19 +1539,37 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     bootstrap();
   }, [userType]);
 
-  // Fetch jobs/profiles on mount (only if we don't have recent data)
+  // Fetch jobs/profiles on mount (only if we don't have recent data).
+  //
+  // 2026-05-27 — Daily-pack cache window.
+  // The applicant job deck is treated as STABLE for the rest of the
+  // calendar day once fetched. Tab-switching, backgrounding for a few
+  // minutes, or remounting HomeView all hit the cache and reuse the
+  // existing deck + scroll position. The cache rolls over at midnight
+  // local-time so the next morning's first mount fetches a fresh pack.
+  //
+  // This is forward-compatible with the upcoming backend daily-pack
+  // flag (every user gets 10 jobs per day, refreshes at the day
+  // boundary). Once that flag is on server-side, this client-side
+  // gate becomes redundant but harmless — both will agree.
+  //
+  // Previously this was a rolling 5-minute TTL, which caused decks to
+  // silently swap underneath users whenever they returned to Home
+  // after a coffee break.
   useEffect(() => {
     const loadData = async () => {
       if (userType === "applicant") {
-        // Check if we already have data and it's recent (within last 5 minutes)
-        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-        const isCacheValid =
-          lastFetched &&
-          jobs.length > 0 &&
-          Date.now() - new Date(lastFetched).getTime() < CACHE_DURATION;
+        const lastFetchedDate = lastFetched ? new Date(lastFetched) : null;
+        const now = new Date();
+        const isSameDay =
+          !!lastFetchedDate &&
+          lastFetchedDate.getFullYear() === now.getFullYear() &&
+          lastFetchedDate.getMonth() === now.getMonth() &&
+          lastFetchedDate.getDate() === now.getDate();
+        const isCacheValid = isSameDay && jobs.length > 0;
 
         if (isCacheValid) {
-          console.log("[HomeView] Using cached jobs, skipping fetch");
+          console.log("[HomeView] Reusing today's cached deck — no refetch.");
           return;
         }
 
@@ -1446,6 +1583,10 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
           );
           console.log("[HomeView] Transformed jobs:", transformedJobs.length);
           setJobs(transformedJobs);
+          // Fresh deck → start at card 1. Without this, currentIndex
+          // would persist from the previous (now-replaced) deck and
+          // the user would land mid-pack on an arbitrary card.
+          resetNavigation();
           console.log("[HomeView] Job deck URLs:");
           transformedJobs.forEach((job, i) => {
             console.log(
@@ -1470,13 +1611,19 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
           return;
         }
 
+        // Snapshot the id we're fetching for. If the user clicks a
+        // different role before this resolves, we'll detect the
+        // mismatch and discard the response so we don't overwrite
+        // a fresher fetch with stale data.
+        const fetchingForJobId = activeSponsoredJobId;
         try {
           console.log(
             "[HomeView] Fetching profiles for sponsored job:",
-            activeSponsoredJobId,
+            fetchingForJobId,
           );
           setProfilesLoading(true);
-          const response = await fetchProfilesPack(activeSponsoredJobId);
+          setProfilesError(null);
+          const response = await fetchProfilesPack(fetchingForJobId);
           console.log(
             "[HomeView] Profile pack response:",
             JSON.stringify(response, null, 2),
@@ -1534,6 +1681,10 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
             transformedProfiles[0],
           );
           setProfiles(transformedProfiles);
+          // Mark which role this list represents so the empty-state
+          // check can tell genuine "no applicants" apart from "still
+          // loading after a role switch".
+          setProfilesJobId(fetchingForJobId);
         } catch (err) {
           console.warn("[HomeView] Failed to fetch profiles:", err);
           setProfilesError(
@@ -1552,9 +1703,11 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   // Update local loading state based on store loading and whether we have data
   useEffect(() => {
     if (userType === "applicant") {
-      // Only show skeleton if loading and no data, or if data doesn't exist yet
-      const shouldLoad =
-        (jobsLoading && jobs.length === 0) || jobs.length === 0;
+      // Show skeleton only while the fetch is actually in flight and we
+      // have no data yet. Previously this was `|| jobs.length === 0`
+      // which kept isLoading=true permanently when the API returned an
+      // empty deck, making the skeleton spin forever.
+      const shouldLoad = jobsLoading && jobs.length === 0;
       setIsLoading(shouldLoad);
     } else {
       // For sponsors, show loading while fetching profiles
@@ -1696,32 +1849,18 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     }
   }, [currentData, userType, activeSponsoredJobId]);
 
-  const toggleFlip = () => {
-    // console.log("[HomeView] toggleFlip called");
-    rotateY.value = withTiming(isFlipped ? 0 : 180, { duration: 600 });
-    setIsFlipped(!isFlipped);
-  };
-
-  const toggleMore = () => {
-    const nextShowMore = !showMore;
-    if (nextShowMore) {
-      setShowMore(true);
-      setTimeout(
-        () => scrollRef.current?.scrollTo({ y: 380, animated: true }),
-        80,
-      );
-
-      // For sponsors viewing real API profiles: ensure full details are loaded
-      // (insights, bio, experiences, etc.) Pack endpoint returns minimal fields.
-      if (userType === "sponsor") {
-        const userId = currentData?.USER_ID;
-        if (userId) fetchFullProfileFor(String(userId));
-      }
-    } else {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-      setTimeout(() => setShowMore(false), 300);
-    }
-  };
+  // Hinge-style redesign — when a profile becomes current, kick off the
+  // deep-profile fetch (experiences/education/certs/languages) eagerly
+  // since they're inline in the scroll now instead of behind a Show More
+  // toggle. Idempotent on the cache side so this is a no-op once loaded.
+  useEffect(() => {
+    if (userType !== "sponsor") return;
+    const userId = currentData?.USER_ID;
+    if (userId) fetchFullProfileFor(String(userId));
+    // fetchFullProfileFor is stable enough for our use; we re-fire only on
+    // profile change, not when the function identity churns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentData?.USER_ID, userType]);
 
   const handleSwipe = async (isAccept: boolean) => {
     // Check profile completeness for applicants before any swipe action (unless they're a tester)
@@ -1932,25 +2071,23 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     }
   };
 
-  const nextProfile = (isAccept: boolean) => {
-    if (isFlipped) {
-      rotateY.value = 0;
-      setIsFlipped(false);
-    }
-    setShowMore(false);
+  // Hinge-style profile transition. The card-flip metaphor is gone, so
+  // there's no horizontal swipe to animate — we just cross-fade with a
+  // subtle vertical lift to keep the action feeling responsive. The
+  // `isAccept` arg is retained for API compatibility but no longer drives
+  // a direction since both Pass and Connect feel the same to the layout.
+  const nextProfile = (_isAccept: boolean) => {
+    // Scroll back to the top so the next profile starts at its hero, not
+    // mid-bio. Snap (not animated) — the cross-fade hides the jump.
     scrollRef.current?.scrollTo({ y: 0, animated: false });
 
-    swipeX.value = withTiming(isAccept ? SCREEN_WIDTH : -SCREEN_WIDTH, {
-      duration: 400,
-    });
-    swipeOpacity.value = withTiming(0, { duration: 300 });
+    swipeOpacity.value = withTiming(0, { duration: 220 });
 
     setTimeout(() => {
       setProgress(progress + 1);
       setCurrentProfileIndex(currentProfileIndex + 1);
-      swipeX.value = 0;
-      swipeOpacity.value = withTiming(1, { duration: 300 });
-    }, 400);
+      swipeOpacity.value = withTiming(1, { duration: 280 });
+    }, 220);
   };
 
   const handleMatchModalDismiss = () => {
@@ -1996,1623 +2133,1631 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
     setCurrentProfileIndex(currentProfileIndex + 1);
   };
 
+  // Hinge-style transition — pure opacity cross-fade with a subtle 8px
+  // lift so the swap feels responsive without the abrupt swipe-out the
+  // old card UI used. translateX is intentionally dropped; the page is
+  // a vertical scroll now, so horizontal motion would feel mis-aligned.
   const mainAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: swipeX.value }],
     opacity: swipeOpacity.value,
+    transform: [{ translateY: (1 - swipeOpacity.value) * 8 }],
   }));
 
-  const frontStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateY: `${rotateY.value}deg` }],
-    backfaceVisibility: "hidden",
-  }));
+  // Hinge-style hide-on-scroll for BOTH chrome elements: the bottom nav
+  // bar (slides down) and the top header (slides up). The handler runs
+  // on the worklet thread (no JS bridge), so it stays buttery even on
+  // long profiles. Direction is derived from the frame-to-frame delta of
+  // contentOffset.y; small deltas under DEAD_ZONE are ignored to keep
+  // the bars from juddering during fingertip-jitter.
+  //
+  // The thresholds:
+  //   • Y <= TOP_PIN          → always pin both visible (covers top bounce)
+  //   • Y >= maxY - BOTTOM_PIN → freeze state (covers bottom rubber-band)
+  //   • dy > DEAD_ZONE        → scrolling down → hide both
+  //   • dy < -DEAD_ZONE       → scrolling up   → reveal both
+  //
+  // Why the bottom freeze: when the user reaches the end of the scroll
+  // and keeps pulling, iOS rubber-bands — contentOffset.y overshoots
+  // past maxY, then snaps back. The snap-back fires a burst of frames
+  // with dy < 0 (looks like "scrolling up" to a naive handler), which
+  // would re-reveal the nav and cause it to vibrate against the user's
+  // finger. Freezing the chrome state inside the overscroll zone
+  // kills the jitter completely.
+  //
+  // navTranslateY + headerTranslateY are owned by MainApp; HomeView is
+  // the sole writer to both. Different HIDE_OFFSETs because the header
+  // is shorter than the nav pill — 80 is enough to clear it.
+  const TOP_PIN = 4;
+  const BOTTOM_PIN = 4;
+  const DEAD_ZONE = 3;
+  const NAV_HIDE_OFFSET = 120;
+  const HEADER_HIDE_OFFSET = 80;
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      "worklet";
+      const y = e.contentOffset.y;
+      const dy = y - prevScrollY.value;
+      const maxY = e.contentSize.height - e.layoutMeasurement.height;
+      // Guard `maxY > 0` so we don't accidentally treat a short
+      // profile (no scroll possible) as "always at the bottom".
+      const atBottom = maxY > 0 && y >= maxY - BOTTOM_PIN;
 
-  const backStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateY: `${rotateY.value + 180}deg` }],
-    backfaceVisibility: "hidden",
-    position: "absolute",
-    top: 0,
-    width: "100%",
-    height: "100%",
-  }));
+      if (y <= TOP_PIN) {
+        // At (or above) the top — always reveal. Covers the iOS
+        // overscroll bounce, which can briefly report negative Y.
+        if (navTranslateY && navTranslateY.value !== 0) {
+          navTranslateY.value = withTiming(0, { duration: 220 });
+        }
+        if (headerTranslateY && headerTranslateY.value !== 0) {
+          headerTranslateY.value = withTiming(0, { duration: 220 });
+        }
+      } else if (atBottom) {
+        // At (or past) the bottom — hold the current chrome state.
+        // The rubber-band snap-back generates a flurry of negative
+        // dy frames that would otherwise re-reveal the nav and make
+        // it vibrate against the user's finger. By doing nothing
+        // here, the bar stays exactly where it was when the user
+        // hit the end. As soon as they scroll BACK up past the
+        // bottom zone, the regular dy logic takes over again.
+      } else if (dy > DEAD_ZONE) {
+        if (navTranslateY && navTranslateY.value !== NAV_HIDE_OFFSET) {
+          navTranslateY.value = withTiming(NAV_HIDE_OFFSET, { duration: 220 });
+        }
+        if (headerTranslateY && headerTranslateY.value !== HEADER_HIDE_OFFSET) {
+          headerTranslateY.value = withTiming(HEADER_HIDE_OFFSET, {
+            duration: 220,
+          });
+        }
+      } else if (dy < -DEAD_ZONE) {
+        if (navTranslateY && navTranslateY.value !== 0) {
+          navTranslateY.value = withTiming(0, { duration: 220 });
+        }
+        if (headerTranslateY && headerTranslateY.value !== 0) {
+          headerTranslateY.value = withTiming(0, { duration: 220 });
+        }
+      }
+      prevScrollY.value = y;
+    },
+  });
 
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: withTiming(showMore ? "180deg" : "0deg") }],
-  }));
+  // Animated style consumed by the header element itself. Translates
+  // upward (negative Y) and fades as the shared value grows toward
+  // HEADER_HIDE_OFFSET. Reading the shared value here is what makes
+  // the header tween in lock-step with the nav bar.
+  // headerHeight is captured once via onLayout so we can interpolate the
+  // layout height to 0 as the header hides, collapsing the dead white band.
+  const headerHeight = useSharedValue(0);
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const progress = Math.min(1, (headerTranslateY?.value ?? 0) / 80);
+    const collapsing = progress > 0 && headerHeight.value > 0;
+    return {
+      transform: [{ translateY: -(headerTranslateY?.value ?? 0) }],
+      opacity: 1 - progress,
+      // Only constrain height while actively collapsing. When fully
+      // visible, let natural height through so taller content (e.g. the
+      // sponsor's role-switcher pill that mounts later, once sponsoredJobs
+      // loads) isn't clipped by a stale onLayout capture against
+      // overflow:"hidden".
+      height: collapsing
+        ? Math.max(0, headerHeight.value * (1 - progress))
+        : undefined,
+      marginBottom: collapsing ? (1 - progress) * 28 : undefined,
+      overflow: "hidden",
+    };
+  });
+
+  // Reset both chrome shared values whenever HomeView unmounts (user
+  // switches tab away from Home) so the bar AND header are visible on
+  // the next screen, even if HomeView happened to leave them hidden.
+  useEffect(() => {
+    return () => {
+      if (navTranslateY) navTranslateY.value = 0;
+      if (headerTranslateY) headerTranslateY.value = 0;
+    };
+  }, [navTranslateY, headerTranslateY]);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <Animated.View entering={FadeInDown} style={styles.headerRow}>
-            <View style={styles.progressHeaderContainer}>
-              <Text style={styles.progressText}>
-                Card {Math.min(progress, DECK_SIZE)} of {DECK_SIZE}
-              </Text>
-              <View style={styles.progressTrack}>
-                <Animated.View
-                  style={[styles.progressFill, progressBarStyle]}
-                />
+        {/* Hinge-style page layout: sticky header at top, full-bleed
+            scrollable profile in the middle, sticky action bar at the
+            bottom. The old page-wide ScrollView wrapped EVERYTHING
+            (header + card + nav) which forced the action buttons to
+            scroll with the content. That metaphor's gone — the bar is
+            now persistent so swipe decisions are always one tap away,
+            no matter where you are in a long profile. */}
+        <View style={styles.pageContainer}>
+          {/* Sticky header — outside the scroll so the progress and
+              role-switcher never leave the viewport. */}
+          <Animated.View
+            entering={FadeInDown}
+            onLayout={(e) => {
+              // Re-capture natural height whenever the header isn't mid-
+              // hide animation. Capturing only once was wrong: the first
+              // onLayout fires before sponsoredJobs loads (no role pill),
+              // so the captured height was too small and the pill got
+              // clipped by overflow:"hidden" once it mounted.
+              if ((headerTranslateY?.value ?? 0) === 0) {
+                headerHeight.value = e.nativeEvent.layout.height;
+              }
+            }}
+            style={[styles.headerRow, headerAnimatedStyle]}
+          >
+            {/* Progress indicator — dims + shows "–/10" when the deck
+                isn't active (empty/error/loading states). */}
+            <View
+              style={[
+                styles.progressHeaderContainer,
+                !deckIsActive && { opacity: 0.3 },
+              ]}
+            >
+              <View style={styles.progressLabelRow}>
+                <Text style={styles.progressCurrent}>
+                  {deckIsActive ? Math.min(progress, DECK_SIZE) : "–"}
+                </Text>
+                <Text style={styles.progressTotal}>/{DECK_SIZE}</Text>
+              </View>
+              <View style={styles.progressDotsRow}>
+                {Array.from({ length: DECK_SIZE }).map((_, i) => {
+                  const cardNumber = i + 1;
+                  const isPast = cardNumber < progress;
+                  const isCurrent = cardNumber === progress;
+                  return (
+                    <View
+                      key={i}
+                      style={[
+                        styles.progressDot,
+                        (isPast || isCurrent) && styles.progressDotFilled,
+                      ]}
+                    />
+                  );
+                })}
               </View>
             </View>
-            {/* Job switcher — sponsor-only. Hidden when the sponsor has no
-                sponsored jobs (deck shows the empty state). Always tappable
-                so the sponsor can change roles whenever, even with just one
-                job currently sponsored. */}
+            {/* Role switcher — sponsor-only. Hidden when the sponsor has
+                no sponsored jobs (deck shows the empty state). Always
+                tappable so the sponsor can change roles whenever, even
+                with just one job currently sponsored.
+                Redesigned as a high-contrast black pill (matches the
+                primary CTA language elsewhere in the app). Shows a
+                pending-applicants count badge inline when the active
+                role has unactioned interest, so the most important
+                signal lives right in the header. */}
             {userType === "sponsor" && sponsoredJobs.length > 0 && (
               <TouchableOpacity
                 onPress={() => setShowJobSwitcher(true)}
-                activeOpacity={0.7}
-                style={styles.jobSwitcherPill}
+                activeOpacity={0.85}
+                style={styles.roleSwitcherPill}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <View style={{ flexShrink: 1 }}>
-                  <Text style={styles.jobSwitcherLabel}>ROLE</Text>
-                  <Text
-                    style={styles.jobSwitcherTitle}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {activeSponsoredJob?.title || "Select a role"}
-                  </Text>
-                </View>
-                <ChevronDown color="#666" size={16} style={{ marginLeft: 6 }} />
+                <Text
+                  style={styles.roleSwitcherTitle}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {activeSponsoredJob?.title || "Pick a role"}
+                </Text>
+                {!!activeSponsoredJob?.likesCount &&
+                  activeSponsoredJob.likesCount > 0 && (
+                    <View style={styles.roleSwitcherBadge}>
+                      <Text style={styles.roleSwitcherBadgeText}>
+                        {activeSponsoredJob.likesCount > 99
+                          ? "99+"
+                          : activeSponsoredJob.likesCount}
+                      </Text>
+                    </View>
+                  )}
+                <ChevronDown color="#555" size={14} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
           </Animated.View>
 
           {isDeckFinished ? (
-            <Animated.View entering={FadeInUp} style={styles.emptyState}>
-              <View style={styles.emptyIconCircle}>
-                <RefreshCcw color="#000" size={32} />
-              </View>
-              <Text style={styles.emptyTitle}>All Caught Up!</Text>
-              <Text style={styles.emptySub}>
-                You've reviewed your deck. Come back tomorrow for more.
-              </Text>
-              <TouchableOpacity
-                style={styles.returnBtn}
-                onPress={() => {
-                  resetNavigation();
-                }}
-              >
-                <Text style={styles.returnBtnText}>Refresh Deck</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          ) : userType === "sponsor" && sponsoredJobs.length === 0 ? (
-            /* Empty state for sponsors with no sponsored jobs */
-            <Animated.View entering={FadeInUp} style={styles.emptyState}>
-              <View style={styles.emptyIconCircle}>
-                <Briefcase color="#000" size={32} />
-              </View>
-              <Text style={styles.emptyTitle}>Start Your Journey</Text>
-              <Text style={styles.emptySub}>
-                To see applicant profiles, you need to sponsor or create a job
-                first.
-                {"\n\n"}
-                Browse available jobs from our ATS partners or create your own
-                job posting to start connecting with talented candidates.
-              </Text>
-              <TouchableOpacity
-                style={styles.primaryBtn}
-                onPress={() => {
-                  console.log("[HomeView] Navigate to jobs board");
-                  router.push("/dashboard?mode=sponsor&tab=jobs");
-                }}
-              >
-                <Briefcase color="#FFF" size={20} />
-                <Text style={styles.primaryBtnText}>Browse Jobs</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          ) : hasNoApplicants ? (
-            /* Empty state for sponsors whose job has no applicant interest yet */
-            <Animated.View entering={FadeInUp} style={styles.emptyState}>
-              <View style={styles.emptyIconCircle}>
-                <Users color="#000" size={32} />
-              </View>
-              <Text style={styles.emptyTitle}>No Applicants Yet</Text>
-              <Text style={styles.emptySub}>
-                Your sponsored job is live, but no applicants have shown
-                interest yet.
-                {"\n\n"}
-                This is normal for new postings! Check back soon as candidates
-                discover your opportunity.
-              </Text>
-              <View style={styles.emptyActionsRow}>
+            <View style={styles.fullEmptyContainer}>
+              <Animated.View entering={FadeInUp} style={styles.emptyState}>
+                <View style={styles.emptyIconCircle}>
+                  <RefreshCcw color="#000" size={32} />
+                </View>
+                <Text style={styles.emptyTitle}>All Caught Up!</Text>
+                <Text style={styles.emptySub}>
+                  You've reviewed your deck. Come back tomorrow for more.
+                </Text>
                 <TouchableOpacity
-                  style={styles.secondaryBtn}
+                  style={styles.returnBtn}
                   onPress={() => {
-                    console.log("[HomeView] Refresh profiles");
-                    // Force re-fetch
-                    setProfiles([]);
-                    const loadData = async () => {
-                      if (activeSponsoredJobId) {
+                    resetNavigation();
+                  }}
+                >
+                  <Text style={styles.returnBtnText}>Refresh Deck</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
+          ) : userType === "sponsor" && sponsoredJobs.length === 0 ? (
+            /* "Start Your Journey" — sponsor has no sponsored jobs yet.
+               Redesigned: instead of a flat icon-circle, render a
+               stacked-deck illustration that visually represents "your
+               applicant deck is empty, waiting to be filled". Clean
+               monochrome, generous spacing, single primary CTA. */
+            <View style={styles.fullEmptyContainer}>
+              <Animated.View
+                entering={FadeInUp}
+                style={styles.sponsorEmptyState}
+              >
+                <View style={styles.emptyDeckIllustration}>
+                  <View
+                    style={[styles.emptyDeckCard, styles.emptyDeckCardBack]}
+                  />
+                  <View
+                    style={[styles.emptyDeckCard, styles.emptyDeckCardMid]}
+                  />
+                  <View
+                    style={[styles.emptyDeckCard, styles.emptyDeckCardFront]}
+                  >
+                    <Briefcase color="#000" size={28} strokeWidth={1.8} />
+                  </View>
+                </View>
+
+                <Text style={styles.sponsorEmptyTitle}>Build your deck</Text>
+                <Text style={styles.sponsorEmptySubtitle}>
+                  Sponsor a role to start seeing applicants matched to it. Pick
+                  one from the ATS feed or post your own.
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.sponsorEmptyPrimary}
+                  onPress={() => {
+                    router.push("/dashboard?mode=sponsor&tab=jobs");
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.sponsorEmptyPrimaryText}>
+                    Browse Jobs
+                  </Text>
+                  <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
+          ) : hasNoApplicants ? (
+            /* "No Applicants Yet" — sponsor has a sponsored role but no
+               one's shown interest yet. Redesigned to feel less "empty"
+               and more "in flight": a pulsing LIVE indicator at the
+               top, a preview card of the role itself (so the user
+               knows exactly which sponsored job they're waiting on),
+               and momentum-positive copy. */
+            <View style={styles.fullEmptyContainer}>
+              <Animated.View
+                entering={FadeInUp}
+                style={styles.sponsorEmptyState}
+              >
+                <View style={styles.livePill}>
+                  <Animated.View style={[styles.liveDot, livePulseStyle]} />
+                  <Text style={styles.livePillText}>LIVE</Text>
+                </View>
+
+                {activeSponsoredJob && (
+                  <View style={styles.sponsorWaitingJobCard}>
+                    <CompanyLogo
+                      logoUrl={undefined}
+                      name={activeSponsoredJob.company}
+                      size={48}
+                      borderRadius={24}
+                      initialFontSize={20}
+                    />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        style={styles.sponsorWaitingJobTitle}
+                        numberOfLines={1}
+                      >
+                        {activeSponsoredJob.title || "Untitled role"}
+                      </Text>
+                      {!!activeSponsoredJob.company && (
+                        <Text
+                          style={styles.sponsorWaitingJobCompany}
+                          numberOfLines={1}
+                        >
+                          {activeSponsoredJob.company}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                <Text style={styles.sponsorEmptyTitle}>Out in the wild</Text>
+                <Text style={styles.sponsorEmptySubtitle}>
+                  Your role is in front of candidates. New applicants surface
+                  here the moment they show interest — usually within a day of
+                  going live.
+                </Text>
+
+                <View style={styles.sponsorEmptyActions}>
+                  <TouchableOpacity
+                    style={styles.sponsorEmptySecondary}
+                    onPress={() => {
+                      // Reset both the list and the job-id tag so the
+                      // empty-state check goes through the loading
+                      // branch while the retry is in flight.
+                      setProfiles([]);
+                      setProfilesJobId(null);
+                      setProfilesError(null);
+                      const loadData = async () => {
+                        if (activeSponsoredJobId) {
+                          const fetchingForJobId = activeSponsoredJobId;
+                          try {
+                            setProfilesLoading(true);
+                            const response =
+                              await fetchProfilesPack(fetchingForJobId);
+                            setProfiles(response.profiles);
+                            setProfilesJobId(fetchingForJobId);
+                          } catch (err) {
+                            console.warn(
+                              "[HomeView] Failed to fetch profiles:",
+                              err,
+                            );
+                            setProfilesError(
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to fetch profiles",
+                            );
+                          } finally {
+                            setProfilesLoading(false);
+                          }
+                        }
+                      };
+                      loadData();
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+                    <Text style={styles.sponsorEmptySecondaryText}>
+                      Refresh
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sponsorEmptyPrimary}
+                    onPress={() => {
+                      router.push("/dashboard?mode=sponsor&tab=jobs");
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.sponsorEmptyPrimaryText}>
+                      Sponsor Another
+                    </Text>
+                    <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </View>
+          ) : userType === "sponsor" &&
+            profilesError &&
+            profiles.length === 0 ? (
+            <View style={styles.fullEmptyContainer}>
+              <Animated.View entering={FadeInUp} style={styles.emptyState}>
+                <View style={styles.emptyIconCircle}>
+                  <RefreshCcw color="#000" size={32} />
+                </View>
+                <Text style={styles.emptyTitle}>Couldn't Load Profiles</Text>
+                <Text style={styles.emptySub}>
+                  We hit a snag fetching applicants for this role.
+                  {"\n\n"}
+                  {profilesError}
+                </Text>
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={() => {
+                    // Re-trigger the load effect by clearing the
+                    // tagged jobId. Setting profilesJobId to null
+                    // and clearing the error nudges the dependency
+                    // chain so the user gets a fresh attempt.
+                    setProfilesError(null);
+                    setProfilesJobId(null);
+                    const id = activeSponsoredJobId;
+                    if (id) {
+                      (async () => {
                         try {
                           setProfilesLoading(true);
-                          const response =
-                            await fetchProfilesPack(activeSponsoredJobId);
-                          setProfiles(response.profiles);
+                          const response = await fetchProfilesPack(id);
+                          const transformed = (response.profiles || []).map(
+                            (profile: any) => {
+                              const skills = profile.SKILLS
+                                ? JSON.parse(profile.SKILLS)
+                                : [];
+                              const positions = profile.POSITIONS
+                                ? JSON.parse(profile.POSITIONS)
+                                : [];
+                              let prompts: any[] = [];
+                              if (profile.INSIGHTS) {
+                                try {
+                                  const parsed = JSON.parse(profile.INSIGHTS);
+                                  if (Array.isArray(parsed)) prompts = parsed;
+                                } catch {}
+                              }
+                              return {
+                                ...profile,
+                                id: profile.USER_ID,
+                                name: `${profile.FIRST_NAME} ${profile.LAST_NAME}`.trim(),
+                                location: profile.LOCATION || "",
+                                skills,
+                                desiredRole:
+                                  positions[0] || "Open to opportunities",
+                                bio:
+                                  profile.BIO ||
+                                  profile.REASON ||
+                                  "Looking for new opportunities",
+                                prompts,
+                                image: profile.PHOTO_URL || "",
+                                company: "",
+                              };
+                            },
+                          );
+                          setProfiles(transformed);
+                          setProfilesJobId(id);
                         } catch (err) {
-                          console.warn(
-                            "[HomeView] Failed to fetch profiles:",
-                            err,
+                          setProfilesError(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to fetch profiles",
                           );
                         } finally {
                           setProfilesLoading(false);
                         }
-                      }
-                    };
-                    loadData();
+                      })();
+                    }
                   }}
                 >
-                  <RefreshCcw color="#000" size={18} />
-                  <Text style={styles.secondaryBtnText}>Refresh</Text>
+                  <RefreshCcw color="#FFF" size={18} />
+                  <Text style={styles.primaryBtnText}>Try Again</Text>
                 </TouchableOpacity>
+              </Animated.View>
+            </View>
+          ) : userType === "applicant" && jobsError && jobs.length === 0 ? (
+            /* Applicant error state — fetch threw or returned an error.
+               Mirrors the sponsor error state visually (icon circle +
+               RefreshCcw + Try Again) so the design language is
+               consistent regardless of which side of the market you're on. */
+            <View style={styles.fullEmptyContainer}>
+              <Animated.View entering={FadeInUp} style={styles.emptyState}>
+                <View style={styles.emptyIconCircle}>
+                  <RefreshCcw color="#000" size={32} />
+                </View>
+                <Text style={styles.emptyTitle}>Couldn't Load Roles</Text>
+                <Text style={styles.emptySub}>
+                  Something went wrong fetching your deck. Check your connection
+                  and try again.
+                </Text>
                 <TouchableOpacity
                   style={styles.primaryBtn}
                   onPress={() => {
-                    console.log(
-                      "[HomeView] Navigate to jobs board to sponsor more",
-                    );
-                    router.push("/dashboard?mode=sponsor&tab=jobs");
+                    (async () => {
+                      try {
+                        setJobsLoading(true);
+                        setJobsError(null);
+                        const apiJobs = await fetchJobsPack();
+                        const transformedJobs = apiJobs.map(
+                          (job: JobApiResponse) => transformJobApiResponse(job),
+                        );
+                        setJobs(transformedJobs);
+                        resetNavigation();
+                      } catch (err) {
+                        setJobsError(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to fetch jobs",
+                        );
+                      } finally {
+                        setJobsLoading(false);
+                      }
+                    })();
                   }}
                 >
-                  <Briefcase color="#FFF" size={18} />
-                  <Text style={styles.primaryBtnText}>Sponsor Another Job</Text>
+                  <RefreshCcw color="#FFF" size={18} />
+                  <Text style={styles.primaryBtnText}>Try Again</Text>
                 </TouchableOpacity>
-              </View>
-            </Animated.View>
+              </Animated.View>
+            </View>
+          ) : userType === "applicant" && !jobsLoading && jobs.length === 0 ? (
+            /* Applicant no-jobs state — fetch completed successfully but
+               the API returned an empty deck. Uses the same stacked-deck
+               illustration as the sponsor "Build your deck" state to keep
+               visual language consistent; copy is applicant-appropriate. */
+            <View style={styles.fullEmptyContainer}>
+              <Animated.View
+                entering={FadeInUp}
+                style={styles.sponsorEmptyState}
+              >
+                <View style={styles.emptyDeckIllustration}>
+                  <View
+                    style={[styles.emptyDeckCard, styles.emptyDeckCardBack]}
+                  />
+                  <View
+                    style={[styles.emptyDeckCard, styles.emptyDeckCardMid]}
+                  />
+                  <View
+                    style={[styles.emptyDeckCard, styles.emptyDeckCardFront]}
+                  >
+                    <Briefcase color="#000" size={28} strokeWidth={1.8} />
+                  </View>
+                </View>
+
+                <Text style={styles.sponsorEmptyTitle}>You're early</Text>
+                <Text style={styles.sponsorEmptySubtitle}>
+                  We're filling the deck with roles matched to your profile.
+                  Check back tomorrow for a fresh batch.
+                </Text>
+
+                <View style={styles.sponsorEmptyActions}>
+                  <TouchableOpacity
+                    style={styles.sponsorEmptySecondary}
+                    onPress={() => {
+                      (async () => {
+                        try {
+                          setJobsLoading(true);
+                          const apiJobs = await fetchJobsPack();
+                          const transformedJobs = apiJobs.map(
+                            (job: JobApiResponse) =>
+                              transformJobApiResponse(job),
+                          );
+                          setJobs(transformedJobs);
+                          resetNavigation();
+                        } catch (err) {
+                          setJobsError(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to fetch jobs",
+                          );
+                        } finally {
+                          setJobsLoading(false);
+                        }
+                      })();
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+                    <Text style={styles.sponsorEmptySecondaryText}>
+                      Refresh
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </View>
           ) : isLoading ? (
-            <SkeletonCard />
-          ) : !currentData ? (
-            /* Safety check - no data available */
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Loading...</Text>
+            <View style={styles.fullEmptyContainer}>
+              <SkeletonCard />
             </View>
           ) : (
-            <View>
-              <Animated.View style={[styles.cardContainer, mainAnimatedStyle]}>
-                <Pressable onPress={toggleFlip}>
+            <>
+              {/* Hinge-style: one big vertically-scrolling profile with a
+                  cross-fade transition between deck entries. The card
+                  metaphor — front face / back face / flip / "show more"
+                  toggle — is gone. Everything that used to be split across
+                  those surfaces now lives inline below the hero, so the
+                  user scrolls through one continuous, well-paced read. */}
+              <Animated.View style={[styles.profileFader, mainAnimatedStyle]}>
+                <Animated.ScrollView
+                  ref={scrollRef as any}
+                  contentContainerStyle={styles.profileScrollContent}
+                  showsVerticalScrollIndicator={false}
+                  onScroll={scrollHandler}
+                  scrollEventThrottle={16}
+                >
                   {userType === "sponsor" ? (
-                    /* SPONSOR VIEW - Profile Cards */
+                    /* ────────────────────────────────────────────────────
+                       SPONSOR VIEW — applicant profile, vertical scroll
+                       ──────────────────────────────────────────────────── */
                     <>
-                      {/* Front Face - Profile */}
-                      <Animated.View
-                        style={[styles.cardOuter, frontStyle]}
-                        pointerEvents={isFlipped ? "none" : "auto"}
-                      >
-                        <View style={styles.cardInner}>
-                          {/* "Liked your role" badge — PR #56 ships
-                              HAS_LIKED_JOB / LIKED_JOB_AT on each profile-pack
-                              row so the sponsor can immediately see who's
-                              high-conviction interest vs general discovery.
-                              Renders as a top-of-card tag, hidden when the
-                              applicant hasn't liked the role. */}
-                          {(currentData as any).HAS_LIKED_JOB === true && (
-                            <View style={styles.likedYourRolePill}>
-                              <Heart
-                                size={11}
-                                color="#FFF"
-                                fill="#FFF"
-                                strokeWidth={2}
-                              />
-                              <Text style={styles.likedYourRolePillText}>
-                                LIKED YOUR ROLE
+                      {/* "Liked your role" badge (PR #56) — high-conviction
+                          interest, anchored at the top before the hero so
+                          it's the first thing the sponsor sees. */}
+                      {(currentData as any).HAS_LIKED_JOB === true && (
+                        <View style={styles.likedYourRoleRow}>
+                          <View style={styles.likedYourRolePill}>
+                            <Heart
+                              size={11}
+                              color="#FFF"
+                              fill="#FFF"
+                              strokeWidth={2}
+                            />
+                            <Text style={styles.likedYourRolePillText}>
+                              LIKED YOUR ROLE
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+
+                      {/* HERO — applicant identity */}
+                      <View style={styles.hingeHero}>
+                        {"image" in currentData && currentData.image ? (
+                          <Image
+                            source={{ uri: currentData.image as string }}
+                            style={styles.hingeHeroAvatar}
+                          />
+                        ) : (
+                          <View style={styles.hingeHeroAvatarFallback}>
+                            <Text style={styles.hingeHeroAvatarInitial}>
+                              {("name" in currentData
+                                ? currentData.name || "?"
+                                : "?")[0].toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={styles.hingeHeroName} numberOfLines={2}>
+                          {"name" in currentData ? currentData.name : ""}
+                        </Text>
+                        {"desiredRole" in currentData &&
+                          !!currentData.desiredRole && (
+                            <Text
+                              style={styles.hingeHeroSubtitle}
+                              numberOfLines={2}
+                            >
+                              {currentData.desiredRole}
+                            </Text>
+                          )}
+                        <View style={styles.hingeHeroPillRow}>
+                          {"company" in currentData &&
+                            !!currentData.company && (
+                              <View style={styles.heroPill}>
+                                <Briefcase color="#666" size={11} />
+                                <Text style={styles.heroPillText}>
+                                  {currentData.company}
+                                </Text>
+                              </View>
+                            )}
+                          {"location" in currentData &&
+                            !!currentData.location && (
+                              <View style={styles.heroPill}>
+                                <MapPin color="#666" size={11} />
+                                <Text style={styles.heroPillText}>
+                                  {currentData.location}
+                                </Text>
+                              </View>
+                            )}
+                        </View>
+                      </View>
+
+                      <View style={styles.hingeDivider} />
+
+                      {/* ABOUT — full bio, no clamp */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cachedBio =
+                          uid && fullProfileCache[String(uid)]?.bio;
+                        const bio: string =
+                          cachedBio ||
+                          ("bio" in currentData ? currentData.bio : "") ||
+                          "";
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>ABOUT</Text>
+                            <Text style={styles.hingeBodyText}>
+                              {bio.trim().length > 0
+                                ? bio
+                                : "No bio added yet."}
+                            </Text>
+                          </View>
+                        );
+                      })()}
+
+                      {/* INSIGHTS — Q&A cards, full text */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cached = uid
+                          ? fullProfileCache[String(uid)]
+                          : null;
+                        const inlinePrompts =
+                          "prompts" in currentData
+                            ? (currentData as any).prompts
+                            : null;
+                        const prompts: any[] =
+                          cached?.prompts && cached.prompts.length > 0
+                            ? cached.prompts
+                            : Array.isArray(inlinePrompts)
+                              ? inlinePrompts
+                              : [];
+                        if (prompts.length === 0 && fullProfileLoading) {
+                          return (
+                            <View style={styles.hingeSection}>
+                              <Text style={styles.hingeSectionLabel}>
+                                INSIGHTS
+                              </Text>
+                              <View
+                                style={{
+                                  alignItems: "flex-start",
+                                  paddingVertical: 4,
+                                }}
+                              >
+                                <ActivityIndicator color="#999" />
+                              </View>
+                            </View>
+                          );
+                        }
+                        if (prompts.length === 0) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              INSIGHTS
+                            </Text>
+                            {prompts.map((prompt: any, idx: number) => (
+                              <View
+                                key={idx}
+                                style={[
+                                  styles.hingeInsightCard,
+                                  idx > 0 && { marginTop: 14 },
+                                ]}
+                              >
+                                {/* Vertical black accent stripe — pulls
+                                    the eye to the content without
+                                    introducing color into the monochrome
+                                    palette. */}
+                                <View style={styles.hingeInsightAccent} />
+                                <View style={styles.hingeInsightBody}>
+                                  {!!prompt.question && (
+                                    <Text style={styles.hingeInsightQuestion}>
+                                      {prompt.question}
+                                    </Text>
+                                  )}
+                                  {/* Decorative opening quote — large
+                                      serif-style mark sits flush with
+                                      the answer's first line, giving
+                                      the card its "in their own words"
+                                      gravitas. */}
+                                  <View style={styles.hingeInsightAnswerRow}>
+                                    <Text style={styles.hingeInsightQuoteMark}>
+                                      “
+                                    </Text>
+                                    <Text style={styles.hingeInsightAnswer}>
+                                      {prompt.answer}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      })()}
+
+                      {/* TOP SKILLS — chips */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cached = uid
+                          ? fullProfileCache[String(uid)]
+                          : null;
+                        const fromCache = Array.isArray((cached as any)?.skills)
+                          ? ((cached as any).skills as string[])
+                          : [];
+                        const fromCard =
+                          "skills" in currentData &&
+                          Array.isArray((currentData as any).skills)
+                            ? ((currentData as any).skills as string[])
+                            : [];
+                        const skills =
+                          fromCache.length > 0 ? fromCache : fromCard;
+                        if (skills.length === 0) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              TOP SKILLS
+                            </Text>
+                            <View style={styles.hingeChipsWrap}>
+                              {skills.map((skill: string, idx: number) => (
+                                <View key={idx} style={styles.hingeSkillChip}>
+                                  <Text style={styles.hingeSkillChipText}>
+                                    {skill}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })()}
+
+                      {/* EXPERIENCE — timeline */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cached = uid
+                          ? fullProfileCache[String(uid)]
+                          : null;
+                        const experiences: any[] = Array.isArray(
+                          cached?.experiences,
+                        )
+                          ? cached!.experiences
+                          : [];
+                        if (experiences.length === 0) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              EXPERIENCE
+                            </Text>
+                            {experiences.map((exp: any, idx: number) => (
+                              <View
+                                key={idx}
+                                style={[
+                                  styles.hingeTimelineRow,
+                                  idx > 0 && { marginTop: 18 },
+                                ]}
+                              >
+                                <View style={styles.hingeTimelineDot} />
+                                <View style={styles.hingeTimelineBody}>
+                                  <Text style={styles.hingeTimelineTitle}>
+                                    {exp.jobTitle}
+                                  </Text>
+                                  <Text style={styles.hingeTimelineSubtitle}>
+                                    {exp.company}
+                                  </Text>
+                                  <Text style={styles.hingeTimelineMeta}>
+                                    {exp.startDate}
+                                    {exp.current
+                                      ? " — Present"
+                                      : exp.endDate
+                                        ? ` — ${exp.endDate}`
+                                        : ""}
+                                  </Text>
+                                  {!!exp.description && (
+                                    <Text
+                                      style={styles.hingeTimelineDescription}
+                                    >
+                                      {exp.description}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      })()}
+
+                      {/* EDUCATION — timeline */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cached = uid
+                          ? fullProfileCache[String(uid)]
+                          : null;
+                        const education: any[] = Array.isArray(
+                          cached?.education,
+                        )
+                          ? cached!.education
+                          : [];
+                        if (education.length === 0) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              EDUCATION
+                            </Text>
+                            {education.map((edu: any, idx: number) => (
+                              <View
+                                key={idx}
+                                style={[
+                                  styles.hingeTimelineRow,
+                                  idx > 0 && { marginTop: 18 },
+                                ]}
+                              >
+                                <View style={styles.hingeTimelineDot} />
+                                <View style={styles.hingeTimelineBody}>
+                                  <Text style={styles.hingeTimelineTitle}>
+                                    {edu.degree}
+                                    {edu.major ? ` in ${edu.major}` : ""}
+                                  </Text>
+                                  <Text style={styles.hingeTimelineSubtitle}>
+                                    {edu.university}
+                                  </Text>
+                                  <Text style={styles.hingeTimelineMeta}>
+                                    {[
+                                      edu.graduationYear &&
+                                        `Class of ${edu.graduationYear}`,
+                                      edu.gpa && `GPA ${edu.gpa}`,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </Text>
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      })()}
+
+                      {/* CERTIFICATIONS — credential blocks */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cached = uid
+                          ? fullProfileCache[String(uid)]
+                          : null;
+                        const certs: any[] = Array.isArray(
+                          cached?.certifications,
+                        )
+                          ? cached!.certifications
+                          : [];
+                        if (certs.length === 0) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              CERTIFICATIONS
+                            </Text>
+                            <View style={styles.hingeCredentialList}>
+                              {certs.map((cert: any, idx: number) => (
+                                <View
+                                  key={idx}
+                                  style={styles.hingeCredentialBlock}
+                                >
+                                  <Text style={styles.hingeCredentialName}>
+                                    {cert.name}
+                                  </Text>
+                                  <Text style={styles.hingeCredentialMeta}>
+                                    {cert.organization}
+                                    {cert.year ? ` · ${cert.year}` : ""}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })()}
+
+                      {/* LANGUAGES — credential blocks */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cached = uid
+                          ? fullProfileCache[String(uid)]
+                          : null;
+                        const langs: any[] = Array.isArray(cached?.languages)
+                          ? cached!.languages
+                          : [];
+                        if (langs.length === 0) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              LANGUAGES
+                            </Text>
+                            <View style={styles.hingeCredentialList}>
+                              {langs.map((lang: any, idx: number) => (
+                                <View
+                                  key={idx}
+                                  style={styles.hingeCredentialBlock}
+                                >
+                                  <Text style={styles.hingeCredentialName}>
+                                    {lang.language}
+                                  </Text>
+                                  <Text style={styles.hingeCredentialMeta}>
+                                    {lang.proficiency}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })()}
+
+                      {/* ACHIEVEMENTS */}
+                      {(() => {
+                        const uid = (currentData as any)?.USER_ID;
+                        const cached = uid
+                          ? fullProfileCache[String(uid)]
+                          : null;
+                        const ach: string = cached?.achievements || "";
+                        if (!ach) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              ACHIEVEMENTS
+                            </Text>
+                            <Text style={styles.hingeBodyText}>{ach}</Text>
+                          </View>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    /* ────────────────────────────────────────────────────
+                       APPLICANT VIEW — job, vertical scroll
+                       ──────────────────────────────────────────────────── */
+                    <>
+                      {/* Status banner at the top — waitlisted /
+                          sponsor-requested / applied. Replaces the old
+                          "overlay" that floated above the card image. */}
+                      {"id" in currentData &&
+                        (waitlistedJobIds.has(String(currentData.id)) ||
+                          requestedSponsorJobIds.has(String(currentData.id)) ||
+                          appliedJobIds.has(String(currentData.id))) && (
+                          <View style={styles.statusBannerRow}>
+                            {waitlistedJobIds.has(String(currentData.id)) ? (
+                              <View style={styles.statusBanner}>
+                                <Check color="#FFF" size={13} strokeWidth={3} />
+                                <Text style={styles.statusBannerText}>
+                                  Waitlisted
+                                </Text>
+                              </View>
+                            ) : requestedSponsorJobIds.has(
+                                String(currentData.id),
+                              ) ? (
+                              <View style={styles.statusBanner}>
+                                <Check color="#FFF" size={13} strokeWidth={3} />
+                                <Text style={styles.statusBannerText}>
+                                  Sponsor requested
+                                </Text>
+                              </View>
+                            ) : (
+                              <View style={styles.statusBanner}>
+                                <Check color="#FFF" size={13} strokeWidth={3} />
+                                <Text style={styles.statusBannerText}>
+                                  Applied
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+
+                      {/* HERO — company logo + role identity */}
+                      <View style={styles.hingeHero}>
+                        <CompanyLogo
+                          logoUrl={
+                            "image" in currentData
+                              ? (currentData.image as string)
+                              : undefined
+                          }
+                          name={
+                            "company" in currentData
+                              ? (currentData.company as string)
+                              : ""
+                          }
+                          size={88}
+                          borderRadius={44}
+                          initialFontSize={32}
+                        />
+                        <Text style={styles.hingeHeroName} numberOfLines={3}>
+                          {"title" in currentData ? currentData.title : ""}
+                        </Text>
+                        {"company" in currentData && !!currentData.company && (
+                          <Text
+                            style={styles.hingeHeroSubtitle}
+                            numberOfLines={1}
+                          >
+                            {currentData.company}
+                          </Text>
+                        )}
+                        {"isSponsored" in currentData && (
+                          <View
+                            style={
+                              currentData.isSponsored
+                                ? styles.heroStatusSponsored
+                                : styles.heroStatusMuted
+                            }
+                          >
+                            {currentData.isSponsored && (
+                              <Check color="#FFF" size={10} strokeWidth={3} />
+                            )}
+                            <Text
+                              style={
+                                currentData.isSponsored
+                                  ? styles.heroStatusSponsoredText
+                                  : styles.heroStatusMutedText
+                              }
+                            >
+                              {currentData.isSponsored
+                                ? "Sponsored"
+                                : "No sponsor yet"}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={styles.hingeHeroPillRow}>
+                          {"location" in currentData &&
+                            !!currentData.location && (
+                              <View style={styles.heroPill}>
+                                <MapPin color="#666" size={11} />
+                                <Text style={styles.heroPillText}>
+                                  {currentData.location}
+                                </Text>
+                              </View>
+                            )}
+                          {"salary" in currentData && !!currentData.salary && (
+                            <View style={styles.heroPill}>
+                              <DollarSign color="#666" size={11} />
+                              <Text style={styles.heroPillText}>
+                                {currentData.salary}
                               </Text>
                             </View>
                           )}
-
-                          {/* Centered identity hero — circular avatar,
-                              name, desired-role subtitle, and a centered
-                              row of fact pills. */}
-                          <View style={styles.heroCentered}>
-                            {"image" in currentData && currentData.image ? (
-                              <Image
-                                source={{ uri: currentData.image }}
-                                style={styles.heroAvatar}
-                              />
-                            ) : (
-                              <View style={styles.heroAvatarFallback}>
-                                <Text style={styles.heroAvatarInitial}>
-                                  {("name" in currentData
-                                    ? currentData.name || "?"
-                                    : "?")[0].toUpperCase()}
+                          {"type" in currentData && !!currentData.type && (
+                            <View style={styles.heroPill}>
+                              <Briefcase color="#666" size={11} />
+                              <Text style={styles.heroPillText}>
+                                {currentData.type}
+                              </Text>
+                            </View>
+                          )}
+                          {"relevanceScore" in currentData &&
+                            (currentData as any).relevanceScore > 0 && (
+                              <View style={styles.heroPillAccent}>
+                                <Zap size={10} color="#FFF" strokeWidth={2.5} />
+                                <Text style={styles.heroPillAccentText}>
+                                  {Math.round(
+                                    (currentData as any).relevanceScore > 1
+                                      ? (currentData as any).relevanceScore
+                                      : (currentData as any).relevanceScore *
+                                          100,
+                                  )}
+                                  % AI Match
                                 </Text>
                               </View>
                             )}
+                        </View>
+                      </View>
 
-                            <Text style={styles.heroName} numberOfLines={1}>
-                              {"name" in currentData ? currentData.name : ""}
+                      <View style={styles.hingeDivider} />
+
+                      {/* ABOUT THE ROLE — full text, no clamp */}
+                      {(() => {
+                        const description =
+                          "description" in currentData
+                            ? currentData.description || ""
+                            : "";
+                        if (!description.trim()) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              ABOUT THE ROLE
                             </Text>
+                            <Text style={styles.hingeBodyText}>
+                              {description}
+                            </Text>
+                          </View>
+                        );
+                      })()}
 
-                            {"desiredRole" in currentData &&
-                              !!currentData.desiredRole && (
-                                <Text
-                                  style={styles.heroSubtitle}
-                                  numberOfLines={1}
-                                >
-                                  {currentData.desiredRole}
-                                </Text>
+                      {/* ROLE DETAILS — experience level + work arrangement chips */}
+                      {(() => {
+                        const expLvl =
+                          "experienceLevel" in currentData
+                            ? (currentData as any).experienceLevel
+                            : "";
+                        const workArr =
+                          "workArrangement" in currentData
+                            ? (currentData as any).workArrangement
+                            : "";
+                        if (!expLvl && !workArr) return null;
+                        return (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              ROLE DETAILS
+                            </Text>
+                            <View style={styles.hingeChipsWrap}>
+                              {!!expLvl && (
+                                <View style={styles.roleDetailChip}>
+                                  <Briefcase size={13} color="#000" />
+                                  <Text style={styles.roleDetailChipText}>
+                                    {(() => {
+                                      const v = String(expLvl).trim();
+                                      return /^[\d+\-\s]+$/.test(v)
+                                        ? `${v} years experience`
+                                        : v;
+                                    })()}
+                                  </Text>
+                                </View>
                               )}
-
-                            <View style={styles.heroPillRow}>
-                              {"company" in currentData &&
-                                !!currentData.company && (
-                                  <View style={styles.heroPill}>
-                                    <Briefcase color="#666" size={11} />
-                                    <Text style={styles.heroPillText}>
-                                      {currentData.company}
-                                    </Text>
-                                  </View>
-                                )}
-                              {"location" in currentData &&
-                                !!currentData.location && (
-                                  <View style={styles.heroPill}>
-                                    <MapPin color="#666" size={11} />
-                                    <Text style={styles.heroPillText}>
-                                      {currentData.location}
-                                    </Text>
-                                  </View>
-                                )}
+                              {!!workArr && (
+                                <View style={styles.roleDetailChip}>
+                                  <MapPin size={13} color="#000" />
+                                  <Text style={styles.roleDetailChipText}>
+                                    {workArr}
+                                  </Text>
+                                </View>
+                              )}
                             </View>
                           </View>
+                        );
+                      })()}
 
-                          {/* About — left-aligned for readability */}
-                          <View style={styles.heroAboutBlock}>
-                            {(() => {
-                              const uid = (currentData as any)?.USER_ID;
-                              const cachedBio =
-                                uid && fullProfileCache[String(uid)]?.bio;
-                              const bio: string =
-                                cachedBio ||
-                                ("bio" in currentData ? currentData.bio : "") ||
-                                "";
-                              const hasBio = bio.trim().length > 0;
-                              // Show "Read more" whenever the text is cut off.
-                              // onTextLayout is precise on iOS; the char-count
-                              // is an Android-safe fallback (onTextLayout can
-                              // report clamped counts there).
-                              const showReadMore =
-                                hasBio && (aboutTruncated || bio.length > 160);
-                              return (
-                                <>
-                                  <Text style={styles.sectionLabelSmall}>
-                                    ABOUT
-                                  </Text>
-                                  <Text
-                                    style={styles.descriptionText}
-                                    numberOfLines={5}
-                                    onTextLayout={(e) => {
-                                      const t = e.nativeEvent.lines.length > 5;
-                                      if (t !== aboutTruncated)
-                                        setAboutTruncated(t);
-                                    }}
-                                  >
-                                    {hasBio ? bio : "No bio added yet."}
-                                  </Text>
-                                  {showReadMore && (
-                                    <TouchableOpacity
-                                      onPress={(e) => {
-                                        e.stopPropagation();
-                                        setShowFullBio(true);
-                                      }}
-                                      activeOpacity={0.7}
-                                      style={styles.readMoreBtn}
-                                    >
-                                      <Text style={styles.readMoreBtnText}>
-                                        Read more
-                                      </Text>
-                                      <ChevronRight color="#000" size={12} />
-                                    </TouchableOpacity>
-                                  )}
-                                </>
-                              );
-                            })()}
+                      {/* CORE RESPONSIBILITIES */}
+                      {"coreResponsibilities" in currentData &&
+                        (currentData as any).coreResponsibilities && (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              CORE RESPONSIBILITIES
+                            </Text>
+                            <Text style={styles.hingeBodyText}>
+                              {(currentData as any).coreResponsibilities}
+                            </Text>
                           </View>
-                        </View>
-                      </Animated.View>
+                        )}
 
-                      {/* Back Face - Applicant Deep Profile */}
-                      <Animated.View
-                        style={[
-                          styles.cardOuter,
-                          styles.cardOuterBack,
-                          backStyle,
-                        ]}
-                      >
-                        <View style={[styles.cardInner, styles.cardInnerBack]}>
-                          {/* flex:1 bounds the ScrollView to the card's
-                              fixed height so long content scrolls inside
-                              the card instead of overflowing past it. */}
-                          <ScrollView
-                            style={{ flex: 1 }}
-                            showsVerticalScrollIndicator
-                            contentContainerStyle={styles.applicantBackScroll}
-                          >
-                            {(() => {
-                              const uid = (currentData as any)?.USER_ID;
-                              const cached = uid
-                                ? fullProfileCache[String(uid)]
-                                : null;
-                              const inlinePrompts =
-                                "prompts" in currentData
-                                  ? (currentData as any).prompts
-                                  : null;
-                              const prompts: any[] =
-                                cached?.prompts && cached.prompts.length > 0
-                                  ? cached.prompts
-                                  : Array.isArray(inlinePrompts)
-                                    ? inlinePrompts
-                                    : [];
-                              const experiences: any[] = Array.isArray(
-                                cached?.experiences,
-                              )
-                                ? cached!.experiences
-                                : [];
-                              const education: any[] = Array.isArray(
-                                cached?.education,
-                              )
-                                ? cached!.education
-                                : [];
-                              const certifications: any[] = Array.isArray(
-                                cached?.certifications,
-                              )
-                                ? cached!.certifications
-                                : [];
-                              const languages: any[] = Array.isArray(
-                                cached?.languages,
-                              )
-                                ? cached!.languages
-                                : [];
-                              const achievements: string =
-                                cached?.achievements || "";
+                      {/* REQUIREMENTS */}
+                      {"requirementsSummary" in currentData &&
+                        (currentData as any).requirementsSummary && (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              REQUIREMENTS
+                            </Text>
+                            <Text style={styles.hingeBodyText}>
+                              {(currentData as any).requirementsSummary}
+                            </Text>
+                          </View>
+                        )}
 
-                              const name =
-                                "name" in currentData ? currentData.name : "";
-                              const photo =
-                                "image" in currentData ? currentData.image : "";
-                              const role =
-                                "desiredRole" in currentData
-                                  ? currentData.desiredRole
-                                  : "";
-                              const location =
-                                "location" in currentData
-                                  ? currentData.location
-                                  : "";
+                      {/* REQUIRED SKILLS — chips */}
+                      {"skills" in currentData &&
+                        currentData.skills &&
+                        currentData.skills.length > 0 && (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              REQUIRED SKILLS
+                            </Text>
+                            <View style={styles.hingeChipsWrap}>
+                              {currentData.skills.map(
+                                (skill: string, idx: number) => (
+                                  <View key={idx} style={styles.hingeSkillChip}>
+                                    <Text style={styles.hingeSkillChipText}>
+                                      {skill}
+                                    </Text>
+                                  </View>
+                                ),
+                              )}
+                            </View>
+                          </View>
+                        )}
 
-                              const stats: { value: string; label: string }[] =
-                                [];
-                              if (experiences.length > 0) {
-                                stats.push({
-                                  value: String(experiences.length),
-                                  label:
-                                    experiences.length === 1 ? "Role" : "Roles",
-                                });
-                              }
-                              if (languages.length > 0) {
-                                stats.push({
-                                  value: String(languages.length),
-                                  label:
-                                    languages.length === 1
-                                      ? "Language"
-                                      : "Languages",
-                                });
-                              }
-                              if (certifications.length > 0) {
-                                stats.push({
-                                  value: String(certifications.length),
-                                  label:
-                                    certifications.length === 1
-                                      ? "Cert"
-                                      : "Certs",
-                                });
-                              }
+                      {/* HIGHLIGHTS — benefits as a checked list */}
+                      {"benefits" in currentData &&
+                        currentData.benefits &&
+                        currentData.benefits.length > 0 && (
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>
+                              HIGHLIGHTS
+                            </Text>
+                            <View style={styles.benefitsList}>
+                              {currentData.benefits.map(
+                                (benefit: string, idx: number) => (
+                                  <View key={idx} style={styles.benefitRow}>
+                                    <Check size={14} color="#000" />
+                                    <Text style={styles.benefitText}>
+                                      {benefit}
+                                    </Text>
+                                  </View>
+                                ),
+                              )}
+                            </View>
+                          </View>
+                        )}
 
-                              const hasAnyContent =
-                                prompts.length > 0 || stats.length > 0;
+                      {/* NO SPONSOR YET — status block + company description */}
+                      {"isSponsored" in currentData &&
+                      currentData.isSponsored === false ? (
+                        <>
+                          <View style={styles.hingeSection}>
+                            <Text style={styles.hingeSectionLabel}>STATUS</Text>
+                            <View style={styles.noSponsorInlineBlock}>
+                              <View style={styles.noSponsorIconCircle}>
+                                <BellRing
+                                  size={22}
+                                  color="#000"
+                                  strokeWidth={2}
+                                />
+                              </View>
+                              <Text style={styles.noSponsorHeadline}>
+                                No sponsor yet
+                              </Text>
+                              <Text style={styles.noSponsorSubtext}>
+                                When someone at{" "}
+                                {"company" in currentData && currentData.company
+                                  ? currentData.company
+                                  : "this company"}{" "}
+                                signs on to sponsor this role, you'll be
+                                notified instantly.
+                              </Text>
+                            </View>
+                          </View>
+                          {"companyDescription" in currentData &&
+                            currentData.companyDescription && (
+                              <View style={styles.hingeSection}>
+                                <Text style={styles.hingeSectionLabel}>
+                                  ABOUT THE COMPANY
+                                </Text>
+                                <Text style={styles.hingeBodyText}>
+                                  {currentData.companyDescription}
+                                </Text>
+                              </View>
+                            )}
+                        </>
+                      ) : (
+                        /* MEET YOUR SPONSOR — identity, trust, words; plus
+                           the role's inside-story insights below it. */
+                        "sponsorInfo" in currentData &&
+                        currentData.sponsorInfo &&
+                        (() => {
+                          const si = currentData.sponsorInfo;
+                          const sid = si.userId ? String(si.userId) : "";
+                          const sp = sid ? sponsorProfileCache[sid] : null;
+                          const company =
+                            "company" in currentData ? currentData.company : "";
+                          const qa = (sp?.insights || []).filter(
+                            (i) => i && i.question && i.answer,
+                          );
+                          const ins =
+                            "backchannelInsights" in currentData &&
+                            currentData.backchannelInsights
+                              ? currentData.backchannelInsights
+                              : null;
+                          const jobInsights: {
+                            label: string;
+                            text: string;
+                          }[] = [];
+                          if (ins?.dayToDay)
+                            jobInsights.push({
+                              label: "DAY-TO-DAY",
+                              text: ins.dayToDay,
+                            });
+                          if (ins?.teamCulture)
+                            jobInsights.push({
+                              label: "TEAM CULTURE",
+                              text: ins.teamCulture,
+                            });
+                          if (ins?.idealCandidate)
+                            jobInsights.push({
+                              label: "WHO THRIVES HERE",
+                              text: ins.idealCandidate,
+                            });
+                          if ((ins as any)?.insiderInsights)
+                            jobInsights.push({
+                              label: "EVERYTHING ELSE",
+                              text: (ins as any).insiderInsights,
+                            });
+                          return (
+                            <>
+                              {/* ── SPONSOR ZONE CARD ───────────────── */}
+                              <View style={styles.sponsorZoneOuter}>
+                                <View style={styles.sponsorZoneCard}>
+                                  <View style={styles.sponsorZoneBody}>
+                                    {/* Subtle "SPONSORED BY" kicker */}
+                                    <Text style={styles.sponsorZoneQALabel}>
+                                      SPONSORED BY
+                                    </Text>
 
-                              return (
-                                <>
-                                  {/* Stats Strip */}
-                                  {stats.length > 0 && (
-                                    <View style={styles.applicantBackStatsRow}>
-                                      {stats.map((s, i) => (
-                                        <View
-                                          key={s.label}
-                                          style={[
-                                            styles.applicantBackStatCell,
-                                            i === stats.length - 1 &&
-                                              styles.applicantBackStatCellLast,
-                                          ]}
-                                        >
-                                          <Text
-                                            style={
-                                              styles.applicantBackStatValue
-                                            }
-                                          >
-                                            {s.value}
-                                          </Text>
-                                          <Text
-                                            style={
-                                              styles.applicantBackStatLabel
-                                            }
-                                          >
-                                            {s.label}
-                                          </Text>
-                                        </View>
-                                      ))}
-                                    </View>
-                                  )}
-
-                                  {/* Loading skeleton when nothing is cached yet */}
-                                  {!hasAnyContent && fullProfileLoading && (
+                                    {/* Identity row */}
                                     <View
-                                      style={styles.applicantBackLoadingWrap}
+                                      style={[
+                                        styles.sponsorMeetInline,
+                                        { marginTop: 10 },
+                                      ]}
                                     >
-                                      <ActivityIndicator color="#999" />
-                                      <Text
-                                        style={styles.applicantBackLoadingText}
-                                      >
-                                        Loading profile…
-                                      </Text>
-                                    </View>
-                                  )}
-
-                                  {/* Empty state when nothing exists */}
-                                  {!hasAnyContent && !fullProfileLoading && (
-                                    <View style={styles.applicantBackSection}>
-                                      <View
-                                        style={
-                                          styles.applicantBackSectionHeader
-                                        }
-                                      >
-                                        <Sparkles color="#D1D5DB" size={12} />
-                                        <Text
-                                          style={[
-                                            styles.applicantBackSectionLabel,
-                                            { color: "#D1D5DB" },
-                                          ]}
-                                        >
-                                          INSIGHTS
-                                        </Text>
-                                      </View>
-                                      {(
-                                        [
-                                          { q: 55, a1: 80, a2: 60 },
-                                          { q: 40, a1: 70, a2: 45 },
-                                          { q: 50, a1: 65, a2: 50 },
-                                        ] as const
-                                      ).map((dims, i) => (
+                                      {si.image ? (
+                                        <Image
+                                          source={{ uri: si.image }}
+                                          style={styles.sponsorMeetAvatar}
+                                        />
+                                      ) : (
                                         <View
-                                          key={i}
-                                          style={[
-                                            styles.insightQuoteCard,
-                                            { opacity: 0.5 - i * 0.13 },
-                                          ]}
-                                        >
-                                          <View
-                                            style={[
-                                              styles.insightQuoteAccent,
-                                              { backgroundColor: "#E5E7EB" },
-                                            ]}
-                                          />
-                                          <View
-                                            style={[
-                                              styles.insightQuoteContent,
-                                              { gap: 10 },
-                                            ]}
-                                          >
-                                            <View
-                                              style={{
-                                                width: `${dims.q}%`,
-                                                height: 7,
-                                                borderRadius: 4,
-                                                backgroundColor: "#EBEBEB",
-                                              }}
-                                            />
-                                            <View
-                                              style={{
-                                                width: `${dims.a1}%`,
-                                                height: 11,
-                                                borderRadius: 5,
-                                                backgroundColor: "#F0F0F0",
-                                              }}
-                                            />
-                                            <View
-                                              style={{
-                                                width: `${dims.a2}%`,
-                                                height: 11,
-                                                borderRadius: 5,
-                                                backgroundColor: "#F0F0F0",
-                                              }}
-                                            />
-                                          </View>
-                                        </View>
-                                      ))}
-                                      <Text
-                                        style={styles.applicantBackEmptyBody}
-                                      >
-                                        No insights added yet.
-                                      </Text>
-                                    </View>
-                                  )}
-
-                                  {/* Insights / Prompts */}
-                                  {prompts.length > 0 && (
-                                    <View style={styles.applicantBackSection}>
-                                      <View
-                                        style={
-                                          styles.applicantBackSectionHeader
-                                        }
-                                      >
-                                        <Sparkles color="#000" size={12} />
-                                        <Text
                                           style={
-                                            styles.applicantBackSectionLabel
+                                            styles.sponsorMeetAvatarFallback
                                           }
                                         >
-                                          INSIGHTS
-                                        </Text>
-                                      </View>
-                                      {prompts.map(
-                                        (prompt: any, idx: number) => (
-                                          <View
-                                            key={idx}
-                                            style={styles.insightQuoteCard}
-                                          >
-                                            <View
-                                              style={styles.insightQuoteAccent}
-                                            />
-                                            <View
-                                              style={styles.insightQuoteContent}
-                                            >
-                                              {!!prompt.question && (
-                                                <Text
-                                                  style={
-                                                    styles.insightQuoteQuestion
-                                                  }
-                                                >
-                                                  {prompt.question}
-                                                </Text>
-                                              )}
-                                              <Text
-                                                style={
-                                                  styles.insightQuoteAnswer
-                                                }
-                                              >
-                                                {prompt.answer}
-                                              </Text>
-                                            </View>
-                                          </View>
-                                        ),
-                                      )}
-                                    </View>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </ScrollView>
-                        </View>
-                      </Animated.View>
-                    </>
-                  ) : (
-                    /* APPLICANT VIEW - Job Cards */
-                    <>
-                      {/* Front Face - Job Details */}
-                      <Animated.View
-                        style={[styles.cardOuter, frontStyle]}
-                        pointerEvents={isFlipped ? "none" : "auto"}
-                      >
-                        <View style={styles.cardInner}>
-                          {/* Status overlay: waitlisted / sponsor-requested / applied */}
-                          {"id" in currentData &&
-                            (waitlistedJobIds.has(String(currentData.id)) ||
-                              requestedSponsorJobIds.has(
-                                String(currentData.id),
-                              ) ||
-                              appliedJobIds.has(String(currentData.id))) && (
-                              <View
-                                style={styles.waitlistedOverlay}
-                                pointerEvents="none"
-                              >
-                                {waitlistedJobIds.has(
-                                  String(currentData.id),
-                                ) ? (
-                                  <View style={styles.waitlistedBadge}>
-                                    <Check
-                                      color="#FFF"
-                                      size={14}
-                                      strokeWidth={3}
-                                    />
-                                    <Text style={styles.waitlistedBadgeText}>
-                                      Waitlisted
-                                    </Text>
-                                  </View>
-                                ) : requestedSponsorJobIds.has(
-                                    String(currentData.id),
-                                  ) ? (
-                                  <View style={styles.appliedBadge}>
-                                    <Check
-                                      color="#FFF"
-                                      size={14}
-                                      strokeWidth={3}
-                                    />
-                                    <Text style={styles.appliedBadgeText}>
-                                      Sponsor requested
-                                    </Text>
-                                  </View>
-                                ) : (
-                                  <View style={styles.appliedBadge}>
-                                    <Check
-                                      color="#FFF"
-                                      size={14}
-                                      strokeWidth={3}
-                                    />
-                                    <Text style={styles.appliedBadgeText}>
-                                      Applied
-                                    </Text>
-                                  </View>
-                                )}
-                              </View>
-                            )}
-                          {/* Centered identity hero — circular company
-                              logo (PR #62), job title, company subtitle,
-                              sponsorship status, and a centered row of fact
-                              pills. Logo image comes from LOGO_URL via
-                              `transformJobApiResponse` → `image`; falls back
-                              to the company initial when unresolved. */}
-                          <View style={styles.heroCentered}>
-                            <CompanyLogo
-                              logoUrl={
-                                "image" in currentData
-                                  ? (currentData.image as string)
-                                  : undefined
-                              }
-                              name={
-                                "company" in currentData
-                                  ? (currentData.company as string)
-                                  : ""
-                              }
-                              size={72}
-                              borderRadius={36}
-                              initialFontSize={27}
-                            />
-
-                            <Text style={styles.heroName} numberOfLines={2}>
-                              {"title" in currentData ? currentData.title : ""}
-                            </Text>
-
-                            {"company" in currentData &&
-                              !!currentData.company && (
-                                <Text
-                                  style={styles.heroSubtitle}
-                                  numberOfLines={1}
-                                >
-                                  {currentData.company}
-                                </Text>
-                              )}
-
-                            {/* Sponsorship status — its own centered pill. */}
-                            {"isSponsored" in currentData && (
-                              <View
-                                style={
-                                  currentData.isSponsored
-                                    ? styles.heroStatusSponsored
-                                    : styles.heroStatusMuted
-                                }
-                              >
-                                {currentData.isSponsored && (
-                                  <Check
-                                    color="#FFF"
-                                    size={10}
-                                    strokeWidth={3}
-                                  />
-                                )}
-                                <Text
-                                  style={
-                                    currentData.isSponsored
-                                      ? styles.heroStatusSponsoredText
-                                      : styles.heroStatusMutedText
-                                  }
-                                >
-                                  {currentData.isSponsored
-                                    ? "Sponsored"
-                                    : "No sponsor yet"}
-                                </Text>
-                              </View>
-                            )}
-
-                            <View style={styles.heroPillRow}>
-                              {"location" in currentData &&
-                                !!currentData.location && (
-                                  <View style={styles.heroPill}>
-                                    <MapPin color="#666" size={11} />
-                                    <Text style={styles.heroPillText}>
-                                      {currentData.location}
-                                    </Text>
-                                  </View>
-                                )}
-                              {"salary" in currentData &&
-                                !!currentData.salary && (
-                                  <View style={styles.heroPill}>
-                                    <DollarSign color="#666" size={11} />
-                                    <Text style={styles.heroPillText}>
-                                      {currentData.salary}
-                                    </Text>
-                                  </View>
-                                )}
-                              {"type" in currentData && !!currentData.type && (
-                                <View style={styles.heroPill}>
-                                  <Briefcase color="#666" size={11} />
-                                  <Text style={styles.heroPillText}>
-                                    {currentData.type}
-                                  </Text>
-                                </View>
-                              )}
-                              {"relevanceScore" in currentData &&
-                                (currentData as any).relevanceScore > 0 && (
-                                  <View style={styles.heroPillAccent}>
-                                    <Zap
-                                      size={10}
-                                      color="#FFF"
-                                      strokeWidth={2.5}
-                                    />
-                                    <Text style={styles.heroPillAccentText}>
-                                      {Math.round(
-                                        (currentData as any).relevanceScore > 1
-                                          ? (currentData as any).relevanceScore
-                                          : (currentData as any)
-                                              .relevanceScore * 100,
-                                      )}
-                                      % AI Match
-                                    </Text>
-                                  </View>
-                                )}
-                            </View>
-                          </View>
-
-                          {/* About the role — left-aligned. "View More"
-                              lives OUTSIDE the clamped Text so it can never
-                              be clipped along with the overflowing copy. */}
-                          <View style={styles.heroAboutBlock}>
-                            {(() => {
-                              const description =
-                                "description" in currentData
-                                  ? currentData.description || ""
-                                  : "";
-                              const hasDesc = description.trim().length > 0;
-                              const showViewMore =
-                                hasDesc &&
-                                (aboutTruncated || description.length > 110);
-                              return (
-                                <>
-                                  <Text style={styles.sectionLabelSmall}>
-                                    ABOUT THE ROLE
-                                  </Text>
-                                  <Text
-                                    style={styles.descriptionText}
-                                    numberOfLines={3}
-                                    onTextLayout={(e) => {
-                                      const t = e.nativeEvent.lines.length > 3;
-                                      if (t !== aboutTruncated)
-                                        setAboutTruncated(t);
-                                    }}
-                                  >
-                                    {hasDesc
-                                      ? description
-                                      : "No description available."}
-                                  </Text>
-                                  {showViewMore && (
-                                    <TouchableOpacity
-                                      onPress={(e) => {
-                                        e.stopPropagation();
-                                        setShowDescriptionModal(true);
-                                      }}
-                                      activeOpacity={0.7}
-                                      style={styles.readMoreBtn}
-                                    >
-                                      <Text style={styles.readMoreBtnText}>
-                                        View More
-                                      </Text>
-                                      <ChevronRight color="#000" size={12} />
-                                    </TouchableOpacity>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </View>
-                        </View>
-                      </Animated.View>
-
-                      {/* Back Face - Sponsor Info */}
-                      <Animated.View
-                        style={[
-                          styles.cardOuter,
-                          styles.cardOuterBack,
-                          backStyle,
-                        ]}
-                        pointerEvents={isFlipped ? "auto" : "none"}
-                      >
-                        <View style={[styles.cardInner, styles.cardInnerBack]}>
-                          {/* No scroll — the back is a fixed-height face.
-                              Insights are previewed here (line-clamped);
-                              the full text expands below the card via the
-                              down-chevron, mirroring the front's pattern. */}
-                          <View style={styles.cardInfoScrollable}>
-                            {"isSponsored" in currentData &&
-                            currentData.isSponsored === false ? (
-                              // NON-SPONSORED BACK — "No sponsor yet"
-                              <>
-                                {/* Centered status hero, then the company
-                                    blurb. No company logo/name re-shown —
-                                    those already lead the front of the
-                                    card. */}
-                                <View style={styles.noSponsorHero}>
-                                  <View style={styles.noSponsorIconCircle}>
-                                    <BellRing
-                                      size={22}
-                                      color="#000"
-                                      strokeWidth={2}
-                                    />
-                                  </View>
-                                  <Text style={styles.noSponsorHeadline}>
-                                    No sponsor yet
-                                  </Text>
-                                  <Text style={styles.noSponsorSubtext}>
-                                    When someone at{" "}
-                                    {"company" in currentData &&
-                                    currentData.company
-                                      ? currentData.company
-                                      : "this company"}{" "}
-                                    signs on to sponsor this role, you'll be
-                                    notified instantly.
-                                  </Text>
-                                </View>
-
-                                {"companyDescription" in currentData &&
-                                  currentData.companyDescription && (
-                                    <View style={styles.noSponsorAboutBlock}>
-                                      <Text style={styles.sectionLabelSmall}>
-                                        ABOUT THE COMPANY
-                                      </Text>
-                                      <Text
-                                        style={styles.descriptionText}
-                                        numberOfLines={6}
-                                      >
-                                        {currentData.companyDescription}
-                                      </Text>
-                                    </View>
-                                  )}
-                              </>
-                            ) : (
-                              // SPONSORED BACK — "Meet your sponsor"
-                              <>
-                                <Text style={styles.backKicker}>
-                                  MEET YOUR SPONSOR
-                                </Text>
-
-                                {/* ── Meet your sponsor ─────────────────
-                                    The back is the human counterpart to the
-                                    front's "meet the role": who's vouching,
-                                    why you can trust them, and a couple of
-                                    their own words. The role's inside-story
-                                    insights live behind the down-chevron. */}
-                                {"sponsorInfo" in currentData &&
-                                  currentData.sponsorInfo &&
-                                  (() => {
-                                    const si = currentData.sponsorInfo;
-                                    const sid = si.userId
-                                      ? String(si.userId)
-                                      : "";
-                                    const sp = sid
-                                      ? sponsorProfileCache[sid]
-                                      : null;
-                                    const company =
-                                      "company" in currentData
-                                        ? currentData.company
-                                        : "";
-                                    // Up to two of the sponsor's own Q&A.
-                                    const qa = (sp?.insights || [])
-                                      .filter(
-                                        (i) => i && i.question && i.answer,
-                                      )
-                                      .slice(0, 2);
-                                    return (
-                                      <>
-                                        {/* Sponsor identity */}
-                                        <View style={styles.sponsorMeetHero}>
-                                          {si.image ? (
-                                            <Image
-                                              source={{ uri: si.image }}
-                                              style={styles.heroAvatar}
-                                            />
-                                          ) : (
-                                            <View
-                                              style={styles.heroAvatarFallback}
-                                            >
-                                              <Text
-                                                style={styles.heroAvatarInitial}
-                                              >
-                                                {(si.name ||
-                                                  "?")[0].toUpperCase()}
-                                              </Text>
-                                            </View>
-                                          )}
                                           <Text
-                                            style={styles.heroName}
+                                            style={
+                                              styles.sponsorMeetAvatarInitial
+                                            }
+                                          >
+                                            {(si.name || "?")[0].toUpperCase()}
+                                          </Text>
+                                        </View>
+                                      )}
+                                      <View style={{ flex: 1, minWidth: 0 }}>
+                                        <Text
+                                          style={styles.sponsorMeetName}
+                                          numberOfLines={1}
+                                        >
+                                          {si.name}
+                                        </Text>
+                                        {!!(si.role || company) && (
+                                          <Text
+                                            style={styles.sponsorMeetRole}
                                             numberOfLines={1}
                                           >
-                                            {si.name}
+                                            {si.role}
+                                            {si.role && company ? " · " : ""}
+                                            {company}
                                           </Text>
-                                          {!!(si.role || company) && (
-                                            <Text
-                                              style={styles.heroSubtitle}
-                                              numberOfLines={1}
-                                            >
-                                              {si.role}
-                                              {si.role && company ? " · " : ""}
-                                              {company}
-                                            </Text>
-                                          )}
-                                          {/* Verified badge — renders once
-                                              the backend exposes the
-                                              sponsor's verified status
-                                              (BACKEND_CHANGES_NEEDED §9). */}
-                                          {sp?.verified && (
-                                            <View
-                                              style={[
-                                                styles.canReferTag,
-                                                { marginTop: 8 },
-                                              ]}
-                                            >
-                                              <Check
-                                                size={10}
-                                                color="#00CB54"
-                                                strokeWidth={3}
-                                              />
-                                              <Text
-                                                style={styles.canReferTagText}
-                                              >
-                                                Verified employee
-                                              </Text>
-                                            </View>
-                                          )}
-                                        </View>
-
-                                        {/* Trust strip */}
-                                        <View style={styles.heroPillRow}>
-                                          {!!si.yearsAtCompany && (
-                                            <View style={styles.heroPill}>
-                                              <Calendar
-                                                color="#666"
-                                                size={11}
-                                              />
-                                              <Text style={styles.heroPillText}>
-                                                {si.yearsAtCompany} here
-                                              </Text>
-                                            </View>
-                                          )}
-                                          {si.canRefer && (
-                                            <View style={styles.heroPill}>
-                                              <Check
-                                                color="#666"
-                                                size={11}
-                                                strokeWidth={3}
-                                              />
-                                              <Text style={styles.heroPillText}>
-                                                Can refer directly
-                                              </Text>
-                                            </View>
-                                          )}
-                                        </View>
-
-                                        {/* The sponsor's own words */}
-                                        {qa.length > 0 && (
+                                        )}
+                                        {sp?.verified && (
                                           <View
-                                            style={styles.sponsorWordsSection}
+                                            style={[
+                                              styles.canReferTag,
+                                              { marginTop: 6 },
+                                            ]}
                                           >
-                                            {qa.map((item) => (
-                                              <View key={item.question}>
+                                            <Check
+                                              size={10}
+                                              color="#000"
+                                              strokeWidth={3}
+                                            />
+                                            <Text
+                                              style={styles.canReferTagText}
+                                            >
+                                              Verified employee
+                                            </Text>
+                                          </View>
+                                        )}
+                                      </View>
+                                    </View>
+
+                                    {/* Fact pills */}
+                                    {(!!si.yearsAtCompany || si.canRefer) && (
+                                      <View
+                                        style={[
+                                          styles.hingeChipsWrap,
+                                          { marginTop: 12 },
+                                        ]}
+                                      >
+                                        {!!si.yearsAtCompany && (
+                                          <View style={styles.heroPill}>
+                                            <Calendar color="#666" size={11} />
+                                            <Text style={styles.heroPillText}>
+                                              {si.yearsAtCompany} here
+                                            </Text>
+                                          </View>
+                                        )}
+                                        {si.canRefer && (
+                                          <View style={styles.heroPill}>
+                                            <Check
+                                              color="#666"
+                                              size={11}
+                                              strokeWidth={3}
+                                            />
+                                            <Text style={styles.heroPillText}>
+                                              Can refer directly
+                                            </Text>
+                                          </View>
+                                        )}
+                                      </View>
+                                    )}
+
+                                    {/* Sponsor Q&A — matches the
+                                        applicant-from-sponsor view's
+                                        quote-style card so the
+                                        sponsor's voice reads with the
+                                        same "in their own words"
+                                        treatment everywhere it appears
+                                        in the app. */}
+                                    {qa.length > 0 && (
+                                      <>
+                                        <View
+                                          style={styles.sponsorZoneDivider}
+                                        />
+                                        <Text style={styles.sponsorZoneQALabel}>
+                                          SPONSOR INSIGHTS
+                                        </Text>
+                                        {qa.map((item, i) => (
+                                          <View
+                                            key={item.question}
+                                            style={[
+                                              styles.hingeInsightCard,
+                                              i > 0 && { marginTop: 12 },
+                                            ]}
+                                          >
+                                            <View
+                                              style={styles.hingeInsightAccent}
+                                            />
+                                            <View
+                                              style={styles.hingeInsightBody}
+                                            >
+                                              <Text
+                                                style={
+                                                  styles.hingeInsightQuestion
+                                                }
+                                              >
+                                                {item.question}
+                                              </Text>
+                                              <View
+                                                style={
+                                                  styles.hingeInsightAnswerRow
+                                                }
+                                              >
                                                 <Text
-                                                  style={styles.insightLabel}
+                                                  style={
+                                                    styles.hingeInsightQuoteMark
+                                                  }
                                                 >
-                                                  {item.question}
+                                                  “
                                                 </Text>
                                                 <Text
-                                                  style={styles.insightContent}
-                                                  numberOfLines={
-                                                    qa.length > 1 ? 2 : 4
+                                                  style={
+                                                    styles.hingeInsightAnswer
                                                   }
                                                 >
                                                   {item.answer}
                                                 </Text>
                                               </View>
-                                            ))}
+                                            </View>
                                           </View>
-                                        )}
+                                        ))}
                                       </>
-                                    );
-                                  })()}
-                              </>
-                            )}
-                          </View>
-                        </View>
-                      </Animated.View>
-                    </>
-                  )}
-                </Pressable>
-              </Animated.View>
+                                    )}
 
-              <Animated.View layout={LinearTransition}>
-                {showMore && (
-                  <View style={styles.expandedDetails}>
-                    {userType === "sponsor" ? (
-                      /* Sponsor More Details - Profile */
-                      (() => {
-                        // Merge cached full profile (real API) with mock fullDetails
-                        const userId = currentData?.USER_ID;
-                        const cached = userId ? fullProfileCache[userId] : null;
-                        const fd =
-                          cached ||
-                          ("fullDetails" in currentData
-                            ? currentData.fullDetails
-                            : null);
-
-                        if (fullProfileLoading && !fd) {
-                          return (
-                            <View
-                              style={{
-                                alignItems: "center",
-                                paddingVertical: 24,
-                              }}
-                            >
-                              <ActivityIndicator color="#000" />
-                              <Text
-                                style={{
-                                  marginTop: 8,
-                                  color: "#999",
-                                  fontSize: 13,
-                                  fontWeight: "600",
-                                }}
-                              >
-                                Loading profile details...
-                              </Text>
-                            </View>
-                          );
-                        }
-
-                        if (!fd) {
-                          return (
-                            <View
-                              style={{
-                                alignItems: "center",
-                                paddingVertical: 24,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  color: "#BBB",
-                                  fontSize: 13,
-                                  fontWeight: "600",
-                                }}
-                              >
-                                No additional details available
-                              </Text>
-                            </View>
-                          );
-                        }
-
-                        const topSkills: string[] = (() => {
-                          const fromCard =
-                            "skills" in currentData &&
-                            Array.isArray((currentData as any).skills)
-                              ? ((currentData as any).skills as string[])
-                              : [];
-                          const fromCache = Array.isArray((fd as any)?.skills)
-                            ? ((fd as any).skills as string[])
-                            : [];
-                          return fromCache.length > 0 ? fromCache : fromCard;
-                        })();
-
-                        return (
-                          <>
-                            {/* Top Skills */}
-                            {topSkills.length > 0 && (
-                              <View style={styles.detailSection}>
-                                <View style={styles.detailSectionHeader}>
-                                  <Zap size={16} color="#000" />
-                                  <Text style={styles.detailSectionTitle}>
-                                    Top Skills
-                                  </Text>
-                                </View>
-                                <View style={styles.skillsRow}>
-                                  {topSkills.map(
-                                    (skill: string, idx: number) => (
-                                      <View
-                                        key={idx}
-                                        style={styles.skillChipSmall}
-                                      >
-                                        <Text style={styles.skillChipSmallText}>
-                                          {skill}
-                                        </Text>
-                                      </View>
-                                    ),
-                                  )}
-                                </View>
-                              </View>
-                            )}
-
-                            {/* Professional Experience */}
-                            {Array.isArray(fd.experiences) &&
-                              fd.experiences.length > 0 && (
-                                <View style={styles.detailSection}>
-                                  <View style={styles.detailSectionHeader}>
-                                    <Briefcase size={16} color="#000" />
-                                    <Text style={styles.detailSectionTitle}>
-                                      Professional Experience
-                                    </Text>
-                                  </View>
-                                  {fd.experiences.map(
-                                    (exp: any, idx: number) => (
-                                      <View
-                                        key={idx}
-                                        style={styles.experienceCard}
-                                      >
-                                        <View style={styles.experienceHeader}>
-                                          <Text style={styles.experienceTitle}>
-                                            {exp.jobTitle}
-                                          </Text>
-                                          <Text style={styles.experienceDates}>
-                                            {exp.startDate}
-                                            {exp.current
-                                              ? " - Present"
-                                              : exp.endDate
-                                                ? ` - ${exp.endDate}`
-                                                : ""}
-                                          </Text>
-                                        </View>
-                                        <Text style={styles.experienceCompany}>
-                                          {exp.company}
-                                        </Text>
-                                        {exp.description ? (
-                                          <Text
-                                            style={styles.experienceDescription}
-                                          >
-                                            {exp.description}
-                                          </Text>
-                                        ) : null}
-                                      </View>
-                                    ),
-                                  )}
-                                </View>
-                              )}
-
-                            {/* Education */}
-                            {Array.isArray(fd.education) &&
-                              fd.education.length > 0 && (
-                                <View style={styles.detailSection}>
-                                  <View style={styles.detailSectionHeader}>
-                                    <GraduationCap size={16} color="#000" />
-                                    <Text style={styles.detailSectionTitle}>
-                                      Education
-                                    </Text>
-                                  </View>
-                                  {fd.education.map((edu: any, idx: number) => (
-                                    <View
-                                      key={idx}
-                                      style={styles.educationCard}
-                                    >
-                                      <Text style={styles.educationDegree}>
-                                        {edu.degree}
-                                        {edu.major ? ` in ${edu.major}` : ""}
-                                      </Text>
-                                      <Text style={styles.educationSchool}>
-                                        {edu.university}
-                                      </Text>
-                                      <View style={styles.educationFooter}>
-                                        {edu.graduationYear ? (
-                                          <Text style={styles.educationYear}>
-                                            Class of {edu.graduationYear}
-                                          </Text>
-                                        ) : null}
-                                        {edu.gpa ? (
-                                          <Text style={styles.educationGpa}>
-                                            GPA: {edu.gpa}
-                                          </Text>
-                                        ) : null}
-                                      </View>
-                                    </View>
-                                  ))}
-                                </View>
-                              )}
-
-                            {/* Certifications */}
-                            {Array.isArray(fd.certifications) &&
-                              fd.certifications.length > 0 && (
-                                <View style={styles.detailSection}>
-                                  <View style={styles.detailSectionHeader}>
-                                    <Award size={16} color="#000" />
-                                    <Text style={styles.detailSectionTitle}>
-                                      Certifications
-                                    </Text>
-                                  </View>
-                                  <View style={styles.certificationsGrid}>
-                                    {fd.certifications.map(
-                                      (cert: any, idx: number) => (
+                                    {/* Job insights — role-specific
+                                        spec written BY the sponsor
+                                        ABOUT the role. Uses a
+                                        documented "header strip" card
+                                        (dark label band on top, body
+                                        below) so it reads as a formal
+                                        role brief rather than a
+                                        personal quote — distinct from
+                                        the SPONSOR INSIGHTS cards
+                                        right above it. */}
+                                    {jobInsights.length > 0 && (
+                                      <>
                                         <View
-                                          key={idx}
-                                          style={styles.certificationBadge}
+                                          style={styles.sponsorZoneDivider}
+                                        />
+                                        <Text
+                                          style={styles.sponsorZoneJobLabel}
                                         >
-                                          <Text
-                                            style={styles.certificationName}
+                                          JOB INSIGHTS
+                                        </Text>
+                                        {jobInsights.map((it, idx) => (
+                                          <View
+                                            key={it.label}
+                                            style={[
+                                              styles.jobInsightCard,
+                                              idx > 0 && { marginTop: 12 },
+                                            ]}
                                           >
-                                            {cert.name}
-                                          </Text>
-                                          <Text
-                                            style={styles.certificationDetails}
-                                          >
-                                            {cert.organization}
-                                            {cert.year ? ` • ${cert.year}` : ""}
-                                          </Text>
-                                        </View>
-                                      ),
+                                            <View
+                                              style={styles.jobInsightHeader}
+                                            >
+                                              <Text
+                                                style={
+                                                  styles.jobInsightHeaderLabel
+                                                }
+                                              >
+                                                {it.label}
+                                              </Text>
+                                            </View>
+                                            <View style={styles.jobInsightBody}>
+                                              <Text
+                                                style={
+                                                  styles.jobInsightBodyText
+                                                }
+                                              >
+                                                {it.text}
+                                              </Text>
+                                            </View>
+                                          </View>
+                                        ))}
+                                      </>
                                     )}
                                   </View>
-                                </View>
-                              )}
-
-                            {/* Languages */}
-                            {Array.isArray(fd.languages) &&
-                              fd.languages.length > 0 && (
-                                <View style={styles.detailSection}>
-                                  <View style={styles.detailSectionHeader}>
-                                    <Globe size={16} color="#000" />
-                                    <Text style={styles.detailSectionTitle}>
-                                      Languages
-                                    </Text>
-                                  </View>
-                                  <View style={styles.languagesGrid}>
-                                    {fd.languages.map(
-                                      (lang: any, idx: number) => (
-                                        <View
-                                          key={idx}
-                                          style={styles.languageBadge}
-                                        >
-                                          <Text style={styles.languageName}>
-                                            {lang.language}
-                                          </Text>
-                                          <Text
-                                            style={styles.languageProficiency}
-                                          >
-                                            {lang.proficiency}
-                                          </Text>
-                                        </View>
-                                      ),
-                                    )}
-                                  </View>
-                                </View>
-                              )}
-
-                            {/* Achievements */}
-                            {fd.achievements ? (
-                              <View style={styles.detailSection}>
-                                <View style={styles.detailSectionHeader}>
-                                  <Sparkles size={16} color="#000" />
-                                  <Text style={styles.detailSectionTitle}>
-                                    Achievements & Awards
-                                  </Text>
-                                </View>
-                                <Text style={styles.achievementsText}>
-                                  {fd.achievements}
-                                </Text>
-                              </View>
-                            ) : null}
-                          </>
-                        );
-                      })()
-                    ) : isFlipped ? (
-                      /* Applicant flipped to the BACK → the down-chevron
-                         expands the FULL insights. The back card only
-                         previews them (line-clamped); here every
-                         subsection is listed out in full. */
-                      (() => {
-                        const ins =
-                          "backchannelInsights" in currentData &&
-                          currentData.backchannelInsights
-                            ? currentData.backchannelInsights
-                            : null;
-                        const items: { label: string; text: string }[] = [];
-                        if (ins?.dayToDay)
-                          items.push({
-                            label: "DAY-TO-DAY",
-                            text: ins.dayToDay,
-                          });
-                        if (ins?.teamCulture)
-                          items.push({
-                            label: "TEAM CULTURE",
-                            text: ins.teamCulture,
-                          });
-                        if (ins?.idealCandidate)
-                          items.push({
-                            label: "WHO THRIVES HERE",
-                            text: ins.idealCandidate,
-                          });
-                        if ((ins as any)?.insiderInsights)
-                          items.push({
-                            label: "EVERYTHING ELSE",
-                            text: (ins as any).insiderInsights,
-                          });
-                        if (items.length === 0) {
-                          return (
-                            <View style={styles.detailSection}>
-                              <Text style={styles.detailBody}>
-                                No insights shared for this role yet.
-                              </Text>
-                            </View>
-                          );
-                        }
-                        return (
-                          <View style={styles.detailSection}>
-                            <View style={styles.detailSectionHeader}>
-                              <Lightbulb size={16} color="#000" />
-                              <Text style={styles.detailSectionTitle}>
-                                Job Insights
-                              </Text>
-                            </View>
-                            {items.map((it, idx) => (
-                              <View
-                                key={it.label}
-                                style={idx > 0 ? { marginTop: 18 } : undefined}
-                              >
-                                <Text style={styles.insightLabel}>
-                                  {it.label}
-                                </Text>
-                                <Text style={styles.insightContent}>
-                                  {it.text}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
-                        );
-                      })()
-                    ) : (
-                      /* Applicant More Details - Job */
-                      <>
-                        {/* AI Summary */}
-                        {"summary" in currentData &&
-                          (currentData as any).summary && (
-                            <View style={styles.detailSection}>
-                              <View style={styles.detailSectionHeader}>
-                                <Layers size={16} color="#000" />
-                                <Text style={styles.detailSectionTitle}>
-                                  AI Summary
-                                </Text>
-                              </View>
-                              <View style={styles.jobDetailCard}>
-                                <Text style={styles.jobDetailText}>
-                                  {(currentData as any).summary}
-                                </Text>
-                              </View>
-                            </View>
-                          )}
-
-                        {/* Experience Level + Work Arrangement inline chips */}
-                        {("experienceLevel" in currentData &&
-                          (currentData as any).experienceLevel) ||
-                        ("workArrangement" in currentData &&
-                          (currentData as any).workArrangement) ? (
-                          <View style={styles.detailSection}>
-                            <View style={styles.detailSectionHeader}>
-                              <Info size={16} color="#000" />
-                              <Text style={styles.detailSectionTitle}>
-                                Role Details
-                              </Text>
-                            </View>
-                            <View style={styles.skillsRow}>
-                              {"experienceLevel" in currentData &&
-                                (currentData as any).experienceLevel && (
-                                  <View style={styles.roleDetailChip}>
-                                    <Briefcase size={13} color="#000" />
-                                    <Text style={styles.roleDetailChipText}>
-                                      {(() => {
-                                        // Backend values can be either numeric
-                                        // (e.g. "10+", "5-7") or descriptive
-                                        // (e.g. "Mid-level"). Only suffix
-                                        // " years experience" when the value
-                                        // is a bare number/range, so we don't
-                                        // get "Mid-level years experience".
-                                        const v = String(
-                                          (currentData as any).experienceLevel,
-                                        ).trim();
-                                        return /^[\d+\-\s]+$/.test(v)
-                                          ? `${v} years experience`
-                                          : v;
-                                      })()}
-                                    </Text>
-                                  </View>
-                                )}
-                              {"workArrangement" in currentData &&
-                                (currentData as any).workArrangement && (
-                                  <View style={styles.roleDetailChip}>
-                                    <MapPin size={13} color="#000" />
-                                    <Text style={styles.roleDetailChipText}>
-                                      {(currentData as any).workArrangement}
-                                    </Text>
-                                  </View>
-                                )}
-                            </View>
-                          </View>
-                        ) : null}
-
-                        {/* Real API: Core Responsibilities */}
-                        {"coreResponsibilities" in currentData &&
-                          (currentData as any).coreResponsibilities && (
-                            <View style={styles.detailSection}>
-                              <View style={styles.detailSectionHeader}>
-                                <Briefcase size={16} color="#000" />
-                                <Text style={styles.detailSectionTitle}>
-                                  Core Responsibilities
-                                </Text>
-                              </View>
-                              <View style={styles.jobDetailCard}>
-                                <Text style={styles.jobDetailText}>
-                                  {(currentData as any).coreResponsibilities}
-                                </Text>
-                              </View>
-                            </View>
-                          )}
-
-                        {/* Real API: Requirements Overview */}
-                        {"requirementsSummary" in currentData &&
-                          (currentData as any).requirementsSummary && (
-                            <View style={styles.detailSection}>
-                              <View style={styles.detailSectionHeader}>
-                                <Award size={16} color="#000" />
-                                <Text style={styles.detailSectionTitle}>
-                                  Requirements Overview
-                                </Text>
-                              </View>
-                              <View style={styles.jobDetailCard}>
-                                <Text style={styles.jobDetailText}>
-                                  {(currentData as any).requirementsSummary}
-                                </Text>
-                              </View>
-                            </View>
-                          )}
-
-                        {/* Mock data fallback: fullDetails */}
-                        {"fullDetails" in currentData &&
-                          currentData.fullDetails &&
-                          "responsibilities" in currentData.fullDetails && (
-                            <>
-                              <View style={styles.detailSection}>
-                                <View style={styles.detailSectionHeader}>
-                                  <Briefcase size={16} color="#000" />
-                                  <Text style={styles.detailSectionTitle}>
-                                    Responsibilities
-                                  </Text>
-                                </View>
-                                <View style={styles.jobDetailCard}>
-                                  <Text style={styles.jobDetailText}>
-                                    {
-                                      (currentData.fullDetails as any)
-                                        .responsibilities
-                                    }
-                                  </Text>
-                                </View>
-                              </View>
-
-                              <View style={styles.detailSection}>
-                                <View style={styles.detailSectionHeader}>
-                                  <Award size={16} color="#000" />
-                                  <Text style={styles.detailSectionTitle}>
-                                    Requirements
-                                  </Text>
-                                </View>
-                                <View style={styles.jobDetailCard}>
-                                  <Text style={styles.jobDetailText}>
-                                    {
-                                      (currentData.fullDetails as any)
-                                        .requirements
-                                    }
-                                  </Text>
                                 </View>
                               </View>
                             </>
-                          )}
-                        {"skills" in currentData &&
-                          currentData.skills &&
-                          currentData.skills.length > 0 && (
-                            <View style={styles.detailSection}>
-                              <View style={styles.detailSectionHeader}>
-                                <TrendingUp size={16} color="#000" />
-                                <Text style={styles.detailSectionTitle}>
-                                  Required Skills
-                                </Text>
-                              </View>
-                              <View style={styles.skillsRow}>
-                                {currentData.skills.map(
-                                  (skill: string, idx: number) => (
-                                    <View key={idx} style={styles.skillBadge}>
-                                      <Text style={styles.skillBadgeText}>
-                                        {skill}
-                                      </Text>
-                                    </View>
-                                  ),
-                                )}
-                              </View>
-                            </View>
-                          )}
-                        {"benefits" in currentData &&
-                          currentData.benefits &&
-                          currentData.benefits.length > 0 && (
-                            <View style={styles.detailSection}>
-                              <View style={styles.detailSectionHeader}>
-                                <Sparkles size={16} color="#000" />
-                                <Text style={styles.detailSectionTitle}>
-                                  Highlights
-                                </Text>
-                              </View>
-                              <View style={styles.benefitsList}>
-                                {currentData.benefits.map(
-                                  (benefit: string, idx: number) => (
-                                    <View key={idx} style={styles.benefitRow}>
-                                      <Check size={14} color="#00CB54" />
-                                      <Text style={styles.benefitText}>
-                                        {benefit}
-                                      </Text>
-                                    </View>
-                                  ),
-                                )}
-                              </View>
-                            </View>
-                          )}
-                      </>
-                    )}
-                  </View>
-                )}
-                <View style={styles.bottomNav}>
-                  <TouchableOpacity
-                    onPress={() => handleSwipe(false)}
-                    style={styles.iconBtn}
-                    activeOpacity={0.85}
-                  >
-                    <X color="#000" size={22} strokeWidth={2.5} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={toggleMore}
-                    style={[styles.iconBtn, showMore && styles.iconBtnActive]}
-                    activeOpacity={0.85}
-                  >
-                    <Animated.View style={chevronStyle}>
-                      <ChevronDown
-                        color={showMore ? "#FFF" : "#000"}
-                        size={22}
-                        strokeWidth={2.5}
-                      />
-                    </Animated.View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleSwipe(true)}
-                    style={styles.primaryActionBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.primaryActionLabel}>
-                      {userType === "sponsor" ? "Connect" : "Apply"}
-                    </Text>
-                    <Check color="#FFF" size={19} strokeWidth={2.5} />
-                  </TouchableOpacity>
-                </View>
+                          );
+                        })()
+                      )}
+                    </>
+                  )}
+                </Animated.ScrollView>
               </Animated.View>
-            </View>
+
+              {/* Floating action buttons — Hinge-style. Two circular
+                  buttons sit on top of the scroll content with no tray
+                  background, drop-shadowed against whatever's behind
+                  them. The wrapper uses pointerEvents="box-none" so taps
+                  on empty space between the buttons fall through to the
+                  scroll, while the buttons themselves still receive
+                  touches. The scroll content has bottom padding that
+                  matches the button stack so the last section isn't
+                  hidden under them. */}
+              <View style={styles.floatingActionsRow} pointerEvents="box-none">
+                <TouchableOpacity
+                  onPress={() => handleSwipe(false)}
+                  style={styles.floatingPassBtn}
+                  activeOpacity={0.85}
+                >
+                  <X color="#000" size={26} strokeWidth={2.5} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleSwipe(true)}
+                  style={styles.floatingConnectBtn}
+                  activeOpacity={0.85}
+                >
+                  <Check color="#FFF" size={26} strokeWidth={2.8} />
+                </TouchableOpacity>
+              </View>
+            </>
           )}
-        </ScrollView>
+        </View>
       </SafeAreaView>
 
       {/* Celebration Message */}
@@ -4588,6 +4733,482 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   safeArea: { flex: 1 },
   scrollContent: { paddingHorizontal: 36, paddingBottom: 100 },
+  // 2026-05-26 Hinge-style redesign — layout primitives.
+  // `pageContainer` is the flex-column that holds the sticky header,
+  // the active profile scroll, and the sticky bottom action bar.
+  pageContainer: { flex: 1, paddingHorizontal: 24 },
+  // Each non-active deck state (empty / loading / no-applicants etc.)
+  // fills the page beneath the header with its centered illustration.
+  fullEmptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 80,
+  },
+  // The fade/translate wrapper around the active profile scroll. Drives
+  // the cross-fade between deck entries via `mainAnimatedStyle`.
+  profileFader: { flex: 1 },
+  // Vertical scroll for the active profile. Bottom padding leaves room
+  // for the sticky action bar so the last section isn't covered.
+  profileScrollContent: { paddingBottom: 120, paddingTop: 4 },
+
+  // ── Hero (applicant identity / job identity) ──────────────────────
+  hingeHero: {
+    alignItems: "center",
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  hingeHeroAvatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#F0F0F0",
+  },
+  hingeHeroAvatarFallback: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  hingeHeroAvatarInitial: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#FFF",
+  },
+  hingeHeroName: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.6,
+    marginTop: 16,
+    textAlign: "center",
+  },
+  hingeHeroSubtitle: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#666",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  hingeHeroPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    marginTop: 14,
+  },
+
+  // ── "Liked your role" top-of-card pill ────────────────────────────
+  likedYourRoleRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+
+  // ── Section primitives ────────────────────────────────────────────
+  hingeDivider: {
+    height: 1,
+    backgroundColor: "#F0F0F0",
+    marginVertical: 4,
+  },
+  hingeSection: { paddingVertical: 18 },
+  hingeSectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: "#999",
+    marginBottom: 10,
+  },
+  hingeBodyText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#333",
+    lineHeight: 23,
+  },
+
+  // ── At-a-glance stats strip (sponsor view) ────────────────────────
+  hingeStatsRow: {
+    flexDirection: "row",
+    backgroundColor: "#F8F9FB",
+    borderRadius: 16,
+    paddingVertical: 14,
+    marginVertical: 8,
+  },
+  hingeStatCell: {
+    flex: 1,
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightColor: "#E8E8E8",
+  },
+  hingeStatCellLast: { borderRightWidth: 0 },
+  hingeStatValue: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.5,
+  },
+  hingeStatLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#888",
+    letterSpacing: 0.8,
+    marginTop: 4,
+    textTransform: "uppercase",
+  },
+
+  // ── Insight Q&A cards — quote-style with vertical accent ──────────
+  // White card with a soft drop shadow + thin hairline border for
+  // depth (instead of the prior gray-on-gray look that disappeared
+  // into the page). A 3px black stripe runs the full height of the
+  // left edge as a brand accent — the only color is monochrome, but
+  // the stripe gives the card a strong sense of authorship ("here are
+  // the applicant's actual words"). A large opening quote mark next
+  // to the answer plays the same role typographically.
+  hingeInsightCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  hingeInsightAccent: {
+    width: 3,
+    backgroundColor: "#000",
+  },
+  hingeInsightBody: {
+    flex: 1,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+  },
+  hingeInsightQuestion: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1.0,
+    marginBottom: 10,
+    textTransform: "uppercase",
+  },
+  hingeInsightAnswerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  hingeInsightQuoteMark: {
+    fontSize: 36,
+    lineHeight: 30,
+    fontWeight: "800",
+    color: "#000",
+    marginRight: 8,
+    marginTop: -2,
+  },
+  hingeInsightAnswer: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1A1A1A",
+    lineHeight: 24,
+  },
+
+  // ── Job-brief cards (role-spec insights from the sponsor) ─────────
+  // Same depth treatment as the sponsor's quote cards (white bg, soft
+  // shadow, hairline border), but a totally different visual rhythm:
+  // a dark "header strip" at the top carries the label, then body
+  // text below. Reads as a formal documented brief rather than a
+  // personal quote — distinct enough at a glance that the user knows
+  // this is "what the sponsor wrote ABOUT the role" vs. "what the
+  // sponsor said in their own words".
+  jobInsightCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  jobInsightHeader: {
+    backgroundColor: "#000",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  jobInsightHeaderLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+  },
+  jobInsightBody: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  jobInsightBodyText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#1A1A1A",
+    lineHeight: 23,
+  },
+
+  // ── Chip wrapping (skills, credentials, role details) ─────────────
+  hingeChipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  hingeSkillChip: {
+    backgroundColor: "#F4F4F5",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  hingeSkillChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A1A",
+  },
+
+  // ── Timeline (experience, education) ──────────────────────────────
+  hingeTimelineRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  hingeTimelineDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: "#000",
+    marginTop: 7,
+  },
+  hingeTimelineBody: { flex: 1, minWidth: 0 },
+  hingeTimelineTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#000",
+  },
+  hingeTimelineSubtitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginTop: 2,
+  },
+  hingeTimelineMeta: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#888",
+    marginTop: 3,
+    letterSpacing: 0.1,
+  },
+  hingeTimelineDescription: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#444",
+    lineHeight: 21,
+    marginTop: 8,
+  },
+
+  // ── Credential blocks (certifications, languages) ─────────────────
+  hingeCredentialList: { gap: 12 },
+  hingeCredentialBlock: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+  },
+  hingeCredentialName: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#000",
+  },
+  hingeCredentialMeta: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#777",
+    marginTop: 3,
+  },
+
+  // ── Status banner (waitlisted / applied / sponsor-requested) ──────
+  statusBannerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#000",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  statusBannerText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.4,
+  },
+
+  // ── "No sponsor yet" inline block (applicant view) ────────────────
+  noSponsorInlineBlock: {
+    alignItems: "center",
+    backgroundColor: "#F8F9FB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+  },
+
+  // ── Sponsor zone card (sponsored jobs — distinct section) ─────────
+  sponsorZoneOuter: { paddingVertical: 18 },
+  sponsorZoneCard: {
+    backgroundColor: "#F8F9FB",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+  },
+  sponsorZoneHeader: {
+    backgroundColor: "#000",
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  sponsorZoneHeaderText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 1.6,
+  },
+  sponsorZoneBody: { padding: 16 },
+  sponsorZoneDivider: {
+    height: 1,
+    backgroundColor: "#E8E8E8",
+    marginVertical: 16,
+  },
+  // "SPONSOR INSIGHTS" sub-label — light gray, personal voice
+  sponsorZoneQALabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  // "JOB INSIGHTS" sub-label — darker to signal role data vs personal
+  sponsorZoneJobLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#444",
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  sponsorZoneQACard: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    padding: 14,
+  },
+
+  // ── Meet your sponsor inline block ────────────────────────────────
+  sponsorMeetInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  sponsorMeetAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F0F0F0",
+  },
+  sponsorMeetAvatarFallback: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sponsorMeetAvatarInitial: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: "#FFF",
+  },
+  sponsorMeetName: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.3,
+  },
+  sponsorMeetRole: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#666",
+    marginTop: 2,
+  },
+
+  // ── Floating action buttons (Hinge-style) ────────────────────────
+  // Two free-standing circular buttons that sit on top of the scroll
+  // content. The row is absolute so it stays pinned to the bottom of
+  // the page while the scroll content flows freely behind it.
+  // `pointerEvents="box-none"` on this wrapper (set on the JSX) means
+  // taps in the gap between buttons fall through to the underlying
+  // scroll, while the circles themselves still catch their own taps.
+  floatingActionsRow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: Platform.OS === "ios" ? 28 : 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 28,
+  },
+  floatingPassBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    // Drop shadow so the white circle reads against light content
+    // underneath. Subtle to keep the brand minimal.
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  floatingConnectBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -4596,31 +5217,92 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   progressHeaderContainer: { flex: 1 },
-  // Compact pill on the right side of the header. Fixed max-width keeps the
-  // progress bar visible; the title truncates with ellipsis if long.
-  jobSwitcherPill: {
+  // 2026-05-27 redesign — progress indicator typography + segmented dots.
+  //
+  // The label row stacks a large bold current-card number against a thin
+  // gray "/N" suffix (e.g. "3" + "/10"), matching the modern app pattern
+  // used by Hinge / Bumble / similar swipe-decks. Below it, a row of 10
+  // equal-width pill segments (one per card in DECK_SIZE) lights up
+  // as the user advances — past cards filled black, current card filled
+  // black, future cards a soft gray. Reads as a "deck remaining" gauge
+  // rather than a generic loading bar, which fits the rest of the
+  // deck-of-cards branding language in the app.
+  progressLabelRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
+    marginBottom: 8,
+  },
+  progressCurrent: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.5,
+  },
+  progressTotal: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+    letterSpacing: -0.1,
+  },
+  progressDotsRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    maxWidth: 160,
+    gap: 4,
   },
-  jobSwitcherLabel: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginBottom: 2,
+  progressDot: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#E8E8E8",
   },
-  jobSwitcherTitle: {
+  progressDotFilled: {
+    backgroundColor: "#000",
+  },
+
+  // 2026-05-27 redesign — Role switcher pill (sponsor-only).
+  //
+  // Replaces the prior low-contrast outlined chip with a filled black
+  // pill that reads as a primary affordance (same language as the
+  // floating Connect button + sponsor empty-state CTAs). When the
+  // active role has pending applicants, a compact white-on-darker
+  // count badge appears inline — the most important signal lives
+  // directly in the header. Long titles still truncate gracefully
+  // because the title text wraps in a flex-shrink wrapper.
+  roleSwitcherPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderWidth: 1.5,
+    borderColor: "#D0D0D0",
+    paddingVertical: 9,
+    paddingLeft: 14,
+    paddingRight: 12,
+    borderRadius: 999,
+    maxWidth: 200,
+    gap: 8,
+  },
+  roleSwitcherTitle: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: "#111",
+    letterSpacing: -0.1,
+  },
+  roleSwitcherBadge: {
+    minWidth: 22,
+    height: 18,
+    paddingHorizontal: 6,
+    borderRadius: 9,
+    backgroundColor: "#222",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  roleSwitcherBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.2,
   },
   // Modal: bottom sheet, content-sized, listing all sponsored jobs.
   // Matches the matches-screen modal aesthetic (40px top radius, 28px
@@ -4752,22 +5434,6 @@ const styles = StyleSheet.create({
     color: "#000",
     letterSpacing: -1.2,
   },
-  progressHeader: { marginTop: 6 },
-  progressText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#BBB",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  progressTrack: {
-    height: 6,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 3 },
   cardContainer: { marginBottom: 24 },
   cardOuter: {
     borderRadius: 24,
@@ -6144,6 +6810,183 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingHorizontal: 20,
   },
+
+  // ── Sponsor empty states (modern redesign) ────────────────────────
+  // Container is similar to `emptyState` but with more breathing room,
+  // wider max content area, and styling primitives shared across both
+  // sponsor empty states ("Build your deck" + "Out in the wild").
+  sponsorEmptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    width: "100%",
+    maxWidth: 380,
+  },
+
+  // Stacked-deck illustration — three nested rounded squares offset
+  // like a deck of cards, the front one carrying an icon. Replaces
+  // the generic gray icon circle for the "Build your deck" empty
+  // state to visually evoke the missing roles.
+  emptyDeckIllustration: {
+    width: 132,
+    height: 132,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 28,
+  },
+  emptyDeckCard: {
+    width: 96,
+    height: 116,
+    borderRadius: 18,
+    position: "absolute",
+    backgroundColor: "#FFF",
+    borderWidth: 1.5,
+    borderColor: "#E5E5E5",
+  },
+  emptyDeckCardBack: {
+    transform: [{ translateX: 18 }, { translateY: 10 }, { rotate: "8deg" }],
+    opacity: 0.55,
+  },
+  emptyDeckCardMid: {
+    transform: [{ translateX: -14 }, { translateY: 4 }, { rotate: "-5deg" }],
+    opacity: 0.8,
+  },
+  emptyDeckCardFront: {
+    backgroundColor: "#F4F4F5",
+    borderColor: "#D9D9D9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Hero typography shared by both sponsor empty states.
+  sponsorEmptyTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.6,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  sponsorEmptySubtitle: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 26,
+    paddingHorizontal: 8,
+  },
+
+  // Primary CTA — black pill with a trailing chevron, modeled after
+  // the floating Connect button so the brand reads consistently.
+  sponsorEmptyPrimary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 999,
+    backgroundColor: "#000",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  sponsorEmptyPrimaryText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  // Secondary action — outlined, lower visual weight.
+  sponsorEmptySecondary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 999,
+    backgroundColor: "#FFF",
+    borderWidth: 1.5,
+    borderColor: "#000",
+  },
+  sponsorEmptySecondaryText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  sponsorEmptyActions: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    justifyContent: "center",
+  },
+
+  // ── "LIVE" status pill (pulsing dot) ──────────────────────────────
+  // Anchored above the "Out in the wild" state so the user reads
+  // "your job is up and running" before "no applicants yet". The
+  // dot animates between full opacity and 35% via `livePulseStyle`.
+  livePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    backgroundColor: "#0F0F11",
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 20,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#FFF",
+  },
+  livePillText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+
+  // Compact preview of the active sponsored job, anchored under the
+  // LIVE pill in the "Out in the wild" state so the sponsor sees
+  // exactly which role is being shopped around.
+  sponsorWaitingJobCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    width: "100%",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  sponsorWaitingJobTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.2,
+  },
+  sponsorWaitingJobCompany: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#666",
+    marginTop: 3,
+  },
+
   // ── Referral Check-in Banner ───────────────────────────────────────────────
   checkInBanner: {
     flexDirection: "row",

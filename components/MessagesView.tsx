@@ -1,69 +1,69 @@
 import {
-  trackConversationOpened,
-  trackMessageSent,
-  trackPublicProfileOpenedFromMessage,
-  trackReferralSubmitted,
-  trackUnmatchConfirmed,
+    trackConversationOpened,
+    trackMessageSent,
+    trackPublicProfileOpenedFromMessage,
+    trackReferralSubmitted,
+    trackUnmatchConfirmed,
 } from "@/lib/analytics/mixpanel";
 import {
-  getBasicProfile,
-  getConversationMessages,
-  getConversations,
-  getPublicProfile,
-  listReferrals,
-  sendMessage,
-  submitReferral,
-  unmatchConversation,
+    getBasicProfile,
+    getConversationMessages,
+    getConversations,
+    getPublicProfile,
+    listReferrals,
+    sendMessage,
+    submitReferral,
+    unmatchConversation,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
-  ArrowLeft,
-  Briefcase,
-  CheckCircle,
-  ChevronRight,
-  ClipboardCheck,
-  Clock,
-  FileText,
-  Globe,
-  GraduationCap,
-  MapPin,
-  MessageCircle,
-  MoreHorizontal,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  User,
-  UserCheck,
-  X
+    ArrowLeft,
+    Briefcase,
+    CheckCircle,
+    ChevronRight,
+    ClipboardCheck,
+    Clock,
+    FileText,
+    Globe,
+    GraduationCap,
+    MapPin,
+    MessageCircle,
+    MoreHorizontal,
+    Send,
+    ShieldCheck,
+    Sparkles,
+    User,
+    UserCheck,
+    X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInDown,
-  FadeInUp,
-  SlideInDown,
-  SlideOutDown,
-  useAnimatedKeyboard,
-  useAnimatedStyle,
+    FadeInDown,
+    FadeInUp,
+    SlideInDown,
+    SlideOutDown,
+    useAnimatedKeyboard,
+    useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CompanyLogo } from "./ui/CompanyLogo";
@@ -273,11 +273,7 @@ export function MessagesView({
         // join LOGO_URL onto the row. Pull whichever naming surfaces if
         // backend adds it later; otherwise stays undefined and downstream
         // CompanyLogo components fall back to the company initial.
-        logoUrl:
-          c.LOGO_URL ||
-          c.logo_url ||
-          c.ORGANIZATION_LOGO ||
-          undefined,
+        logoUrl: c.LOGO_URL || c.logo_url || c.ORGANIZATION_LOGO || undefined,
       },
       createdAt: new Date().toISOString(),
     };
@@ -566,10 +562,7 @@ export function MessagesView({
         // 4001 = bad token, 4003 = forbidden — don't hammer reconnect on
         // an auth failure that won't fix itself.
         if (event.code === 4001 || event.code === 4003) {
-          console.warn(
-            "[MessagesView] Inbox WebSocket rejected:",
-            event.code,
-          );
+          console.warn("[MessagesView] Inbox WebSocket rejected:", event.code);
           return;
         }
         scheduleReconnect();
@@ -1133,7 +1126,22 @@ export function MessagesView({
           <View
             style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
           >
-            <ActivityIndicator size="large" color="#000" />
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: "#F4F4F5",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 12,
+              }}
+            >
+              <MessageCircle color="#BBB" size={28} strokeWidth={2} />
+            </View>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#AAA" }}>
+              Loading conversation…
+            </Text>
           </View>
         );
       }
@@ -1634,7 +1642,19 @@ export function MessagesView({
                   >
                     {referralProfileLoading ? (
                       <View style={styles.referralProfileLoading}>
-                        <ActivityIndicator size="large" color="#000" />
+                        <View
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 28,
+                            backgroundColor: "#F4F4F5",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <User color="#BBB" size={24} strokeWidth={2} />
+                        </View>
                         <Text style={styles.referralProfileLoadingText}>
                           Loading candidate details…
                         </Text>
@@ -1685,7 +1705,11 @@ export function MessagesView({
                           <View style={{ gap: 12 }}>
                             {/* ATS hint banner — monochrome, modern */}
                             <View style={styles.atsBanner}>
-                              <FileText size={14} color="#666" strokeWidth={2} />
+                              <FileText
+                                size={14}
+                                color="#666"
+                                strokeWidth={2}
+                              />
                               <Text style={styles.atsBannerText}>
                                 Enter these details into your ATS portal when
                                 submitting the referral.
@@ -1723,9 +1747,7 @@ export function MessagesView({
                                   {currentRole}
                                 </Text>
                               )}
-                              {(!!location ||
-                                !!industry ||
-                                !!yearsExp) && (
+                              {(!!location || !!industry || !!yearsExp) && (
                                 <View style={styles.candidateChipsRow}>
                                   {!!location && (
                                     <View style={styles.candidateChip}>
@@ -1763,9 +1785,7 @@ export function MessagesView({
                               <View style={styles.refContext}>
                                 <View style={styles.refContextRow}>
                                   <CompanyLogo
-                                    logoUrl={
-                                      conversation.jobContext?.logoUrl
-                                    }
+                                    logoUrl={conversation.jobContext?.logoUrl}
                                     name={company || jobTitle}
                                     size={40}
                                     borderRadius={10}
@@ -1821,29 +1841,27 @@ export function MessagesView({
                                     {yearsExp} years in industry
                                   </Text>
                                 )}
-                                {experiences.map(
-                                  (exp: any, idx: number) => (
-                                    <View
-                                      key={idx}
-                                      style={[
-                                        styles.refEntryRow,
-                                        idx > 0 && styles.refEntryRowDivider,
-                                      ]}
-                                    >
-                                      <Text style={styles.refEntryTitle}>
-                                        {exp.jobTitle || "Role"}
-                                      </Text>
-                                      <Text style={styles.refEntryMeta}>
-                                        {exp.company || ""}
-                                        {exp.current
-                                          ? " · Current"
-                                          : exp.endDate
-                                            ? ` · ${exp.endDate}`
-                                            : ""}
-                                      </Text>
-                                    </View>
-                                  ),
-                                )}
+                                {experiences.map((exp: any, idx: number) => (
+                                  <View
+                                    key={idx}
+                                    style={[
+                                      styles.refEntryRow,
+                                      idx > 0 && styles.refEntryRowDivider,
+                                    ]}
+                                  >
+                                    <Text style={styles.refEntryTitle}>
+                                      {exp.jobTitle || "Role"}
+                                    </Text>
+                                    <Text style={styles.refEntryMeta}>
+                                      {exp.company || ""}
+                                      {exp.current
+                                        ? " · Current"
+                                        : exp.endDate
+                                          ? ` · ${exp.endDate}`
+                                          : ""}
+                                    </Text>
+                                  </View>
+                                ))}
                               </View>
                             )}
 
@@ -1861,9 +1879,7 @@ export function MessagesView({
                                     .filter(Boolean)
                                     .join(" in ");
                                   const head =
-                                    degreeLine ||
-                                    edu.university ||
-                                    "Education";
+                                    degreeLine || edu.university || "Education";
                                   const meta = degreeLine ? edu.university : "";
                                   return (
                                     <View
@@ -1897,18 +1913,13 @@ export function MessagesView({
                                   </Text>
                                 </View>
                                 <View style={styles.skillsRow}>
-                                  {skills.map(
-                                    (skill: string, idx: number) => (
-                                      <View
-                                        key={idx}
-                                        style={styles.skillBadge}
-                                      >
-                                        <Text style={styles.skillBadgeText}>
-                                          {skill}
-                                        </Text>
-                                      </View>
-                                    ),
-                                  )}
+                                  {skills.map((skill: string, idx: number) => (
+                                    <View key={idx} style={styles.skillBadge}>
+                                      <Text style={styles.skillBadgeText}>
+                                        {skill}
+                                      </Text>
+                                    </View>
+                                  ))}
                                 </View>
                               </View>
                             )}
