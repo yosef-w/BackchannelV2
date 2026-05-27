@@ -2293,7 +2293,7 @@ export function HomeView({
             >
               <View style={styles.progressLabelRow}>
                 <Text style={styles.progressCurrent}>
-                  {deckIsActive ? Math.min(progress, DECK_SIZE) : "–"}
+                  {deckIsActive ? Math.min(progress, DECK_SIZE) : 0}
                 </Text>
                 <Text style={styles.progressTotal}>/{DECK_SIZE}</Text>
               </View>
@@ -2719,7 +2719,7 @@ export function HomeView({
                 </View>
               </Animated.View>
             </View>
-          ) : isLoading ? (
+          ) : isLoading || !currentData ? (
             <View style={styles.fullEmptyContainer}>
               <SkeletonCard />
             </View>
