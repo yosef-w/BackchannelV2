@@ -66,6 +66,7 @@ import Animated, {
   useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
@@ -268,6 +269,15 @@ export function MessagesView({
         jobId: c.JOB_ID,
         jobTitle: c.TITLE,
         company: c.COMPANY || "",
+        // Forward-compat — /api/messages/conversations/ doesn't currently
+        // join LOGO_URL onto the row. Pull whichever naming surfaces if
+        // backend adds it later; otherwise stays undefined and downstream
+        // CompanyLogo components fall back to the company initial.
+        logoUrl:
+          c.LOGO_URL ||
+          c.logo_url ||
+          c.ORGANIZATION_LOGO ||
+          undefined,
       },
       createdAt: new Date().toISOString(),
     };
@@ -1439,6 +1449,7 @@ export function MessagesView({
                       userType === "sponsor" ? "INTERESTED IN" : "CONNECTED ON",
                     title: conversation.jobContext.jobTitle,
                     company: conversation.jobContext.company,
+                    logoUrl: conversation.jobContext.logoUrl,
                   }
                 : undefined
             }
@@ -1744,20 +1755,42 @@ export function MessagesView({
                               )}
                             </View>
 
-                            {/* APPLYING FOR — role-context card */}
+                            {/* APPLYING FOR — role-context card. Hero logo
+                                from PR #62 pipeline when conversations
+                                eventually carry one (currently undefined,
+                                so falls back to the company initial). */}
                             {!!jobTitle && (
                               <View style={styles.refContext}>
-                                <Text style={styles.refContextLabel}>
-                                  APPLYING FOR
-                                </Text>
-                                <Text style={styles.refContextTitle}>
-                                  {jobTitle}
-                                </Text>
-                                {!!company && (
-                                  <Text style={styles.refContextCompany}>
-                                    {company}
-                                  </Text>
-                                )}
+                                <View style={styles.refContextRow}>
+                                  <CompanyLogo
+                                    logoUrl={
+                                      conversation.jobContext?.logoUrl
+                                    }
+                                    name={company || jobTitle}
+                                    size={40}
+                                    borderRadius={10}
+                                    initialFontSize={17}
+                                  />
+                                  <View style={{ flex: 1, minWidth: 0 }}>
+                                    <Text style={styles.refContextLabel}>
+                                      APPLYING FOR
+                                    </Text>
+                                    <Text
+                                      style={styles.refContextTitle}
+                                      numberOfLines={1}
+                                    >
+                                      {jobTitle}
+                                    </Text>
+                                    {!!company && (
+                                      <Text
+                                        style={styles.refContextCompany}
+                                        numberOfLines={1}
+                                      >
+                                        {company}
+                                      </Text>
+                                    )}
+                                  </View>
+                                </View>
                               </View>
                             )}
 
@@ -3231,6 +3264,11 @@ const styles = StyleSheet.create({
     borderColor: "#EEE",
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  refContextRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   refContextLabel: {
     fontSize: 11,

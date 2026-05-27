@@ -38,6 +38,7 @@ import {
   DollarSign,
   Globe,
   GraduationCap,
+  Heart,
   Info,
   Layers,
   Lightbulb,
@@ -89,6 +90,7 @@ import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
+import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -1374,11 +1376,12 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
   // fewer roles than the "My Sponsored" tab on the Jobs board).
   //
   // SMART DEFAULT: after populating the store, set the active role to the
-  // one with the highest LIKES_COUNT (most pending applicants). The
-  // sponsor lands on whatever role has the most work to do, instead of
-  // whatever the backend happened to return first. Ties break by response
-  // order (which is CREATED_AT DESC, so the most-recent role wins among
-  // jobs with the same count — including the "all zero" cold-start case).
+  // one with the highest PENDING_LIKES_COUNT (most unactioned applicants
+  // waiting on the sponsor — PR #56's pending-only signal). The sponsor
+  // lands on whatever role has the most work to do, instead of whatever
+  // the backend happened to return first. Ties break by response order
+  // (CREATED_AT DESC, so the most-recent role wins ties — including the
+  // all-zero cold-start case).
   useEffect(() => {
     if (userType !== "sponsor") return;
     if (activeSponsoredJobId) return;
@@ -1393,18 +1396,18 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
             atsJobId: j.REFERENCE_JOB_ID ? String(j.REFERENCE_JOB_ID) : "",
             title: j.TITLE || "",
             company: j.COMPANY || "",
-            likesCount: Number(j.LIKES_COUNT) || 0,
+            likesCount: Number(j.PENDING_LIKES_COUNT ?? j.LIKES_COUNT) || 0,
           });
         });
-        // Pick the role with the highest LIKES_COUNT as the smart default.
-        // Reduce-with-strict-greater-than gives us "ties go to first seen"
-        // → first in the response (most recent) wins ties, including the
-        // all-zero case.
+        // Pick the role with the highest PENDING_LIKES_COUNT as the smart
+        // default. Fall back to LIKES_COUNT if the new field is absent
+        // (older backend, defensive). Reduce-with-strict-greater-than gives
+        // "ties go to first seen" → first in the response (most recent)
+        // wins ties, including the all-zero case.
+        const pending = (j: any) =>
+          Number(j.PENDING_LIKES_COUNT ?? j.LIKES_COUNT ?? 0);
         const winner = response.jobs.reduce(
-          (best: any, j: any) =>
-            Number(j.LIKES_COUNT || 0) > Number(best.LIKES_COUNT || 0)
-              ? j
-              : best,
+          (best: any, j: any) => (pending(j) > pending(best) ? j : best),
           response.jobs[0],
         );
         if (winner) {
@@ -2183,6 +2186,26 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                         pointerEvents={isFlipped ? "none" : "auto"}
                       >
                         <View style={styles.cardInner}>
+                          {/* "Liked your role" badge — PR #56 ships
+                              HAS_LIKED_JOB / LIKED_JOB_AT on each profile-pack
+                              row so the sponsor can immediately see who's
+                              high-conviction interest vs general discovery.
+                              Renders as a top-of-card tag, hidden when the
+                              applicant hasn't liked the role. */}
+                          {(currentData as any).HAS_LIKED_JOB === true && (
+                            <View style={styles.likedYourRolePill}>
+                              <Heart
+                                size={11}
+                                color="#FFF"
+                                fill="#FFF"
+                                strokeWidth={2}
+                              />
+                              <Text style={styles.likedYourRolePillText}>
+                                LIKED YOUR ROLE
+                              </Text>
+                            </View>
+                          )}
+
                           {/* Centered identity hero — circular avatar,
                               name, desired-role subtitle, and a centered
                               row of fact pills. */}
@@ -2637,23 +2660,27 @@ export function HomeView({ userType, onNavigateToProfile }: HomeViewProps) {
                               </View>
                             )}
                           {/* Centered identity hero — circular company
-                              logo, job title, company subtitle, sponsorship
-                              status, and a centered row of fact pills. */}
+                              logo (PR #62), job title, company subtitle,
+                              sponsorship status, and a centered row of fact
+                              pills. Logo image comes from LOGO_URL via
+                              `transformJobApiResponse` → `image`; falls back
+                              to the company initial when unresolved. */}
                           <View style={styles.heroCentered}>
-                            {"image" in currentData && currentData.image ? (
-                              <Image
-                                source={{ uri: currentData.image }}
-                                style={styles.heroAvatar}
-                              />
-                            ) : (
-                              <View style={styles.heroAvatarFallback}>
-                                <Text style={styles.heroAvatarInitial}>
-                                  {("company" in currentData
-                                    ? currentData.company || "?"
-                                    : "?")[0].toUpperCase()}
-                                </Text>
-                              </View>
-                            )}
+                            <CompanyLogo
+                              logoUrl={
+                                "image" in currentData
+                                  ? (currentData.image as string)
+                                  : undefined
+                              }
+                              name={
+                                "company" in currentData
+                                  ? (currentData.company as string)
+                                  : ""
+                              }
+                              size={72}
+                              borderRadius={36}
+                              initialFontSize={27}
+                            />
 
                             <Text style={styles.heroName} numberOfLines={2}>
                               {"title" in currentData ? currentData.title : ""}
@@ -5010,6 +5037,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
+  },
+  // PR #56 — "Liked your role" badge at the top of a sponsor's profile-pack
+  // card. Black accent pill so it visually anchors the high-conviction
+  // signal above the neutral hero block.
+  likedYourRolePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    gap: 5,
+    backgroundColor: "#000",
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 10,
+  },
+  likedYourRolePillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.8,
   },
   heroPillText: {
     fontSize: 12,

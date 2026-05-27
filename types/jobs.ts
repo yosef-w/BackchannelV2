@@ -58,6 +58,12 @@ export interface JobApiResponse {
   relevance_score: number;
   job_type?: "ats" | "sponsored";
   sponsor?: JobApiSponsor | null;
+  /**
+   * Company logo URL from PR #62's logo pipeline. Resolved server-side
+   * (Logo.dev for sponsored / ATS-derived, sponsor-uploaded for manual jobs).
+   * Empty string when unresolved — fall back to a generic placeholder.
+   */
+  LOGO_URL?: string;
 }
 
 /**
@@ -78,6 +84,12 @@ export interface BrowseJobResponse {
   EXPERIENCE_LEVEL: string | null;
   SKILLS: string | null;
   DATE_POSTED: string;
+  /**
+   * Company logo URL from PR #62's logo pipeline. ATS/browse responses use
+   * the `ORGANIZATION_LOGO` field name (not LOGO_URL — that's the sponsored
+   * naming). Null when the pipeline couldn't resolve it.
+   */
+  ORGANIZATION_LOGO?: string | null;
 }
 
 /**
@@ -309,7 +321,10 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
     url: apiJob.URL,
     // Default values for UI
     applicants: 0,
-    image: "",
+    // PR #62 — company logo resolved server-side. Empty string falls through
+    // to the consumer's placeholder logic (HomeView shows a company-initial
+    // chip when image is empty).
+    image: apiJob.LOGO_URL || "",
     benefits: highlights,
     currentSponsors: [],
     isSponsored: apiJob.job_type === "sponsored",

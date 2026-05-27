@@ -221,9 +221,16 @@ class ApiClient {
 
   /**
    * DELETE request
+   *
+   * Most DELETE endpoints take no body, but a few (e.g. unsponsor-job, which
+   * captures an optional `reason` payload) accept JSON — passing `data` here
+   * serializes it the same way POST/PUT/PATCH do.
    */
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: "DELETE" });
+  async delete<T>(endpoint: string, data?: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "DELETE",
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
 }
 
@@ -349,6 +356,10 @@ export async function getMyJobs(): Promise<{
     CAN_REFER: boolean;
     LOGO_URL: string | null;
     LIKES_COUNT: number; // applicants who have liked this job (ACTIVE | MATCHED)
+    // PR #56 — pending-only "needs your attention" count. Use this (not the
+    // broader LIKES_COUNT) for the HomeView role-switcher badge so the
+    // number reflects unactioned interest, not lifetime activity.
+    PENDING_LIKES_COUNT: number;
     REFERENCE_JOB_ID?: string | null;
   }>;
   total_count: number;
@@ -400,6 +411,12 @@ export async function getWaitlistedJobs(): Promise<{
     experience_level: string | null;
     is_now_sponsored: boolean;
     sponsored_job_id: string | null;
+    /**
+     * Optional pass-through for the PR #62 logo pipeline — backend doesn't
+     * currently SELECT this on the waitlist query, but typing it as
+     * optional lets the UI light up automatically once it does.
+     */
+    organization_logo?: string | null;
   }>;
   total_count: number;
 }> {
@@ -1446,6 +1463,45 @@ export async function applyToJob(jobId: string): Promise<{
 }
 
 /**
+ * 📥 Get Sponsor Requests (Sponsor) — PR #57
+ * List active sponsor-requests targeting the authenticated sponsor. Source of
+ * truth is `matching.sponsor_requests`, not notifications — survives the
+ * sponsor deleting or marking-read the request's notification on the
+ * Notifications screen. Use this instead of filtering /api/notifications/.
+ *
+ * Uses GET /api/jobs/sponsor-requests/
+ */
+export async function getSponsorRequests(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  requests: Array<{
+    REQUEST_ID: string;
+    APPLICANT_USER_ID: string;
+    JOB_ID: string;
+    COMPANY: string;
+    STATUS: string;
+    CREATED_AT: string;
+    FIRST_NAME: string | null;
+    LAST_NAME: string | null;
+    PHOTO_URL: string | null;
+    JOB_TITLE: string | null;
+    JOB_COMPANY: string | null;
+  }>;
+  total_count: number;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit !== undefined)
+    queryParams.append("limit", String(params.limit));
+  if (params?.offset !== undefined)
+    queryParams.append("offset", String(params.offset));
+  const qs = queryParams.toString();
+  return api.get(
+    qs ? `/api/jobs/sponsor-requests/?${qs}` : "/api/jobs/sponsor-requests/",
+  );
+}
+
+/**
  * 📣 Request a Sponsor for a Job (Applicant)
  * Notifies sponsors at the job's company and asks them to sponsor this
  * role. Idempotent — repeat requests for the same (user, job) are deduped
@@ -1556,6 +1612,13 @@ export async function updateJob(
     experience_level?: string;
     employment_type?: string;
     remote_option?: boolean;
+    /**
+     * PR #62 — sponsor-overridable company logo URL. Must be a valid
+     * http/https URL, max 2000 chars. Backend returns 400 on invalid URL.
+     * Pass an empty string to clear the override (falls back to the
+     * auto-resolved Logo.dev URL).
+     */
+    logo_url?: string;
   },
 ): Promise<{ message: string; updated_fields: string[] }> {
   return api.patch(`/api/jobs/${jobId}/edit/`, data);
@@ -1578,10 +1641,13 @@ export async function deactivateJob(jobId: string): Promise<{
  * Unlike deactivateJob (soft-delete), unsponsor allows re-sponsoring the same ATS listing later.
  * Uses DELETE /api/jobs/<job_id>/unsponsor/
  *
- * `reason` (and optional free-text `reasonDetail`) are passed as query params
- * so the backend can act on them — e.g. prune listings unsponsored as
- * "posting_expired". See §12 in docs/BACKEND_CHANGES_NEEDED.md. Both are
- * optional; callers without a reason (e.g. the job-detail screen) still work.
+ * `reason` is sent as a JSON body field per PR #58 — backend reads
+ * `request.data.get('reason')` (max 500 chars, truncated server-side) and
+ * persists it to `jobs.unsponsor_audit`. When the caller's UI also collected
+ * free-text detail (the "other" path), we concatenate it onto the reason so
+ * the analytics row still bucket-sorts on the categorical prefix while
+ * keeping the user's note. Both args are optional; callers that omit them
+ * (e.g. the job-detail screen's "Remove Sponsorship" button) still work.
  */
 export async function unsponsorJob(
   jobId: string,
@@ -1590,13 +1656,14 @@ export async function unsponsorJob(
 ): Promise<{
   message: string;
 }> {
-  const params: string[] = [];
-  if (reason) params.push(`reason=${encodeURIComponent(reason)}`);
-  if (reasonDetail && reasonDetail.trim()) {
-    params.push(`reason_detail=${encodeURIComponent(reasonDetail.trim())}`);
+  let finalReason = reason;
+  if (reason === "other" && reasonDetail && reasonDetail.trim()) {
+    finalReason = `other: ${reasonDetail.trim()}`.slice(0, 500);
   }
-  const qs = params.length ? `?${params.join("&")}` : "";
-  return api.delete(`/api/jobs/${jobId}/unsponsor/${qs}`);
+  return api.delete(
+    `/api/jobs/${jobId}/unsponsor/`,
+    finalReason ? { reason: finalReason } : undefined,
+  );
 }
 
 /**

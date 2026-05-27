@@ -11,14 +11,13 @@ import {
   getLikedJobs,
   getMatches,
   getMyJobs,
-  getNotifications,
   getPublicProfile,
   getSponsorMatches,
+  getSponsorRequests,
   getWaitlistedJobs,
   likeBackSponsor,
   likeProfile,
   listReferrals,
-  markNotificationAsRead,
   sponsorJob,
   withdrawReferral,
 } from "@/lib/api";
@@ -70,6 +69,7 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
 } from "react-native-reanimated";
+import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
@@ -86,6 +86,14 @@ interface Match {
   role: string;
   company: string;
   image: string;
+  /**
+   * Company logo for the matched job. The /api/matches/ and
+   * /api/matches/sponsor/ endpoints don't ship a logo field yet — present
+   * here for forward-compat so cards can light up automatically once the
+   * backend joins LOGO_URL into those responses. Until then it's undefined
+   * and the CompanyLogo component renders the company initial.
+   */
+  companyLogoUrl?: string;
   status: string;
   date: string;
   appliedRole: string;
@@ -121,6 +129,12 @@ interface Referral {
   sponsorPhotoUrl: string | null;
   jobTitle: string | null;
   jobCompany: string | null;
+  /**
+   * Optional pass-through for the PR #62 logo pipeline. /api/referrals/
+   * doesn't currently surface a logo, but typing it as optional means the
+   * card will light up automatically once the backend joins it in.
+   */
+  jobLogoUrl?: string | null;
 }
 
 interface JobOpportunity {
@@ -131,7 +145,14 @@ interface JobOpportunity {
   location: string;
   salary: string;
   type: string;
+  /** Sponsor's photo — used in the modal hero (NOT the company logo). */
   image: string;
+  /**
+   * Company logo for the liked job. /api/likes/jobs/ doesn't currently
+   * include LOGO_URL (PR #62 only added it to pack/mine/browse). Present
+   * here so cards light up automatically once the backend joins it.
+   */
+  companyLogoUrl?: string;
   description: string;
   skills: string[];
   benefits: string[];
@@ -165,7 +186,9 @@ interface JobOpportunity {
  * rather than buried in the notifications list.
  */
 interface SponsorRequest {
-  notificationId: string;
+  // matching.sponsor_requests.REQUEST_ID — survives the sponsor deleting or
+  // reading the underlying notification (PR #57 dedicated endpoint).
+  requestId: string;
   applicantUserId: string;
   applicantName: string;
   applicantPhoto: string | null;
@@ -222,6 +245,13 @@ interface WaitlistedJob {
   experience_level: string | null;
   is_now_sponsored: boolean;
   sponsored_job_id: string | null;
+  /**
+   * Company logo. /api/jobs/waitlist/mine/ doesn't currently surface one
+   * (the underlying query only selects basic silver-job columns); kept as
+   * optional pass-through for forward compatibility. Falls back to the
+   * organization initial when absent.
+   */
+  organization_logo?: string | null;
 }
 
 const QUICK_REPLIES = [
@@ -439,6 +469,13 @@ export function MatchesView({
                 match.sponsor?.profile_image_url ||
                 match.SPONSOR_PHOTO_URL ||
                 "",
+              // Defensive: backend doesn't currently join LOGO_URL onto
+              // /api/matches/ but if/when it does, pick it up automatically.
+              companyLogoUrl:
+                match.LOGO_URL ||
+                match.logo_url ||
+                match.ORGANIZATION_LOGO ||
+                undefined,
               status: "connected",
               date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
               appliedRole:
@@ -490,6 +527,11 @@ export function MatchesView({
               role: "Job Seeker",
               company: "",
               image: match.PHOTO_URL || "",
+              companyLogoUrl:
+                match.LOGO_URL ||
+                match.logo_url ||
+                match.ORGANIZATION_LOGO ||
+                undefined,
               status: "connected",
               date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
               appliedRole: match.TITLE || "",
@@ -574,6 +616,11 @@ export function MatchesView({
             type: likedJob.EXPERIENCE_LEVEL || "Full-time",
             experienceLevel: likedJob.EXPERIENCE_LEVEL || "",
             image: likedJob.SPONSOR_PHOTO_URL || "",
+            // Defensive: backend may surface either naming once it joins
+            // logos into /api/likes/jobs/. Until then this stays undefined
+            // and the CompanyLogo component falls back to the initial.
+            companyLogoUrl:
+              likedJob.LOGO_URL || likedJob.ORGANIZATION_LOGO || undefined,
             description: likedJob.DESCRIPTION || "",
             // ATS-enriched fields from PR #41 — COALESCE'd from the sponsored
             // posting first, ats.silver_jobs second. Manually-created jobs
@@ -635,10 +682,9 @@ export function MatchesView({
             company: s.SPONSOR_COMPANY || "",
             image: s.SPONSOR_PHOTO_URL || "",
             jobId: s.JOB_ID || "",
-            // Job context (§4 in BACKEND_CHANGES_NEEDED.md). Lights up the
-            // role-line UI below once the backend persists JOB_ID on
-            // profile-likes and the received-likes query exposes the
-            // joined job's title/company.
+            // Job context shipped in PR #55 — the role the sponsor was
+            // viewing when they liked. Drives the "Wants you for ..."
+            // line on the Interested-in-You card below.
             jobTitle: s.JOB_TITLE || "",
             jobCompany: s.JOB_COMPANY || "",
           })),
@@ -667,34 +713,33 @@ export function MatchesView({
   }, [userType, matchesRefreshKey]);
 
   // Fetch sponsor-requests (sponsor view) — applicants asking employees at
-  // the sponsor's company to sponsor a job. Until a dedicated endpoint
-  // exists (see BACKEND_CHANGES_NEEDED.md) we derive these from the
-  // notifications feed: type === "sponsor_request" + IS_READ === false so a
-  // request drops off as soon as the sponsor connects with the applicant.
+  // the sponsor's company to sponsor a job. Source of truth is
+  // `matching.sponsor_requests` via GET /api/jobs/sponsor-requests/ (PR #57),
+  // so this section is robust to the sponsor deleting / marking-read the
+  // associated notification on the Notifications screen.
   useEffect(() => {
     const fetchSponsorRequests = async () => {
       if (userType !== "sponsor") return;
       try {
         setSponsorRequestsLoading(true);
-        const response = await getNotifications({ limit: 50 });
-        const requests: SponsorRequest[] = response.notifications
-          .filter((n) => n.TYPE === "sponsor_request" && !n.IS_READ)
-          .filter(
-            (n) =>
-              !!n.RELATED_USER_ID &&
-              !!n.RELATED_JOB_ID &&
-              !!n.RELATED_USER_NAME,
-          )
-          .map((n) => ({
-            notificationId: n.NOTIFICATION_ID,
-            applicantUserId: n.RELATED_USER_ID as string,
-            applicantName: n.RELATED_USER_NAME as string,
-            applicantPhoto: n.RELATED_USER_PHOTO_URL,
-            jobId: n.RELATED_JOB_ID as string,
-            jobTitle: n.RELATED_JOB_TITLE ?? "Untitled role",
-            jobCompany: n.RELATED_JOB_COMPANY ?? "",
-            createdAt: n.CREATED_AT,
-          }));
+        const response = await getSponsorRequests({ limit: 50 });
+        const requests: SponsorRequest[] = (response.requests || [])
+          .filter((r) => !!r.APPLICANT_USER_ID && !!r.JOB_ID)
+          .map((r) => {
+            const name =
+              [r.FIRST_NAME, r.LAST_NAME].filter(Boolean).join(" ").trim() ||
+              "Applicant";
+            return {
+              requestId: r.REQUEST_ID,
+              applicantUserId: r.APPLICANT_USER_ID,
+              applicantName: name,
+              applicantPhoto: r.PHOTO_URL,
+              jobId: r.JOB_ID,
+              jobTitle: r.JOB_TITLE ?? "Untitled role",
+              jobCompany: r.JOB_COMPANY ?? r.COMPANY ?? "",
+              createdAt: r.CREATED_AT,
+            };
+          });
         setSponsorRequests(requests);
         setSponsorRequestsError(null);
       } catch (err) {
@@ -856,6 +901,13 @@ export function MatchesView({
               r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
             jobTitle: r.JOB_TITLE || r.job_title || null,
             jobCompany: r.JOB_COMPANY || r.job_company || null,
+            // Forward-compat — backend doesn't ship logos on /api/referrals/
+            // yet; component falls back to initial when this is null.
+            jobLogoUrl:
+              r.LOGO_URL ||
+              r.logo_url ||
+              r.ORGANIZATION_LOGO ||
+              null,
           }),
         );
         setReferrals(transformed);
@@ -919,7 +971,6 @@ export function MatchesView({
     setSrJobDetailVisible(true);
     setSrJobDetailLoading(true);
     setSrJobDetailError(null);
-    setSrJobDetail(null);
     try {
       const detail = await getJobDetail(selectedSponsorRequest.jobId);
       setSrJobDetail(detail);
@@ -931,6 +982,32 @@ export function MatchesView({
       setSrJobDetailLoading(false);
     }
   };
+
+  // Quietly prefetch the silver job detail as soon as a sponsor-request
+  // modal opens so the company logo can render on the hero card (PR #62
+  // ships `organization_logo` on /api/jobs/silver/<id>/ but NOT on
+  // /api/jobs/sponsor-requests/). Failures are silent — the modal still
+  // works, the hero just shows the company initial.
+  useEffect(() => {
+    if (!selectedSponsorRequest?.jobId) {
+      setSrJobDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setSrJobDetail(null);
+    (async () => {
+      try {
+        const detail = await getJobDetail(selectedSponsorRequest.jobId);
+        if (!cancelled) setSrJobDetail(detail);
+      } catch {
+        // Don't surface a load error in the inline card — the user can
+        // still tap "Tap to review this role" which has its own error UI.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSponsorRequest?.jobId]);
 
   const closeAllModals = () => {
     setSelectedProfile(null);
@@ -989,10 +1066,11 @@ export function MatchesView({
       // expressed interest in the role).
       await likeProfile(request.applicantUserId, newJobId);
 
-      // Step C: mark the source notification read so the request disappears.
-      markNotificationAsRead(request.notificationId).catch(() => {});
+      // Step C: drop the row from the local list. The next fetch reads from
+      // `matching.sponsor_requests` (PR #57), which the backend has already
+      // transitioned out of the active set once the like+match landed.
       setSponsorRequests((prev) =>
-        prev.filter((r) => r.notificationId !== request.notificationId),
+        prev.filter((r) => r.requestId !== request.requestId),
       );
       setMatchesRefreshKey((k) => k + 1);
 
@@ -1051,16 +1129,8 @@ export function MatchesView({
     setIsConnectingToApplicant(true);
     try {
       const res = await likeProfile(request.applicantUserId, request.jobId);
-      // Mark the source notification read so the request drops off the
-      // section immediately (and won't reappear on next fetch).
-      markNotificationAsRead(request.notificationId).catch((err) =>
-        console.warn(
-          "[MatchesView] Failed to mark sponsor-request notification read:",
-          err,
-        ),
-      );
       setSponsorRequests((prev) =>
-        prev.filter((r) => r.notificationId !== request.notificationId),
+        prev.filter((r) => r.requestId !== request.requestId),
       );
       setMatchesRefreshKey((k) => k + 1);
       closeAllModals();
@@ -1257,7 +1327,7 @@ export function MatchesView({
                 >
                   {sponsorRequests.map((req, index) => (
                     <Animated.View
-                      key={req.notificationId}
+                      key={req.requestId}
                       entering={FadeInRight.delay(index * 100)}
                       style={styles.card}
                     >
@@ -1750,11 +1820,18 @@ export function MatchesView({
                         onPress={() => openJob(job)}
                       >
                         <View style={styles.jobCardInfo}>
-                          <View style={styles.likedJobInitial}>
-                            <Text style={styles.likedJobInitialText}>
-                              {(job.company || "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
+                          {/* /api/likes/jobs/ doesn't include LOGO_URL yet
+                              (PR #62 only added it to pack/mine/browse). The
+                              CompanyLogo component falls back to the company
+                              initial when no logoUrl is supplied. */}
+                          <CompanyLogo
+                            logoUrl={job.companyLogoUrl}
+                            name={job.company}
+                            size={44}
+                            borderRadius={14}
+                            initialFontSize={20}
+                            style={{ marginBottom: 12 }}
+                          />
                           <Text style={styles.jobCardTitle} numberOfLines={2}>
                             {job.title}
                           </Text>
@@ -1871,11 +1948,14 @@ export function MatchesView({
                         onPress={() => setSelectedWaitlistedJob(job)}
                       >
                         <View style={styles.jobCardInfo}>
-                          <View style={styles.likedJobInitial}>
-                            <Text style={styles.likedJobInitialText}>
-                              {(job.organization || "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
+                          <CompanyLogo
+                            logoUrl={job.organization_logo}
+                            name={job.organization}
+                            size={44}
+                            borderRadius={14}
+                            initialFontSize={20}
+                            style={{ marginBottom: 12 }}
+                          />
                           <Text style={styles.jobCardTitle} numberOfLines={2}>
                             {job.title}
                           </Text>
@@ -2092,8 +2172,8 @@ export function MatchesView({
                             {sponsor.company}
                           </Text>
                         )}
-                        {/* Role the sponsor liked the applicant FOR. Hidden
-                            until backend §4 ships JOB_TITLE / JOB_COMPANY. */}
+                        {/* Role the sponsor liked the applicant FOR — backed
+                            by JOB_TITLE / JOB_COMPANY shipped in PR #55. */}
                         {!!(sponsor.jobTitle || sponsor.jobCompany) && (
                           <Text
                             style={styles.interestedSponsorJobContext}
@@ -2184,11 +2264,13 @@ export function MatchesView({
                       >
                         {/* Row 1 — company + role */}
                         <View style={styles.referralCardTop}>
-                          <View style={styles.referralCardInitial}>
-                            <Text style={styles.referralCardInitialText}>
-                              {(referral.jobCompany || "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
+                          <CompanyLogo
+                            logoUrl={referral.jobLogoUrl}
+                            name={referral.jobCompany}
+                            size={48}
+                            borderRadius={14}
+                            initialFontSize={19}
+                          />
                           <View style={{ flex: 1 }}>
                             <Text
                               style={styles.referralCardJobTitle}
@@ -2290,6 +2372,7 @@ export function MatchesView({
                   label: "ROLE",
                   title: selectedProfile.appliedRole,
                   company: selectedProfile.company,
+                  logoUrl: selectedProfile.companyLogoUrl,
                 }
               : undefined
           }
@@ -2403,13 +2486,16 @@ export function MatchesView({
                   )}
                 </View>
 
-                {/* Hero: Company Initial + Title + Company + Location */}
+                {/* Hero: Company Logo (initial fallback) + Title + Company + Location */}
                 <View style={styles.jobModalHero}>
-                  <View style={styles.jobModalHeroInitial}>
-                    <Text style={styles.jobModalHeroInitialText}>
-                      {(selectedJob.company || "?")[0].toUpperCase()}
-                    </Text>
-                  </View>
+                  <CompanyLogo
+                    logoUrl={selectedJob.companyLogoUrl}
+                    name={selectedJob.company}
+                    size={72}
+                    borderRadius={22}
+                    initialFontSize={32}
+                    style={{ marginBottom: 16 }}
+                  />
                   <Text style={styles.jobModalHeroTitle}>
                     {selectedJob.title}
                   </Text>
@@ -2704,13 +2790,16 @@ export function MatchesView({
                       )}
                     </View>
 
-                    {/* Hero — company + role */}
+                    {/* Hero — company logo + role */}
                     <View style={styles.jobModalHero}>
-                      <View style={styles.jobModalHeroInitial}>
-                        <Text style={styles.jobModalHeroInitialText}>
-                          {(r.jobCompany || "?")[0].toUpperCase()}
-                        </Text>
-                      </View>
+                      <CompanyLogo
+                        logoUrl={r.jobLogoUrl}
+                        name={r.jobCompany}
+                        size={72}
+                        borderRadius={22}
+                        initialFontSize={32}
+                        style={{ marginBottom: 16 }}
+                      />
                       <Text style={styles.jobModalHeroTitle}>
                         {r.jobTitle || "Open Role"}
                       </Text>
@@ -2897,10 +2986,9 @@ export function MatchesView({
                             </View>
                           </View>
 
-                          {/* Role the sponsor liked the applicant FOR. Pill
-                              sits under the sponsor identity. Hidden until
-                              backend §4 ships JOB_TITLE / JOB_COMPANY on
-                              received-likes. */}
+                          {/* Role the sponsor liked the applicant FOR — pill
+                              sits under the sponsor identity. Backed by
+                              JOB_TITLE / JOB_COMPANY on received-likes (PR #55). */}
                           {!!(
                             selectedInterestedSponsor.jobTitle ||
                             selectedInterestedSponsor.jobCompany
@@ -3372,15 +3460,26 @@ export function MatchesView({
                         </Text>
                       </View>
 
-                      {/* Job context card — tappable to review the full role */}
+                      {/* Job context card — tappable to review the full role.
+                          Hero logo from the silver-detail fetch where possible
+                          (the same job the chevron opens); /api/jobs/sponsor-requests/
+                          doesn't currently include a logo, so the CompanyLogo
+                          component falls back to the company initial. */}
                       <TouchableOpacity
                         style={styles.sponsorRequestJobCard}
                         onPress={openSrJobDetail}
                         activeOpacity={0.75}
                       >
-                        <View style={styles.sponsorRequestJobIconCircle}>
-                          <Briefcase color="#FFF" size={18} strokeWidth={2.2} />
-                        </View>
+                        <CompanyLogo
+                          logoUrl={
+                            srJobDetail?.organization_logo ||
+                            srJobDetail?.ORGANIZATION_LOGO
+                          }
+                          name={selectedSponsorRequest.jobCompany}
+                          size={40}
+                          borderRadius={20}
+                          initialFontSize={17}
+                        />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.sponsorRequestJobLabel}>
                             WANTS SPONSORSHIP FOR
@@ -3756,13 +3855,19 @@ export function MatchesView({
                 bounces={false}
                 contentContainerStyle={{ paddingBottom: 8 }}
               >
-                {/* Hero — company initial, title, company, location */}
+                {/* Hero — company logo, title, company, location */}
                 <View style={styles.jobModalHero}>
-                  <View style={styles.jobModalHeroInitial}>
-                    <Text style={styles.jobModalHeroInitialText}>
-                      {(srJobDetail.ORGANIZATION || "?")[0].toUpperCase()}
-                    </Text>
-                  </View>
+                  <CompanyLogo
+                    logoUrl={
+                      srJobDetail.organization_logo ||
+                      srJobDetail.ORGANIZATION_LOGO
+                    }
+                    name={srJobDetail.ORGANIZATION}
+                    size={72}
+                    borderRadius={22}
+                    initialFontSize={32}
+                    style={{ marginBottom: 16 }}
+                  />
                   <Text style={styles.jobModalHeroTitle}>
                     {srJobDetail.TITLE}
                   </Text>

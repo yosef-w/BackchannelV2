@@ -15,6 +15,7 @@ import {
   likeProfile,
   sponsorJob,
   unsponsorJob,
+  updateJob,
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -29,6 +30,7 @@ import {
   ChevronRight,
   DollarSign,
   Globe,
+  Image as ImageIcon,
   Info,
   Lock,
   MapPin,
@@ -69,6 +71,7 @@ import Animated, {
   SlideOutDown,
 } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
+import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
@@ -247,6 +250,13 @@ export function JobsView() {
   const [showUnsponsorReasons, setShowUnsponsorReasons] = useState(false);
   const [unsponsorReason, setUnsponsorReason] = useState<string | null>(null);
   const [unsponsorReasonDetail, setUnsponsorReasonDetail] = useState("");
+  // Menu-modal "Replace Logo" step — PR #62 ships a `logo_url` field on
+  // PATCH /api/jobs/<id>/edit/ that lets a sponsor override the auto-
+  // resolved Logo.dev URL (useful when the resolver picked the wrong
+  // domain, or for boutique companies it doesn't know about).
+  const [showLogoEditor, setShowLogoEditor] = useState(false);
+  const [logoUrlInput, setLogoUrlInput] = useState("");
+  const [isSavingLogo, setIsSavingLogo] = useState(false);
 
   const [selectedApplicantJob, setSelectedApplicantJob] =
     useState<JobPosting | null>(null);
@@ -331,7 +341,11 @@ export function JobsView() {
               isRemote: job.IS_REMOTE,
               url: "",
               applicants: 0,
+              // PR #62 — ORGANIZATION_LOGO resolved by Logo.dev pipeline.
+              // Fall back to the generic Unsplash placeholder so existing
+              // cards never render with a broken image.
               image:
+                job.ORGANIZATION_LOGO ||
                 "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
               currentSponsors: [],
               benefits: [],
@@ -423,13 +437,62 @@ export function JobsView() {
     }
   };
 
-  // Closes the menu modal and resets the unsponsor-reason step so it always
-  // reopens on the first step.
+  // Closes the menu modal and resets every step (unsponsor reason + logo
+  // editor) so the menu always reopens on the root options list.
   const closeMenu = () => {
     setMenuJob(null);
     setShowUnsponsorReasons(false);
     setUnsponsorReason(null);
     setUnsponsorReasonDetail("");
+    setShowLogoEditor(false);
+    setLogoUrlInput("");
+    setIsSavingLogo(false);
+  };
+
+  // PR #62 — override the auto-resolved Logo.dev URL with a sponsor-supplied
+  // one. An empty / whitespace-only input is treated as "use the override
+  // I'm sending" only when non-empty; we deliberately don't send an empty
+  // string here since the backend would reject it (it validates as a URL).
+  // Successful save updates the local jobs list optimistically so the new
+  // logo appears immediately without a full refetch.
+  const handleSaveLogoUrl = async () => {
+    if (!menuJob) return;
+    const trimmed = logoUrlInput.trim();
+    if (!trimmed) {
+      showToast("Paste a logo URL first.", "error");
+      return;
+    }
+    if (!/^https?:\/\//i.test(trimmed)) {
+      showToast("Logo URL must start with http:// or https://", "error");
+      return;
+    }
+    setIsSavingLogo(true);
+    try {
+      await updateJob(menuJob.id, { logo_url: trimmed });
+      // Optimistically refresh the card image in both lists so the new
+      // logo appears immediately without waiting for a refetch.
+      setJobs(
+        jobs.map((j) => (j.id === menuJob.id ? { ...j, image: trimmed } : j)),
+      );
+      setMyJobs(
+        myJobs.map((j) =>
+          j.id === menuJob.id ? { ...j, image: trimmed } : j,
+        ),
+      );
+      showToast("Logo updated.", "success");
+      closeMenu();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[JobsView] Failed to update logo:", err);
+      showToast(
+        msg.toLowerCase().includes("invalid")
+          ? "Backend rejected that URL — double-check it points to an image."
+          : "Couldn't save the new logo. Please try again.",
+        "error",
+      );
+    } finally {
+      setIsSavingLogo(false);
+    }
   };
 
   const handleUnsponsor = async (
@@ -477,7 +540,10 @@ export function JobsView() {
             atsJobId: j.REFERENCE_JOB_ID ? String(j.REFERENCE_JOB_ID) : "",
             title: j.TITLE || "",
             company: j.COMPANY || "",
-            likesCount: Number(j.LIKES_COUNT) || 0,
+            // PR #56 — pending (unactioned) count powers the HomeView
+            // role-switcher badge. Fall back to LIKES_COUNT when the
+            // backend hasn't shipped PENDING_LIKES_COUNT yet (defensive).
+            likesCount: Number(j.PENDING_LIKES_COUNT ?? j.LIKES_COUNT) || 0,
           });
         });
         // Also transform and store as myJobs so the badge count is correct immediately
@@ -1095,7 +1161,7 @@ export function JobsView() {
                       department: "",
                       url: "",
                       applicants: 0,
-                      image: "",
+                      image: job.ORGANIZATION_LOGO || "",
                       currentSponsors: [],
                       isSponsored: false,
                     }),
@@ -1991,7 +2057,57 @@ export function JobsView() {
               </View>
             )}
 
-            {showUnsponsorReasons ? (
+            {showLogoEditor ? (
+              /* Step 2 — replace the company logo. PR #62 ships a
+                 sponsor-overridable `logo_url` on PATCH /api/jobs/<id>/edit/,
+                 useful when the Logo.dev resolver picked the wrong domain
+                 or doesn't know a boutique company. */
+              <View style={{ flexShrink: 1, paddingBottom: 8 }}>
+                <Text style={styles.unsponsorReasonHeading}>
+                  Replace Company Logo
+                </Text>
+                <Text style={styles.unsponsorReasonSub}>
+                  Paste a direct image URL (PNG, JPG, or SVG). Leave blank
+                  to keep the current logo.
+                </Text>
+                <View style={{ alignItems: "center", marginVertical: 16 }}>
+                  <CompanyLogo
+                    logoUrl={logoUrlInput.trim() || menuJob?.image}
+                    name={menuJob?.company}
+                    size={72}
+                    borderRadius={22}
+                    initialFontSize={32}
+                  />
+                </View>
+                <TextInput
+                  style={styles.reasonOtherInput}
+                  placeholder="https://example.com/logo.png"
+                  placeholderTextColor="#BBB"
+                  value={logoUrlInput}
+                  onChangeText={setLogoUrlInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.unsponsorConfirmBtn,
+                    (!logoUrlInput.trim() || isSavingLogo) && { opacity: 0.4 },
+                  ]}
+                  disabled={!logoUrlInput.trim() || isSavingLogo}
+                  onPress={handleSaveLogoUrl}
+                  activeOpacity={0.8}
+                >
+                  {isSavingLogo ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.unsponsorConfirmBtnText}>
+                      Save Logo
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : showUnsponsorReasons ? (
               /* Step 2 — capture WHY before removing the listing, so the
                  backend can prune stale jobs (see §12 in
                  docs/BACKEND_CHANGES_NEEDED.md). */
@@ -2065,21 +2181,44 @@ export function JobsView() {
             ) : (
               <View style={{ gap: 10, paddingBottom: 8 }}>
                 {activeTab === "sponsored" && menuJob ? (
-                  <TouchableOpacity
-                    style={styles.menuOptionCard}
-                    onPress={() => setShowUnsponsorReasons(true)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.menuIconContainer}>
-                      <Trash2 size={18} color="#666" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
-                      <Text style={styles.menuOptionDesc}>
-                        Remove this listing from your sponsored jobs
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity
+                      style={styles.menuOptionCard}
+                      onPress={() => {
+                        // Seed the input with whatever logo the card is
+                        // showing right now so the sponsor can edit it
+                        // instead of re-typing from scratch.
+                        setLogoUrlInput(menuJob.image || "");
+                        setShowLogoEditor(true);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.menuIconContainer}>
+                        <ImageIcon size={18} color="#666" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.menuOptionTitle}>Replace Logo</Text>
+                        <Text style={styles.menuOptionDesc}>
+                          Override the auto-resolved company logo
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.menuOptionCard}
+                      onPress={() => setShowUnsponsorReasons(true)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.menuIconContainer}>
+                        <Trash2 size={18} color="#666" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
+                        <Text style={styles.menuOptionDesc}>
+                          Remove this listing from your sponsored jobs
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </>
                 ) : (
                   <TouchableOpacity
                     style={styles.menuOptionCard}
@@ -2128,13 +2267,16 @@ export function JobsView() {
                 bounces={false}
                 contentContainerStyle={{ paddingBottom: 8 }}
               >
-                {/* Hero: Company Initial + Title + Company + Location */}
+                {/* Hero: Company Logo (initial fallback) + Title + Company + Location */}
                 <View style={styles.jobModalHero}>
-                  <View style={styles.jobModalHeroInitial}>
-                    <Text style={styles.jobModalHeroInitialText}>
-                      {(viewJobDetails.company || "?")[0].toUpperCase()}
-                    </Text>
-                  </View>
+                  <CompanyLogo
+                    logoUrl={viewJobDetails.image}
+                    name={viewJobDetails.company}
+                    size={72}
+                    borderRadius={22}
+                    initialFontSize={32}
+                    style={{ marginBottom: 16 }}
+                  />
                   <Text style={styles.jobModalHeroTitle}>
                     {viewJobDetails.title}
                   </Text>
@@ -2808,9 +2950,11 @@ function JobCard({
       )}
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Image
-            source={typeof job.logo === "string" ? { uri: job.logo } : job.logo}
-            style={styles.companyLogo}
+          <CompanyLogo
+            logoUrl={job.image}
+            name={job.company}
+            size={60}
+            borderRadius={14}
           />
           <View style={styles.headerInfo}>
             <Text style={styles.companyName}>{job.company}</Text>

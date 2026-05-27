@@ -38,6 +38,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
+import { CompanyLogo } from "./CompanyLogo";
 import { DismissibleSheet } from "./DismissibleSheet";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -102,11 +103,14 @@ export interface ProfileDetailSheetProps {
   /**
    * Optional context card under the hero (e.g.,
    * "INTERESTED IN: Senior PM · Stripe"). Skipped when omitted.
+   * When `logoUrl` is supplied (PR #62 logo pipeline), the company logo
+   * is rendered alongside the text; otherwise the card stays text-only.
    */
   roleContext?: {
     label: string;
     title: string;
     company?: string;
+    logoUrl?: string | null;
   };
 
   /** Required primary action button (pinned at the bottom). */
@@ -327,13 +331,32 @@ export function ProfileDetailSheet({
               {/* ── Role context ──────────────────────────────────── */}
               {roleContext && (
                 <View style={styles.contextBlock}>
-                  <Text style={styles.sectionLabel}>{roleContext.label}</Text>
-                  <Text style={styles.contextTitle}>{roleContext.title}</Text>
-                  {!!roleContext.company && (
-                    <Text style={styles.contextCompany}>
-                      {roleContext.company}
-                    </Text>
-                  )}
+                  <View style={styles.contextBlockRow}>
+                    <CompanyLogo
+                      logoUrl={roleContext.logoUrl}
+                      name={roleContext.company || roleContext.title}
+                      size={40}
+                      borderRadius={10}
+                      initialFontSize={17}
+                    />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.sectionLabel}>{roleContext.label}</Text>
+                      <Text
+                        style={styles.contextTitle}
+                        numberOfLines={1}
+                      >
+                        {roleContext.title}
+                      </Text>
+                      {!!roleContext.company && (
+                        <Text
+                          style={styles.contextCompany}
+                          numberOfLines={1}
+                        >
+                          {roleContext.company}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
                 </View>
               )}
 
@@ -637,6 +660,11 @@ const styles = StyleSheet.create({
     borderColor: "#EFEFEF",
     padding: 16,
     marginBottom: 16,
+  },
+  contextBlockRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   sectionLabel: {
     fontSize: 9,

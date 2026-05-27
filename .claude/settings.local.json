@@ -69,7 +69,8 @@
       "Bash(grep -niE \"email|smtp|resend|from_email|frontend_url\" .env.example)",
       "Bash(grep -rn \"EMAIL_\\\\|RESEND\\\\|DEFAULT_FROM\\\\|FRONTEND_URL\\\\|EMAIL_BACKEND\" django_bc/settings.py)",
       "Bash(grep -vE \"^#\\(000|FFF|FFFFFF|000000|111|222|333|444|555|666|777|888|999|AAA|BBB|CCC|DDD|EEE|D33|E0E0E0|EEEEEE|EDEDED|F0F0F0|F4F4F4|F4F4F5|F5F5F5|F6F6F6|F8F9FA|F8F9FB|F9F9F9|FAFAFA|EBEBEB|ECECEC|EFEFEF|FBFBFB|F2F2F2|F3F4F6|D1D5DB|E5E5E5|E5E7EB|E8E8E8|9CA3AF|374151|78716C|999999|AAAAAA|C0C0C0|C8C8C8|1A1A1A|DEDEDE|DC2626|FEF2F2|FECACA|0A66C2|F5F6F8\\)$\")",
-      "Bash(grep -nA5 \"export async function submitReferral\\\\|submitReferral\\(\" lib/api.ts components/MessagesView.tsx)"
+      "Bash(grep -nA5 \"export async function submitReferral\\\\|submitReferral\\(\" lib/api.ts components/MessagesView.tsx)",
+      "Bash(npx eslint *)"
     ]
   }
 }
