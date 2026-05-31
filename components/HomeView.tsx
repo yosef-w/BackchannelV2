@@ -1887,9 +1887,11 @@ export function HomeView({
       "isSponsored" in currentData &&
       currentData.isSponsored === false
     ) {
-      // Already waitlisted — skip silently and advance the deck
+      // Already waitlisted — skip silently and advance the deck.
+      // Route through nextProfile so progress (and the dots/number) bumps
+      // in lock-step with currentIndex, like every other action.
       if (waitlistedJobIds.has(String(currentData.id))) {
-        setCurrentProfileIndex(currentProfileIndex + 1);
+        nextProfile(true);
         return;
       }
       setPendingJob(currentData);
@@ -2129,8 +2131,10 @@ export function HomeView({
   const handleApplyModalDone = () => {
     setShowApplyModal(false);
     setPendingJob(null);
-    // Advance the deck so the actioned card moves to the back
-    setCurrentProfileIndex(currentProfileIndex + 1);
+    // Advance the deck so the actioned card moves to the back. Use
+    // nextProfile so progress advances in lock-step with currentIndex —
+    // a bare setCurrentProfileIndex left the progress bar frozen.
+    nextProfile(true);
   };
 
   // Hinge-style transition — pure opacity cross-fade with a subtle 8px
@@ -2242,6 +2246,26 @@ export function HomeView({
         : undefined,
       marginBottom: collapsing ? (1 - progress) * 28 : undefined,
       overflow: "hidden",
+    };
+  });
+
+  // Floating Pass/Connect buttons ride in lock-step with the bottom nav
+  // pill. At the top of the scroll the nav is visible (navTranslateY = 0)
+  // and would otherwise sit directly on top of the buttons — so we lift
+  // them FLOATING_NAV_CLEARANCE px clear of the pill. As the user scrolls
+  // down the nav slides off-screen (navTranslateY → NAV_HIDE_OFFSET) and
+  // the buttons drop in unison into the space it vacates, landing at their
+  // natural bottom position. Scrolling back up reverses it. Reading the
+  // same shared value the nav uses keeps the two glued together frame-for-
+  // frame, and the nav's withTiming tween carries the buttons along.
+  const FLOATING_NAV_CLEARANCE = 88;
+  const floatingActionsAnimatedStyle = useAnimatedStyle(() => {
+    const navHidden = Math.min(
+      1,
+      Math.max(0, (navTranslateY?.value ?? 0) / NAV_HIDE_OFFSET),
+    );
+    return {
+      transform: [{ translateY: -FLOATING_NAV_CLEARANCE * (1 - navHidden) }],
     };
   });
 
@@ -3739,7 +3763,10 @@ export function HomeView({
                   touches. The scroll content has bottom padding that
                   matches the button stack so the last section isn't
                   hidden under them. */}
-              <View style={styles.floatingActionsRow} pointerEvents="box-none">
+              <Animated.View
+                style={[styles.floatingActionsRow, floatingActionsAnimatedStyle]}
+                pointerEvents="box-none"
+              >
                 <TouchableOpacity
                   onPress={() => handleSwipe(false)}
                   style={styles.floatingPassBtn}
@@ -3754,7 +3781,7 @@ export function HomeView({
                 >
                   <Check color="#FFF" size={26} strokeWidth={2.8} />
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             </>
           )}
         </View>

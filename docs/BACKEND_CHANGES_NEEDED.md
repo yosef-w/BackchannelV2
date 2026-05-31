@@ -1,14 +1,31 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-05-22
+**Last updated:** 2026-05-28
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
 > Most previously-tracked items shipped in PRs #41–#45 and have been integrated — see [`Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md). Items below stem from auditing the "request a sponsor" ↔ "sponsor accepts" loop on the Matches screen.
 
+> **Status (2026-05-28): verified against the backend source.** §1–§11 and the Push recommendation have fully shipped (PRs #54–#61). **§12 is only partial** — the unsponsor *reason* is captured, but the "act on it to prune stale ATS listings" half has not shipped (see its section). The other outstanding item is the manual deployment check in **⚠️ Verify — work-email verification emails** at the bottom, which is a runtime confirmation, not a code change. Each section is marked with its status in the header; the detail is kept as a record of what was changed and why.
+>
+> | § | Item | PR |
+> |---|------|----|
+> | §1 | Dedicated sponsor-requests-received endpoint | #57 |
+> | §2 | Notification uses full name, not first-only | #54 |
+> | §3 | Notification job title/company via silver_jobs fallback | #54 |
+> | §4 | Carry `JOB_ID` through like → match → refer pipeline | #55 |
+> | §5 | Relevance-rank the profile pack to the selected role | #59 |
+> | §6 | `GET /api/jobs/silver/<id>/` full role detail | #57 |
+> | §8 | Pending-only counts + likers-first deck ordering | #56 |
+> | §9 | Expose sponsor verified status on public profile | #54 |
+> | §10 | Include `user_id` in the job's `sponsor` object | #54 |
+> | §11 | Real-time inbox WebSocket (`InboxConsumer`) | #61 |
+> | §12 | Capture unsponsor reason in audit table | #58 (capture only — "act on it" not shipped) |
+> | Push | Push notification delivery (Expo, Option A) | #60 |
+
 ---
 
-## §2 — Sponsor-request notification: applicant name is first name only 🔴 Bug
+## §2 — Sponsor-request notification: applicant name is first name only ✅ DONE (#54)
 
 **File:** `bc_microservices/queries/notifications.py` — `list_notifications()`
 
@@ -32,7 +49,7 @@ No schema change, no migration needed.
 
 ---
 
-## §3 — Sponsor-request notification: job title and company are always NULL 🔴 Bug
+## §3 — Sponsor-request notification: job title and company are always NULL ✅ DONE (#54)
 
 **File:** `bc_microservices/queries/notifications.py` — `list_notifications()`
 
@@ -71,9 +88,9 @@ No schema change, no migration needed.
 
 ---
 
-## §1 — Dedicated endpoint for sponsor-requests received
+## §1 — Dedicated endpoint for sponsor-requests received ✅ DONE (#57)
 
-**🟢 Polish · Frontend already works via a workaround**
+**✅ Shipped — `GET /api/jobs/sponsor-requests/` now backed by `get_sponsor_requests_received`** (was: 🟢 Polish · Frontend already worked via a workaround)
 
 ### Context
 
@@ -117,7 +134,7 @@ Response shape mirroring what the frontend already needs:
 
 ---
 
-## §4 — Carry the sponsor's selected `JOB_ID` through the entire like → accept → match → refer pipeline 🟡 Feature gap
+## §4 — Carry the sponsor's selected `JOB_ID` through the entire like → accept → match → refer pipeline ✅ DONE (#55)
 
 **Files:**
 
@@ -245,7 +262,7 @@ That's the entirety of the follow-up work post-backend.
 
 ---
 
-## §5 — Rank `fetch_profile_pack` by relevance to the selected job 🟡 Feature gap
+## §5 — Rank `fetch_profile_pack` by relevance to the selected job ✅ DONE (#59)
 
 **File:** `bc_microservices/queries/profiles.py` — `fetch_profile_pack()`
 **Related service:** `bc_microservices/services/profiles.py` — `get_profile_pack()`
@@ -300,7 +317,7 @@ The scoring heuristic doesn't need to be sophisticated for v1 — even simple we
 
 ---
 
-## §6 — `GET /api/jobs/silver/<job_id>/` — Full role detail for sponsor review 🟡 Feature gap
+## §6 — `GET /api/jobs/silver/<job_id>/` — Full role detail for sponsor review ✅ DONE (#57)
 
 **Frontend file:** `components/MatchesView.tsx` → `openSrJobDetail()`
 **API function:** `lib/api.ts` → `getJobDetail(jobId)`
@@ -354,7 +371,7 @@ The frontend is fully wired — no changes required on our side when this endpoi
 
 ---
 
-## §8 — Tighten the HomeView role-switcher signal: pending-only counts + likers-first deck ordering 🟡 Feature gap
+## §8 — Tighten the HomeView role-switcher signal: pending-only counts + likers-first deck ordering ✅ DONE (#56)
 
 **Frontend file:** `components/HomeView.tsx` → role-switcher badge + card deck powered by `fetchProfilesPack`
 **API functions:** `lib/api.ts` → `getMyJobs()` (badge source), `fetchProfilesPack(jobId)` (deck source)
@@ -463,7 +480,7 @@ Once both ship: the muted-zero badge variant (already wired in [HomeView.tsx](co
 
 ---
 
-## §9 — Expose the sponsor's verified status on the public profile 🟢 Small add
+## §9 — Expose the sponsor's verified status on the public profile ✅ DONE (#54)
 
 **Frontend file:** `components/HomeView.tsx` → "Meet your sponsor" back face on applicant job cards
 **API function:** `lib/api.ts` → `getPublicProfile(userId)`
@@ -513,7 +530,7 @@ None. The "Meet your sponsor" panel already reads `WORK_EMAIL_VERIFIED` defensiv
 
 ---
 
-## §10 — Include `user_id` in the job's `sponsor` object 🔴 Bug — blocks "Meet your sponsor"
+## §10 — Include `user_id` in the job's `sponsor` object ✅ DONE (#54) — was 🔴 Bug blocking "Meet your sponsor"
 
 **Frontend file:** `components/HomeView.tsx` → "Meet your sponsor" back face
 **Frontend type:** `types/jobs.ts` → `JobApiSponsor.user_id` (already declared, already consumed)
@@ -563,7 +580,7 @@ None. The "Meet your sponsor" panel, the sponsor-profile fetch (`fetchSponsorPro
 
 ---
 
-## §11 — Real-time inbox: a per-user WebSocket so the conversation list updates live 🟡 Feature gap
+## §11 — Real-time inbox: a per-user WebSocket so the conversation list updates live ✅ DONE (#61)
 
 **Frontend file:** `components/MessagesView.tsx` → conversation-list (inbox) screen
 **Backend files:**
@@ -734,7 +751,12 @@ Already done — no further frontend work when this ships. `MessagesView` opens 
 
 ---
 
-## §12 — Capture an unsponsor reason and act on it to prune stale ATS listings 🟡 Feature gap
+## §12 — Capture an unsponsor reason and act on it to prune stale ATS listings 🟡 PARTIAL (#58)
+
+> **Verified 2026-05-28 — only the *capture* half shipped.** `unsponsor_job` now accepts `reason` and writes an audit row via `insert_unsponsor_audit` (✅). Still **NOT** implemented (the "act on it" half — see "Required changes" #2/#3 below):
+> - `revert_waitlist_to_active(ref_id)` still runs **unconditionally** ([services/jobs.py:897](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/jobs.py#L897)) — no `job_is_dead` guard for `posting_expired` / `role_filled`, so dead listings still get recirculated.
+> - No `deactivate_silver_job(ref_id)` — `posting_expired` listings are not pulled from Browse for everyone.
+> - `reason_detail` free-text is not captured (view reads `reason` only).
 
 **Frontend file:** `components/JobsView.tsx` → job-card "⋯" menu → "Unsponsor Job" → reason step
 **API function:** `lib/api.ts` → `unsponsorJob(jobId, reason?, reasonDetail?)`
@@ -844,7 +866,9 @@ None remaining — the reason step, the 6 options, and the `unsponsorJob(jobId, 
 
 ---
 
-# 🧭 Recommendation — Push notification delivery
+# ✅ DONE (#60) — Push notification delivery (was: 🧭 Recommendation)
+
+> Shipped via Expo push (Option A): `bc_microservices/services/push.py` + `views_devices.py` (device-token registration), with message-notification suppression. Detail below kept as the original recommendation record.
 
 > **This is a recommendation, not a change order.** The frontend team surfaced a gap in how message push notifications are delivered and is proposing an approach. Unlike the §-items above, the final architecture call here belongs to the backend team — this section lays out the problem and the options so that decision can be made with full context.
 

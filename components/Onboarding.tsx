@@ -1,18 +1,24 @@
-import { ArrowLeft, ArrowRight, Building2, HandHeart, Network, Rocket, Send, Target, TrendingUp, UserCheck, Zap } from "lucide-react-native";
+import {
+    ArrowLeft,
+    ArrowRight,
+    Building2,
+    HandHeart,
+    Network,
+    Rocket,
+    TrendingUp,
+    UserCheck
+} from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  Dimensions,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import Animated, {
-  FadeInDown,
-  FadeOut
-} from "react-native-reanimated";
+import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -26,17 +32,20 @@ const applicantSlides = [
   {
     Icon: UserCheck,
     title: "Connect with insiders who can refer you",
-    description: "Build authentic relationships with professionals who work at your dream companies.",
+    description:
+      "Build authentic relationships with professionals who work at your dream companies.",
   },
   {
     Icon: Rocket,
     title: "Skip the resume black hole",
-    description: "Get your application directly in front of hiring managers through employee referrals.",
+    description:
+      "Get your application directly in front of hiring managers through employee referrals.",
   },
   {
     Icon: TrendingUp,
-    title: "Land interviews 5x faster",
-    description: "Referred candidates are significantly more likely to get interviews and offers.",
+    title: "Land interviews faster",
+    description:
+      "Referred candidates are significantly more likely to get interviews and offers.",
   },
 ];
 
@@ -44,17 +53,20 @@ const sponsorSlides = [
   {
     Icon: HandHeart,
     title: "Help talented people break into great companies",
-    description: "Use your position to open doors for deserving candidates at your company.",
+    description:
+      "Use your position to open doors for deserving candidates at your company.",
   },
   {
     Icon: Building2,
     title: "Shape your future team",
-    description: "Strengthen your organization by referring peers who align with your company's high standards.",
+    description:
+      "Strengthen your organization by referring peers who align with your company's high standards.",
   },
   {
     Icon: Network,
     title: "Expand your professional network",
-    description: "Build lasting relationships with top talent and grow your influence across the industry.",
+    description:
+      "Build lasting relationships with top talent and grow your influence across the industry.",
   },
 ];
 
@@ -84,7 +96,6 @@ export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
-        
         {/* Top Navigation */}
         <View style={styles.topNav}>
           <TouchableOpacity onPress={prevSlide} style={styles.iconBtn}>
@@ -109,7 +120,9 @@ export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
 
             <View style={styles.textSection}>
               <Text style={styles.title}>{currentSlideData.title}</Text>
-              <Text style={styles.description}>{currentSlideData.description}</Text>
+              <Text style={styles.description}>
+                {currentSlideData.description}
+              </Text>
             </View>
           </Animated.View>
         </View>
@@ -123,16 +136,18 @@ export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
                 key={index}
                 style={[
                   styles.dot,
-                  index === currentSlide ? styles.dotActive : styles.dotInactive,
+                  index === currentSlide
+                    ? styles.dotActive
+                    : styles.dotInactive,
                 ]}
               />
             ))}
           </View>
 
           {/* Action Button */}
-          <TouchableOpacity 
-            onPress={nextSlide} 
-            activeOpacity={0.8} 
+          <TouchableOpacity
+            onPress={nextSlide}
+            activeOpacity={0.8}
             style={styles.nextButton}
           >
             <Text style={styles.nextButtonText}>

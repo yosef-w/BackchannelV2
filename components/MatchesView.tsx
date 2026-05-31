@@ -319,6 +319,14 @@ export function MatchesView({
   onNavigateToMessages?: (jobId: string, userId?: string) => void;
 }) {
   const [selectedProfile, setSelectedProfile] = useState<Match | null>(null);
+  // Role-picker for grouped match cards: when a person is matched on several
+  // roles, tapping the card (or its Message button) opens this sheet so the
+  // user explicitly chooses which role to view or message — instead of the
+  // card silently picking the most-recent one.
+  const [roleGroup, setRoleGroup] = useState<{
+    items: Match[];
+    getMessageUserId: (m: Match) => string | undefined;
+  } | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobOpportunity | null>(null);
   const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
     null,
@@ -934,6 +942,121 @@ export function MatchesView({
     setActiveSlide(0);
   };
 
+  // ── Match grouping ────────────────────────────────────────────────
+  // A match exists per JOB_ID, so matching the same person on multiple roles
+  // produces multiple cards with an identical name (and, on the applicant
+  // side, an identical sponsor-title subtitle — literally indistinguishable).
+  // Collapse them into one card per counterpart, keyed by the other person's
+  // user id. The matched JOB rows stay separate underneath; only the card
+  // collapses, and a "N roles" pill signals the multi-role relationship.
+  const matchGroupKey = (m: Match, keyField: "sponsorUserId" | "applicantUserId") =>
+    (m[keyField] as string) || m.id;
+
+  const groupMatches = (
+    list: Match[],
+    keyField: "sponsorUserId" | "applicantUserId",
+  ) => {
+    const map = new Map<string, Match[]>();
+    list.forEach((m) => {
+      const key = matchGroupKey(m, keyField);
+      const arr = map.get(key);
+      if (arr) arr.push(m);
+      else map.set(key, [m]);
+    });
+    // Preserve API order (matched_at DESC) for both groups and members; the
+    // first member is the most-recent match and represents the group.
+    return Array.from(map.values()).map((items) => ({
+      key: matchGroupKey(items[0], keyField),
+      items,
+      latest: items[0],
+    }));
+  };
+
+  // Render a section's matches as grouped cards. Single-match people render
+  // exactly as before; multi-match people render one card with a roles pill.
+  const renderMatchCards = (
+    list: Match[],
+    opts: {
+      keyField: "sponsorUserId" | "applicantUserId";
+      showMatchedBadge: boolean;
+      getMessageUserId: (m: Match) => string | undefined;
+    },
+  ) =>
+    groupMatches(list, opts.keyField).map((group, index) => {
+      const match = group.latest;
+      const grouped = group.items.length > 1;
+      // Grouped cards can't resolve a single role, so both the card and the
+      // Message button open the role-picker. Single cards act directly.
+      const openPicker = () =>
+        setRoleGroup({ items: group.items, getMessageUserId: opts.getMessageUserId });
+      const onCardPress = grouped ? openPicker : () => openProfile(match, "view");
+      const onMessagePress = grouped
+        ? openPicker
+        : () => {
+            trackMatchMessageTapped({ jobId: match.jobId });
+            onNavigateToMessages?.(match.jobId ?? "", opts.getMessageUserId(match));
+          };
+      return (
+        <Animated.View
+          key={group.key}
+          entering={FadeInRight.delay(index * 100)}
+          style={styles.card}
+        >
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={onCardPress}
+            style={{ alignItems: "center" }}
+          >
+            {match.image ? (
+              <Image source={{ uri: match.image }} style={styles.profileImage} />
+            ) : (
+              <View
+                style={[
+                  styles.profileImage,
+                  {
+                    backgroundColor: "#000",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                ]}
+              >
+                <Text
+                  style={{ fontSize: 26, fontWeight: "800", color: "#FFF" }}
+                >
+                  {(match.name || "?")[0].toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <Text style={styles.cardName} numberOfLines={1}>
+              {match.name}
+            </Text>
+            {grouped ? (
+              <View style={styles.cardRolesPill}>
+                <Briefcase size={11} color="#666" />
+                <Text style={styles.rolesPillText}>
+                  {group.items.length} roles
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.cardRole} numberOfLines={1}>
+                {match.role}
+              </Text>
+            )}
+          </TouchableOpacity>
+          {opts.showMatchedBadge && (
+            <View style={styles.matchBadgeCard}>
+              <CheckCircle size={14} color="#000" />
+              <Text style={styles.matchBadgeText}>Matched!</Text>
+            </View>
+          )}
+          <TouchableOpacity style={styles.messageBtn} onPress={onMessagePress}>
+            <MessageCircle color="#FFF" size={16} strokeWidth={2.5} />
+            <Text style={styles.messageBtnText}>Message</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      );
+    });
+
   const openJob = (job: JobOpportunity) => {
     setSelectedJob(job);
     setActiveSlide(0);
@@ -1005,6 +1128,7 @@ export function MatchesView({
 
   const closeAllModals = () => {
     setSelectedProfile(null);
+    setRoleGroup(null);
     setSelectedJob(null);
     setSelectedReferral(null);
     setSelectedInterestedSponsor(null);
@@ -1527,65 +1651,11 @@ export function MatchesView({
                   contentContainerStyle={styles.horizontalScrollContent}
                   style={styles.horizontalScroll}
                 >
-                  {matches.map((match, index) => (
-                    <Animated.View
-                      key={match.id}
-                      entering={FadeInRight.delay(index * 100)}
-                      style={styles.card}
-                    >
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={() => openProfile(match, "view")}
-                      >
-                        {match.image ? (
-                          <Image
-                            source={{ uri: match.image }}
-                            style={styles.profileImage}
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.profileImage,
-                              {
-                                backgroundColor: "#000",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 26,
-                                fontWeight: "800",
-                                color: "#FFF",
-                              }}
-                            >
-                              {(match.name || "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                      <Text style={styles.cardName}>{match.name}</Text>
-                      <Text style={styles.cardRole}>{match.role}</Text>
-                      <TouchableOpacity
-                        style={styles.messageBtn}
-                        onPress={() => {
-                          trackMatchMessageTapped({ jobId: match.jobId });
-                          onNavigateToMessages?.(
-                            match.jobId ?? "",
-                            match.sponsorUserId,
-                          );
-                        }}
-                      >
-                        <MessageCircle
-                          color="#FFF"
-                          size={16}
-                          strokeWidth={2.5}
-                        />
-                        <Text style={styles.messageBtnText}>Message</Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  ))}
+                  {renderMatchCards(matches, {
+                    keyField: "applicantUserId",
+                    showMatchedBadge: false,
+                    getMessageUserId: (m) => m.sponsorUserId,
+                  })}
                 </ScrollView>
               )}
             </View>
@@ -2013,69 +2083,11 @@ export function MatchesView({
                   contentContainerStyle={styles.horizontalScrollContent}
                   style={styles.horizontalScroll}
                 >
-                  {matches.map((match, index) => (
-                    <Animated.View
-                      key={match.id}
-                      entering={FadeInRight.delay(index * 100)}
-                      style={styles.card}
-                    >
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={() => openProfile(match, "view")}
-                      >
-                        {match.image ? (
-                          <Image
-                            source={{ uri: match.image }}
-                            style={styles.profileImage}
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.profileImage,
-                              {
-                                backgroundColor: "#000",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 26,
-                                fontWeight: "800",
-                                color: "#FFF",
-                              }}
-                            >
-                              {(match.name || "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                      <Text style={styles.cardName}>{match.name}</Text>
-                      <Text style={styles.cardRole}>{match.role}</Text>
-                      <View style={styles.matchBadgeCard}>
-                        <CheckCircle size={14} color="#000" />
-                        <Text style={styles.matchBadgeText}>Matched!</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.messageBtn}
-                        onPress={() => {
-                          trackMatchMessageTapped({ jobId: match.jobId });
-                          onNavigateToMessages?.(
-                            match.jobId ?? "",
-                            match.applicantUserId,
-                          );
-                        }}
-                      >
-                        <MessageCircle
-                          color="#FFF"
-                          size={16}
-                          strokeWidth={2.5}
-                        />
-                        <Text style={styles.messageBtnText}>Message</Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  ))}
+                  {renderMatchCards(matches, {
+                    keyField: "sponsorUserId",
+                    showMatchedBadge: true,
+                    getMessageUserId: (m) => m.applicantUserId,
+                  })}
                 </ScrollView>
               </View>
             )}
@@ -2417,6 +2429,134 @@ export function MatchesView({
           }}
         />
       )}
+
+      {/* Role picker — shown when a grouped match card (same person, multiple
+          roles) is tapped. Lets the user choose which role to view or message
+          so neither action silently defaults to the most-recent match. */}
+      <Modal visible={!!roleGroup} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setRoleGroup(null)}
+          >
+            <BlurView
+              intensity={30}
+              style={StyleSheet.absoluteFill}
+              tint="dark"
+            />
+          </TouchableOpacity>
+
+          <DismissibleSheet
+            onDismiss={() => setRoleGroup(null)}
+            style={styles.modalContent}
+          >
+            {roleGroup && (
+              <>
+                <View style={styles.rolePickerHeader}>
+                  {roleGroup.items[0].image ? (
+                    <Image
+                      source={{ uri: roleGroup.items[0].image }}
+                      style={styles.rolePickerAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.rolePickerAvatar,
+                        {
+                          backgroundColor: "#000",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: "800",
+                          color: "#FFF",
+                        }}
+                      >
+                        {(roleGroup.items[0].name || "?")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1, marginLeft: 14 }}>
+                    <Text style={styles.rolePickerName} numberOfLines={1}>
+                      {roleGroup.items[0].name}
+                    </Text>
+                    <Text style={styles.rolePickerSub}>
+                      Matched on {roleGroup.items.length} roles — pick one to
+                      view or message
+                    </Text>
+                  </View>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  style={{ marginTop: 8 }}
+                >
+                  {roleGroup.items.map((m) => (
+                    <View key={m.id} style={styles.rolePickerRow}>
+                      <TouchableOpacity
+                        style={styles.rolePickerRowMain}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          setRoleGroup(null);
+                          openProfile(m, "view");
+                        }}
+                      >
+                        <CompanyLogo
+                          logoUrl={m.companyLogoUrl}
+                          name={m.company || m.appliedRole}
+                          size={44}
+                          borderRadius={14}
+                          initialFontSize={18}
+                        />
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <Text style={styles.rolePickerRole} numberOfLines={1}>
+                            {m.appliedRole || "Role"}
+                          </Text>
+                          <Text
+                            style={styles.rolePickerMeta}
+                            numberOfLines={1}
+                          >
+                            {[m.company, m.date && `Matched ${m.date}`]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.rolePickerMsgBtn}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          trackMatchMessageTapped({ jobId: m.jobId });
+                          setRoleGroup(null);
+                          onNavigateToMessages?.(
+                            m.jobId ?? "",
+                            roleGroup.getMessageUserId(m),
+                          );
+                        }}
+                      >
+                        <MessageCircle
+                          color="#FFF"
+                          size={16}
+                          strokeWidth={2.5}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+          </DismissibleSheet>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal visible={!!selectedJob} transparent animationType="none">
         <KeyboardAvoidingView
@@ -4177,6 +4317,63 @@ const styles = StyleSheet.create({
   profileImage: { width: 70, height: 70, borderRadius: 35, marginBottom: 12 },
   cardName: { fontSize: 16, fontWeight: "700" },
   cardRole: { fontSize: 13, color: "#666", marginBottom: 15 },
+  // Roles pill shown in place of the single-role line on a grouped match
+  // card (same person matched on multiple roles). marginBottom mirrors
+  // cardRole so grouped and single cards keep a consistent height.
+  cardRolesPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0F0F0",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 2,
+    marginBottom: 15,
+  },
+  rolesPillText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#666",
+    letterSpacing: 0.3,
+  },
+  // ── Role picker sheet (grouped match → choose a role) ───────────────
+  rolePickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  rolePickerAvatar: { width: 52, height: 52, borderRadius: 26 },
+  rolePickerName: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
+  rolePickerSub: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 3,
+    lineHeight: 18,
+  },
+  rolePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F2F2F2",
+  },
+  rolePickerRowMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rolePickerRole: { fontSize: 15, fontWeight: "700", color: "#000" },
+  rolePickerMeta: { fontSize: 13, color: "#999", marginTop: 2 },
+  rolePickerMsgBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 12,
+  },
   messageBtn: {
     backgroundColor: "#000",
     width: "100%",

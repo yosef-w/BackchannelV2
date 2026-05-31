@@ -50,6 +50,7 @@ import {
     NativeScrollEvent,
     NativeSyntheticEvent,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -129,6 +130,10 @@ export function MessagesView({
   );
   const [conversationsTotalCount, setConversationsTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Inbox grouping: which participant-groups are expanded (keyed by the
+  // other participant's user id). Multi-thread people collapse into one row;
+  // tapping expands their per-role sub-threads.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -2341,6 +2346,283 @@ export function MessagesView({
   // alongside ACTIVE ones with no status filter, so partitioning client-side
   // is correct (and avoids breaking other surfaces that may rely on the
   // unfiltered list).
+  // ── Inbox grouping ──────────────────────────────────────────────────
+  // A conversation exists per JOB_ID, so matching the same person on N roles
+  // yields N threads and the same name repeats down the inbox. We collapse
+  // threads by the other participant into a single row. One thread → a normal
+  // row (unchanged). Multiple → a person row with a "N roles" pill that
+  // expands into per-role sub-threads. Threads stay separate underneath, so
+  // per-role context (and referrals) is untouched — only the list collapses.
+  const toggleGroup = (key: string) => {
+    // Single-open accordion: opening one person's roles collapses any other,
+    // so tapping a different group also reads as "tap outside the open one".
+    setExpandedGroups((prev) => (prev.has(key) ? new Set() : new Set([key])));
+  };
+
+  const convTimeMs = (conv: any) => {
+    const t = conv?.lastMessage?.createdAt;
+    if (!t) return 0;
+    const ms = new Date(t).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+
+  const groupByParticipant = (list: any[]) => {
+    const map = new Map<string, any[]>();
+    list.forEach((c) => {
+      const key = c.otherParticipant?.id || c.id;
+      const arr = map.get(key);
+      if (arr) arr.push(c);
+      else map.set(key, [c]);
+    });
+    const groups = Array.from(map.entries()).map(([key, items]) => {
+      const sorted = [...items].sort((a, b) => convTimeMs(b) - convTimeMs(a));
+      return {
+        key,
+        items: sorted,
+        latest: sorted[0],
+        latestAt: convTimeMs(sorted[0]),
+        // Count of threads with unread, used for the aggregated dot.
+        unreadCount: items.reduce(
+          (n, c) => n + (c.unreadCount > 0 ? 1 : 0),
+          0,
+        ),
+      };
+    });
+    groups.sort((a, b) => b.latestAt - a.latestAt);
+    return groups;
+  };
+
+  const renderConvAvatar = (
+    name: string,
+    imageUrl: string | undefined,
+    opts: { hidden?: boolean; unread?: boolean },
+  ) => (
+    <View style={styles.imgWrapper}>
+      {imageUrl ? (
+        <Image
+          source={{ uri: imageUrl }}
+          style={
+            opts.hidden ? [styles.convImg, styles.convImgHidden] : styles.convImg
+          }
+        />
+      ) : (
+        <View
+          style={[
+            styles.convImg,
+            opts.hidden && styles.convImgHidden,
+            {
+              backgroundColor: "#000",
+              alignItems: "center",
+              justifyContent: "center",
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "800", color: "#FFF" }}>
+            {(name || "?")[0].toUpperCase()}
+          </Text>
+        </View>
+      )}
+      {opts.unread && <View style={styles.dotIndicator} />}
+    </View>
+  );
+
+  // A single thread shown as a full inbox row (person primary). Faithfully
+  // reproduces the three section looks (active / past / hidden).
+  const renderLeafRow = (conv: any, variant: "active" | "past" | "hidden") => {
+    const hidden = variant !== "active";
+    const nameStyle =
+      variant === "active"
+        ? styles.convName
+        : [styles.convName, styles.convNameHidden];
+    const msgStyle =
+      variant === "active"
+        ? styles.convMsg
+        : [styles.convMsg, styles.convMsgHidden];
+    return (
+      <TouchableOpacity
+        onPress={() => handleConversationSelect(conv.id)}
+        style={
+          variant === "active"
+            ? styles.convItem
+            : [styles.convItem, styles.convItemHidden]
+        }
+        activeOpacity={0.7}
+      >
+        {renderConvAvatar(
+          conv.otherParticipant.name,
+          conv.otherParticipant.profileImageUrl,
+          { hidden, unread: variant === "active" && conv.unreadCount > 0 },
+        )}
+        <View style={styles.convMain}>
+          <View style={styles.convHeader}>
+            <Text style={nameStyle} numberOfLines={1}>
+              {conv.otherParticipant.name}
+            </Text>
+            {variant === "past" ? (
+              <Text style={styles.unmatchedTag}>UNMATCHED</Text>
+            ) : (
+              <Text style={styles.convTime}>
+                {conv.lastMessage
+                  ? formatTime(conv.lastMessage.createdAt).toUpperCase()
+                  : variant === "hidden"
+                    ? "OLD"
+                    : "NEW"}
+              </Text>
+            )}
+          </View>
+          <Text style={msgStyle} numberOfLines={1}>
+            {conv.lastMessage?.content ||
+              (variant === "active" ? "Start a conversation..." : "No messages")}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // A per-role thread shown inside an expanded group. Role/job is primary,
+  // since the person is already named on the group header above.
+  const renderSubRow = (conv: any, variant: "active" | "past" | "hidden") => {
+    const roleLabel = conv.jobContext?.jobTitle || conv.role || "Role";
+    const unread = variant === "active" && conv.unreadCount > 0;
+    return (
+      <TouchableOpacity
+        key={conv.id}
+        onPress={() => handleConversationSelect(conv.id)}
+        style={styles.subRow}
+        activeOpacity={0.7}
+      >
+        <View style={unread ? styles.subRowUnreadDot : styles.subRowDotSpacer} />
+        <View style={styles.subRowMain}>
+          <View style={styles.subRowHeader}>
+            <Text
+              style={
+                variant === "active"
+                  ? styles.subRowRole
+                  : [styles.subRowRole, styles.subRowRoleHidden]
+              }
+              numberOfLines={1}
+            >
+              {roleLabel}
+            </Text>
+            {variant === "past" ? (
+              <Text style={styles.unmatchedTag}>UNMATCHED</Text>
+            ) : (
+              <Text style={styles.subRowTime}>
+                {conv.lastMessage
+                  ? formatTime(conv.lastMessage.createdAt).toUpperCase()
+                  : variant === "hidden"
+                    ? "OLD"
+                    : "NEW"}
+              </Text>
+            )}
+          </View>
+          <Text
+            style={[
+              styles.subRowMsg,
+              variant !== "active" && styles.convMsgHidden,
+            ]}
+            numberOfLines={1}
+          >
+            {conv.lastMessage?.content ||
+              (variant === "active" ? "Start a conversation..." : "No messages")}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // A person with multiple role-threads: one collapsible row.
+  const renderGroup = (
+    group: any,
+    variant: "active" | "past" | "hidden",
+  ) => {
+    const conv = group.latest;
+    const expanded = expandedGroups.has(group.key);
+    const hidden = variant !== "active";
+    const nameStyle =
+      variant === "active"
+        ? styles.convName
+        : [styles.convName, styles.convNameHidden];
+    const msgStyle =
+      variant === "active"
+        ? styles.convMsg
+        : [styles.convMsg, styles.convMsgHidden];
+    return (
+      <>
+        <TouchableOpacity
+          onPress={() => toggleGroup(group.key)}
+          style={
+            variant === "active"
+              ? styles.convItem
+              : [styles.convItem, styles.convItemHidden]
+          }
+          activeOpacity={0.7}
+        >
+          {renderConvAvatar(
+            conv.otherParticipant.name,
+            conv.otherParticipant.profileImageUrl,
+            { hidden, unread: variant === "active" && group.unreadCount > 0 },
+          )}
+          <View style={styles.convMain}>
+            <View style={styles.convHeader}>
+              <Text style={nameStyle} numberOfLines={1}>
+                {conv.otherParticipant.name}
+              </Text>
+              {variant === "past" ? (
+                <Text style={styles.unmatchedTag}>UNMATCHED</Text>
+              ) : (
+                <Text style={styles.convTime}>
+                  {conv.lastMessage
+                    ? formatTime(conv.lastMessage.createdAt).toUpperCase()
+                    : ""}
+                </Text>
+              )}
+            </View>
+            <View style={styles.convPreviewRow}>
+              <Text style={[msgStyle, { flex: 1 }]} numberOfLines={1}>
+                {conv.lastMessage?.content ||
+                  `${group.items.length} conversations`}
+              </Text>
+              <View style={styles.rolesPill}>
+                <Briefcase size={11} color="#666" />
+                <Text style={styles.rolesPillText}>
+                  {group.items.length} roles
+                </Text>
+              </View>
+            </View>
+          </View>
+          <ChevronRight
+            size={18}
+            color="#BBB"
+            style={[
+              styles.groupChevron,
+              expanded && { transform: [{ rotate: "90deg" }] },
+            ]}
+          />
+        </TouchableOpacity>
+        {expanded && (
+          <View style={styles.convSubList}>
+            {group.items.map((c: any) => renderSubRow(c, variant))}
+          </View>
+        )}
+      </>
+    );
+  };
+
+  // Group a section's conversations, then render each group as either a
+  // single leaf row or a collapsible person-group.
+  const renderGroupedList = (
+    list: any[],
+    variant: "active" | "past" | "hidden",
+  ) =>
+    groupByParticipant(list).map((group, index) => (
+      <Animated.View key={group.key} entering={FadeInDown.delay(index * 50)}>
+        {group.items.length === 1
+          ? renderLeafRow(group.items[0], variant)
+          : renderGroup(group, variant)}
+      </Animated.View>
+    ));
+
   const activeConversations = conversations.filter(
     (conv) => conv.status !== "CLOSED" && !conv.isHidden,
   );
@@ -2354,12 +2636,21 @@ export function MessagesView({
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
     >
-      <View style={styles.headerTitleContainer}>
-        <Text style={styles.title}>Inbox</Text>
-        <Text style={styles.subtitle}>Direct lines to your connections</Text>
-      </View>
+      {/* flex:1 surface so a tap on any empty inbox space collapses an open
+          role group — "tap outside to dismiss". Row touchables win the
+          responder, so their taps don't reach this. */}
+      <Pressable
+        style={{ flex: 1 }}
+        onPress={() => {
+          if (expandedGroups.size) setExpandedGroups(new Set());
+        }}
+      >
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.title}>Inbox</Text>
+          <Text style={styles.subtitle}>Direct lines to your connections</Text>
+        </View>
 
       {conversationsLoading ? (
         <View style={{ padding: 40, alignItems: "center" }}>
@@ -2402,71 +2693,7 @@ export function MessagesView({
                 ACTIVE MESSAGES ({activeConversations.length})
               </Text>
               <View style={styles.list}>
-                {activeConversations.map((conv, index) => (
-                  <Animated.View
-                    key={conv.id}
-                    entering={FadeInDown.delay(index * 50)}
-                  >
-                    <TouchableOpacity
-                      onPress={() => handleConversationSelect(conv.id)}
-                      style={styles.convItem}
-                    >
-                      <View style={styles.imgWrapper}>
-                        {conv.otherParticipant.profileImageUrl ? (
-                          <Image
-                            source={{
-                              uri: conv.otherParticipant.profileImageUrl,
-                            }}
-                            style={styles.convImg}
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.convImg,
-                              {
-                                backgroundColor: "#000",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 22,
-                                fontWeight: "800",
-                                color: "#FFF",
-                              }}
-                            >
-                              {(conv.otherParticipant.name ||
-                                "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                        {conv.unreadCount > 0 && (
-                          <View style={styles.dotIndicator} />
-                        )}
-                      </View>
-                      <View style={styles.convMain}>
-                        <View style={styles.convHeader}>
-                          <Text style={styles.convName}>
-                            {conv.otherParticipant.name}
-                          </Text>
-                          <Text style={styles.convTime}>
-                            {conv.lastMessage
-                              ? formatTime(
-                                  conv.lastMessage.createdAt,
-                                ).toUpperCase()
-                              : "NEW"}
-                          </Text>
-                        </View>
-                        <Text style={styles.convMsg} numberOfLines={1}>
-                          {conv.lastMessage?.content ||
-                            "Start a conversation..."}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))}
+                {renderGroupedList(activeConversations, "active")}
               </View>
             </View>
           )}
@@ -2481,68 +2708,7 @@ export function MessagesView({
                 PAST CONNECTIONS ({pastConversations.length})
               </Text>
               <View style={styles.list}>
-                {pastConversations.map((conv, index) => (
-                  <Animated.View
-                    key={conv.id}
-                    entering={FadeInDown.delay(index * 50)}
-                  >
-                    <TouchableOpacity
-                      onPress={() => handleConversationSelect(conv.id)}
-                      style={[styles.convItem, styles.convItemHidden]}
-                    >
-                      <View style={styles.imgWrapper}>
-                        {conv.otherParticipant.profileImageUrl ? (
-                          <Image
-                            source={{
-                              uri: conv.otherParticipant.profileImageUrl,
-                            }}
-                            style={[styles.convImg, styles.convImgHidden]}
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.convImg,
-                              styles.convImgHidden,
-                              {
-                                backgroundColor: "#000",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 22,
-                                fontWeight: "800",
-                                color: "#FFF",
-                              }}
-                            >
-                              {(conv.otherParticipant.name ||
-                                "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.convMain}>
-                        <View style={styles.convHeader}>
-                          <Text
-                            style={[styles.convName, styles.convNameHidden]}
-                            numberOfLines={1}
-                          >
-                            {conv.otherParticipant.name}
-                          </Text>
-                          <Text style={styles.unmatchedTag}>UNMATCHED</Text>
-                        </View>
-                        <Text
-                          style={[styles.convMsg, styles.convMsgHidden]}
-                          numberOfLines={1}
-                        >
-                          {conv.lastMessage?.content || "No messages"}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))}
+                {renderGroupedList(pastConversations, "past")}
               </View>
             </View>
           )}
@@ -2554,73 +2720,7 @@ export function MessagesView({
                 HIDDEN (30+ DAYS INACTIVE) ({hiddenConversations.length})
               </Text>
               <View style={styles.list}>
-                {hiddenConversations.map((conv, index) => (
-                  <Animated.View
-                    key={conv.id}
-                    entering={FadeInDown.delay(index * 50)}
-                  >
-                    <TouchableOpacity
-                      onPress={() => handleConversationSelect(conv.id)}
-                      style={[styles.convItem, styles.convItemHidden]}
-                    >
-                      <View style={styles.imgWrapper}>
-                        {conv.otherParticipant.profileImageUrl ? (
-                          <Image
-                            source={{
-                              uri: conv.otherParticipant.profileImageUrl,
-                            }}
-                            style={[styles.convImg, styles.convImgHidden]}
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.convImg,
-                              styles.convImgHidden,
-                              {
-                                backgroundColor: "#000",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 22,
-                                fontWeight: "800",
-                                color: "#FFF",
-                              }}
-                            >
-                              {(conv.otherParticipant.name ||
-                                "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.convMain}>
-                        <View style={styles.convHeader}>
-                          <Text
-                            style={[styles.convName, styles.convNameHidden]}
-                          >
-                            {conv.otherParticipant.name}
-                          </Text>
-                          <Text style={styles.convTime}>
-                            {conv.lastMessage
-                              ? formatTime(
-                                  conv.lastMessage.createdAt,
-                                ).toUpperCase()
-                              : "OLD"}
-                          </Text>
-                        </View>
-                        <Text
-                          style={[styles.convMsg, styles.convMsgHidden]}
-                          numberOfLines={1}
-                        >
-                          {conv.lastMessage?.content || "No messages"}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))}
+                {renderGroupedList(hiddenConversations, "hidden")}
               </View>
             </View>
           )}
@@ -2640,6 +2740,7 @@ export function MessagesView({
           )}
         </>
       )}
+      </Pressable>
     </ScrollView>
   );
 }
@@ -2712,6 +2813,58 @@ const styles = StyleSheet.create({
   convTime: { fontSize: 10, fontWeight: "800", color: "#BBB" },
   convMsg: { fontSize: 14, color: "#666" },
   convMsgHidden: { color: "#AAA" },
+  // ── Grouped inbox rows (same person, multiple role-threads) ──────────
+  // Second line of a group header: latest-message preview + a "N roles"
+  // pill so the user sees at a glance this person spans several roles.
+  convPreviewRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rolesPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0F0F0",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  rolesPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#666",
+    letterSpacing: 0.3,
+  },
+  // Chevron at the row's trailing edge; rotated 90° when the group is open.
+  groupChevron: { marginLeft: 8 },
+  // Expanded per-role sub-threads, indented under the person row with a
+  // hairline rail aligned to the avatar's right edge (avatar 56 + 16 gap).
+  convSubList: {
+    marginLeft: 72,
+    paddingLeft: 14,
+    borderLeftWidth: 1,
+    borderLeftColor: "#EFEFEF",
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  subRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
+  subRowUnreadDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#000",
+    marginRight: 11,
+  },
+  // Keeps role text aligned whether or not the unread dot is present.
+  subRowDotSpacer: { width: 7, marginRight: 11 },
+  subRowMain: { flex: 1 },
+  subRowHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 3,
+  },
+  subRowRole: { fontSize: 14, fontWeight: "700", color: "#000" },
+  subRowRoleHidden: { color: "#999" },
+  subRowTime: { fontSize: 10, fontWeight: "800", color: "#BBB" },
+  subRowMsg: { fontSize: 13, color: "#999" },
   // Tag rendered in the timestamp slot of a Past Connections row so the
   // user knows why the conversation is muted (vs the "30+ days inactive"
   // hidden state).
