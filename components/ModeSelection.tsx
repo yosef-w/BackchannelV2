@@ -1,27 +1,24 @@
-import {
-    ArrowLeft,
-    Briefcase,
-    ChevronRight,
-    Handshake,
-} from "lucide-react-native";
 import React, { useState } from "react";
-import {
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { Pressable, StatusBar, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { ArrowLeft, ArrowUpRight } from "lucide-react-native";
 import { trackSignUpRoleSelected } from "../lib/analytics/mixpanel";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { Color, Radius, Space, Type } from "@/constants/theme";
+import { Body, Eyebrow, HeroTitle, UIText } from "@/components/ui/typography";
 
 interface ModeSelectionProps {
   onSelect: (mode: "applicant" | "sponsor") => void;
   onBack: () => void;
 }
 
+/**
+ * Mobile translation of the tester-site landing — same shape, vertical
+ * stack instead of two-column. Each role card carries the editorial
+ * pattern: a tiny eyebrow, a "I'm a/an *Role*" title with the italic
+ * serif accent, a calm explanation, and a soft CTA line.
+ */
 export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
   const [selected, setSelected] = useState<"applicant" | "sponsor" | null>(
     null,
@@ -32,243 +29,200 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
     setSelected(mode);
     setUserType(mode);
     trackSignUpRoleSelected(mode);
-    setTimeout(() => onSelect(mode), 200);
+    // Brief visual confirmation before advancing — matches the website's
+    // soft delay after picking a role.
+    setTimeout(() => onSelect(mode), 220);
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
-        {/* Back Button */}
-        <TouchableOpacity
-          onPress={onBack}
-          activeOpacity={0.7}
-          style={styles.backButton}
-        >
-          <ArrowLeft color="#000" size={24} />
-        </TouchableOpacity>
+        {/* Nav row — back arrow + wordmark eyebrow on the right */}
+        <View style={styles.nav}>
+          <Pressable
+            onPress={onBack}
+            hitSlop={12}
+            style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+          >
+            <ArrowLeft color={Color.muted} size={20} strokeWidth={2} />
+            <UIText style={styles.backText}>Back</UIText>
+          </Pressable>
+          <Eyebrow label="BackChannel" tag="Closed Beta" />
+        </View>
 
         <View style={styles.content}>
-          {/* Header Section - No Spring, just clean Ease Out */}
-          <Animated.View
-            entering={FadeInDown.duration(500)}
-            style={styles.header}
-          >
-            <Text style={styles.title}>How will you use{"\n"}BackChannel?</Text>
-            <Text style={styles.subtitle}>Select your role to continue</Text>
+          {/* Hero */}
+          <Animated.View entering={FadeInDown.duration(500)}>
+            <HeroTitle lead="Pick your" accent="role." size="md" />
           </Animated.View>
 
-          <View style={styles.cardsContainer}>
-            {/* Applicant Card */}
-            <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-              <TouchableOpacity
+          <Animated.View
+            entering={FadeInDown.delay(120).duration(500)}
+            style={styles.heroBody}
+          >
+            <Body>
+              Use BackChannel like you would for real. Pick the role that
+              matches your actual life — you can always switch later.
+            </Body>
+          </Animated.View>
+
+          {/* Role cards */}
+          <View style={styles.cards}>
+            <Animated.View entering={FadeInDown.delay(220).duration(500)}>
+              <RoleCard
+                eyebrow="I'm looking for a job"
+                lead="I'm an"
+                accent="Applicant."
+                description="You want someone on the inside to champion your application. Browse jobs, connect with sponsors, and skip the resume black hole."
+                cta="Start as an Applicant"
+                selected={selected === "applicant"}
                 onPress={() => handleSelect("applicant")}
-                activeOpacity={0.9}
-                style={[
-                  styles.card,
-                  selected === "applicant" && styles.cardSelected,
-                ]}
-              >
-                <View style={styles.cardMain}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      selected === "applicant" && styles.iconCircleSelected,
-                    ]}
-                  >
-                    <Briefcase
-                      color={selected === "applicant" ? "#FFF" : "#000"}
-                      size={22}
-                      strokeWidth={2}
-                    />
-                  </View>
-                  <View style={styles.textContainer}>
-                    <Text
-                      style={[
-                        styles.cardTitle,
-                        selected === "applicant" && styles.textSelected,
-                      ]}
-                    >
-                      I'm an Applicant
-                    </Text>
-                    <Text
-                      style={[
-                        styles.cardDescription,
-                        selected === "applicant" && styles.textSelectedMuted,
-                      ]}
-                    >
-                      I want to find referrals and land my next role.
-                    </Text>
-                  </View>
-                </View>
-                <ChevronRight
-                  color={selected === "applicant" ? "#FFF" : "#CCC"}
-                  size={18}
-                />
-              </TouchableOpacity>
+              />
             </Animated.View>
 
-            {/* Sponsor Card */}
-            <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-              <TouchableOpacity
+            <Animated.View entering={FadeInDown.delay(320).duration(500)}>
+              <RoleCard
+                eyebrow="I work at a company"
+                lead="I'm a"
+                accent="Sponsor."
+                description="You refer talented people to open roles at your company. Browse profiles, match with candidates you'd vouch for, and make introductions that matter."
+                cta="Start as a Sponsor"
+                selected={selected === "sponsor"}
                 onPress={() => handleSelect("sponsor")}
-                activeOpacity={0.9}
-                style={[
-                  styles.card,
-                  selected === "sponsor" && styles.cardSelected,
-                ]}
-              >
-                <View style={styles.cardMain}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      selected === "sponsor" && styles.iconCircleSelected,
-                    ]}
-                  >
-                    <Handshake
-                      color={selected === "sponsor" ? "#FFF" : "#000"}
-                      size={22}
-                      strokeWidth={2}
-                    />
-                  </View>
-                  <View style={styles.textContainer}>
-                    <Text
-                      style={[
-                        styles.cardTitle,
-                        selected === "sponsor" && styles.textSelected,
-                      ]}
-                    >
-                      I'm a Sponsor
-                    </Text>
-                    <Text
-                      style={[
-                        styles.cardDescription,
-                        selected === "sponsor" && styles.textSelectedMuted,
-                      ]}
-                    >
-                      I want to refer talent and help others grow.
-                    </Text>
-                  </View>
-                </View>
-                <ChevronRight
-                  color={selected === "sponsor" ? "#FFF" : "#CCC"}
-                  size={18}
-                />
-              </TouchableOpacity>
+              />
             </Animated.View>
           </View>
         </View>
 
-        {/* Branding Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>- BackChannel Logo -</Text>
-        </View>
+        {/* Footer hint */}
+        <Animated.View
+          entering={FadeInDown.delay(440).duration(500)}
+          style={styles.footer}
+        >
+          <Body style={styles.footerText}>
+            Not sure? Pick the one that matches your real life.
+          </Body>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
 }
 
+interface RoleCardProps {
+  eyebrow: string;
+  lead: string;
+  accent: string;
+  description: string;
+  cta: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
+function RoleCard({
+  eyebrow,
+  lead,
+  accent,
+  description,
+  cta,
+  selected,
+  onPress,
+}: RoleCardProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        selected && styles.cardSelected,
+        pressed && styles.cardPressed,
+      ]}
+    >
+      <Eyebrow label={eyebrow} />
+      <View style={styles.cardTitleWrap}>
+        <HeroTitle lead={lead} accent={accent} size="sm" />
+      </View>
+      <Body style={styles.cardBody}>{description}</Body>
+      <View style={styles.cardCta}>
+        <UIText style={styles.cardCtaText}>{cta}</UIText>
+        <ArrowUpRight color={Color.ink} size={16} strokeWidth={2} />
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
+  container: { flex: 1, backgroundColor: Color.offWhite },
+  safeArea: { flex: 1 },
+  nav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Space.screen,
+    paddingTop: Space.md,
+    paddingBottom: Space.sm,
   },
-  safeArea: {
-    flex: 1,
-  },
-  backButton: {
-    padding: 20,
-    marginTop: 10,
-    alignSelf: "flex-start",
-  },
+  back: { flexDirection: "row", alignItems: "center", gap: 6 },
+  backText: { fontSize: 13, color: Color.muted, fontFamily: Type.sans500 },
+  pressed: { opacity: 0.6 },
+
   content: {
     flex: 1,
-    paddingHorizontal: 28,
-    justifyContent: "center",
+    paddingHorizontal: Space.screen,
+    paddingTop: Space.xl,
+    gap: Space.xl,
   },
-  header: {
-    marginBottom: 44,
+  heroBody: {
+    maxWidth: 380,
   },
-  title: {
-    fontSize: 34,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1.2,
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontSize: 17,
-    color: "#666",
-    marginTop: 12,
-    fontWeight: "400",
-  },
-  cardsContainer: {
-    gap: 12,
+  cards: {
+    gap: Space.md,
+    marginTop: Space.sm,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FBFBFB",
-    padding: 24,
-    borderRadius: 24,
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    justifyContent: "space-between",
+    borderColor: Color.border,
+    borderRadius: Radius.xl,
+    padding: Space.xl,
+    gap: Space.sm,
   },
   cardSelected: {
-    backgroundColor: "#000000", // Brand Black
-    borderColor: "#000000",
+    borderColor: Color.borderStrong,
+    backgroundColor: Color.paper,
   },
-  cardMain: {
+  cardPressed: {
+    transform: [{ scale: 0.985 }],
+    borderColor: Color.borderStrong,
+  },
+  cardTitleWrap: {
+    marginTop: 2,
+  },
+  cardBody: {
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 4,
+  },
+  cardCta: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
+    gap: 6,
+    marginTop: Space.md,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#EEE",
+  cardCtaText: {
+    fontSize: 13,
+    color: Color.ink,
+    fontFamily: Type.sans600,
+    letterSpacing: -0.1,
   },
-  iconCircleSelected: {
-    backgroundColor: "#222", // Slightly lighter black for icon visibility
-    borderColor: "#333",
-  },
-  textContainer: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    letterSpacing: -0.3,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  textSelected: {
-    color: "#FFFFFF",
-  },
-  textSelectedMuted: {
-    color: "#AAAAAA",
-  },
+
   footer: {
+    paddingHorizontal: Space.screen,
+    paddingVertical: Space.lg,
     alignItems: "center",
-    paddingBottom: 24,
   },
   footerText: {
-    fontSize: 11,
-    color: "#BBB",
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
+    fontSize: 13,
+    color: Color.faint,
+    textAlign: "center",
   },
 });

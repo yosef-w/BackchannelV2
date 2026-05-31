@@ -28,7 +28,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -37,6 +36,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -45,6 +45,7 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { Color, Radius, Space, Type } from "@/constants/theme";
 
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
@@ -313,10 +314,11 @@ export function SponsorQuestionnaire({
             disabled={isSubmitting}
             style={styles.iconBtn}
           >
-            <ArrowLeft color="#000" size={24} />
+            <ArrowLeft color={Color.muted} size={20} strokeWidth={2} />
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
-            {currentQuestion + 1} of {questions.length}
+            {String(currentQuestion + 1).padStart(2, "0")} /{" "}
+            {String(questions.length).padStart(2, "0")}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -361,7 +363,7 @@ export function SponsorQuestionnaire({
                     >
                       <View style={styles.insightCardHeader}>
                         <View style={styles.insightQuestionBadge}>
-                          <Sparkles size={12} color="#000" />
+                          <Sparkles size={12} color={Color.ink} />
                           <Text style={styles.insightQuestion}>
                             {insight.question}
                           </Text>
@@ -374,13 +376,13 @@ export function SponsorQuestionnaire({
                           }}
                           style={styles.removeInsightBtn}
                         >
-                          <X size={16} color="#999" />
+                          <X size={16} color={Color.muted} />
                         </TouchableOpacity>
                       </View>
 
                       <TextInput
                         placeholder="Share your answer..."
-                        placeholderTextColor="#BBB"
+                        placeholderTextColor={Color.faint}
                         value={insight.answer}
                         onFocus={() => {
                           const y = cardYPositions.current[index];
@@ -417,7 +419,7 @@ export function SponsorQuestionnaire({
                       onPress={() => setShowQuestionPicker(!showQuestionPicker)}
                       style={styles.addInsightBtn}
                     >
-                      <Plus size={20} color="#000" />
+                      <Plus size={18} color={Color.ink} strokeWidth={2} />
                       <Text style={styles.addInsightText}>
                         {selectedInsights.length === 0
                           ? "Choose your first question"
@@ -455,7 +457,7 @@ export function SponsorQuestionnaire({
                             style={styles.questionOption}
                           >
                             <Text style={styles.questionOptionText}>{q}</Text>
-                            <Plus size={18} color="#000" />
+                            <Plus size={16} color={Color.muted} strokeWidth={2} />
                           </TouchableOpacity>
                         ))}
                       </ScrollView>
@@ -463,18 +465,18 @@ export function SponsorQuestionnaire({
                   )}
 
                   <Text style={styles.insightsHelper}>
-                    💡 These help candidates understand your mentorship style
-                    and what it's like to work with you
+                    These help candidates understand your mentorship style
+                    and what it's like to work with you.
                   </Text>
                 </View>
               ) : question.type === "text" || question.type === "email" ? (
                 <View style={styles.inputWrapper}>
                   {question.type === "email" && (
-                    <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                    <Mail color={Color.muted} size={18} style={{ marginRight: 12 }} />
                   )}
                   <TextInput
                     placeholder={question.placeholder}
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={Color.faint}
                     value={answers[currentQuestion] || ""}
                     onChangeText={(v) =>
                       setAnswers({ ...answers, [currentQuestion]: v })
@@ -513,7 +515,9 @@ export function SponsorQuestionnaire({
                         >
                           {option}
                         </Text>
-                        {isSelected && <Check color="#FFF" size={20} />}
+                        {isSelected && (
+                          <Check color={Color.paper} size={18} strokeWidth={2.2} />
+                        )}
                       </TouchableOpacity>
                     );
                   })}
@@ -532,13 +536,13 @@ export function SponsorQuestionnaire({
               ]}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={Color.paper} />
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
-                    {isLastQuestion ? "Complete Profile" : "Continue"}
+                    {isLastQuestion ? "Complete profile" : "Continue"}
                   </Text>
-                  <ArrowRight color="#FFF" size={20} />
+                  <ArrowRight color={Color.paper} size={18} strokeWidth={2.2} />
                 </>
               )}
             </TouchableOpacity>
@@ -554,13 +558,13 @@ export function SponsorQuestionnaire({
                 entering={ZoomIn.delay(200).duration(600)}
                 style={styles.successIconBox}
               >
-                <UserCheck color="#000" size={48} />
+                <UserCheck color={Color.ink} size={36} strokeWidth={1.5} />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.delay(400)}
                 style={styles.successTitle}
               >
-                Profile Complete
+                Profile complete.
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.delay(600)}
@@ -577,142 +581,187 @@ export function SponsorQuestionnaire({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Color.offWhite },
   safeArea: { flex: 1 },
+
+  // ── Top chrome ────────────────────────────────────────────────────
   topNav: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: Space.screen,
+    paddingTop: Space.md,
+    paddingBottom: Space.sm,
   },
-  iconBtn: { padding: 8 },
+  iconBtn: { paddingVertical: 6, paddingRight: 6 },
   stepIndicator: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#BBB",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
-    letterSpacing: 1,
   },
-  progressBarBg: { height: 2, backgroundColor: "#F0F0F0", width: "100%" },
-  progressBar: { height: "100%", backgroundColor: "#000" },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
+  progressBarBg: {
+    height: 2,
+    backgroundColor: Color.border,
+    width: "100%",
+  },
+  progressBar: { height: "100%", backgroundColor: Color.ink },
+
+  // ── Question hero + content ───────────────────────────────────────
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: Space.screen,
+    paddingTop: Space.xxl,
+  },
   questionText: {
+    fontFamily: Type.sans400,
     fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
+    color: Color.ink,
+    letterSpacing: -0.6,
     lineHeight: 38,
-    marginBottom: 40,
+    marginBottom: Space.xxxl,
   },
-  optionsContainer: { gap: 12 },
+
+  // ── Multiple-choice options ───────────────────────────────────────
+  optionsContainer: { gap: Space.md },
   optionCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    paddingHorizontal: Space.lg,
+    paddingVertical: 18,
+    borderRadius: Radius.lg,
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
-  optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
-  optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
+  optionCardSelected: {
+    backgroundColor: Color.ink,
+    borderColor: Color.ink,
+  },
+  optionText: {
+    fontFamily: Type.sans500,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.1,
+  },
+
+  // ── Single-line text/email input ──────────────────────────────────
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingHorizontal: 16,
-    height: 64,
+    borderColor: Color.border,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
-  textInput: { flex: 1, fontSize: 18, color: "#000", fontWeight: "500" },
+  textInput: {
+    flex: 1,
+    fontFamily: Type.sans500,
+    fontSize: 15,
+    color: Color.ink,
+    padding: 0,
+  },
 
-  // Insights styles
+  // ── Insights builder ──────────────────────────────────────────────
   insightsSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 32,
-    lineHeight: 24,
+    fontFamily: Type.sans300,
+    fontSize: 14,
+    color: Color.body,
+    marginBottom: Space.xl,
+    lineHeight: 22,
   },
   insightCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
+    padding: Space.lg,
+    marginBottom: Space.md,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   insightCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 16,
+    marginBottom: Space.md,
   },
   insightQuestionBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     flex: 1,
-    backgroundColor: "#FFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: Color.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   insightQuestion: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans600,
+    fontSize: 10,
+    color: Color.muted,
+    letterSpacing: 1.3,
     flex: 1,
+    textTransform: "uppercase",
   },
-  removeInsightBtn: { padding: 4 },
+  removeInsightBtn: { padding: 4, marginLeft: 6 },
   insightAnswerInput: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: "#000",
+    backgroundColor: Color.offWhite,
+    borderRadius: Radius.sm,
+    padding: 14,
+    fontFamily: Type.sans500,
+    fontSize: 14,
+    color: Color.ink,
     minHeight: 100,
     textAlignVertical: "top",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    fontWeight: "500",
+    borderColor: Color.border,
   },
-  charCount: { fontSize: 12, color: "#999", marginTop: 8, textAlign: "right" },
+  charCount: {
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.faint,
+    marginTop: 6,
+    textAlign: "right",
+  },
   addInsightBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#FFF",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderStyle: "dashed",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  addInsightText: { fontSize: 15, fontWeight: "700", color: "#000" },
-  questionPickerContainer: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+    gap: 8,
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.borderStrong,
+    borderStyle: "dashed",
+    borderRadius: Radius.lg,
+    paddingVertical: 18,
+    marginBottom: Space.md,
+  },
+  addInsightText: {
+    fontFamily: Type.sans600,
+    fontSize: 14,
+    color: Color.ink,
+    letterSpacing: -0.1,
+  },
+  questionPickerContainer: {
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
+    padding: Space.lg,
+    marginBottom: Space.md,
+    borderWidth: 1,
+    borderColor: Color.border,
     maxHeight: 300,
   },
   pickerTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1,
-    marginBottom: 16,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.6,
+    marginBottom: Space.md,
     textTransform: "uppercase",
   },
   questionsList: { maxHeight: 240 },
@@ -720,68 +769,87 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Color.surface,
   },
   questionOptionText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans500,
+    fontSize: 12,
+    color: Color.ink,
     flex: 1,
-    letterSpacing: 0.3,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   insightsHelper: {
-    fontSize: 14,
-    color: "#999",
+    fontFamily: Type.sans300,
+    fontSize: 13,
+    color: Color.muted,
     lineHeight: 20,
-    marginTop: 8,
-    fontStyle: "italic",
+    marginTop: Space.sm,
   },
 
-  footer: { paddingHorizontal: 28, paddingBottom: 30, paddingTop: 20 },
+  // ── Footer CTA ────────────────────────────────────────────────────
+  footer: {
+    paddingHorizontal: Space.screen,
+    paddingBottom: Space.xl,
+    paddingTop: Space.md,
+  },
   nextButton: {
-    backgroundColor: "#000",
-    height: 60,
-    borderRadius: 30,
+    backgroundColor: Color.ink,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  nextButtonDisabled: { opacity: 0.3 },
-  nextButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  textWhite: { color: "#FFF" },
+  nextButtonDisabled: { opacity: 0.35 },
+  nextButtonText: {
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
+  },
+  textWhite: { color: Color.paper },
+
+  // ── Success modal ─────────────────────────────────────────────────
   successContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: Space.xxxl,
   },
   successIconBox: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#FFF",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Color.paper,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
+    marginBottom: Space.xl,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   successTitle: {
+    fontFamily: Type.sans400,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     textAlign: "center",
+    letterSpacing: -0.5,
   },
   successSub: {
-    fontSize: 16,
-    color: "#666",
+    fontFamily: Type.sans300,
+    fontSize: 15,
+    color: Color.body,
     textAlign: "center",
-    marginTop: 12,
-    lineHeight: 22,
+    marginTop: Space.md,
+    lineHeight: 23,
+    maxWidth: 320,
   },
 });

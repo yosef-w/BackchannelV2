@@ -1,68 +1,99 @@
-import React, { useEffect } from 'react';
-import { Platform, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from "react";
+import { Pressable, StatusBar, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withTiming
-} from 'react-native-reanimated';
+  withTiming,
+} from "react-native-reanimated";
+import { Color, Motion, Radius, Space } from "@/constants/theme";
+import {
+  Body,
+  Eyebrow,
+  HeroTitle,
+  UIText,
+} from "@/components/ui/typography";
+import { ArrowRight } from "lucide-react-native";
 
 interface SplashScreenProps {
   onGetStarted: () => void;
 }
 
+/**
+ * The first frame of the brand. Paper-feel surface, a single editorial
+ * moment ("Welcome to *BackChannel.*"), then a quiet ink CTA. The italic
+ * serif accent is what sets the tone for everything that follows.
+ *
+ * Entrance: a slow staggered fade-up that lets the wordmark land before
+ * the body and button arrive — the same rhythm the tester site uses.
+ */
 export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
-  const titleOpacity = useSharedValue(0);
-  const titleScale = useSharedValue(0.98);
-  const buttonOpacity = useSharedValue(0);
-  const buttonTranslateY = useSharedValue(15);
+  // Shared values per row so each can land on its own beat.
+  const eyebrow = useSharedValue(0);
+  const title = useSharedValue(0);
+  const body = useSharedValue(0);
+  const cta = useSharedValue(0);
 
   useEffect(() => {
-    // Smooth, elegant entrance
-    titleOpacity.value = withTiming(1, { duration: 1500 });
-    titleScale.value = withTiming(1, { duration: 1500 });
-    
-    buttonOpacity.value = withDelay(1000, withTiming(1, { duration: 800 }));
-    buttonTranslateY.value = withDelay(1000, withTiming(0, { duration: 800 }));
+    eyebrow.value = withDelay(120, withTiming(1, { duration: 500 }));
+    title.value = withDelay(280, withTiming(1, { duration: 700 }));
+    body.value = withDelay(680, withTiming(1, { duration: 500 }));
+    cta.value = withDelay(960, withTiming(1, { duration: 500 }));
   }, []);
 
-  const titleStyle = useAnimatedStyle(() => ({
-    opacity: titleOpacity.value,
-    transform: [{ scale: titleScale.value }],
+  const eyebrowStyle = useAnimatedStyle(() => ({
+    opacity: eyebrow.value,
+    transform: [{ translateY: (1 - eyebrow.value) * 8 }],
   }));
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    opacity: buttonOpacity.value,
-    transform: [{ translateY: buttonTranslateY.value }],
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: title.value,
+    transform: [{ translateY: (1 - title.value) * 14 }],
+  }));
+  const bodyStyle = useAnimatedStyle(() => ({
+    opacity: body.value,
+    transform: [{ translateY: (1 - body.value) * 10 }],
+  }));
+  const ctaStyle = useAnimatedStyle(() => ({
+    opacity: cta.value,
+    transform: [{ translateY: (1 - cta.value) * 12 }],
   }));
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
-      <View style={styles.centerContent}>
-        <Animated.View style={[styles.brandWrapper, titleStyle]}>
-          <Text style={styles.brandName}>
-            BACK<Text style={styles.brandSerif}>CHANNEL</Text>
-          </Text>
-          
-          <View style={styles.horizontalRule} />
-          
-          <Text style={styles.tagline}>
-            Get referred. Get hired. Get ahead.
-          </Text>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={styles.safeArea}>
+        {/* Top eyebrow — tiny tracked label that anchors the brand at the top */}
+        <Animated.View style={[styles.top, eyebrowStyle]}>
+          <Eyebrow label="BackChannel" tag="Closed Beta" />
         </Animated.View>
-      </View>
 
-      <SafeAreaView style={styles.footer}>
-        <Animated.View style={[styles.buttonContainer, buttonStyle]}>
-          <TouchableOpacity 
-            activeOpacity={0.85} 
-            onPress={onGetStarted} 
-            style={styles.button}
+        {/* Center stack — the editorial moment */}
+        <View style={styles.center}>
+          <Animated.View style={titleStyle}>
+            <HeroTitle lead="Welcome to" accent="BackChannel." size="lg" />
+          </Animated.View>
+
+          <Animated.View style={[styles.bodyWrap, bodyStyle]}>
+            <Body>Get referred. Get hired. Get ahead.</Body>
+          </Animated.View>
+        </View>
+
+        {/* Bottom CTA */}
+        <Animated.View style={[styles.bottom, ctaStyle]}>
+          <Pressable
+            onPress={onGetStarted}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+            ]}
           >
-            <Text style={styles.buttonText}>Get Connected</Text>
-          </TouchableOpacity>
+            <UIText style={styles.buttonText}>Get started</UIText>
+            <ArrowRight color={Color.paper} size={18} strokeWidth={2.2} />
+          </Pressable>
+          <View style={styles.bottomEyebrowWrap}>
+            <Eyebrow label="A new way to get hired" />
+          </View>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -70,70 +101,47 @@ export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: Color.offWhite },
+  safeArea: { flex: 1, paddingHorizontal: Space.screen },
+  top: {
+    paddingTop: Space.lg,
+  },
+  center: {
     flex: 1,
-    backgroundColor: '#000000',
+    justifyContent: "center",
+    gap: Space.xl,
   },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  bodyWrap: {
+    maxWidth: 320,
   },
-  brandWrapper: {
-    alignItems: 'center',
-  },
-  brandName: {
-    fontSize: 34,
-    fontWeight: '300',
-    color: '#FFFFFF',
-    letterSpacing: 6, // High-end spacing
-  },
-  brandSerif: {
-    // Professional Serif contrast
-    fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif',
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  horizontalRule: {
-    width: 28,
-    height: 1.5,
-    backgroundColor: '#333',
-    marginVertical: 24,
-  },
-  tagline: {
-    fontSize: 15,
-    color: '#999999',
-    fontWeight: '400',
-    letterSpacing: -0.2,
-    textAlign: 'center',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingBottom: 60,
-  },
-  buttonContainer: {
-    width: '100%',
-    alignItems: 'center',
+  bottom: {
+    paddingBottom: Space.xxl,
+    gap: Space.lg,
   },
   button: {
-    width: '65%', 
-    height: 56,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Elegant shadow for depth
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 4 },
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Color.ink,
+    borderRadius: Radius.md,
+    paddingVertical: 16,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
-    marginBottom: 80,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  buttonPressed: {
+    transform: [{ scale: 0.99 }],
+    opacity: 0.92,
   },
   buttonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
+  },
+  bottomEyebrowWrap: {
+    alignSelf: "center",
   },
 });

@@ -15,13 +15,14 @@ import React, { useEffect, useRef, useState } from "react";
 import {
     Dimensions,
     Platform,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Color, Radius, Type } from "@/constants/theme";
 import Animated, {
     FadeInDown,
     useAnimatedStyle,
@@ -114,9 +115,9 @@ function NavItem({
     >
       <Animated.View style={animatedIconStyle}>
         <Icon
-          color={isActive ? "#FFF" : "#666"}
-          size={24}
-          strokeWidth={isActive ? 2.5 : 1.5}
+          color={isActive ? Color.paper : "rgba(255,255,255,0.42)"}
+          size={22}
+          strokeWidth={isActive ? 2.2 : 1.6}
         />
       </Animated.View>
       {isActive && <View style={styles.activeIndicator} />}
@@ -515,14 +516,20 @@ export function MainApp({ userType }: MainAppProps) {
       <SafeAreaView style={styles.safeArea}>
         {/* Header Bar */}
         <View style={styles.topBar}>
-          <Text style={styles.appTitle}>Backchannel</Text>
+          <Text style={styles.appTitle}>
+            Back<Text style={styles.appTitleAccent}>Channel</Text>
+          </Text>
           <View style={styles.topBarButtons}>
             <TouchableOpacity
               onPress={handleOpenCheckIn}
               activeOpacity={0.7}
               style={styles.headerIconButton}
             >
-              <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
+              <ClipboardCheck
+                color={Color.muted}
+                size={18}
+                strokeWidth={1.6}
+              />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -535,7 +542,7 @@ export function MainApp({ userType }: MainAppProps) {
               activeOpacity={0.7}
               style={styles.headerIconButton}
             >
-              <Bell color="#000" size={22} strokeWidth={1.5} />
+              <Bell color={Color.muted} size={20} strokeWidth={1.6} />
               {unreadNotificationCount > 0 && (
                 <View style={styles.notificationDot} />
               )}
@@ -668,87 +675,97 @@ export function MainApp({ userType }: MainAppProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Color.offWhite,
   },
-  safeArea: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
+
+  // ── Top bar ───────────────────────────────────────────────────────
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
+  // The editorial wordmark — sans "Back" with serif italic "Channel". One
+  // moment of brand voice anchoring every screen.
   appTitle: {
+    fontFamily: Type.sans500,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    color: Color.ink,
+    letterSpacing: -0.4,
+  },
+  appTitleAccent: {
+    fontFamily: Type.serifItalic,
+    color: Color.muted,
   },
   topBarButtons: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   headerIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F9F9F9",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Color.paper,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   notificationDot: {
     position: "absolute",
-    top: 12,
-    right: 12,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: "#FFF",
+    top: 10,
+    right: 10,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Color.ink,
+    borderWidth: 1.5,
+    borderColor: Color.paper,
   },
-  mainContent: {
-    flex: 1,
-  },
+  mainContent: { flex: 1 },
+
+  // ── Bottom nav pill ───────────────────────────────────────────────
+  // The single strong dark element in an otherwise paper UI. We keep
+  // the floating-pill shape but warm the ink and soften the shadow so
+  // it sits inside the editorial system rather than fighting it.
   navContainer: {
     position: "absolute",
-    bottom: 30,
+    bottom: 28,
     left: 0,
     right: 0,
     alignItems: "center",
   },
   navBar: {
     flexDirection: "row",
-    backgroundColor: "#000",
-    width: SCREEN_WIDTH * 0.85,
-    height: 70,
-    borderRadius: 35,
+    backgroundColor: Color.ink,
+    width: SCREEN_WIDTH * 0.86,
+    height: 66,
+    borderRadius: Radius.pill,
     alignItems: "center",
     justifyContent: "space-around",
+    paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.08)",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
     elevation: 10,
   },
   navItem: {
     alignItems: "center",
     justifyContent: "center",
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
   },
   activeIndicator: {
     position: "absolute",
-    bottom: 8,
-    width: 12,
-    height: 3,
+    bottom: 10,
+    width: 4,
+    height: 4,
     borderRadius: 2,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
   },
 });

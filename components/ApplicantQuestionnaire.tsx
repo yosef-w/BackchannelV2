@@ -21,7 +21,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -30,6 +29,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -37,6 +37,7 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { Color, Radius, Space, Type } from "@/constants/theme";
 import { SKILLS_BY_INDUSTRY } from "../constants/skills";
 import {
   identifyUser,
@@ -418,10 +419,11 @@ export function ApplicantQuestionnaire({
             disabled={isSubmitting}
             style={styles.iconBtn}
           >
-            <ArrowLeft color="#000" size={24} />
+            <ArrowLeft color={Color.muted} size={20} strokeWidth={2} />
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
-            {currentQuestion + 1} of {questions.length}
+            {String(currentQuestion + 1).padStart(2, "0")} /{" "}
+            {String(questions.length).padStart(2, "0")}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -479,11 +481,12 @@ export function ApplicantQuestionnaire({
                             {option}
                           </Text>
                           {isSelected ? (
-                            <Check color="#FFF" size={20} />
+                            <Check color={Color.paper} size={18} strokeWidth={2.2} />
                           ) : (
                             <ChevronRight
-                              color={isEnabled ? "#CCC" : "#E0E0E0"}
-                              size={18}
+                              color={isEnabled ? Color.muted : Color.faint}
+                              size={16}
+                              strokeWidth={2}
                             />
                           )}
                         </TouchableOpacity>
@@ -500,7 +503,7 @@ export function ApplicantQuestionnaire({
                   <View style={styles.inputWrapper}>
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Color.faint}
                       value={answers[currentQuestion] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [currentQuestion]: v })
@@ -515,13 +518,14 @@ export function ApplicantQuestionnaire({
                   <View>
                     <View style={styles.searchWrapper}>
                       <Search
-                        color="#AAA"
-                        size={20}
+                        color={Color.muted}
+                        size={18}
+                        strokeWidth={2}
                         style={{ marginRight: 10 }}
                       />
                       <TextInput
                         placeholder="Search skills..."
-                        placeholderTextColor="#BBB"
+                        placeholderTextColor={Color.faint}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         style={styles.searchInput}
@@ -578,7 +582,7 @@ export function ApplicantQuestionnaire({
                       >
                         <View style={styles.insightCardHeader}>
                           <View style={styles.insightQuestionBadge}>
-                            <Sparkles size={12} color="#000" />
+                            <Sparkles size={12} color={Color.ink} />
                             <Text style={styles.insightQuestion}>
                               {insight.question}
                             </Text>
@@ -591,13 +595,13 @@ export function ApplicantQuestionnaire({
                             }}
                             style={styles.removeInsightBtn}
                           >
-                            <X size={16} color="#999" />
+                            <X size={16} color={Color.muted} />
                           </TouchableOpacity>
                         </View>
 
                         <TextInput
                           placeholder="Share your answer..."
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={Color.faint}
                           value={insight.answer}
                           onFocus={() => {
                             const y = cardYPositions.current[index];
@@ -639,7 +643,7 @@ export function ApplicantQuestionnaire({
                         }
                         style={styles.addInsightBtn}
                       >
-                        <Plus size={20} color="#000" />
+                        <Plus size={18} color={Color.ink} strokeWidth={2} />
                         <Text style={styles.addInsightText}>
                           {selectedInsights.length === 0
                             ? "Choose your first question"
@@ -679,7 +683,11 @@ export function ApplicantQuestionnaire({
                               style={styles.questionOption}
                             >
                               <Text style={styles.questionOptionText}>{q}</Text>
-                              <Plus size={18} color="#000" />
+                              <Plus
+                                size={16}
+                                color={Color.muted}
+                                strokeWidth={2}
+                              />
                             </TouchableOpacity>
                           ))}
                         </ScrollView>
@@ -687,8 +695,8 @@ export function ApplicantQuestionnaire({
                     )}
 
                     <Text style={styles.insightsHelper}>
-                      💡 These help sponsors get to know the real you beyond
-                      your resume
+                      These help sponsors get to know the real you beyond
+                      your resume.
                     </Text>
                   </View>
                 )}
@@ -748,7 +756,7 @@ export function ApplicantQuestionnaire({
                         activeOpacity={0.75}
                       >
                         <View style={styles.fileUploadIconWrap}>
-                          <Upload color="#000" size={28} strokeWidth={2} />
+                          <Upload color={Color.ink} size={26} strokeWidth={1.6} />
                         </View>
                         <Text style={styles.fileTitle}>
                           Tap to upload your resume
@@ -762,8 +770,8 @@ export function ApplicantQuestionnaire({
                         <View style={styles.fileConfirmCard}>
                           <View style={styles.fileIconCircle}>
                             <FileText
-                              color="#FFF"
-                              size={26}
+                              color={Color.paper}
+                              size={22}
                               strokeWidth={1.5}
                             />
                           </View>
@@ -799,13 +807,13 @@ export function ApplicantQuestionnaire({
                             }}
                             activeOpacity={0.7}
                           >
-                            <X size={16} color="#666" strokeWidth={2.5} />
+                            <X size={14} color={Color.muted} strokeWidth={2} />
                           </TouchableOpacity>
                         </View>
 
                         <View style={styles.fileReadyRow}>
                           <View style={styles.fileReadyCheck}>
-                            <Check size={12} color="#FFF" strokeWidth={3} />
+                            <Check size={11} color={Color.paper} strokeWidth={3} />
                           </View>
                           <Text style={styles.fileReadyText}>
                             Ready to submit
@@ -837,13 +845,13 @@ export function ApplicantQuestionnaire({
               ]}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={Color.paper} />
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
-                    {isLastQuestion ? "Complete Profile" : "Continue"}
+                    {isLastQuestion ? "Complete profile" : "Continue"}
                   </Text>
-                  <ArrowRight color="#FFF" size={20} />
+                  <ArrowRight color={Color.paper} size={18} strokeWidth={2.2} />
                 </>
               )}
             </TouchableOpacity>
@@ -859,19 +867,19 @@ export function ApplicantQuestionnaire({
                 entering={ZoomIn.delay(200).duration(600)}
                 style={styles.successIconBox}
               >
-                <UserCheck color="#000" size={48} />
+                <UserCheck color={Color.ink} size={36} strokeWidth={1.5} />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.delay(400)}
                 style={styles.successTitle}
               >
-                Profile Created
+                You're in.
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.delay(600)}
                 style={styles.successSub}
               >
-                Welcome to BackChannel
+                Welcome to BackChannel.
               </Animated.Text>
             </View>
           </BlurView>
@@ -882,128 +890,180 @@ export function ApplicantQuestionnaire({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Color.offWhite },
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
+
+  // ── Top chrome ────────────────────────────────────────────────────
   topNav: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: Space.screen,
+    paddingTop: Space.md,
+    paddingBottom: Space.sm,
   },
-  iconBtn: { padding: 8 },
+  iconBtn: { paddingVertical: 6, paddingRight: 6 },
   stepIndicator: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#BBB",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
-    letterSpacing: 1,
   },
-  progressBarBg: { height: 2, backgroundColor: "#F0F0F0", width: "100%" },
-  progressBar: { height: "100%", backgroundColor: "#000" },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
+  progressBarBg: {
+    height: 2,
+    backgroundColor: Color.border,
+    width: "100%",
+  },
+  progressBar: { height: "100%", backgroundColor: Color.ink },
+
+  // ── Question hero + content ───────────────────────────────────────
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: Space.screen,
+    paddingTop: Space.xxl,
+  },
   content: { flex: 1 },
   questionText: {
+    fontFamily: Type.sans400,
     fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
+    color: Color.ink,
+    letterSpacing: -0.6,
     lineHeight: 38,
-    marginBottom: 40,
+    marginBottom: Space.xxxl,
   },
-  optionsContainer: { gap: 12 },
+
+  // ── Multiple-choice options ───────────────────────────────────────
+  optionsContainer: { gap: Space.md },
   optionCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    paddingHorizontal: Space.lg,
+    paddingVertical: 18,
+    borderRadius: Radius.lg,
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
-  optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
-  optionCardDisabled: { backgroundColor: "#FAFAFA", borderColor: "#F0F0F0" },
-  optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
-  optionTextDisabled: { color: "#C8C8C8" },
+  optionCardSelected: {
+    backgroundColor: Color.ink,
+    borderColor: Color.ink,
+  },
+  optionCardDisabled: {
+    backgroundColor: Color.surface,
+    borderColor: Color.border,
+  },
+  optionText: {
+    fontFamily: Type.sans500,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.1,
+  },
+  optionTextDisabled: { color: Color.faint },
   comingSoonNote: {
-    marginTop: 12,
+    marginTop: Space.md,
+    fontFamily: Type.sans300,
     fontSize: 13,
-    color: "#AAAAAA",
+    color: Color.muted,
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 19,
   },
+
+  // ── Single-line text input ────────────────────────────────────────
   inputWrapper: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingHorizontal: 16,
-    height: 64,
+    borderColor: Color.border,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     justifyContent: "center",
   },
-  textInput: { fontSize: 18, color: "#000", fontWeight: "500" },
+  textInput: {
+    fontFamily: Type.sans500,
+    fontSize: 15,
+    color: Color.ink,
+    padding: 0,
+  },
+
+  // ── Resume upload ─────────────────────────────────────────────────
   fileContainer: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "#DDD",
-    borderRadius: 20,
-    paddingVertical: 44,
-    paddingHorizontal: 28,
+    borderColor: Color.borderStrong,
+    borderRadius: Radius.xl,
+    paddingVertical: Space.xxxl,
+    paddingHorizontal: Space.xl,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Color.paper,
   },
   fileUploadIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: "#F0F0F0",
+    width: 56,
+    height: 56,
+    borderRadius: Radius.lg,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: Space.md,
   },
   fileTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 15,
+    color: Color.ink,
     marginBottom: 6,
     textAlign: "center",
+    letterSpacing: -0.1,
   },
-  fileSubtitle: { fontSize: 13, color: "#AAA", textAlign: "center" },
+  fileSubtitle: {
+    fontFamily: Type.sans400,
+    fontSize: 13,
+    color: Color.muted,
+    textAlign: "center",
+  },
   fileConfirmCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 18,
-    padding: 16,
+    gap: Space.md,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
+    padding: Space.md,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   fileIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: "#000",
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  fileConfirmInfo: { flex: 1, gap: 4 },
+  fileConfirmInfo: { flex: 1, gap: 2 },
   fileConfirmName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 14,
+    color: Color.ink,
     lineHeight: 20,
+    letterSpacing: -0.1,
   },
-  fileConfirmMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  fileConfirmMeta: {
+    fontFamily: Type.sans500,
+    fontSize: 12,
+    color: Color.muted,
+  },
   fileRemoveBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#EFEFEF",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1011,138 +1071,176 @@ const styles = StyleSheet.create({
   fileReadyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 14,
+    gap: Space.sm,
+    marginTop: Space.md,
     paddingHorizontal: 2,
   },
   fileReadyCheck: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#000",
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  fileReadyText: { flex: 1, fontSize: 13, fontWeight: "600", color: "#000" },
-  fileChangeLink: {
+  fileReadyText: {
+    flex: 1,
+    fontFamily: Type.sans500,
     fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
+    color: Color.ink,
+  },
+  fileChangeLink: {
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.muted,
     textDecorationLine: "underline",
   },
+
+  // ── Skills search + grid ──────────────────────────────────────────
   searchWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 54,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    marginBottom: 24,
-  },
-  searchInput: { flex: 1, fontSize: 16, color: "#000", fontWeight: "500" },
-  skillsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  skillItem: {
+    backgroundColor: Color.paper,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: Color.border,
+    marginBottom: Space.lg,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: Type.sans500,
+    fontSize: 15,
+    color: Color.ink,
+    padding: 0,
+  },
+  skillsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  skillItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.borderStrong,
     marginBottom: 4,
   },
-  skillItemSelected: { backgroundColor: "#000" },
-  skillText: { fontSize: 14, fontWeight: "600", color: "#000" },
+  skillItemSelected: {
+    backgroundColor: Color.ink,
+    borderColor: Color.ink,
+  },
+  skillText: {
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.ink,
+    letterSpacing: -0.1,
+  },
   selectionCount: {
-    marginTop: 24,
-    fontSize: 14,
-    color: "#BBB",
-    fontWeight: "600",
+    marginTop: Space.xl,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
     textAlign: "center",
   },
+
+  // ── Insights builder ──────────────────────────────────────────────
   insightsSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 32,
-    lineHeight: 24,
+    fontFamily: Type.sans300,
+    fontSize: 14,
+    color: Color.body,
+    marginBottom: Space.xl,
+    lineHeight: 22,
   },
   insightCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
+    padding: Space.lg,
+    marginBottom: Space.md,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   insightCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 16,
+    marginBottom: Space.md,
   },
   insightQuestionBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     flex: 1,
-    backgroundColor: "#FFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: Color.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   insightQuestion: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans600,
+    fontSize: 10,
+    color: Color.muted,
+    letterSpacing: 1.3,
     flex: 1,
+    textTransform: "uppercase",
   },
-  removeInsightBtn: { padding: 4 },
+  removeInsightBtn: { padding: 4, marginLeft: 6 },
   insightAnswerInput: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: "#000",
+    backgroundColor: Color.offWhite,
+    borderRadius: Radius.sm,
+    padding: 14,
+    fontFamily: Type.sans500,
+    fontSize: 14,
+    color: Color.ink,
     minHeight: 100,
     textAlignVertical: "top",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    fontWeight: "500",
+    borderColor: Color.border,
   },
-  charCount: { fontSize: 12, color: "#999", marginTop: 8, textAlign: "right" },
+  charCount: {
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.faint,
+    marginTop: 6,
+    textAlign: "right",
+  },
   addInsightBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#FFF",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderStyle: "dashed",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  addInsightText: { fontSize: 15, fontWeight: "700", color: "#000" },
-  questionPickerContainer: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+    gap: 8,
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.borderStrong,
+    borderStyle: "dashed",
+    borderRadius: Radius.lg,
+    paddingVertical: 18,
+    marginBottom: Space.md,
+  },
+  addInsightText: {
+    fontFamily: Type.sans600,
+    fontSize: 14,
+    color: Color.ink,
+    letterSpacing: -0.1,
+  },
+  questionPickerContainer: {
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
+    padding: Space.lg,
+    marginBottom: Space.md,
+    borderWidth: 1,
+    borderColor: Color.border,
     maxHeight: 300,
   },
   pickerTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1,
-    marginBottom: 16,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.6,
+    marginBottom: Space.md,
     textTransform: "uppercase",
   },
   questionsList: { maxHeight: 240 },
@@ -1150,68 +1248,88 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Color.surface,
   },
   questionOptionText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans500,
+    fontSize: 12,
+    color: Color.ink,
     flex: 1,
-    letterSpacing: 0.3,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   insightsHelper: {
-    fontSize: 14,
-    color: "#999",
+    fontFamily: Type.sans300,
+    fontSize: 13,
+    color: Color.muted,
     lineHeight: 20,
-    marginTop: 8,
-    fontStyle: "italic",
+    marginTop: Space.sm,
   },
-  footer: { paddingHorizontal: 28, paddingBottom: 30, paddingTop: 20 },
+
+  // ── Footer CTA ────────────────────────────────────────────────────
+  footer: {
+    paddingHorizontal: Space.screen,
+    paddingBottom: Space.xl,
+    paddingTop: Space.md,
+  },
   nextButton: {
-    backgroundColor: "#000",
-    height: 60,
-    borderRadius: 30,
+    backgroundColor: Color.ink,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  nextButtonDisabled: { opacity: 0.3 },
-  nextButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  textWhite: { color: "#FFF" },
-  textBold: { fontWeight: "700" },
+  nextButtonDisabled: { opacity: 0.35 },
+  nextButtonText: {
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
+  },
+  textWhite: { color: Color.paper },
+  textBold: { fontFamily: Type.sans600 },
+
+  // ── Success modal ─────────────────────────────────────────────────
   successContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: Space.xxxl,
   },
   successIconBox: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#FFF",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
+    marginBottom: Space.xl,
   },
   successTitle: {
+    fontFamily: Type.sans400,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     textAlign: "center",
+    letterSpacing: -0.5,
   },
   successSub: {
-    fontSize: 16,
-    color: "#666",
+    fontFamily: Type.sans300,
+    fontSize: 15,
+    color: Color.body,
     textAlign: "center",
-    marginTop: 12,
-    lineHeight: 22,
+    marginTop: Space.md,
+    lineHeight: 23,
+    maxWidth: 320,
   },
 });

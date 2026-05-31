@@ -56,7 +56,6 @@ import {
   Linking,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -65,6 +64,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Color, Radius, Type } from "@/constants/theme";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -2371,7 +2372,7 @@ export function HomeView({
                       </Text>
                     </View>
                   )}
-                <ChevronDown color="#555" size={14} strokeWidth={2.5} />
+                <ChevronDown color={Color.muted} size={14} strokeWidth={2} />
               </TouchableOpacity>
             )}
           </Animated.View>
@@ -2380,19 +2381,21 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <Animated.View entering={FadeInUp} style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <RefreshCcw color="#000" size={32} />
+                  <RefreshCcw color={Color.ink} size={26} strokeWidth={1.6} />
                 </View>
-                <Text style={styles.emptyTitle}>All Caught Up!</Text>
+                <Text style={styles.emptyTitle}>All caught up.</Text>
                 <Text style={styles.emptySub}>
-                  You've reviewed your deck. Come back tomorrow for more.
+                  You've reviewed your deck for today. Come back tomorrow for
+                  more.
                 </Text>
                 <TouchableOpacity
                   style={styles.returnBtn}
                   onPress={() => {
                     resetNavigation();
                   }}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.returnBtnText}>Refresh Deck</Text>
+                  <Text style={styles.returnBtnText}>Refresh deck</Text>
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -2417,11 +2420,13 @@ export function HomeView({
                   <View
                     style={[styles.emptyDeckCard, styles.emptyDeckCardFront]}
                   >
-                    <Briefcase color="#000" size={28} strokeWidth={1.8} />
+                    <Briefcase color={Color.ink} size={24} strokeWidth={1.6} />
                   </View>
                 </View>
 
-                <Text style={styles.sponsorEmptyTitle}>Build your deck</Text>
+                <Text style={styles.sponsorEmptyTitle}>
+                  Build your <Text style={styles.sponsorEmptyTitleAccent}>deck.</Text>
+                </Text>
                 <Text style={styles.sponsorEmptySubtitle}>
                   Sponsor a role to start seeing applicants matched to it. Pick
                   one from the ATS feed or post your own.
@@ -2435,9 +2440,9 @@ export function HomeView({
                   activeOpacity={0.85}
                 >
                   <Text style={styles.sponsorEmptyPrimaryText}>
-                    Browse Jobs
+                    Browse jobs
                   </Text>
-                  <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                  <ChevronRight color={Color.paper} size={16} strokeWidth={2} />
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -3772,14 +3777,14 @@ export function HomeView({
                   style={styles.floatingPassBtn}
                   activeOpacity={0.85}
                 >
-                  <X color="#000" size={26} strokeWidth={2.5} />
+                  <X color={Color.ink} size={22} strokeWidth={2} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleSwipe(true)}
                   style={styles.floatingConnectBtn}
                   activeOpacity={0.85}
                 >
-                  <Check color="#FFF" size={26} strokeWidth={2.8} />
+                  <Check color={Color.paper} size={22} strokeWidth={2.2} />
                 </TouchableOpacity>
               </Animated.View>
             </>
@@ -4786,45 +4791,49 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   hingeHeroAvatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#F0F0F0",
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: Color.surface,
   },
   hingeHeroAvatarFallback: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#000",
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   hingeHeroAvatarInitial: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#FFF",
+    fontFamily: Type.serifItalic,
+    fontSize: 38,
+    color: Color.paper,
   },
+  // The applicant's / company's name. Sans 400 large, tight tracking —
+  // editorial display. Names can carry the italic serif accent when
+  // composed inline (e.g. last name italicized).
   hingeHeroName: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans400,
+    fontSize: 28,
+    color: Color.ink,
     letterSpacing: -0.6,
     marginTop: 16,
     textAlign: "center",
   },
   hingeHeroSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
     marginTop: 4,
+    lineHeight: 22,
   },
   hingeHeroPillRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
+    gap: 6,
     marginTop: 14,
   },
 
@@ -4838,29 +4847,32 @@ const styles = StyleSheet.create({
   // ── Section primitives ────────────────────────────────────────────
   hingeDivider: {
     height: 1,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.border,
     marginVertical: 4,
   },
-  hingeSection: { paddingVertical: 18 },
+  hingeSection: { paddingVertical: 20 },
   hingeSectionLabel: {
+    fontFamily: Type.sans500,
     fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-    color: "#999",
-    marginBottom: 10,
+    letterSpacing: 1.6,
+    color: Color.muted,
+    marginBottom: 12,
+    textTransform: "uppercase",
   },
   hingeBodyText: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#333",
-    lineHeight: 23,
+    color: Color.body,
+    lineHeight: 24,
   },
 
   // ── At-a-glance stats strip (sponsor view) ────────────────────────
   hingeStatsRow: {
     flexDirection: "row",
-    backgroundColor: "#F8F9FB",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: Radius.lg,
     paddingVertical: 14,
     marginVertical: 8,
   },
@@ -4868,48 +4880,39 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     borderRightWidth: 1,
-    borderRightColor: "#E8E8E8",
+    borderRightColor: Color.border,
   },
   hingeStatCellLast: { borderRightWidth: 0 },
   hingeStatValue: {
+    fontFamily: Type.sans600,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.5,
   },
   hingeStatLabel: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "700",
-    color: "#888",
-    letterSpacing: 0.8,
+    color: Color.muted,
+    letterSpacing: 1.3,
     marginTop: 4,
     textTransform: "uppercase",
   },
 
-  // ── Insight Q&A cards — quote-style with vertical accent ──────────
-  // White card with a soft drop shadow + thin hairline border for
-  // depth (instead of the prior gray-on-gray look that disappeared
-  // into the page). A 3px black stripe runs the full height of the
-  // left edge as a brand accent — the only color is monochrome, but
-  // the stripe gives the card a strong sense of authorship ("here are
-  // the applicant's actual words"). A large opening quote mark next
-  // to the answer plays the same role typographically.
+  // ── Insight Q&A cards — pull-quote treatment ──────────────────────
+  // Paper card with hairline border. A 2px ink stripe along the left
+  // edge plus a large serif italic opening quote give the section a
+  // sense of authorship ("here are the applicant's actual words").
   hingeInsightCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: Color.border,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
   },
   hingeInsightAccent: {
-    width: 3,
-    backgroundColor: "#000",
+    width: 2,
+    backgroundColor: Color.ink,
   },
   hingeInsightBody: {
     flex: 1,
@@ -4917,10 +4920,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   hingeInsightQuestion: {
+    fontFamily: Type.sans500,
     fontSize: 11,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1.0,
+    color: Color.muted,
+    letterSpacing: 1.3,
     marginBottom: 10,
     textTransform: "uppercase",
   },
@@ -4929,19 +4932,19 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   hingeInsightQuoteMark: {
-    fontSize: 36,
-    lineHeight: 30,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.serifItalic,
+    fontSize: 42,
+    lineHeight: 32,
+    color: Color.muted,
     marginRight: 8,
     marginTop: -2,
   },
   hingeInsightAnswer: {
     flex: 1,
+    fontFamily: Type.sans300,
     fontSize: 16,
-    fontWeight: "500",
-    color: "#1A1A1A",
-    lineHeight: 24,
+    color: Color.ink,
+    lineHeight: 25,
   },
 
   // ── Job-brief cards (role-spec insights from the sponsor) ─────────
@@ -4952,57 +4955,58 @@ const styles = StyleSheet.create({
   // personal quote — distinct enough at a glance that the user knows
   // this is "what the sponsor wrote ABOUT the role" vs. "what the
   // sponsor said in their own words".
+  // Sponsor-written insights about the role (day-to-day, team culture,
+  // ideal candidate). Distinct from the personal Q&A — these are the
+  // sponsor's notes on the role, so they get a dark inked header strip.
   jobInsightCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: Color.border,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
   },
   jobInsightHeader: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   jobInsightHeaderLabel: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 1.4,
+    color: Color.paper,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
   },
   jobInsightBody: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   jobInsightBodyText: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#1A1A1A",
-    lineHeight: 23,
+    color: Color.body,
+    lineHeight: 24,
   },
 
   // ── Chip wrapping (skills, credentials, role details) ─────────────
   hingeChipsWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
   hingeSkillChip: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   hingeSkillChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1A1A1A",
+    fontFamily: Type.sans500,
+    fontSize: 12,
+    color: Color.body,
+    letterSpacing: -0.1,
   },
 
   // ── Timeline (experience, education) ──────────────────────────────
@@ -5012,58 +5016,61 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   hingeTimelineDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: "#000",
-    marginTop: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Color.ink,
+    marginTop: 9,
   },
   hingeTimelineBody: { flex: 1, minWidth: 0 },
   hingeTimelineTitle: {
+    fontFamily: Type.sans600,
     fontSize: 15,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   hingeTimelineSubtitle: {
+    fontFamily: Type.sans500,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
+    color: Color.body,
     marginTop: 2,
   },
   hingeTimelineMeta: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#888",
-    marginTop: 3,
-    letterSpacing: 0.1,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    marginTop: 4,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   hingeTimelineDescription: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    fontWeight: "500",
-    color: "#444",
-    lineHeight: 21,
+    color: Color.body,
+    lineHeight: 22,
     marginTop: 8,
   },
 
   // ── Credential blocks (certifications, languages) ─────────────────
-  hingeCredentialList: { gap: 12 },
+  hingeCredentialList: { gap: 8 },
   hingeCredentialBlock: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 12,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: Color.border,
   },
   hingeCredentialName: {
+    fontFamily: Type.sans600,
     fontSize: 14,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   hingeCredentialMeta: {
+    fontFamily: Type.sans500,
     fontSize: 12,
-    fontWeight: "600",
-    color: "#777",
+    color: Color.muted,
     marginTop: 3,
   },
 
@@ -5077,25 +5084,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
   },
   statusBannerText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 0.4,
+    fontFamily: Type.sans500,
+    fontSize: 10,
+    color: Color.paper,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
   },
 
   // ── "No sponsor yet" inline block (applicant view) ────────────────
   noSponsorInlineBlock: {
     alignItems: "center",
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: Color.border,
     paddingVertical: 28,
     paddingHorizontal: 20,
   },
@@ -5103,13 +5111,14 @@ const styles = StyleSheet.create({
   // ── Sponsor zone card (sponsored jobs — distinct section) ─────────
   sponsorZoneOuter: { paddingVertical: 18 },
   sponsorZoneCard: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: Color.border,
+    overflow: "hidden",
   },
   sponsorZoneHeader: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingVertical: 11,
     paddingHorizontal: 16,
     flexDirection: "row",
@@ -5117,38 +5126,41 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   sponsorZoneHeaderText: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
+    color: Color.paper,
     letterSpacing: 1.6,
+    textTransform: "uppercase",
   },
   sponsorZoneBody: { padding: 16 },
   sponsorZoneDivider: {
     height: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Color.border,
     marginVertical: 16,
   },
-  // "SPONSOR INSIGHTS" sub-label — light gray, personal voice
+  // "SPONSOR INSIGHTS" sub-label — personal voice
   sponsorZoneQALabel: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1.2,
+    color: Color.muted,
+    letterSpacing: 1.6,
     marginBottom: 10,
+    textTransform: "uppercase",
   },
   // "JOB INSIGHTS" sub-label — darker to signal role data vs personal
   sponsorZoneJobLabel: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#444",
-    letterSpacing: 1.2,
+    color: Color.body,
+    letterSpacing: 1.6,
     marginBottom: 10,
+    textTransform: "uppercase",
   },
   sponsorZoneQACard: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
+    backgroundColor: Color.offWhite,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: Color.border,
     padding: 14,
   },
 
@@ -5159,42 +5171,42 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   sponsorMeetAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#F0F0F0",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Color.surface,
   },
   sponsorMeetAvatarFallback: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   sponsorMeetAvatarInitial: {
-    fontSize: 21,
-    fontWeight: "800",
-    color: "#FFF",
+    fontFamily: Type.serifItalic,
+    fontSize: 26,
+    color: Color.paper,
   },
   sponsorMeetName: {
-    fontSize: 19,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 18,
+    color: Color.ink,
     letterSpacing: -0.3,
   },
   sponsorMeetRole: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
+    color: Color.muted,
     marginTop: 2,
   },
 
-  // ── Floating action buttons (Hinge-style) ────────────────────────
+  // ── Floating action buttons ──────────────────────────────────────
   // Two free-standing circular buttons that sit on top of the scroll
   // content. The row is absolute so it stays pinned to the bottom of
   // the page while the scroll content flows freely behind it.
-  // `pointerEvents="box-none"` on this wrapper (set on the JSX) means
+  // `pointerEvents="box-none"` on the wrapper (set on the JSX) lets
   // taps in the gap between buttons fall through to the underlying
   // scroll, while the circles themselves still catch their own taps.
   floatingActionsRow: {
@@ -5208,31 +5220,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   floatingPassBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFFFFF",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Color.paper,
     alignItems: "center",
     justifyContent: "center",
-    // Drop shadow so the white circle reads against light content
-    // underneath. Subtle to keep the brand minimal.
+    borderWidth: 1,
+    borderColor: Color.border,
+    // Soft paper-feel shadow — barely there, just enough to lift it
+    // off whatever's behind. Matches the website's elevation pattern.
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 22,
+    elevation: 6,
   },
   floatingConnectBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
     elevation: 10,
   },
 
@@ -5240,7 +5254,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 28,
+    marginBottom: 24,
     gap: 12,
   },
   progressHeaderContainer: { flex: 1 },
@@ -5260,16 +5274,18 @@ const styles = StyleSheet.create({
     gap: 2,
     marginBottom: 8,
   },
+  // Editorial card counter — large sans-serif current, italic serif "/total"
+  // — the signature accent applied to the chrome's most-glanced number.
   progressCurrent: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    fontFamily: Type.sans600,
+    fontSize: 22,
+    color: Color.ink,
+    letterSpacing: -0.6,
   },
   progressTotal: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#999",
+    fontFamily: Type.serifItalic,
+    fontSize: 16,
+    color: Color.muted,
     letterSpacing: -0.1,
   },
   progressDotsRow: {
@@ -5279,140 +5295,131 @@ const styles = StyleSheet.create({
   },
   progressDot: {
     flex: 1,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#E8E8E8",
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: Color.border,
   },
   progressDotFilled: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
   },
 
-  // 2026-05-27 redesign — Role switcher pill (sponsor-only).
-  //
-  // Replaces the prior low-contrast outlined chip with a filled black
-  // pill that reads as a primary affordance (same language as the
-  // floating Connect button + sponsor empty-state CTAs). When the
-  // active role has pending applicants, a compact white-on-darker
-  // count badge appears inline — the most important signal lives
-  // directly in the header. Long titles still truncate gracefully
-  // because the title text wraps in a flex-shrink wrapper.
+  // Role-switcher pill (sponsor-only) — paper feel with a hairline border,
+  // tracked uppercase label and the role title in tight sans. Active count
+  // sits inline as an ink dot-badge so the most important signal lives
+  // directly in the header.
   roleSwitcherPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#D0D0D0",
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     paddingVertical: 9,
     paddingLeft: 14,
     paddingRight: 12,
     borderRadius: 999,
-    maxWidth: 200,
+    maxWidth: 220,
     gap: 8,
   },
   roleSwitcherTitle: {
     flexShrink: 1,
+    fontFamily: Type.sans600,
     fontSize: 13,
-    fontWeight: "700",
-    color: "#111",
+    color: Color.ink,
     letterSpacing: -0.1,
   },
   roleSwitcherBadge: {
-    minWidth: 22,
-    height: 18,
+    minWidth: 20,
+    height: 20,
     paddingHorizontal: 6,
-    borderRadius: 9,
-    backgroundColor: "#222",
+    borderRadius: 10,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   roleSwitcherBadgeText: {
+    fontFamily: Type.sans600,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
+    color: Color.paper,
     letterSpacing: 0.2,
   },
-  // Modal: bottom sheet, content-sized, listing all sponsored jobs.
-  // Matches the matches-screen modal aesthetic (40px top radius, 28px
-  // padding) for visual consistency with the other DismissibleSheets.
+  // Role-switcher sheet — bottom sheet listing all sponsored jobs. Matches
+  // the website's modal pattern: paper, top corners 40, 28 padding, hairline
+  // dividers between rows. Sits inside DismissibleSheet's content-sized
+  // wrapper so the maxHeight uses absolute px instead of "%".
   jobSwitcherOverlay: { flex: 1, justifyContent: "flex-end" },
   jobSwitcherSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Color.paper,
+    borderTopLeftRadius: Radius.sheet,
+    borderTopRightRadius: Radius.sheet,
     padding: 28,
     paddingBottom: 40,
-    // Absolute px (not "70%") because the sheet sits inside
-    // DismissibleSheet's GestureHandlerRootView wrapper, which is
-    // content-sized. A % maxHeight against it would resolve to 0 / clip
-    // content — same fix we applied to MatchesView's modalContent.
     maxHeight: SCREEN_HEIGHT * 0.7,
   },
   jobSwitcherSheetTitle: {
+    fontFamily: Type.sans600,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
+    color: Color.ink,
+    letterSpacing: -0.4,
     marginTop: 4,
   },
   jobSwitcherSheetSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    fontWeight: "500",
-    color: "#666",
-    lineHeight: 20,
+    color: Color.body,
+    lineHeight: 22,
     marginTop: 6,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   jobSwitcherRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 14,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#EEE",
-    backgroundColor: "#FFF",
-    marginBottom: 8,
+    borderColor: Color.border,
+    backgroundColor: Color.paper,
+    marginBottom: 6,
   },
-  // Subtle active state — black border (no fill) so the row reads as
-  // "currently selected" without competing with content underneath.
+  // Active row — ink border (no fill) so it reads as "selected" without
+  // shouting over the rest of the list.
   jobSwitcherRowActive: {
-    borderColor: "#000",
-    borderWidth: 2,
+    borderColor: Color.ink,
   },
   jobSwitcherRowTitle: {
+    fontFamily: Type.sans600,
     fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   jobSwitcherRowCompany: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
+    color: Color.muted,
     marginTop: 2,
   },
-  // Count badge — pending applicants for a sponsored role. Same shape
-  // regardless of count so the eye finds the high numbers fast; zero
-  // counts use the muted variant below.
+  // Pending-applicants badge. Same shape regardless of count so the eye
+  // scans high numbers fast; zero gets the muted variant.
   jobSwitcherCountBadge: {
-    backgroundColor: "#000",
-    borderRadius: 10,
-    paddingHorizontal: 8,
+    backgroundColor: Color.ink,
+    borderRadius: 999,
+    paddingHorizontal: 9,
     paddingVertical: 3,
     minWidth: 26,
     alignItems: "center",
     justifyContent: "center",
   },
   jobSwitcherCountBadgeMuted: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
   },
   jobSwitcherCountBadgeText: {
-    color: "#FFF",
+    fontFamily: Type.sans600,
+    color: Color.paper,
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
   },
   jobSwitcherCountBadgeTextMuted: {
-    color: "#999",
+    color: Color.faint,
   },
 
   // Modal Styles
@@ -5679,39 +5686,39 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     paddingBottom: 22,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Color.border,
   },
   heroAvatar: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
   },
   heroAvatarFallback: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   heroAvatarInitial: {
-    fontSize: 27,
-    fontWeight: "800",
-    color: "#FFF",
+    fontFamily: Type.serifItalic,
+    fontSize: 30,
+    color: Color.paper,
   },
   heroName: {
-    fontSize: 21,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans400,
+    fontSize: 22,
+    color: Color.ink,
     letterSpacing: -0.5,
     textAlign: "center",
     marginTop: 14,
   },
   heroSubtitle: {
+    fontFamily: Type.sans500,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
     marginTop: 3,
   },
@@ -5719,59 +5726,61 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 7,
+    gap: 6,
     marginTop: 14,
   },
   heroPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 999,
   },
-  // PR #56 — "Liked your role" badge at the top of a sponsor's profile-pack
-  // card. Black accent pill so it visually anchors the high-conviction
-  // signal above the neutral hero block.
+  // "Liked your role" badge at the top of a sponsor's profile-pack card.
+  // Ink accent pill — anchors the high-conviction signal above the hero.
   likedYourRolePill: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "center",
     gap: 5,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
     marginBottom: 10,
   },
   likedYourRolePillText: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 0.8,
+    color: Color.paper,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   heroPillText: {
+    fontFamily: Type.sans500,
     fontSize: 12,
-    fontWeight: "600",
-    color: "#333",
+    color: Color.body,
     letterSpacing: -0.1,
   },
-  // Accent pill — used for the AI-match score. Black so it stands apart
-  // from the neutral fact pills.
+  // Accent pill — used for the AI-match score. Ink so it stands apart from
+  // the neutral hairline pills next to it.
   heroPillAccent: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 999,
   },
   heroPillAccentText: {
+    fontFamily: Type.sans600,
     fontSize: 12,
-    fontWeight: "700",
-    color: "#FFF",
+    color: Color.paper,
     letterSpacing: -0.1,
   },
   // Sponsorship status pill (job cards only).
@@ -5779,32 +5788,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
     marginTop: 10,
   },
   heroStatusSponsoredText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 0.2,
+    fontFamily: Type.sans500,
+    fontSize: 10,
+    color: Color.paper,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   heroStatusMuted: {
-    backgroundColor: "#F2F2F2",
+    backgroundColor: Color.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
     marginTop: 10,
   },
   heroStatusMutedText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#999",
-    letterSpacing: 0.2,
+    fontFamily: Type.sans500,
+    fontSize: 10,
+    color: Color.muted,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   heroAboutBlock: {
     paddingHorizontal: 24,
@@ -6774,35 +6785,56 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
+    paddingHorizontal: 16,
   },
   emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F5F5F5",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 22,
   },
-  emptyTitle: { fontSize: 24, fontWeight: "800", marginBottom: 8 },
-  emptySub: {
-    fontSize: 16,
-    color: "#666",
+  emptyTitle: {
+    fontFamily: Type.sans400,
+    fontSize: 28,
+    color: Color.ink,
+    letterSpacing: -0.5,
+    marginBottom: 8,
     textAlign: "center",
-    marginBottom: 30,
+  },
+  emptySub: {
+    fontFamily: Type.sans300,
+    fontSize: 15,
+    color: Color.body,
+    textAlign: "center",
+    lineHeight: 23,
+    maxWidth: 340,
+    marginBottom: 28,
   },
   returnBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 30,
+    backgroundColor: Color.ink,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: Radius.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  returnBtnText: { color: "#FFF", fontWeight: "700" },
+  returnBtnText: {
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 14,
+    letterSpacing: -0.1,
+  },
   primaryBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 30,
+    backgroundColor: Color.ink,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    borderRadius: Radius.md,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -6810,9 +6842,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryBtnText: {
-    color: "#FFF",
-    fontWeight: "700",
-    fontSize: 15,
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 14,
+    letterSpacing: -0.1,
   },
   secondaryBtn: {
     backgroundColor: "#F5F5F5",
@@ -6864,11 +6897,11 @@ const styles = StyleSheet.create({
   emptyDeckCard: {
     width: 96,
     height: 116,
-    borderRadius: 18,
+    borderRadius: Radius.lg,
     position: "absolute",
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   emptyDeckCardBack: {
     transform: [{ translateX: 18 }, { translateY: 10 }, { rotate: "8deg" }],
@@ -6879,33 +6912,39 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   emptyDeckCardFront: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#D9D9D9",
+    backgroundColor: Color.surface,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // Hero typography shared by both sponsor empty states.
+  // Hero typography shared by both sponsor empty states. Sans lead with the
+  // italic serif accent inline — same editorial pattern as elsewhere.
   sponsorEmptyTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans400,
+    fontSize: 28,
+    color: Color.ink,
     letterSpacing: -0.6,
     textAlign: "center",
     marginBottom: 10,
   },
+  sponsorEmptyTitleAccent: {
+    fontFamily: Type.serifItalic,
+    color: Color.muted,
+  },
   sponsorEmptySubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 23,
     marginBottom: 26,
     paddingHorizontal: 8,
+    maxWidth: 360,
   },
 
-  // Primary CTA — black pill with a trailing chevron, modeled after
-  // the floating Connect button so the brand reads consistently.
+  // Primary CTA — ink pill with a trailing chevron, same shape as the rest
+  // of the brand's primary buttons.
   sponsorEmptyPrimary: {
     flexDirection: "row",
     alignItems: "center",
@@ -6913,21 +6952,21 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 22,
     paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#000",
+    borderRadius: Radius.md,
+    backgroundColor: Color.ink,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
   sponsorEmptyPrimaryText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 14,
+    letterSpacing: -0.1,
   },
-  // Secondary action — outlined, lower visual weight.
+  // Secondary action — paper, hairline border, lower visual weight.
   sponsorEmptySecondary: {
     flexDirection: "row",
     alignItems: "center",
@@ -6935,16 +6974,16 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 18,
     paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#000",
+    borderRadius: Radius.md,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   sponsorEmptySecondaryText: {
-    color: "#000",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    fontFamily: Type.sans500,
+    color: Color.ink,
+    fontSize: 14,
+    letterSpacing: -0.1,
   },
   sponsorEmptyActions: {
     flexDirection: "row",
