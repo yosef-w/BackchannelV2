@@ -70,7 +70,25 @@
       "Bash(grep -rn \"EMAIL_\\\\|RESEND\\\\|DEFAULT_FROM\\\\|FRONTEND_URL\\\\|EMAIL_BACKEND\" django_bc/settings.py)",
       "Bash(grep -vE \"^#\\(000|FFF|FFFFFF|000000|111|222|333|444|555|666|777|888|999|AAA|BBB|CCC|DDD|EEE|D33|E0E0E0|EEEEEE|EDEDED|F0F0F0|F4F4F4|F4F4F5|F5F5F5|F6F6F6|F8F9FA|F8F9FB|F9F9F9|FAFAFA|EBEBEB|ECECEC|EFEFEF|FBFBFB|F2F2F2|F3F4F6|D1D5DB|E5E5E5|E5E7EB|E8E8E8|9CA3AF|374151|78716C|999999|AAAAAA|C0C0C0|C8C8C8|1A1A1A|DEDEDE|DC2626|FEF2F2|FECACA|0A66C2|F5F6F8\\)$\")",
       "Bash(grep -nA5 \"export async function submitReferral\\\\|submitReferral\\(\" lib/api.ts components/MessagesView.tsx)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(grep -n \"<View>$\\\\|cardContainer, mainAnimatedStyle\\\\|<View>\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"</ScrollView>$\\\\|</SafeAreaView>\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"</ScrollView>$\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"</ScrollView>$\\\\|</SafeAreaView>\\\\|</Animated.View>$\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"Front Face - Job Details\\\\|Back Face - Sponsor Info\\\\|</Pressable>\\\\|<Animated.View layout={LinearTransition}\\\\|</ScrollView>$\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"Animated.View layout={LinearTransition}\\\\|</ScrollView>$\\\\|showMore && \\(\\\\|</SafeAreaView>\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"SACRIFICIAL_REMOVAL\\\\|legacy showMore\\\\|RETIRED\\\\|false ? \\(\\\\|false && \\(\\\\|</ScrollView>$\\\\|</SafeAreaView>\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(awk 'NR>=3192 && NR<=3780' /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"^const styles = StyleSheet.create\\\\|^}\\);$\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -n \"AT A GLANCE\\\\|AT-A-GLANCE\\\\|hingeStatsRow\\\\|hingeStatCell\\\\|hingeInsightCard\\\\|INSIGHTS$\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(git -C /Users/yosefwolday/Desktop/Backchannel-backend/BackChannel-backend log --oneline -20)",
+      "Bash(grep -nE \"^#{1,3} \" /Users/yosefwolday/Desktop/BackchannelV2/docs/BACKEND_CHANGES_NEEDED.md)",
+      "Bash(grep -nE \"^#{1,2} \" /Users/yosefwolday/Desktop/BackchannelV2/docs/BACKEND_CHANGES_NEEDED.md)",
+      "Bash(awk '/from \"lucide-react-native\"/{found=1} found2{print NR\": \"$0} /lucide-react-native\";?$/{found2=0} /^import \\\\{$/{if\\(!started\\){started=1}}' components/MessagesView.tsx)",
+      "Bash(grep -n \"\\\\.map\\(\\(conv, index\\) => \\(\\\\|<View style={styles.list}>\\\\|</View>\" components/MessagesView.tsx)",
+      "Bash(grep -n \"const toggleGroup\\\\|return \\(\\\\s*$\\\\|<ScrollView\\\\|</ScrollView>\\\\|conversations.length === 0 ? \\(\\\\|^        <>\\\\|^        </>\" components/MessagesView.tsx)",
+      "Bash(xargs -n1 basename)",
+      "Bash(sed -n '66,74p' components/MainApp.tsx)"
     ]
   }
 }

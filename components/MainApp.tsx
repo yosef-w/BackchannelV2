@@ -3,45 +3,46 @@ import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { useLocalSearchParams } from "expo-router";
 import {
-  Bell,
-  Briefcase,
-  ClipboardCheck,
-  Home,
-  MessageCircle,
-  Star,
-  User,
+    Bell,
+    Briefcase,
+    ClipboardCheck,
+    Home,
+    MessageCircle,
+    Star,
+    User,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from "react-native-reanimated";
 import {
-  trackCheckInModalOpened,
-  trackPushNotificationTapped,
-  trackScreenViewed,
+    trackCheckInModalOpened,
+    trackPushNotificationTapped,
+    trackScreenViewed,
 } from "../lib/analytics/mixpanel";
 import {
-  getUnreadNotificationCount,
-  listReferrals,
-  registerDevice,
+    getUnreadNotificationCount,
+    listReferrals,
+    registerDevice,
 } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
-  ApplicantCheckInModal,
-  type CheckInReferral,
+    ApplicantCheckInModal,
+    type CheckInReferral,
 } from "./ApplicantCheckInModal";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { HomeView } from "./HomeView";
@@ -51,8 +52,8 @@ import { MessagesView } from "./MessagesView";
 import { NotificationsView } from "./NotificationsView";
 import { ProfileView } from "./ProfileView";
 import {
-  SponsorCheckInModal,
-  type SponsorCheckInReferral,
+    SponsorCheckInModal,
+    type SponsorCheckInReferral,
 } from "./SponsorCheckInModal";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
@@ -128,6 +129,32 @@ export function MainApp({ userType }: MainAppProps) {
   const [activeView, setActiveView] = useState<ViewType>("home");
   const [previousView, setPreviousView] = useState<ViewType>("home");
   const [isBottomNavHidden, setIsBottomNavHidden] = useState(false);
+
+  // Hinge-style scroll-aware nav bar — HomeView drives this shared value
+  // off the scroll direction of its main profile scroll. 0 = visible,
+  // ~120 = fully off-screen below. Other screens never write to it, so
+  // the bar stays anchored on Matches / Messages / Jobs / Profile.
+  const navTranslateY = useSharedValue(0);
+  const navAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: navTranslateY.value }],
+    opacity: 1 - Math.min(1, navTranslateY.value / 120),
+  }));
+  // Mirror of navTranslateY but for HomeView's TOP header (progress bar +
+  // role switcher). 0 = visible, ~80 = fully translated upward off-screen.
+  // The header is shorter than the nav bar so a smaller offset is enough.
+  // HomeView writes to both shared values from the same scroll handler so
+  // header and nav move in sync — header up, nav down.
+  const headerTranslateY = useSharedValue(0);
+  // Snap the nav bar AND the header back into view the moment the user
+  // leaves Home — otherwise they'd still be hidden when they land on
+  // Matches/Messages/Jobs/Profile (HomeView's scroll handler is the only
+  // writer, and it's not mounted there).
+  useEffect(() => {
+    if (activeView !== "home") {
+      navTranslateY.value = withTiming(0, { duration: 200 });
+      headerTranslateY.value = withTiming(0, { duration: 200 });
+    }
+  }, [activeView, navTranslateY, headerTranslateY]);
   const [publicProfileData, setPublicProfileData] = useState<any>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
@@ -522,6 +549,8 @@ export function MainApp({ userType }: MainAppProps) {
             <HomeView
               userType={userType}
               onNavigateToProfile={() => setActiveView("profile")}
+              navTranslateY={navTranslateY}
+              headerTranslateY={headerTranslateY}
             />
           )}
           {activeView === "matches" && (
@@ -593,13 +622,17 @@ export function MainApp({ userType }: MainAppProps) {
             ))}
         </View>
 
-        {/* Bottom Navigation - Floating Pill Style */}
+        {/* Bottom Navigation — Floating Pill. Slides down off-screen while
+            the user scrolls down on HomeView (Hinge-style), driven by
+            `navTranslateY` which only HomeView writes to. On every other
+            screen the shared value stays at 0 so the bar is anchored. */}
         {activeView !== "notifications" &&
           activeView !== "publicProfile" &&
           !isBottomNavHidden && (
             <Animated.View
               entering={FadeInDown.duration(600)}
-              style={styles.navContainer}
+              style={[styles.navContainer, navAnimatedStyle]}
+              pointerEvents="box-none"
             >
               <View style={styles.navBar}>
                 {visibleNavItems.map((item) => (
