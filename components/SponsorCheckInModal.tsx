@@ -9,6 +9,7 @@
  */
 
 import { BlurView } from "expo-blur";
+import { Color, Radius, Type } from "@/constants/theme";
 import { Check, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -410,26 +411,26 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Color.paper,
+    borderTopLeftRadius: Radius.sheet,
+    borderTopRightRadius: Radius.sheet,
     paddingTop: 12,
     paddingHorizontal: 28,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
       },
-      android: { elevation: 20 },
+      android: { elevation: 16 },
     }),
   },
   handle: {
     width: 40,
-    height: 5,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: Color.border,
+    borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
   },
@@ -440,56 +441,50 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
   },
 
-  // ── Sheet header ────────────────────────────────────────────────────────────
+  // ── Sheet header ──
   sheetHeader: {
     marginBottom: 20,
   },
   sheetTitle: {
+    fontFamily: Type.sans400,
     fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.5,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   sheetSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 13,
-    color: "#999",
-    fontWeight: "500",
+    color: Color.body,
+    lineHeight: 19,
   },
 
-  // ── Scroll content ──────────────────────────────────────────────────────────
+  // ── Scroll content ──
   scrollContent: {
     flexGrow: 1,
-    gap: 12,
+    gap: 10,
     paddingBottom: 8,
   },
   mainScroll: {
     flex: 1,
   },
 
-  // ── Referral card ───────────────────────────────────────────────────────────
+  // ── Referral card ──
   referralCard: {
-    backgroundColor: "#FAFAFA",
-    borderRadius: 20,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     gap: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
-      android: { elevation: 2 },
-    }),
   },
   cardHeader: {
     flexDirection: "row",
@@ -497,39 +492,42 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   candidateName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.2,
     marginBottom: 3,
   },
   candidateRole: {
+    fontFamily: Type.sans500,
     fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
+    color: Color.muted,
   },
   cardHeaderRight: {
     alignItems: "flex-end",
     gap: 4,
   },
   statusBadge: {
-    backgroundColor: "#000",
-    paddingHorizontal: 8,
+    backgroundColor: Color.ink,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 999,
   },
   statusBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: 0.3,
+    fontFamily: Type.sans500,
+    fontSize: 9,
+    color: Color.paper,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   lastUpdated: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    color: "#BBB",
-    fontWeight: "500",
+    color: Color.faint,
+    letterSpacing: 0.4,
   },
 
-  // ── Status chips ────────────────────────────────────────────────────────────
+  // ── Status chips ──
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -537,76 +535,90 @@ const styles = StyleSheet.create({
   },
   statusChip: {
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   statusChipSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Color.ink,
+    borderColor: Color.ink,
   },
   statusChipText: {
+    fontFamily: Type.sans500,
     fontSize: 12,
-    fontWeight: "600",
-    color: "#555",
+    color: Color.body,
+    letterSpacing: -0.1,
   },
   statusChipTextSelected: {
-    color: "#FFF",
+    color: Color.paper,
   },
 
-  // ── Submit button ────────────────────────────────────────────────────────────
+  // ── Submit button ──
   submitBtn: {
-    backgroundColor: "#000",
-    height: 56,
-    borderRadius: 28,
+    backgroundColor: Color.ink,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     marginTop: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
   submitBtnNoChanges: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitBtnText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
   },
   submitBtnTextNoChanges: {
-    color: "#555",
+    color: Color.muted,
   },
 
-  // ── Success / Loading / Empty states ────────────────────────────────────────
+  // ── Success / Loading / Empty states ──
   successContainer: {
     alignItems: "center",
     paddingVertical: 52,
     paddingHorizontal: 20,
   },
   successCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#000",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
   successTitle: {
+    fontFamily: Type.sans400,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.5,
     marginBottom: 10,
   },
   successSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 23,
+    maxWidth: 340,
   },
   loadingContainer: {
     alignItems: "center",
@@ -620,26 +632,30 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   emptyTitle: {
+    fontFamily: Type.sans400,
     fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.4,
   },
   emptyText: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 21,
+    maxWidth: 340,
   },
   emptyDismissBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 24,
-    backgroundColor: "#000",
+    marginTop: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 26,
+    borderRadius: Radius.md,
+    backgroundColor: Color.ink,
   },
   emptyDismissBtnText: {
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    color: Color.paper,
     fontSize: 14,
-    fontWeight: "700",
+    letterSpacing: -0.1,
   },
 });

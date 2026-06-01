@@ -3853,7 +3853,7 @@ export function HomeView({
                 entering={FadeInDown.delay(150).duration(350)}
                 style={styles.matchLabelPill}
               >
-                <Text style={styles.matchLabelText}>IT’S A MATCH</Text>
+                <Text style={styles.matchLabelText}>Match</Text>
               </Animated.View>
 
               {/* Avatar row */}
@@ -3885,7 +3885,7 @@ export function HomeView({
 
                 {/* Spark connector */}
                 <View style={styles.matchSparkWrapper}>
-                  <Sparkles size={18} color="#000" />
+                  <Sparkles size={16} color={Color.ink} strokeWidth={1.6} />
                 </View>
 
                 {/* Matched user's avatar */}
@@ -3910,9 +3910,12 @@ export function HomeView({
                 </View>
               </Animated.View>
 
-              {/* Title */}
+              {/* Title — sans lead + italic serif accent, the brand voice. */}
               <Animated.View entering={FadeInUp.delay(300).duration(400)}>
-                <Text style={styles.matchTitle}>It’s a Match!</Text>
+                <Text style={styles.matchTitle}>
+                  It's a{" "}
+                  <Text style={styles.matchTitleAccent}>match.</Text>
+                </Text>
               </Animated.View>
 
               {/* Subtitle */}
@@ -3940,19 +3943,19 @@ export function HomeView({
                 <TouchableOpacity
                   style={styles.matchMsgBtn}
                   onPress={handleMatchModalDismiss}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
-                  <MessageCircle size={18} color="#FFF" />
-                  <Text style={styles.matchMsgBtnText}>Message Now</Text>
+                  <MessageCircle size={16} color={Color.paper} strokeWidth={2} />
+                  <Text style={styles.matchMsgBtnText}>Message now</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.matchSkipBtn}
                   onPress={handleMatchModalDismiss}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
                   <Text style={styles.matchSkipBtnText}>
-                    Continue Exploring
+                    Keep exploring
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -5422,7 +5425,7 @@ const styles = StyleSheet.create({
     color: Color.faint,
   },
 
-  // Modal Styles
+  // ── Apply / Get-a-Sponsor modal (non-sponsored jobs) ─────────────
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -5430,74 +5433,98 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Color.border,
   },
   modalTitle: {
+    fontFamily: Type.sans400,
     fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.5,
   },
-  closeModalBtn: { padding: 4, backgroundColor: "#F5F5F5", borderRadius: 20 },
+  closeModalBtn: {
+    padding: 6,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: 999,
+  },
   modalContent: { padding: 28, paddingBottom: 40 },
   modalFooter: {
     padding: 28,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-    gap: 16,
+    borderTopColor: Color.border,
+    gap: 12,
   },
   applyBtn: {
-    backgroundColor: "#000",
-    height: 56,
-    borderRadius: 28,
+    backgroundColor: Color.ink,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  applyBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  applyBtnText: {
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
+  },
   clearBtn: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
   },
-  clearBtnText: { color: "#000", fontSize: 14, fontWeight: "600" },
+  clearBtnText: {
+    fontFamily: Type.sans500,
+    color: Color.muted,
+    fontSize: 13,
+    letterSpacing: -0.1,
+  },
   title: {
+    fontFamily: Type.sans400,
     fontSize: 34,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1.2,
+    color: Color.ink,
+    letterSpacing: -0.8,
   },
   cardContainer: { marginBottom: 24 },
+  // Paper-feel card with a soft elevation, matching the website's `.card`
+  // pattern. Hairline border on the inner shell so the edge reads at any
+  // zoom level — much cleaner than relying on shadow alone.
   cardOuter: {
-    borderRadius: 24,
-    backgroundColor: "#FFF",
+    borderRadius: Radius.xxl,
+    backgroundColor: Color.paper,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.18,
-        shadowRadius: 30,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.08,
+        shadowRadius: 28,
       },
-      android: { elevation: 18 },
+      android: { elevation: 8 },
     }),
   },
-  cardOuterBack: { backgroundColor: "#FBFBFB" },
+  cardOuterBack: { backgroundColor: Color.offWhite },
   cardInner: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.xxl,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     overflow: "hidden",
     height: 460,
   },
-  cardInnerBack: { backgroundColor: "#FBFBFB" },
+  cardInnerBack: { backgroundColor: Color.offWhite },
 
-  // Waitlisted overlay
+  // Waitlisted overlay — dims the card and centers an ink pill on top.
   waitlistedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: Radius.xxl,
+    backgroundColor: "rgba(10,10,10,0.45)",
     zIndex: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -5506,31 +5533,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
-    borderRadius: 100,
+    backgroundColor: Color.ink,
+    borderRadius: 999,
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
   },
   waitlistedBadgeText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 12,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
   },
   appliedBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
-    borderRadius: 100,
+    backgroundColor: Color.ink,
+    borderRadius: 999,
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
   },
   appliedBadgeText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 12,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
   },
   // Layout: Image on Left + Details on Right
   profileCardTop: {
@@ -7342,20 +7371,20 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
 
-  // Apply Modal
+  // ── Apply modal — bottom sheet with editorial corners ────────────
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalHandle: {
     width: 40,
-    height: 5,
-    backgroundColor: "#EEE",
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: Color.border,
+    borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
   },
   applyModalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Color.paper,
+    borderTopLeftRadius: Radius.sheet,
+    borderTopRightRadius: Radius.sheet,
     padding: 28,
     paddingBottom: 40,
     maxHeight: "90%",
@@ -7364,94 +7393,121 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  applyModalTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  applyModalTitle: {
+    fontFamily: Type.sans400,
+    fontSize: 24,
+    color: Color.ink,
+    letterSpacing: -0.5,
+  },
   applyModalSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
+    color: Color.body,
+    lineHeight: 22,
     marginBottom: 24,
+    maxWidth: 380,
   },
   closeBtn: { padding: 4 },
 
-  modalOptionsContainer: { gap: 12 },
+  modalOptionsContainer: { gap: 10 },
   modalOptionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
-    padding: 20,
-    backgroundColor: "#F8F9FB",
-    borderRadius: 16,
+    gap: 14,
+    padding: 18,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   modalOptionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFF",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Color.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
   modalOptionContent: { flex: 1 },
   modalOptionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
+    fontFamily: Type.sans600,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.1,
+    marginBottom: 3,
   },
-  modalOptionDesc: { fontSize: 13, color: "#666", lineHeight: 18 },
+  modalOptionDesc: {
+    fontFamily: Type.sans300,
+    fontSize: 13,
+    color: Color.body,
+    lineHeight: 19,
+  },
 
-  successContainer: { alignItems: "center", paddingVertical: 32 },
+  successContainer: { alignItems: "center", paddingVertical: 28 },
   successCircleLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
   successMessage: {
-    fontSize: 14,
-    color: "#666",
+    fontFamily: Type.sans300,
+    fontSize: 15,
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 32,
+    lineHeight: 23,
+    marginBottom: 28,
     paddingHorizontal: 20,
+    maxWidth: 360,
   },
   successActionBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 18,
+    paddingHorizontal: 28,
+    borderRadius: Radius.md,
     minWidth: 200,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  successActionBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  successActionBtnText: {
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
+  },
 
-  // Relevance badge & requirements summary
+  // ── Relevance badge (AI match %) + requirements summary ─────────
   relevancePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
-    paddingHorizontal: 8,
+    backgroundColor: Color.ink,
+    paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 999,
     alignSelf: "flex-start",
   },
   relevancePillText: {
+    fontFamily: Type.sans600,
     fontSize: 10,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: 0.3,
+    color: Color.paper,
+    letterSpacing: 0.4,
   },
   requirementsSummaryBlock: {
     marginTop: 12,
@@ -7479,6 +7535,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Match Celebration Modal ────────────────────────────────────────────────
+  // Match celebration — the emotional high point. Paper sheet centered in
+  // a dimmed overlay, with the editorial italic accent in the title
+  // ("It's a *match.*"). Restrained sparkle: one small icon, no fireworks.
   matchModalOverlay: {
     flex: 1,
     alignItems: "center",
@@ -7486,35 +7545,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   matchCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 28,
-    paddingVertical: 32,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.xxl,
+    borderWidth: 1,
+    borderColor: Color.border,
+    paddingVertical: 36,
     paddingHorizontal: 28,
     width: "100%",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.14,
     shadowRadius: 36,
-    elevation: 20,
+    elevation: 16,
   },
   matchLabelPill: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 24,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginBottom: 22,
   },
   matchLabelText: {
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    color: Color.paper,
     fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
   },
   matchAvatarRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 16,
     marginBottom: 24,
   },
   matchAvatarWrapper: {
@@ -7529,59 +7591,65 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    borderWidth: 2,
-    borderColor: "#000",
+    borderWidth: 1.5,
+    borderColor: Color.ink,
   },
   matchAvatar: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 3,
-    borderColor: "#FFF",
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    borderColor: Color.paper,
   },
   matchAvatarInitial: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   matchAvatarInitialText: {
-    color: "#FFF",
-    fontSize: 26,
-    fontWeight: "800",
+    fontFamily: Type.serifItalic,
+    color: Color.paper,
+    fontSize: 28,
   },
   matchSparkWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#F5F5F5",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Color.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
   matchTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    fontFamily: Type.sans400,
+    fontSize: 30,
+    color: Color.ink,
+    letterSpacing: -0.6,
     marginBottom: 8,
     textAlign: "center",
   },
+  matchTitleAccent: {
+    fontFamily: Type.serifItalic,
+    color: Color.muted,
+  },
   matchSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 21,
+    lineHeight: 22,
     marginBottom: 28,
     paddingHorizontal: 4,
+    maxWidth: 320,
   },
   matchActions: {
     width: "100%",
     gap: 10,
   },
   matchMsgBtn: {
-    backgroundColor: "#000",
-    borderRadius: 18,
+    backgroundColor: Color.ink,
+    borderRadius: Radius.md,
     paddingVertical: 15,
     flexDirection: "row",
     alignItems: "center",
@@ -7589,129 +7657,143 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   matchMsgBtnText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 14,
+    letterSpacing: -0.1,
   },
   matchSkipBtn: {
-    borderRadius: 18,
+    borderRadius: Radius.md,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   matchSkipBtnText: {
-    color: "#666",
-    fontSize: 15,
-    fontWeight: "600",
+    fontFamily: Type.sans500,
+    color: Color.muted,
+    fontSize: 14,
   },
 
-  // Email Verification Modal — overlay anchors the sheet to the bottom of
-  // the screen via flex; the sheet itself is content-sized.
+  // ── Email Verification Modal ─────────────────────────────────────
+  // Bottom-anchored paper sheet with the editorial corner radius. Icon
+  // circle, sans-with-italic-accent title, light body, ink CTA.
   emailVerifOverlay: { flex: 1, justifyContent: "flex-end" },
   emailVerifModal: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: Color.paper,
+    borderTopLeftRadius: Radius.sheet,
+    borderTopRightRadius: Radius.sheet,
     padding: 28,
     paddingBottom: 44,
   },
   emailVerifIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     marginBottom: 20,
   },
   emailVerifTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans400,
+    fontSize: 26,
+    color: Color.ink,
+    letterSpacing: -0.5,
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   emailVerifSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 23,
     marginBottom: 24,
+    maxWidth: 360,
+    alignSelf: "center",
   },
   emailVerifAddress: {
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    color: Color.ink,
   },
   emailVerifInfoBox: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Color.offWhite,
+    borderRadius: Radius.lg,
+    padding: 18,
     marginBottom: 28,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   emailVerifInfoText: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
+    color: Color.body,
+    lineHeight: 22,
     textAlign: "center",
   },
   emailVerifPrimaryBtn: {
-    backgroundColor: "#000",
-    height: 56,
-    borderRadius: 28,
+    backgroundColor: Color.ink,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
   emailVerifPrimaryBtnText: {
-    color: "#FFF",
-    fontSize: 17,
-    fontWeight: "700",
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
   },
   emailVerifSecondaryBtn: {
-    height: 56,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   emailVerifSecondaryBtnText: {
-    color: "#000",
-    fontSize: 16,
-    fontWeight: "600",
+    fontFamily: Type.sans500,
+    color: Color.muted,
+    fontSize: 14,
   },
   emailVerifErrorText: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    color: "#DC2626",
+    color: Color.status.blockText,
     textAlign: "center",
     marginTop: 4,
     marginBottom: 4,
   },
   emailVerifTesterBtn: {
-    height: 44,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
+    marginTop: 4,
   },
   emailVerifTesterBtnText: {
-    color: "#999",
-    fontSize: 13,
-    fontWeight: "600",
+    fontFamily: Type.sans500,
+    color: Color.faint,
+    fontSize: 11,
+    letterSpacing: 1.4,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
-  // Inline "Wrong email? Update it" affordance + edit form for fixing typos
-  // in the modal without leaving the verification flow. Muted gray to match
-  // the modal's neutral palette (no bright accent — the existing primary CTA
-  // already owns the visual emphasis).
+  // Inline "Wrong email? Update it" affordance + edit form for fixing
+  // typos without leaving the verification flow.
   emailVerifEditLink: {
-    color: "#666",
+    fontFamily: Type.sans500,
+    color: Color.muted,
     fontSize: 13,
-    fontWeight: "600",
     textAlign: "center",
     marginTop: 6,
     marginBottom: 6,
@@ -7722,24 +7804,24 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   emailVerifEditLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#666",
-    letterSpacing: 0.6,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.4,
     textTransform: "uppercase",
     marginBottom: 8,
   },
   emailVerifEditInput: {
     width: "100%",
+    fontFamily: Type.sans500,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#000",
+    color: Color.ink,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   emailVerifEditActions: {
     flexDirection: "row",
@@ -7749,28 +7831,29 @@ const styles = StyleSheet.create({
   emailVerifEditCancel: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
   emailVerifEditCancelText: {
-    color: "#666",
+    fontFamily: Type.sans500,
+    color: Color.muted,
     fontSize: 14,
-    fontWeight: "600",
   },
   emailVerifEditSave: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#000",
+    borderRadius: Radius.md,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   emailVerifEditSaveText: {
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    color: Color.paper,
     fontSize: 14,
-    fontWeight: "700",
+    letterSpacing: -0.1,
   },
 });

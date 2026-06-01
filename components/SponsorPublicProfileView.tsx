@@ -1,4 +1,5 @@
 import { getPublicProfile } from "@/lib/api";
+import { Color, Radius, Type } from "@/constants/theme";
 import {
     Award,
     Briefcase,
@@ -258,7 +259,7 @@ export function SponsorPublicProfileView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.offWhite,
     ...Platform.select({
       android: { paddingTop: StatusBar.currentHeight },
     }),
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     paddingBottom: 140,
   },
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  // ── Header ──
   profileHeader: {
     alignItems: "center",
     marginBottom: 40,
@@ -283,29 +284,29 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   avatarWrapper: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Color.surface,
   },
   avatarFallback: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EDEDED",
+    backgroundColor: Color.ink,
   },
   avatarInitials: {
+    fontFamily: Type.serifItalic,
     fontSize: 40,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.paper,
   },
   name: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    fontFamily: Type.sans400,
+    fontSize: 30,
+    color: Color.ink,
+    letterSpacing: -0.7,
     textAlign: "center",
   },
   infoRow: {
@@ -315,29 +316,34 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   infoText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
+    fontFamily: Type.sans500,
+    fontSize: 14,
+    color: Color.body,
   },
   locationText: {
-    fontSize: 14,
-    color: "#BBB",
-    fontWeight: "500",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.muted,
   },
   bio: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 23,
     marginTop: 16,
     paddingHorizontal: 10,
+    maxWidth: 380,
   },
-  // ── Stats Grid ────────────────────────────────────────────────────────────
+
+  // ── Stats Grid ──
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: Radius.xl,
+    padding: 22,
     marginBottom: 32,
   },
   statBox: {
@@ -346,35 +352,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   statValue: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 24,
+    color: Color.ink,
+    letterSpacing: -0.5,
     textAlign: "center",
   },
   statValueOpen: {
-    color: "#000",
-    fontSize: 18,
+    color: Color.ink,
+    fontSize: 16,
   },
   statValueClosed: {
-    color: "#DC2626",
-    fontSize: 18,
+    color: Color.status.blockText,
+    fontSize: 16,
   },
   statLabel: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#BBB",
+    color: Color.muted,
     marginTop: 4,
-    letterSpacing: 1,
+    letterSpacing: 1.4,
     textAlign: "center",
+    textTransform: "uppercase",
   },
   statDivider: {
     width: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Color.border,
     marginVertical: 4,
     alignSelf: "stretch" as const,
   },
 
-  // ── Loading ───────────────────────────────────────────────────────────────
+  // ── Loading ──
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -384,12 +392,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   loadingText: {
+    fontFamily: Type.sans300,
     fontSize: 13,
-    color: "#999",
-    fontWeight: "600",
+    color: Color.muted,
   },
 
-  // ── Sections ──────────────────────────────────────────────────────────────
+  // ── Sections ──
   section: {
     marginBottom: 32,
   },
@@ -397,45 +405,48 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#BBB",
-    letterSpacing: 1.5,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
-    marginBottom: 16,
+    marginBottom: 14,
   },
 
-  // ── Connected Via card ────────────────────────────────────────────────────
+  // ── Connected Via card ──
   connectedCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 18,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   connectedIconCircle: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: "#EDEDED",
+    borderRadius: Radius.md,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
   connectedJobTitle: {
+    fontFamily: Type.sans600,
     fontSize: 15,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.2,
   },
   connectedCompany: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
+    color: Color.muted,
     marginTop: 2,
   },
   statusPill: {
@@ -444,33 +455,38 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   statusPillOpen: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
+    borderColor: Color.border,
   },
   statusPillClosed: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Color.status.blockBg,
+    borderColor: Color.status.blockBorder,
   },
   statusPillText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontFamily: Type.sans600,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   statusPillTextOpen: {
-    color: "#000",
+    color: Color.ink,
   },
   statusPillTextClosed: {
-    color: "#DC2626",
+    color: Color.status.blockText,
   },
 
-  // ── Key Insights ──────────────────────────────────────────────────────────
+  // ── Key Insights ──
   insightCard: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     padding: 18,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   insightQuestionRow: {
     flexDirection: "row",
@@ -479,64 +495,67 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   insightIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#EDEDED",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
     flexShrink: 0,
   },
   insightQuestion: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 12,
+    color: Color.muted,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
     flex: 1,
-    lineHeight: 20,
+    lineHeight: 16,
+    paddingTop: 4,
   },
   insightAnswer: {
-    fontSize: 14,
-    color: "#444",
-    lineHeight: 22,
-    fontWeight: "500",
-    paddingLeft: 36,
+    fontFamily: Type.sans300,
+    fontSize: 15,
+    color: Color.ink,
+    lineHeight: 24,
+    paddingLeft: 34,
   },
   emptyCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     padding: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     marginTop: 12,
   },
   emptyCardText: {
-    fontSize: 14,
-    color: "#BBB",
-    fontWeight: "600",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.muted,
   },
 
-  // ── Companies tag cloud ───────────────────────────────────────────────────
+  // ── Companies tag cloud ──
   tagCloud: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
-  // Companies-can-refer-to chips — neutral grays so they match the brand
-  // and stay consistent with the same tags rendered in ProfileView's
-  // sponsor section. (Was light-blue Tailwind-style chips before.)
   companyTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   companyText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.body,
+    letterSpacing: -0.1,
   },
 });

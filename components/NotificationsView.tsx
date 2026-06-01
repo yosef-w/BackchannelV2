@@ -30,6 +30,7 @@ import {
 } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { Color, Radius, Type } from "@/constants/theme";
 import {
     trackAllNotificationsMarkedRead,
     trackNotificationMarkedRead,
@@ -637,7 +638,7 @@ export function NotificationsView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.offWhite,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -645,7 +646,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
 
-  // ── Header — flat, sits directly on the white background ──
+  // ── Header ──
   header: {
     marginBottom: 8,
   },
@@ -662,27 +663,30 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
+    fontFamily: Type.sans400,
     fontSize: 30,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.8,
+    color: Color.ink,
+    letterSpacing: -0.6,
   },
   subtitle: {
+    fontFamily: Type.sans300,
     fontSize: 13,
-    fontWeight: "600",
-    color: "#999",
-    marginTop: 3,
+    color: Color.body,
+    marginTop: 4,
+    lineHeight: 19,
   },
   actionPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     borderRadius: 999,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 8,
   },
   actionPillText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans500,
+    fontSize: 12,
+    color: Color.ink,
     letterSpacing: -0.1,
   },
 
@@ -696,15 +700,17 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
   errorText: {
+    fontFamily: Type.sans500,
     fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -712,15 +718,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#000",
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-    borderRadius: 999,
+    backgroundColor: Color.ink,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: Radius.md,
   },
   retryText: {
+    fontFamily: Type.sans500,
     fontSize: 14,
-    fontWeight: "700",
-    color: "#FFF",
+    color: Color.paper,
+    letterSpacing: -0.1,
   },
 
   // ── Section grouping ──
@@ -728,10 +735,11 @@ const styles = StyleSheet.create({
     marginTop: 26,
   },
   sectionLabel: {
+    fontFamily: Type.sans500,
     fontSize: 11,
-    fontWeight: "800",
-    color: "#BBB",
-    letterSpacing: 1,
+    color: Color.muted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -739,33 +747,37 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 
-  // ── Notification row — flat, no shadow. Unread rows lift via a subtle
-  //    gray fill; read rows are transparent and recede. One signal. ──
+  // ── Notification row — paper-feel hairline card. Unread rows lift via
+  //    a slightly heavier border + soft fill; read rows recede. ──
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 18,
+    borderRadius: Radius.lg,
   },
   rowUnread: {
-    backgroundColor: "#F5F6F8",
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   rowRead: {
     backgroundColor: "transparent",
   },
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#F2F2F2",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Color.surface,
   },
   iconCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#F4F4F5",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -774,51 +786,53 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   rowTitle: {
+    fontFamily: Type.sans600,
     fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.2,
   },
-  // Read rows soften the title so unread ones lead the eye.
   rowTitleRead: {
-    fontWeight: "600",
-    color: "#444",
+    fontFamily: Type.sans500,
+    color: Color.body,
   },
   rowBody: {
+    fontFamily: Type.sans300,
     fontSize: 13.5,
-    fontWeight: "500",
-    color: "#777",
-    lineHeight: 19,
-    marginTop: 2,
+    color: Color.muted,
+    lineHeight: 20,
+    marginTop: 3,
   },
   rowMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 5,
+    marginTop: 6,
   },
   rowTime: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#AAA",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.faint,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#CCC",
+    backgroundColor: Color.faint,
   },
   rowContext: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#AAA",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: -0.05,
     flexShrink: 1,
   },
   unreadDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: "#000",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Color.ink,
   },
 
   // ── Swipe-to-delete ──
@@ -827,8 +841,8 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   swipeActionDelete: {
-    backgroundColor: "#DC2626",
-    borderRadius: 18,
+    backgroundColor: Color.status.blockText,
+    borderRadius: Radius.lg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -838,10 +852,10 @@ const styles = StyleSheet.create({
     minWidth: 96,
   },
   swipeActionText: {
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    color: Color.paper,
     fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    letterSpacing: -0.1,
   },
 
   // ── Empty state ──
@@ -850,18 +864,19 @@ const styles = StyleSheet.create({
     paddingVertical: 70,
   },
   emptyStateTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
+    fontFamily: Type.sans400,
+    fontSize: 20,
+    color: Color.ink,
+    letterSpacing: -0.4,
     marginBottom: 6,
   },
   emptyStateText: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    fontWeight: "500",
-    color: "#999",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 21,
     paddingHorizontal: 40,
+    maxWidth: 380,
   },
 });

@@ -91,7 +91,9 @@
       "Bash(sed -n '66,74p' components/MainApp.tsx)",
       "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies,...p.devDependencies}; ['expo','expo-font','expo-splash-screen','@expo-google-fonts/dm-sans','@expo-google-fonts/dm-serif-display','react','react-native'].forEach\\(k=>console.log\\(k+': '+\\(d[k]||'\\(not installed\\)'\\)\\)\\)\")",
       "Bash(echo \"=== exit $? ===\")",
-      "Bash(awk '/^const styles = StyleSheet/,/^}\\);/' components/HomeView.tsx)"
+      "Bash(awk '/^const styles = StyleSheet/,/^}\\);/' components/HomeView.tsx)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies}; console.log\\('dm-sans:', d['@expo-google-fonts/dm-sans']||'\\(no\\)'\\); console.log\\('dm-serif:', d['@expo-google-fonts/dm-serif-display']||'\\(no\\)'\\)\")",
+      "Bash(awk '/^import {/,/} from \"react-native\";/' components/MessagesView.tsx)"
     ]
   }
 }
