@@ -26,6 +26,7 @@ import {
   View,
 } from "react-native";
 import { GOOGLE_PLACES_API_KEY } from "../../constants/config";
+import { Color, Radius, Type } from "@/constants/theme";
 import {
   AddressComponent,
   ParsedAddress,
@@ -251,7 +252,7 @@ export function PlacesAutocomplete({
             value={query}
             onChangeText={setQuery}
             placeholder={placeholder}
-            placeholderTextColor="#999"
+            placeholderTextColor={Color.faint}
             autoFocus={autoFocus}
             autoCorrect={false}
             autoCapitalize="words"
@@ -322,15 +323,15 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: Type.sans500,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#000",
+    color: Color.ink,
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   spinner: {
     marginLeft: 8,
@@ -341,20 +342,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     marginTop: 4,
-    backgroundColor: "#FFF",
-    borderRadius: 12,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     maxHeight: 240,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 18,
       },
       android: {
-        elevation: 8,
+        elevation: 6,
       },
     }),
     zIndex: 1001,
@@ -364,26 +365,28 @@ const styles = StyleSheet.create({
   },
   suggestionItem: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Color.border,
   },
   suggestionMain: {
+    fontFamily: Type.sans500,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#000",
+    color: Color.ink,
   },
   suggestionSecondary: {
-    fontSize: 13,
-    color: "#666",
-    marginTop: 2,
+    fontFamily: Type.sans500,
+    fontSize: 12,
+    color: Color.muted,
+    marginTop: 3,
   },
   manualLink: {
     marginTop: 8,
     alignSelf: "flex-start",
   },
   manualLinkText: {
-    color: "#666",
+    fontFamily: Type.sans500,
+    color: Color.muted,
     fontSize: 12,
     textDecorationLine: "underline",
   },

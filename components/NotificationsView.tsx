@@ -467,13 +467,13 @@ export function NotificationsView({
       {isLoading && (
         <View style={styles.centeredState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={28} strokeWidth={2} />
+            <Bell color={Color.faint} size={28} strokeWidth={2} />
           </View>
           <Text
             style={{
               fontSize: 14,
               fontWeight: "600",
-              color: "#AAA",
+              color: Color.muted,
               marginTop: 4,
             }}
           >

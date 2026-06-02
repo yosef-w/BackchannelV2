@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useToastStore } from "../../stores/useToastStore";
+import { Color, Radius, Type } from "@/constants/theme";
 
 const ICON_SIZE = 18;
 
@@ -12,10 +13,10 @@ const AUTO_DISMISS_MS = 3500;
 
 function ToastIcon({ variant }: { variant: string }) {
   if (variant === "success")
-    return <CheckCircle size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
+    return <CheckCircle size={ICON_SIZE} color={Color.paper} strokeWidth={2} />;
   if (variant === "error")
-    return <XCircle size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
-  return <Info size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
+    return <XCircle size={ICON_SIZE} color={Color.paper} strokeWidth={2} />;
+  return <Info size={ICON_SIZE} color={Color.paper} strokeWidth={2} />;
 }
 
 export function AppToast() {
@@ -24,22 +25,19 @@ export function AppToast() {
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep the Animated.View mounted long enough for the exit animation to finish.
-  // If we return null immediately when visible→false, SlideOutDown never plays.
+  // If we return null immediately when visible→false, FadeOutUp never plays.
   const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
     if (visible) {
-      // Cancel any pending unmount from a previous dismiss
       if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
       setShouldRender(true);
 
-      // Auto-dismiss after AUTO_DISMISS_MS
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         hideToast();
       }, AUTO_DISMISS_MS);
     } else {
-      // Wait for exit animation to complete before unmounting
       exitTimerRef.current = setTimeout(() => {
         setShouldRender(false);
       }, EXIT_ANIMATION_MS);
@@ -81,24 +79,24 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 9999,
-    backgroundColor: "#1A1A1A",
-    borderRadius: 16,
+    backgroundColor: Color.ink,
+    borderRadius: Radius.lg,
     paddingVertical: 14,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
     elevation: 9999,
   },
   message: {
     flex: 1,
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    color: Color.paper,
     fontSize: 14,
-    fontWeight: "500",
     lineHeight: 20,
     textAlign: "center",
   },
@@ -107,9 +105,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   dismissText: {
-    color: "#888",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.3,
+    fontFamily: Type.sans500,
+    color: "rgba(255,255,255,0.42)",
+    fontSize: 10,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
 });

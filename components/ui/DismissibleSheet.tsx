@@ -12,6 +12,7 @@
 
 import React from "react";
 import { Dimensions, StyleSheet, View, ViewStyle } from "react-native";
+import { Color } from "@/constants/theme";
 import {
   Gesture,
   GestureDetector,
@@ -134,8 +135,8 @@ const styles = StyleSheet.create({
   },
   handle: {
     width: 40,
-    height: 5,
-    backgroundColor: "#EEE",
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: Color.border,
+    borderRadius: 2,
   },
 });

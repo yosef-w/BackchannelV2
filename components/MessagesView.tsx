@@ -910,45 +910,45 @@ export function MessagesView({
 
   const getStatusDotColor = (status: string) => {
     const colors = {
-      applied: { backgroundColor: "#666" },
-      reviewing: { backgroundColor: "#666" },
-      interview_scheduled: { backgroundColor: "#000" },
-      offer: { backgroundColor: "#000" },
-      rejected: { backgroundColor: "#DC2626" },
+      applied: { backgroundColor: Color.body },
+      reviewing: { backgroundColor: Color.body },
+      interview_scheduled: { backgroundColor: Color.ink },
+      offer: { backgroundColor: Color.ink },
+      rejected: { backgroundColor: Color.status.blockText },
     };
     return (
-      colors[status as keyof typeof colors] || { backgroundColor: "#9CA3AF" }
+      colors[status as keyof typeof colors] || { backgroundColor: Color.muted }
     );
   };
 
   const getStatusBadgeStyle = (status: string) => {
     const styles = {
-      applied: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+      applied: { backgroundColor: Color.surface, borderColor: Color.border },
+      reviewing: { backgroundColor: Color.surface, borderColor: Color.border },
       interview_scheduled: {
-        backgroundColor: "#F4F4F5",
-        borderColor: "#E5E5E5",
+        backgroundColor: Color.surface,
+        borderColor: Color.border,
       },
-      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+      offer: { backgroundColor: Color.surface, borderColor: Color.border },
+      rejected: { backgroundColor: Color.status.blockBg, borderColor: Color.status.blockBorder },
     };
     return (
       styles[status as keyof typeof styles] || {
-        backgroundColor: "#F3F4F6",
-        borderColor: "#E5E7EB",
+        backgroundColor: Color.surface,
+        borderColor: Color.border,
       }
     );
   };
 
   const getStatusTextColor = (status: string) => {
     const colors = {
-      applied: { color: "#666" },
-      reviewing: { color: "#666" },
-      interview_scheduled: { color: "#000" },
-      offer: { color: "#000" },
-      rejected: { color: "#DC2626" },
+      applied: { color: Color.body },
+      reviewing: { color: Color.body },
+      interview_scheduled: { color: Color.ink },
+      offer: { color: Color.ink },
+      rejected: { color: Color.status.blockText },
     };
-    return colors[status as keyof typeof colors] || { color: "#374151" };
+    return colors[status as keyof typeof colors] || { color: Color.body };
   };
 
   const openReferral = () => {
@@ -1137,7 +1137,7 @@ export function MessagesView({
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: "#F4F4F5",
+                backgroundColor: Color.surface,
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 12,
@@ -1145,7 +1145,7 @@ export function MessagesView({
             >
               <MessageCircle color="#BBB" size={28} strokeWidth={2} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#AAA" }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: Color.muted }}>
               Loading conversation…
             </Text>
           </View>
@@ -1161,7 +1161,7 @@ export function MessagesView({
             padding: 20,
           }}
         >
-          <Text style={{ fontSize: 16, color: "#666" }}>
+          <Text style={{ fontSize: 16, color: Color.body }}>
             Conversation not found
           </Text>
           <TouchableOpacity
@@ -1169,11 +1169,11 @@ export function MessagesView({
             style={{
               marginTop: 16,
               padding: 12,
-              backgroundColor: "#000",
+              backgroundColor: Color.ink,
               borderRadius: 12,
             }}
           >
-            <Text style={{ color: "#FFF", fontWeight: "700" }}>
+            <Text style={{ color: Color.paper, fontWeight: "700" }}>
               Back to Messages
             </Text>
           </TouchableOpacity>
@@ -1208,14 +1208,14 @@ export function MessagesView({
                   style={[
                     styles.headerImage,
                     {
-                      backgroundColor: "#000",
+                      backgroundColor: Color.ink,
                       alignItems: "center",
                       justifyContent: "center",
                     },
                   ]}
                 >
                   <Text
-                    style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
+                    style={{ fontSize: 16, fontWeight: "800", color: Color.paper }}
                   >
                     {(conversation.otherParticipant.name ||
                       "?")[0].toUpperCase()}
@@ -1309,29 +1309,29 @@ export function MessagesView({
           >
             {messagesLoading ? (
               <View style={{ padding: 40, alignItems: "center" }}>
-                <Text style={{ color: "#999", fontSize: 15 }}>
+                <Text style={{ color: Color.muted, fontSize: 15 }}>
                   Loading messages...
                 </Text>
               </View>
             ) : messagesError ? (
               <View style={{ padding: 40, alignItems: "center" }}>
                 <Text
-                  style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}
+                  style={{ color: Color.status.blockText, fontSize: 15, marginBottom: 8 }}
                 >
                   Failed to load messages
                 </Text>
                 <Text
-                  style={{ color: "#999", fontSize: 13, textAlign: "center" }}
+                  style={{ color: Color.muted, fontSize: 13, textAlign: "center" }}
                 >
                   {messagesError}
                 </Text>
               </View>
             ) : messages.length === 0 ? (
               <View style={{ padding: 40, alignItems: "center" }}>
-                <Text style={{ color: "#999", fontSize: 15 }}>
+                <Text style={{ color: Color.muted, fontSize: 15 }}>
                   No messages yet
                 </Text>
-                <Text style={{ color: "#BBB", fontSize: 13, marginTop: 8 }}>
+                <Text style={{ color: Color.faint, fontSize: 13, marginTop: 8 }}>
                   Start the conversation!
                 </Text>
               </View>
@@ -1653,7 +1653,7 @@ export function MessagesView({
                             width: 56,
                             height: 56,
                             borderRadius: 28,
-                            backgroundColor: "#F4F4F5",
+                            backgroundColor: Color.surface,
                             alignItems: "center",
                             justifyContent: "center",
                             marginBottom: 8,
@@ -2412,13 +2412,13 @@ export function MessagesView({
             styles.convImg,
             opts.hidden && styles.convImgHidden,
             {
-              backgroundColor: "#000",
+              backgroundColor: Color.ink,
               alignItems: "center",
               justifyContent: "center",
             },
           ]}
         >
-          <Text style={{ fontSize: 22, fontWeight: "800", color: "#FFF" }}>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: Color.paper }}>
             {(name || "?")[0].toUpperCase()}
           </Text>
         </View>
@@ -2655,16 +2655,16 @@ export function MessagesView({
 
       {conversationsLoading ? (
         <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: "#999", fontSize: 15 }}>
+          <Text style={{ color: Color.muted, fontSize: 15 }}>
             Loading conversations...
           </Text>
         </View>
       ) : conversationsError ? (
         <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ color: Color.status.blockText, fontSize: 15, marginBottom: 8 }}>
             Failed to load conversations
           </Text>
-          <Text style={{ color: "#999", fontSize: 13, textAlign: "center" }}>
+          <Text style={{ color: Color.muted, fontSize: 13, textAlign: "center" }}>
             {conversationsError}
           </Text>
         </View>
@@ -2673,7 +2673,7 @@ export function MessagesView({
           <MessageCircle size={48} color="#DDD" style={{ marginBottom: 16 }} />
           <Text
             style={{
-              color: "#999",
+              color: Color.muted,
               fontSize: 17,
               fontWeight: "600",
               marginBottom: 8,
@@ -2681,7 +2681,7 @@ export function MessagesView({
           >
             No conversations yet
           </Text>
-          <Text style={{ color: "#BBB", fontSize: 14, textAlign: "center" }}>
+          <Text style={{ color: Color.faint, fontSize: 14, textAlign: "center" }}>
             Start matching with people to begin conversations!
           </Text>
         </View>
@@ -3133,17 +3133,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Color.surface,
     padding: 12,
     borderRadius: 15,
     marginBottom: 20,
   },
-  jobRefLabel: { fontSize: 10, fontWeight: "900", color: "#999" },
+  jobRefLabel: { fontSize: 10, fontWeight: "900", color: Color.muted },
   jobRefBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -3154,9 +3154,9 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 24,
     padding: 20,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   pagination: {
     flexDirection: "row",
@@ -3165,8 +3165,8 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   dot: { height: 6, borderRadius: 3 },
-  dotActive: { width: 22, backgroundColor: "#000" },
-  dotInactive: { width: 6, backgroundColor: "#DDD" },
+  dotActive: { width: 22, backgroundColor: Color.ink },
+  dotInactive: { width: 6, backgroundColor: Color.borderStrong },
   infoCardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -3176,48 +3176,48 @@ const styles = StyleSheet.create({
   modalAvatar: { width: 55, height: 55, borderRadius: 27 },
   modalName: { fontSize: 20, fontWeight: "800" },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
-  bioText: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 15 },
+  locationText: { fontSize: 12, color: Color.muted, fontWeight: "600" },
+  bioText: { fontSize: 14, color: Color.body, lineHeight: 20, marginBottom: 15 },
   skillsContainer: { flexDirection: "row", gap: 8, marginBottom: 15 },
   skillChip: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
-  skillText: { fontSize: 11, fontWeight: "700", color: "#666" },
+  skillText: { fontSize: 11, fontWeight: "700", color: Color.body },
   statsRow: { flexDirection: "row", gap: 8 },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   statLabel: { fontSize: 11, fontWeight: "800" },
   resumeBtn: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     borderRadius: 12,
   },
-  resumeBtnText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  resumeBtnText: { color: Color.paper, fontSize: 12, fontWeight: "700" },
   promptCardInModal: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   promptIconRowInModal: {
     flexDirection: "row",
@@ -3229,24 +3229,24 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   promptQuestionInModal: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: 0.5,
   },
   promptAnswerInModal: {
     fontSize: 14,
     fontWeight: "400",
-    color: "#666",
+    color: Color.body,
     lineHeight: 20,
   },
   fullProfileBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -3255,11 +3255,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginTop: 24,
   },
-  fullProfileBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  fullProfileBtnText: { color: Color.paper, fontSize: 16, fontWeight: "700" },
   referFromModalBtn: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: Color.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -3268,19 +3268,19 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginTop: 12,
   },
-  referFromModalBtnText: { color: "#000", fontSize: 16, fontWeight: "800" },
+  referFromModalBtnText: { color: Color.ink, fontSize: 16, fontWeight: "800" },
 
   /* ── Sponsor profile (applicant view) ── */
   sponsorTitleText: {
     fontSize: 13,
-    color: "#666",
+    color: Color.body,
     marginTop: 2,
     fontWeight: "500",
   },
   sponsorReferringRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     borderRadius: 12,
     padding: 12,
     marginTop: 14,
@@ -3290,20 +3290,20 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
   sponsorReferringLabel: {
     fontSize: 11,
-    color: "#888",
+    color: Color.muted,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   sponsorReferringValue: {
     fontSize: 14,
-    color: "#111",
+    color: Color.ink,
     fontWeight: "700",
     marginTop: 1,
   },
@@ -3316,33 +3316,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   sponsorOpenBadgeText: {
     fontSize: 12,
-    color: "#000",
+    color: Color.ink,
     fontWeight: "700",
   },
   sponsorMatchBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   sponsorMatchBadgeText: {
     fontSize: 12,
-    color: "#222",
+    color: Color.ink,
     fontWeight: "700",
   },
   sponsorTipText: {
     fontSize: 12,
-    color: "#999",
+    color: Color.muted,
     lineHeight: 18,
     marginTop: 14,
     textAlign: "center",
@@ -3358,7 +3358,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
@@ -3366,17 +3366,17 @@ const styles = StyleSheet.create({
   sponsorInsightsEmptyTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#111",
+    color: Color.ink,
   },
   sponsorInsightsEmptyText: {
     fontSize: 13,
-    color: "#888",
+    color: Color.muted,
     textAlign: "center",
     lineHeight: 19,
   },
 
   referralFlowContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 32,
@@ -3392,14 +3392,14 @@ const styles = StyleSheet.create({
   },
   flowTitle: { fontSize: 24, fontWeight: "800" },
   stepContent: { gap: 12 },
-  stepSubtitle: { fontSize: 18, fontWeight: "700", color: "#000" },
-  stepDesc: { fontSize: 14, color: "#666", lineHeight: 20, marginBottom: 10 },
+  stepSubtitle: { fontSize: 18, fontWeight: "700", color: Color.ink },
+  stepDesc: { fontSize: 14, color: Color.body, lineHeight: 20, marginBottom: 10 },
   vettingList: { gap: 16, marginBottom: 20 },
   vettingItem: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   vettingCheck: { marginTop: 2 },
-  vettingText: { fontSize: 15, fontWeight: "600", color: "#444", flex: 1 },
+  vettingText: { fontSize: 15, fontWeight: "600", color: Color.body, flex: 1 },
   primaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingVertical: 18,
     borderRadius: 20,
     flexDirection: "row",
@@ -3408,31 +3408,31 @@ const styles = StyleSheet.create({
     gap: 8,
     width: "100%",
   },
-  primaryBtnDisabled: { backgroundColor: "#E5E5E5" },
-  primaryBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  primaryBtnDisabled: { backgroundColor: Color.border },
+  primaryBtnText: { color: Color.paper, fontSize: 16, fontWeight: "700" },
   summaryScroll: { maxHeight: SCREEN_HEIGHT * 0.6, marginBottom: 10 },
   summaryCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Color.paper,
     padding: 20,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   summaryLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#AAA",
+    color: Color.muted,
     letterSpacing: 1,
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 16,
   },
   summarySkills: { flexDirection: "row", flexWrap: "wrap" },
-  summarySkillText: { fontSize: 13, color: "#666", fontWeight: "600" },
+  summarySkillText: { fontSize: 13, color: Color.body, fontWeight: "600" },
   // ── Referral Step 2 — modern detail-sheet aesthetic ─────────────────
 
   // ATS hint banner — monochrome, modern
@@ -3442,15 +3442,15 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: Color.border,
   },
   atsBannerText: {
     flex: 1,
     fontSize: 12,
-    color: "#666",
+    color: Color.body,
     fontWeight: "600",
     lineHeight: 17,
   },
@@ -3466,17 +3466,17 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 24,
     marginBottom: 14,
-    backgroundColor: "#EEE",
+    backgroundColor: Color.border,
   },
   candidateHeroAvatarFallback: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
   },
   candidateHeroName: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     textAlign: "center",
     marginBottom: 4,
     letterSpacing: -0.4,
@@ -3484,7 +3484,7 @@ const styles = StyleSheet.create({
   candidateHeroRole: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
   },
   candidateChipsRow: {
@@ -3500,23 +3500,23 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: Color.border,
   },
   candidateChipText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#666",
+    color: Color.body,
   },
 
   // APPLYING FOR — role-context card (mirrors ProfileDetailSheet roleContext)
   refContext: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Color.paper,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -3529,27 +3529,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1.2,
-    color: "#999",
+    color: Color.muted,
     marginBottom: 6,
   },
   refContextTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
   },
   refContextCompany: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
     marginTop: 2,
   },
 
   // Detail sections — mirror the MatchesView detailSection aesthetic
   refSection: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     paddingHorizontal: 16,
     paddingVertical: 16,
     ...Platform.select({
@@ -3574,18 +3574,18 @@ const styles = StyleSheet.create({
   refSectionTitle: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     textTransform: "uppercase",
     letterSpacing: 0.7,
   },
   refSectionBody: {
     fontSize: 14,
-    color: "#444",
+    color: Color.body,
     lineHeight: 20,
   },
   refSectionMeta: {
     fontSize: 13,
-    color: "#666",
+    color: Color.body,
     fontWeight: "600",
     marginBottom: 8,
   },
@@ -3601,12 +3601,12 @@ const styles = StyleSheet.create({
   refEntryTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 2,
   },
   refEntryMeta: {
     fontSize: 13,
-    color: "#666",
+    color: Color.body,
   },
 
   // Portfolio link tile
@@ -3617,16 +3617,16 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Color.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   refPortfolioText: {
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#000",
+    color: Color.ink,
   },
 
   // Skills badges (shared within refSection)
@@ -3638,15 +3638,15 @@ const styles = StyleSheet.create({
   skillBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: Color.border,
   },
   skillBadgeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
   },
 
   // Final Confirmation rows
@@ -3660,18 +3660,18 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     marginTop: 8,
   },
   refFinalText: {
     flex: 1,
     fontSize: 13,
-    color: "#444",
+    color: Color.body,
     fontWeight: "500",
     lineHeight: 19,
   },
   confirmBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingVertical: 18,
     borderRadius: 20,
     flexDirection: "row",
@@ -3684,7 +3684,7 @@ const styles = StyleSheet.create({
   successTitle: { fontSize: 22, fontWeight: "800", marginBottom: 10 },
   successDesc: {
     fontSize: 14,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 30,
@@ -3699,39 +3699,39 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 18,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     marginBottom: 16,
   },
   appDetailTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     textAlign: "center",
     marginBottom: 4,
   },
   appDetailCompany: {
     fontSize: 16,
-    color: "#666",
+    color: Color.body,
     fontWeight: "600",
     marginBottom: 16,
   },
   statusBadgeBlack: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
   },
-  statusBadgeBlackText: { fontSize: 13, fontWeight: "700", color: "#FFF" },
+  statusBadgeBlackText: { fontSize: 13, fontWeight: "700", color: Color.paper },
   detailSection: { marginBottom: 28 },
   detailSectionTitle: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#BBB",
+    color: Color.faint,
     letterSpacing: 1.2,
     marginBottom: 12,
   },
   timelineDetailContainer: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     padding: 20,
   },
@@ -3745,16 +3745,16 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Color.border,
     borderWidth: 3,
-    borderColor: "#FFF",
+    borderColor: Color.paper,
   },
-  timelineDetailDotCompleted: { backgroundColor: "#000" },
+  timelineDetailDotCompleted: { backgroundColor: Color.ink },
   timelineDetailDotReferred: { width: 18, height: 18, borderRadius: 9 },
   timelineDetailDotReferredCompleted: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     borderWidth: 4,
-    borderColor: "#F9F9F9",
+    borderColor: Color.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -3764,28 +3764,28 @@ const styles = StyleSheet.create({
   timelineDetailLine: {
     width: 2,
     height: 32,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Color.border,
     marginTop: 4,
   },
-  timelineDetailLineCompleted: { backgroundColor: "#BBB" },
+  timelineDetailLineCompleted: { backgroundColor: Color.faint },
   timelineDetailRight: { flex: 1, paddingTop: 2 },
   timelineDetailStage: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#999",
+    color: Color.muted,
     marginBottom: 2,
   },
-  timelineDetailStageCompleted: { color: "#000" },
+  timelineDetailStageCompleted: { color: Color.ink },
   timelineDetailStageReferred: {
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0.5,
   },
-  timelineDetailDate: { fontSize: 13, color: "#BBB", fontWeight: "600" },
+  timelineDetailDate: { fontSize: 13, color: Color.faint, fontWeight: "600" },
   sponsorCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     padding: 16,
   },
@@ -3793,38 +3793,38 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
   },
   sponsorDetailInfo: { flex: 1, marginLeft: 12 },
   sponsorDetailName: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 2,
   },
-  sponsorDetailRole: { fontSize: 13, color: "#666", fontWeight: "600" },
+  sponsorDetailRole: { fontSize: 13, color: Color.body, fontWeight: "600" },
   nextActionCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
-  nextActionText: { flex: 1, fontSize: 14, fontWeight: "700", color: "#000" },
+  nextActionText: { flex: 1, fontSize: 14, fontWeight: "700", color: Color.ink },
   messageBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingVertical: 16,
     borderRadius: 16,
     marginTop: 12,
   },
-  messageBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  messageBtnText: { color: Color.paper, fontSize: 16, fontWeight: "700" },
 
   // Referral flow
   referralProfileLoading: {
@@ -3835,13 +3835,13 @@ const styles = StyleSheet.create({
   referralProfileLoadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: "#666",
+    color: Color.body,
     fontWeight: "400" as const,
   },
   referralErrorBox: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Color.status.blockBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: Color.status.blockBorder,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -3850,7 +3850,7 @@ const styles = StyleSheet.create({
   referralErrorText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#DC2626",
+    color: Color.status.blockText,
     lineHeight: 18,
   },
   headerActions: {
@@ -3862,12 +3862,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Color.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   unmatchSheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -3876,14 +3876,14 @@ const styles = StyleSheet.create({
   unmatchSheetTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     textAlign: "center",
     marginBottom: 8,
     marginTop: 4,
   },
   unmatchSheetSubtitle: {
     fontSize: 14,
-    color: "#888",
+    color: Color.muted,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 28,
@@ -3896,7 +3896,7 @@ const styles = StyleSheet.create({
   unmatchActionBtn: {
     paddingVertical: 17,
     borderRadius: 18,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -3904,11 +3904,11 @@ const styles = StyleSheet.create({
   unmatchActionText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFF",
+    color: Color.paper,
   },
   unmatchCancelBtn: {
     paddingVertical: 17,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Color.surface,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
@@ -3916,6 +3916,6 @@ const styles = StyleSheet.create({
   unmatchCancelText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
   },
 });

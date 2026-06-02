@@ -18,13 +18,13 @@ import { Check, Mail, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
     trackResendVerificationRequested,
     trackVerifyEmailFailed,
@@ -32,6 +32,7 @@ import {
     trackVerifyEmailSucceeded,
 } from "../lib/analytics/mixpanel";
 import { authApi } from "../lib/auth-api";
+import { Color, Radius, Type } from "@/constants/theme";
 
 type Status = "loading" | "success" | "alreadyVerified" | "error";
 
@@ -63,7 +64,6 @@ export default function VerifyEmailRoute() {
 
       try {
         const res = await authApi.verifyEmail(token);
-        // Backend uses two distinct messages — both are 200 OK.
         const alreadyVerified =
           typeof res.message === "string" &&
           res.message.toLowerCase().includes("already");
@@ -93,11 +93,8 @@ export default function VerifyEmailRoute() {
     try {
       setResending(true);
       await authApi.resendVerificationEmail(email);
-      // Endpoint always returns 200 (anti-enumeration), so we always show the
-      // same success state regardless of whether the email actually exists.
       setResendSent(true);
     } catch (err) {
-      // 429 = rate-limited; surface it so the user knows to back off.
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMessage(
         msg.includes("429") || msg.toLowerCase().includes("rate")
@@ -118,7 +115,7 @@ export default function VerifyEmailRoute() {
       <View style={styles.content}>
         {status === "loading" && (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#000" />
+            <ActivityIndicator size="large" color={Color.ink} />
             <Text style={styles.loadingText}>Verifying your email…</Text>
           </View>
         )}
@@ -126,12 +123,18 @@ export default function VerifyEmailRoute() {
         {(status === "success" || status === "alreadyVerified") && (
           <View style={styles.center}>
             <View style={styles.iconCircle}>
-              <Check color="#FFF" size={36} strokeWidth={3} />
+              <Check color={Color.paper} size={28} strokeWidth={2.2} />
             </View>
             <Text style={styles.title}>
-              {status === "success"
-                ? "Email verified!"
-                : "Already verified"}
+              {status === "success" ? (
+                <>
+                  Email <Text style={styles.titleAccent}>verified.</Text>
+                </>
+              ) : (
+                <>
+                  Already <Text style={styles.titleAccent}>verified.</Text>
+                </>
+              )}
             </Text>
             <Text style={styles.subtitle}>
               {status === "success"
@@ -141,7 +144,7 @@ export default function VerifyEmailRoute() {
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={handleContinue}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Text style={styles.primaryButtonText}>Continue</Text>
             </TouchableOpacity>
@@ -151,14 +154,16 @@ export default function VerifyEmailRoute() {
         {status === "error" && (
           <View style={styles.center}>
             <View style={styles.iconCircleError}>
-              <X color="#FFF" size={36} strokeWidth={3} />
+              <X color={Color.paper} size={28} strokeWidth={2.2} />
             </View>
-            <Text style={styles.title}>Verification failed</Text>
+            <Text style={styles.title}>
+              Verification <Text style={styles.titleAccent}>failed.</Text>
+            </Text>
             <Text style={styles.subtitle}>{errorMessage}</Text>
 
             {resendSent ? (
               <View style={styles.resendSent}>
-                <Mail color="#000" size={20} strokeWidth={2} />
+                <Mail color={Color.ink} size={18} strokeWidth={1.8} />
                 <Text style={styles.resendSentText}>
                   If an account exists for that address, a new verification
                   email is on its way.
@@ -172,7 +177,7 @@ export default function VerifyEmailRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Color.faint}
                   value={resendEmail}
                   onChangeText={setResendEmail}
                   keyboardType="email-address"
@@ -187,10 +192,10 @@ export default function VerifyEmailRoute() {
                   ]}
                   onPress={handleResend}
                   disabled={!resendEmail.trim() || resending}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
                   {resending ? (
-                    <ActivityIndicator color="#FFF" />
+                    <ActivityIndicator color={Color.paper} />
                   ) : (
                     <Text style={styles.primaryButtonText}>Resend</Text>
                   )}
@@ -213,7 +218,7 @@ export default function VerifyEmailRoute() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1, backgroundColor: Color.offWhite },
   content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
   center: {
     flex: 1,
@@ -221,56 +226,75 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
   },
-  loadingText: { fontSize: 14, color: "#666", marginTop: 12 },
+  loadingText: {
+    fontFamily: Type.sans300,
+    fontSize: 14,
+    color: Color.body,
+    marginTop: 12,
+  },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
   iconCircleError: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#DC2626",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Color.status.blockText,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
   title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans400,
+    fontSize: 30,
+    color: Color.ink,
     textAlign: "center",
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
+  },
+  titleAccent: {
+    fontFamily: Type.serifItalic,
+    color: Color.muted,
   },
   subtitle: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 23,
     paddingHorizontal: 12,
+    maxWidth: 380,
   },
   primaryButton: {
-    backgroundColor: "#000",
-    height: 52,
-    borderRadius: 26,
+    backgroundColor: Color.ink,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     paddingHorizontal: 32,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 16,
     minWidth: 180,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: Color.borderStrong,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   primaryButtonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
   },
   secondaryButton: {
     paddingVertical: 14,
@@ -278,43 +302,53 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   secondaryButtonText: {
-    color: "#666",
+    fontFamily: Type.sans500,
+    color: Color.muted,
     fontSize: 14,
-    fontWeight: "600",
   },
   resendBlock: {
     width: "100%",
     gap: 10,
     marginTop: 16,
+    maxWidth: 380,
   },
   resendLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#444",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
     textAlign: "center",
   },
   input: {
-    backgroundColor: "#F4F4F4",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 50,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: Type.sans500,
     fontSize: 15,
-    color: "#000",
+    color: Color.ink,
   },
   resendSent: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F4F4F4",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginTop: 12,
+    maxWidth: 380,
   },
   resendSentText: {
     flex: 1,
+    fontFamily: Type.sans300,
     fontSize: 13,
-    color: "#333",
-    lineHeight: 18,
+    color: Color.body,
+    lineHeight: 19,
   },
 });

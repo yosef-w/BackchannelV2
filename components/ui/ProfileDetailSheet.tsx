@@ -278,7 +278,7 @@ export function ProfileDetailSheet({
                     style={[
                       styles.avatar,
                       {
-                        backgroundColor: "#000",
+                        backgroundColor: Color.ink,
                         alignItems: "center",
                         justifyContent: "center",
                       },

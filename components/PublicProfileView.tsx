@@ -51,14 +51,14 @@ export function ApplicantPublicProfileView({
                 style={[
                   styles.avatar,
                   {
-                    backgroundColor: "#000",
+                    backgroundColor: Color.ink,
                     alignItems: "center",
                     justifyContent: "center",
                   },
                 ]}
               >
                 <Text
-                  style={{ fontSize: 36, fontWeight: "800", color: "#FFF" }}
+                  style={{ fontSize: 36, fontWeight: "800", color: Color.paper }}
                 >
                   {(userData.name || "?")[0].toUpperCase()}
                 </Text>

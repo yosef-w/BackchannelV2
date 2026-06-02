@@ -525,11 +525,7 @@ export function MainApp({ userType }: MainAppProps) {
               activeOpacity={0.7}
               style={styles.headerIconButton}
             >
-              <ClipboardCheck
-                color={Color.muted}
-                size={18}
-                strokeWidth={1.6}
-              />
+              <ClipboardCheck color={Color.muted} size={18} strokeWidth={1.6} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -638,36 +634,41 @@ export function MainApp({ userType }: MainAppProps) {
           !isBottomNavHidden && (
             <Animated.View
               entering={FadeInDown.duration(600)}
-              style={[styles.navContainer, navAnimatedStyle]}
               pointerEvents="box-none"
             >
-              <View style={styles.navBar}>
-                {visibleNavItems.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    item={item}
-                    isActive={activeView === item.id}
-                    onPress={() => handleViewChange(item.id as ViewType)}
-                  />
-                ))}
-              </View>
+              <Animated.View style={[styles.navContainer, navAnimatedStyle]}>
+                <View style={styles.navBar}>
+                  {visibleNavItems.map((item) => (
+                    <NavItem
+                      key={item.id}
+                      item={item}
+                      isActive={activeView === item.id}
+                      onPress={() => handleViewChange(item.id as ViewType)}
+                    />
+                  ))}
+                </View>
+              </Animated.View>
             </Animated.View>
           )}
       </SafeAreaView>
 
       {/* ── Referral Check-in Modals ─────────────────────────────────────── */}
-      <ApplicantCheckInModal
-        visible={showApplicantCheckIn}
-        onDismiss={() => setShowApplicantCheckIn(false)}
-        referrals={referrals as CheckInReferral[]}
-        loading={referralsLoading}
-      />
-      <SponsorCheckInModal
-        visible={showSponsorCheckIn}
-        onDismiss={() => setShowSponsorCheckIn(false)}
-        referrals={referrals as SponsorCheckInReferral[]}
-        loading={referralsLoading}
-      />
+      {showApplicantCheckIn && (
+        <ApplicantCheckInModal
+          visible={showApplicantCheckIn}
+          onDismiss={() => setShowApplicantCheckIn(false)}
+          referrals={referrals as CheckInReferral[]}
+          loading={referralsLoading}
+        />
+      )}
+      {showSponsorCheckIn && (
+        <SponsorCheckInModal
+          visible={showSponsorCheckIn}
+          onDismiss={() => setShowSponsorCheckIn(false)}
+          referrals={referrals as SponsorCheckInReferral[]}
+          loading={referralsLoading}
+        />
+      )}
     </View>
   );
 }
@@ -736,6 +737,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: "center",
+    zIndex: 10000,
+    elevation: 20,
   },
   navBar: {
     flexDirection: "row",

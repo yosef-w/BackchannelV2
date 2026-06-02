@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Color, Type } from "@/constants/theme";
 
 /**
  * Renders a company logo. Prefers the backend-provided URL (from PR #62's
@@ -56,8 +57,8 @@ export function CompanyLogo({
   name,
   size,
   borderRadius,
-  backgroundColor = "#000",
-  textColor = "#FFF",
+  backgroundColor = Color.ink,
+  textColor = Color.paper,
   initialFontSize,
   style,
   resizeMode = "contain",
@@ -89,7 +90,7 @@ export function CompanyLogo({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: showImage ? "#F4F4F5" : backgroundColor,
+    backgroundColor: showImage ? Color.surface : backgroundColor,
   };
 
   return (
@@ -120,6 +121,7 @@ export function CompanyLogo({
 
 const styles = StyleSheet.create({
   initial: {
-    fontWeight: "800",
+    // Italic serif initial — the editorial signature on avatars/logos.
+    fontFamily: Type.serifItalic,
   },
 });

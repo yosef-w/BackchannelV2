@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { Color, Radius, Type } from "@/constants/theme";
 
 interface ProfileCompletionBannerProps {
   percentage: number;
@@ -24,27 +25,27 @@ export function ProfileCompletionBanner({
   return (
     <Animated.View entering={FadeInDown.delay(300)} style={styles.banner}>
       <View style={styles.iconContainer}>
-        <AlertCircle color="#666" size={24} />
+        <AlertCircle color={Color.muted} size={20} strokeWidth={1.6} />
       </View>
 
       <View style={styles.content}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Complete Your Profile</Text>
+          <Text style={styles.title}>Complete your profile</Text>
           <View style={styles.percentageBadge}>
             <Text style={styles.percentageText}>{percentage}%</Text>
           </View>
         </View>
         <Text style={styles.subtitle}>
-          Add missing info to unlock autofill for job applications
+          Add missing info to unlock autofill for job applications.
         </Text>
 
         <TouchableOpacity
           style={styles.completeButton}
           onPress={onPress}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <Text style={styles.completeButtonText}>Complete Now</Text>
-          <ChevronRight color="#000" size={18} />
+          <Text style={styles.completeButtonText}>Complete now</Text>
+          <ChevronRight color={Color.ink} size={16} strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
@@ -54,7 +55,7 @@ export function ProfileCompletionBanner({
           onPress={onDismiss}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <X color="#999" size={20} />
+          <X color={Color.muted} size={18} strokeWidth={2} />
         </TouchableOpacity>
       )}
     </Animated.View>
@@ -64,19 +65,21 @@ export function ProfileCompletionBanner({
 const styles = StyleSheet.create({
   banner: {
     flexDirection: "row",
-    backgroundColor: "#F4F4F5",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     padding: 16,
     marginHorizontal: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFF",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -91,28 +94,33 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.2,
     flex: 1,
   },
   percentageBadge: {
-    backgroundColor: "#FFF",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
     marginLeft: 8,
   },
   percentageText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#666",
+    fontFamily: Type.sans600,
+    fontSize: 11,
+    color: Color.body,
+    letterSpacing: 0.2,
   },
   subtitle: {
+    fontFamily: Type.sans300,
     fontSize: 13,
-    color: "#78716C",
-    lineHeight: 18,
-    marginBottom: 12,
+    color: Color.body,
+    lineHeight: 19,
+    marginBottom: 10,
   },
   completeButton: {
     flexDirection: "row",
@@ -121,9 +129,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   completeButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 13,
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   closeButton: {
     padding: 4,

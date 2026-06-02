@@ -93,7 +93,21 @@
       "Bash(echo \"=== exit $? ===\")",
       "Bash(awk '/^const styles = StyleSheet/,/^}\\);/' components/HomeView.tsx)",
       "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies}; console.log\\('dm-sans:', d['@expo-google-fonts/dm-sans']||'\\(no\\)'\\); console.log\\('dm-serif:', d['@expo-google-fonts/dm-serif-display']||'\\(no\\)'\\)\")",
-      "Bash(awk '/^import {/,/} from \"react-native\";/' components/MessagesView.tsx)"
+      "Bash(awk '/^import {/,/} from \"react-native\";/' components/MessagesView.tsx)",
+      "Bash(awk '/^const styles = StyleSheet/,/^}\\);/' components/ProfileView.tsx)",
+      "Bash(awk '/^const styles = StyleSheet/,/^}\\);/' components/JobsView.tsx)",
+      "Bash(grep -E \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/MatchesView.tsx)",
+      "Bash(grep -E \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/MessagesView.tsx)",
+      "Bash(grep -E \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/HomeView.tsx)",
+      "Bash(grep -E \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/JobsView.tsx)",
+      "Bash(grep -E \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/ProfileView.tsx)",
+      "Bash(grep -nE \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/MatchesView.tsx)",
+      "Bash(grep -nE \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/MessagesView.tsx)",
+      "Bash(grep -nE \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/HomeView.tsx)",
+      "Bash(grep -nE \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/JobsView.tsx)",
+      "Bash(grep -nE \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/ProfileView.tsx)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(grep -rnE \"color: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|backgroundColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"|borderColor: \\\\\"#[0-9A-Fa-f]{3,8}\\\\\"\" components/ app/ --include=\"*.tsx\" --include=\"*.ts\")"
     ]
   }
 }

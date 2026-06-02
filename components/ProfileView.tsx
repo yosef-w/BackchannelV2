@@ -45,6 +45,7 @@ import Animated, {
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
+import { Color, Radius, Type } from "@/constants/theme";
 import { GOOGLE_PLACES_API_KEY, PREMIUM_ENABLED } from "../constants/config";
 import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
 import { ALL_SKILLS } from "../constants/skills";
@@ -534,43 +535,43 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const getStatusDotColor = (status: string) => {
     const colors = {
-      applied: { backgroundColor: "#666" },
-      reviewing: { backgroundColor: "#666" },
-      interview_scheduled: { backgroundColor: "#000" },
-      offer: { backgroundColor: "#000" },
-      rejected: { backgroundColor: "#DC2626" },
+      applied: { backgroundColor: Color.body },
+      reviewing: { backgroundColor: Color.body },
+      interview_scheduled: { backgroundColor: Color.ink },
+      offer: { backgroundColor: Color.ink },
+      rejected: { backgroundColor: Color.status.blockText },
     };
-    return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
+    return colors[status as keyof typeof colors] || { backgroundColor: Color.muted };
   };
 
   const getStatusBadgeStyle = (status: string) => {
     const styles = {
-      applied: { backgroundColor: "#F9F9F9", borderColor: "#E5E5E5" },
-      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+      applied: { backgroundColor: Color.paper, borderColor: Color.border },
+      reviewing: { backgroundColor: Color.surface, borderColor: Color.border },
       interview_scheduled: {
-        backgroundColor: "#F4F4F5",
-        borderColor: "#E5E5E5",
+        backgroundColor: Color.surface,
+        borderColor: Color.border,
       },
-      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+      offer: { backgroundColor: Color.surface, borderColor: Color.border },
+      rejected: { backgroundColor: Color.status.blockBg, borderColor: Color.status.blockBorder },
     };
     return (
       styles[status as keyof typeof styles] || {
-        backgroundColor: "#F5F5F5",
-        borderColor: "#E5E5E5",
+        backgroundColor: Color.surface,
+        borderColor: Color.border,
       }
     );
   };
 
   const getStatusTextColor = (status: string) => {
     const colors = {
-      applied: { color: "#000" },
-      reviewing: { color: "#666" },
-      interview_scheduled: { color: "#000" },
-      offer: { color: "#000" },
-      rejected: { color: "#DC2626" },
+      applied: { color: Color.ink },
+      reviewing: { color: Color.body },
+      interview_scheduled: { color: Color.ink },
+      offer: { color: Color.ink },
+      rejected: { color: Color.status.blockText },
     };
-    return colors[status as keyof typeof colors] || { color: "#666" };
+    return colors[status as keyof typeof colors] || { color: Color.body };
   };
 
   const applicantData: ApplicantProfile = {
@@ -1273,7 +1274,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isNameMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1285,7 +1286,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isNameMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isNameMissing && { borderColor: Color.status.blockBorder, borderWidth: 2 },
                 ]}
                 value={cert.name}
                 onChangeText={(text) =>
@@ -1304,7 +1305,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isOrgMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1316,7 +1317,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isOrgMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isOrgMissing && { borderColor: Color.status.blockBorder, borderWidth: 2 },
                 ]}
                 value={cert.organization}
                 onChangeText={(text) =>
@@ -1335,7 +1336,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1347,7 +1348,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isYearMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isYearMissing && { borderColor: Color.status.blockBorder, borderWidth: 2 },
                 ]}
                 value={cert.year}
                 onChangeText={(text) =>
@@ -1450,7 +1451,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isLanguageMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1463,7 +1464,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isLanguageMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Color.status.blockBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -1484,7 +1485,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isProficiencyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1497,7 +1498,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isProficiencyMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Color.status.blockBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2153,7 +2154,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isJobTitleMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2166,7 +2167,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isJobTitleMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Color.status.blockBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2187,7 +2188,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isCompanyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2200,7 +2201,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isCompanyMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Color.status.blockBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2221,7 +2222,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isStartDateMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2234,7 +2235,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isStartDateMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Color.status.blockBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2383,7 +2384,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isDegreeMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2395,7 +2396,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isDegreeMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isDegreeMissing && { borderColor: Color.status.blockBorder, borderWidth: 2 },
                 ]}
                 value={education.degree}
                 onChangeText={(text) =>
@@ -2427,7 +2428,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isUniversityMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2440,7 +2441,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isUniversityMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Color.status.blockBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2461,7 +2462,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isGradYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Color.status.blockText,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2474,7 +2475,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isGradYearMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Color.status.blockBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -3238,7 +3239,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <Text
                       style={[
                         styles.fieldText,
-                        !workEmail && { color: "#999", fontStyle: "italic" },
+                        !workEmail && { color: Color.muted, fontStyle: "italic" },
                       ]}
                     >
                       {workEmail || "Not set"}
@@ -3248,7 +3249,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   <Text
                     style={{
                       fontSize: 11,
-                      color: "#999",
+                      color: Color.muted,
                       marginTop: 4,
                       fontStyle: "italic",
                     }}
@@ -5005,7 +5006,7 @@ function SimpleModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.offWhite,
   },
   scrollContent: {
     paddingHorizontal: 28,
@@ -5017,71 +5018,70 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   avatarWrapper: {
-    marginBottom: 20,
+    marginBottom: 18,
     position: "relative",
   },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Color.paper,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   avatarInitials: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 1,
+    fontFamily: Type.serifItalic,
+    fontSize: 40,
+    color: Color.ink,
   },
   avatarPlaceholder: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
   },
   avatarPlaceholderText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#999",
+    fontFamily: Type.sans500,
+    fontSize: 10,
+    color: Color.muted,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1.4,
   },
   editFab: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
+    borderWidth: 2,
+    borderColor: Color.offWhite,
   },
   editFabHighlight: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
   },
   profileImageIndicator: {
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#F9F9F9",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    backgroundColor: Color.paper,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   name: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    fontFamily: Type.sans400,
+    fontSize: 30,
+    color: Color.ink,
+    letterSpacing: -0.7,
   },
   infoRow: {
     flexDirection: "row",
@@ -5090,64 +5090,70 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   infoText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
+    fontFamily: Type.sans500,
+    fontSize: 14,
+    color: Color.body,
   },
   locationText: {
-    fontSize: 14,
-    color: "#BBB",
-    fontWeight: "500",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.muted,
   },
   bio: {
+    fontFamily: Type.sans300,
     fontSize: 15,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 23,
     marginTop: 16,
     paddingHorizontal: 10,
+    maxWidth: 380,
   },
   actionRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
     marginTop: 24,
   },
   blackBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+    backgroundColor: Color.ink,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderRadius: Radius.md,
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     position: "relative",
   },
   blackBtnText: {
-    color: "#FFF",
-    fontWeight: "700",
-    fontSize: 14,
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 13,
+    letterSpacing: -0.1,
   },
   whiteBtn: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+    backgroundColor: Color.paper,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderRadius: Radius.md,
     alignItems: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: "#EEE",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   whiteBtnText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 14,
+    fontFamily: Type.sans500,
+    color: Color.ink,
+    fontSize: 13,
+    letterSpacing: -0.1,
   },
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: Radius.xl,
+    padding: 22,
     marginBottom: 32,
   },
   statBox: {
@@ -5155,131 +5161,129 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statValue: {
+    fontFamily: Type.sans600,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.5,
   },
   statLabel: {
+    fontFamily: Type.sans500,
     fontSize: 10,
-    fontWeight: "800",
-    color: "#BBB",
+    color: Color.muted,
     marginTop: 4,
-    letterSpacing: 1,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
   },
   section: {
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#BBB",
-    letterSpacing: 1.5,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   tagCloud: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
   tag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#EEE",
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   tagText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
 
-  // Applicant-Specific Styles
+  // Applicant-specific
   preferenceTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Color.surface,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   preferenceText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.body,
+    letterSpacing: -0.1,
   },
   roleTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#000",
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    backgroundColor: Color.ink,
     borderWidth: 1,
-    borderColor: "#000",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    borderColor: Color.ink,
   },
   roleTagText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.paper,
+    letterSpacing: -0.1,
   },
 
-  // Sponsor-Specific Styles
+  // Sponsor-specific
   companyTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
   },
   companyText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.body,
+    letterSpacing: -0.1,
   },
 
+  // ── Settings ──
   settingsSection: {
     marginTop: 8,
   },
   settingsGroup: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 24,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.xl,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 18,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
+    borderBottomColor: Color.border,
   },
   settingLabel: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontFamily: Type.sans500,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   notificationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#DC2626",
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Color.status.blockText,
   },
 
   // Modal Styles
@@ -5288,10 +5292,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 32,
+    backgroundColor: Color.paper,
+    borderTopLeftRadius: Radius.sheet,
+    borderTopRightRadius: Radius.sheet,
+    padding: 28,
     maxHeight: "90%",
   },
   modalHeader: {
@@ -5301,69 +5305,74 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans400,
+    fontSize: 26,
+    color: Color.ink,
+    letterSpacing: -0.5,
   },
   modalSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    color: "#666",
+    color: Color.body,
     marginBottom: 24,
-    lineHeight: 20,
+    lineHeight: 22,
+    maxWidth: 380,
   },
   modalScroll: {
     maxHeight: 500,
   },
 
-  // Progress Indicator Styles
+  // ── Progress Indicator ──
   modalProgressContainer: {
-    backgroundColor: "#F9F9F9",
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    padding: 14,
+    borderRadius: Radius.md,
     marginBottom: 16,
   },
   modalProgressText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#666",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
     marginBottom: 8,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1.4,
   },
   modalProgressBar: {
-    height: 4,
-    backgroundColor: "#E5E5E5",
+    height: 3,
+    backgroundColor: Color.border,
     borderRadius: 2,
     overflow: "hidden",
   },
   modalProgressFill: {
     height: "100%",
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     borderRadius: 2,
   },
 
-  // Badge Styles
+  // ── Badges ──
   buttonBadge: {
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#000",
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: Color.ink,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: Color.offWhite,
   },
   buttonBadgeText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "800",
+    fontFamily: Type.sans600,
+    color: Color.paper,
+    fontSize: 11,
   },
   settingBadge: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     minWidth: 20,
     height: 20,
     borderRadius: 10,
@@ -5372,25 +5381,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   settingBadgeText: {
-    color: "#FFF",
+    fontFamily: Type.sans600,
+    color: Color.paper,
     fontSize: 11,
-    fontWeight: "800",
   },
 
-  // Edit Profile Styles
+  // ── Edit Profile fields ──
   editField: {
-    marginBottom: 24,
+    marginBottom: 22,
     position: "relative",
   },
   fieldLabel: {
+    fontFamily: Type.sans500,
     fontSize: 11,
-    fontWeight: "900",
-    color: "#999",
+    color: Color.muted,
     marginBottom: 8,
-    letterSpacing: 0.5,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
   },
   fieldLabelIncomplete: {
-    color: "#DC2626",
+    color: Color.status.blockText,
   },
   fieldLabelRow: {
     flexDirection: "row",
@@ -5398,24 +5408,25 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   requiredStar: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#DC2626",
+    fontFamily: Type.sans600,
+    fontSize: 14,
+    color: Color.status.blockText,
     lineHeight: 16,
   },
   fieldDisplay: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: Color.paper,
+    padding: 14,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   fieldText: {
+    fontFamily: Type.sans500,
     fontSize: 15,
-    color: "#000",
+    color: Color.ink,
     flex: 1,
   },
   editRow: {
@@ -5428,28 +5439,29 @@ const styles = StyleSheet.create({
   },
   fieldInput: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: Color.paper,
+    padding: 14,
+    borderRadius: Radius.md,
+    fontFamily: Type.sans500,
     fontSize: 15,
-    color: "#000",
+    color: Color.ink,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   bioInput: {
     minHeight: 100,
     textAlignVertical: "top",
   },
   saveBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // Section Headers
+  // ── Section Headers ──
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -5459,38 +5471,40 @@ const styles = StyleSheet.create({
   sectionHeaderLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Color.border,
   },
   sectionHeaderText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 1.2,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
     paddingHorizontal: 16,
   },
 
-  // Tags Editing
+  // ── Tag editing ──
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
     marginBottom: 12,
   },
   editableTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: Color.paper,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   editableTagText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    fontFamily: Type.sans500,
+    fontSize: 13,
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   addTagRow: {
     flexDirection: "row",
@@ -5498,58 +5512,61 @@ const styles = StyleSheet.create({
   },
   tagInput: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: Radius.md,
+    fontFamily: Type.sans500,
     fontSize: 14,
+    color: Color.ink,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   addTagBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // Insights Modal Styles
+  // ── Insights modal ──
   insightCard: {
-    backgroundColor: "#F9F9F9",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
+    backgroundColor: Color.paper,
+    padding: 18,
+    borderRadius: Radius.lg,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   insightCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   insightQuestion: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.muted,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
     flex: 1,
   },
   insightAnswer: {
-    fontSize: 15,
-    color: "#444",
-    lineHeight: 22,
-    fontStyle: "italic",
+    fontFamily: Type.serifItalic,
+    fontSize: 16,
+    color: Color.ink,
+    lineHeight: 24,
   },
   insightInput: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     padding: 12,
     borderRadius: 12,
     fontSize: 15,
-    color: "#000",
+    color: Color.ink,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     minHeight: 80,
     textAlignVertical: "top",
   },
@@ -5563,23 +5580,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
   },
   cancelBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#666",
+    color: Color.body,
   },
   saveInsightBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
   },
   saveInsightBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: Color.paper,
   },
   addInsightSection: {
     marginTop: 8,
@@ -5588,31 +5605,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 16,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     borderStyle: "dashed",
   },
   selectQuestionText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
   },
   newInsightCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   questionPicker: {
     marginTop: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     overflow: "hidden",
   },
   questionOption: {
@@ -5626,7 +5643,7 @@ const styles = StyleSheet.create({
   questionOptionText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     flex: 1,
   },
 
@@ -5642,11 +5659,11 @@ const styles = StyleSheet.create({
   settingRowLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Color.ink,
   },
   settingRowValue: {
     fontSize: 15,
-    color: "#666",
+    color: Color.body,
   },
   privacySection: {
     marginBottom: 24,
@@ -5655,11 +5672,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   privacyContent: {
     flex: 1,
@@ -5667,44 +5684,44 @@ const styles = StyleSheet.create({
   privacyLabel: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 4,
   },
   privacyDescription: {
     fontSize: 13,
-    color: "#666",
+    color: Color.body,
   },
   privacyValue: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
-    backgroundColor: "#FFF",
+    color: Color.ink,
+    backgroundColor: Color.paper,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   privacyActionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   privacyIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   privacyActionContent: {
     flex: 1,
@@ -5712,29 +5729,29 @@ const styles = StyleSheet.create({
   privacyActionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 2,
   },
   privacyActionSubtitle: {
     fontSize: 13,
-    color: "#666",
+    color: Color.body,
   },
   legalLastUpdated: {
     fontSize: 12,
-    color: "#999",
+    color: Color.muted,
     marginBottom: 12,
     fontStyle: "italic",
   },
   legalIntro: {
     fontSize: 14,
-    color: "#444",
+    color: Color.body,
     lineHeight: 21,
     marginBottom: 20,
   },
   legalSectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginTop: 20,
     marginBottom: 6,
     letterSpacing: 0.1,
@@ -5742,19 +5759,19 @@ const styles = StyleSheet.create({
   legalSubSectionTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#333",
+    color: Color.body,
     marginTop: 10,
     marginBottom: 4,
   },
   legalBody: {
     fontSize: 14,
-    color: "#444",
+    color: Color.body,
     lineHeight: 21,
     marginBottom: 4,
   },
   legalBullet: {
     fontSize: 14,
-    color: "#444",
+    color: Color.body,
     lineHeight: 21,
     paddingLeft: 4,
     marginBottom: 3,
@@ -5762,7 +5779,7 @@ const styles = StyleSheet.create({
   legalContact: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: Color.ink,
     marginTop: 4,
   },
   // Delete-account card — same shape as the sibling privacy cards but a
@@ -5772,46 +5789,46 @@ const styles = StyleSheet.create({
   deleteActionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Color.border,
     padding: 16,
     borderRadius: 12,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "#DEDEDE",
+    borderColor: Color.border,
   },
   deleteActionTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 2,
   },
   passwordInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 56,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     gap: 12,
   },
   passwordInput: {
     flex: 1,
     fontSize: 16,
-    color: "#000",
+    color: Color.ink,
     fontWeight: "500",
   },
   errorContainer: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Color.status.blockBg,
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#FEF2F2",
+    borderColor: Color.status.blockBg,
   },
   errorText: {
     fontSize: 14,
-    color: "#DC2626",
+    color: Color.status.blockText,
     fontWeight: "600",
     textAlign: "center",
   },
@@ -5826,13 +5843,13 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Color.ink,
   },
 
   // Tab Navigation
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     padding: 4,
     marginBottom: 32,
@@ -5844,7 +5861,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tabActive: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -5860,10 +5877,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#999",
+    color: Color.muted,
   },
   tabTextActive: {
-    color: "#000",
+    color: Color.ink,
   },
 
   // Applications Section
@@ -5873,21 +5890,21 @@ const styles = StyleSheet.create({
   applicationsTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 4,
   },
   applicationsSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Color.body,
     marginBottom: 24,
   },
   applicationCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   appCardHeader: {
     flexDirection: "row",
@@ -5898,7 +5915,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
   },
   appCardInfo: {
     flex: 1,
@@ -5907,12 +5924,12 @@ const styles = StyleSheet.create({
   appJobTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 2,
   },
   appCompany: {
     fontSize: 14,
-    color: "#666",
+    color: Color.body,
     fontWeight: "600",
   },
   statusDot: {
@@ -5934,16 +5951,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   statusBadgeBlack: {
-    backgroundColor: "#000",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: Color.ink,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   statusBadgeBlackText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    fontSize: 10,
+    color: Color.paper,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
   },
+
+  // ── Pipeline / Application timeline (compact list) ──
   timelineContainer: {
     marginBottom: 20,
     paddingLeft: 8,
@@ -5954,103 +5975,99 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Color.border,
+    borderWidth: 2,
+    borderColor: Color.offWhite,
+    marginTop: 5,
+  },
+  timelineDotCompleted: {
+    backgroundColor: Color.ink,
+  },
+  timelineDotReferred: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#E5E5E5",
-    borderWidth: 2,
-    borderColor: "#FFF",
-    marginTop: 4,
-  },
-  timelineDotCompleted: {
-    backgroundColor: "#000",
-  },
-  timelineDotReferred: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
   },
   timelineDotReferredCompleted: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     borderWidth: 3,
-    borderColor: "#F9F9F9",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    borderColor: Color.offWhite,
   },
   timelineLine: {
     position: "absolute",
-    left: 5,
+    left: 4,
     top: 18,
-    width: 2,
+    width: 1.5,
     height: 24,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Color.border,
   },
   timelineContent: {
     marginLeft: 12,
     marginBottom: 12,
   },
   timelineStage: {
+    fontFamily: Type.sans500,
     fontSize: 14,
-    fontWeight: "700",
-    color: "#999",
+    color: Color.muted,
   },
   timelineStageCompleted: {
-    color: "#000",
+    fontFamily: Type.sans600,
+    color: Color.ink,
   },
   timelineStageReferred: {
+    fontFamily: Type.sans600,
     fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    letterSpacing: -0.2,
   },
   timelineDate: {
-    fontSize: 12,
-    color: "#BBB",
-    marginTop: 2,
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.faint,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginTop: 3,
   },
   appCardFooter: {
     flexDirection: "row",
     alignItems: "center",
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#E5E5E5",
+    borderTopColor: Color.border,
   },
   sponsorAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#FFF",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Color.surface,
   },
   sponsorInfo: {
     flex: 1,
     marginLeft: 12,
   },
   sponsorLabel: {
+    fontFamily: Type.sans500,
     fontSize: 9,
-    fontWeight: "900",
-    color: "#BBB",
-    letterSpacing: 1,
+    color: Color.muted,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   sponsorName: {
+    fontFamily: Type.sans600,
     fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.1,
+    marginTop: 2,
   },
 
-  // Application Detail Modal
+  // ── Application Detail Modal ──
   modalHandle: {
     width: 40,
-    height: 5,
-    backgroundColor: "#EEE",
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: Color.border,
+    borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
   },
@@ -6062,41 +6079,47 @@ const styles = StyleSheet.create({
   },
   appDetailHeader: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 28,
   },
   appDetailLogo: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    backgroundColor: "#F9F9F9",
+    width: 64,
+    height: 64,
+    borderRadius: Radius.lg,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
     marginBottom: 16,
   },
   appDetailTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans400,
+    fontSize: 24,
+    color: Color.ink,
+    letterSpacing: -0.5,
     textAlign: "center",
     marginBottom: 4,
   },
   appDetailCompany: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "600",
+    fontFamily: Type.sans500,
+    fontSize: 14,
+    color: Color.muted,
     marginBottom: 16,
   },
   detailSection: {
     marginBottom: 28,
   },
   detailSectionTitle: {
+    fontFamily: Type.sans500,
     fontSize: 11,
-    fontWeight: "900",
-    color: "#BBB",
-    letterSpacing: 1.2,
+    color: Color.muted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
     marginBottom: 12,
   },
   timelineDetailContainer: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: Radius.lg,
     padding: 20,
   },
   timelineDetailItem: {
@@ -6109,127 +6132,129 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   timelineDetailDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: Color.border,
+    borderWidth: 2,
+    borderColor: Color.paper,
+  },
+  timelineDetailDotCompleted: {
+    backgroundColor: Color.ink,
+  },
+  timelineDetailDotReferred: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#E5E5E5",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  timelineDetailDotCompleted: {
-    backgroundColor: "#000",
-  },
-  timelineDetailDotReferred: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
   },
   timelineDetailDotReferredCompleted: {
-    backgroundColor: "#000",
-    borderWidth: 4,
-    borderColor: "#F9F9F9",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    backgroundColor: Color.ink,
+    borderWidth: 3,
+    borderColor: Color.paper,
   },
   timelineDetailLine: {
-    width: 2,
+    width: 1.5,
     height: 32,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Color.border,
     marginTop: 4,
   },
   timelineDetailLineCompleted: {
-    backgroundColor: "#BBB",
+    backgroundColor: Color.ink,
   },
   timelineDetailRight: {
     flex: 1,
     paddingTop: 2,
   },
   timelineDetailStage: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#999",
-    marginBottom: 2,
+    fontFamily: Type.sans500,
+    fontSize: 14,
+    color: Color.muted,
+    marginBottom: 3,
   },
   timelineDetailStageCompleted: {
-    color: "#000",
+    fontFamily: Type.sans600,
+    color: Color.ink,
   },
   timelineDetailStageReferred: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans600,
+    fontSize: 15,
+    letterSpacing: -0.2,
   },
   timelineDetailDate: {
-    fontSize: 13,
-    color: "#BBB",
-    fontWeight: "600",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.faint,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   sponsorCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderWidth: 1,
+    borderColor: Color.border,
+    borderRadius: Radius.lg,
     padding: 16,
   },
   sponsorDetailAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFF",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Color.surface,
   },
   sponsorDetailInfo: {
     flex: 1,
     marginLeft: 12,
   },
   sponsorDetailName: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.2,
     marginBottom: 2,
   },
   sponsorDetailRole: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
+    color: Color.muted,
   },
   nextActionCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 16,
+    backgroundColor: Color.surface,
+    borderRadius: Radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   nextActionText: {
     flex: 1,
+    fontFamily: Type.sans500,
     fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   messageBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#000",
+    gap: 8,
+    backgroundColor: Color.ink,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: Radius.md,
     marginTop: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
   },
   messageBtnText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 15,
+    letterSpacing: -0.1,
   },
 
   // Certifications & Languages Styles
@@ -6237,47 +6262,49 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   certificationName: {
+    fontFamily: Type.sans600,
     fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
+    color: Color.ink,
+    letterSpacing: -0.2,
+    marginBottom: 3,
   },
   certificationOrg: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
+    color: Color.muted,
   },
   addItemBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Color.borderStrong,
     borderStyle: "dashed",
   },
   addItemText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 13,
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
 
-  // Experience & Education Entry Card Styles
+  // ── Experience & Education entry cards ──
   entryCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    marginBottom: 16,
+    borderColor: Color.border,
+    marginBottom: 12,
     overflow: "hidden",
   },
   entryCardHeader: {
@@ -6285,21 +6312,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
+    borderBottomWidth: 1,
+    borderBottomColor: Color.border,
   },
   entryCardTitle: {
     flex: 1,
     gap: 4,
   },
   entryCardMainText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 15,
+    color: Color.ink,
+    letterSpacing: -0.2,
   },
   entryCardSubText: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
+    color: Color.muted,
   },
   entryCardActions: {
     flexDirection: "row",
@@ -6308,59 +6338,63 @@ const styles = StyleSheet.create({
   },
   entryCardContent: {
     padding: 16,
-    paddingTop: 8,
-    gap: 16,
+    paddingTop: 12,
+    gap: 14,
   },
   entryFieldRow: {
     gap: 6,
   },
   entryFieldLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#666",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans500,
+    fontSize: 10,
+    color: Color.muted,
+    letterSpacing: 1.4,
     textTransform: "uppercase",
     marginBottom: 4,
   },
   entryFieldInput: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.offWhite,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: Radius.sm,
+    fontFamily: Type.sans500,
     fontSize: 14,
-    color: "#000",
+    color: Color.ink,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   entryFieldDisplay: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.offWhite,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   entryFieldText: {
+    fontFamily: Type.sans500,
     fontSize: 14,
-    color: "#000",
+    color: Color.ink,
     lineHeight: 20,
   },
   entryFieldPlaceholder: {
+    fontFamily: Type.sans400,
     fontSize: 14,
-    color: "#999",
+    color: Color.faint,
   },
   entrySaveBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     alignSelf: "flex-end",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
   entrySaveBtnText: {
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    color: Color.paper,
     fontSize: 13,
-    fontWeight: "700",
+    letterSpacing: -0.1,
   },
   entryDeleteBtn: {
     flexDirection: "row",
@@ -6368,38 +6402,41 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "#FEF2F2",
+    borderRadius: Radius.sm,
+    backgroundColor: Color.status.blockBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: Color.status.blockBorder,
   },
   entryDeleteBtnText: {
-    color: "#DC2626",
+    fontFamily: Type.sans500,
+    color: Color.status.blockText,
     fontSize: 12,
-    fontWeight: "700",
+    letterSpacing: -0.1,
   },
   emptyHint: {
+    fontFamily: Type.serifItalic,
     fontSize: 13,
-    color: "#BBB",
-    fontStyle: "italic",
+    color: Color.muted,
     marginTop: 4,
   },
   emptyStateCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 24,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   emptyStateText: {
+    fontFamily: Type.sans300,
     fontSize: 14,
-    color: "#999",
+    color: Color.muted,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 21,
+    maxWidth: 320,
   },
   workPreferenceOptions: {
     gap: 8,
@@ -6410,38 +6447,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   workPreferenceOptionSelected: {
-    backgroundColor: "#F9F9F9",
-    borderColor: "#000",
+    backgroundColor: Color.paper,
+    borderColor: Color.ink,
   },
   workPreferenceCheckbox: {
     width: 20,
     height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: "#CCC",
-    backgroundColor: "#FFF",
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: Color.borderStrong,
+    backgroundColor: Color.paper,
     alignItems: "center",
     justifyContent: "center",
   },
   workPreferenceCheckboxSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Color.ink,
+    borderColor: Color.ink,
   },
   workPreferenceText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#666",
+    fontFamily: Type.sans500,
+    fontSize: 14,
+    color: Color.body,
     flex: 1,
   },
   workPreferenceTextSelected: {
-    color: "#000",
-    fontWeight: "700",
+    fontFamily: Type.sans600,
+    color: Color.ink,
   },
   checkboxRow: {
     flexDirection: "row",
@@ -6450,20 +6487,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   checkboxLabel: {
+    fontFamily: Type.sans500,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    color: Color.ink,
   },
 
-  // ── Resume Upload Section ─────────────────────────────────────────────────
+  // ── Resume Upload Section ──
   resumeSection: {
     marginHorizontal: 20,
     marginBottom: 8,
-    backgroundColor: "#FFF",
-    borderRadius: 20,
+    backgroundColor: Color.paper,
+    borderRadius: Radius.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   resumeSectionHeader: {
     flexDirection: "row",
@@ -6477,31 +6514,33 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resumeSectionTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 17,
+    color: Color.ink,
+    letterSpacing: -0.3,
   },
   aiBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 999,
   },
   aiBadgeText: {
-    color: "#FFF",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 10,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   resumeSectionSubtitle: {
+    fontFamily: Type.sans300,
     fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
+    color: Color.body,
     marginBottom: 16,
-    lineHeight: 18,
+    lineHeight: 19,
   },
   resumeStatusRow: {
     flexDirection: "row",
@@ -6510,32 +6549,35 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   resumeStatusText: {
-    fontSize: 12,
-    color: "#000",
-    fontWeight: "700",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.ink,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
   },
   resumeUploadBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: Radius.md,
   },
   resumeUploadBtnText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: Type.sans500,
+    color: Color.paper,
+    fontSize: 14,
+    letterSpacing: -0.1,
   },
   resumeProgressCard: {
     flexDirection: "column",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.offWhite,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   resumeProgressRow: {
     flexDirection: "row",
@@ -6547,19 +6589,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   resumeProgressTitle: {
+    fontFamily: Type.sans600,
     fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   resumeProgressSub: {
+    fontFamily: Type.sans500,
     fontSize: 12,
-    color: "#999",
-    fontWeight: "600",
+    color: Color.muted,
   },
   resumeElapsedText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#BBB",
+    fontFamily: Type.sans500,
+    fontSize: 11,
+    color: Color.faint,
+    letterSpacing: 0.4,
     minWidth: 28,
     textAlign: "right",
   },
@@ -6570,21 +6614,21 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingVertical: 5,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: "#DDD",
-    backgroundColor: "#FFF",
+    borderColor: Color.border,
+    backgroundColor: Color.paper,
   },
   resumeCancelText: {
+    fontFamily: Type.sans500,
     fontSize: 12,
-    fontWeight: "600",
-    color: "#666",
+    color: Color.muted,
   },
   resumeSuccessCard: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderRadius: 14,
+    borderColor: Color.border,
+    borderRadius: Radius.lg,
     padding: 16,
     gap: 10,
   },
@@ -6594,14 +6638,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resumeSuccessTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Type.sans600,
+    fontSize: 14,
+    color: Color.ink,
+    letterSpacing: -0.1,
   },
   resumeSuccessSubtitle: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    color: "#374151",
-    fontWeight: "600",
+    color: Color.body,
   },
   resumeUpdatedFields: {
     flexDirection: "row",
@@ -6609,17 +6654,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   resumeFieldPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   resumeFieldPillText: {
+    fontFamily: Type.sans500,
     fontSize: 11,
-    fontWeight: "700",
-    color: "#000",
+    color: Color.body,
+    letterSpacing: -0.1,
   },
   resumeUploadAgainBtn: {
     flexDirection: "row",
@@ -6629,45 +6675,46 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   resumeUploadAgainText: {
+    fontFamily: Type.sans500,
     fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
+    color: Color.muted,
   },
   resumeErrorCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Color.status.blockBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
-    borderRadius: 14,
+    borderColor: Color.status.blockBorder,
+    borderRadius: Radius.lg,
     padding: 14,
   },
   resumeErrorTitle: {
+    fontFamily: Type.sans600,
     fontSize: 13,
-    fontWeight: "700",
-    color: "#DC2626",
+    color: Color.status.blockText,
     marginBottom: 2,
   },
   resumeErrorSub: {
+    fontFamily: Type.sans500,
     fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
+    color: Color.body,
   },
   resumeRetryBtn: {
-    backgroundColor: "#DC2626",
+    backgroundColor: Color.status.blockText,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: Radius.sm,
   },
   resumeRetryText: {
-    color: "#FFF",
+    fontFamily: Type.sans500,
+    color: Color.paper,
     fontSize: 12,
-    fontWeight: "700",
+    letterSpacing: -0.1,
   },
   resumeDivider: {
     height: 1,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.border,
     marginVertical: 14,
   },
   resumeManualLink: {
@@ -6677,8 +6724,8 @@ const styles = StyleSheet.create({
   },
   resumeManualLinkText: {
     flex: 1,
+    fontFamily: Type.sans500,
     fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
+    color: Color.muted,
   },
 });

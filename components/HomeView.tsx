@@ -71,8 +71,10 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   FadeOut,
+  runOnJS,
   SlideInDown,
   SlideOutDown,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -1013,7 +1015,7 @@ const SkeletonCard = () => {
               width: 96,
               height: 96,
               borderRadius: 48,
-              backgroundColor: "#EBEBEB",
+              backgroundColor: Color.border,
             },
             shimmerStyle,
           ]}
@@ -1022,7 +1024,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#EBEBEB",
+              backgroundColor: Color.border,
               width: "58%",
               height: 26,
               borderRadius: 6,
@@ -1035,7 +1037,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#EBEBEB",
+              backgroundColor: Color.border,
               width: "38%",
               height: 16,
               borderRadius: 4,
@@ -1059,7 +1061,7 @@ const SkeletonCard = () => {
               key={i}
               style={[
                 {
-                  backgroundColor: "#EBEBEB",
+                  backgroundColor: Color.border,
                   width: w,
                   height: 28,
                   borderRadius: 999,
@@ -1073,7 +1075,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Color.surface, marginVertical: 4 }}
       />
 
       {/* ── ABOUT section ────────────────────────────────────────── */}
@@ -1082,7 +1084,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Color.surface,
               width: "28%",
               height: 11,
               borderRadius: 4,
@@ -1095,20 +1097,20 @@ const SkeletonCard = () => {
         <View style={{ gap: 8 }}>
           <Animated.View
             style={[
-              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              { backgroundColor: Color.border, height: 15, borderRadius: 4 },
               shimmerStyle,
             ]}
           />
           <Animated.View
             style={[
-              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              { backgroundColor: Color.border, height: 15, borderRadius: 4 },
               shimmerStyle,
             ]}
           />
           <Animated.View
             style={[
               {
-                backgroundColor: "#EBEBEB",
+                backgroundColor: Color.border,
                 width: "70%",
                 height: 15,
                 borderRadius: 4,
@@ -1121,7 +1123,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Color.surface, marginVertical: 4 }}
       />
 
       {/* ── AT-A-GLANCE stats strip ───────────────────────────────── */}
@@ -1129,7 +1131,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Color.surface,
               width: "38%",
               height: 11,
               borderRadius: 4,
@@ -1142,7 +1144,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: Color.surface,
               borderRadius: 16,
               height: 64,
               overflow: "hidden",
@@ -1154,7 +1156,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Color.surface, marginVertical: 4 }}
       />
 
       {/* ── INSIGHTS section ─────────────────────────────────────── */}
@@ -1162,7 +1164,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Color.surface,
               width: "32%",
               height: 11,
               borderRadius: 4,
@@ -1174,11 +1176,11 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: Color.surface,
               borderRadius: 14,
               height: 80,
               borderWidth: 1,
-              borderColor: "#EFEFEF",
+              borderColor: Color.border,
             },
             shimmerStyle,
           ]}
@@ -1186,11 +1188,11 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: Color.surface,
               borderRadius: 14,
               height: 80,
               borderWidth: 1,
-              borderColor: "#EFEFEF",
+              borderColor: Color.border,
             },
             shimmerStyle,
           ]}
@@ -1199,7 +1201,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Color.surface, marginVertical: 4 }}
       />
 
       {/* ── TOP SKILLS chips ─────────────────────────────────────── */}
@@ -1207,7 +1209,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Color.surface,
               width: "30%",
               height: 11,
               borderRadius: 4,
@@ -1222,7 +1224,7 @@ const SkeletonCard = () => {
               key={i}
               style={[
                 {
-                  backgroundColor: "#EBEBEB",
+                  backgroundColor: Color.border,
                   width: w,
                   height: 30,
                   borderRadius: 999,
@@ -2260,6 +2262,8 @@ export function HomeView({
   // same shared value the nav uses keeps the two glued together frame-for-
   // frame, and the nav's withTiming tween carries the buttons along.
   const FLOATING_NAV_CLEARANCE = 88;
+  const [areFloatingActionsInteractive, setAreFloatingActionsInteractive] =
+    useState(false);
   const floatingActionsAnimatedStyle = useAnimatedStyle(() => {
     const navHidden = Math.min(
       1,
@@ -2269,6 +2273,16 @@ export function HomeView({
       transform: [{ translateY: -FLOATING_NAV_CLEARANCE * (1 - navHidden) }],
     };
   });
+
+  useAnimatedReaction(
+    () => (navTranslateY?.value ?? 0) >= NAV_HIDE_OFFSET * 0.75,
+    (isInteractive, wasInteractive) => {
+      if (isInteractive !== wasInteractive) {
+        runOnJS(setAreFloatingActionsInteractive)(isInteractive);
+      }
+    },
+    [navTranslateY],
+  );
 
   // Reset both chrome shared values whenever HomeView unmounts (user
   // switches tab away from Home) so the bar AND header are visible on
@@ -3769,8 +3783,13 @@ export function HomeView({
                   matches the button stack so the last section isn't
                   hidden under them. */}
               <Animated.View
-                style={[styles.floatingActionsRow, floatingActionsAnimatedStyle]}
-                pointerEvents="box-none"
+                style={[
+                  styles.floatingActionsRow,
+                  floatingActionsAnimatedStyle,
+                ]}
+                pointerEvents={
+                  areFloatingActionsInteractive ? "box-none" : "none"
+                }
               >
                 <TouchableOpacity
                   onPress={() => handleSwipe(false)}
@@ -4486,7 +4505,7 @@ export function HomeView({
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: "#FFF",
+            backgroundColor: Color.paper,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingTop: 12,
@@ -4505,7 +4524,7 @@ export function HomeView({
               width: 40,
               height: 5,
               borderRadius: 3,
-              backgroundColor: "#D1D5DB",
+              backgroundColor: Color.borderStrong,
               alignSelf: "center",
               marginBottom: 20,
             }}
@@ -4529,7 +4548,7 @@ export function HomeView({
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: "#F5F5F5",
+                  backgroundColor: Color.surface,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -4541,7 +4560,7 @@ export function HomeView({
                   style={{
                     fontSize: 22,
                     fontWeight: "800",
-                    color: "#000",
+                    color: Color.ink,
                     letterSpacing: -0.5,
                   }}
                 >
@@ -4551,7 +4570,7 @@ export function HomeView({
                   style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: "#999",
+                    color: Color.muted,
                     marginTop: 2,
                   }}
                 >
@@ -4566,7 +4585,7 @@ export function HomeView({
               style={{
                 width: 36,
                 height: 36,
-                backgroundColor: "#F5F5F5",
+                backgroundColor: Color.surface,
                 borderRadius: 18,
                 alignItems: "center",
                 justifyContent: "center",
@@ -4581,7 +4600,7 @@ export function HomeView({
           <View
             style={{
               height: 1,
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Color.surface,
               marginHorizontal: 28,
               marginVertical: 20,
             }}
@@ -4597,7 +4616,7 @@ export function HomeView({
               style={{
                 fontSize: 16,
                 lineHeight: 26,
-                color: "#444",
+                color: Color.body,
                 fontWeight: "500",
                 letterSpacing: -0.2,
               }}
@@ -4637,7 +4656,7 @@ export function HomeView({
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: "#FFF",
+            backgroundColor: Color.paper,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingTop: 12,
@@ -4655,7 +4674,7 @@ export function HomeView({
               width: 40,
               height: 5,
               borderRadius: 3,
-              backgroundColor: "#D1D5DB",
+              backgroundColor: Color.borderStrong,
               alignSelf: "center",
               marginBottom: 20,
             }}
@@ -4678,7 +4697,7 @@ export function HomeView({
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: "#F5F5F5",
+                  backgroundColor: Color.surface,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -4690,7 +4709,7 @@ export function HomeView({
                   style={{
                     fontSize: 22,
                     fontWeight: "800",
-                    color: "#000",
+                    color: Color.ink,
                     letterSpacing: -0.5,
                   }}
                 >
@@ -4700,7 +4719,7 @@ export function HomeView({
                   style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: "#999",
+                    color: Color.muted,
                     marginTop: 2,
                   }}
                 >
@@ -4715,7 +4734,7 @@ export function HomeView({
               style={{
                 width: 36,
                 height: 36,
-                backgroundColor: "#F5F5F5",
+                backgroundColor: Color.surface,
                 borderRadius: 18,
                 alignItems: "center",
                 justifyContent: "center",
@@ -4729,7 +4748,7 @@ export function HomeView({
           <View
             style={{
               height: 1,
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Color.surface,
               marginHorizontal: 28,
               marginVertical: 20,
             }}
@@ -4744,7 +4763,7 @@ export function HomeView({
               style={{
                 fontSize: 16,
                 lineHeight: 26,
-                color: "#444",
+                color: Color.body,
                 fontWeight: "500",
                 letterSpacing: -0.2,
               }}
@@ -4765,7 +4784,7 @@ export function HomeView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Color.paper },
   safeArea: { flex: 1 },
   scrollContent: { paddingHorizontal: 36, paddingBottom: 100 },
   // 2026-05-26 Hinge-style redesign — layout primitives.
@@ -5574,13 +5593,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
   },
   companyImageSquare: {
     width: 90,
     height: 90,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
   },
   profileInfoColumn: {
     flex: 1,
@@ -5602,11 +5621,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.5,
   },
   sponsorTag: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -5614,13 +5633,13 @@ const styles = StyleSheet.create({
   sponsorTagText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#FFF",
+    color: Color.paper,
     letterSpacing: 0.3,
   },
   sponsorTagMuted: {
-    backgroundColor: "#F2F2F2",
+    backgroundColor: Color.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -5628,7 +5647,7 @@ const styles = StyleSheet.create({
   sponsorTagMutedText: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 0.3,
   },
   profileRoleRow: {
@@ -5639,7 +5658,7 @@ const styles = StyleSheet.create({
   profileRole: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
     flex: 1,
   },
   profileMetaRow: {
@@ -5648,7 +5667,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   companyPill: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
@@ -5656,18 +5675,18 @@ const styles = StyleSheet.create({
   companyPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#FFF",
+    color: Color.paper,
     letterSpacing: 0.3,
   },
   profileLocation: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#999",
+    color: Color.muted,
   },
   profileExperience: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#999",
+    color: Color.muted,
   },
 
   // Content Section
@@ -5682,12 +5701,12 @@ const styles = StyleSheet.create({
   sectionLabelSmall: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 1,
   },
   descriptionText: {
     fontSize: 14,
-    color: "#333",
+    color: Color.body,
     lineHeight: 21,
     fontWeight: "500",
   },
@@ -5701,7 +5720,7 @@ const styles = StyleSheet.create({
   readMoreBtnText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.2,
   },
 
@@ -5872,17 +5891,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   skillChipSmall: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   skillChipSmallText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
   },
 
   // Back Card Insights
@@ -5898,14 +5917,14 @@ const styles = StyleSheet.create({
   insightSectionLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 1,
   },
 
   // Legacy styles (keep for backward compatibility)
   imageWrapperRedesign: {
     height: 180,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     position: "relative",
   },
   imageOverlay: {
@@ -5923,7 +5942,7 @@ const styles = StyleSheet.create({
   nameTextCard: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#FFF",
+    color: Color.paper,
     letterSpacing: -0.5,
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
@@ -5937,7 +5956,7 @@ const styles = StyleSheet.create({
   titleTextCard: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFF",
+    color: Color.paper,
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -5951,7 +5970,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   companyBadge: {
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -5959,14 +5978,14 @@ const styles = StyleSheet.create({
   companyBadgeText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#FFF",
+    color: Color.paper,
     letterSpacing: 0.3,
   },
   locationBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -5974,21 +5993,21 @@ const styles = StyleSheet.create({
   locationBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
   },
 
   // Summary Content
   summaryLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 1.2,
     marginTop: 4,
     marginBottom: 4,
   },
   mentalityText: {
     fontSize: 15,
-    color: "#000",
+    color: Color.ink,
     lineHeight: 22,
     fontStyle: "italic",
     fontWeight: "600",
@@ -5998,11 +6017,11 @@ const styles = StyleSheet.create({
   // Flat block — no shadow. The expanded-details list reads as a clean
   // stack of bordered sections rather than a pile of floating cards.
   detailSection: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
     marginBottom: 12,
   },
   detailSectionHeader: {
@@ -6018,7 +6037,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 13,
     textTransform: "uppercase",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: 0.8,
   },
   detailHeaderRow: {
@@ -6030,12 +6049,12 @@ const styles = StyleSheet.create({
   detailSectionLabel: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: 1,
   },
   detailSectionText: {
     fontSize: 14,
-    color: "#555",
+    color: Color.body,
     lineHeight: 21,
     fontWeight: "500",
   },
@@ -6048,15 +6067,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F5F5F5",
     gap: 14,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Color.offWhite,
   },
   profileImageCompact: {
     width: 72,
     height: 72,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: Color.paper,
   },
   headerTextContainer: {
     flex: 1,
@@ -6066,15 +6085,15 @@ const styles = StyleSheet.create({
   companyTextBold: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
   },
   infoFloatingBtnCompact: {
     alignSelf: "flex-start",
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     padding: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
 
   cardContentExpanded: {
@@ -6093,24 +6112,24 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 1,
   },
   bioTextExpanded: {
     fontSize: 14,
-    color: "#333",
+    color: Color.body,
     lineHeight: 20,
     fontWeight: "500",
   },
   insightPreviewText: {
     fontSize: 13,
-    color: "#555",
+    color: Color.body,
     lineHeight: 19,
     fontStyle: "italic",
   },
   promptPreviewText: {
     fontSize: 13,
-    color: "#444",
+    color: Color.body,
     lineHeight: 19,
     fontStyle: "italic",
   },
@@ -6121,21 +6140,21 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     marginTop: "auto",
   },
   tapForMoreText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 0.5,
   },
 
   // Legacy styles (keep for backward compatibility with other parts)
-  imageWrapper: { height: 220, backgroundColor: "#F9F9F9" },
+  imageWrapper: { height: 220, backgroundColor: Color.paper },
   profileImage: { width: "100%", height: "100%", resizeMode: "cover" },
   infoFloatingBtn: {
     position: "absolute",
@@ -6152,7 +6171,7 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 2,
     letterSpacing: -0.3,
   },
@@ -6162,10 +6181,10 @@ const styles = StyleSheet.create({
     gap: 5,
     marginBottom: 2,
   },
-  metaText: { fontSize: 12, fontWeight: "600", color: "#333" },
-  locationText: { fontSize: 12, color: "#666", fontWeight: "500" },
-  divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 10 },
-  bioText: { fontSize: 15, color: "#444", lineHeight: 22 },
+  metaText: { fontSize: 12, fontWeight: "600", color: Color.body },
+  locationText: { fontSize: 12, color: Color.body, fontWeight: "500" },
+  divider: { height: 1, backgroundColor: Color.surface, marginVertical: 10 },
+  bioText: { fontSize: 15, color: Color.body, lineHeight: 22 },
   expandedDetails: { marginBottom: 32, gap: 14 },
 
   // New Experience Card Styles
@@ -6185,25 +6204,25 @@ const styles = StyleSheet.create({
   experienceTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     flex: 1,
     letterSpacing: -0.3,
   },
   experienceDates: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
     letterSpacing: 0.2,
   },
   experienceCompany: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
     marginBottom: 8,
   },
   experienceDescription: {
     fontSize: 13,
-    color: "#555",
+    color: Color.body,
     lineHeight: 19,
   },
 
@@ -6217,14 +6236,14 @@ const styles = StyleSheet.create({
   educationDegree: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 4,
     letterSpacing: -0.2,
   },
   educationSchool: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
     marginBottom: 6,
   },
   educationFooter: {
@@ -6235,12 +6254,12 @@ const styles = StyleSheet.create({
   educationYear: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: Color.body,
   },
   educationGpa: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Color.body,
   },
 
   // Certifications Grid
@@ -6250,12 +6269,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   certificationBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
     minWidth: "48%",
     flexGrow: 1,
     maxWidth: "100%",
@@ -6263,13 +6282,13 @@ const styles = StyleSheet.create({
   certificationName: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 3,
   },
   certificationDetails: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#666",
+    color: Color.body,
   },
 
   // Languages Grid
@@ -6279,12 +6298,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   languageBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -6292,50 +6311,50 @@ const styles = StyleSheet.create({
   languageName: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
   },
   languageProficiency: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#999",
+    color: Color.muted,
   },
 
   // Achievements Text
   achievementsText: {
     fontSize: 14,
-    color: "#555",
+    color: Color.body,
     lineHeight: 21,
   },
 
   // Job Detail Card (for expanded job details)
   jobDetailCard: {
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Color.offWhite,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   jobDetailText: {
     fontSize: 14,
-    color: "#555",
+    color: Color.body,
     lineHeight: 21,
   },
 
   detailItem: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   detailTitle: {
     fontWeight: "800",
     fontSize: 12,
     textTransform: "uppercase",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: 0.5,
   },
-  detailBody: { color: "#555", fontSize: 14, lineHeight: 20 },
+  detailBody: { color: Color.body, fontSize: 14, lineHeight: 20 },
   bottomNav: {
     flexDirection: "row",
     alignItems: "center",
@@ -6346,20 +6365,20 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Color.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconBtnActive: { backgroundColor: "#000", borderColor: "#000" },
+  iconBtnActive: { backgroundColor: Color.ink, borderColor: Color.ink },
   // Primary CTA — a gentle, diffuse lift rather than a hard drop shadow,
   // so it reads as "the main action" without clashing with the now-flat
   // detail sections.
   primaryActionBtn: {
     flex: 1,
     height: 56,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     borderRadius: 28,
     flexDirection: "row",
     alignItems: "center",
@@ -6372,7 +6391,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   primaryActionLabel: {
-    color: "#FFF",
+    color: Color.paper,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.4,
@@ -6384,18 +6403,18 @@ const styles = StyleSheet.create({
   backTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.5,
   },
 
   // Redesigned Prompt Cards
   promptCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: Color.border,
   },
   promptIconRow: {
     flexDirection: "row",
@@ -6407,17 +6426,17 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Color.surface,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   promptQuestion: {
     flex: 1,
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: Color.body,
     letterSpacing: 1,
     textTransform: "uppercase",
     lineHeight: 14,
@@ -6425,7 +6444,7 @@ const styles = StyleSheet.create({
   promptAnswer: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+    color: Color.ink,
     lineHeight: 24,
     letterSpacing: -0.2,
   },
@@ -6445,19 +6464,19 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#EEE",
+    backgroundColor: Color.border,
   },
   applicantBackIdentityText: { flex: 1, gap: 2 },
   applicantBackName: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.4,
   },
   applicantBackRole: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: Color.body,
   },
   applicantBackLocationRow: {
     flexDirection: "row",
@@ -6467,16 +6486,16 @@ const styles = StyleSheet.create({
   },
   applicantBackLocationText: {
     fontSize: 12,
-    color: "#999",
+    color: Color.muted,
     fontWeight: "500",
   },
 
   applicantBackStatsRow: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     paddingVertical: 14,
     marginBottom: 24,
   },
@@ -6492,13 +6511,13 @@ const styles = StyleSheet.create({
   applicantBackStatValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.4,
   },
   applicantBackStatLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 1,
     textTransform: "uppercase",
     marginTop: 2,
@@ -6514,7 +6533,7 @@ const styles = StyleSheet.create({
   applicantBackSectionLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: 1.4,
   },
 
@@ -6525,7 +6544,7 @@ const styles = StyleSheet.create({
   },
   applicantBackLoadingText: {
     fontSize: 12,
-    color: "#999",
+    color: Color.muted,
     fontWeight: "500",
   },
   applicantBackEmptyWrap: {
@@ -6537,12 +6556,12 @@ const styles = StyleSheet.create({
   applicantBackEmptyTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginTop: 4,
   },
   applicantBackEmptyBody: {
     fontSize: 12,
-    color: "#C0C0C0",
+    color: Color.faint,
     textAlign: "center",
     lineHeight: 18,
     marginTop: 4,
@@ -6552,16 +6571,16 @@ const styles = StyleSheet.create({
   // Insight (prompt) cards — quote-bar style
   insightQuoteCard: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     overflow: "hidden",
     marginBottom: 10,
   },
   insightQuoteAccent: {
     width: 3,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
   },
   insightQuoteContent: {
     flex: 1,
@@ -6572,14 +6591,14 @@ const styles = StyleSheet.create({
   insightQuoteQuestion: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   insightQuoteAnswer: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: Color.ink,
     lineHeight: 20,
     letterSpacing: -0.2,
   },
@@ -6598,12 +6617,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
   },
   timelineLine: {
     flex: 1,
     width: 2,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Color.border,
     marginTop: 4,
     marginBottom: -4,
   },
@@ -6615,27 +6634,27 @@ const styles = StyleSheet.create({
   timelineRole: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.2,
   },
   timelineCompany: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: Color.body,
   },
   timelineDates: {
     fontSize: 11,
-    color: "#999",
+    color: Color.muted,
     fontWeight: "500",
     marginTop: 2,
   },
 
   // Education (back-of-card)
   eduBackCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 8,
@@ -6644,34 +6663,34 @@ const styles = StyleSheet.create({
   eduBackSchool: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.2,
   },
   eduBackDegree: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#444",
+    color: Color.body,
   },
   eduBackYear: {
     fontSize: 11,
-    color: "#999",
+    color: Color.muted,
     fontWeight: "500",
     marginTop: 2,
   },
 
   // Achievements (back-of-card)
   achievementsBackCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
   achievementsBackText: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#222",
+    color: Color.ink,
     lineHeight: 20,
   },
 
@@ -6685,9 +6704,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -6695,12 +6714,12 @@ const styles = StyleSheet.create({
   languagePillName: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
   },
   languagePillProf: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#999",
+    color: Color.muted,
   },
 
   insightSection: { marginBottom: 24 },
@@ -6715,12 +6734,12 @@ const styles = StyleSheet.create({
   insightsHeaderLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#EEE",
+    backgroundColor: Color.border,
   },
   insightsHeaderCentered: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: 1.6,
   },
   // Expand affordance under the insights preview — mirrors the front
@@ -6735,7 +6754,7 @@ const styles = StyleSheet.create({
   insightsExpandHintText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.2,
   },
   // Sub-label inside the INSIGHTS section (DAY-TO-DAY, TEAM CULTURE…) —
@@ -6743,7 +6762,7 @@ const styles = StyleSheet.create({
   insightLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#999",
+    color: Color.muted,
     marginBottom: 8,
     letterSpacing: 0.8,
     textTransform: "uppercase",
@@ -6754,7 +6773,7 @@ const styles = StyleSheet.create({
   insightContent: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#333",
+    color: Color.body,
     lineHeight: 21,
   },
 
@@ -6769,7 +6788,7 @@ const styles = StyleSheet.create({
   promptContent: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#444",
+    color: Color.body,
     fontStyle: "italic",
     lineHeight: 24,
   },
@@ -6783,7 +6802,7 @@ const styles = StyleSheet.create({
   },
   celebrationCard: {
     width: "100%",
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     padding: 40,
     borderRadius: 32,
     alignItems: "center",
@@ -6797,15 +6816,15 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
-  celebrationTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  celebrationTitle: { fontSize: 24, fontWeight: "800", color: Color.ink },
   celebrationSub: {
     fontSize: 16,
-    color: "#666",
+    color: Color.body,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
@@ -6877,7 +6896,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   secondaryBtn: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 30,
@@ -6886,10 +6905,10 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: Color.border,
   },
   secondaryBtnText: {
-    color: "#000",
+    color: Color.ink,
     fontWeight: "700",
     fontSize: 15,
   },
@@ -7029,7 +7048,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#0F0F11",
+    backgroundColor: Color.ink,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
@@ -7039,10 +7058,10 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
   },
   livePillText: {
-    color: "#FFF",
+    color: Color.paper,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.2,
@@ -7059,9 +7078,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: Color.paper,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: Color.border,
     marginBottom: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -7072,13 +7091,13 @@ const styles = StyleSheet.create({
   sponsorWaitingJobTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     letterSpacing: -0.2,
   },
   sponsorWaitingJobCompany: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: Color.body,
     marginTop: 3,
   },
 
@@ -7089,22 +7108,22 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 11,
     paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Color.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Color.border,
   },
   checkInBannerDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#000",
+    backgroundColor: Color.ink,
   },
   checkInBannerText: {
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: Color.body,
   },
   sponsorHeader: {
     flexDirection: "row",
@@ -7118,28 +7137,28 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
   },
   sponsorName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 2,
   },
-  sponsorRole: { fontSize: 13, color: "#666", marginBottom: 2 },
-  sponsorYears: { fontSize: 12, color: "#999", marginLeft: 4 },
+  sponsorRole: { fontSize: 13, color: Color.body, marginBottom: 2 },
+  sponsorYears: { fontSize: 12, color: Color.muted, marginLeft: 4 },
   canReferBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: Color.status.okBg,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     alignSelf: "flex-start",
     marginTop: 12,
   },
-  canReferText: { fontSize: 12, fontWeight: "700", color: "#00CB54" },
+  canReferText: { fontSize: 12, fontWeight: "700", color: Color.status.okText },
   sponsorNameRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -7150,7 +7169,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#E8FBEF",
+    backgroundColor: Color.status.okBg,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -7158,7 +7177,7 @@ const styles = StyleSheet.create({
   canReferTagText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#00CB54",
+    color: Color.status.okText,
     letterSpacing: 0.2,
   },
   insightBlock: {},
@@ -7166,16 +7185,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 24,
     paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Color.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: Color.border,
   },
   insightsEmptyIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -7183,28 +7202,28 @@ const styles = StyleSheet.create({
   insightsEmptyTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 4,
     textAlign: "center",
   },
   insightsEmptySubtext: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#888",
+    color: Color.muted,
     textAlign: "center",
     lineHeight: 18,
     maxWidth: 260,
   },
   skillBadge: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  skillBadgeText: { fontSize: 12, fontWeight: "700", color: Color.ink },
   benefitsList: { gap: 10, marginTop: 8 },
   benefitRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  benefitText: { fontSize: 14, color: "#555", flex: 1 },
+  benefitText: { fontSize: 14, color: Color.body, flex: 1 },
 
   // JOB CARD SPECIFIC STYLES
   jobCardContent: { padding: 24, paddingTop: 28 },
@@ -7218,32 +7237,32 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 10,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   companyDetails: { flex: 1 },
-  companyName: { fontSize: 16, fontWeight: "700", color: "#000" },
+  companyName: { fontSize: 16, fontWeight: "700", color: Color.ink },
   jobTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     lineHeight: 30,
     marginBottom: 16,
   },
   jobMetaList: { gap: 8, marginBottom: 10 },
   jobMetaLine: { flexDirection: "row", alignItems: "center", gap: 8 },
-  jobMetaLineText: { fontSize: 14, color: "#666", fontWeight: "500" },
+  jobMetaLineText: { fontSize: 14, color: Color.body, fontWeight: "500" },
   infoFloatingBtnSmall: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     padding: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   jobDescription: {
     fontSize: 15,
-    color: "#444",
+    color: Color.body,
     lineHeight: 22,
     marginBottom: 18,
   },
@@ -7251,49 +7270,49 @@ const styles = StyleSheet.create({
   skillsPreviewLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: Color.muted,
     marginBottom: 10,
     letterSpacing: 1,
   },
   skillChip: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Color.surface,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
-  skillChipMore: { backgroundColor: "#000", borderColor: "#000" },
-  skillChipText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  skillChipTextWhite: { color: "#FFF" },
+  skillChipMore: { backgroundColor: Color.ink, borderColor: Color.ink },
+  skillChipText: { fontSize: 12, fontWeight: "700", color: Color.ink },
+  skillChipTextWhite: { color: Color.paper },
 
   // Non-Sponsored Back Design
   companyLogoLarge: {
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Color.border,
   },
   companyDescriptionSection: { marginBottom: 20 },
   companyDescriptionText: {
     fontSize: 15,
-    color: "#444",
+    color: Color.body,
     lineHeight: 24,
     fontWeight: "500",
   },
   insightsHeader: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 16,
     letterSpacing: 0.3,
   },
   insightContentSmall: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#555",
+    color: Color.body,
     lineHeight: 20,
   },
   noSponsorBanner: {
@@ -7302,21 +7321,21 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 24,
     padding: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Color.paper,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Color.border,
   },
   noSponsorText: {
     fontSize: 13,
-    color: "#666",
+    color: Color.body,
     fontWeight: "500",
     flex: 1,
     lineHeight: 18,
   },
   emptyStateDivider: {
     height: 1,
-    backgroundColor: "#EEE",
+    backgroundColor: Color.border,
     alignSelf: "stretch",
     marginVertical: 24,
   },
@@ -7329,7 +7348,7 @@ const styles = StyleSheet.create({
   backKicker: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#999",
+    color: Color.muted,
     letterSpacing: 1.4,
     textAlign: "center",
     marginBottom: 18,
@@ -7349,7 +7368,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
@@ -7357,7 +7376,7 @@ const styles = StyleSheet.create({
   noSponsorHeadline: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Color.ink,
     marginBottom: 6,
     textAlign: "center",
     letterSpacing: -0.2,
@@ -7365,7 +7384,7 @@ const styles = StyleSheet.create({
   noSponsorSubtext: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#777",
+    color: Color.muted,
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
@@ -7511,17 +7530,17 @@ const styles = StyleSheet.create({
   },
   requirementsSummaryBlock: {
     marginTop: 12,
-    backgroundColor: "#F6F6F6",
+    backgroundColor: Color.surface,
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: Color.border,
   },
   roleDetailChip: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 5,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Color.surface,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -7530,7 +7549,7 @@ const styles = StyleSheet.create({
   },
   roleDetailChipText: {
     fontSize: 13,
-    color: "#000",
+    color: Color.ink,
     fontWeight: "500" as const,
   },
 
