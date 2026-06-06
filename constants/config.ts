@@ -16,7 +16,7 @@
  *   gated features will be enforced. Set to true when you are ready to test
  *   or ship paid subscriptions.
  */
-export const PREMIUM_ENABLED = true;
+export const PREMIUM_ENABLED = false;
 
 // ─── RevenueCat ───────────────────────────────────────────────────────────────
 //

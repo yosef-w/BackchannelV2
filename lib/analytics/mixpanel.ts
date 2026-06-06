@@ -29,7 +29,15 @@ const MIXPANEL_TOKEN = process.env.EXPO_PUBLIC_MIXPANEL_TOKEN ?? "";
 // `trackAutomaticEvents = false` — we drive every event explicitly. Mixpanel's
 // automatic events (App Open, Session, etc.) overlap with our own taxonomy and
 // add noise without value.
-const mixpanel = new Mixpanel(MIXPANEL_TOKEN, false);
+//
+// The constructor is guarded against a missing/empty token because the native
+// Mixpanel iOS SDK throws NSInvalidArgumentException when handed one, which
+// surfaces as a TurboModule crash at app launch (the JS bundle evaluates this
+// file before any UI mounts). When the token is missing every helper below
+// short-circuits via the `initialized` guard, so analytics simply no-ops.
+const mixpanel: Mixpanel | null = MIXPANEL_TOKEN
+  ? new Mixpanel(MIXPANEL_TOKEN, false)
+  : null;
 
 let initialized = false;
 let initPromise: Promise<void> | null = null;
@@ -40,6 +48,7 @@ let initPromise: Promise<void> | null = null;
  */
 export async function initAnalytics(): Promise<void> {
   if (initialized) return;
+  if (!mixpanel) return;
   if (initPromise) return initPromise;
   initPromise = (async () => {
     try {
@@ -90,7 +99,7 @@ interface IdentifyArgs {
 export async function identifyUser(args: IdentifyArgs): Promise<void> {
   currentUserType = args.userType;
   if (!initialized) await initAnalytics();
-  if (!initialized) return;
+  if (!initialized || !mixpanel) return;
   try {
     await mixpanel.identify(args.userId);
     const props: Record<string, any> = {
@@ -131,7 +140,7 @@ export async function identifyUser(args: IdentifyArgs): Promise<void> {
  */
 export async function resetUser(): Promise<void> {
   currentUserType = "unknown";
-  if (!initialized) return;
+  if (!initialized || !mixpanel) return;
   try {
     await mixpanel.reset();
   } catch (err) {
@@ -147,7 +156,7 @@ export async function resetUser(): Promise<void> {
 export function setUserProperties(
   props: Partial<Omit<IdentifyArgs, "userId">>,
 ): void {
-  if (!initialized) return;
+  if (!initialized || !mixpanel) return;
   try {
     if (props.userType) {
       currentUserType = props.userType;
@@ -179,7 +188,7 @@ export function setUserProperties(
 type EventProps = Record<string, string | number | boolean | null | undefined>;
 
 function safeTrack(event: string, properties?: EventProps): void {
-  if (!initialized) return;
+  if (!initialized || !mixpanel) return;
   try {
     const cleaned: Record<string, string | number | boolean | null> = {
       user_type: currentUserType,
