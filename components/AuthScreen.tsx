@@ -1,16 +1,14 @@
+import { Button, HeroBackdrop, Screen, Text } from "@/components/design";
+import { tokens } from "@/constants/theme";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
-    Text,
     TextInput,
     TouchableOpacity,
     View,
@@ -31,8 +29,6 @@ import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 interface AuthScreenProps {
   onComplete: () => void;
   onLoginComplete?: () => void; // Separate handler for login to skip questionnaire
@@ -41,6 +37,65 @@ interface AuthScreenProps {
   userType?: "applicant" | "sponsor";
   /** Whether to start on the sign-in (true) or sign-up (false) tab. Defaults to true. */
   initialIsLogin?: boolean;
+}
+
+interface FieldProps {
+  label: string;
+  icon: React.ReactNode;
+  placeholder: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: "default" | "email-address";
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  trailing?: React.ReactNode;
+}
+
+/**
+ * Editorial-style auth field. Eyebrow label + off-white pill input with a
+ * leading icon and optional trailing slot (used for the show/hide password
+ * toggle). Tightens its border on focus, matching the website modal-input.
+ */
+function Field({
+  label,
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  secureTextEntry,
+  keyboardType = "default",
+  autoCapitalize = "sentences",
+  trailing,
+}: FieldProps) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View>
+      <Text variant="eyebrow" style={styles.fieldLabel}>
+        {label}
+      </Text>
+      <View
+        style={[
+          styles.fieldRow,
+          focused && { borderColor: tokens.colors.borderStrong },
+        ]}
+      >
+        <View style={styles.fieldIcon}>{icon}</View>
+        <TextInput
+          placeholder={placeholder}
+          placeholderTextColor={tokens.colors.textFaint}
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          style={styles.fieldInput}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+        {trailing ? <View style={styles.fieldTrailing}>{trailing}</View> : null}
+      </View>
+    </View>
+  );
 }
 
 export function AuthScreen({
@@ -84,16 +139,15 @@ export function AuthScreen({
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
 
+  // Silence the lint warning for setUserType which we keep imported in case a
+  // future flow needs to override it from here.
+  void setUserType;
+
   const loginMutation = useMutation<LoginResponse, Error>({
-    mutationFn: async () => {
-      return authApi.login(email, password);
-    },
+    mutationFn: async () => authApi.login(email, password),
     onSuccess: async (data) => {
-      // Store real tokens + role from backend (PR #19)
       await setAuthTokens(data.access_token, data.refresh_token, data.role);
 
-      // Backend doesn't return profile info in login response
-      // Just store the email, profile data will be loaded from cache or fetched later
       updatePersonal({
         email: data.email,
         firstName: "",
@@ -109,10 +163,6 @@ export function AuthScreen({
         },
       });
 
-      // Identify the user for the rest of their session, and stamp basic
-      // profile attributes onto the People record. Other profile fields will
-      // be filled in by `setUserProperties()` once the profile fetch
-      // completes elsewhere — keep this lean.
       const role: "applicant" | "sponsor" =
         data.role === "Sponsor" ? "sponsor" : "applicant";
       identifyUser({
@@ -121,13 +171,10 @@ export function AuthScreen({
         email: data.email,
       });
       trackLoginSucceeded(role);
-      // Link this backend user ID to their RevenueCat customer record so
-      // purchases can be restored across devices / reinstalls.
       rcIdentifyUser(String(data.user_id));
 
       showToast("Welcome back!", "success");
 
-      // Use onLoginComplete if provided (skips questionnaire), otherwise onComplete
       if (onLoginComplete) {
         onLoginComplete();
       } else {
@@ -144,9 +191,7 @@ export function AuthScreen({
   });
 
   const forgotPasswordMutation = useMutation<{ message: string }, Error>({
-    mutationFn: async () => {
-      return authApi.forgotPassword(forgotPasswordEmail);
-    },
+    mutationFn: async () => authApi.forgotPassword(forgotPasswordEmail),
     onSuccess: () => {
       setForgotPasswordSent(true);
       showToast("Password reset email sent. Check your inbox.", "success");
@@ -169,7 +214,6 @@ export function AuthScreen({
       trackLoginSubmitted();
       loginMutation.mutate();
     } else {
-      // Validate all registration fields before proceeding
       if (!firstName.trim()) {
         showToast("Please enter your first name.", "error");
         return;
@@ -194,8 +238,6 @@ export function AuthScreen({
         password,
       };
 
-      // Save to the correct store slice — default to applicant if userType is
-      // somehow still null (belt-and-suspenders after the onboarding.tsx useEffect fix).
       if (userType === "sponsor") {
         updateSponsorData(authData);
       } else {
@@ -232,487 +274,377 @@ export function AuthScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <Screen background="paper">
       <StatusBar barStyle="dark-content" />
-      <SafeAreaView style={styles.safeArea}>
-        {/* Navigation */}
-        <View style={styles.topNav}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <ArrowLeft color="#000" size={24} />
-          </TouchableOpacity>
-        </View>
+      <HeroBackdrop />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.keyboardView}
+      {/* Top nav row */}
+      <View style={styles.topNav}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.backButton}
+          hitSlop={12}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+          <ArrowLeft color={tokens.colors.textMuted} size={20} />
+          <Text variant="bodySmall" color={tokens.colors.textMuted}>
+            Back
+          </Text>
+        </TouchableOpacity>
+        <Text variant="eyebrow" color={tokens.colors.textFaint}>
+          {isLogin ? "Sign in" : "Sign up"}
+        </Text>
+      </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View
+            entering={FadeInDown.duration(500)}
+            style={styles.content}
           >
-            <Animated.View
-              entering={FadeInDown.duration(600)}
-              style={styles.content}
-            >
-              {/* Header */}
-              <View style={styles.header}>
-                <Text style={styles.title}>
-                  {isLogin ? "Welcome back" : "Create your account"}
-                </Text>
-                <Text style={styles.subtitle}>
-                  {isLogin
-                    ? "Sign in to continue"
-                    : "Join the professional referral network"}
-                </Text>
-              </View>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.line} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.line} />
-              </View>
-
-              {/* Form */}
-              <View style={styles.form}>
-                {!isLogin && (
-                  <>
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>First Name</Text>
-                      <View style={styles.inputWrapper}>
-                        <User color="#AAA" size={18} style={styles.inputIcon} />
-                        <TextInput
-                          placeholder="First Name"
-                          placeholderTextColor="#BBB"
-                          value={firstName}
-                          onChangeText={setFirstName}
-                          style={styles.input}
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Last Name</Text>
-                      <View style={styles.inputWrapper}>
-                        <User color="#AAA" size={18} style={styles.inputIcon} />
-                        <TextInput
-                          placeholder="Last Name"
-                          placeholderTextColor="#BBB"
-                          value={lastName}
-                          onChangeText={setLastName}
-                          style={styles.input}
-                        />
-                      </View>
-                    </View>
-                  </>
-                )}
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email Address</Text>
-                  <View style={styles.inputWrapper}>
-                    <Mail color="#AAA" size={18} style={styles.inputIcon} />
-                    <TextInput
-                      placeholder="Email"
-                      placeholderTextColor="#BBB"
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      style={styles.input}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
-                  <View style={styles.inputWrapper}>
-                    <Lock color="#AAA" size={18} style={styles.inputIcon} />
-                    <TextInput
-                      placeholder="Password"
-                      placeholderTextColor="#BBB"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      style={styles.input}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword((v) => !v)}
-                      style={styles.eyeBtn}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      {showPassword ? (
-                        <EyeOff color="#AAA" size={18} />
-                      ) : (
-                        <Eye color="#AAA" size={18} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {isLogin && (
-                  <TouchableOpacity
-                    onPress={handleForgotPassword}
-                    style={styles.forgotBtn}
-                  >
-                    <Text style={styles.forgotText}>Forgot password?</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                  onPress={handleSubmit}
-                  activeOpacity={0.8}
-                  disabled={loginMutation.isPending}
-                  style={[
-                    styles.submitButton,
-                    loginMutation.isPending && { opacity: 0.7 },
-                  ]}
-                >
-                  {loginMutation.isPending && isLogin ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>
-                      {isLogin ? "Sign In" : "Get Started"}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Toggle Mode */}
-              <TouchableOpacity
-                onPress={() => setIsLogin(!isLogin)}
-                style={styles.toggleBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.toggleText}>
-                  {isLogin
-                    ? "New to BackChannel? "
-                    : "Already have an account? "}
-                  <Text style={styles.toggleHighlight}>
-                    {isLogin ? "Sign up" : "Sign in"}
-                  </Text>
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-
-        {showForgotPasswordModal && (
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={handleCloseForgotPasswordModal}
-            />
-            <Animated.View
-              entering={FadeInDown.duration(300)}
-              style={styles.modalContent}
-            >
-              {!forgotPasswordSent ? (
+            {/* Header */}
+            <View style={styles.header}>
+              <Text variant="eyebrow" style={styles.headerEyebrow}>
+                {isLogin ? "Welcome back" : "Join the network"}
+              </Text>
+              {isLogin ? (
                 <>
-                  <Text style={styles.modalTitle}>Reset Password</Text>
-                  <Text style={styles.modalSubtitle}>
-                    Enter your email and we'll send you a link to reset your
-                    password.
-                  </Text>
-
-                  <View style={styles.modalInputWrapper}>
-                    <Mail color="#AAA" size={18} style={styles.inputIcon} />
-                    <TextInput
-                      placeholder="Email Address"
-                      placeholderTextColor="#BBB"
-                      value={forgotPasswordEmail}
-                      onChangeText={setForgotPasswordEmail}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      style={styles.input}
-                    />
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={handleSendResetEmail}
-                    disabled={forgotPasswordMutation.isPending}
-                    style={[
-                      styles.modalButton,
-                      forgotPasswordMutation.isPending && { opacity: 0.7 },
-                    ]}
-                  >
-                    {forgotPasswordMutation.isPending ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <Text style={styles.modalButtonText}>
-                        Send Reset Link
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleCloseForgotPasswordModal}
-                    style={styles.modalCancelBtn}
-                  >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
-                  </TouchableOpacity>
+                  <Text variant="titleSerif">Sign in to</Text>
+                  <Text variant="titleSerifItalic">BackChannel.</Text>
                 </>
               ) : (
                 <>
-                  <View style={styles.successIconWrapper}>
-                    <Mail color="#000" size={32} />
-                  </View>
-                  <Text style={styles.modalTitle}>Check Your Email</Text>
-                  <Text style={styles.modalSubtitle}>
-                    We've sent a password reset link to{"\n"}
-                    <Text style={styles.emailHighlight}>
-                      {forgotPasswordEmail}
-                    </Text>
-                  </Text>
-
-                  <TouchableOpacity
-                    onPress={handleCloseForgotPasswordModal}
-                    style={styles.modalButton}
-                  >
-                    <Text style={styles.modalButtonText}>Got It</Text>
-                  </TouchableOpacity>
+                  <Text variant="titleSerif">Create your</Text>
+                  <Text variant="titleSerifItalic">account.</Text>
                 </>
               )}
-            </Animated.View>
-          </View>
-        )}
-      </SafeAreaView>
-    </View>
+              <Text variant="body" style={styles.subtitle}>
+                {isLogin
+                  ? "Pick up right where you left off."
+                  : "A quieter, warmer way to find your next role — one referral at a time."}
+              </Text>
+            </View>
+
+            {/* Form */}
+            <View style={styles.form}>
+              {!isLogin && (
+                <>
+                  <Field
+                    label="First name"
+                    icon={<User size={16} color={tokens.colors.textFaint} />}
+                    placeholder="First name"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    autoCapitalize="words"
+                  />
+                  <Field
+                    label="Last name"
+                    icon={<User size={16} color={tokens.colors.textFaint} />}
+                    placeholder="Last name"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                  />
+                </>
+              )}
+
+              <Field
+                label="Email"
+                icon={<Mail size={16} color={tokens.colors.textFaint} />}
+                placeholder="you@work.com"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Field
+                label="Password"
+                icon={<Lock size={16} color={tokens.colors.textFaint} />}
+                placeholder={isLogin ? "Your password" : "8+ characters"}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                trailing={
+                  <TouchableOpacity
+                    onPress={() => setShowPassword((v) => !v)}
+                    hitSlop={10}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={16} color={tokens.colors.textFaint} />
+                    ) : (
+                      <Eye size={16} color={tokens.colors.textFaint} />
+                    )}
+                  </TouchableOpacity>
+                }
+              />
+
+              {isLogin && (
+                <TouchableOpacity
+                  onPress={handleForgotPassword}
+                  style={styles.forgotBtn}
+                >
+                  <Text variant="bodySmall" color={tokens.colors.textMuted}>
+                    Forgot password?
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.submitWrap}>
+                <Button
+                  label={isLogin ? "Sign in" : "Get started"}
+                  onPress={handleSubmit}
+                  loading={loginMutation.isPending && isLogin}
+                  disabled={loginMutation.isPending && isLogin}
+                  block
+                  size="lg"
+                />
+              </View>
+            </View>
+
+            {/* Toggle Mode */}
+            <TouchableOpacity
+              onPress={() => setIsLogin(!isLogin)}
+              style={styles.toggleBtn}
+              activeOpacity={0.7}
+            >
+              <Text variant="bodySmall" color={tokens.colors.textMuted}>
+                {isLogin
+                  ? "New to BackChannel? "
+                  : "Already have an account? "}
+                <Text
+                  variant="bodySmall"
+                  color={tokens.colors.text}
+                  style={styles.toggleHighlight}
+                >
+                  {isLogin ? "Sign up" : "Sign in"}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {showForgotPasswordModal && (
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={handleCloseForgotPasswordModal}
+          />
+          <Animated.View
+            entering={FadeInDown.duration(280)}
+            style={styles.modal}
+          >
+            {!forgotPasswordSent ? (
+              <>
+                <Text variant="eyebrow" style={styles.modalEyebrow}>
+                  Reset password
+                </Text>
+                <Text variant="titleSerif" style={styles.modalTitle}>
+                  Forgot your
+                </Text>
+                <Text variant="titleSerifItalic" style={styles.modalTitle}>
+                  password?
+                </Text>
+                <Text variant="bodySmall" style={styles.modalSubtitle}>
+                  Drop your email and we'll send a reset link.
+                </Text>
+
+                <View style={styles.modalField}>
+                  <Field
+                    label="Email"
+                    icon={<Mail size={16} color={tokens.colors.textFaint} />}
+                    placeholder="you@work.com"
+                    value={forgotPasswordEmail}
+                    onChangeText={setForgotPasswordEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <Button
+                  label="Send reset link"
+                  onPress={handleSendResetEmail}
+                  loading={forgotPasswordMutation.isPending}
+                  disabled={forgotPasswordMutation.isPending}
+                  block
+                  size="md"
+                />
+                <View style={styles.modalCancel}>
+                  <Button
+                    label="Cancel"
+                    onPress={handleCloseForgotPasswordModal}
+                    variant="ghost"
+                    block
+                    size="md"
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.successIcon}>
+                  <Mail size={26} color={tokens.colors.text} />
+                </View>
+                <Text variant="eyebrow" style={styles.modalEyebrow}>
+                  Check your inbox
+                </Text>
+                <Text variant="titleSerif" style={styles.modalTitle}>
+                  You're all
+                </Text>
+                <Text variant="titleSerifItalic" style={styles.modalTitle}>
+                  set.
+                </Text>
+                <Text variant="bodySmall" style={styles.modalSubtitle}>
+                  We've sent a reset link to{"\n"}
+                  <Text variant="bodySmall" color={tokens.colors.text}>
+                    {forgotPasswordEmail}
+                  </Text>
+                </Text>
+                <Button
+                  label="Got it"
+                  onPress={handleCloseForgotPasswordModal}
+                  block
+                  size="md"
+                />
+              </>
+            )}
+          </Animated.View>
+        </View>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  safeArea: {
-    flex: 1,
-  },
   topNav: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    height: 56,
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: tokens.borders.hairline,
+    borderBottomColor: tokens.colors.border,
   },
   backButton: {
-    padding: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 28,
-    paddingBottom: 30,
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    paddingBottom: tokens.spacing.xl,
   },
   content: {
     flex: 1,
-    justifyContent: "center",
+    paddingTop: tokens.spacing.xl,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: tokens.spacing.xl,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
+  headerEyebrow: {
+    marginBottom: tokens.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 8,
-  },
-  socialButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 56,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    gap: 12,
-    marginBottom: 20,
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#F0F0F0",
-  },
-  dividerText: {
-    paddingHorizontal: 16,
-    fontSize: 13,
-    color: "#BBB",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    fontWeight: "600",
+    marginTop: tokens.spacing.sm,
+    maxWidth: 360,
   },
   form: {
-    gap: 16,
+    gap: tokens.spacing.m,
   },
-  inputGroup: {},
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
-    marginLeft: 4,
+  fieldLabel: {
+    marginBottom: tokens.spacing.s,
   },
-  inputWrapper: {
+  fieldRow: {
     flexDirection: "row",
     alignItems: "center",
-    height: 56,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    height: 52,
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderRadius: tokens.radii.m,
+    paddingHorizontal: tokens.spacing.m,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
   },
-  inputIcon: {
-    marginRight: 12,
+  fieldIcon: {
+    marginRight: tokens.spacing.sm,
   },
-  input: {
+  fieldInput: {
     flex: 1,
-    fontSize: 16,
-    color: "#000",
-    fontWeight: "500",
+    fontSize: 15,
+    color: tokens.colors.text,
+    fontFamily: tokens.fontFamilies.sans500,
+  },
+  fieldTrailing: {
+    marginLeft: tokens.spacing.s,
   },
   forgotBtn: {
     alignSelf: "flex-end",
-    marginTop: -8,
+    marginTop: -tokens.spacing.xs,
   },
-  eyeBtn: {
-    marginLeft: 8,
-  },
-  forgotText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  submitButton: {
-    backgroundColor: "#000",
-    height: 60,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  submitButtonText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontWeight: "700",
+  submitWrap: {
+    marginTop: tokens.spacing.s,
   },
   toggleBtn: {
-    marginTop: 24,
+    marginTop: tokens.spacing.xl,
     alignItems: "center",
   },
-  toggleText: {
-    fontSize: 15,
-    color: "#666",
-  },
   toggleHighlight: {
-    color: "#000",
-    fontWeight: "700",
+    fontFamily: tokens.fontFamilies.sans600,
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(10,10,10,0.45)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: tokens.layout.screenPaddingH,
   },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 32,
+  modal: {
+    backgroundColor: tokens.colors.bg,
+    borderRadius: tokens.radii.xl,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    padding: tokens.spacing.xl,
     width: "100%",
     maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.2,
-    shadowRadius: 25,
-    elevation: 20,
+  },
+  modalEyebrow: {
+    marginBottom: tokens.spacing.sm,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 12,
-    textAlign: "center",
+    fontSize: 26,
+    lineHeight: 30,
   },
   modalSubtitle: {
-    fontSize: 15,
-    color: "#666",
-    marginBottom: 24,
-    textAlign: "center",
-    lineHeight: 22,
+    marginTop: tokens.spacing.sm,
+    marginBottom: tokens.spacing.l,
   },
-  modalInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 56,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    marginBottom: 20,
+  modalField: {
+    marginBottom: tokens.spacing.m,
   },
-  modalButton: {
-    backgroundColor: "#000",
+  modalCancel: {
+    marginTop: tokens.spacing.s,
+  },
+  successIcon: {
+    width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  modalButtonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  modalCancelBtn: {
-    marginTop: 16,
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  modalCancelText: {
-    fontSize: 15,
-    color: "#666",
-    fontWeight: "600",
-  },
-  successIconWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
-    marginBottom: 20,
-  },
-  emailHighlight: {
-    fontWeight: "700",
-    color: "#000",
+    marginBottom: tokens.spacing.m,
   },
 });

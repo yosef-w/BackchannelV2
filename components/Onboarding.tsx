@@ -1,26 +1,22 @@
+import { Button, HeroBackdrop, Screen, Text } from "@/components/design";
+import { tokens } from "@/constants/theme";
 import {
     ArrowLeft,
-    ArrowRight,
     Building2,
     HandHeart,
     Network,
     Rocket,
     TrendingUp,
-    UserCheck
+    UserCheck,
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-    Dimensions,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
-    Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+import Animated, { FadeInRight, FadeOut } from "react-native-reanimated";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -28,45 +24,65 @@ interface OnboardingProps {
   userType: "applicant" | "sponsor";
 }
 
-const applicantSlides = [
+type Slide = {
+  Icon: React.ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
+  eyebrow: string;
+  title: string;
+  titleItalic: string;
+  description: string;
+};
+
+const applicantSlides: Slide[] = [
   {
     Icon: UserCheck,
-    title: "Connect with insiders who can refer you",
+    eyebrow: "Insiders, not algorithms",
+    title: "Champions",
+    titleItalic: "on the inside.",
     description:
-      "Build authentic relationships with professionals who work at your dream companies.",
+      "Connect with people who actually work at your dream companies — and would vouch for you.",
   },
   {
     Icon: Rocket,
-    title: "Skip the resume black hole",
+    eyebrow: "Skip the black hole",
+    title: "Resumes that",
+    titleItalic: "get read.",
     description:
-      "Get your application directly in front of hiring managers through employee referrals.",
+      "Get your application directly in front of hiring managers through warm employee referrals.",
   },
   {
     Icon: TrendingUp,
-    title: "Land interviews faster",
+    eyebrow: "Faster than cold apply",
+    title: "Interviews,",
+    titleItalic: "sooner.",
     description:
-      "Referred candidates are significantly more likely to get interviews and offers.",
+      "Referred candidates are significantly more likely to get interviews and offers. Stack the deck.",
   },
 ];
 
-const sponsorSlides = [
+const sponsorSlides: Slide[] = [
   {
     Icon: HandHeart,
-    title: "Help talented people break into great companies",
+    eyebrow: "Use your seat at the table",
+    title: "Open doors",
+    titleItalic: "for the right people.",
     description:
-      "Use your position to open doors for deserving candidates at your company.",
+      "Help talented candidates break into great companies — including the one you already work at.",
   },
   {
     Icon: Building2,
-    title: "Shape your future team",
+    eyebrow: "Shape your future team",
+    title: "Hire peers",
+    titleItalic: "you respect.",
     description:
-      "Strengthen your organization by referring peers who align with your company's high standards.",
+      "Strengthen your organization by referring people who align with your team's standards.",
   },
   {
     Icon: Network,
-    title: "Expand your professional network",
+    eyebrow: "Compounds over time",
+    title: "Grow a network",
+    titleItalic: "that lasts.",
     description:
-      "Build lasting relationships with top talent and grow your influence across the industry.",
+      "Build lasting relationships with top talent and expand your influence across the industry.",
   },
 ];
 
@@ -90,170 +106,145 @@ export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
     }
   };
 
-  const currentSlideData = slides[currentSlide];
+  const slide = slides[currentSlide];
+  const isLast = currentSlide === slides.length - 1;
 
   return (
-    <View style={styles.container}>
+    <Screen background="paper">
       <StatusBar barStyle="dark-content" />
-      <SafeAreaView style={styles.safeArea}>
-        {/* Top Navigation */}
-        <View style={styles.topNav}>
-          <TouchableOpacity onPress={prevSlide} style={styles.iconBtn}>
-            <ArrowLeft color="#000" size={24} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onComplete}>
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
-        </View>
+      <HeroBackdrop />
 
-        <View style={styles.content}>
-          <Animated.View
-            key={currentSlide}
-            entering={FadeInDown.duration(500)}
-            exiting={FadeOut.duration(300)}
-            style={styles.slideWrapper}
-          >
-            {/* Minimal Icon Representation */}
-            <View style={styles.iconCircle}>
-              <currentSlideData.Icon color="#000" size={40} strokeWidth={1.5} />
-            </View>
+      {/* Top nav row */}
+      <View style={styles.topNav}>
+        <TouchableOpacity onPress={prevSlide} style={styles.navBtn} hitSlop={12}>
+          <ArrowLeft size={18} color={tokens.colors.textMuted} />
+          <Text variant="bodySmall" color={tokens.colors.textMuted}>
+            Back
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onComplete} hitSlop={12}>
+          <Text variant="bodySmall" color={tokens.colors.textMuted}>
+            Skip
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-            <View style={styles.textSection}>
-              <Text style={styles.title}>{currentSlideData.title}</Text>
-              <Text style={styles.description}>
-                {currentSlideData.description}
-              </Text>
-            </View>
-          </Animated.View>
-        </View>
-
-        {/* Footer Navigation */}
-        <View style={styles.footer}>
-          {/* Progress Indicator */}
-          <View style={styles.dotsContainer}>
-            {slides.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentSlide
-                    ? styles.dotActive
-                    : styles.dotInactive,
-                ]}
-              />
-            ))}
+      <View style={styles.content}>
+        <Animated.View
+          key={currentSlide}
+          entering={FadeInRight.duration(420)}
+          exiting={FadeOut.duration(180)}
+          style={styles.slideWrapper}
+        >
+          <View style={styles.iconCircle}>
+            <slide.Icon color={tokens.colors.text} size={28} strokeWidth={1.6} />
           </View>
 
-          {/* Action Button */}
-          <TouchableOpacity
-            onPress={nextSlide}
-            activeOpacity={0.8}
-            style={styles.nextButton}
-          >
-            <Text style={styles.nextButtonText}>
-              {currentSlide === slides.length - 1 ? "Get Started" : "Continue"}
-            </Text>
-            <ArrowRight color="#FFF" size={20} />
-          </TouchableOpacity>
+          <Text variant="eyebrow" style={styles.slideEyebrow}>
+            {slide.eyebrow}
+          </Text>
+          <Text variant="titleSerif" style={styles.slideTitle}>
+            {slide.title}
+          </Text>
+          <Text variant="titleSerifItalic" style={styles.slideTitle}>
+            {slide.titleItalic}
+          </Text>
+          <Text variant="bodyLarge" style={styles.slideDesc}>
+            {slide.description}
+          </Text>
+        </Animated.View>
+      </View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <View style={styles.dotsRow}>
+          {slides.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.dot,
+                index === currentSlide ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
         </View>
-      </SafeAreaView>
-    </View>
+
+        <Button
+          label={isLast ? "Get started" : "Continue"}
+          onPress={nextSlide}
+          block
+          size="lg"
+        />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  safeArea: {
-    flex: 1,
-  },
   topNav: {
+    height: 56,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    justifyContent: "space-between",
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    borderBottomWidth: tokens.borders.hairline,
+    borderBottomColor: tokens.colors.border,
   },
-  iconBtn: {
-    padding: 8,
-  },
-  skipText: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "500",
-    padding: 8,
+  navBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   content: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: tokens.layout.screenPaddingH,
   },
   slideWrapper: {
-    alignItems: "flex-start", // Left-aligned for a modern professional look
+    alignItems: "flex-start",
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F9F9F9",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    marginBottom: tokens.spacing.l,
   },
-  textSection: {
-    width: "100%",
+  slideEyebrow: {
+    marginBottom: tokens.spacing.sm,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 38,
-    marginBottom: 16,
+  slideTitle: {
+    fontSize: 38,
+    lineHeight: 42,
+    letterSpacing: -0.8,
   },
-  description: {
-    fontSize: 18,
-    color: "#666",
-    lineHeight: 26,
-    fontWeight: "400",
+  slideDesc: {
+    marginTop: tokens.spacing.m,
+    maxWidth: 420,
   },
   footer: {
-    paddingHorizontal: 32,
-    paddingBottom: 40,
-    gap: 32,
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    paddingBottom: tokens.spacing.xl,
+    gap: tokens.spacing.l,
   },
-  dotsContainer: {
+  dotsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
   },
   dot: {
     height: 4,
     borderRadius: 2,
   },
   dotActive: {
-    width: 24,
-    backgroundColor: "#000",
+    width: 28,
+    backgroundColor: tokens.colors.text,
   },
   dotInactive: {
     width: 8,
-    backgroundColor: "#EEE",
-  },
-  nextButton: {
-    backgroundColor: "#000",
-    height: 60,
-    borderRadius: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  nextButtonText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontWeight: "600",
+    backgroundColor: tokens.colors.border,
   },
 });

@@ -2,27 +2,32 @@
  * /verify-email
  *
  * Handles the deep link from the verification email sent by the backend after
- * registration (PR #38). Reads `?token=<JWT>` from the URL, calls
+ * registration. Reads `?token=<JWT>` from the URL, calls
  * POST /api/auth/verify-email/, and renders a result screen.
  *
  * Deep-link entry points:
- *   - backchannelv2://verify-email?token=<JWT>      (custom scheme; works in dev/standalone)
- *   - https://<universal-link>/verify-email?token=  (if/when we add Apple/Android app links)
+ *   - backchannelv2://verify-email?token=<JWT>
+ *   - https://<universal-link>/verify-email?token=
  *
  * The endpoint is auth-free (the JWT in the body carries identity) and
  * idempotent — verifying twice both succeed.
  */
 
+import {
+    Button,
+    HeroBackdrop,
+    Screen,
+    Text,
+} from "@/components/design";
+import { tokens } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Mail, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    SafeAreaView,
+    StatusBar,
     StyleSheet,
-    Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from "react-native";
 import {
@@ -42,7 +47,6 @@ export default function VerifyEmailRoute() {
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // Resend state — used when verification fails (e.g. expired token)
   const [resendEmail, setResendEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resendSent, setResendSent] = useState(false);
@@ -55,7 +59,7 @@ export default function VerifyEmailRoute() {
       if (!token || typeof token !== "string") {
         setStatus("error");
         setErrorMessage(
-          "This verification link is missing its token. Please open the link directly from your email.",
+          "This verification link is missing its token. Please open it directly from your email.",
         );
         trackVerifyEmailFailed("missing_token");
         return;
@@ -63,7 +67,6 @@ export default function VerifyEmailRoute() {
 
       try {
         const res = await authApi.verifyEmail(token);
-        // Backend uses two distinct messages — both are 200 OK.
         const alreadyVerified =
           typeof res.message === "string" &&
           res.message.toLowerCase().includes("already");
@@ -93,11 +96,8 @@ export default function VerifyEmailRoute() {
     try {
       setResending(true);
       await authApi.resendVerificationEmail(email);
-      // Endpoint always returns 200 (anti-enumeration), so we always show the
-      // same success state regardless of whether the email actually exists.
       setResendSent(true);
     } catch (err) {
-      // 429 = rate-limited; surface it so the user knows to back off.
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMessage(
         msg.includes("429") || msg.toLowerCase().includes("rate")
@@ -109,212 +109,211 @@ export default function VerifyEmailRoute() {
     }
   };
 
-  const handleContinue = () => {
-    router.replace("/dashboard" as any);
-  };
+  const handleContinue = () => router.replace("/dashboard" as any);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen background="paper">
+      <StatusBar barStyle="dark-content" />
+      <HeroBackdrop />
       <View style={styles.content}>
         {status === "loading" && (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#000" />
-            <Text style={styles.loadingText}>Verifying your email…</Text>
+            <ActivityIndicator size="large" color={tokens.colors.text} />
+            <Text variant="body" color={tokens.colors.textMuted}>
+              Verifying your email…
+            </Text>
           </View>
         )}
 
         {(status === "success" || status === "alreadyVerified") && (
           <View style={styles.center}>
             <View style={styles.iconCircle}>
-              <Check color="#FFF" size={36} strokeWidth={3} />
+              <Check color={tokens.colors.brandText} size={28} strokeWidth={2.4} />
             </View>
-            <Text style={styles.title}>
-              {status === "success"
-                ? "Email verified!"
-                : "Already verified"}
+            <Text variant="eyebrow">
+              {status === "success" ? "Verified" : "Already verified"}
             </Text>
-            <Text style={styles.subtitle}>
-              {status === "success"
-                ? "Thanks for confirming. You're all set."
-                : "Your email was already verified — nothing else to do."}
-            </Text>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleContinue}
-              activeOpacity={0.8}
+            <View style={styles.titleStack}>
+              <Text variant="titleSerif" align="center">
+                You're all
+              </Text>
+              <Text variant="titleSerifItalic" align="center">
+                set.
+              </Text>
+            </View>
+            <Text
+              variant="bodyLarge"
+              align="center"
+              style={styles.subtitle}
             >
-              <Text style={styles.primaryButtonText}>Continue</Text>
-            </TouchableOpacity>
+              {status === "success"
+                ? "Thanks for confirming your email. Welcome to BackChannel."
+                : "Your email was already verified — nothing else to do here."}
+            </Text>
+            <View style={styles.ctaWrap}>
+              <Button label="Continue" onPress={handleContinue} block size="lg" />
+            </View>
           </View>
         )}
 
         {status === "error" && (
           <View style={styles.center}>
             <View style={styles.iconCircleError}>
-              <X color="#FFF" size={36} strokeWidth={3} />
+              <X color={tokens.colors.dangerFg} size={26} strokeWidth={2.4} />
             </View>
-            <Text style={styles.title}>Verification failed</Text>
-            <Text style={styles.subtitle}>{errorMessage}</Text>
+            <Text variant="eyebrow" color={tokens.colors.dangerFg}>
+              Verification failed
+            </Text>
+            <View style={styles.titleStack}>
+              <Text variant="titleSerif" align="center">
+                That link
+              </Text>
+              <Text variant="titleSerifItalic" align="center">
+                didn't work.
+              </Text>
+            </View>
+            <Text
+              variant="bodySmall"
+              align="center"
+              color={tokens.colors.textBody}
+              style={styles.subtitle}
+            >
+              {errorMessage}
+            </Text>
 
             {resendSent ? (
               <View style={styles.resendSent}>
-                <Mail color="#000" size={20} strokeWidth={2} />
-                <Text style={styles.resendSentText}>
+                <Mail color={tokens.colors.text} size={18} strokeWidth={1.8} />
+                <Text
+                  variant="bodySmall"
+                  color={tokens.colors.textBody}
+                  style={styles.resendSentText}
+                >
                   If an account exists for that address, a new verification
                   email is on its way.
                 </Text>
               </View>
             ) : (
               <View style={styles.resendBlock}>
-                <Text style={styles.resendLabel}>
-                  Send a new verification email
+                <Text variant="eyebrow" align="center">
+                  Send a new link
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="you@example.com"
-                  placeholderTextColor="#BBB"
+                  placeholder="you@work.com"
+                  placeholderTextColor={tokens.colors.textFaint}
                   value={resendEmail}
                   onChangeText={setResendEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <TouchableOpacity
-                  style={[
-                    styles.primaryButton,
-                    (!resendEmail.trim() || resending) &&
-                      styles.primaryButtonDisabled,
-                  ]}
+                <Button
+                  label="Resend"
                   onPress={handleResend}
+                  loading={resending}
                   disabled={!resendEmail.trim() || resending}
-                  activeOpacity={0.8}
-                >
-                  {resending ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Resend</Text>
-                  )}
-                </TouchableOpacity>
+                  block
+                  size="md"
+                />
               </View>
             )}
 
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={handleContinue}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.secondaryButtonText}>Back to app</Text>
-            </TouchableOpacity>
+            <View style={styles.secondaryWrap}>
+              <Button
+                label="Back to app"
+                onPress={handleContinue}
+                variant="ghost"
+                block
+                size="md"
+              />
+            </View>
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
-  content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
+  content: {
+    flex: 1,
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    paddingVertical: tokens.spacing.xl,
+  },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
+    gap: tokens.spacing.m,
   },
-  loadingText: { fontSize: 14, color: "#666", marginTop: 12 },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: tokens.spacing.s,
   },
   iconCircleError: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#DC2626",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: tokens.colors.dangerBg,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.dangerBorder,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: tokens.spacing.s,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-    letterSpacing: -0.5,
+  titleStack: {
+    alignItems: "center",
   },
   subtitle: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 12,
+    maxWidth: 360,
   },
-  primaryButton: {
-    backgroundColor: "#000",
-    height: 52,
-    borderRadius: 26,
-    paddingHorizontal: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 16,
-    minWidth: 180,
-  },
-  primaryButtonDisabled: {
-    backgroundColor: "#CCC",
-  },
-  primaryButtonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    marginTop: 4,
-  },
-  secondaryButtonText: {
-    color: "#666",
-    fontSize: 14,
-    fontWeight: "600",
+  ctaWrap: {
+    width: "100%",
+    paddingHorizontal: tokens.spacing.xl,
+    marginTop: tokens.spacing.m,
   },
   resendBlock: {
     width: "100%",
-    gap: 10,
-    marginTop: 16,
-  },
-  resendLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#444",
-    textAlign: "center",
+    gap: tokens.spacing.sm,
+    marginTop: tokens.spacing.m,
+    paddingHorizontal: tokens.spacing.l,
   },
   input: {
-    backgroundColor: "#F4F4F4",
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.m,
+    paddingHorizontal: tokens.spacing.m,
     height: 50,
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
+    fontFamily: tokens.fontFamilies.sans500,
   },
   resendSent: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F4F4F4",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginTop: 12,
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.m,
+    paddingHorizontal: tokens.spacing.m,
+    paddingVertical: tokens.spacing.sm,
+    marginTop: tokens.spacing.sm,
+    marginHorizontal: tokens.spacing.l,
   },
   resendSentText: {
     flex: 1,
-    fontSize: 13,
-    color: "#333",
-    lineHeight: 18,
+  },
+  secondaryWrap: {
+    width: "100%",
+    paddingHorizontal: tokens.spacing.xl,
+    marginTop: tokens.spacing.xs,
   },
 });
