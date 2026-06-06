@@ -1215,7 +1215,11 @@ export function MessagesView({
                   ]}
                 >
                   <Text
-                    style={{ fontSize: 16, fontWeight: "800", color: tokens.colors.brandText }}
+                    style={{
+                      fontFamily: tokens.fontFamilies.serif,
+                      fontSize: 18,
+                      color: tokens.colors.brandText,
+                    }}
                   >
                     {(conversation.otherParticipant.name ||
                       "?")[0].toUpperCase()}
@@ -1309,31 +1313,17 @@ export function MessagesView({
           >
             {messagesLoading ? (
               <View style={{ padding: 40, alignItems: "center" }}>
-                <Text style={{ color: tokens.colors.textMuted, fontSize: 15 }}>
-                  Loading messages...
-                </Text>
+                <Text style={styles.threadStatusText}>Loading messages…</Text>
               </View>
             ) : messagesError ? (
               <View style={{ padding: 40, alignItems: "center" }}>
-                <Text
-                  style={{ color: tokens.colors.dangerFg, fontSize: 15, marginBottom: 8 }}
-                >
-                  Failed to load messages
-                </Text>
-                <Text
-                  style={{ color: tokens.colors.textMuted, fontSize: 13, textAlign: "center" }}
-                >
-                  {messagesError}
-                </Text>
+                <Text style={styles.threadErrorTitle}>Failed to load messages</Text>
+                <Text style={styles.threadStatusSub}>{messagesError}</Text>
               </View>
             ) : messages.length === 0 ? (
               <View style={{ padding: 40, alignItems: "center" }}>
-                <Text style={{ color: tokens.colors.textMuted, fontSize: 15 }}>
-                  No messages yet
-                </Text>
-                <Text style={{ color: tokens.colors.textFaint, fontSize: 13, marginTop: 8 }}>
-                  Start the conversation!
-                </Text>
+                <Text style={styles.threadEmptyTitle}>No messages yet.</Text>
+                <Text style={styles.threadEmptySub}>Start the conversation.</Text>
               </View>
             ) : (
               messages.map((message, index) => {
@@ -3028,6 +3018,39 @@ const styles = StyleSheet.create({
   },
   messagesScroll: { flex: 1, paddingHorizontal: 20 },
   messagesContent: { paddingTop: 20, paddingBottom: 28, gap: 20 },
+  // Thread placeholder copy (loading / error / empty states) — editorial
+  // typography matched to the rest of the chat.
+  threadStatusText: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 15,
+    color: tokens.colors.textMuted,
+  },
+  threadStatusSub: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 13,
+    color: tokens.colors.textMuted,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  threadErrorTitle: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 15,
+    color: tokens.colors.dangerFg,
+    marginBottom: 8,
+  },
+  threadEmptyTitle: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 22,
+    lineHeight: 26,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.3,
+  },
+  threadEmptySub: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 13,
+    color: tokens.colors.textFaint,
+    marginTop: 8,
+  },
   messageWrapper: { maxWidth: "85%" },
   msgLeft: { alignSelf: "flex-start" },
   msgRight: { alignSelf: "flex-end" },
@@ -3074,7 +3097,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: Platform.OS === "ios" ? 12 : 12,
-    borderTopWidth: 1,
+    borderTopWidth: tokens.borders.hairline,
     borderTopColor: tokens.colors.border,
     backgroundColor: tokens.colors.bg,
   },
@@ -3083,6 +3106,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -3090,12 +3115,16 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
-    backgroundColor: tokens.colors.bgSurface,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 10,
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 15,
+    lineHeight: 22,
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.pill,
+    paddingHorizontal: 16,
+    paddingTop: 11,
+    paddingBottom: 11,
     minHeight: 44,
     maxHeight: 110,
     marginRight: 10,
