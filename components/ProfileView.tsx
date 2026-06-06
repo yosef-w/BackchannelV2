@@ -539,7 +539,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       reviewing: { backgroundColor: "#666" },
       interview_scheduled: { backgroundColor: tokens.colors.brand },
       offer: { backgroundColor: tokens.colors.brand },
-      rejected: { backgroundColor: "#DC2626" },
+      rejected: { backgroundColor: tokens.colors.dangerFg },
     };
     return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
   };
@@ -553,7 +553,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         borderColor: tokens.colors.border,
       },
       offer: { backgroundColor: tokens.colors.bgSurface, borderColor: tokens.colors.border },
-      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+      rejected: { backgroundColor: tokens.colors.dangerBg, borderColor: tokens.colors.dangerBorder },
     };
     return (
       styles[status as keyof typeof styles] || {
@@ -569,7 +569,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       reviewing: { color: tokens.colors.textBody },
       interview_scheduled: { color: tokens.colors.text },
       offer: { color: tokens.colors.text },
-      rejected: { color: "#DC2626" },
+      rejected: { color: tokens.colors.dangerFg },
     };
     return colors[status as keyof typeof colors] || { color: tokens.colors.textBody };
   };
@@ -1274,7 +1274,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isNameMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1286,14 +1286,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isNameMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isNameMissing && { borderColor: tokens.colors.dangerBorder, borderWidth: 2 },
                 ]}
                 value={cert.name}
                 onChangeText={(text) =>
                   handleUpdateCertification(index, { name: text })
                 }
                 placeholder="e.g., AWS Solutions Architect"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -1305,7 +1305,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isOrgMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1317,14 +1317,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isOrgMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isOrgMissing && { borderColor: tokens.colors.dangerBorder, borderWidth: 2 },
                 ]}
                 value={cert.organization}
                 onChangeText={(text) =>
                   handleUpdateCertification(index, { organization: text })
                 }
                 placeholder="e.g., Amazon Web Services"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -1336,7 +1336,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1348,14 +1348,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isYearMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isYearMissing && { borderColor: tokens.colors.dangerBorder, borderWidth: 2 },
                 ]}
                 value={cert.year}
                 onChangeText={(text) =>
                   handleUpdateCertification(index, { year: text })
                 }
                 placeholder="e.g., 2023"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
                 keyboardType="numeric"
               />
             </View>
@@ -1451,7 +1451,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isLanguageMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1464,7 +1464,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isLanguageMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: tokens.colors.dangerBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -1473,7 +1473,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateLanguage(index, { language: text })
                 }
                 placeholder="e.g., Spanish"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -1485,7 +1485,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isProficiencyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1498,7 +1498,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isProficiencyMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: tokens.colors.dangerBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -1507,7 +1507,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateLanguage(index, { proficiency: text })
                 }
                 placeholder="e.g., Native, Fluent, Conversational"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -2154,7 +2154,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isJobTitleMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2167,7 +2167,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isJobTitleMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: tokens.colors.dangerBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2176,7 +2176,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { jobTitle: text })
                 }
                 placeholder="e.g., Senior Product Manager"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -2188,7 +2188,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isCompanyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2201,7 +2201,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isCompanyMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: tokens.colors.dangerBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2210,7 +2210,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { company: text })
                 }
                 placeholder="e.g., Google"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -2222,7 +2222,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isStartDateMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2235,7 +2235,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isStartDateMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: tokens.colors.dangerBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2244,7 +2244,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { startDate: text })
                 }
                 placeholder="e.g., Jan 2022"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -2257,7 +2257,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     endDate: value ? "" : experience.endDate,
                   })
                 }
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
                 thumbColor="#FFF"
               />
               <Text style={styles.checkboxLabel}>I currently work here</Text>
@@ -2273,7 +2273,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     handleUpdateExperience(experience.id, { endDate: text })
                   }
                   placeholder="e.g., Dec 2024"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={tokens.colors.textFaint}
                 />
               </View>
             )}
@@ -2290,7 +2290,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { description: text })
                 }
                 placeholder="Describe your responsibilities and achievements..."
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
                 multiline
                 numberOfLines={4}
               />
@@ -2384,7 +2384,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isDegreeMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2396,14 +2396,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isDegreeMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isDegreeMissing && { borderColor: tokens.colors.dangerBorder, borderWidth: 2 },
                 ]}
                 value={education.degree}
                 onChangeText={(text) =>
                   handleUpdateEducation(education.id, { degree: text })
                 }
                 placeholder="e.g., Bachelor of Science, MBA"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -2416,7 +2416,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { major: text })
                 }
                 placeholder="e.g., Computer Science"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -2428,7 +2428,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isUniversityMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2441,7 +2441,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isUniversityMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: tokens.colors.dangerBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2450,7 +2450,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { university: text })
                 }
                 placeholder="e.g., Stanford University"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
               />
             </View>
 
@@ -2462,7 +2462,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isGradYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2475,7 +2475,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isGradYearMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: tokens.colors.dangerBorder,
                     borderWidth: 2,
                   },
                 ]}
@@ -2484,7 +2484,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { graduationYear: text })
                 }
                 placeholder="e.g., 2020"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
                 keyboardType="numeric"
               />
             </View>
@@ -2498,7 +2498,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { gpa: text })
                 }
                 placeholder="e.g., 3.9"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -2805,7 +2805,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           {/* Error state */}
           {resumeUploadStep === "error" && (
             <View style={styles.resumeErrorCard}>
-              <AlertCircle size={18} color="#DC2626" strokeWidth={2} />
+              <AlertCircle size={18} color={tokens.colors.dangerFg} strokeWidth={2} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.resumeErrorTitle}>Upload Failed</Text>
                 <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
@@ -4438,7 +4438,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   <TextInput
                     style={styles.passwordInput}
                     placeholder="Enter new email address"
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={tokens.colors.textFaint}
                     value={newEmail}
                     onChangeText={setNewEmail}
                     keyboardType="email-address"
@@ -4452,11 +4452,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <View>
                 <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
                 <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
+                  <Lock color={tokens.colors.textFaint} size={18} />
                   <TextInput
                     style={styles.passwordInput}
                     placeholder="Enter current password"
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={tokens.colors.textFaint}
                     value={emailPassword}
                     onChangeText={setEmailPassword}
                     secureTextEntry
@@ -4543,11 +4543,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <View>
                 <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
                 <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
+                  <Lock color={tokens.colors.textFaint} size={18} />
                   <TextInput
                     style={styles.passwordInput}
                     placeholder="Enter current password"
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={tokens.colors.textFaint}
                     value={currentPassword}
                     onChangeText={setCurrentPassword}
                     secureTextEntry
@@ -4560,11 +4560,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <View>
                 <Text style={styles.fieldLabel}>NEW PASSWORD</Text>
                 <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
+                  <Lock color={tokens.colors.textFaint} size={18} />
                   <TextInput
                     style={styles.passwordInput}
                     placeholder="Enter new password"
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={tokens.colors.textFaint}
                     value={newPassword}
                     onChangeText={setNewPassword}
                     secureTextEntry
@@ -4577,11 +4577,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <View>
                 <Text style={styles.fieldLabel}>CONFIRM NEW PASSWORD</Text>
                 <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
+                  <Lock color={tokens.colors.textFaint} size={18} />
                   <TextInput
                     style={styles.passwordInput}
                     placeholder="Re-enter new password"
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={tokens.colors.textFaint}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry
@@ -4629,7 +4629,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             value={isNotifEnabled("match")}
             onValueChange={(v) => handleNotifToggle("match", v)}
             disabled={notifSaving === "match"}
-            trackColor={{ false: "#E5E5E5", true: "#000" }}
+            trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
             thumbColor="#FFF"
           />
         </View>
@@ -4639,7 +4639,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             value={isNotifEnabled("message")}
             onValueChange={(v) => handleNotifToggle("message", v)}
             disabled={notifSaving === "message"}
-            trackColor={{ false: "#E5E5E5", true: "#000" }}
+            trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
             thumbColor="#FFF"
           />
         </View>
@@ -4651,7 +4651,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("referral")}
                 onValueChange={(v) => handleNotifToggle("referral", v)}
                 disabled={notifSaving === "referral"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
                 thumbColor="#FFF"
               />
             </View>
@@ -4661,7 +4661,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("waitlist")}
                 onValueChange={(v) => handleNotifToggle("waitlist", v)}
                 disabled={notifSaving === "waitlist"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
                 thumbColor="#FFF"
               />
             </View>
@@ -4677,7 +4677,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("job_like")}
                 onValueChange={(v) => handleNotifToggle("job_like", v)}
                 disabled={notifSaving === "job_like"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
                 thumbColor="#FFF"
               />
             </View>
@@ -4689,7 +4689,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("sponsor_request")}
                 onValueChange={(v) => handleNotifToggle("sponsor_request", v)}
                 disabled={notifSaving === "sponsor_request"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
+                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
                 thumbColor="#FFF"
               />
             </View>
@@ -4829,7 +4829,7 @@ function EditInsightsModal({
                 <View style={styles.insightCardHeader}>
                   <Text style={styles.insightQuestion}>{insight.question}</Text>
                   <TouchableOpacity onPress={() => onRemoveInsight(index)}>
-                    <Trash2 color="#DC2626" size={18} />
+                    <Trash2 color={tokens.colors.dangerFg} size={18} />
                   </TouchableOpacity>
                 </View>
 
@@ -5079,10 +5079,11 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.bg,
   },
   name: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 32,
+    lineHeight: 36,
     color: tokens.colors.text,
-    letterSpacing: -1,
+    letterSpacing: -0.6,
   },
   infoRow: {
     flexDirection: "row",
@@ -5171,10 +5172,11 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: tokens.colors.textFaint,
-    letterSpacing: 1.5,
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 11,
+    lineHeight: 14,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
     marginBottom: 16,
   },
@@ -5280,7 +5282,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#DC2626",
+    backgroundColor: tokens.colors.dangerFg,
   },
 
   // Modal Styles
@@ -5391,7 +5393,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   fieldLabelIncomplete: {
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
   },
   fieldLabelRow: {
     flexDirection: "row",
@@ -5401,7 +5403,7 @@ const styles = StyleSheet.create({
   requiredStar: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     lineHeight: 16,
   },
   fieldDisplay: {
@@ -5463,11 +5465,13 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.border,
   },
   sectionHeaderText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    letterSpacing: 1.2,
-    paddingHorizontal: 16,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    lineHeight: 14,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    paddingHorizontal: 14,
   },
 
   // Tags Editing
@@ -5804,15 +5808,15 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   errorContainer: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: tokens.colors.dangerBg,
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#FEF2F2",
+    borderColor: tokens.colors.dangerBg,
   },
   errorText: {
     fontSize: 14,
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     fontWeight: "600",
     textAlign: "center",
   },
@@ -6370,12 +6374,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: tokens.colors.dangerBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: tokens.colors.dangerBorder,
   },
   entryDeleteBtnText: {
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -6638,16 +6642,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: tokens.colors.dangerBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: tokens.colors.dangerBorder,
     borderRadius: 14,
     padding: 14,
   },
   resumeErrorTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     marginBottom: 2,
   },
   resumeErrorSub: {
@@ -6656,7 +6660,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   resumeRetryBtn: {
-    backgroundColor: "#DC2626",
+    backgroundColor: tokens.colors.dangerFg,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,

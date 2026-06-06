@@ -1419,7 +1419,7 @@ export function MessagesView({
                 value={messageText}
                 onChangeText={setMessageText}
                 placeholder="Write a message..."
-                placeholderTextColor="#BBB"
+                placeholderTextColor={tokens.colors.textFaint}
                 style={styles.textInput}
                 multiline
                 onFocus={() => setTimeout(() => scrollToBottom(true), 150)}

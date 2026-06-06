@@ -1536,7 +1536,7 @@ export function JobsView() {
                     <TextInput
                       style={[styles.textInput, styles.multilineInput]}
                       placeholder="Be honest about daily work — meetings, focus time, pace, autonomy..."
-                      placeholderTextColor="#999"
+                      placeholderTextColor={tokens.colors.textFaint}
                       value={sponsorDayToDay}
                       onChangeText={setSponsorDayToDay}
                       multiline
@@ -1555,7 +1555,7 @@ export function JobsView() {
                     <TextInput
                       style={[styles.textInput, styles.multilineInput]}
                       placeholder="Team size, seniority mix, remote vs. in-office norms, collaboration style..."
-                      placeholderTextColor="#999"
+                      placeholderTextColor={tokens.colors.textFaint}
                       value={sponsorTeamCulture}
                       onChangeText={setSponsorTeamCulture}
                       multiline
@@ -1573,7 +1573,7 @@ export function JobsView() {
                     <TextInput
                       style={[styles.textInput, styles.multilineInput]}
                       placeholder="Mindset, soft skills, working style, previous backgrounds that tend to succeed..."
-                      placeholderTextColor="#999"
+                      placeholderTextColor={tokens.colors.textFaint}
                       value={sponsorIdealCandidate}
                       onChangeText={setSponsorIdealCandidate}
                       multiline
@@ -1592,7 +1592,7 @@ export function JobsView() {
                     <TextInput
                       style={[styles.textInput, styles.multilineInput]}
                       placeholder="Interview format, timeline, promotion path, equity situation..."
-                      placeholderTextColor="#999"
+                      placeholderTextColor={tokens.colors.textFaint}
                       value={sponsorInsiderInsights}
                       onChangeText={setSponsorInsiderInsights}
                       multiline
@@ -1686,7 +1686,7 @@ export function JobsView() {
               <TextInput
                 style={styles.urlTextInput}
                 placeholder="https://jobs.company.com/role"
-                placeholderTextColor="#999"
+                placeholderTextColor={tokens.colors.textFaint}
                 value={jobUrlInput}
                 onChangeText={setJobUrlInput}
                 keyboardType="url"
@@ -1933,7 +1933,7 @@ export function JobsView() {
                 <TextInput
                   style={[styles.textInput, styles.multilineInput]}
                   placeholder="Be honest about daily work — meetings, focus time, pace, autonomy..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={tokens.colors.textFaint}
                   value={dayToDay}
                   onChangeText={setDayToDay}
                   multiline
@@ -1950,7 +1950,7 @@ export function JobsView() {
                 <TextInput
                   style={[styles.textInput, styles.multilineInput]}
                   placeholder="Team size, seniority mix, remote vs. in-office norms, collaboration style..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={tokens.colors.textFaint}
                   value={teamCulture}
                   onChangeText={setTeamCulture}
                   multiline
@@ -1967,7 +1967,7 @@ export function JobsView() {
                 <TextInput
                   style={[styles.textInput, styles.multilineInput]}
                   placeholder="Mindset, soft skills, working style, previous backgrounds that tend to succeed..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={tokens.colors.textFaint}
                   value={idealCandidate}
                   onChangeText={setIdealCandidate}
                   multiline
@@ -1987,7 +1987,7 @@ export function JobsView() {
                 <TextInput
                   style={[styles.textInput, styles.multilineInput]}
                   placeholder="Interview format, timeline, promotion path, equity situation..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={tokens.colors.textFaint}
                   value={insiderInsights}
                   onChangeText={setInsiderInsights}
                   multiline
@@ -2083,7 +2083,7 @@ export function JobsView() {
                 <TextInput
                   style={styles.reasonOtherInput}
                   placeholder="https://example.com/logo.png"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={tokens.colors.textFaint}
                   value={logoUrlInput}
                   onChangeText={setLogoUrlInput}
                   autoCapitalize="none"
@@ -2150,7 +2150,7 @@ export function JobsView() {
                     <TextInput
                       style={styles.reasonOtherInput}
                       placeholder="Tell us more (optional)"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={tokens.colors.textFaint}
                       value={unsponsorReasonDetail}
                       onChangeText={setUnsponsorReasonDetail}
                       multiline

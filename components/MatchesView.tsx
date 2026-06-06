@@ -3837,7 +3837,7 @@ export function MatchesView({
                           <TextInput
                             style={styles.srTextInput}
                             placeholder={placeholder}
-                            placeholderTextColor="#999"
+                            placeholderTextColor={tokens.colors.textFaint}
                             value={value}
                             onChangeText={setter}
                             multiline

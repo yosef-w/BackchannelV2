@@ -1,27 +1,24 @@
+import { Card, Pill, Screen, Text } from "@/components/design";
+import { tokens } from "@/constants/theme";
 import { getPublicProfile } from "@/lib/api";
 import {
-    Award,
-    Briefcase,
-    Check,
-    ChevronLeft,
-    MapPin,
-    ShieldCheck,
-    Sparkles,
+  Award,
+  Briefcase,
+  Check,
+  ChevronLeft,
+  MapPin,
+  Sparkles,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
-import { tokens } from "@/constants/theme";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
@@ -36,7 +33,6 @@ export function SponsorPublicProfileView({
   const [fullProfile, setFullProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  // The sponsor's user ID lives in otherParticipant.id of the conversation object.
   const userId =
     userData?.otherParticipant?.id || userData?.USER_ID || userData?.userId;
 
@@ -54,9 +50,6 @@ export function SponsorPublicProfileView({
       .finally(() => setLoadingProfile(false));
   }, [userId]);
 
-  // ── Derive display values ─────────────────────────────────────────────────
-  // Prefer full API data; fall back to conversation fields so something shows
-  // while the network call is in-flight.
   const sp = fullProfile?.sponsor_profile || {};
 
   const firstName =
@@ -79,202 +72,241 @@ export function SponsorPublicProfileView({
   const locationStr = [city, state, country].filter(Boolean).join(", ");
 
   const bio = fullProfile?.BIO;
-
   const duration = sp.DURATION;
   const openToReferrals = sp.OPEN_TO_REFERRALS as boolean | undefined;
   const companiesCanReferTo: string[] = sp.COMPANIES_CAN_REFER_TO || [];
-  const insights: Array<{ question: string; answer: string }> =
-    sp.INSIGHTS || [];
+  const insights: { question: string; answer: string }[] = sp.INSIGHTS || [];
 
-  // Context from the conversation (the job they connected on)
   const matchedJobTitle =
     userData?.jobContext?.jobTitle || userData?.appliedRole;
   const matchedCompany = userData?.jobContext?.company || company;
 
-  // Stats grid removed — DURATION is shown inline in the header now.
+  // Split into first / last for the two-line serif headline
+  const headlineFirst = firstName || displayName.split(" ")[0] || "—";
+  const headlineRest = lastName || displayName.replace(headlineFirst, "").trim();
 
   return (
-    <View style={styles.container}>
+    <Screen background="paper">
       <StatusBar barStyle="dark-content" />
-
       <ScrollView
-        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Profile Header ───────────────────────────────────────────── */}
-        <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color={tokens.colors.text} size={28} strokeWidth={2} />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.backBtn} hitSlop={12}>
+            <ChevronLeft color={tokens.colors.text} size={24} strokeWidth={2} />
           </TouchableOpacity>
 
-          <View style={styles.avatarWrapper}>
+          <View style={styles.avatarWrap}>
             {photoUrl ? (
               <Image source={{ uri: photoUrl }} style={styles.avatar} />
             ) : (
               <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarInitials}>
+                <Text variant="titleSerif" color={tokens.colors.brandText}>
                   {displayName ? displayName.charAt(0).toUpperCase() : "?"}
                 </Text>
               </View>
             )}
           </View>
 
-          <Text style={styles.name}>{displayName || "—"}</Text>
+          <View style={styles.nameStack}>
+            <Text variant="heroSerif" align="center" style={styles.nameLine}>
+              {headlineFirst}
+            </Text>
+            {headlineRest ? (
+              <Text
+                variant="heroSerifItalic"
+                align="center"
+                style={styles.nameLine}
+              >
+                {headlineRest}
+              </Text>
+            ) : null}
+          </View>
 
           {jobTitle || company ? (
-            <View style={styles.infoRow}>
-              <Briefcase color={tokens.colors.text} size={14} strokeWidth={2} />
-              <Text style={styles.infoText}>
+            <View style={styles.metaRow}>
+              <Briefcase
+                color={tokens.colors.textMuted}
+                size={13}
+                strokeWidth={1.8}
+              />
+              <Text variant="bodySmall" color={tokens.colors.textBody}>
                 {jobTitle}
-                {company ? ` @ ${company}` : ""}
+                {company ? ` · ${company}` : ""}
                 {duration ? ` · ${duration}` : ""}
               </Text>
             </View>
           ) : null}
 
           {locationStr ? (
-            <View style={styles.infoRow}>
-              <MapPin color={tokens.colors.textFaint} size={14} strokeWidth={2} />
-              <Text style={styles.locationText}>{locationStr}</Text>
+            <View style={styles.metaRow}>
+              <MapPin
+                color={tokens.colors.textFaint}
+                size={13}
+                strokeWidth={1.8}
+              />
+              <Text variant="bodySmall" color={tokens.colors.textMuted}>
+                {locationStr}
+              </Text>
             </View>
           ) : null}
 
-          {bio ? <Text style={styles.bio}>{bio}</Text> : null}
+          {bio ? (
+            <Text variant="bodyLarge" align="center" style={styles.bio}>
+              {bio}
+            </Text>
+          ) : null}
         </View>
 
-        {/* Stats grid removed — the only quantified field we have is
-            DURATION (now inlined into the header role line) and the
-            former "REFERRED" cell was never populated by the backend.
-            See conversation history if/when INDIVIDUALS_REFERRED ships. */}
-        {loadingProfile && (
+        {/* Loading */}
+        {loadingProfile ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={tokens.colors.text} size="small" />
-            <Text style={styles.loadingText}>Loading profile details…</Text>
+            <Text variant="bodySmall" color={tokens.colors.textMuted}>
+              Loading profile details…
+            </Text>
           </View>
-        )}
+        ) : null}
 
-        {/* ── Connected Via ────────────────────────────────────────────── */}
+        {/* Connected via */}
         {matchedJobTitle ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>CONNECTED VIA</Text>
-            <View style={styles.connectedCard}>
-              <View style={styles.connectedIconCircle}>
-                <Briefcase size={16} color={tokens.colors.text} strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.connectedJobTitle}>{matchedJobTitle}</Text>
-                {matchedCompany ? (
-                  <Text style={styles.connectedCompany}>{matchedCompany}</Text>
-                ) : null}
-              </View>
-              <View
-                style={[
-                  styles.statusPill,
-                  openToReferrals === false
-                    ? styles.statusPillClosed
-                    : styles.statusPillOpen,
-                ]}
-              >
-                {openToReferrals === false ? (
-                  <Award size={11} color="#DC2626" strokeWidth={2.5} />
-                ) : (
-                  <ShieldCheck size={11} color={tokens.colors.text} strokeWidth={2.5} />
-                )}
-                <Text
-                  style={[
-                    styles.statusPillText,
-                    openToReferrals === false
-                      ? styles.statusPillTextClosed
-                      : styles.statusPillTextOpen,
-                  ]}
+          <Section eyebrow="Connected via">
+            <Card variant="default" padded>
+              <View style={styles.connectedRow}>
+                <View style={styles.connectedIcon}>
+                  <Briefcase
+                    size={16}
+                    color={tokens.colors.text}
+                    strokeWidth={1.8}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="cardTitle">{matchedJobTitle}</Text>
+                  {matchedCompany ? (
+                    <Text
+                      variant="bodySmall"
+                      color={tokens.colors.textBody}
+                      style={{ marginTop: 2 }}
+                    >
+                      {matchedCompany}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pill
+                  tone={openToReferrals === false ? "danger" : "success"}
+                  dot
                 >
                   {openToReferrals === false ? "Closed" : "Open"}
-                </Text>
+                </Pill>
               </View>
-            </View>
-          </View>
+            </Card>
+          </Section>
         ) : null}
 
-        {/* ── Key Insights ─────────────────────────────────────────────── */}
+        {/* Key insights */}
         {!loadingProfile ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Sparkles size={15} color={tokens.colors.text} strokeWidth={2} />
-              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-                KEY INSIGHTS
-              </Text>
-            </View>
+          <Section eyebrow="Key insights" icon={Sparkles}>
             {insights.length > 0 ? (
-              insights.map(
-                (
-                  insight: { question: string; answer: string },
-                  idx: number,
-                ) => (
-                  <View key={idx} style={styles.insightCard}>
-                    <View style={styles.insightQuestionRow}>
-                      <View style={styles.insightIconCircle}>
-                        {idx % 2 === 0 ? (
-                          <Check size={13} color={tokens.colors.text} strokeWidth={2.5} />
-                        ) : (
-                          <Award size={13} color={tokens.colors.text} strokeWidth={2.5} />
-                        )}
-                      </View>
-                      <Text style={styles.insightQuestion}>
-                        {insight.question}
-                      </Text>
+              insights.map((insight, idx) => (
+                <Card
+                  key={idx}
+                  variant="default"
+                  padded
+                  style={styles.cardSpacing}
+                >
+                  <View style={styles.insightHeader}>
+                    <View style={styles.insightIcon}>
+                      {idx % 2 === 0 ? (
+                        <Check
+                          size={12}
+                          color={tokens.colors.text}
+                          strokeWidth={2.4}
+                        />
+                      ) : (
+                        <Award
+                          size={12}
+                          color={tokens.colors.text}
+                          strokeWidth={2.4}
+                        />
+                      )}
                     </View>
-                    <Text style={styles.insightAnswer}>{insight.answer}</Text>
+                    <Text variant="eyebrow" style={{ flex: 1 }}>
+                      {insight.question}
+                    </Text>
                   </View>
-                ),
-              )
+                  <Text
+                    variant="body"
+                    color={tokens.colors.textBody}
+                    style={{ marginLeft: 32 }}
+                  >
+                    {insight.answer}
+                  </Text>
+                </Card>
+              ))
             ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyCardText}>
+              <Card variant="default" padded>
+                <Text
+                  variant="bodySmall"
+                  color={tokens.colors.textFaint}
+                  align="center"
+                >
                   No insights shared yet.
                 </Text>
-              </View>
+              </Card>
             )}
-          </View>
+          </Section>
         ) : null}
 
-        {/* ── Companies I Can Refer To ─────────────────────────────────── */}
+        {/* Companies — referable */}
         {companiesCanReferTo.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>COMPANIES I CAN REFER TO</Text>
-            <View style={styles.tagCloud}>
-              {companiesCanReferTo.map((co: string, idx: number) => (
-                <View key={idx} style={styles.companyTag}>
-                  <Text style={styles.companyText}>{co}</Text>
-                </View>
+          <Section eyebrow="Companies I can refer to">
+            <View style={styles.pillCloud}>
+              {companiesCanReferTo.map((co, idx) => (
+                <Pill key={`${co}-${idx}`} tone="neutral">
+                  {co}
+                </Pill>
               ))}
             </View>
-          </View>
+          </Section>
         ) : null}
       </ScrollView>
+    </Screen>
+  );
+}
+
+function Section({
+  eyebrow,
+  icon: Icon,
+  children,
+}: {
+  eyebrow: string;
+  icon?: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        {Icon ? (
+          <Icon size={13} color={tokens.colors.text} strokeWidth={1.8} />
+        ) : null}
+        <Text variant="eyebrow">{eyebrow}</Text>
+      </View>
+      {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tokens.colors.bg,
-    ...Platform.select({
-      android: { paddingTop: StatusBar.currentHeight },
-    }),
-  },
   scrollContent: {
-    paddingHorizontal: 28,
-    paddingTop: 20,
-    paddingBottom: 140,
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    paddingTop: tokens.spacing.m,
+    paddingBottom: tokens.spacing.xxxl + tokens.spacing.l,
   },
-
-  // ── Header ────────────────────────────────────────────────────────────────
-  profileHeader: {
+  header: {
     alignItems: "center",
-    marginBottom: 40,
-    position: "relative",
+    marginBottom: tokens.spacing.xl,
   },
   backBtn: {
     position: "absolute",
@@ -283,261 +315,92 @@ const styles = StyleSheet.create({
     padding: 4,
     zIndex: 10,
   },
-  avatarWrapper: {
-    marginBottom: 20,
+  avatarWrap: {
+    marginBottom: tokens.spacing.m,
   },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: tokens.colors.bgOffWhite,
   },
   avatarFallback: {
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EDEDED",
   },
-  avatarInitials: {
-    fontSize: 40,
-    fontWeight: "800",
-    color: tokens.colors.text,
+  nameStack: {
+    alignItems: "center",
+    marginBottom: tokens.spacing.s,
   },
-  name: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    letterSpacing: -1,
-    textAlign: "center",
+  nameLine: {
+    fontSize: 36,
+    lineHeight: 40,
   },
-  infoRow: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 6,
-  },
-  infoText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: tokens.colors.text,
-  },
-  locationText: {
-    fontSize: 14,
-    color: tokens.colors.textFaint,
-    fontWeight: "500",
+    marginTop: tokens.spacing.xs,
   },
   bio: {
-    fontSize: 15,
-    color: tokens.colors.textBody,
-    textAlign: "center",
-    lineHeight: 22,
-    marginTop: 16,
-    paddingHorizontal: 10,
+    marginTop: tokens.spacing.m,
+    paddingHorizontal: tokens.spacing.sm,
+    maxWidth: 480,
   },
-  // ── Stats Grid ────────────────────────────────────────────────────────────
-  statsGrid: {
-    flexDirection: "row",
-    backgroundColor: tokens.colors.bgOffWhite,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 32,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: 8,
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    textAlign: "center",
-  },
-  statValueOpen: {
-    color: tokens.colors.text,
-    fontSize: 18,
-  },
-  statValueClosed: {
-    color: "#DC2626",
-    fontSize: 18,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: tokens.colors.textFaint,
-    marginTop: 4,
-    letterSpacing: 1,
-    textAlign: "center",
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: tokens.colors.border,
-    marginVertical: 4,
-    alignSelf: "stretch" as const,
-  },
-
-  // ── Loading ───────────────────────────────────────────────────────────────
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 24,
     justifyContent: "center",
-    marginBottom: 8,
+    gap: 10,
+    paddingVertical: tokens.spacing.l,
+    marginBottom: tokens.spacing.s,
   },
-  loadingText: {
-    fontSize: 13,
-    color: tokens.colors.textMuted,
-    fontWeight: "600",
-  },
-
-  // ── Sections ──────────────────────────────────────────────────────────────
   section: {
-    marginBottom: 32,
+    marginBottom: tokens.spacing.xl,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 16,
+    marginBottom: tokens.spacing.sm,
   },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: tokens.colors.textFaint,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginBottom: 16,
-  },
-
-  // ── Connected Via card ────────────────────────────────────────────────────
-  connectedCard: {
+  connectedRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: tokens.colors.bgOffWhite,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
+    gap: tokens.spacing.sm,
   },
-  connectedIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#EDEDED",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  connectedJobTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: tokens.colors.text,
-  },
-  connectedCompany: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: tokens.colors.textBody,
-    marginTop: 2,
-  },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  statusPillOpen: {
+  connectedIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: tokens.radii.s,
     backgroundColor: tokens.colors.bgSurface,
-  },
-  statusPillClosed: {
-    backgroundColor: "#FEF2F2",
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  statusPillTextOpen: {
-    color: tokens.colors.text,
-  },
-  statusPillTextClosed: {
-    color: "#DC2626",
-  },
-
-  // ── Key Insights ──────────────────────────────────────────────────────────
-  insightCard: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
-  insightQuestionRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 10,
-  },
-  insightIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#EDEDED",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 1,
+  },
+  cardSpacing: {
+    marginBottom: tokens.spacing.sm,
+  },
+  insightHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: tokens.spacing.s,
+  },
+  insightIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: tokens.colors.bgSurface,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
   },
-  insightQuestion: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    flex: 1,
-    lineHeight: 20,
-  },
-  insightAnswer: {
-    fontSize: 14,
-    color: tokens.colors.textBody,
-    lineHeight: 22,
-    fontWeight: "500",
-    paddingLeft: 36,
-  },
-  emptyCard: {
-    backgroundColor: tokens.colors.bgOffWhite,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-    marginTop: 12,
-  },
-  emptyCardText: {
-    fontSize: 14,
-    color: tokens.colors.textFaint,
-    fontWeight: "600",
-  },
-
-  // ── Companies tag cloud ───────────────────────────────────────────────────
-  tagCloud: {
+  pillCloud: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-  },
-  // Companies-can-refer-to chips — neutral grays so they match the brand
-  // and stay consistent with the same tags rendered in ProfileView's
-  // sponsor section. (Was light-blue Tailwind-style chips before.)
-  companyTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: tokens.colors.bgOffWhite,
-    borderWidth: 1.5,
-    borderColor: tokens.colors.border,
-  },
-  companyText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: tokens.colors.textBody,
+    gap: 6,
   },
 });

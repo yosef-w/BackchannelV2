@@ -1,169 +1,211 @@
-import { Briefcase, ChevronLeft, MapPin, Target } from "lucide-react-native";
+import { Pill, Screen, Text } from "@/components/design";
+import { tokens } from "@/constants/theme";
+import { Briefcase, ChevronLeft, MapPin } from "lucide-react-native";
 import React from "react";
 import {
-    Image,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { tokens } from "@/constants/theme";
 
 interface ApplicantPublicProfileViewProps {
   userData: any;
   onClose: () => void;
 }
 
+/**
+ * Generic public profile view — a magazine-spread layout: serif name,
+ * eyebrow metadata, body bio, pill clouds for skills / preferences / roles.
+ * Used as a fallback for older code paths that haven't migrated to the
+ * applicant- or sponsor-specific variants.
+ */
 export function ApplicantPublicProfileView({
   userData,
   onClose,
 }: ApplicantPublicProfileViewProps) {
-  // Mock stats - in a real app, these would come from userData
   const stats = [
     { label: "Connections", value: "42" },
     { label: "Referrals", value: "8" },
     { label: "Response", value: "98%" },
   ];
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+  const name: string = userData?.name ?? "";
+  const firstLine = name.split(" ")[0] || name;
+  const restLine = name.replace(firstLine, "").trim();
+  const initial = (name || "?")[0]?.toUpperCase() ?? "?";
 
+  return (
+    <Screen background="paper">
+      <StatusBar barStyle="dark-content" />
       <ScrollView
-        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color={tokens.colors.text} size={28} strokeWidth={2} />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.backBtn} hitSlop={12}>
+            <ChevronLeft color={tokens.colors.text} size={24} strokeWidth={2} />
           </TouchableOpacity>
-          <View style={styles.avatarWrapper}>
-            {userData.image ? (
+
+          <View style={styles.avatarWrap}>
+            {userData?.image ? (
               <Image source={{ uri: userData.image }} style={styles.avatar} />
             ) : (
-              <View
-                style={[
-                  styles.avatar,
-                  {
-                    backgroundColor: tokens.colors.brand,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  },
-                ]}
-              >
-                <Text
-                  style={{ fontSize: 36, fontWeight: "800", color: tokens.colors.brandText }}
-                >
-                  {(userData.name || "?")[0].toUpperCase()}
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text variant="titleSerif" color={tokens.colors.brandText}>
+                  {initial}
                 </Text>
               </View>
             )}
           </View>
 
-          <Text style={styles.name}>{userData.name}</Text>
-
-          <View style={styles.infoRow}>
-            <Briefcase color={tokens.colors.text} size={14} strokeWidth={2} />
-            <Text style={styles.infoText}>
-              {userData.role}
-              {userData.company && ` @ ${userData.company}`}
+          {/* Two-line serif name: first name + rest in italic accent */}
+          <View style={styles.nameStack}>
+            <Text variant="heroSerif" align="center" style={styles.nameLine}>
+              {firstLine}
             </Text>
+            {restLine ? (
+              <Text
+                variant="heroSerifItalic"
+                align="center"
+                style={styles.nameLine}
+              >
+                {restLine}
+              </Text>
+            ) : null}
           </View>
 
-          <View style={styles.infoRow}>
-            <MapPin color={tokens.colors.textFaint} size={14} strokeWidth={2} />
-            <Text style={styles.locationText}>{userData.location}</Text>
-          </View>
+          {/* Role + location row */}
+          {userData?.role ? (
+            <View style={styles.metaRow}>
+              <Briefcase
+                color={tokens.colors.textMuted}
+                size={13}
+                strokeWidth={1.8}
+              />
+              <Text variant="bodySmall" color={tokens.colors.textBody}>
+                {userData.role}
+                {userData.company ? ` · ${userData.company}` : ""}
+              </Text>
+            </View>
+          ) : null}
+          {userData?.location ? (
+            <View style={styles.metaRow}>
+              <MapPin
+                color={tokens.colors.textFaint}
+                size={13}
+                strokeWidth={1.8}
+              />
+              <Text variant="bodySmall" color={tokens.colors.textMuted}>
+                {userData.location}
+              </Text>
+            </View>
+          ) : null}
 
-          <Text style={styles.bio}>{userData.bio}</Text>
+          {userData?.bio ? (
+            <Text
+              variant="bodyLarge"
+              align="center"
+              style={styles.bio}
+            >
+              {userData.bio}
+            </Text>
+          ) : null}
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
+        {/* Stats strip */}
+        <View style={styles.statsStrip}>
           {stats.map((stat, index) => (
-            <Animated.View
-              key={stat.label}
-              entering={FadeInUp.delay(index * 100).duration(400)}
-              style={styles.statBox}
-            >
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label.toUpperCase()}</Text>
-            </Animated.View>
+            <React.Fragment key={stat.label}>
+              {index > 0 ? <View style={styles.statSep} /> : null}
+              <Animated.View
+                entering={FadeInUp.delay(index * 80).duration(360)}
+                style={styles.statBox}
+              >
+                <Text variant="titleSerif" style={styles.statValue}>
+                  {stat.value}
+                </Text>
+                <Text variant="eyebrow" color={tokens.colors.textFaint}>
+                  {stat.label}
+                </Text>
+              </Animated.View>
+            </React.Fragment>
           ))}
         </View>
 
-        {/* Skills & Interests */}
-        {userData.skills && userData.skills.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>SKILLS & INTERESTS</Text>
-            <View style={styles.tagCloud}>
-              {userData.skills.map((skill: string, idx: number) => (
-                <View key={idx} style={styles.tag}>
-                  <Text style={styles.tagText}>{skill}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+        {/* Skills */}
+        {userData?.skills?.length ? (
+          <Section eyebrow="Skills &amp; interests">
+            <PillCloud items={userData.skills} tone="neutral" />
+          </Section>
+        ) : null}
 
-        {/* Work Preferences */}
-        {userData.workPreferences && userData.workPreferences.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>WORK PREFERENCES</Text>
-            <View style={styles.tagCloud}>
-              {userData.workPreferences.map((pref: string, idx: number) => (
-                <View key={idx} style={styles.preferenceTag}>
-                  <Text style={styles.preferenceText}>{pref}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+        {/* Work preferences */}
+        {userData?.workPreferences?.length ? (
+          <Section eyebrow="Work preferences">
+            <PillCloud items={userData.workPreferences} tone="info" />
+          </Section>
+        ) : null}
 
-        {/* Desired Roles */}
-        {userData.desiredRoles && userData.desiredRoles.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>DESIRED ROLES</Text>
-            <View style={styles.tagCloud}>
-              {userData.desiredRoles.map((role: string, idx: number) => (
-                <View key={idx} style={styles.roleTag}>
-                  <Target size={14} color={tokens.colors.brandText} strokeWidth={2.5} />
-                  <Text style={styles.roleTagText}>{role}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+        {/* Desired roles */}
+        {userData?.desiredRoles?.length ? (
+          <Section eyebrow="Desired roles">
+            <PillCloud items={userData.desiredRoles} tone="success" />
+          </Section>
+        ) : null}
       </ScrollView>
+    </Screen>
+  );
+}
+
+function Section({
+  eyebrow,
+  children,
+}: {
+  eyebrow: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <Text variant="eyebrow" style={styles.sectionEyebrow}>
+        {eyebrow}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function PillCloud({
+  items,
+  tone,
+}: {
+  items: string[];
+  tone: "neutral" | "info" | "success";
+}) {
+  return (
+    <View style={styles.pillCloud}>
+      {items.map((item, idx) => (
+        <Pill key={`${item}-${idx}`} tone={tone}>
+          {item}
+        </Pill>
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tokens.colors.bg,
-    ...Platform.select({
-      android: {
-        paddingTop: StatusBar.currentHeight,
-      },
-    }),
-  },
   scrollContent: {
-    paddingHorizontal: 28,
-    paddingTop: 20,
-    paddingBottom: 140,
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    paddingTop: tokens.spacing.m,
+    paddingBottom: tokens.spacing.xxxl,
   },
-  profileHeader: {
+  header: {
     alignItems: "center",
-    marginBottom: 40,
-    position: "relative",
+    marginBottom: tokens.spacing.xl,
   },
   backBtn: {
     position: "absolute",
@@ -172,144 +214,73 @@ const styles = StyleSheet.create({
     padding: 4,
     zIndex: 10,
   },
-  avatarWrapper: {
-    marginBottom: 20,
-    position: "relative",
+  avatarWrap: {
+    marginBottom: tokens.spacing.m,
   },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: tokens.colors.bgOffWhite,
   },
-  name: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    letterSpacing: -1,
+  avatarFallback: {
+    backgroundColor: tokens.colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  infoRow: {
+  nameStack: {
+    alignItems: "center",
+    marginBottom: tokens.spacing.s,
+  },
+  nameLine: {
+    fontSize: 36,
+    lineHeight: 40,
+  },
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 6,
-  },
-  infoText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: tokens.colors.text,
-  },
-  locationText: {
-    fontSize: 14,
-    color: tokens.colors.textFaint,
-    fontWeight: "500",
+    marginTop: tokens.spacing.xs,
   },
   bio: {
-    fontSize: 15,
-    color: tokens.colors.textBody,
-    textAlign: "center",
-    lineHeight: 22,
-    marginTop: 16,
-    paddingHorizontal: 10,
+    marginTop: tokens.spacing.m,
+    paddingHorizontal: tokens.spacing.sm,
+    maxWidth: 480,
   },
-  actionRow: {
+  statsStrip: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
-  },
-  whiteBtn: {
-    flexDirection: "row",
-    backgroundColor: tokens.colors.bg,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
     alignItems: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: tokens.colors.border,
-  },
-  whiteBtnText: {
-    color: tokens.colors.text,
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  statsGrid: {
-    flexDirection: "row",
+    justifyContent: "space-around",
     backgroundColor: tokens.colors.bgOffWhite,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 32,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.l,
+    paddingVertical: tokens.spacing.ml,
+    marginBottom: tokens.spacing.xl,
+  },
+  statSep: {
+    width: 1,
+    height: 32,
+    backgroundColor: tokens.colors.border,
   },
   statBox: {
     flex: 1,
     alignItems: "center",
+    gap: 4,
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: tokens.colors.text,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: tokens.colors.textFaint,
-    marginTop: 4,
-    letterSpacing: 1,
+    fontSize: 24,
+    lineHeight: 26,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: tokens.spacing.xl,
   },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: tokens.colors.textFaint,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginBottom: 16,
+  sectionEyebrow: {
+    marginBottom: tokens.spacing.sm,
   },
-  tagCloud: {
+  pillCloud: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-  },
-  tag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: tokens.colors.bg,
-    borderWidth: 1.5,
-    borderColor: tokens.colors.border,
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: tokens.colors.text,
-  },
-  preferenceTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: tokens.colors.bgSurface,
-    borderWidth: 1.5,
-    borderColor: tokens.colors.border,
-  },
-  preferenceText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: tokens.colors.textBody,
-  },
-  roleTag: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: tokens.colors.brand,
-  },
-  roleTagText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: tokens.colors.brandText,
   },
 });

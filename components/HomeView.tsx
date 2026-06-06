@@ -4234,7 +4234,7 @@ export function HomeView({
                       value={editedWorkEmail}
                       onChangeText={setEditedWorkEmail}
                       placeholder="name@company.com"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={tokens.colors.textFaint}
                       style={styles.emailVerifEditInput}
                       keyboardType="email-address"
                       autoCapitalize="none"
