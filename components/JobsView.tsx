@@ -3320,7 +3320,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   confirmBtnDisabled: { backgroundColor: tokens.colors.border },
-  confirmBtnText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
+  confirmBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText, fontSize: 16, letterSpacing: -0.1 },
   textWhite: { color: tokens.colors.brandText },
   successStep: { alignItems: "center", paddingVertical: 20, width: "100%" },
   successIconCircle: {
@@ -4700,7 +4700,7 @@ const styles = StyleSheet.create({
   },
   gateBtnPrimaryText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
   gateBtnSecondary: { paddingVertical: 12, alignItems: "center" },
-  gateBtnSecondaryText: { color: tokens.colors.textBody, fontSize: 15, fontWeight: "600" },
+  gateBtnSecondaryText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.textBody, fontSize: 15, letterSpacing: -0.1 },
 
   // Empty State Styles
   emptyStateContainer: {
@@ -4758,12 +4758,9 @@ const styles = StyleSheet.create({
     minWidth: 160,
     alignItems: "center",
   },
-  emptyStateButtonText: {
-    color: tokens.colors.brandText,
+  emptyStateButtonText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
     fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
+    letterSpacing: 0.2 },
 
   // Loading State Styles
   loadingContainer: {

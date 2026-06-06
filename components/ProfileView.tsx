@@ -5124,11 +5124,8 @@ const styles = StyleSheet.create({
     gap: 8,
     position: "relative",
   },
-  blackBtnText: {
-    color: tokens.colors.brandText,
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  blackBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
+    fontSize: 14, letterSpacing: -0.1 },
   whiteBtn: {
     flexDirection: "row",
     backgroundColor: tokens.colors.bg,
@@ -5140,11 +5137,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: tokens.colors.border,
   },
-  whiteBtnText: {
-    color: tokens.colors.text,
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  whiteBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.text,
+    fontSize: 14, letterSpacing: -0.1 },
   statsGrid: {
     flexDirection: "row",
     backgroundColor: tokens.colors.bgOffWhite,
@@ -5304,15 +5298,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 28,
+    lineHeight: 32,
     color: tokens.colors.text,
+    letterSpacing: -0.5,
   },
   modalSubtitle: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 14,
     color: tokens.colors.textBody,
     marginBottom: 24,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   modalScroll: {
     maxHeight: 500,
@@ -5322,16 +5319,16 @@ const styles = StyleSheet.create({
   modalProgressContainer: {
     backgroundColor: tokens.colors.bgOffWhite,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: tokens.radii.m,
     marginBottom: 16,
   },
   modalProgressText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: tokens.colors.textBody,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
     marginBottom: 8,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1.6,
   },
   modalProgressBar: {
     height: 4,
@@ -5570,22 +5567,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: tokens.colors.border,
   },
-  cancelBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: tokens.colors.textBody,
-  },
+  cancelBtnText: { fontFamily: tokens.fontFamilies.sans600, fontSize: 14,
+    color: tokens.colors.textBody, letterSpacing: -0.1 },
   saveInsightBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
     backgroundColor: tokens.colors.brand,
   },
-  saveInsightBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: tokens.colors.brandText,
-  },
+  saveInsightBtnText: { fontFamily: tokens.fontFamilies.sans600, fontSize: 14,
+    color: tokens.colors.brandText, letterSpacing: -0.1 },
   addInsightSection: {
     marginTop: 8,
   },
@@ -6053,9 +6044,9 @@ const styles = StyleSheet.create({
   // Application Detail Modal
   modalHandle: {
     width: 40,
-    height: 5,
+    height: 4,
     backgroundColor: tokens.colors.border,
-    borderRadius: 3,
+    borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
   },
@@ -6215,12 +6206,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.border,
   },
-  nextActionText: {
-    flex: 1,
+  nextActionText: { fontFamily: tokens.fontFamilies.sans600, flex: 1,
     fontSize: 14,
-    fontWeight: "700",
-    color: tokens.colors.text,
-  },
+    color: tokens.colors.text, letterSpacing: -0.1 },
   messageBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -6231,11 +6219,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginTop: 12,
   },
-  messageBtnText: {
-    color: tokens.colors.brandText,
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  messageBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
+    fontSize: 16, letterSpacing: -0.1 },
 
   // Certifications & Languages Styles
   certificationCard: {
@@ -6362,11 +6347,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  entrySaveBtnText: {
-    color: tokens.colors.brandText,
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  entrySaveBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
+    fontSize: 13, letterSpacing: -0.1 },
   entryDeleteBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -6378,11 +6360,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.dangerBorder,
   },
-  entryDeleteBtnText: {
-    color: tokens.colors.dangerFg,
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  entryDeleteBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.dangerFg,
+    fontSize: 12, letterSpacing: -0.1 },
   emptyHint: {
     fontSize: 13,
     color: tokens.colors.textFaint,
@@ -6528,11 +6507,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
   },
-  resumeUploadBtnText: {
-    color: tokens.colors.brandText,
-    fontSize: 15,
-    fontWeight: "700",
-  },
+  resumeUploadBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
+    fontSize: 15, letterSpacing: -0.1 },
   resumeProgressCard: {
     flexDirection: "column",
     gap: 12,

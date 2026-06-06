@@ -4415,7 +4415,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
-  messageBtnText: { color: tokens.colors.brandText, fontWeight: "700", fontSize: 13 },
+  messageBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText, fontSize: 13, letterSpacing: -0.1 },
 
   // Job Cards for Applicants
   jobCard: {
@@ -4453,7 +4453,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
-  applyBtnText: { color: tokens.colors.brandText, fontWeight: "700", fontSize: 13 },
+  applyBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText, fontSize: 13, letterSpacing: -0.1 },
 
   listSection: { gap: 12 },
   listItem: {
@@ -5356,7 +5356,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  applyBtnLargeText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "800" },
+  applyBtnLargeText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText, fontSize: 16, letterSpacing: -0.1 },
 
   // Input
   inputLabel: {
@@ -5909,9 +5909,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   withdrawBtnText: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 12,
-    fontWeight: "700" as const,
     color: tokens.colors.dangerFg,
+    letterSpacing: -0.1,
   },
   withdrawIconCircle: {
     width: 64,
@@ -5984,11 +5985,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  withdrawCancelBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: tokens.colors.text,
-  },
+  withdrawCancelBtnText: { fontFamily: tokens.fontFamilies.sans600, fontSize: 14,
+    color: tokens.colors.text, letterSpacing: -0.1 },
   withdrawConfirmBtn: {
     flex: 1,
     paddingVertical: 16,
@@ -6029,17 +6027,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  undoToastBtnText: {
-    color: tokens.colors.text,
+  undoToastBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.text,
     fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  withdrawConfirmBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: tokens.colors.brandText,
-  },
+    letterSpacing: 0.3 },
+  withdrawConfirmBtnText: { fontFamily: tokens.fontFamilies.sans600, fontSize: 14,
+    color: tokens.colors.brandText, letterSpacing: -0.1 },
   referralDateText: {
     fontSize: 11,
     color: tokens.colors.textFaint,
@@ -6084,7 +6076,7 @@ const styles = StyleSheet.create({
   },
   srCalloutText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 22 },
   srDismissBtn: { alignItems: "center", marginTop: 14, paddingVertical: 8 },
-  srDismissBtnText: { fontSize: 14, color: tokens.colors.textMuted, fontWeight: "600" },
+  srDismissBtnText: { fontFamily: tokens.fontFamilies.sans600, fontSize: 14, color: tokens.colors.textMuted, letterSpacing: -0.1 },
   srJobCardTapHint: {
     fontSize: 11,
     fontWeight: "600",

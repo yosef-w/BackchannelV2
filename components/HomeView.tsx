@@ -6888,7 +6888,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 30,
   },
-  returnBtnText: { color: tokens.colors.brandText, fontWeight: "700" },
+  returnBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText, letterSpacing: -0.1 },
   primaryBtn: {
     backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
@@ -6900,11 +6900,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flex: 1,
   },
-  primaryBtnText: {
-    color: tokens.colors.brandText,
-    fontWeight: "700",
-    fontSize: 15,
-  },
+  primaryBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
+    fontSize: 15, letterSpacing: -0.1 },
   secondaryBtn: {
     backgroundColor: tokens.colors.bgSurface,
     paddingVertical: 16,
@@ -6917,11 +6914,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.border,
   },
-  secondaryBtnText: {
-    color: tokens.colors.text,
-    fontWeight: "700",
-    fontSize: 15,
-  },
+  secondaryBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.text,
+    fontSize: 15, letterSpacing: -0.1 },
   emptyActionsRow: {
     flexDirection: "row",
     gap: 12,
@@ -7450,12 +7444,18 @@ const styles = StyleSheet.create({
   },
   modalOptionContent: { flex: 1 },
   modalOptionTitle: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 16,
-    fontWeight: "700",
     color: tokens.colors.text,
+    letterSpacing: -0.2,
     marginBottom: 4,
   },
-  modalOptionDesc: { fontSize: 13, color: tokens.colors.textBody, lineHeight: 18 },
+  modalOptionDesc: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 13,
+    color: tokens.colors.textBody,
+    lineHeight: 20,
+  },
 
   successContainer: { alignItems: "center", paddingVertical: 32 },
   successCircleLarge: {
@@ -7486,7 +7486,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     minWidth: 200,
   },
-  successActionBtnText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
+  successActionBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText, fontSize: 16, letterSpacing: -0.1 },
 
   // Relevance badge & requirements summary
   relevancePill: {
@@ -7730,21 +7730,15 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
-  emailVerifPrimaryBtnText: {
-    color: tokens.colors.brandText,
-    fontSize: 17,
-    fontWeight: "700",
-  },
+  emailVerifPrimaryBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
+    fontSize: 17, letterSpacing: -0.1 },
   emailVerifSecondaryBtn: {
     height: 56,
     alignItems: "center",
     justifyContent: "center",
   },
-  emailVerifSecondaryBtnText: {
-    color: tokens.colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  emailVerifSecondaryBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.text,
+    fontSize: 16, letterSpacing: -0.1 },
   emailVerifErrorText: {
     fontSize: 13,
     color: tokens.colors.dangerFg,
@@ -7758,13 +7752,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 8,
   },
-  emailVerifTesterBtnText: {
-    color: tokens.colors.textMuted,
+  emailVerifTesterBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.textMuted,
     fontSize: 13,
-    fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
+    letterSpacing: 0.5 },
   // Inline "Wrong email? Update it" affordance + edit form for fixing typos
   // in the modal without leaving the verification flow. Muted gray to match
   // the modal's neutral palette (no bright accent — the existing primary CTA
