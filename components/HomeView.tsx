@@ -80,6 +80,7 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { tokens } from "@/constants/theme";
 import { useJobsStore } from "../stores/useJobsStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
@@ -133,13 +134,13 @@ const mockProfiles = [
         question: "I'M BEST KNOWN FOR",
         answer:
           "Being the 'No' person in product meetings—keeping us focused on what matters.",
-        icon: <Check size={14} color="#000" />,
+        icon: <Check size={14} color={tokens.colors.text} />,
       },
       {
         question: "THE PROJECT I'M MOST PROUD OF",
         answer:
           "A micro-loan app that helped 50k+ small businesses in SE Asia.",
-        icon: <Award size={14} color="#000" />,
+        icon: <Award size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -204,12 +205,12 @@ const mockProfiles = [
       {
         question: "MY SECRET SUPERPOWER",
         answer: "Optimizing C++ code until it runs on a potato.",
-        icon: <Zap size={14} color="#000" />,
+        icon: <Zap size={14} color={tokens.colors.text} />,
       },
       {
         question: "IF I WASN'T IN TECH",
         answer: "I'd be a park ranger in the North Cascades.",
-        icon: <Globe size={14} color="#000" />,
+        icon: <Globe size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -271,12 +272,12 @@ const mockProfiles = [
       {
         question: "MY FAVORITE BRAINSTORMING FUEL",
         answer: "A 5am run followed by a very cold brew.",
-        icon: <Coffee size={14} color="#000" />,
+        icon: <Coffee size={14} color={tokens.colors.text} />,
       },
       {
         question: "WHAT I LOOK FOR IN TALENT",
         answer: "High agency. I want people who don't wait for permission.",
-        icon: <Sparkles size={14} color="#000" />,
+        icon: <Sparkles size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -337,13 +338,13 @@ const mockProfiles = [
         question: "MY SECRET SUPERPOWER",
         answer:
           "Spotting trends in Gen-Z behavior before they hit the mainstream.",
-        icon: <Zap size={14} color="#000" />,
+        icon: <Zap size={14} color={tokens.colors.text} />,
       },
       {
         question: "ONE THING THAT SURPRISED ME",
         answer:
           "How much 'traditional' sports can learn from e-sports production.",
-        icon: <Info size={14} color="#000" />,
+        icon: <Info size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -407,12 +408,12 @@ const mockProfiles = [
       {
         question: "I'M BEST KNOWN FOR",
         answer: "Breaking things so that they can be built back stronger.",
-        icon: <Check size={14} color="#000" />,
+        icon: <Check size={14} color={tokens.colors.text} />,
       },
       {
         question: "IF I WASN'T IN TECH",
         answer: "I'd be a locksmith. It's the same logic, just physical.",
-        icon: <Briefcase size={14} color="#000" />,
+        icon: <Briefcase size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -473,12 +474,12 @@ const mockProfiles = [
       {
         question: "MY SECRET SUPERPOWER",
         answer: "Patience. Tuning a PID loop for 12 hours straight is my zen.",
-        icon: <Zap size={14} color="#000" />,
+        icon: <Zap size={14} color={tokens.colors.text} />,
       },
       {
         question: "MY FAVORITE BRAINSTORMING FUEL",
         answer: "Matcha and lo-fi beats.",
-        icon: <Coffee size={14} color="#000" />,
+        icon: <Coffee size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -551,13 +552,13 @@ const mockProfiles = [
         question: "ONE THING THAT SURPRISED ME",
         answer:
           "How quickly strangers can organize for a common goal when incentives align.",
-        icon: <MessageCircle size={14} color="#000" />,
+        icon: <MessageCircle size={14} color={tokens.colors.text} />,
       },
       {
         question: "THE PROJECT I'M MOST PROUD OF",
         answer:
           "Launching a DAO that funded 200+ scholarships for women in tech.",
-        icon: <Award size={14} color="#000" />,
+        icon: <Award size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -623,12 +624,12 @@ const mockProfiles = [
         question: "I'M BEST KNOWN FOR",
         answer:
           "Bridging the gap between 'wet lab' scientists and 'dry lab' engineers.",
-        icon: <Globe size={14} color="#000" />,
+        icon: <Globe size={14} color={tokens.colors.text} />,
       },
       {
         question: "IF I WASN'T IN TECH",
         answer: "I'd be a chef. Chemistry you can eat.",
-        icon: <Coffee size={14} color="#000" />,
+        icon: <Coffee size={14} color={tokens.colors.text} />,
       },
     ],
     fullDetails: {
@@ -1012,7 +1013,7 @@ const SkeletonCard = () => {
               width: 96,
               height: 96,
               borderRadius: 48,
-              backgroundColor: "#EBEBEB",
+              backgroundColor: tokens.colors.bgSurface,
             },
             shimmerStyle,
           ]}
@@ -1021,7 +1022,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#EBEBEB",
+              backgroundColor: tokens.colors.bgSurface,
               width: "58%",
               height: 26,
               borderRadius: 6,
@@ -1034,7 +1035,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#EBEBEB",
+              backgroundColor: tokens.colors.bgSurface,
               width: "38%",
               height: 16,
               borderRadius: 4,
@@ -1058,7 +1059,7 @@ const SkeletonCard = () => {
               key={i}
               style={[
                 {
-                  backgroundColor: "#EBEBEB",
+                  backgroundColor: tokens.colors.bgSurface,
                   width: w,
                   height: 28,
                   borderRadius: 999,
@@ -1072,7 +1073,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: tokens.colors.border, marginVertical: 4 }}
       />
 
       {/* ── ABOUT section ────────────────────────────────────────── */}
@@ -1081,7 +1082,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: tokens.colors.border,
               width: "28%",
               height: 11,
               borderRadius: 4,
@@ -1094,20 +1095,20 @@ const SkeletonCard = () => {
         <View style={{ gap: 8 }}>
           <Animated.View
             style={[
-              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              { backgroundColor: tokens.colors.bgSurface, height: 15, borderRadius: 4 },
               shimmerStyle,
             ]}
           />
           <Animated.View
             style={[
-              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              { backgroundColor: tokens.colors.bgSurface, height: 15, borderRadius: 4 },
               shimmerStyle,
             ]}
           />
           <Animated.View
             style={[
               {
-                backgroundColor: "#EBEBEB",
+                backgroundColor: tokens.colors.bgSurface,
                 width: "70%",
                 height: 15,
                 borderRadius: 4,
@@ -1120,7 +1121,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: tokens.colors.border, marginVertical: 4 }}
       />
 
       {/* ── AT-A-GLANCE stats strip ───────────────────────────────── */}
@@ -1128,7 +1129,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: tokens.colors.border,
               width: "38%",
               height: 11,
               borderRadius: 4,
@@ -1141,7 +1142,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: tokens.colors.bgSurface,
               borderRadius: 16,
               height: 64,
               overflow: "hidden",
@@ -1153,7 +1154,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: tokens.colors.border, marginVertical: 4 }}
       />
 
       {/* ── INSIGHTS section ─────────────────────────────────────── */}
@@ -1161,7 +1162,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: tokens.colors.border,
               width: "32%",
               height: 11,
               borderRadius: 4,
@@ -1173,11 +1174,11 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: tokens.colors.bgSurface,
               borderRadius: 14,
               height: 80,
               borderWidth: 1,
-              borderColor: "#EFEFEF",
+              borderColor: tokens.colors.border,
             },
             shimmerStyle,
           ]}
@@ -1185,11 +1186,11 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: tokens.colors.bgSurface,
               borderRadius: 14,
               height: 80,
               borderWidth: 1,
-              borderColor: "#EFEFEF",
+              borderColor: tokens.colors.border,
             },
             shimmerStyle,
           ]}
@@ -1198,7 +1199,7 @@ const SkeletonCard = () => {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: tokens.colors.border, marginVertical: 4 }}
       />
 
       {/* ── TOP SKILLS chips ─────────────────────────────────────── */}
@@ -1206,7 +1207,7 @@ const SkeletonCard = () => {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: tokens.colors.border,
               width: "30%",
               height: 11,
               borderRadius: 4,
@@ -1221,7 +1222,7 @@ const SkeletonCard = () => {
               key={i}
               style={[
                 {
-                  backgroundColor: "#EBEBEB",
+                  backgroundColor: tokens.colors.bgSurface,
                   width: w,
                   height: 30,
                   borderRadius: 999,
@@ -2371,7 +2372,7 @@ export function HomeView({
                       </Text>
                     </View>
                   )}
-                <ChevronDown color="#555" size={14} strokeWidth={2.5} />
+                <ChevronDown color={tokens.colors.textBody} size={14} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
           </Animated.View>
@@ -2380,7 +2381,7 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <Animated.View entering={FadeInUp} style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <RefreshCcw color="#000" size={32} />
+                  <RefreshCcw color={tokens.colors.text} size={32} />
                 </View>
                 <Text style={styles.emptyTitle}>All Caught Up!</Text>
                 <Text style={styles.emptySub}>
@@ -2417,7 +2418,7 @@ export function HomeView({
                   <View
                     style={[styles.emptyDeckCard, styles.emptyDeckCardFront]}
                   >
-                    <Briefcase color="#000" size={28} strokeWidth={1.8} />
+                    <Briefcase color={tokens.colors.text} size={28} strokeWidth={1.8} />
                   </View>
                 </View>
 
@@ -2437,7 +2438,7 @@ export function HomeView({
                   <Text style={styles.sponsorEmptyPrimaryText}>
                     Browse Jobs
                   </Text>
-                  <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                  <ChevronRight color={tokens.colors.brandText} size={18} strokeWidth={2.5} />
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -2531,7 +2532,7 @@ export function HomeView({
                     }}
                     activeOpacity={0.85}
                   >
-                    <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+                    <RefreshCcw color={tokens.colors.text} size={16} strokeWidth={2.2} />
                     <Text style={styles.sponsorEmptySecondaryText}>
                       Refresh
                     </Text>
@@ -2546,7 +2547,7 @@ export function HomeView({
                     <Text style={styles.sponsorEmptyPrimaryText}>
                       Sponsor Another
                     </Text>
-                    <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                    <ChevronRight color={tokens.colors.brandText} size={18} strokeWidth={2.5} />
                   </TouchableOpacity>
                 </View>
               </Animated.View>
@@ -2557,7 +2558,7 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <Animated.View entering={FadeInUp} style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <RefreshCcw color="#000" size={32} />
+                  <RefreshCcw color={tokens.colors.text} size={32} />
                 </View>
                 <Text style={styles.emptyTitle}>Couldn't Load Profiles</Text>
                 <Text style={styles.emptySub}>
@@ -2628,7 +2629,7 @@ export function HomeView({
                     }
                   }}
                 >
-                  <RefreshCcw color="#FFF" size={18} />
+                  <RefreshCcw color={tokens.colors.brandText} size={18} />
                   <Text style={styles.primaryBtnText}>Try Again</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -2641,7 +2642,7 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <Animated.View entering={FadeInUp} style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <RefreshCcw color="#000" size={32} />
+                  <RefreshCcw color={tokens.colors.text} size={32} />
                 </View>
                 <Text style={styles.emptyTitle}>Couldn't Load Roles</Text>
                 <Text style={styles.emptySub}>
@@ -2673,7 +2674,7 @@ export function HomeView({
                     })();
                   }}
                 >
-                  <RefreshCcw color="#FFF" size={18} />
+                  <RefreshCcw color={tokens.colors.brandText} size={18} />
                   <Text style={styles.primaryBtnText}>Try Again</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -2698,7 +2699,7 @@ export function HomeView({
                   <View
                     style={[styles.emptyDeckCard, styles.emptyDeckCardFront]}
                   >
-                    <Briefcase color="#000" size={28} strokeWidth={1.8} />
+                    <Briefcase color={tokens.colors.text} size={28} strokeWidth={1.8} />
                   </View>
                 </View>
 
@@ -2735,7 +2736,7 @@ export function HomeView({
                     }}
                     activeOpacity={0.85}
                   >
-                    <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+                    <RefreshCcw color={tokens.colors.text} size={16} strokeWidth={2.2} />
                     <Text style={styles.sponsorEmptySecondaryText}>
                       Refresh
                     </Text>
@@ -2776,8 +2777,8 @@ export function HomeView({
                           <View style={styles.likedYourRolePill}>
                             <Heart
                               size={11}
-                              color="#FFF"
-                              fill="#FFF"
+                              color={tokens.colors.brandText}
+                              fill={tokens.colors.brandText}
                               strokeWidth={2}
                             />
                             <Text style={styles.likedYourRolePillText}>
@@ -2819,7 +2820,7 @@ export function HomeView({
                           {"company" in currentData &&
                             !!currentData.company && (
                               <View style={styles.heroPill}>
-                                <Briefcase color="#666" size={11} />
+                                <Briefcase color={tokens.colors.textBody} size={11} />
                                 <Text style={styles.heroPillText}>
                                   {currentData.company}
                                 </Text>
@@ -2828,7 +2829,7 @@ export function HomeView({
                           {"location" in currentData &&
                             !!currentData.location && (
                               <View style={styles.heroPill}>
-                                <MapPin color="#666" size={11} />
+                                <MapPin color={tokens.colors.textBody} size={11} />
                                 <Text style={styles.heroPillText}>
                                   {currentData.location}
                                 </Text>
@@ -2888,7 +2889,7 @@ export function HomeView({
                                   paddingVertical: 4,
                                 }}
                               >
-                                <ActivityIndicator color="#999" />
+                                <ActivityIndicator color={tokens.colors.textMuted} />
                               </View>
                             </View>
                           );
@@ -3182,7 +3183,7 @@ export function HomeView({
                           <View style={styles.statusBannerRow}>
                             {waitlistedJobIds.has(String(currentData.id)) ? (
                               <View style={styles.statusBanner}>
-                                <Check color="#FFF" size={13} strokeWidth={3} />
+                                <Check color={tokens.colors.brandText} size={13} strokeWidth={3} />
                                 <Text style={styles.statusBannerText}>
                                   Waitlisted
                                 </Text>
@@ -3191,14 +3192,14 @@ export function HomeView({
                                 String(currentData.id),
                               ) ? (
                               <View style={styles.statusBanner}>
-                                <Check color="#FFF" size={13} strokeWidth={3} />
+                                <Check color={tokens.colors.brandText} size={13} strokeWidth={3} />
                                 <Text style={styles.statusBannerText}>
                                   Sponsor requested
                                 </Text>
                               </View>
                             ) : (
                               <View style={styles.statusBanner}>
-                                <Check color="#FFF" size={13} strokeWidth={3} />
+                                <Check color={tokens.colors.brandText} size={13} strokeWidth={3} />
                                 <Text style={styles.statusBannerText}>
                                   Applied
                                 </Text>
@@ -3244,7 +3245,7 @@ export function HomeView({
                             }
                           >
                             {currentData.isSponsored && (
-                              <Check color="#FFF" size={10} strokeWidth={3} />
+                              <Check color={tokens.colors.brandText} size={10} strokeWidth={3} />
                             )}
                             <Text
                               style={
@@ -3263,7 +3264,7 @@ export function HomeView({
                           {"location" in currentData &&
                             !!currentData.location && (
                               <View style={styles.heroPill}>
-                                <MapPin color="#666" size={11} />
+                                <MapPin color={tokens.colors.textBody} size={11} />
                                 <Text style={styles.heroPillText}>
                                   {currentData.location}
                                 </Text>
@@ -3271,7 +3272,7 @@ export function HomeView({
                             )}
                           {"salary" in currentData && !!currentData.salary && (
                             <View style={styles.heroPill}>
-                              <DollarSign color="#666" size={11} />
+                              <DollarSign color={tokens.colors.textBody} size={11} />
                               <Text style={styles.heroPillText}>
                                 {currentData.salary}
                               </Text>
@@ -3279,7 +3280,7 @@ export function HomeView({
                           )}
                           {"type" in currentData && !!currentData.type && (
                             <View style={styles.heroPill}>
-                              <Briefcase color="#666" size={11} />
+                              <Briefcase color={tokens.colors.textBody} size={11} />
                               <Text style={styles.heroPillText}>
                                 {currentData.type}
                               </Text>
@@ -3288,7 +3289,7 @@ export function HomeView({
                           {"relevanceScore" in currentData &&
                             (currentData as any).relevanceScore > 0 && (
                               <View style={styles.heroPillAccent}>
-                                <Zap size={10} color="#FFF" strokeWidth={2.5} />
+                                <Zap size={10} color={tokens.colors.brandText} strokeWidth={2.5} />
                                 <Text style={styles.heroPillAccentText}>
                                   {Math.round(
                                     (currentData as any).relevanceScore > 1
@@ -3343,7 +3344,7 @@ export function HomeView({
                             <View style={styles.hingeChipsWrap}>
                               {!!expLvl && (
                                 <View style={styles.roleDetailChip}>
-                                  <Briefcase size={13} color="#000" />
+                                  <Briefcase size={13} color={tokens.colors.text} />
                                   <Text style={styles.roleDetailChipText}>
                                     {(() => {
                                       const v = String(expLvl).trim();
@@ -3356,7 +3357,7 @@ export function HomeView({
                               )}
                               {!!workArr && (
                                 <View style={styles.roleDetailChip}>
-                                  <MapPin size={13} color="#000" />
+                                  <MapPin size={13} color={tokens.colors.text} />
                                   <Text style={styles.roleDetailChipText}>
                                     {workArr}
                                   </Text>
@@ -3427,7 +3428,7 @@ export function HomeView({
                               {currentData.benefits.map(
                                 (benefit: string, idx: number) => (
                                   <View key={idx} style={styles.benefitRow}>
-                                    <Check size={14} color="#000" />
+                                    <Check size={14} color={tokens.colors.text} />
                                     <Text style={styles.benefitText}>
                                       {benefit}
                                     </Text>
@@ -3448,7 +3449,7 @@ export function HomeView({
                               <View style={styles.noSponsorIconCircle}>
                                 <BellRing
                                   size={22}
-                                  color="#000"
+                                  color={tokens.colors.text}
                                   strokeWidth={2}
                                 />
                               </View>
@@ -3584,7 +3585,7 @@ export function HomeView({
                                           >
                                             <Check
                                               size={10}
-                                              color="#000"
+                                              color={tokens.colors.text}
                                               strokeWidth={3}
                                             />
                                             <Text
@@ -3607,7 +3608,7 @@ export function HomeView({
                                       >
                                         {!!si.yearsAtCompany && (
                                           <View style={styles.heroPill}>
-                                            <Calendar color="#666" size={11} />
+                                            <Calendar color={tokens.colors.textBody} size={11} />
                                             <Text style={styles.heroPillText}>
                                               {si.yearsAtCompany} here
                                             </Text>
@@ -3616,7 +3617,7 @@ export function HomeView({
                                         {si.canRefer && (
                                           <View style={styles.heroPill}>
                                             <Check
-                                              color="#666"
+                                              color={tokens.colors.textBody}
                                               size={11}
                                               strokeWidth={3}
                                             />
@@ -3772,14 +3773,14 @@ export function HomeView({
                   style={styles.floatingPassBtn}
                   activeOpacity={0.85}
                 >
-                  <X color="#000" size={26} strokeWidth={2.5} />
+                  <X color={tokens.colors.text} size={26} strokeWidth={2.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleSwipe(true)}
                   style={styles.floatingConnectBtn}
                   activeOpacity={0.85}
                 >
-                  <Check color="#FFF" size={26} strokeWidth={2.8} />
+                  <Check color={tokens.colors.brandText} size={26} strokeWidth={2.8} />
                 </TouchableOpacity>
               </Animated.View>
             </>
@@ -3805,7 +3806,7 @@ export function HomeView({
               style={styles.celebrationCard}
             >
               <View style={styles.successCircle}>
-                <Check color="#FFF" size={32} strokeWidth={3} />
+                <Check color={tokens.colors.brandText} size={32} strokeWidth={3} />
               </View>
               <Text style={styles.celebrationTitle}>
                 {userType === "sponsor" ? "Request Sent!" : "Application Sent!"}
@@ -3880,7 +3881,7 @@ export function HomeView({
 
                 {/* Spark connector */}
                 <View style={styles.matchSparkWrapper}>
-                  <Sparkles size={18} color="#000" />
+                  <Sparkles size={18} color={tokens.colors.text} />
                 </View>
 
                 {/* Matched user's avatar */}
@@ -3937,7 +3938,7 @@ export function HomeView({
                   onPress={handleMatchModalDismiss}
                   activeOpacity={0.8}
                 >
-                  <MessageCircle size={18} color="#FFF" />
+                  <MessageCircle size={18} color={tokens.colors.brandText} />
                   <Text style={styles.matchMsgBtnText}>Message Now</Text>
                 </TouchableOpacity>
 
@@ -3986,7 +3987,7 @@ export function HomeView({
                 onPress={() => setShowApplyModal(false)}
                 style={styles.closeBtn}
               >
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -4015,7 +4016,7 @@ export function HomeView({
                     activeOpacity={0.7}
                   >
                     <View style={styles.modalOptionIcon}>
-                      <BellRing color="#000" size={24} />
+                      <BellRing color={tokens.colors.text} size={24} />
                     </View>
                     <View style={styles.modalOptionContent}>
                       <Text style={styles.modalOptionTitle}>Get a Sponsor</Text>
@@ -4026,9 +4027,9 @@ export function HomeView({
                       </Text>
                     </View>
                     {isRequestingSponsor ? (
-                      <ActivityIndicator size="small" color="#999" />
+                      <ActivityIndicator size="small" color={tokens.colors.textMuted} />
                     ) : (
-                      <ChevronRight color="#CCC" size={20} />
+                      <ChevronRight color={tokens.colors.textFaint} size={20} />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -4037,7 +4038,7 @@ export function HomeView({
               {applyStep === "requested" && (
                 <View style={styles.successContainer}>
                   <View style={styles.successCircleLarge}>
-                    <Check color="#FFF" size={40} strokeWidth={3} />
+                    <Check color={tokens.colors.brandText} size={40} strokeWidth={3} />
                   </View>
                   <Text style={styles.successMessage}>
                     {`This role doesn't have a dedicated sponsor yet, but your request has been sent to everyone we have available at ${pendingJob?.company ?? "this company"}. If someone is able to sponsor you for this role, you'll be notified right away.`}
@@ -4215,7 +4216,7 @@ export function HomeView({
             style={styles.emailVerifModal}
           >
             <View style={styles.emailVerifIconCircle}>
-              <Mail color="#FFF" size={32} strokeWidth={1.5} />
+              <Mail color={tokens.colors.brandText} size={32} strokeWidth={1.5} />
             </View>
 
             <Text style={styles.emailVerifTitle}>Verify Your Work Email</Text>
@@ -4309,7 +4310,7 @@ export function HomeView({
                         disabled={emailVerifyLoading}
                       >
                         {emailVerifyLoading ? (
-                          <ActivityIndicator size="small" color="#FFF" />
+                          <ActivityIndicator size="small" color={tokens.colors.brandText} />
                         ) : (
                           <Text style={styles.emailVerifEditSaveText}>
                             Save & resend
@@ -4359,7 +4360,7 @@ export function HomeView({
               <Text style={styles.emailVerifPrimaryBtnText}>
                 Open Email App
               </Text>
-              <ChevronRight color="#FFF" size={20} />
+              <ChevronRight color={tokens.colors.brandText} size={20} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -4390,7 +4391,7 @@ export function HomeView({
               activeOpacity={0.8}
             >
               {emailVerifyLoading ? (
-                <ActivityIndicator size="small" color="#000" />
+                <ActivityIndicator size="small" color={tokens.colors.text} />
               ) : (
                 <Text style={styles.emailVerifSecondaryBtnText}>
                   I've Verified My Email
@@ -4478,13 +4479,13 @@ export function HomeView({
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: "#FFF",
+            backgroundColor: tokens.colors.bg,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingTop: 12,
             paddingBottom: 40,
             maxHeight: "50%",
-            shadowColor: "#000",
+            shadowColor: tokens.colors.brand,
             shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.15,
             shadowRadius: 20,
@@ -4521,19 +4522,19 @@ export function HomeView({
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: "#F5F5F5",
+                  backgroundColor: tokens.colors.bgSurface,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Briefcase color="#000" size={20} />
+                <Briefcase color={tokens.colors.text} size={20} />
               </View>
               <View>
                 <Text
                   style={{
                     fontSize: 22,
                     fontWeight: "800",
-                    color: "#000",
+                    color: tokens.colors.text,
                     letterSpacing: -0.5,
                   }}
                 >
@@ -4543,7 +4544,7 @@ export function HomeView({
                   style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: "#999",
+                    color: tokens.colors.textMuted,
                     marginTop: 2,
                   }}
                 >
@@ -4558,14 +4559,14 @@ export function HomeView({
               style={{
                 width: 36,
                 height: 36,
-                backgroundColor: "#F5F5F5",
+                backgroundColor: tokens.colors.bgSurface,
                 borderRadius: 18,
                 alignItems: "center",
                 justifyContent: "center",
               }}
               activeOpacity={0.7}
             >
-              <X color="#666" size={18} />
+              <X color={tokens.colors.textBody} size={18} />
             </TouchableOpacity>
           </View>
 
@@ -4573,7 +4574,7 @@ export function HomeView({
           <View
             style={{
               height: 1,
-              backgroundColor: "#F0F0F0",
+              backgroundColor: tokens.colors.border,
               marginHorizontal: 28,
               marginVertical: 20,
             }}
@@ -4589,7 +4590,7 @@ export function HomeView({
               style={{
                 fontSize: 16,
                 lineHeight: 26,
-                color: "#444",
+                color: tokens.colors.textBody,
                 fontWeight: "500",
                 letterSpacing: -0.2,
               }}
@@ -4629,13 +4630,13 @@ export function HomeView({
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: "#FFF",
+            backgroundColor: tokens.colors.bg,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingTop: 12,
             paddingBottom: 40,
             maxHeight: "75%",
-            shadowColor: "#000",
+            shadowColor: tokens.colors.brand,
             shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.15,
             shadowRadius: 20,
@@ -4670,19 +4671,19 @@ export function HomeView({
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: "#F5F5F5",
+                  backgroundColor: tokens.colors.bgSurface,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Info color="#000" size={20} />
+                <Info color={tokens.colors.text} size={20} />
               </View>
               <View>
                 <Text
                   style={{
                     fontSize: 22,
                     fontWeight: "800",
-                    color: "#000",
+                    color: tokens.colors.text,
                     letterSpacing: -0.5,
                   }}
                 >
@@ -4692,7 +4693,7 @@ export function HomeView({
                   style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: "#999",
+                    color: tokens.colors.textMuted,
                     marginTop: 2,
                   }}
                 >
@@ -4707,21 +4708,21 @@ export function HomeView({
               style={{
                 width: 36,
                 height: 36,
-                backgroundColor: "#F5F5F5",
+                backgroundColor: tokens.colors.bgSurface,
                 borderRadius: 18,
                 alignItems: "center",
                 justifyContent: "center",
               }}
               activeOpacity={0.7}
             >
-              <X color="#666" size={18} />
+              <X color={tokens.colors.textBody} size={18} />
             </TouchableOpacity>
           </View>
 
           <View
             style={{
               height: 1,
-              backgroundColor: "#F0F0F0",
+              backgroundColor: tokens.colors.border,
               marginHorizontal: 28,
               marginVertical: 20,
             }}
@@ -4736,7 +4737,7 @@ export function HomeView({
               style={{
                 fontSize: 16,
                 lineHeight: 26,
-                color: "#444",
+                color: tokens.colors.textBody,
                 fontWeight: "500",
                 letterSpacing: -0.2,
               }}
@@ -4757,7 +4758,7 @@ export function HomeView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: tokens.colors.bg },
   safeArea: { flex: 1 },
   scrollContent: { paddingHorizontal: 36, paddingBottom: 100 },
   // 2026-05-26 Hinge-style redesign — layout primitives.
@@ -4789,25 +4790,25 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   hingeHeroAvatarFallback: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   hingeHeroAvatarInitial: {
     fontSize: 36,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   hingeHeroName: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.6,
     marginTop: 16,
     textAlign: "center",
@@ -4815,7 +4816,7 @@ const styles = StyleSheet.create({
   hingeHeroSubtitle: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     marginTop: 4,
   },
@@ -4838,7 +4839,7 @@ const styles = StyleSheet.create({
   // ── Section primitives ────────────────────────────────────────────
   hingeDivider: {
     height: 1,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     marginVertical: 4,
   },
   hingeSection: { paddingVertical: 18 },
@@ -4846,20 +4847,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1.2,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 10,
   },
   hingeBodyText: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#333",
+    color: tokens.colors.text,
     lineHeight: 23,
   },
 
   // ── At-a-glance stats strip (sponsor view) ────────────────────────
   hingeStatsRow: {
     flexDirection: "row",
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     paddingVertical: 14,
     marginVertical: 8,
@@ -4874,13 +4875,13 @@ const styles = StyleSheet.create({
   hingeStatValue: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
   },
   hingeStatLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#888",
+    color: tokens.colors.textMuted,
     letterSpacing: 0.8,
     marginTop: 4,
     textTransform: "uppercase",
@@ -4896,12 +4897,12 @@ const styles = StyleSheet.create({
   // to the answer plays the same role typographically.
   hingeInsightCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: tokens.colors.border,
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -4909,7 +4910,7 @@ const styles = StyleSheet.create({
   },
   hingeInsightAccent: {
     width: 3,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   hingeInsightBody: {
     flex: 1,
@@ -4919,7 +4920,7 @@ const styles = StyleSheet.create({
   hingeInsightQuestion: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1.0,
     marginBottom: 10,
     textTransform: "uppercase",
@@ -4932,7 +4933,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 30,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginRight: 8,
     marginTop: -2,
   },
@@ -4940,7 +4941,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "500",
-    color: "#1A1A1A",
+    color: tokens.colors.text,
     lineHeight: 24,
   },
 
@@ -4953,26 +4954,26 @@ const styles = StyleSheet.create({
   // this is "what the sponsor wrote ABOUT the role" vs. "what the
   // sponsor said in their own words".
   jobInsightCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: tokens.colors.border,
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 2,
   },
   jobInsightHeader: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   jobInsightHeaderLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },
@@ -4983,7 +4984,7 @@ const styles = StyleSheet.create({
   jobInsightBodyText: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#1A1A1A",
+    color: tokens.colors.text,
     lineHeight: 23,
   },
 
@@ -4994,7 +4995,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   hingeSkillChip: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
@@ -5002,7 +5003,7 @@ const styles = StyleSheet.create({
   hingeSkillChipText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: tokens.colors.text,
   },
 
   // ── Timeline (experience, education) ──────────────────────────────
@@ -5015,32 +5016,32 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     marginTop: 7,
   },
   hingeTimelineBody: { flex: 1, minWidth: 0 },
   hingeTimelineTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   hingeTimelineSubtitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: tokens.colors.text,
     marginTop: 2,
   },
   hingeTimelineMeta: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#888",
+    color: tokens.colors.textMuted,
     marginTop: 3,
     letterSpacing: 0.1,
   },
   hingeTimelineDescription: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 21,
     marginTop: 8,
   },
@@ -5048,22 +5049,22 @@ const styles = StyleSheet.create({
   // ── Credential blocks (certifications, languages) ─────────────────
   hingeCredentialList: { gap: 12 },
   hingeCredentialBlock: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
   },
   hingeCredentialName: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   hingeCredentialMeta: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#777",
+    color: tokens.colors.textMuted,
     marginTop: 3,
   },
 
@@ -5077,7 +5078,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
@@ -5085,17 +5086,17 @@ const styles = StyleSheet.create({
   statusBannerText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.4,
   },
 
   // ── "No sponsor yet" inline block (applicant view) ────────────────
   noSponsorInlineBlock: {
     alignItems: "center",
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     paddingVertical: 28,
     paddingHorizontal: 20,
   },
@@ -5103,13 +5104,13 @@ const styles = StyleSheet.create({
   // ── Sponsor zone card (sponsored jobs — distinct section) ─────────
   sponsorZoneOuter: { paddingVertical: 18 },
   sponsorZoneCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: tokens.colors.border,
   },
   sponsorZoneHeader: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 11,
     paddingHorizontal: 16,
     flexDirection: "row",
@@ -5119,20 +5120,20 @@ const styles = StyleSheet.create({
   sponsorZoneHeaderText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 1.6,
   },
   sponsorZoneBody: { padding: 16 },
   sponsorZoneDivider: {
     height: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: tokens.colors.border,
     marginVertical: 16,
   },
   // "SPONSOR INSIGHTS" sub-label — light gray, personal voice
   sponsorZoneQALabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1.2,
     marginBottom: 10,
   },
@@ -5140,15 +5141,15 @@ const styles = StyleSheet.create({
   sponsorZoneJobLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#444",
+    color: tokens.colors.textBody,
     letterSpacing: 1.2,
     marginBottom: 10,
   },
   sponsorZoneQACard: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 14,
   },
 
@@ -5162,31 +5163,31 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   sponsorMeetAvatarFallback: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   sponsorMeetAvatarInitial: {
     fontSize: 21,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   sponsorMeetName: {
     fontSize: 19,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.3,
   },
   sponsorMeetRole: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 2,
   },
 
@@ -5211,12 +5212,12 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
     // Drop shadow so the white circle reads against light content
     // underneath. Subtle to keep the brand minimal.
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 14,
@@ -5226,10 +5227,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 14,
@@ -5263,13 +5264,13 @@ const styles = StyleSheet.create({
   progressCurrent: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
   },
   progressTotal: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: -0.1,
   },
   progressDotsRow: {
@@ -5281,10 +5282,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: tokens.colors.border,
   },
   progressDotFilled: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
 
   // 2026-05-27 redesign — Role switcher pill (sponsor-only).
@@ -5299,9 +5300,9 @@ const styles = StyleSheet.create({
   roleSwitcherPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#D0D0D0",
+    borderColor: tokens.colors.borderStrong,
     paddingVertical: 9,
     paddingLeft: 14,
     paddingRight: 12,
@@ -5313,7 +5314,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 13,
     fontWeight: "700",
-    color: "#111",
+    color: tokens.colors.text,
     letterSpacing: -0.1,
   },
   roleSwitcherBadge: {
@@ -5328,7 +5329,7 @@ const styles = StyleSheet.create({
   roleSwitcherBadgeText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.2,
   },
   // Modal: bottom sheet, content-sized, listing all sponsored jobs.
@@ -5336,7 +5337,7 @@ const styles = StyleSheet.create({
   // padding) for visual consistency with the other DismissibleSheets.
   jobSwitcherOverlay: { flex: 1, justifyContent: "flex-end" },
   jobSwitcherSheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -5350,14 +5351,14 @@ const styles = StyleSheet.create({
   jobSwitcherSheetTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.3,
     marginTop: 4,
   },
   jobSwitcherSheetSubtitle: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 20,
     marginTop: 6,
     marginBottom: 12,
@@ -5369,32 +5370,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
-    backgroundColor: "#FFF",
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.bg,
     marginBottom: 8,
   },
   // Subtle active state — black border (no fill) so the row reads as
   // "currently selected" without competing with content underneath.
   jobSwitcherRowActive: {
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     borderWidth: 2,
   },
   jobSwitcherRowTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobSwitcherRowCompany: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 2,
   },
   // Count badge — pending applicants for a sponsored role. Same shape
   // regardless of count so the eye finds the high numbers fast; zero
   // counts use the muted variant below.
   jobSwitcherCountBadge: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -5403,16 +5404,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   jobSwitcherCountBadgeMuted: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   jobSwitcherCountBadgeText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: -0.2,
   },
   jobSwitcherCountBadgeTextMuted: {
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
 
   // Modal Styles
@@ -5428,10 +5429,10 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
   },
-  closeModalBtn: { padding: 4, backgroundColor: "#F5F5F5", borderRadius: 20 },
+  closeModalBtn: { padding: 4, backgroundColor: tokens.colors.bgSurface, borderRadius: 20 },
   modalContent: { padding: 28, paddingBottom: 40 },
   modalFooter: {
     padding: 28,
@@ -5440,7 +5441,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   applyBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     height: 56,
     borderRadius: 28,
     alignItems: "center",
@@ -5448,26 +5449,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-  applyBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  applyBtnText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
   clearBtn: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
   },
-  clearBtnText: { color: "#000", fontSize: 14, fontWeight: "600" },
+  clearBtnText: { color: tokens.colors.text, fontSize: 14, fontWeight: "600" },
   title: {
     fontSize: 34,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -1.2,
   },
   cardContainer: { marginBottom: 24 },
   cardOuter: {
     borderRadius: 24,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.18,
         shadowRadius: 30,
@@ -5475,16 +5476,16 @@ const styles = StyleSheet.create({
       android: { elevation: 18 },
     }),
   },
-  cardOuterBack: { backgroundColor: "#FBFBFB" },
+  cardOuterBack: { backgroundColor: tokens.colors.bgOffWhite },
   cardInner: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     overflow: "hidden",
     height: 460,
   },
-  cardInnerBack: { backgroundColor: "#FBFBFB" },
+  cardInnerBack: { backgroundColor: tokens.colors.bgOffWhite },
 
   // Waitlisted overlay
   waitlistedOverlay: {
@@ -5499,13 +5500,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 100,
     paddingVertical: 10,
     paddingHorizontal: 20,
   },
   waitlistedBadgeText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -5514,13 +5515,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 100,
     paddingVertical: 10,
     paddingHorizontal: 20,
   },
   appliedBadgeText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -5538,13 +5539,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   companyImageSquare: {
     width: 90,
     height: 90,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   profileInfoColumn: {
     flex: 1,
@@ -5566,11 +5567,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
   },
   sponsorTag: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -5578,13 +5579,13 @@ const styles = StyleSheet.create({
   sponsorTagText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.3,
   },
   sponsorTagMuted: {
-    backgroundColor: "#F2F2F2",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -5592,7 +5593,7 @@ const styles = StyleSheet.create({
   sponsorTagMutedText: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 0.3,
   },
   profileRoleRow: {
@@ -5603,7 +5604,7 @@ const styles = StyleSheet.create({
   profileRole: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     flex: 1,
   },
   profileMetaRow: {
@@ -5612,7 +5613,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   companyPill: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
@@ -5620,18 +5621,18 @@ const styles = StyleSheet.create({
   companyPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.3,
   },
   profileLocation: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
   profileExperience: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
 
   // Content Section
@@ -5646,12 +5647,12 @@ const styles = StyleSheet.create({
   sectionLabelSmall: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1,
   },
   descriptionText: {
     fontSize: 14,
-    color: "#333",
+    color: tokens.colors.text,
     lineHeight: 21,
     fontWeight: "500",
   },
@@ -5665,7 +5666,7 @@ const styles = StyleSheet.create({
   readMoreBtnText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
 
@@ -5685,25 +5686,25 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   heroAvatarFallback: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   heroAvatarInitial: {
     fontSize: 27,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   heroName: {
     fontSize: 21,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
     textAlign: "center",
     marginTop: 14,
@@ -5711,7 +5712,7 @@ const styles = StyleSheet.create({
   heroSubtitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     marginTop: 3,
   },
@@ -5726,7 +5727,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
@@ -5739,7 +5740,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     gap: 5,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
@@ -5748,13 +5749,13 @@ const styles = StyleSheet.create({
   likedYourRolePillText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.8,
   },
   heroPillText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#333",
+    color: tokens.colors.text,
     letterSpacing: -0.1,
   },
   // Accent pill — used for the AI-match score. Black so it stands apart
@@ -5763,7 +5764,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
@@ -5771,7 +5772,7 @@ const styles = StyleSheet.create({
   heroPillAccentText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: -0.1,
   },
   // Sponsorship status pill (job cards only).
@@ -5779,7 +5780,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
@@ -5788,13 +5789,13 @@ const styles = StyleSheet.create({
   heroStatusSponsoredText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.2,
   },
   heroStatusMuted: {
-    backgroundColor: "#F2F2F2",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
@@ -5803,7 +5804,7 @@ const styles = StyleSheet.create({
   heroStatusMutedText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 0.2,
   },
   heroAboutBlock: {
@@ -5832,17 +5833,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   skillChipSmall: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   skillChipSmallText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // Back Card Insights
@@ -5858,14 +5859,14 @@ const styles = StyleSheet.create({
   insightSectionLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1,
   },
 
   // Legacy styles (keep for backward compatibility)
   imageWrapperRedesign: {
     height: 180,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     position: "relative",
   },
   imageOverlay: {
@@ -5883,7 +5884,7 @@ const styles = StyleSheet.create({
   nameTextCard: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: -0.5,
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
@@ -5897,7 +5898,7 @@ const styles = StyleSheet.create({
   titleTextCard: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -5911,7 +5912,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   companyBadge: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -5919,14 +5920,14 @@ const styles = StyleSheet.create({
   companyBadgeText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.3,
   },
   locationBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -5934,21 +5935,21 @@ const styles = StyleSheet.create({
   locationBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
 
   // Summary Content
   summaryLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1.2,
     marginTop: 4,
     marginBottom: 4,
   },
   mentalityText: {
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 22,
     fontStyle: "italic",
     fontWeight: "600",
@@ -5958,11 +5959,11 @@ const styles = StyleSheet.create({
   // Flat block — no shadow. The expanded-details list reads as a clean
   // stack of bordered sections rather than a pile of floating cards.
   detailSection: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     marginBottom: 12,
   },
   detailSectionHeader: {
@@ -5978,7 +5979,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 13,
     textTransform: "uppercase",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 0.8,
   },
   detailHeaderRow: {
@@ -5990,12 +5991,12 @@ const styles = StyleSheet.create({
   detailSectionLabel: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 1,
   },
   detailSectionText: {
     fontSize: 14,
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 21,
     fontWeight: "500",
   },
@@ -6008,15 +6009,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F5F5F5",
     gap: 14,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
   },
   profileImageCompact: {
     width: 72,
     height: 72,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
   },
   headerTextContainer: {
     flex: 1,
@@ -6026,15 +6027,15 @@ const styles = StyleSheet.create({
   companyTextBold: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   infoFloatingBtnCompact: {
     alignSelf: "flex-start",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
 
   cardContentExpanded: {
@@ -6053,24 +6054,24 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1,
   },
   bioTextExpanded: {
     fontSize: 14,
-    color: "#333",
+    color: tokens.colors.text,
     lineHeight: 20,
     fontWeight: "500",
   },
   insightPreviewText: {
     fontSize: 13,
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 19,
     fontStyle: "italic",
   },
   promptPreviewText: {
     fontSize: 13,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 19,
     fontStyle: "italic",
   },
@@ -6081,21 +6082,21 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     marginTop: "auto",
   },
   tapForMoreText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 0.5,
   },
 
   // Legacy styles (keep for backward compatibility with other parts)
-  imageWrapper: { height: 220, backgroundColor: "#F9F9F9" },
+  imageWrapper: { height: 220, backgroundColor: tokens.colors.bgOffWhite },
   profileImage: { width: "100%", height: "100%", resizeMode: "cover" },
   infoFloatingBtn: {
     position: "absolute",
@@ -6112,7 +6113,7 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
     letterSpacing: -0.3,
   },
@@ -6122,10 +6123,10 @@ const styles = StyleSheet.create({
     gap: 5,
     marginBottom: 2,
   },
-  metaText: { fontSize: 12, fontWeight: "600", color: "#333" },
-  locationText: { fontSize: 12, color: "#666", fontWeight: "500" },
-  divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 10 },
-  bioText: { fontSize: 15, color: "#444", lineHeight: 22 },
+  metaText: { fontSize: 12, fontWeight: "600", color: tokens.colors.text },
+  locationText: { fontSize: 12, color: tokens.colors.textBody, fontWeight: "500" },
+  divider: { height: 1, backgroundColor: tokens.colors.border, marginVertical: 10 },
+  bioText: { fontSize: 15, color: tokens.colors.textBody, lineHeight: 22 },
   expandedDetails: { marginBottom: 32, gap: 14 },
 
   // New Experience Card Styles
@@ -6145,25 +6146,25 @@ const styles = StyleSheet.create({
   experienceTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     flex: 1,
     letterSpacing: -0.3,
   },
   experienceDates: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     letterSpacing: 0.2,
   },
   experienceCompany: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginBottom: 8,
   },
   experienceDescription: {
     fontSize: 13,
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 19,
   },
 
@@ -6177,14 +6178,14 @@ const styles = StyleSheet.create({
   educationDegree: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
     letterSpacing: -0.2,
   },
   educationSchool: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginBottom: 6,
   },
   educationFooter: {
@@ -6195,12 +6196,12 @@ const styles = StyleSheet.create({
   educationYear: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   educationGpa: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
 
   // Certifications Grid
@@ -6210,12 +6211,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   certificationBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     minWidth: "48%",
     flexGrow: 1,
     maxWidth: "100%",
@@ -6223,13 +6224,13 @@ const styles = StyleSheet.create({
   certificationName: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 3,
   },
   certificationDetails: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
 
   // Languages Grid
@@ -6239,12 +6240,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   languageBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -6252,50 +6253,50 @@ const styles = StyleSheet.create({
   languageName: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   languageProficiency: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
 
   // Achievements Text
   achievementsText: {
     fontSize: 14,
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 21,
   },
 
   // Job Detail Card (for expanded job details)
   jobDetailCard: {
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   jobDetailText: {
     fontSize: 14,
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 21,
   },
 
   detailItem: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   detailTitle: {
     fontWeight: "800",
     fontSize: 12,
     textTransform: "uppercase",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 0.5,
   },
-  detailBody: { color: "#555", fontSize: 14, lineHeight: 20 },
+  detailBody: { color: tokens.colors.textBody, fontSize: 14, lineHeight: 20 },
   bottomNav: {
     flexDirection: "row",
     alignItems: "center",
@@ -6306,33 +6307,33 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconBtnActive: { backgroundColor: "#000", borderColor: "#000" },
+  iconBtnActive: { backgroundColor: tokens.colors.brand, borderColor: tokens.colors.brand },
   // Primary CTA — a gentle, diffuse lift rather than a hard drop shadow,
   // so it reads as "the main action" without clashing with the now-flat
   // detail sections.
   primaryActionBtn: {
     flex: 1,
     height: 56,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.14,
     shadowRadius: 16,
     elevation: 6,
   },
   primaryActionLabel: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.4,
@@ -6344,18 +6345,18 @@ const styles = StyleSheet.create({
   backTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
   },
 
   // Redesigned Prompt Cards
   promptCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
   },
   promptIconRow: {
     flexDirection: "row",
@@ -6367,17 +6368,17 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   promptQuestion: {
     flex: 1,
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: tokens.colors.textBody,
     letterSpacing: 1,
     textTransform: "uppercase",
     lineHeight: 14,
@@ -6385,7 +6386,7 @@ const styles = StyleSheet.create({
   promptAnswer: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 24,
     letterSpacing: -0.2,
   },
@@ -6405,19 +6406,19 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
   },
   applicantBackIdentityText: { flex: 1, gap: 2 },
   applicantBackName: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.4,
   },
   applicantBackRole: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: tokens.colors.textBody,
   },
   applicantBackLocationRow: {
     flexDirection: "row",
@@ -6427,16 +6428,16 @@ const styles = StyleSheet.create({
   },
   applicantBackLocationText: {
     fontSize: 12,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
   },
 
   applicantBackStatsRow: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     paddingVertical: 14,
     marginBottom: 24,
   },
@@ -6452,13 +6453,13 @@ const styles = StyleSheet.create({
   applicantBackStatValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.4,
   },
   applicantBackStatLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1,
     textTransform: "uppercase",
     marginTop: 2,
@@ -6474,7 +6475,7 @@ const styles = StyleSheet.create({
   applicantBackSectionLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 1.4,
   },
 
@@ -6485,7 +6486,7 @@ const styles = StyleSheet.create({
   },
   applicantBackLoadingText: {
     fontSize: 12,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
   },
   applicantBackEmptyWrap: {
@@ -6497,7 +6498,7 @@ const styles = StyleSheet.create({
   applicantBackEmptyTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginTop: 4,
   },
   applicantBackEmptyBody: {
@@ -6512,16 +6513,16 @@ const styles = StyleSheet.create({
   // Insight (prompt) cards — quote-bar style
   insightQuoteCard: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     overflow: "hidden",
     marginBottom: 10,
   },
   insightQuoteAccent: {
     width: 3,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   insightQuoteContent: {
     flex: 1,
@@ -6532,14 +6533,14 @@ const styles = StyleSheet.create({
   insightQuoteQuestion: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   insightQuoteAnswer: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 20,
     letterSpacing: -0.2,
   },
@@ -6558,12 +6559,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   timelineLine: {
     flex: 1,
     width: 2,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
     marginTop: 4,
     marginBottom: -4,
   },
@@ -6575,27 +6576,27 @@ const styles = StyleSheet.create({
   timelineRole: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
   timelineCompany: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: tokens.colors.textBody,
   },
   timelineDates: {
     fontSize: 11,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
     marginTop: 2,
   },
 
   // Education (back-of-card)
   eduBackCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 8,
@@ -6604,34 +6605,34 @@ const styles = StyleSheet.create({
   eduBackSchool: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
   eduBackDegree: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#444",
+    color: tokens.colors.textBody,
   },
   eduBackYear: {
     fontSize: 11,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
     marginTop: 2,
   },
 
   // Achievements (back-of-card)
   achievementsBackCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
   achievementsBackText: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#222",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
 
@@ -6645,9 +6646,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -6655,12 +6656,12 @@ const styles = StyleSheet.create({
   languagePillName: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   languagePillProf: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
 
   insightSection: { marginBottom: 24 },
@@ -6675,12 +6676,12 @@ const styles = StyleSheet.create({
   insightsHeaderLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
   },
   insightsHeaderCentered: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 1.6,
   },
   // Expand affordance under the insights preview — mirrors the front
@@ -6695,7 +6696,7 @@ const styles = StyleSheet.create({
   insightsExpandHintText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
   // Sub-label inside the INSIGHTS section (DAY-TO-DAY, TEAM CULTURE…) —
@@ -6703,7 +6704,7 @@ const styles = StyleSheet.create({
   insightLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 8,
     letterSpacing: 0.8,
     textTransform: "uppercase",
@@ -6714,7 +6715,7 @@ const styles = StyleSheet.create({
   insightContent: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#333",
+    color: tokens.colors.text,
     lineHeight: 21,
   },
 
@@ -6729,7 +6730,7 @@ const styles = StyleSheet.create({
   promptContent: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#444",
+    color: tokens.colors.textBody,
     fontStyle: "italic",
     lineHeight: 24,
   },
@@ -6743,11 +6744,11 @@ const styles = StyleSheet.create({
   },
   celebrationCard: {
     width: "100%",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 40,
     borderRadius: 32,
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.2,
     shadowRadius: 25,
@@ -6757,15 +6758,15 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
-  celebrationTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  celebrationTitle: { fontSize: 24, fontWeight: "800", color: tokens.colors.text },
   celebrationSub: {
     fontSize: 16,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
@@ -6779,7 +6780,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -6787,19 +6788,19 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 24, fontWeight: "800", marginBottom: 8 },
   emptySub: {
     fontSize: 16,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     marginBottom: 30,
   },
   returnBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 30,
   },
-  returnBtnText: { color: "#FFF", fontWeight: "700" },
+  returnBtnText: { color: tokens.colors.brandText, fontWeight: "700" },
   primaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 30,
@@ -6810,12 +6811,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontWeight: "700",
     fontSize: 15,
   },
   secondaryBtn: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 30,
@@ -6824,10 +6825,10 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: tokens.colors.border,
   },
   secondaryBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "700",
     fontSize: 15,
   },
@@ -6866,9 +6867,9 @@ const styles = StyleSheet.create({
     height: 116,
     borderRadius: 18,
     position: "absolute",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   emptyDeckCardBack: {
     transform: [{ translateX: 18 }, { translateY: 10 }, { rotate: "8deg" }],
@@ -6879,8 +6880,8 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   emptyDeckCardFront: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#D9D9D9",
+    backgroundColor: tokens.colors.bgSurface,
+    borderColor: tokens.colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -6889,7 +6890,7 @@ const styles = StyleSheet.create({
   sponsorEmptyTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.6,
     textAlign: "center",
     marginBottom: 10,
@@ -6897,7 +6898,7 @@ const styles = StyleSheet.create({
   sponsorEmptySubtitle: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 26,
@@ -6914,15 +6915,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 999,
-    backgroundColor: "#000",
-    shadowColor: "#000",
+    backgroundColor: tokens.colors.brand,
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 6,
   },
   sponsorEmptyPrimaryText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.2,
@@ -6936,12 +6937,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 999,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
   },
   sponsorEmptySecondaryText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.2,
@@ -6961,7 +6962,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#0F0F11",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
@@ -6971,10 +6972,10 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   livePillText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.2,
@@ -6991,11 +6992,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: tokens.colors.border,
     marginBottom: 24,
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -7004,13 +7005,13 @@ const styles = StyleSheet.create({
   sponsorWaitingJobTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
   sponsorWaitingJobCompany: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 3,
   },
 
@@ -7021,22 +7022,22 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 11,
     paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   checkInBannerDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   checkInBannerText: {
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: tokens.colors.textBody,
   },
   sponsorHeader: {
     flexDirection: "row",
@@ -7050,16 +7051,16 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
   },
   sponsorName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
-  sponsorRole: { fontSize: 13, color: "#666", marginBottom: 2 },
-  sponsorYears: { fontSize: 12, color: "#999", marginLeft: 4 },
+  sponsorRole: { fontSize: 13, color: tokens.colors.textBody, marginBottom: 2 },
+  sponsorYears: { fontSize: 12, color: tokens.colors.textMuted, marginLeft: 4 },
   canReferBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -7098,16 +7099,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 24,
     paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
   },
   insightsEmptyIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -7115,28 +7116,28 @@ const styles = StyleSheet.create({
   insightsEmptyTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
     textAlign: "center",
   },
   insightsEmptySubtext: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#888",
+    color: tokens.colors.textMuted,
     textAlign: "center",
     lineHeight: 18,
     maxWidth: 260,
   },
   skillBadge: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  skillBadgeText: { fontSize: 12, fontWeight: "700", color: tokens.colors.text },
   benefitsList: { gap: 10, marginTop: 8 },
   benefitRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  benefitText: { fontSize: 14, color: "#555", flex: 1 },
+  benefitText: { fontSize: 14, color: tokens.colors.textBody, flex: 1 },
 
   // JOB CARD SPECIFIC STYLES
   jobCardContent: { padding: 24, paddingTop: 28 },
@@ -7150,32 +7151,32 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 10,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   companyDetails: { flex: 1 },
-  companyName: { fontSize: 16, fontWeight: "700", color: "#000" },
+  companyName: { fontSize: 16, fontWeight: "700", color: tokens.colors.text },
   jobTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 30,
     marginBottom: 16,
   },
   jobMetaList: { gap: 8, marginBottom: 10 },
   jobMetaLine: { flexDirection: "row", alignItems: "center", gap: 8 },
-  jobMetaLineText: { fontSize: 14, color: "#666", fontWeight: "500" },
+  jobMetaLineText: { fontSize: 14, color: tokens.colors.textBody, fontWeight: "500" },
   infoFloatingBtnSmall: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   jobDescription: {
     fontSize: 15,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 22,
     marginBottom: 18,
   },
@@ -7183,49 +7184,49 @@ const styles = StyleSheet.create({
   skillsPreviewLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 10,
     letterSpacing: 1,
   },
   skillChip: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
-  skillChipMore: { backgroundColor: "#000", borderColor: "#000" },
-  skillChipText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  skillChipTextWhite: { color: "#FFF" },
+  skillChipMore: { backgroundColor: tokens.colors.brand, borderColor: tokens.colors.brand },
+  skillChipText: { fontSize: 12, fontWeight: "700", color: tokens.colors.text },
+  skillChipTextWhite: { color: tokens.colors.brandText },
 
   // Non-Sponsored Back Design
   companyLogoLarge: {
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   companyDescriptionSection: { marginBottom: 20 },
   companyDescriptionText: {
     fontSize: 15,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 24,
     fontWeight: "500",
   },
   insightsHeader: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 16,
     letterSpacing: 0.3,
   },
   insightContentSmall: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 20,
   },
   noSponsorBanner: {
@@ -7234,21 +7235,21 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 24,
     padding: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   noSponsorText: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "500",
     flex: 1,
     lineHeight: 18,
   },
   emptyStateDivider: {
     height: 1,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
     alignSelf: "stretch",
     marginVertical: 24,
   },
@@ -7261,7 +7262,7 @@ const styles = StyleSheet.create({
   backKicker: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1.4,
     textAlign: "center",
     marginBottom: 18,
@@ -7281,7 +7282,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
@@ -7289,7 +7290,7 @@ const styles = StyleSheet.create({
   noSponsorHeadline: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 6,
     textAlign: "center",
     letterSpacing: -0.2,
@@ -7297,7 +7298,7 @@ const styles = StyleSheet.create({
   noSponsorSubtext: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#777",
+    color: tokens.colors.textMuted,
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
@@ -7308,13 +7309,13 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
   },
   applyModalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -7327,10 +7328,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  applyModalTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  applyModalTitle: { fontSize: 24, fontWeight: "800", color: tokens.colors.text },
   applyModalSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -7342,18 +7343,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
     padding: 20,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   modalOptionIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -7361,31 +7362,31 @@ const styles = StyleSheet.create({
   modalOptionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
   },
-  modalOptionDesc: { fontSize: 13, color: "#666", lineHeight: 18 },
+  modalOptionDesc: { fontSize: 13, color: tokens.colors.textBody, lineHeight: 18 },
 
   successContainer: { alignItems: "center", paddingVertical: 32 },
   successCircleLarge: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
   successMessage: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 32,
     paddingHorizontal: 20,
   },
   successActionBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -7395,14 +7396,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     minWidth: 200,
   },
-  successActionBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  successActionBtnText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
 
   // Relevance badge & requirements summary
   relevancePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -7411,22 +7412,22 @@ const styles = StyleSheet.create({
   relevancePillText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.3,
   },
   requirementsSummaryBlock: {
     marginTop: 12,
-    backgroundColor: "#F6F6F6",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
   },
   roleDetailChip: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 5,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -7435,7 +7436,7 @@ const styles = StyleSheet.create({
   },
   roleDetailChipText: {
     fontSize: 13,
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "500" as const,
   },
 
@@ -7447,27 +7448,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   matchCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 28,
     paddingVertical: 32,
     paddingHorizontal: 28,
     width: "100%",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.22,
     shadowRadius: 36,
     elevation: 20,
   },
   matchLabelPill: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     marginBottom: 24,
   },
   matchLabelText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 2,
@@ -7491,22 +7492,22 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
   },
   matchAvatar: {
     width: 74,
     height: 74,
     borderRadius: 37,
     borderWidth: 3,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
   },
   matchAvatarInitial: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   matchAvatarInitialText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 26,
     fontWeight: "800",
   },
@@ -7514,23 +7515,23 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   matchTitle: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
     marginBottom: 8,
     textAlign: "center",
   },
   matchSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 21,
     marginBottom: 28,
@@ -7541,7 +7542,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   matchMsgBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 18,
     paddingVertical: 15,
     flexDirection: "row",
@@ -7550,7 +7551,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   matchMsgBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -7560,10 +7561,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   matchSkipBtnText: {
-    color: "#666",
+    color: tokens.colors.textBody,
     fontSize: 15,
     fontWeight: "600",
   },
@@ -7572,7 +7573,7 @@ const styles = StyleSheet.create({
   // the screen via flex; the sheet itself is content-sized.
   emailVerifOverlay: { flex: 1, justifyContent: "flex-end" },
   emailVerifModal: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 28,
@@ -7582,7 +7583,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -7591,37 +7592,37 @@ const styles = StyleSheet.create({
   emailVerifTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
     marginBottom: 12,
   },
   emailVerifSubtitle: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   emailVerifAddress: {
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   emailVerifInfoBox: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     padding: 20,
     marginBottom: 28,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   emailVerifInfoText: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 20,
     textAlign: "center",
   },
   emailVerifPrimaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",
@@ -7631,7 +7632,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emailVerifPrimaryBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 17,
     fontWeight: "700",
   },
@@ -7641,7 +7642,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   emailVerifSecondaryBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -7659,7 +7660,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emailVerifTesterBtnText: {
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -7670,7 +7671,7 @@ const styles = StyleSheet.create({
   // the modal's neutral palette (no bright accent — the existing primary CTA
   // already owns the visual emphasis).
   emailVerifEditLink: {
-    color: "#666",
+    color: tokens.colors.textBody,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",
@@ -7685,7 +7686,7 @@ const styles = StyleSheet.create({
   emailVerifEditLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: tokens.colors.textBody,
     letterSpacing: 0.6,
     textTransform: "uppercase",
     marginBottom: 8,
@@ -7694,13 +7695,13 @@ const styles = StyleSheet.create({
     width: "100%",
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: tokens.colors.text,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   emailVerifEditActions: {
     flexDirection: "row",
@@ -7712,12 +7713,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   emailVerifEditCancelText: {
-    color: "#666",
+    color: tokens.colors.textBody,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -7725,12 +7726,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   emailVerifEditSaveText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 14,
     fontWeight: "700",
   },
