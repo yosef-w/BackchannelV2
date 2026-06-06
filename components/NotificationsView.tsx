@@ -409,7 +409,7 @@ export function NotificationsView({
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={handlePullToRefresh}
-          tintColor="#000"
+          tintColor={tokens.colors.text}
         />
       }
     >
@@ -547,7 +547,7 @@ export function NotificationsView({
                         />
                       ) : (
                         <View style={styles.iconCircle}>
-                          <Icon color="#1A1A1A" size={20} strokeWidth={2.3} />
+                          <Icon color={tokens.colors.text} size={20} strokeWidth={2.3} />
                         </View>
                       )}
 
@@ -663,28 +663,31 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    fontSize: 30,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 34,
+    lineHeight: 38,
     color: tokens.colors.text,
-    letterSpacing: -0.8,
+    letterSpacing: -0.6,
   },
   subtitle: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 13,
-    fontWeight: "600",
     color: tokens.colors.textMuted,
-    marginTop: 3,
+    marginTop: 4,
   },
   actionPill: {
     backgroundColor: tokens.colors.bgSurface,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   actionPillText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: tokens.colors.text,
-    letterSpacing: -0.1,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 12,
+    color: tokens.colors.textMuted,
+    letterSpacing: 0.4,
   },
 
   // ── States ──
@@ -703,9 +706,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: {
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 15,
-    fontWeight: "700",
-    color: tokens.colors.text,
+    color: tokens.colors.textBody,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -715,13 +718,14 @@ const styles = StyleSheet.create({
     gap: 7,
     backgroundColor: tokens.colors.brand,
     paddingHorizontal: 20,
-    paddingVertical: 11,
-    borderRadius: 999,
+    paddingVertical: 10,
+    borderRadius: tokens.radii.pill,
   },
   retryText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 13,
     color: tokens.colors.brandText,
+    letterSpacing: -0.1,
   },
 
   // ── Section grouping ──
@@ -729,11 +733,12 @@ const styles = StyleSheet.create({
     marginTop: 26,
   },
   sectionLabel: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 11,
-    fontWeight: "800",
-    color: tokens.colors.textFaint,
-    letterSpacing: 1,
-    marginBottom: 8,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginBottom: 10,
     marginLeft: 4,
   },
   notificationsList: {
@@ -775,21 +780,21 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   rowTitle: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 15,
-    fontWeight: "700",
     color: tokens.colors.text,
     letterSpacing: -0.2,
   },
   // Read rows soften the title so unread ones lead the eye.
   rowTitleRead: {
-    fontWeight: "600",
+    fontFamily: tokens.fontFamilies.sans500,
     color: tokens.colors.textBody,
   },
   rowBody: {
-    fontSize: 13.5,
-    fontWeight: "500",
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 13,
     color: tokens.colors.textMuted,
-    lineHeight: 19,
+    lineHeight: 20,
     marginTop: 2,
   },
   rowMeta: {
@@ -799,8 +804,8 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   rowTime: {
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 12,
-    fontWeight: "600",
     color: tokens.colors.textFaint,
   },
   metaDot: {
@@ -810,16 +815,16 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.borderStrong,
   },
   rowContext: {
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 12,
-    fontWeight: "600",
     color: tokens.colors.textFaint,
     flexShrink: 1,
   },
   unreadDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: tokens.colors.brand,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: tokens.colors.live,
   },
 
   // ── Swipe-to-delete ──
@@ -839,10 +844,11 @@ const styles = StyleSheet.create({
     minWidth: 96,
   },
   swipeActionText: {
+    fontFamily: tokens.fontFamilies.sans600,
     color: tokens.colors.brandText,
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
 
   // ── Empty state ──
@@ -851,18 +857,20 @@ const styles = StyleSheet.create({
     paddingVertical: 70,
   },
   emptyStateTitle: {
-    fontSize: 17,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 22,
+    lineHeight: 26,
     color: tokens.colors.text,
-    letterSpacing: -0.3,
-    marginBottom: 6,
+    letterSpacing: -0.4,
+    marginBottom: 8,
   },
   emptyStateText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: tokens.colors.textMuted,
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 15,
+    color: tokens.colors.textBody,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 24,
     paddingHorizontal: 40,
+    maxWidth: 360,
   },
 });
