@@ -1145,7 +1145,13 @@ export function MessagesView({
             >
               <MessageCircle color={tokens.colors.textFaint} size={28} strokeWidth={2} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: tokens.colors.textFaint }}>
+            <Text
+              style={{
+                fontFamily: tokens.fontFamilies.sans500,
+                fontSize: 14,
+                color: tokens.colors.textFaint,
+              }}
+            >
               Loading conversation…
             </Text>
           </View>
@@ -1161,19 +1167,35 @@ export function MessagesView({
             padding: 20,
           }}
         >
-          <Text style={{ fontSize: 16, color: tokens.colors.textBody }}>
+          <Text
+            style={{
+              fontFamily: tokens.fontFamilies.serif,
+              fontSize: 22,
+              lineHeight: 26,
+              color: tokens.colors.text,
+              letterSpacing: -0.3,
+            }}
+          >
             Conversation not found
           </Text>
           <TouchableOpacity
             onPress={() => handleConversationSelect(null)}
             style={{
               marginTop: 16,
-              padding: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 20,
               backgroundColor: tokens.colors.brand,
-              borderRadius: 12,
+              borderRadius: tokens.radii.m,
             }}
           >
-            <Text style={{ color: tokens.colors.brandText, fontWeight: "700" }}>
+            <Text
+              style={{
+                fontFamily: tokens.fontFamilies.sans600,
+                fontSize: 14,
+                color: tokens.colors.brandText,
+                letterSpacing: -0.1,
+              }}
+            >
               Back to Messages
             </Text>
           </TouchableOpacity>
@@ -2408,7 +2430,13 @@ export function MessagesView({
             },
           ]}
         >
-          <Text style={{ fontSize: 22, fontWeight: "800", color: tokens.colors.brandText }}>
+          <Text
+            style={{
+              fontFamily: tokens.fontFamilies.serif,
+              fontSize: 24,
+              color: tokens.colors.brandText,
+            }}
+          >
             {(name || "?")[0].toUpperCase()}
           </Text>
         </View>
@@ -2645,34 +2673,21 @@ export function MessagesView({
 
       {conversationsLoading ? (
         <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: tokens.colors.textMuted, fontSize: 15 }}>
-            Loading conversations...
-          </Text>
+          <Text style={styles.threadStatusText}>Loading conversations…</Text>
         </View>
       ) : conversationsError ? (
         <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: tokens.colors.dangerFg, fontSize: 15, marginBottom: 8 }}>
-            Failed to load conversations
-          </Text>
-          <Text style={{ color: tokens.colors.textMuted, fontSize: 13, textAlign: "center" }}>
-            {conversationsError}
-          </Text>
+          <Text style={styles.threadErrorTitle}>Failed to load conversations</Text>
+          <Text style={styles.threadStatusSub}>{conversationsError}</Text>
         </View>
       ) : conversations.length === 0 ? (
         <View style={{ padding: 40, alignItems: "center" }}>
           <MessageCircle size={48} color={tokens.colors.textFaint} style={{ marginBottom: 16 }} />
-          <Text
-            style={{
-              color: tokens.colors.textMuted,
-              fontSize: 17,
-              fontWeight: "600",
-              marginBottom: 8,
-            }}
-          >
-            No conversations yet
+          <Text style={[styles.threadEmptyTitle, { marginBottom: 8 }]}>
+            No conversations yet.
           </Text>
-          <Text style={{ color: tokens.colors.textFaint, fontSize: 14, textAlign: "center" }}>
-            Start matching with people to begin conversations!
+          <Text style={styles.threadEmptySub}>
+            Start matching with people to begin conversations.
           </Text>
         </View>
       ) : (

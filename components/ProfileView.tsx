@@ -1274,9 +1274,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isNameMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -1305,9 +1307,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isOrgMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -1336,9 +1340,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isYearMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -1451,9 +1457,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isLanguageMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -1485,9 +1493,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isProficiencyMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -2154,9 +2164,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isJobTitleMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -2188,9 +2200,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isCompanyMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -2222,9 +2236,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isStartDateMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -2384,9 +2400,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isDegreeMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -2428,9 +2446,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isUniversityMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED
@@ -2462,9 +2482,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isGradYearMissing && (
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans600,
                       color: tokens.colors.dangerFg,
-                      fontSize: 11,
-                      fontWeight: "700",
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
                     }}
                   >
                     *REQUIRED

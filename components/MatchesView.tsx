@@ -1022,7 +1022,11 @@ export function MatchesView({
                 ]}
               >
                 <Text
-                  style={{ fontSize: 26, fontWeight: "800", color: tokens.colors.brandText }}
+                  style={{
+                    fontFamily: tokens.fontFamilies.serif,
+                    fontSize: 28,
+                    color: tokens.colors.brandText,
+                  }}
                 >
                   {(match.name || "?")[0].toUpperCase()}
                 </Text>
@@ -1472,8 +1476,8 @@ export function MatchesView({
                           >
                             <Text
                               style={{
-                                fontSize: 24,
-                                fontWeight: "700",
+                                fontFamily: tokens.fontFamilies.serif,
+                                fontSize: 26,
                                 color: tokens.colors.textMuted,
                               }}
                             >
@@ -1641,8 +1645,14 @@ export function MatchesView({
               )}
               {!matchesLoading && matches.length === 0 ? (
                 <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text style={{ color: tokens.colors.textBody, fontSize: 15 }}>
-                    No matches yet. Keep swiping!
+                  <Text
+                    style={{
+                      fontFamily: tokens.fontFamilies.sans400,
+                      color: tokens.colors.textBody,
+                      fontSize: 15,
+                    }}
+                  >
+                    No matches yet. Keep swiping.
                   </Text>
                 </View>
               ) : (
@@ -1673,7 +1683,12 @@ export function MatchesView({
               </Text>
               {referralsError && (
                 <Text
-                  style={{ color: tokens.colors.dangerFg, marginBottom: 12, fontSize: 13 }}
+                  style={{
+                    fontFamily: tokens.fontFamilies.sans500,
+                    color: tokens.colors.dangerFg,
+                    marginBottom: 12,
+                    fontSize: 13,
+                  }}
                 >
                   {referralsError}
                 </Text>
@@ -1739,8 +1754,8 @@ export function MatchesView({
                         >
                           <Text
                             style={{
-                              fontSize: 20,
-                              fontWeight: "800",
+                              fontFamily: tokens.fontFamilies.serif,
+                              fontSize: 22,
                               color: tokens.colors.brandText,
                             }}
                           >
@@ -2218,7 +2233,12 @@ export function MatchesView({
 
               {referralsError && (
                 <Text
-                  style={{ color: tokens.colors.dangerFg, fontSize: 13, marginBottom: 12 }}
+                  style={{
+                    fontFamily: tokens.fontFamilies.sans500,
+                    color: tokens.colors.dangerFg,
+                    fontSize: 13,
+                    marginBottom: 12,
+                  }}
                 >
                   {referralsError}
                 </Text>
@@ -2476,10 +2496,10 @@ export function MatchesView({
                     >
                       <Text
                         style={{
-                          fontSize: 20,
-                          fontWeight: "800",
-                          color: tokens.colors.brandText,
-                        }}
+                              fontFamily: tokens.fontFamilies.serif,
+                              fontSize: 22,
+                              color: tokens.colors.brandText,
+                            }}
                       >
                         {(roleGroup.items[0].name || "?")[0].toUpperCase()}
                       </Text>
@@ -3408,9 +3428,10 @@ export function MatchesView({
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
+                          fontFamily: tokens.fontFamilies.sans600,
                           fontSize: 15,
-                          fontWeight: "800",
                           color: tokens.colors.text,
+                          letterSpacing: -0.2,
                           marginBottom: 4,
                         }}
                       >
@@ -3418,10 +3439,10 @@ export function MatchesView({
                       </Text>
                       <Text
                         style={{
+                          fontFamily: tokens.fontFamilies.sans400,
                           fontSize: 13,
                           color: tokens.colors.textBody,
-                          lineHeight: 19,
-                          fontWeight: "500",
+                          lineHeight: 20,
                         }}
                       >
                         A sponsor has picked up this role. Head back to your
@@ -3447,9 +3468,10 @@ export function MatchesView({
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
+                          fontFamily: tokens.fontFamilies.sans600,
                           fontSize: 15,
-                          fontWeight: "800",
                           color: tokens.colors.textBody,
+                          letterSpacing: -0.2,
                           marginBottom: 4,
                         }}
                       >
@@ -3457,10 +3479,10 @@ export function MatchesView({
                       </Text>
                       <Text
                         style={{
+                          fontFamily: tokens.fontFamilies.sans400,
                           fontSize: 13,
                           color: tokens.colors.textBody,
-                          lineHeight: 19,
-                          fontWeight: "500",
+                          lineHeight: 20,
                         }}
                       >
                         We’ll notify you as soon as someone sponsors this role.
@@ -3473,8 +3495,8 @@ export function MatchesView({
                 {/* Waitlist date */}
                 <Text
                   style={{
+                    fontFamily: tokens.fontFamilies.sans500,
                     fontSize: 12,
-                    fontWeight: "600",
                     color: tokens.colors.textFaint,
                     textAlign: "center",
                     marginBottom: 28,
@@ -3885,7 +3907,7 @@ export function MatchesView({
                       </Text>
                       <Text style={styles.srSuccessDesc}>
                         You're now sponsoring{" "}
-                        <Text style={{ fontWeight: "800" }}>
+                        <Text style={{ fontFamily: tokens.fontFamilies.sans600 }}>
                           {selectedSponsorRequest.jobTitle}
                         </Text>
                         .{"\n\n"}

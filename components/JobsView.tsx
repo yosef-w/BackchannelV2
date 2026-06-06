@@ -2473,8 +2473,8 @@ export function JobsView() {
                             >
                               <Text
                                 style={{
-                                  fontSize: 16,
-                                  fontWeight: "800",
+                                  fontFamily: tokens.fontFamilies.serif,
+                                  fontSize: 18,
                                   color: tokens.colors.brandText,
                                 }}
                               >
@@ -2647,10 +2647,10 @@ export function JobsView() {
                   <ActivityIndicator size="small" color={tokens.colors.text} />
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans500,
                       marginTop: 12,
                       color: tokens.colors.textMuted,
                       fontSize: 13,
-                      fontWeight: "600",
                     }}
                   >
                     Loading applicants…
@@ -2660,10 +2660,10 @@ export function JobsView() {
                 <View style={{ padding: 20, alignItems: "center" }}>
                   <Text
                     style={{
+                      fontFamily: tokens.fontFamilies.sans500,
                       textAlign: "center",
                       color: tokens.colors.dangerFg,
                       fontSize: 14,
-                      fontWeight: "600",
                     }}
                   >
                     {applicantsError}
@@ -2672,7 +2672,14 @@ export function JobsView() {
               ) : jobApplicants.length === 0 ? (
                 <View style={{ padding: 20, alignItems: "center" }}>
                   <Text
-                    style={{ textAlign: "center", color: tokens.colors.textMuted, fontSize: 16 }}
+                    style={{
+                      fontFamily: tokens.fontFamilies.serifItalic,
+                      textAlign: "center",
+                      color: tokens.colors.textMuted,
+                      fontSize: 18,
+                      lineHeight: 24,
+                      letterSpacing: -0.2,
+                    }}
                   >
                     No applicants yet.
                   </Text>
@@ -2712,8 +2719,8 @@ export function JobsView() {
                       >
                         <Text
                           style={{
-                            fontSize: 18,
-                            fontWeight: "800",
+                            fontFamily: tokens.fontFamilies.serif,
+                            fontSize: 20,
                             color: tokens.colors.brandText,
                           }}
                         >

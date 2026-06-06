@@ -4532,18 +4532,19 @@ export function HomeView({
               <View>
                 <Text
                   style={{
-                    fontSize: 22,
-                    fontWeight: "800",
+                    fontFamily: tokens.fontFamilies.serif,
+                    fontSize: 24,
+                    lineHeight: 28,
                     color: tokens.colors.text,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.4,
                   }}
                 >
                   About the Role
                 </Text>
                 <Text
                   style={{
+                    fontFamily: tokens.fontFamilies.sans500,
                     fontSize: 13,
-                    fontWeight: "600",
                     color: tokens.colors.textMuted,
                     marginTop: 2,
                   }}
@@ -4588,11 +4589,11 @@ export function HomeView({
           >
             <Text
               style={{
+                fontFamily: tokens.fontFamilies.sans400,
                 fontSize: 16,
                 lineHeight: 26,
                 color: tokens.colors.textBody,
-                fontWeight: "500",
-                letterSpacing: -0.2,
+                letterSpacing: -0.1,
               }}
             >
               {currentData && "description" in currentData
@@ -4681,18 +4682,19 @@ export function HomeView({
               <View>
                 <Text
                   style={{
-                    fontSize: 22,
-                    fontWeight: "800",
+                    fontFamily: tokens.fontFamilies.serif,
+                    fontSize: 24,
+                    lineHeight: 28,
                     color: tokens.colors.text,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.4,
                   }}
                 >
                   About
                 </Text>
                 <Text
                   style={{
+                    fontFamily: tokens.fontFamilies.sans500,
                     fontSize: 13,
-                    fontWeight: "600",
                     color: tokens.colors.textMuted,
                     marginTop: 2,
                   }}
@@ -4735,11 +4737,11 @@ export function HomeView({
           >
             <Text
               style={{
+                fontFamily: tokens.fontFamilies.sans400,
                 fontSize: 16,
                 lineHeight: 26,
                 color: tokens.colors.textBody,
-                fontWeight: "500",
-                letterSpacing: -0.2,
+                letterSpacing: -0.1,
               }}
             >
               {(() => {
