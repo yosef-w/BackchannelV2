@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useToastStore } from "../../stores/useToastStore";
+import { tokens } from "@/constants/theme";
 
 const ICON_SIZE = 18;
 
@@ -12,10 +13,10 @@ const AUTO_DISMISS_MS = 3500;
 
 function ToastIcon({ variant }: { variant: string }) {
   if (variant === "success")
-    return <CheckCircle size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
+    return <CheckCircle size={ICON_SIZE} color={tokens.colors.brandText} strokeWidth={2.5} />;
   if (variant === "error")
-    return <XCircle size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
-  return <Info size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
+    return <XCircle size={ICON_SIZE} color={tokens.colors.brandText} strokeWidth={2.5} />;
+  return <Info size={ICON_SIZE} color={tokens.colors.brandText} strokeWidth={2.5} />;
 }
 
 export function AppToast() {
@@ -81,14 +82,14 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 9999,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
   },
   message: {
     flex: 1,
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 14,
     fontWeight: "500",
     lineHeight: 20,
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   dismissText: {
-    color: "#888",
+    color: tokens.colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.3,

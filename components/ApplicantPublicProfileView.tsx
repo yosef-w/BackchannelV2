@@ -22,6 +22,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { tokens } from "@/constants/theme";
 
 interface ApplicantPublicProfileViewProps {
   userData: any;
@@ -135,7 +136,7 @@ export function ApplicantPublicProfileView({
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color="#000" size={28} strokeWidth={2} />
+            <ChevronLeft color={tokens.colors.text} size={28} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.avatarWrapper}>
             {photoUrl ? (
@@ -153,7 +154,7 @@ export function ApplicantPublicProfileView({
 
           {currentRole || currentCompany ? (
             <View style={styles.infoRow}>
-              <Briefcase color="#000" size={14} strokeWidth={2} />
+              <Briefcase color={tokens.colors.text} size={14} strokeWidth={2} />
               <Text style={styles.infoText}>
                 {currentRole}
                 {currentCompany ? ` @ ${currentCompany}` : ""}
@@ -163,7 +164,7 @@ export function ApplicantPublicProfileView({
 
           {locationStr ? (
             <View style={styles.infoRow}>
-              <MapPin color="#BBB" size={14} strokeWidth={2} />
+              <MapPin color={tokens.colors.textFaint} size={14} strokeWidth={2} />
               <Text style={styles.locationText}>{locationStr}</Text>
             </View>
           ) : null}
@@ -189,7 +190,7 @@ export function ApplicantPublicProfileView({
           </View>
         ) : (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color="#000" size="small" />
+            <ActivityIndicator color={tokens.colors.text} size="small" />
             <Text style={styles.loadingText}>Loading profile details…</Text>
           </View>
         )}
@@ -200,7 +201,7 @@ export function ApplicantPublicProfileView({
             <Text style={styles.sectionTitle}>CONNECTED VIA</Text>
             <View style={styles.connectedCard}>
               <View style={styles.connectedIconCircle}>
-                <Briefcase size={16} color="#000" strokeWidth={2} />
+                <Briefcase size={16} color={tokens.colors.text} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.connectedJobTitle}>{matchedJobTitle}</Text>
@@ -235,7 +236,7 @@ export function ApplicantPublicProfileView({
             <View style={styles.tagCloud}>
               {desiredRoles.map((role: string, idx: number) => (
                 <View key={idx} style={styles.roleTag}>
-                  <Target size={14} color="#FFF" strokeWidth={2.5} />
+                  <Target size={14} color={tokens.colors.brandText} strokeWidth={2.5} />
                   <Text style={styles.roleTagText}>{role}</Text>
                 </View>
               ))}
@@ -249,7 +250,7 @@ export function ApplicantPublicProfileView({
         {experiences.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Briefcase size={15} color="#000" strokeWidth={2} />
+              <Briefcase size={15} color={tokens.colors.text} strokeWidth={2} />
               {/* marginBottom override — the standalone sectionTitle has
                   marginBottom:16 (needed when the label sits directly above
                   content), but inside a flex row that bottom margin makes
@@ -286,7 +287,7 @@ export function ApplicantPublicProfileView({
         {educationEntries.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <GraduationCap size={15} color="#000" strokeWidth={2} />
+              <GraduationCap size={15} color={tokens.colors.text} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 EDUCATION
               </Text>
@@ -317,7 +318,7 @@ export function ApplicantPublicProfileView({
         {certifications.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Award size={15} color="#000" strokeWidth={2} />
+              <Award size={15} color={tokens.colors.text} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 CERTIFICATIONS
               </Text>
@@ -342,7 +343,7 @@ export function ApplicantPublicProfileView({
         {insights.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Sparkles size={15} color="#000" strokeWidth={2} />
+              <Sparkles size={15} color={tokens.colors.text} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 KEY INSIGHTS
               </Text>
@@ -362,7 +363,7 @@ export function ApplicantPublicProfileView({
         {languages.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Globe size={15} color="#000" strokeWidth={2} />
+              <Globe size={15} color={tokens.colors.text} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 LANGUAGES
               </Text>
@@ -384,7 +385,7 @@ export function ApplicantPublicProfileView({
         {achievements ? (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Sparkles size={15} color="#000" strokeWidth={2} />
+              <Sparkles size={15} color={tokens.colors.text} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 ACHIEVEMENTS & AWARDS
               </Text>
@@ -402,7 +403,7 @@ export function ApplicantPublicProfileView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     ...Platform.select({
       android: {
         paddingTop: StatusBar.currentHeight,
@@ -434,12 +435,12 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
   },
   name: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -1,
   },
   infoRow: {
@@ -451,16 +452,16 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   locationText: {
     fontSize: 14,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "500",
   },
   bio: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
@@ -473,23 +474,23 @@ const styles = StyleSheet.create({
   },
   whiteBtn: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   whiteBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "700",
     fontSize: 14,
   },
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     padding: 24,
     marginBottom: 32,
@@ -501,12 +502,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     marginTop: 4,
     letterSpacing: 1,
   },
@@ -520,7 +521,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "600",
   },
   section: {
@@ -529,7 +530,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -543,27 +544,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   tagText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   preferenceTag: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1.5,
-    borderColor: "#F4F4F5",
+    borderColor: tokens.colors.border,
   },
   preferenceText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   roleTag: {
     flexDirection: "row",
@@ -572,12 +573,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   roleTagText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   // ── Resume section styles ──
   resumeSectionHeader: {
@@ -592,7 +593,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   resumeCardRow: {
     flexDirection: "row",
@@ -603,24 +604,24 @@ const styles = StyleSheet.create({
   resumeCardTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     flex: 1,
     marginRight: 8,
   },
   resumeCardDate: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
   resumeCardSubtitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#444",
+    color: tokens.colors.textBody,
     marginBottom: 6,
   },
   resumeCardBody: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 20,
     marginTop: 4,
   },
@@ -635,17 +636,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     marginBottom: 4,
   },
   certName: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   certSub: {
     fontSize: 12,
-    color: "#888",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
     marginTop: 2,
   },
@@ -655,18 +656,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     alignItems: "center",
     marginBottom: 4,
   },
   langName: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   langSub: {
     fontSize: 12,
-    color: "#888",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
     marginTop: 2,
   },
@@ -675,11 +676,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   achievementsText: {
     fontSize: 14,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 22,
     fontWeight: "500",
   },
@@ -693,13 +694,13 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 40,
     fontWeight: "800" as const,
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // ── Stats divider ──────────────────────────────────────────────────────────────
   statDivider: {
     width: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: tokens.colors.border,
     marginVertical: 4,
     alignSelf: "stretch" as const,
   },
@@ -708,12 +709,12 @@ const styles = StyleSheet.create({
   connectedCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 18,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   connectedIconCircle: {
     width: 40,
@@ -726,12 +727,12 @@ const styles = StyleSheet.create({
   connectedJobTitle: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: "#000",
+    color: tokens.colors.text,
   },
   connectedCompany: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 2,
   },
 });

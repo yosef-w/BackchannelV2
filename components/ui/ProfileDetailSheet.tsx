@@ -40,6 +40,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { CompanyLogo } from "./CompanyLogo";
 import { DismissibleSheet } from "./DismissibleSheet";
+import { tokens } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -277,7 +278,7 @@ export function ProfileDetailSheet({
                     style={[
                       styles.avatar,
                       {
-                        backgroundColor: "#000",
+                        backgroundColor: tokens.colors.brand,
                         alignItems: "center",
                         justifyContent: "center",
                       },
@@ -582,7 +583,7 @@ export function ProfileDetailSheet({
               onPress={primaryCta.onPress}
             >
               {primaryCta.loading ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={tokens.colors.brandText} />
               ) : (
                 <>
                   {primaryCta.icon}
@@ -605,7 +606,7 @@ const dynamicSheet: ViewStyle = {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   sheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -618,24 +619,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   avatar: { width: 68, height: 68, borderRadius: 34 },
-  avatarInitial: { fontSize: 24, fontWeight: "800", color: "#FFF" },
+  avatarInitial: { fontSize: 24, fontWeight: "800", color: tokens.colors.brandText },
   name: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.4,
   },
   meta: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 18,
     marginTop: 4,
   },
   metaLocation: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginTop: 2,
   },
   statusBadge: {
@@ -654,10 +655,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   contextBlock: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 16,
     marginBottom: 16,
   },
@@ -669,17 +670,17 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.2,
     marginBottom: 6,
   },
   contextTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
-  contextCompany: { fontSize: 13, fontWeight: "500", color: "#666" },
+  contextCompany: { fontSize: 13, fontWeight: "500", color: tokens.colors.textBody },
   // Skeleton placeholder base — neutral light gray with a soft border so
   // the shape reads even at the brightest point of the pulse animation.
   skeletonBase: {
@@ -690,7 +691,7 @@ const styles = StyleSheet.create({
   body: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 22,
   },
   capRow: {
@@ -700,27 +701,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   capPill: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: tokens.colors.border,
   },
-  capPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
+  capPillText: { fontSize: 11, fontWeight: "700", color: tokens.colors.text },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   darkChip: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  darkChipText: { fontSize: 12, fontWeight: "700", color: "#FFF" },
+  darkChipText: { fontSize: 12, fontWeight: "700", color: tokens.colors.brandText },
   insightCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 14,
     marginBottom: 10,
   },
@@ -735,25 +736,25 @@ const styles = StyleSheet.create({
   insightA: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#222",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
   fallback: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 14,
     marginBottom: 16,
   },
   fallbackText: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "500",
     lineHeight: 19,
   },
   primaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     borderRadius: 16,
     flexDirection: "row",
@@ -762,13 +763,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: -0.2,
   },
   secondaryBtn: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingVertical: 14,
     borderRadius: 16,
     flexDirection: "row",
@@ -776,11 +777,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     marginTop: 12,
   },
   secondaryBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontSize: 14,
     fontWeight: "700",
     letterSpacing: -0.2,

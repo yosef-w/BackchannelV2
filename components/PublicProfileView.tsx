@@ -11,6 +11,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { tokens } from "@/constants/theme";
 
 interface ApplicantPublicProfileViewProps {
   userData: any;
@@ -40,7 +41,7 @@ export function ApplicantPublicProfileView({
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color="#000" size={28} strokeWidth={2} />
+            <ChevronLeft color={tokens.colors.text} size={28} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.avatarWrapper}>
             {userData.image ? (
@@ -50,14 +51,14 @@ export function ApplicantPublicProfileView({
                 style={[
                   styles.avatar,
                   {
-                    backgroundColor: "#000",
+                    backgroundColor: tokens.colors.brand,
                     alignItems: "center",
                     justifyContent: "center",
                   },
                 ]}
               >
                 <Text
-                  style={{ fontSize: 36, fontWeight: "800", color: "#FFF" }}
+                  style={{ fontSize: 36, fontWeight: "800", color: tokens.colors.brandText }}
                 >
                   {(userData.name || "?")[0].toUpperCase()}
                 </Text>
@@ -68,7 +69,7 @@ export function ApplicantPublicProfileView({
           <Text style={styles.name}>{userData.name}</Text>
 
           <View style={styles.infoRow}>
-            <Briefcase color="#000" size={14} strokeWidth={2} />
+            <Briefcase color={tokens.colors.text} size={14} strokeWidth={2} />
             <Text style={styles.infoText}>
               {userData.role}
               {userData.company && ` @ ${userData.company}`}
@@ -76,7 +77,7 @@ export function ApplicantPublicProfileView({
           </View>
 
           <View style={styles.infoRow}>
-            <MapPin color="#BBB" size={14} strokeWidth={2} />
+            <MapPin color={tokens.colors.textFaint} size={14} strokeWidth={2} />
             <Text style={styles.locationText}>{userData.location}</Text>
           </View>
 
@@ -132,7 +133,7 @@ export function ApplicantPublicProfileView({
             <View style={styles.tagCloud}>
               {userData.desiredRoles.map((role: string, idx: number) => (
                 <View key={idx} style={styles.roleTag}>
-                  <Target size={14} color="#FFF" strokeWidth={2.5} />
+                  <Target size={14} color={tokens.colors.brandText} strokeWidth={2.5} />
                   <Text style={styles.roleTagText}>{role}</Text>
                 </View>
               ))}
@@ -147,7 +148,7 @@ export function ApplicantPublicProfileView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     ...Platform.select({
       android: {
         paddingTop: StatusBar.currentHeight,
@@ -179,12 +180,12 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
   },
   name: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -1,
   },
   infoRow: {
@@ -196,16 +197,16 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   locationText: {
     fontSize: 14,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "500",
   },
   bio: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
@@ -218,23 +219,23 @@ const styles = StyleSheet.create({
   },
   whiteBtn: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   whiteBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "700",
     fontSize: 14,
   },
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     padding: 24,
     marginBottom: 32,
@@ -246,12 +247,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     marginTop: 4,
     letterSpacing: 1,
   },
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -275,27 +276,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   tagText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   preferenceTag: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1.5,
-    borderColor: "#F4F4F5",
+    borderColor: tokens.colors.border,
   },
   preferenceText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   roleTag: {
     flexDirection: "row",
@@ -304,11 +305,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   roleTagText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { tokens } from "@/constants/theme";
 
 /**
  * Renders a company logo. Prefers the backend-provided URL (from PR #62's

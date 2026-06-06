@@ -56,6 +56,7 @@ import {
     type SponsorCheckInReferral,
 } from "./SponsorCheckInModal";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
+import { tokens } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -522,7 +523,7 @@ export function MainApp({ userType }: MainAppProps) {
               activeOpacity={0.7}
               style={styles.headerIconButton}
             >
-              <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
+              <ClipboardCheck color={tokens.colors.text} size={20} strokeWidth={1.5} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -535,7 +536,7 @@ export function MainApp({ userType }: MainAppProps) {
               activeOpacity={0.7}
               style={styles.headerIconButton}
             >
-              <Bell color="#000" size={22} strokeWidth={1.5} />
+              <Bell color={tokens.colors.text} size={22} strokeWidth={1.5} />
               {unreadNotificationCount > 0 && (
                 <View style={styles.notificationDot} />
               )}
@@ -668,7 +669,7 @@ export function MainApp({ userType }: MainAppProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: tokens.colors.bg,
   },
   safeArea: {
     flex: 1,
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
   appTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -1,
   },
   topBarButtons: {
@@ -694,11 +695,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   notificationDot: {
     position: "absolute",
@@ -707,9 +708,9 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderWidth: 1,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
   },
   mainContent: {
     flex: 1,
@@ -723,7 +724,7 @@ const styles = StyleSheet.create({
   },
   navBar: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: SCREEN_WIDTH * 0.85,
     height: 70,
     borderRadius: 35,
@@ -731,7 +732,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -749,6 +750,6 @@ const styles = StyleSheet.create({
     width: 12,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
 });

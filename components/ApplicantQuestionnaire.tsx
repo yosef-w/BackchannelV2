@@ -52,6 +52,7 @@ import { useOnboardingStore } from "../stores/useOnboardingStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
+import { tokens } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -418,7 +419,7 @@ export function ApplicantQuestionnaire({
             disabled={isSubmitting}
             style={styles.iconBtn}
           >
-            <ArrowLeft color="#000" size={24} />
+            <ArrowLeft color={tokens.colors.text} size={24} />
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
             {currentQuestion + 1} of {questions.length}
@@ -479,7 +480,7 @@ export function ApplicantQuestionnaire({
                             {option}
                           </Text>
                           {isSelected ? (
-                            <Check color="#FFF" size={20} />
+                            <Check color={tokens.colors.brandText} size={20} />
                           ) : (
                             <ChevronRight
                               color={isEnabled ? "#CCC" : "#E0E0E0"}
@@ -578,7 +579,7 @@ export function ApplicantQuestionnaire({
                       >
                         <View style={styles.insightCardHeader}>
                           <View style={styles.insightQuestionBadge}>
-                            <Sparkles size={12} color="#000" />
+                            <Sparkles size={12} color={tokens.colors.text} />
                             <Text style={styles.insightQuestion}>
                               {insight.question}
                             </Text>
@@ -591,7 +592,7 @@ export function ApplicantQuestionnaire({
                             }}
                             style={styles.removeInsightBtn}
                           >
-                            <X size={16} color="#999" />
+                            <X size={16} color={tokens.colors.textMuted} />
                           </TouchableOpacity>
                         </View>
 
@@ -639,7 +640,7 @@ export function ApplicantQuestionnaire({
                         }
                         style={styles.addInsightBtn}
                       >
-                        <Plus size={20} color="#000" />
+                        <Plus size={20} color={tokens.colors.text} />
                         <Text style={styles.addInsightText}>
                           {selectedInsights.length === 0
                             ? "Choose your first question"
@@ -679,7 +680,7 @@ export function ApplicantQuestionnaire({
                               style={styles.questionOption}
                             >
                               <Text style={styles.questionOptionText}>{q}</Text>
-                              <Plus size={18} color="#000" />
+                              <Plus size={18} color={tokens.colors.text} />
                             </TouchableOpacity>
                           ))}
                         </ScrollView>
@@ -748,7 +749,7 @@ export function ApplicantQuestionnaire({
                         activeOpacity={0.75}
                       >
                         <View style={styles.fileUploadIconWrap}>
-                          <Upload color="#000" size={28} strokeWidth={2} />
+                          <Upload color={tokens.colors.text} size={28} strokeWidth={2} />
                         </View>
                         <Text style={styles.fileTitle}>
                           Tap to upload your resume
@@ -762,7 +763,7 @@ export function ApplicantQuestionnaire({
                         <View style={styles.fileConfirmCard}>
                           <View style={styles.fileIconCircle}>
                             <FileText
-                              color="#FFF"
+                              color={tokens.colors.brandText}
                               size={26}
                               strokeWidth={1.5}
                             />
@@ -799,13 +800,13 @@ export function ApplicantQuestionnaire({
                             }}
                             activeOpacity={0.7}
                           >
-                            <X size={16} color="#666" strokeWidth={2.5} />
+                            <X size={16} color={tokens.colors.textBody} strokeWidth={2.5} />
                           </TouchableOpacity>
                         </View>
 
                         <View style={styles.fileReadyRow}>
                           <View style={styles.fileReadyCheck}>
-                            <Check size={12} color="#FFF" strokeWidth={3} />
+                            <Check size={12} color={tokens.colors.brandText} strokeWidth={3} />
                           </View>
                           <Text style={styles.fileReadyText}>
                             Ready to submit
@@ -837,13 +838,13 @@ export function ApplicantQuestionnaire({
               ]}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={tokens.colors.brandText} />
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
                     {isLastQuestion ? "Complete Profile" : "Continue"}
                   </Text>
-                  <ArrowRight color="#FFF" size={20} />
+                  <ArrowRight color={tokens.colors.brandText} size={20} />
                 </>
               )}
             </TouchableOpacity>
@@ -859,7 +860,7 @@ export function ApplicantQuestionnaire({
                 entering={ZoomIn.delay(200).duration(600)}
                 style={styles.successIconBox}
               >
-                <UserCheck color="#000" size={48} />
+                <UserCheck color={tokens.colors.text} size={48} />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.delay(400)}
@@ -882,7 +883,7 @@ export function ApplicantQuestionnaire({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: tokens.colors.bg },
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
   topNav: {
@@ -896,18 +897,18 @@ const styles = StyleSheet.create({
   stepIndicator: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  progressBarBg: { height: 2, backgroundColor: "#F0F0F0", width: "100%" },
-  progressBar: { height: "100%", backgroundColor: "#000" },
+  progressBarBg: { height: 2, backgroundColor: tokens.colors.border, width: "100%" },
+  progressBar: { height: "100%", backgroundColor: tokens.colors.brand },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   content: { flex: 1 },
   questionText: {
     fontSize: 32,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -1,
     lineHeight: 38,
     marginBottom: 40,
@@ -919,13 +920,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
-  optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
-  optionCardDisabled: { backgroundColor: "#FAFAFA", borderColor: "#F0F0F0" },
-  optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
+  optionCardSelected: { backgroundColor: tokens.colors.brand, borderColor: tokens.colors.brand },
+  optionCardDisabled: { backgroundColor: tokens.colors.bgOffWhite, borderColor: tokens.colors.border },
+  optionText: { fontSize: 17, fontWeight: "500", color: tokens.colors.text },
   optionTextDisabled: { color: "#C8C8C8" },
   comingSoonNote: {
     marginTop: 12,
@@ -935,15 +936,15 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   inputWrapper: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 16,
     height: 64,
     justifyContent: "center",
   },
-  textInput: { fontSize: 18, color: "#000", fontWeight: "500" },
+  textInput: { fontSize: 18, color: tokens.colors.text, fontWeight: "500" },
   fileContainer: {
     borderWidth: 1.5,
     borderStyle: "dashed",
@@ -953,13 +954,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
   },
   fileUploadIconWrap: {
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -967,7 +968,7 @@ const styles = StyleSheet.create({
   fileTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 6,
     textAlign: "center",
   },
@@ -976,17 +977,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   fileIconCircle: {
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -995,15 +996,15 @@ const styles = StyleSheet.create({
   fileConfirmName: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
-  fileConfirmMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  fileConfirmMeta: { fontSize: 13, color: tokens.colors.textMuted, fontWeight: "500" },
   fileRemoveBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#EFEFEF",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1019,61 +1020,61 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
-  fileReadyText: { flex: 1, fontSize: 13, fontWeight: "600", color: "#000" },
+  fileReadyText: { flex: 1, fontSize: 13, fontWeight: "600", color: tokens.colors.text },
   fileChangeLink: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     textDecorationLine: "underline",
   },
   searchWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 54,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     marginBottom: 24,
   },
-  searchInput: { flex: 1, fontSize: 16, color: "#000", fontWeight: "500" },
+  searchInput: { flex: 1, fontSize: 16, color: tokens.colors.text, fontWeight: "500" },
   skillsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   skillItem: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     marginBottom: 4,
   },
-  skillItemSelected: { backgroundColor: "#000" },
-  skillText: { fontSize: 14, fontWeight: "600", color: "#000" },
+  skillItemSelected: { backgroundColor: tokens.colors.brand },
+  skillText: { fontSize: 14, fontWeight: "600", color: tokens.colors.text },
   selectionCount: {
     marginTop: 24,
     fontSize: 14,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "600",
     textAlign: "center",
   },
   insightsSubtitle: {
     fontSize: 16,
-    color: "#666",
+    color: tokens.colors.textBody,
     marginBottom: 32,
     lineHeight: 24,
   },
   insightCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   insightCardHeader: {
     flexDirection: "row",
@@ -1086,61 +1087,61 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   insightQuestion: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 0.5,
     flex: 1,
   },
   removeInsightBtn: { padding: 4 },
   insightAnswerInput: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 12,
     padding: 16,
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
     minHeight: 100,
     textAlignVertical: "top",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     fontWeight: "500",
   },
-  charCount: { fontSize: 12, color: "#999", marginTop: 8, textAlign: "right" },
+  charCount: { fontSize: 12, color: tokens.colors.textMuted, marginTop: 8, textAlign: "right" },
   addInsightBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     borderStyle: "dashed",
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
   },
-  addInsightText: { fontSize: 15, fontWeight: "700", color: "#000" },
+  addInsightText: { fontSize: 15, fontWeight: "700", color: tokens.colors.text },
   questionPickerContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     maxHeight: 300,
   },
   pickerTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1,
     marginBottom: 16,
     textTransform: "uppercase",
@@ -1157,20 +1158,20 @@ const styles = StyleSheet.create({
   questionOptionText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     flex: 1,
     letterSpacing: 0.3,
   },
   insightsHelper: {
     fontSize: 14,
-    color: "#999",
+    color: tokens.colors.textMuted,
     lineHeight: 20,
     marginTop: 8,
     fontStyle: "italic",
   },
   footer: { paddingHorizontal: 28, paddingBottom: 30, paddingTop: 20 },
   nextButton: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     height: 60,
     borderRadius: 30,
     flexDirection: "row",
@@ -1179,8 +1180,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   nextButtonDisabled: { opacity: 0.3 },
-  nextButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  textWhite: { color: "#FFF" },
+  nextButtonText: { color: tokens.colors.brandText, fontSize: 18, fontWeight: "700" },
+  textWhite: { color: tokens.colors.brandText },
   textBold: { fontWeight: "700" },
   successContainer: {
     flex: 1,
@@ -1192,11 +1193,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
@@ -1204,12 +1205,12 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
   },
   successSub: {
     fontSize: 16,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,

@@ -38,6 +38,7 @@ import {
     submitSponsorBatchCheckIn,
 } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
+import { tokens } from "@/constants/theme";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface SponsorCheckInReferral {
@@ -234,7 +235,7 @@ export function SponsorCheckInModal({
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <X color="#666" size={20} strokeWidth={2} />
+            <X color={tokens.colors.textBody} size={20} strokeWidth={2} />
           </TouchableOpacity>
 
           {submitted ? (
@@ -244,7 +245,7 @@ export function SponsorCheckInModal({
               style={styles.successContainer}
             >
               <View style={styles.successCircle}>
-                <Check color="#FFF" size={34} strokeWidth={3} />
+                <Check color={tokens.colors.brandText} size={34} strokeWidth={3} />
               </View>
               <Text style={styles.successTitle}>Updates Saved!</Text>
               <Text style={styles.successSubtitle}>
@@ -264,7 +265,7 @@ export function SponsorCheckInModal({
 
               {loading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#000" />
+                  <ActivityIndicator color={tokens.colors.text} />
                   <Text style={styles.emptyText}>Loading referrals…</Text>
                 </View>
               ) : activeReferrals.length === 0 ? (
@@ -374,7 +375,7 @@ export function SponsorCheckInModal({
                     activeOpacity={0.8}
                   >
                     {submitting ? (
-                      <ActivityIndicator color="#000" />
+                      <ActivityIndicator color={tokens.colors.text} />
                     ) : (
                       <>
                         <Text
@@ -388,7 +389,7 @@ export function SponsorCheckInModal({
                             : "No Changes — Close"}
                         </Text>
                         {hasChanges && (
-                          <Check color="#FFF" size={18} strokeWidth={2.5} />
+                          <Check color={tokens.colors.brandText} size={18} strokeWidth={2.5} />
                         )}
                       </>
                     )}
@@ -410,14 +411,14 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     paddingTop: 12,
     paddingHorizontal: 28,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
@@ -453,13 +454,13 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   sheetSubtitle: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
   },
 
@@ -475,15 +476,15 @@ const styles = StyleSheet.create({
 
   // ── Referral card ───────────────────────────────────────────────────────────
   referralCard: {
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     gap: 14,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
@@ -499,12 +500,12 @@ const styles = StyleSheet.create({
   candidateName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 3,
   },
   candidateRole: {
     fontSize: 12,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "500",
   },
   cardHeaderRight: {
@@ -512,7 +513,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusBadge: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -520,12 +521,12 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.3,
   },
   lastUpdated: {
     fontSize: 10,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "500",
   },
 
@@ -539,26 +540,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   statusChipSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: tokens.colors.brand,
+    borderColor: tokens.colors.brand,
   },
   statusChipText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#555",
+    color: tokens.colors.textBody,
   },
   statusChipTextSelected: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
 
   // ── Submit button ────────────────────────────────────────────────────────────
   submitBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",
@@ -568,17 +569,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitBtnNoChanges: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   submitBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 16,
     fontWeight: "700",
   },
   submitBtnTextNoChanges: {
-    color: "#555",
+    color: tokens.colors.textBody,
   },
 
   // ── Success / Loading / Empty states ────────────────────────────────────────
@@ -591,7 +592,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -599,12 +600,12 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 10,
   },
   successSubtitle: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
   },
@@ -622,11 +623,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   emptyText: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 20,
   },
@@ -635,10 +636,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 24,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   emptyDismissBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 14,
     fontWeight: "700",
   },

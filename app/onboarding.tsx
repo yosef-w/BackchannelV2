@@ -5,6 +5,7 @@ import { AuthScreen } from "../components/AuthScreen";
 import { Onboarding } from "../components/Onboarding";
 import { SponsorQuestionnaire } from "../components/SponsorQuestionnaire";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { tokens } from "@/constants/theme";
 
 type UserType = "applicant" | "sponsor";
 type Step = "onboarding" | "auth" | "questionnaire";

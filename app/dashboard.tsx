@@ -3,6 +3,7 @@ import React, { useEffect, useMemo } from "react";
 import { MainApp } from "../components/MainApp";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
+import { tokens } from "@/constants/theme";
 
 type UserType = "applicant" | "sponsor";
 

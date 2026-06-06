@@ -31,6 +31,7 @@ import {
   ParsedAddress,
   parseAddressComponents,
 } from "../../lib/addressParser";
+import { tokens } from "@/constants/theme";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL_BASE = "https://places.googleapis.com/v1/places";
@@ -260,7 +261,7 @@ export function PlacesAutocomplete({
           {(loading || resolving) && (
             <ActivityIndicator
               size="small"
-              color="#666"
+              color={tokens.colors.textBody}
               style={styles.spinner}
             />
           )}
@@ -324,13 +325,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: tokens.colors.text,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   spinner: {
     marginLeft: 8,
@@ -341,14 +342,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     marginTop: 4,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     maxHeight: 240,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
@@ -371,11 +372,11 @@ const styles = StyleSheet.create({
   suggestionMain: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: tokens.colors.text,
   },
   suggestionSecondary: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 2,
   },
   manualLink: {
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   manualLinkText: {
-    color: "#666",
+    color: tokens.colors.textBody,
     fontSize: 12,
     textDecorationLine: "underline",
   },

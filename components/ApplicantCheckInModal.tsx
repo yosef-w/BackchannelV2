@@ -34,6 +34,7 @@ import {
 } from "../lib/analytics/mixpanel";
 import { ApplicantCheckInStage, submitApplicantCheckIn } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
+import { tokens } from "@/constants/theme";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface CheckInReferral {
@@ -281,7 +282,7 @@ export function ApplicantCheckInModal({
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <X color="#666" size={20} strokeWidth={2} />
+            <X color={tokens.colors.textBody} size={20} strokeWidth={2} />
           </TouchableOpacity>
 
           {submitted ? (
@@ -291,7 +292,7 @@ export function ApplicantCheckInModal({
               style={styles.successContainer}
             >
               <View style={styles.successCircle}>
-                <Check color="#FFF" size={34} strokeWidth={3} />
+                <Check color={tokens.colors.brandText} size={34} strokeWidth={3} />
               </View>
               <Text style={styles.successTitle}>Update Sent!</Text>
               <Text style={styles.successSubtitle}>
@@ -303,7 +304,7 @@ export function ApplicantCheckInModal({
           ) : loading ? (
             /* ── Loading ─────────────────────────────────────────────────── */
             <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#000" />
+              <ActivityIndicator color={tokens.colors.text} />
               <Text style={styles.emptyText}>Loading your referrals…</Text>
             </View>
           ) : activeReferrals.length === 0 ? (
@@ -503,12 +504,12 @@ export function ApplicantCheckInModal({
                 activeOpacity={0.8}
               >
                 {submitting ? (
-                  <ActivityIndicator color="#FFF" />
+                  <ActivityIndicator color={tokens.colors.brandText} />
                 ) : (
                   <>
                     <Text style={styles.submitBtnText}>Submit Update</Text>
                     {selectedStatus !== null && (
-                      <Check color="#FFF" size={18} strokeWidth={2.5} />
+                      <Check color={tokens.colors.brandText} size={18} strokeWidth={2.5} />
                     )}
                   </>
                 )}
@@ -528,14 +529,14 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     paddingTop: 12,
     paddingHorizontal: 28,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
@@ -581,21 +582,21 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    backgroundColor: "#FAFAFA",
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.bgOffWhite,
     maxWidth: 180,
   },
   pickerPillActive: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: tokens.colors.brand,
+    borderColor: tokens.colors.brand,
   },
   pickerPillText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#444",
+    color: tokens.colors.textBody,
   },
   pickerPillTextActive: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
 
   // ── Referral header ─────────────────────────────────────────────────────────
@@ -604,7 +605,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   companyPill: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
@@ -613,24 +614,24 @@ const styles = StyleSheet.create({
   companyPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.3,
   },
   roleText: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
     marginTop: 4,
   },
   metaText: {
     fontSize: 12,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
   },
   divider: {
     height: 1,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     marginVertical: 20,
   },
 
@@ -642,7 +643,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1,
     textTransform: "uppercase",
   },
@@ -655,12 +656,12 @@ const styles = StyleSheet.create({
   tConnector: {
     flex: 0.55,
     height: 2,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
     alignSelf: "flex-start",
     marginTop: 6,
   },
   tConnectorFilled: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   tItem: {
     flex: 1,
@@ -671,41 +672,41 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 2,
-    borderColor: "#E5E5E5",
-    backgroundColor: "#FFF",
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 5,
   },
   tDotFilled: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: tokens.colors.brand,
+    borderColor: tokens.colors.brand,
   },
   tDotActive: {
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     borderWidth: 2,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   tDotMuted: {
-    borderColor: "#E5E5E5",
-    backgroundColor: "#F5F5F5",
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.bgSurface,
   },
   tDotCore: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   tLabel: {
     fontSize: 8,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 11,
   },
   tLabelActive: {
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   tLabelMuted: {
     color: "#C8C8C8",
@@ -718,15 +719,15 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     marginBottom: 8,
   },
   statusRowSelected: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#000",
+    backgroundColor: tokens.colors.bgSurface,
+    borderColor: tokens.colors.brand,
   },
   radio: {
     width: 20,
@@ -734,41 +735,41 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: "#D1D5DB",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   radioSelected: {
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   statusText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#555",
+    color: tokens.colors.textBody,
     flex: 1,
   },
   statusTextSelected: {
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // ── Note input ──────────────────────────────────────────────────────────────
   noteInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     fontSize: 14,
-    color: "#333",
+    color: tokens.colors.text,
     fontWeight: "500",
     minHeight: 80,
     marginVertical: 16,
@@ -776,7 +777,7 @@ const styles = StyleSheet.create({
 
   // ── Submit button ────────────────────────────────────────────────────────────
   submitBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",
@@ -788,7 +789,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E0E0E0",
   },
   submitBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -803,7 +804,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -811,12 +812,12 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 10,
   },
   successSubtitle: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
   },
@@ -834,11 +835,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   emptyText: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 20,
   },
@@ -847,10 +848,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 24,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   emptyDismissBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 14,
     fontWeight: "700",
   },

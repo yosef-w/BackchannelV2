@@ -88,7 +88,16 @@
       "Bash(grep -n \"\\\\.map\\(\\(conv, index\\) => \\(\\\\|<View style={styles.list}>\\\\|</View>\" components/MessagesView.tsx)",
       "Bash(grep -n \"const toggleGroup\\\\|return \\(\\\\s*$\\\\|<ScrollView\\\\|</ScrollView>\\\\|conversations.length === 0 ? \\(\\\\|^        <>\\\\|^        </>\" components/MessagesView.tsx)",
       "Bash(xargs -n1 basename)",
-      "Bash(sed -n '66,74p' components/MainApp.tsx)"
+      "Bash(sed -n '66,74p' components/MainApp.tsx)",
+      "WebFetch(domain:backchannelapp.netlify.app)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(grep -nE \"#[0-9a-fA-F]{3,8}\\\\b|rgba\\\\\\(|rgb\\\\\\(\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -oE \"#[0-9a-fA-F]{3,8}\\\\b\" /Users/yosefwolday/Desktop/BackchannelV2/components/HomeView.tsx)",
+      "Bash(grep -oE '\"#[0-9a-fA-F]{3,8}\"' components/HomeView.tsx)",
+      "Bash(chmod +x scripts/migrate-colors.sh)",
+      "Bash(scripts/migrate-colors.sh components/MatchesView.tsx components/MessagesView.tsx components/ProfileView.tsx components/JobsView.tsx)",
+      "Bash(scripts/migrate-colors.sh components/ApplicantQuestionnaire.tsx components/SponsorQuestionnaire.tsx components/ApplicantCheckInModal.tsx components/SponsorCheckInModal.tsx components/ApplicantPublicProfileView.tsx components/SponsorPublicProfileView.tsx components/PublicProfileView.tsx components/ProfileCompletionBanner.tsx components/ProfileCompletionModal.tsx components/NotificationsView.tsx components/MainApp.tsx components/ui/AppToast.tsx components/ui/DismissibleSheet.tsx components/ui/ProfileDetailSheet.tsx components/ui/CompanyLogo.tsx components/ui/AutocompleteInput.tsx components/ui/PlacesAutocomplete.tsx app/dashboard.tsx app/onboarding.tsx)"
     ]
   }
 }

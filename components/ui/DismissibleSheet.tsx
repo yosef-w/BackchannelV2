@@ -26,6 +26,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { tokens } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 // Drag down past this many px — or flick down faster than this — to dismiss.
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
     borderRadius: 3,
   },
 });

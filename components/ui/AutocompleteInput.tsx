@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { tokens } from "@/constants/theme";
 
 interface AutocompleteInputProps {
   value: string;
@@ -120,13 +121,13 @@ const styles = StyleSheet.create({
     width: "100%",
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: tokens.colors.text,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   suggestionsContainer: {
     position: "absolute",
@@ -134,14 +135,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     marginTop: 4,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     maxHeight: 200,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: tokens.colors.text,
     flex: 1,
   },
 });

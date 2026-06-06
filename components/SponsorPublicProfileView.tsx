@@ -21,6 +21,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { tokens } from "@/constants/theme";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
@@ -104,7 +105,7 @@ export function SponsorPublicProfileView({
         {/* ── Profile Header ───────────────────────────────────────────── */}
         <View style={styles.profileHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color="#000" size={28} strokeWidth={2} />
+            <ChevronLeft color={tokens.colors.text} size={28} strokeWidth={2} />
           </TouchableOpacity>
 
           <View style={styles.avatarWrapper}>
@@ -123,7 +124,7 @@ export function SponsorPublicProfileView({
 
           {jobTitle || company ? (
             <View style={styles.infoRow}>
-              <Briefcase color="#000" size={14} strokeWidth={2} />
+              <Briefcase color={tokens.colors.text} size={14} strokeWidth={2} />
               <Text style={styles.infoText}>
                 {jobTitle}
                 {company ? ` @ ${company}` : ""}
@@ -134,7 +135,7 @@ export function SponsorPublicProfileView({
 
           {locationStr ? (
             <View style={styles.infoRow}>
-              <MapPin color="#BBB" size={14} strokeWidth={2} />
+              <MapPin color={tokens.colors.textFaint} size={14} strokeWidth={2} />
               <Text style={styles.locationText}>{locationStr}</Text>
             </View>
           ) : null}
@@ -148,7 +149,7 @@ export function SponsorPublicProfileView({
             See conversation history if/when INDIVIDUALS_REFERRED ships. */}
         {loadingProfile && (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color="#000" size="small" />
+            <ActivityIndicator color={tokens.colors.text} size="small" />
             <Text style={styles.loadingText}>Loading profile details…</Text>
           </View>
         )}
@@ -159,7 +160,7 @@ export function SponsorPublicProfileView({
             <Text style={styles.sectionTitle}>CONNECTED VIA</Text>
             <View style={styles.connectedCard}>
               <View style={styles.connectedIconCircle}>
-                <Briefcase size={16} color="#000" strokeWidth={2} />
+                <Briefcase size={16} color={tokens.colors.text} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.connectedJobTitle}>{matchedJobTitle}</Text>
@@ -178,7 +179,7 @@ export function SponsorPublicProfileView({
                 {openToReferrals === false ? (
                   <Award size={11} color="#DC2626" strokeWidth={2.5} />
                 ) : (
-                  <ShieldCheck size={11} color="#000" strokeWidth={2.5} />
+                  <ShieldCheck size={11} color={tokens.colors.text} strokeWidth={2.5} />
                 )}
                 <Text
                   style={[
@@ -199,7 +200,7 @@ export function SponsorPublicProfileView({
         {!loadingProfile ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Sparkles size={15} color="#000" strokeWidth={2} />
+              <Sparkles size={15} color={tokens.colors.text} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 KEY INSIGHTS
               </Text>
@@ -214,9 +215,9 @@ export function SponsorPublicProfileView({
                     <View style={styles.insightQuestionRow}>
                       <View style={styles.insightIconCircle}>
                         {idx % 2 === 0 ? (
-                          <Check size={13} color="#000" strokeWidth={2.5} />
+                          <Check size={13} color={tokens.colors.text} strokeWidth={2.5} />
                         ) : (
-                          <Award size={13} color="#000" strokeWidth={2.5} />
+                          <Award size={13} color={tokens.colors.text} strokeWidth={2.5} />
                         )}
                       </View>
                       <Text style={styles.insightQuestion}>
@@ -258,7 +259,7 @@ export function SponsorPublicProfileView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     ...Platform.select({
       android: { paddingTop: StatusBar.currentHeight },
     }),
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
   },
   avatarFallback: {
     alignItems: "center",
@@ -299,12 +300,12 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 40,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   name: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -1,
     textAlign: "center",
   },
@@ -317,16 +318,16 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   locationText: {
     fontSize: 14,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "500",
   },
   bio: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
   // ── Stats Grid ────────────────────────────────────────────────────────────
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     padding: 24,
     marginBottom: 32,
@@ -348,11 +349,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
   },
   statValueOpen: {
-    color: "#000",
+    color: tokens.colors.text,
     fontSize: 18,
   },
   statValueClosed: {
@@ -362,14 +363,14 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     marginTop: 4,
     letterSpacing: 1,
     textAlign: "center",
   },
   statDivider: {
     width: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: tokens.colors.border,
     marginVertical: 4,
     alignSelf: "stretch" as const,
   },
@@ -385,7 +386,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "600",
   },
 
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -412,12 +413,12 @@ const styles = StyleSheet.create({
   connectedCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 18,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   connectedIconCircle: {
     width: 40,
@@ -430,12 +431,12 @@ const styles = StyleSheet.create({
   connectedJobTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   connectedCompany: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 2,
   },
   statusPill: {
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   statusPillOpen: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
   },
   statusPillClosed: {
     backgroundColor: "#FEF2F2",
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   statusPillTextOpen: {
-    color: "#000",
+    color: tokens.colors.text,
   },
   statusPillTextClosed: {
     color: "#DC2626",
@@ -470,7 +471,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   insightQuestionRow: {
     flexDirection: "row",
@@ -491,29 +492,29 @@ const styles = StyleSheet.create({
   insightQuestion: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     flex: 1,
     lineHeight: 20,
   },
   insightAnswer: {
     fontSize: 14,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 22,
     fontWeight: "500",
     paddingLeft: 36,
   },
   emptyCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     padding: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     marginTop: 12,
   },
   emptyCardText: {
     fontSize: 14,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "600",
   },
 
@@ -530,13 +531,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   companyText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
 });

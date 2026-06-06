@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { ProfileCompletenessResult } from "../utils/profileCompletion";
+import { tokens } from "@/constants/theme";
 
 interface ProfileCompletionModalProps {
   visible: boolean;
@@ -45,7 +46,7 @@ export function ProfileCompletionModal({
         style={styles.modalContent}
       >
         <View style={styles.iconContainer}>
-          <AlertCircle color="#666" size={48} />
+          <AlertCircle color={tokens.colors.textBody} size={48} />
         </View>
 
         <Text style={styles.title}>Complete Your Profile</Text>
@@ -75,7 +76,7 @@ export function ProfileCompletionModal({
           activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Complete Profile</Text>
-          <ChevronRight color="#FFF" size={20} />
+          <ChevronRight color={tokens.colors.brandText} size={20} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 28,
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -123,19 +124,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   missingFieldsContainer: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
   missingTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -162,18 +163,18 @@ const styles = StyleSheet.create({
   },
   missingText: {
     fontSize: 15,
-    color: "#333",
+    color: tokens.colors.text,
     fontWeight: "500",
   },
   moreFields: {
     fontSize: 14,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontStyle: "italic",
     marginTop: 4,
     marginLeft: 18,
   },
   primaryButton: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryButtonText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 17,
     fontWeight: "700",
   },
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButtonText: {
-    color: "#666",
+    color: tokens.colors.textBody,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   testerButtonText: {
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",

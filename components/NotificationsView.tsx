@@ -43,6 +43,7 @@ import {
     markNotificationAsRead,
 } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
+import { tokens } from "@/constants/theme";
 
 interface NotificationsViewProps {
   userType: "applicant" | "sponsor";
@@ -421,7 +422,7 @@ export function NotificationsView({
           style={styles.backButton}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ArrowLeft color="#000" size={24} strokeWidth={2.5} />
+          <ArrowLeft color={tokens.colors.text} size={24} strokeWidth={2.5} />
         </TouchableOpacity>
 
         <View style={styles.headerRow}>
@@ -466,7 +467,7 @@ export function NotificationsView({
       {isLoading && (
         <View style={styles.centeredState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={28} strokeWidth={2} />
+            <Bell color={tokens.colors.textFaint} size={28} strokeWidth={2} />
           </View>
           <Text
             style={{
@@ -485,7 +486,7 @@ export function NotificationsView({
       {!isLoading && error && (
         <View style={styles.centeredState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={28} strokeWidth={2} />
+            <Bell color={tokens.colors.textFaint} size={28} strokeWidth={2} />
           </View>
           <Text style={styles.errorText}>Couldn't load notifications</Text>
           <TouchableOpacity
@@ -493,7 +494,7 @@ export function NotificationsView({
             style={styles.retryButton}
             activeOpacity={0.8}
           >
-            <RefreshCw color="#FFF" size={15} strokeWidth={2.5} />
+            <RefreshCw color={tokens.colors.brandText} size={15} strokeWidth={2.5} />
             <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
@@ -597,7 +598,7 @@ export function NotificationsView({
                           <View style={styles.swipeActionContainer}>
                             <View style={styles.swipeActionDelete}>
                               <Trash2
-                                color="#FFF"
+                                color={tokens.colors.brandText}
                                 size={18}
                                 strokeWidth={2.5}
                               />
@@ -622,7 +623,7 @@ export function NotificationsView({
       {!isLoading && !error && notifications.length === 0 && (
         <View style={styles.emptyState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={30} strokeWidth={2} />
+            <Bell color={tokens.colors.textFaint} size={30} strokeWidth={2} />
           </View>
           <Text style={styles.emptyStateTitle}>No notifications yet</Text>
           <Text style={styles.emptyStateText}>
@@ -637,7 +638,7 @@ export function NotificationsView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -664,17 +665,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.8,
   },
   subtitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginTop: 3,
   },
   actionPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -682,7 +683,7 @@ const styles = StyleSheet.create({
   actionPillText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.1,
   },
 
@@ -696,7 +697,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -704,7 +705,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -712,7 +713,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: 999,
@@ -720,7 +721,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
 
   // ── Section grouping ──
@@ -730,7 +731,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1,
     marginBottom: 8,
     marginLeft: 4,
@@ -759,13 +760,13 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#F2F2F2",
+    backgroundColor: tokens.colors.bgSurface,
   },
   iconCircle: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -776,18 +777,18 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
   // Read rows soften the title so unread ones lead the eye.
   rowTitleRead: {
     fontWeight: "600",
-    color: "#444",
+    color: tokens.colors.textBody,
   },
   rowBody: {
     fontSize: 13.5,
     fontWeight: "500",
-    color: "#777",
+    color: tokens.colors.textMuted,
     lineHeight: 19,
     marginTop: 2,
   },
@@ -818,7 +819,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
 
   // ── Swipe-to-delete ──
@@ -838,7 +839,7 @@ const styles = StyleSheet.create({
     minWidth: 96,
   },
   swipeActionText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,
@@ -852,14 +853,14 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
   emptyStateText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#999",
+    color: tokens.colors.textMuted,
     textAlign: "center",
     lineHeight: 20,
     paddingHorizontal: 40,
