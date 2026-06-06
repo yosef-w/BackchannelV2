@@ -97,7 +97,11 @@
       "Bash(grep -oE '\"#[0-9a-fA-F]{3,8}\"' components/HomeView.tsx)",
       "Bash(chmod +x scripts/migrate-colors.sh)",
       "Bash(scripts/migrate-colors.sh components/MatchesView.tsx components/MessagesView.tsx components/ProfileView.tsx components/JobsView.tsx)",
-      "Bash(scripts/migrate-colors.sh components/ApplicantQuestionnaire.tsx components/SponsorQuestionnaire.tsx components/ApplicantCheckInModal.tsx components/SponsorCheckInModal.tsx components/ApplicantPublicProfileView.tsx components/SponsorPublicProfileView.tsx components/PublicProfileView.tsx components/ProfileCompletionBanner.tsx components/ProfileCompletionModal.tsx components/NotificationsView.tsx components/MainApp.tsx components/ui/AppToast.tsx components/ui/DismissibleSheet.tsx components/ui/ProfileDetailSheet.tsx components/ui/CompanyLogo.tsx components/ui/AutocompleteInput.tsx components/ui/PlacesAutocomplete.tsx app/dashboard.tsx app/onboarding.tsx)"
+      "Bash(scripts/migrate-colors.sh components/ApplicantQuestionnaire.tsx components/SponsorQuestionnaire.tsx components/ApplicantCheckInModal.tsx components/SponsorCheckInModal.tsx components/ApplicantPublicProfileView.tsx components/SponsorPublicProfileView.tsx components/PublicProfileView.tsx components/ProfileCompletionBanner.tsx components/ProfileCompletionModal.tsx components/NotificationsView.tsx components/MainApp.tsx components/ui/AppToast.tsx components/ui/DismissibleSheet.tsx components/ui/ProfileDetailSheet.tsx components/ui/CompanyLogo.tsx components/ui/AutocompleteInput.tsx components/ui/PlacesAutocomplete.tsx app/dashboard.tsx app/onboarding.tsx)",
+      "Bash(grep -oE '\"#[0-9a-fA-F]{3,8}\"' components/ProfileView.tsx)",
+      "Bash(grep -oE '\"#[0-9a-fA-F]{3,8}\"' components/ApplicantCheckInModal.tsx)",
+      "Bash(grep -oE '\"#[0-9a-fA-F]{3,8}\"' components/SponsorCheckInModal.tsx)",
+      "Bash(grep -oE '\"#[0-9a-fA-F]{3,8}\"' components/ui/ProfileDetailSheet.tsx)"
     ]
   }
 }

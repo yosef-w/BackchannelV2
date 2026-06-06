@@ -135,8 +135,8 @@ const styles = StyleSheet.create({
   },
   handle: {
     width: 40,
-    height: 5,
+    height: 4,
     backgroundColor: tokens.colors.border,
-    borderRadius: 3,
+    borderRadius: 2,
   },
 });

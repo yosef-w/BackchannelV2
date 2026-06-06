@@ -484,7 +484,7 @@ export function ApplicantCheckInModal({
               <TextInput
                 style={styles.noteInput}
                 placeholder="Add a note for your sponsor (optional)"
-                placeholderTextColor="#BBB"
+                placeholderTextColor={tokens.colors.textFaint}
                 multiline
                 value={note}
                 onChangeText={setNote}
@@ -546,9 +546,9 @@ const styles = StyleSheet.create({
   },
   handle: {
     width: 40,
-    height: 5,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: tokens.colors.border,
+    borderRadius: 2,
     alignSelf: "center",
     marginBottom: 24,
   },
@@ -559,7 +559,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: tokens.colors.bgSurface,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
@@ -605,29 +607,33 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   companyPill: {
-    backgroundColor: tokens.colors.brand,
+    backgroundColor: tokens.colors.bgSurface,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: tokens.radii.pill,
     alignSelf: "flex-start",
   },
   companyPillText: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 11,
-    fontWeight: "700",
-    color: tokens.colors.brandText,
-    letterSpacing: 0.3,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   roleText: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 28,
+    lineHeight: 32,
     color: tokens.colors.text,
-    letterSpacing: -0.5,
-    marginTop: 4,
+    letterSpacing: -0.6,
+    marginTop: 6,
   },
   metaText: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 12,
     color: tokens.colors.textMuted,
-    fontWeight: "500",
   },
   divider: {
     height: 1,
@@ -641,10 +647,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionLabel: {
-    fontSize: 10,
-    fontWeight: "900",
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
     color: tokens.colors.textMuted,
-    letterSpacing: 1,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
   },
 
@@ -709,7 +715,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
   },
   tLabelMuted: {
-    color: "#C8C8C8",
+    color: tokens.colors.textFaint,
   },
 
   // ── Status options ──────────────────────────────────────────────────────────
@@ -734,7 +740,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#D1D5DB",
+    borderColor: tokens.colors.borderStrong,
     backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
@@ -786,7 +792,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   submitBtnDisabled: {
-    backgroundColor: "#E0E0E0",
+    backgroundColor: tokens.colors.borderStrong,
   },
   submitBtnText: {
     color: tokens.colors.brandText,

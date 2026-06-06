@@ -308,18 +308,18 @@ export function ProfileDetailSheet({
                       style={[
                         styles.statusBadge,
                         {
-                          backgroundColor: badge.bgColor ?? "#F4F4F5",
+                          backgroundColor: badge.bgColor ?? tokens.colors.bgSurface,
                         },
                       ]}
                     >
                       <CheckCircle
                         size={11}
-                        color={badge.color ?? "#000"}
+                        color={badge.color ?? tokens.colors.text}
                       />
                       <Text
                         style={[
                           styles.statusBadgeText,
-                          { color: badge.color ?? "#000" },
+                          { color: badge.color ?? tokens.colors.text },
                         ]}
                       >
                         {badge.label}
@@ -619,23 +619,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   avatar: { width: 68, height: 68, borderRadius: 34 },
-  avatarInitial: { fontSize: 24, fontWeight: "800", color: tokens.colors.brandText },
+  avatarInitial: {
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 26,
+    color: tokens.colors.brandText,
+  },
   name: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 24,
+    lineHeight: 28,
     color: tokens.colors.text,
     letterSpacing: -0.4,
   },
   meta: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 13,
-    fontWeight: "500",
     color: tokens.colors.textBody,
     lineHeight: 18,
     marginTop: 4,
   },
   metaLocation: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 12,
-    fontWeight: "500",
     color: tokens.colors.textMuted,
     marginTop: 2,
   },
@@ -650,9 +655,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   statusBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   contextBlock: {
     backgroundColor: tokens.colors.bgOffWhite,
@@ -668,29 +674,35 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: tokens.colors.textFaint,
-    letterSpacing: 1.2,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
     marginBottom: 6,
   },
   contextTitle: {
-    fontSize: 16,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 15,
     color: tokens.colors.text,
+    letterSpacing: -0.2,
     marginBottom: 2,
   },
-  contextCompany: { fontSize: 13, fontWeight: "500", color: tokens.colors.textBody },
+  contextCompany: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 13,
+    color: tokens.colors.textBody,
+  },
   // Skeleton placeholder base — neutral light gray with a soft border so
   // the shape reads even at the brightest point of the pulse animation.
   skeletonBase: {
-    backgroundColor: "#ECECEC",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 4,
   },
   block: { marginBottom: 20 },
   body: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 14,
-    fontWeight: "500",
     color: tokens.colors.textBody,
     lineHeight: 22,
   },
@@ -702,21 +714,31 @@ const styles = StyleSheet.create({
   },
   capPill: {
     backgroundColor: tokens.colors.bgSurface,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
+    borderRadius: tokens.radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: tokens.borders.hairline,
     borderColor: tokens.colors.border,
   },
-  capPillText: { fontSize: 11, fontWeight: "700", color: tokens.colors.text },
+  capPillText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 0.4,
+  },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   darkChip: {
     backgroundColor: tokens.colors.brand,
-    borderRadius: 8,
+    borderRadius: tokens.radii.pill,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
-  darkChipText: { fontSize: 12, fontWeight: "700", color: tokens.colors.brandText },
+  darkChipText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.brandText,
+    letterSpacing: 0.4,
+  },
   insightCard: {
     backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
@@ -726,16 +748,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   insightQ: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#AAA",
-    letterSpacing: 0.8,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
     marginBottom: 6,
     textTransform: "uppercase",
   },
   insightA: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 14,
-    fontWeight: "500",
     color: tokens.colors.text,
     lineHeight: 20,
   },

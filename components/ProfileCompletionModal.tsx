@@ -1,17 +1,19 @@
+import { Button, Text } from "@/components/design";
+import { tokens } from "@/constants/theme";
 import { BlurView } from "expo-blur";
-import { AlertCircle, ChevronRight } from "lucide-react-native";
+import { AlertCircle } from "lucide-react-native";
 import React from "react";
 import {
   Modal,
-  ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanimated";
+import Animated, {
+  SlideInDown,
+  SlideOutDown,
+} from "react-native-reanimated";
 import { ProfileCompletenessResult } from "../utils/profileCompletion";
-import { tokens } from "@/constants/theme";
 
 interface ProfileCompletionModalProps {
   visible: boolean;
@@ -21,6 +23,11 @@ interface ProfileCompletionModalProps {
   profileCompletion: ProfileCompletenessResult;
 }
 
+/**
+ * Bottom-sheet style modal that nudges the user to finish their profile.
+ * Editorial: eyebrow + two-line serif title, paper-on-blur background,
+ * primary / ghost / tertiary CTA stack.
+ */
 export function ProfileCompletionModal({
   visible,
   onClose,
@@ -29,7 +36,7 @@ export function ProfileCompletionModal({
   profileCompletion,
 }: ProfileCompletionModalProps) {
   if (!profileCompletion) return null;
-  
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <TouchableOpacity
@@ -43,56 +50,89 @@ export function ProfileCompletionModal({
       <Animated.View
         entering={SlideInDown}
         exiting={SlideOutDown}
-        style={styles.modalContent}
+        style={styles.modal}
       >
-        <View style={styles.iconContainer}>
-          <AlertCircle color={tokens.colors.textBody} size={48} />
+        <View style={styles.handle} />
+
+        <View style={styles.iconCircle}>
+          <AlertCircle
+            color={tokens.colors.text}
+            size={26}
+            strokeWidth={1.6}
+          />
         </View>
 
-        <Text style={styles.title}>Complete Your Profile</Text>
-        <Text style={styles.subtitle}>
-          Your profile is {profileCompletion.percentage}% complete. Add the missing
-          information to unlock autofill for job applications.
+        <Text
+          variant="eyebrow"
+          align="center"
+          style={styles.eyebrow}
+        >
+          Almost there
+        </Text>
+        <Text variant="titleSerif" align="center" style={styles.titleLine}>
+          Finish your
+        </Text>
+        <Text variant="titleSerifItalic" align="center" style={styles.titleLine}>
+          profile.
+        </Text>
+        <Text
+          variant="bodyLarge"
+          align="center"
+          style={styles.subtitle}
+        >
+          You're {profileCompletion.percentage}% complete. Fill in the rest
+          to unlock autofill and stronger matches.
         </Text>
 
-        <View style={styles.missingFieldsContainer}>
-          <Text style={styles.missingTitle}>Missing Information:</Text>
+        <View style={styles.missingCard}>
+          <Text variant="eyebrow" style={styles.missingEyebrow}>
+            Missing
+          </Text>
           {profileCompletion.missingFields.slice(0, 5).map((field, index) => (
-            <View key={index} style={styles.missingField}>
+            <View key={index} style={styles.missingRow}>
               <View style={styles.missingDot} />
-              <Text style={styles.missingText}>{field.label}</Text>
+              <Text variant="body" color={tokens.colors.text}>
+                {field.label}
+              </Text>
             </View>
           ))}
-          {profileCompletion.missingFields.length > 5 && (
-            <Text style={styles.moreFields}>
+          {profileCompletion.missingFields.length > 5 ? (
+            <Text
+              variant="bodySmall"
+              color={tokens.colors.textMuted}
+              italic
+              style={styles.moreText}
+            >
               +{profileCompletion.missingFields.length - 5} more fields
             </Text>
-          )}
+          ) : null}
+        </View>
+
+        <View style={styles.ctaStack}>
+          <Button
+            label="Complete profile"
+            onPress={onGoToProfile}
+            block
+            size="lg"
+          />
+          <Button
+            label="Maybe later"
+            onPress={onClose}
+            variant="ghost"
+            block
+            size="md"
+          />
         </View>
 
         <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={onGoToProfile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>Complete Profile</Text>
-          <ChevronRight color={tokens.colors.brandText} size={20} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={onClose}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.secondaryButtonText}>Maybe Later</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.testerButton}
           onPress={onTesterMode}
-          activeOpacity={0.8}
+          style={styles.testerBtn}
+          activeOpacity={0.7}
+          hitSlop={6}
         >
-          <Text style={styles.testerButtonText}>I am a tester</Text>
+          <Text variant="eyebrow" color={tokens.colors.textFaint}>
+            I am a tester
+          </Text>
         </TouchableOpacity>
       </Animated.View>
     </Modal>
@@ -100,115 +140,86 @@ export function ProfileCompletionModal({
 }
 
 const styles = StyleSheet.create({
-  modalContent: {
+  modal: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: tokens.colors.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 28,
-    paddingBottom: 40,
+    borderTopLeftRadius: tokens.radii.xl,
+    borderTopRightRadius: tokens.radii.xl,
+    paddingHorizontal: tokens.spacing.l,
+    paddingTop: tokens.spacing.sm,
+    paddingBottom: tokens.spacing.xxl,
+    borderTopWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  handle: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: tokens.colors.border,
+    marginBottom: tokens.spacing.m,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: tokens.spacing.m,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    textAlign: "center",
-    marginBottom: 12,
+  eyebrow: {
+    marginBottom: tokens.spacing.s,
+  },
+  titleLine: {
+    fontSize: 30,
+    lineHeight: 34,
   },
   subtitle: {
-    fontSize: 15,
-    color: tokens.colors.textBody,
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 24,
+    marginTop: tokens.spacing.sm,
+    marginBottom: tokens.spacing.l,
+    maxWidth: 400,
+    alignSelf: "center",
   },
-  missingFieldsContainer: {
+  missingCard: {
     backgroundColor: tokens.colors.bgOffWhite,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.l,
+    padding: tokens.spacing.m,
+    marginBottom: tokens.spacing.l,
   },
-  missingTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: tokens.colors.text,
-    marginBottom: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+  missingEyebrow: {
+    marginBottom: tokens.spacing.sm,
   },
-  missingField: {
+  missingRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: tokens.spacing.s,
   },
   missingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#666",
-    marginRight: 12,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: tokens.colors.textMuted,
+    marginRight: tokens.spacing.sm,
   },
-  missingText: {
-    fontSize: 15,
-    color: tokens.colors.text,
-    fontWeight: "500",
+  moreText: {
+    marginTop: tokens.spacing.xs,
+    marginLeft: tokens.spacing.sm + 4,
   },
-  moreFields: {
-    fontSize: 14,
-    color: tokens.colors.textMuted,
-    fontStyle: "italic",
-    marginTop: 4,
-    marginLeft: 18,
+  ctaStack: {
+    gap: tokens.spacing.s,
   },
-  primaryButton: {
-    backgroundColor: tokens.colors.brand,
-    height: 56,
-    borderRadius: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  primaryButtonText: {
-    color: tokens.colors.brandText,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    height: 56,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryButtonText: {
-    color: tokens.colors.textBody,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  testerButton: {
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-  },
-  testerButtonText: {
-    color: tokens.colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+  testerBtn: {
+    alignSelf: "center",
+    marginTop: tokens.spacing.s,
+    paddingVertical: tokens.spacing.s,
   },
 });
