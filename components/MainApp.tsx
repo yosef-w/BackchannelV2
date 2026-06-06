@@ -516,7 +516,7 @@ export function MainApp({ userType }: MainAppProps) {
       <SafeAreaView style={styles.safeArea}>
         {/* Header Bar */}
         <View style={styles.topBar}>
-          <Text style={styles.appTitle}>Backchannel</Text>
+          <Text style={styles.appTitle}>BackChannel</Text>
           <View style={styles.topBarButtons}>
             <TouchableOpacity
               onPress={handleOpenCheckIn}
@@ -679,15 +679,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: tokens.layout.screenPaddingH,
-    paddingVertical: tokens.spacing.sm,
+    paddingVertical: tokens.spacing.s,
     borderBottomWidth: tokens.borders.hairline,
     borderBottomColor: tokens.colors.border,
   },
+  // Editorial wordmark — matches the website's hero brand assertion
+  // ("Welcome to / BackChannel.") rather than the small uppercase nav
+  // wordmark. The serif italic treatment reads as a brand statement
+  // at the top of every tab.
   appTitle: {
-    fontFamily: tokens.fontFamilies.sans600,
-    fontSize: 13,
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 24,
+    lineHeight: 28,
+    letterSpacing: -0.4,
     color: tokens.colors.text,
   },
   topBarButtons: {
