@@ -5424,7 +5424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   modalTitle: {
     fontSize: 24,
@@ -5437,7 +5437,7 @@ const styles = StyleSheet.create({
   modalFooter: {
     padding: 28,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: tokens.colors.border,
     gap: 16,
   },
   applyBtn: {
@@ -5533,7 +5533,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   profileImageSquare: {
     width: 110,
@@ -5561,7 +5561,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   profileNameTop: {
     flex: 1,
@@ -5680,7 +5680,7 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     paddingBottom: 22,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   heroAvatar: {
     width: 72,
@@ -5973,7 +5973,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   detailSectionTitle: {
     fontWeight: "800",
@@ -6007,7 +6007,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: tokens.colors.border,
     gap: 14,
     backgroundColor: tokens.colors.bgOffWhite,
   },
@@ -6134,7 +6134,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: tokens.colors.border,
   },
   experienceHeader: {
     flexDirection: "row",
@@ -6173,7 +6173,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: tokens.colors.border,
   },
   educationDegree: {
     fontSize: 15,
@@ -6400,7 +6400,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   applicantBackPhoto: {
     width: 48,
@@ -7045,7 +7045,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   sponsorAvatar: {
     width: 48,
@@ -7065,14 +7065,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: tokens.colors.successBg,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     alignSelf: "flex-start",
     marginTop: 12,
   },
-  canReferText: { fontSize: 12, fontWeight: "700", color: "#00CB54" },
+  canReferText: { fontSize: 12, fontWeight: "700", color: tokens.colors.successFg },
   sponsorNameRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -7083,7 +7083,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#E8FBEF",
+    backgroundColor: tokens.colors.successBg,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -7091,7 +7091,7 @@ const styles = StyleSheet.create({
   canReferTagText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#00CB54",
+    color: tokens.colors.successFg,
     letterSpacing: 0.2,
   },
   insightBlock: {},
@@ -7648,7 +7648,7 @@ const styles = StyleSheet.create({
   },
   emailVerifErrorText: {
     fontSize: 13,
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     textAlign: "center",
     marginTop: 4,
     marginBottom: 4,

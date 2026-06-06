@@ -1728,7 +1728,7 @@ export function JobsView() {
               onPress={handlePreviewJob}
               activeOpacity={0.85}
             >
-              <Globe color={!jobUrlInput.trim() ? "#999" : "#FFF"} size={18} />
+              <Globe color={!jobUrlInput.trim() ? tokens.colors.textMuted : tokens.colors.brandText} size={18} />
               <Text
                 style={[
                   styles.confirmBtnText,
@@ -1774,7 +1774,7 @@ export function JobsView() {
                 activeOpacity={0.7}
               >
                 <ChevronLeft
-                  color={webviewCanGoBack ? "#000" : "#CCC"}
+                  color={webviewCanGoBack ? tokens.colors.text : tokens.colors.textFaint}
                   size={22}
                 />
               </TouchableOpacity>
@@ -1785,7 +1785,7 @@ export function JobsView() {
                 activeOpacity={0.7}
               >
                 <ChevronRight
-                  color={webviewCanGoForward ? "#000" : "#CCC"}
+                  color={webviewCanGoForward ? tokens.colors.text : tokens.colors.textFaint}
                   size={22}
                 />
               </TouchableOpacity>
@@ -2661,7 +2661,7 @@ export function JobsView() {
                   <Text
                     style={{
                       textAlign: "center",
-                      color: "#DC2626",
+                      color: tokens.colors.dangerFg,
                       fontSize: 14,
                       fontWeight: "600",
                     }}
@@ -3103,7 +3103,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: tokens.colors.border,
   },
   sponsoredBannerText: {
     fontSize: 12,
@@ -3162,7 +3162,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -3183,7 +3183,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
+    borderTopColor: tokens.colors.border,
   },
   applicantInfo: { flexDirection: "row", alignItems: "center" },
   applicantBadge: {
@@ -3262,7 +3262,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#CCC",
+    borderColor: tokens.colors.borderStrong,
   },
   radioCircleActive: { borderColor: tokens.colors.brand, borderWidth: 6 },
   radioText: { fontSize: 15, color: tokens.colors.textBody, fontWeight: "600" },
@@ -3356,7 +3356,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
     backgroundColor: tokens.colors.bg,
     gap: 8,
   },
@@ -3396,7 +3396,7 @@ const styles = StyleSheet.create({
   },
   confirmJobBar: {
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: tokens.colors.border,
     backgroundColor: tokens.colors.bg,
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -3520,7 +3520,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 24,
     borderLeftWidth: 4,
-    borderLeftColor: "#000",
+    borderLeftColor: tokens.colors.brand,
   },
   backchannelTitle: {
     fontSize: 16,
@@ -3593,7 +3593,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 24,
     borderLeftWidth: 4,
-    borderLeftColor: "#000",
+    borderLeftColor: tokens.colors.brand,
   },
   infoCalloutTitle: {
     fontSize: 16,
@@ -3673,14 +3673,14 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: tokens.colors.border,
   },
   radioOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: "#DDD",
+    borderColor: tokens.colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -3725,7 +3725,7 @@ const styles = StyleSheet.create({
   menuSheetJobHeader: {
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
     marginBottom: 16,
   },
   menuSheetJobTitle: {
@@ -3809,12 +3809,12 @@ const styles = StyleSheet.create({
   },
   jobModalCompStrip: {
     flexDirection: "row",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 18,
     marginBottom: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEEEEE",
+    borderColor: tokens.colors.border,
   },
   jobModalCompCell: {
     flex: 1,
@@ -3876,7 +3876,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -3891,7 +3891,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#EEEEEE",
+    borderColor: tokens.colors.border,
   },
   jobDetailText: {
     fontSize: 14,
@@ -3911,7 +3911,7 @@ const styles = StyleSheet.create({
   jobSectionText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 22 },
   jobSectionEmpty: {
     fontSize: 13,
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     fontStyle: "italic",
     fontWeight: "500" as const,
   },
@@ -4019,7 +4019,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: tokens.colors.border,
   },
   applicantAvatar: {
     width: 48,
@@ -4075,7 +4075,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     padding: 12,
     borderRadius: 15,
     marginBottom: 20,
@@ -4108,7 +4108,7 @@ const styles = StyleSheet.create({
   },
   dot: { height: 6, borderRadius: 3 },
   dotActive: { width: 22, backgroundColor: tokens.colors.brand },
-  dotInactive: { width: 6, backgroundColor: "#DDD" },
+  dotInactive: { width: 6, backgroundColor: tokens.colors.border },
   infoCardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -4118,7 +4118,7 @@ const styles = StyleSheet.create({
   modalAvatar: { width: 55, height: 55, borderRadius: 27 },
   modalName: { fontSize: 20, fontWeight: "800" },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
+  locationText: { fontSize: 12, color: tokens.colors.textFaint, fontWeight: "600" },
   bioText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 20, marginBottom: 15 },
   skillsContainer: {
     flexDirection: "row",
@@ -4169,7 +4169,7 @@ const styles = StyleSheet.create({
   insightLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     marginBottom: 6,
     letterSpacing: 1.2,
   },
@@ -4201,7 +4201,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
     marginBottom: 8,
   },
   messageModalAvatar: {
@@ -4237,7 +4237,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 20,
     padding: 8,
   },
@@ -4348,7 +4348,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 20,
   },
-  apLoadingText: { fontSize: 13, color: "#AAA", fontWeight: "500" },
+  apLoadingText: { fontSize: 13, color: tokens.colors.textFaint, fontWeight: "500" },
   apCapRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -4384,7 +4384,7 @@ const styles = StyleSheet.create({
   apInsightQ: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     letterSpacing: 0.8,
     marginBottom: 6,
     textTransform: "uppercase",
@@ -4496,7 +4496,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
@@ -4551,7 +4551,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -4638,7 +4638,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: tokens.colors.borderStrong,
     minWidth: 20,
     alignItems: "center",
   },
@@ -4681,7 +4681,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     marginTop: 16,
     marginBottom: 20,

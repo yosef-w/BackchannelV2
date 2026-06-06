@@ -381,7 +381,7 @@ export function SponsorQuestionnaire({
 
                       <TextInput
                         placeholder="Share your answer..."
-                        placeholderTextColor="#BBB"
+                        placeholderTextColor={tokens.colors.textFaint}
                         value={insight.answer}
                         onFocus={() => {
                           const y = cardYPositions.current[index];
@@ -471,11 +471,11 @@ export function SponsorQuestionnaire({
               ) : question.type === "text" || question.type === "email" ? (
                 <View style={styles.inputWrapper}>
                   {question.type === "email" && (
-                    <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                    <Mail color={tokens.colors.textFaint} size={20} style={{ marginRight: 12 }} />
                   )}
                   <TextInput
                     placeholder={question.placeholder}
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={tokens.colors.textFaint}
                     value={answers[currentQuestion] || ""}
                     onChangeText={(v) =>
                       setAnswers({ ...answers, [currentQuestion]: v })
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   questionOptionText: {
     fontSize: 13,

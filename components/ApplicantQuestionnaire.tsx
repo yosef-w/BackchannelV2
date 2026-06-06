@@ -501,7 +501,7 @@ export function ApplicantQuestionnaire({
                   <View style={styles.inputWrapper}>
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={tokens.colors.textFaint}
                       value={answers[currentQuestion] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [currentQuestion]: v })
@@ -516,13 +516,13 @@ export function ApplicantQuestionnaire({
                   <View>
                     <View style={styles.searchWrapper}>
                       <Search
-                        color="#AAA"
+                        color={tokens.colors.textFaint}
                         size={20}
                         style={{ marginRight: 10 }}
                       />
                       <TextInput
                         placeholder="Search skills..."
-                        placeholderTextColor="#BBB"
+                        placeholderTextColor={tokens.colors.textFaint}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         style={styles.searchInput}
@@ -598,7 +598,7 @@ export function ApplicantQuestionnaire({
 
                         <TextInput
                           placeholder="Share your answer..."
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={tokens.colors.textFaint}
                           value={insight.answer}
                           onFocus={() => {
                             const y = cardYPositions.current[index];
@@ -948,7 +948,7 @@ const styles = StyleSheet.create({
   fileContainer: {
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#DDD",
+    borderColor: tokens.colors.borderStrong,
     borderRadius: 20,
     paddingVertical: 44,
     paddingHorizontal: 28,
@@ -972,7 +972,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textAlign: "center",
   },
-  fileSubtitle: { fontSize: 13, color: "#AAA", textAlign: "center" },
+  fileSubtitle: { fontSize: 13, color: tokens.colors.textFaint, textAlign: "center" },
   fileConfirmCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1153,7 +1153,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   questionOptionText: {
     fontSize: 13,

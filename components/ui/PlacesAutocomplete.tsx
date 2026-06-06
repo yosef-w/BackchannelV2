@@ -252,7 +252,7 @@ export function PlacesAutocomplete({
             value={query}
             onChangeText={setQuery}
             placeholder={placeholder}
-            placeholderTextColor="#999"
+            placeholderTextColor={tokens.colors.textFaint}
             autoFocus={autoFocus}
             autoCorrect={false}
             autoCapitalize="words"
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   suggestionMain: {
     fontSize: 15,

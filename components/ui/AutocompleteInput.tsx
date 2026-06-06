@@ -82,7 +82,7 @@ export function AutocompleteInput({
         value={value}
         onChangeText={handleChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#999"
+        placeholderTextColor={tokens.colors.textFaint}
         autoFocus={autoFocus}
         autoCorrect={false}
         autoCapitalize="words"
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   suggestionText: {
     fontSize: 15,

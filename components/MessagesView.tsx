@@ -914,7 +914,7 @@ export function MessagesView({
       reviewing: { backgroundColor: "#666" },
       interview_scheduled: { backgroundColor: tokens.colors.brand },
       offer: { backgroundColor: tokens.colors.brand },
-      rejected: { backgroundColor: "#DC2626" },
+      rejected: { backgroundColor: tokens.colors.dangerFg },
     };
     return (
       colors[status as keyof typeof colors] || { backgroundColor: "#9CA3AF" }
@@ -930,12 +930,12 @@ export function MessagesView({
         borderColor: tokens.colors.border,
       },
       offer: { backgroundColor: tokens.colors.bgSurface, borderColor: tokens.colors.border },
-      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+      rejected: { backgroundColor: tokens.colors.dangerBg, borderColor: tokens.colors.dangerBorder },
     };
     return (
       styles[status as keyof typeof styles] || {
-        backgroundColor: "#F3F4F6",
-        borderColor: "#E5E7EB",
+        backgroundColor: tokens.colors.bgSurface,
+        borderColor: tokens.colors.border,
       }
     );
   };
@@ -946,9 +946,9 @@ export function MessagesView({
       reviewing: { color: tokens.colors.textBody },
       interview_scheduled: { color: tokens.colors.text },
       offer: { color: tokens.colors.text },
-      rejected: { color: "#DC2626" },
+      rejected: { color: tokens.colors.dangerFg },
     };
-    return colors[status as keyof typeof colors] || { color: "#374151" };
+    return colors[status as keyof typeof colors] || { color: tokens.colors.textBody };
   };
 
   const openReferral = () => {
@@ -1145,7 +1145,7 @@ export function MessagesView({
             >
               <MessageCircle color={tokens.colors.textFaint} size={28} strokeWidth={2} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#AAA" }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: tokens.colors.textFaint }}>
               Loading conversation…
             </Text>
           </View>
@@ -1316,7 +1316,7 @@ export function MessagesView({
             ) : messagesError ? (
               <View style={{ padding: 40, alignItems: "center" }}>
                 <Text
-                  style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}
+                  style={{ color: tokens.colors.dangerFg, fontSize: 15, marginBottom: 8 }}
                 >
                   Failed to load messages
                 </Text>
@@ -1565,7 +1565,7 @@ export function MessagesView({
                         {hasMessaged ? (
                           <CheckCircle size={18} color={tokens.colors.text} />
                         ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
+                          <CheckCircle size={18} color={tokens.colors.border} />
                         )}
                       </View>
                       <Text style={styles.vettingText}>
@@ -1581,7 +1581,7 @@ export function MessagesView({
                         {feelsConfident ? (
                           <CheckCircle size={18} color={tokens.colors.text} />
                         ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
+                          <CheckCircle size={18} color={tokens.colors.border} />
                         )}
                       </View>
                       <Text style={styles.vettingText}>
@@ -1597,7 +1597,7 @@ export function MessagesView({
                         {knowsBackground ? (
                           <CheckCircle size={18} color={tokens.colors.text} />
                         ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
+                          <CheckCircle size={18} color={tokens.colors.border} />
                         )}
                       </View>
                       <Text style={styles.vettingText}>
@@ -1615,7 +1615,7 @@ export function MessagesView({
                         {comfortableAttaching ? (
                           <CheckCircle size={18} color={tokens.colors.text} />
                         ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
+                          <CheckCircle size={18} color={tokens.colors.border} />
                         )}
                       </View>
                       <Text style={styles.vettingText}>
@@ -2661,7 +2661,7 @@ export function MessagesView({
         </View>
       ) : conversationsError ? (
         <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ color: tokens.colors.dangerFg, fontSize: 15, marginBottom: 8 }}>
             Failed to load conversations
           </Text>
           <Text style={{ color: tokens.colors.textMuted, fontSize: 13, textAlign: "center" }}>
@@ -2670,7 +2670,7 @@ export function MessagesView({
         </View>
       ) : conversations.length === 0 ? (
         <View style={{ padding: 40, alignItems: "center" }}>
-          <MessageCircle size={48} color="#DDD" style={{ marginBottom: 16 }} />
+          <MessageCircle size={48} color={tokens.colors.textFaint} style={{ marginBottom: 16 }} />
           <Text
             style={{
               color: tokens.colors.textMuted,
@@ -2767,20 +2767,20 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: tokens.colors.border,
     alignItems: "center" as const,
   },
   loadMoreText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#374151",
+    color: tokens.colors.textBody,
   },
   convItem: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: tokens.colors.border,
   },
   convItemHidden: { opacity: 0.6 },
   imgWrapper: { position: "relative" },
@@ -2813,7 +2813,7 @@ const styles = StyleSheet.create({
   convNameHidden: { color: tokens.colors.textMuted },
   convTime: { fontSize: 10, fontWeight: "800", color: tokens.colors.textFaint },
   convMsg: { fontSize: 14, color: tokens.colors.textBody },
-  convMsgHidden: { color: "#AAA" },
+  convMsgHidden: { color: tokens.colors.textFaint },
   // ── Grouped inbox rows (same person, multiple role-threads) ──────────
   // Second line of a group header: latest-message preview + a "N roles"
   // pill so the user sees at a glance this person spans several roles.
@@ -2904,7 +2904,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: tokens.colors.border,
   },
   backButton: { padding: 8, marginLeft: -8 },
   headerIdentity: {
@@ -2921,7 +2921,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -2987,7 +2987,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: Platform.OS === "ios" ? 12 : 12,
     borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
+    borderTopColor: tokens.colors.border,
     backgroundColor: tokens.colors.bg,
   },
   iconBtn: {
@@ -3043,7 +3043,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     padding: 12,
     borderRadius: 15,
     marginBottom: 20,
@@ -3076,7 +3076,7 @@ const styles = StyleSheet.create({
   },
   dot: { height: 6, borderRadius: 3 },
   dotActive: { width: 22, backgroundColor: tokens.colors.brand },
-  dotInactive: { width: 6, backgroundColor: "#DDD" },
+  dotInactive: { width: 6, backgroundColor: tokens.colors.border },
   infoCardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -3086,7 +3086,7 @@ const styles = StyleSheet.create({
   modalAvatar: { width: 55, height: 55, borderRadius: 27 },
   modalName: { fontSize: 20, fontWeight: "800" },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
+  locationText: { fontSize: 12, color: tokens.colors.textFaint, fontWeight: "600" },
   bioText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 20, marginBottom: 15 },
   skillsContainer: { flexDirection: "row", gap: 8, marginBottom: 15 },
   skillChip: {
@@ -3331,7 +3331,7 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     letterSpacing: 1,
     marginBottom: 4,
   },
@@ -3355,7 +3355,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bgSurface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: tokens.colors.border,
   },
   atsBannerText: {
     flex: 1,
@@ -3413,7 +3413,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bgSurface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: tokens.colors.border,
   },
   candidateChipText: {
     fontSize: 11,
@@ -3479,7 +3479,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   refSectionTitle: {
     fontSize: 12,
@@ -3551,7 +3551,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bgSurface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: tokens.colors.border,
   },
   skillBadgeText: {
     fontSize: 11,
@@ -3749,9 +3749,9 @@ const styles = StyleSheet.create({
     fontWeight: "400" as const,
   },
   referralErrorBox: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: tokens.colors.dangerBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: tokens.colors.dangerBorder,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -3760,7 +3760,7 @@ const styles = StyleSheet.create({
   referralErrorText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     lineHeight: 18,
   },
   headerActions: {
@@ -3772,7 +3772,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -3818,7 +3818,7 @@ const styles = StyleSheet.create({
   },
   unmatchCancelBtn: {
     paddingVertical: 17,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",

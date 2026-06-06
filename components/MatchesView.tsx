@@ -1418,7 +1418,7 @@ export function MatchesView({
               {sponsorRequestsError && (
                 <Text
                   style={{
-                    color: "#DC2626",
+                    color: tokens.colors.dangerFg,
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -1524,7 +1524,7 @@ export function MatchesView({
               {interestedApplicantsError && (
                 <Text
                   style={{
-                    color: "#DC2626",
+                    color: tokens.colors.dangerFg,
                     marginBottom: 12,
                     fontSize: 13,
                   }}
@@ -1598,7 +1598,7 @@ export function MatchesView({
                         )}
                         {!!applicant.likedAt && (
                           <View style={styles.interestedSponsorTimestamp}>
-                            <Heart size={10} color="#DC2626" />
+                            <Heart size={10} color={tokens.colors.dangerFg} />
                             <Text style={styles.interestedSponsorTimestampText}>
                               {getRelativeTime(applicant.likedAt)}
                             </Text>
@@ -1631,7 +1631,7 @@ export function MatchesView({
               {matchesError && (
                 <Text
                   style={{
-                    color: "#DC2626",
+                    color: tokens.colors.dangerFg,
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -1673,7 +1673,7 @@ export function MatchesView({
               </Text>
               {referralsError && (
                 <Text
-                  style={{ color: "#DC2626", marginBottom: 12, fontSize: 13 }}
+                  style={{ color: tokens.colors.dangerFg, marginBottom: 12, fontSize: 13 }}
                 >
                   {referralsError}
                 </Text>
@@ -1811,7 +1811,7 @@ export function MatchesView({
                             disabled={isWithdrawing}
                           >
                             {isWithdrawing ? (
-                              <ActivityIndicator size="small" color="#DC2626" />
+                              <ActivityIndicator size="small" color={tokens.colors.dangerFg} />
                             ) : (
                               <Text style={styles.withdrawBtnText}>
                                 Withdraw
@@ -1847,7 +1847,7 @@ export function MatchesView({
               {likedJobsError && (
                 <Text
                   style={{
-                    color: "#DC2626",
+                    color: tokens.colors.dangerFg,
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -1968,7 +1968,7 @@ export function MatchesView({
               {waitlistedJobsError && (
                 <Text
                   style={{
-                    color: "#DC2626",
+                    color: tokens.colors.dangerFg,
                     marginBottom: 12,
                     paddingHorizontal: 20,
                   }}
@@ -2112,7 +2112,7 @@ export function MatchesView({
               {interestedSponsorsError && (
                 <Text
                   style={{
-                    color: "#DC2626",
+                    color: tokens.colors.dangerFg,
                     marginBottom: 12,
                     fontSize: 13,
                   }}
@@ -2186,7 +2186,7 @@ export function MatchesView({
                         )}
                         {!!sponsor.likedAt && (
                           <View style={styles.interestedSponsorTimestamp}>
-                            <Heart size={10} color="#DC2626" />
+                            <Heart size={10} color={tokens.colors.dangerFg} />
                             <Text style={styles.interestedSponsorTimestampText}>
                               {getRelativeTime(sponsor.likedAt)}
                             </Text>
@@ -2218,7 +2218,7 @@ export function MatchesView({
 
               {referralsError && (
                 <Text
-                  style={{ color: "#DC2626", fontSize: 13, marginBottom: 12 }}
+                  style={{ color: tokens.colors.dangerFg, fontSize: 13, marginBottom: 12 }}
                 >
                   {referralsError}
                 </Text>
@@ -2406,8 +2406,8 @@ export function MatchesView({
           }}
           badge={{
             label: "Interested in Your Job",
-            color: "#DC2626",
-            bgColor: "#FEF2F2",
+            color: tokens.colors.dangerFg,
+            bgColor: tokens.colors.dangerBg,
           }}
           roleContext={
             selectedInterestedApplicant.jobTitle
@@ -3050,7 +3050,7 @@ export function MatchesView({
               >
                 {/* "Expressed Interest" tag */}
                 <View style={styles.interestedModalTag}>
-                  <Heart size={12} color="#DC2626" />
+                  <Heart size={12} color={tokens.colors.dangerFg} />
                   <Text style={styles.interestedModalTagText}>
                     Wants to connect with you
                     {selectedInterestedSponsor.likedAt
@@ -3153,7 +3153,7 @@ export function MatchesView({
                             <View
                               style={[styles.locationRow, { marginBottom: 12 }]}
                             >
-                              <MapPin size={12} color="#AAA" />
+                              <MapPin size={12} color={tokens.colors.textFaint} />
                               <Text style={styles.locationText}>
                                 {interestedSponsorProfile.LOCATION}
                               </Text>
@@ -3989,7 +3989,7 @@ export function MatchesView({
               </View>
             ) : srJobDetailError ? (
               <View style={styles.interestedLoadingContainer}>
-                <AlertTriangle size={32} color="#DC2626" />
+                <AlertTriangle size={32} color={tokens.colors.dangerFg} />
                 <Text style={styles.srJobDetailErrorTitle}>
                   Could not load role details
                 </Text>
@@ -4192,7 +4192,7 @@ export function MatchesView({
                     <View style={styles.withdrawIconCircle}>
                       <AlertTriangle
                         size={28}
-                        color="#DC2626"
+                        color={tokens.colors.dangerFg}
                         strokeWidth={2.5}
                       />
                     </View>
@@ -4308,7 +4308,7 @@ const styles = StyleSheet.create({
   horizontalScrollContent: { paddingHorizontal: 28, gap: 16 },
   card: {
     width: 190,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     padding: 20,
     alignItems: "center",
@@ -4389,7 +4389,7 @@ const styles = StyleSheet.create({
   // Job Cards for Applicants
   jobCard: {
     width: 190,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     overflow: "hidden",
     borderWidth: 1,
@@ -4447,7 +4447,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#EEEEEE",
+    borderColor: tokens.colors.border,
     gap: 12,
   },
   interestedSponsorAvatar: {
@@ -4503,9 +4503,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: tokens.colors.dangerBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: tokens.colors.dangerBorder,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -4514,7 +4514,7 @@ const styles = StyleSheet.create({
   },
   interestedModalTagText: {
     fontSize: 12,
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     fontWeight: "700",
   },
   interestedLoadingContainer: {
@@ -4596,7 +4596,7 @@ const styles = StyleSheet.create({
   },
   interestedLoadingText: {
     fontSize: 14,
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     fontWeight: "500",
   },
   sponsorModalInitial: {
@@ -4679,7 +4679,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     padding: 12,
     borderRadius: 15,
     marginBottom: 20,
@@ -4780,7 +4780,7 @@ const styles = StyleSheet.create({
   },
   smLoadingText: {
     fontSize: 13,
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     fontWeight: "500",
   },
   smCapRow: {
@@ -4832,7 +4832,7 @@ const styles = StyleSheet.create({
   smInsightQ: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     letterSpacing: 0.8,
     marginBottom: 6,
     textTransform: "uppercase",
@@ -4896,7 +4896,7 @@ const styles = StyleSheet.create({
   },
   dot: { height: 6, borderRadius: 3 },
   dotActive: { width: 22, backgroundColor: tokens.colors.brand },
-  dotInactive: { width: 6, backgroundColor: "#DDD" },
+  dotInactive: { width: 6, backgroundColor: tokens.colors.border },
 
   // Slide Styles
   infoCardHeader: {
@@ -4908,7 +4908,7 @@ const styles = StyleSheet.create({
   modalAvatar: { width: 55, height: 55, borderRadius: 27 },
   modalName: { fontSize: 20, fontWeight: "800" },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
+  locationText: { fontSize: 12, color: tokens.colors.textFaint, fontWeight: "600" },
   // "Wants you for [role]" pill on the sponsor-profile modal. Sits below
   // the sponsor identity row; muted gray to match the card's job-context
   // styling. Stays hidden when the backend doesn't supply jobTitle/jobCompany.
@@ -4993,7 +4993,7 @@ const styles = StyleSheet.create({
   insightLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     marginBottom: 6,
     letterSpacing: 1.2,
   },
@@ -5043,7 +5043,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   detailSectionTitle: {
     fontWeight: "800",
@@ -5094,7 +5094,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   jobModalImage: {
     width: 60,
@@ -5209,7 +5209,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 20,
     padding: 8,
   },
@@ -5282,7 +5282,7 @@ const styles = StyleSheet.create({
   },
   likedJobCard: {
     width: 180,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     overflow: "hidden",
     borderWidth: 1,
@@ -5474,12 +5474,12 @@ const styles = StyleSheet.create({
   },
   jobModalCompStrip: {
     flexDirection: "row",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 18,
     marginBottom: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEEEEE",
+    borderColor: tokens.colors.border,
   },
   jobModalCompCell: {
     flex: 1,
@@ -5577,7 +5577,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   listNameWithdrawn: {
-    color: "#AAA",
+    color: tokens.colors.textFaint,
   },
   listImagePlaceholder: {
     width: 52,
@@ -5706,7 +5706,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: tokens.colors.border,
   },
   refPillDot: { width: 6, height: 6, borderRadius: 3 },
   refPillDotReferred: { backgroundColor: tokens.colors.brand },
@@ -5724,8 +5724,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 9,
     borderWidth: 1.5,
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
+    borderColor: tokens.colors.dangerBorder,
+    backgroundColor: tokens.colors.dangerBg,
     alignItems: "center",
     justifyContent: "center",
     minWidth: 74,
@@ -5736,13 +5736,13 @@ const styles = StyleSheet.create({
   withdrawBtnText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
   },
   withdrawIconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: tokens.colors.dangerBg,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -5770,10 +5770,10 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
   },
   withdrawWarningCard: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: tokens.colors.dangerBg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FEF2F2",
+    borderColor: tokens.colors.dangerBg,
     padding: 16,
     marginBottom: 24,
     gap: 10,
@@ -5787,13 +5787,13 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#DC2626",
+    backgroundColor: tokens.colors.dangerFg,
     marginTop: 7,
   },
   withdrawWarningText: {
     flex: 1,
     fontSize: 13,
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     lineHeight: 19,
     fontWeight: "600",
   },
@@ -5805,7 +5805,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     borderRadius: 16,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -5818,7 +5818,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     borderRadius: 16,
-    backgroundColor: "#DC2626",
+    backgroundColor: tokens.colors.dangerFg,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -5899,7 +5899,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 24,
     borderLeftWidth: 4,
-    borderLeftColor: "#000",
+    borderLeftColor: tokens.colors.brand,
   },
   srCalloutTitle: {
     fontSize: 15,
@@ -5913,7 +5913,7 @@ const styles = StyleSheet.create({
   srJobCardTapHint: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     marginTop: 6,
     letterSpacing: 0.2,
   },
@@ -5931,7 +5931,7 @@ const styles = StyleSheet.create({
   srJobDetailErrorTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#DC2626",
+    color: tokens.colors.dangerFg,
     marginTop: 12,
     textAlign: "center" as const,
   },
@@ -5981,7 +5981,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#CCC",
+    borderColor: tokens.colors.borderStrong,
   },
   srRadioCircleActive: { borderColor: tokens.colors.brand, borderWidth: 6 },
   srRadioText: { fontSize: 15, color: tokens.colors.textBody, fontWeight: "600" },

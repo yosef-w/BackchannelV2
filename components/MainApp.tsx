@@ -115,9 +115,9 @@ function NavItem({
     >
       <Animated.View style={animatedIconStyle}>
         <Icon
-          color={isActive ? "#FFF" : "#666"}
-          size={24}
-          strokeWidth={isActive ? 2.5 : 1.5}
+          color={isActive ? tokens.colors.text : tokens.colors.textFaint}
+          size={22}
+          strokeWidth={isActive ? 2.2 : 1.6}
         />
       </Animated.View>
       {isActive && <View style={styles.activeIndicator} />}
@@ -678,37 +678,40 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    paddingVertical: tokens.spacing.sm,
+    borderBottomWidth: tokens.borders.hairline,
+    borderBottomColor: tokens.colors.border,
   },
   appTitle: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 13,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
     color: tokens.colors.text,
-    letterSpacing: -1,
   },
   topBarButtons: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   headerIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: tokens.colors.bgOffWhite,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    borderWidth: tokens.borders.hairline,
     borderColor: tokens.colors.border,
   },
   notificationDot: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: tokens.colors.brand,
+    backgroundColor: tokens.colors.live,
     borderWidth: 1,
     borderColor: tokens.colors.bg,
   },
@@ -717,39 +720,43 @@ const styles = StyleSheet.create({
   },
   navContainer: {
     position: "absolute",
-    bottom: 30,
+    bottom: 24,
     left: 0,
     right: 0,
     alignItems: "center",
   },
   navBar: {
     flexDirection: "row",
-    backgroundColor: tokens.colors.brand,
-    width: SCREEN_WIDTH * 0.85,
-    height: 70,
-    borderRadius: 35,
+    backgroundColor: tokens.colors.bg,
+    width: SCREEN_WIDTH * 0.88,
+    height: 62,
+    borderRadius: tokens.radii.pill,
     alignItems: "center",
     justifyContent: "space-around",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    // Soft editorial shadow — light, single-direction, never reads as a
+    // "raised" dark pill. iOS-only; Android falls back to elevation.
     shadowColor: tokens.colors.brand,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
   navItem: {
     alignItems: "center",
     justifyContent: "center",
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
   },
+  // Tiny ink dot under the active icon — replaces the white underline pill
+  // that the old dark-pill nav used.
   activeIndicator: {
     position: "absolute",
-    bottom: 8,
-    width: 12,
-    height: 3,
+    bottom: 10,
+    width: 4,
+    height: 4,
     borderRadius: 2,
-    backgroundColor: tokens.colors.bg,
+    backgroundColor: tokens.colors.text,
   },
 });

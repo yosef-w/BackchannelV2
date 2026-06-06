@@ -2258,7 +2258,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   })
                 }
                 trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor="#FFF"
+                thumbColor={tokens.colors.bg}
               />
               <Text style={styles.checkboxLabel}>I currently work here</Text>
             </View>
@@ -4630,7 +4630,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             onValueChange={(v) => handleNotifToggle("match", v)}
             disabled={notifSaving === "match"}
             trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-            thumbColor="#FFF"
+            thumbColor={tokens.colors.bg}
           />
         </View>
         <View style={styles.toggleRow}>
@@ -4640,7 +4640,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             onValueChange={(v) => handleNotifToggle("message", v)}
             disabled={notifSaving === "message"}
             trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-            thumbColor="#FFF"
+            thumbColor={tokens.colors.bg}
           />
         </View>
         {userType === "applicant" && (
@@ -4652,7 +4652,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onValueChange={(v) => handleNotifToggle("referral", v)}
                 disabled={notifSaving === "referral"}
                 trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor="#FFF"
+                thumbColor={tokens.colors.bg}
               />
             </View>
             <View style={styles.toggleRow}>
@@ -4662,7 +4662,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onValueChange={(v) => handleNotifToggle("waitlist", v)}
                 disabled={notifSaving === "waitlist"}
                 trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor="#FFF"
+                thumbColor={tokens.colors.bg}
               />
             </View>
           </>
@@ -4678,7 +4678,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onValueChange={(v) => handleNotifToggle("job_like", v)}
                 disabled={notifSaving === "job_like"}
                 trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor="#FFF"
+                thumbColor={tokens.colors.bg}
               />
             </View>
             <View style={styles.toggleRow}>
@@ -4690,7 +4690,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onValueChange={(v) => handleNotifToggle("sponsor_request", v)}
                 disabled={notifSaving === "sponsor_request"}
                 trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor="#FFF"
+                thumbColor={tokens.colors.bg}
               />
             </View>
           </>
@@ -5272,7 +5272,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
+    borderBottomColor: tokens.colors.border,
   },
   settingLabel: {
     fontSize: 16,
@@ -5626,7 +5626,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   questionOptionText: {
     fontSize: 13,
@@ -5642,7 +5642,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   settingRowLabel: {
     fontSize: 15,
@@ -5826,7 +5826,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: tokens.colors.border,
   },
   toggleLabel: {
     fontSize: 15,
@@ -6026,7 +6026,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#E5E5E5",
+    borderTopColor: tokens.colors.border,
   },
   sponsorAvatar: {
     width: 32,
@@ -6429,7 +6429,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: "#CCC",
+    borderColor: tokens.colors.borderStrong,
     backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
@@ -6577,7 +6577,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#DDD",
+    borderColor: tokens.colors.borderStrong,
     backgroundColor: tokens.colors.bg,
   },
   resumeCancelText: {
@@ -6605,7 +6605,7 @@ const styles = StyleSheet.create({
   },
   resumeSuccessSubtitle: {
     fontSize: 13,
-    color: "#374151",
+    color: tokens.colors.textBody,
     fontWeight: "600",
   },
   resumeUpdatedFields: {

@@ -473,7 +473,7 @@ export function NotificationsView({
             style={{
               fontSize: 14,
               fontWeight: "600",
-              color: "#AAA",
+              color: tokens.colors.textFaint,
               marginTop: 4,
             }}
           >
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   rowUnread: {
-    backgroundColor: "#F5F6F8",
+    backgroundColor: tokens.colors.bgOffWhite,
   },
   rowRead: {
     backgroundColor: "transparent",
@@ -801,18 +801,18 @@ const styles = StyleSheet.create({
   rowTime: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#CCC",
+    backgroundColor: tokens.colors.borderStrong,
   },
   rowContext: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: tokens.colors.textFaint,
     flexShrink: 1,
   },
   unreadDot: {
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   swipeActionDelete: {
-    backgroundColor: "#DC2626",
+    backgroundColor: tokens.colors.dangerFg,
     borderRadius: 18,
     flexDirection: "row",
     alignItems: "center",
