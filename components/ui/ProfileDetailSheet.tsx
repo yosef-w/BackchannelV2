@@ -770,10 +770,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   fallbackText: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 13,
     color: tokens.colors.textBody,
-    fontWeight: "500",
-    lineHeight: 19,
+    lineHeight: 20,
   },
   primaryBtn: {
     backgroundColor: tokens.colors.brand,
@@ -785,10 +785,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryBtnText: {
+    fontFamily: tokens.fontFamilies.sans600,
     color: tokens.colors.brandText,
     fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
   },
   secondaryBtn: {
     backgroundColor: tokens.colors.bg,
@@ -803,9 +803,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   secondaryBtnText: {
+    fontFamily: tokens.fontFamilies.sans600,
     color: tokens.colors.text,
     fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
   },
 });

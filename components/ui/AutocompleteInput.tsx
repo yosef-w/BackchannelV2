@@ -119,9 +119,10 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%",
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 15,
-    fontWeight: "500",
     color: tokens.colors.text,
+    letterSpacing: -0.1,
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: tokens.colors.bgOffWhite,
@@ -166,9 +167,10 @@ const styles = StyleSheet.create({
     borderBottomColor: tokens.colors.border,
   },
   suggestionText: {
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 15,
-    fontWeight: "500",
     color: tokens.colors.text,
+    letterSpacing: -0.1,
     flex: 1,
   },
 });

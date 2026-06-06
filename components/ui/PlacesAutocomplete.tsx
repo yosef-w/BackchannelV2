@@ -323,14 +323,14 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 15,
-    fontWeight: "500",
     color: tokens.colors.text,
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: tokens.colors.bgOffWhite,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: tokens.radii.m,
+    borderWidth: tokens.borders.hairline,
     borderColor: tokens.colors.border,
   },
   spinner: {
@@ -370,9 +370,10 @@ const styles = StyleSheet.create({
     borderBottomColor: tokens.colors.border,
   },
   suggestionMain: {
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 15,
-    fontWeight: "500",
     color: tokens.colors.text,
+    letterSpacing: -0.1,
   },
   suggestionSecondary: {
     fontSize: 13,

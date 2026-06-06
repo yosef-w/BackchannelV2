@@ -121,6 +121,6 @@ export function CompanyLogo({
 
 const styles = StyleSheet.create({
   initial: {
-    fontWeight: "800",
+    fontFamily: tokens.fontFamilies.serif,
   },
 });

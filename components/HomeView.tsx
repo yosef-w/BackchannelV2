@@ -4498,7 +4498,7 @@ export function HomeView({
               width: 40,
               height: 5,
               borderRadius: 3,
-              backgroundColor: "#D1D5DB",
+              backgroundColor: tokens.colors.borderStrong,
               alignSelf: "center",
               marginBottom: 20,
             }}
@@ -4648,7 +4648,7 @@ export function HomeView({
               width: 40,
               height: 5,
               borderRadius: 3,
-              backgroundColor: "#D1D5DB",
+              backgroundColor: tokens.colors.borderStrong,
               alignSelf: "center",
               marginBottom: 20,
             }}
@@ -4871,7 +4871,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     borderRightWidth: 1,
-    borderRightColor: "#E8E8E8",
+    borderRightColor: tokens.colors.border,
   },
   hingeStatCellLast: { borderRightWidth: 0 },
   hingeStatValue: {
@@ -6515,7 +6515,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     borderRightWidth: 1,
-    borderRightColor: "#F0F0F0",
+    borderRightColor: tokens.colors.border,
   },
   applicantBackStatCellLast: {
     borderRightWidth: 0,
@@ -6573,7 +6573,7 @@ const styles = StyleSheet.create({
   },
   applicantBackEmptyBody: {
     fontSize: 12,
-    color: "#C0C0C0",
+    color: tokens.colors.textFaint,
     textAlign: "center",
     lineHeight: 18,
     marginTop: 4,

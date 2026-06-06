@@ -471,8 +471,8 @@ export function NotificationsView({
           </View>
           <Text
             style={{
+              fontFamily: tokens.fontFamilies.sans500,
               fontSize: 14,
-              fontWeight: "600",
               color: tokens.colors.textFaint,
               marginTop: 4,
             }}

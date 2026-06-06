@@ -535,13 +535,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const getStatusDotColor = (status: string) => {
     const colors = {
-      applied: { backgroundColor: "#666" },
-      reviewing: { backgroundColor: "#666" },
+      applied: { backgroundColor: tokens.colors.textMuted },
+      reviewing: { backgroundColor: tokens.colors.textMuted },
       interview_scheduled: { backgroundColor: tokens.colors.brand },
       offer: { backgroundColor: tokens.colors.brand },
       rejected: { backgroundColor: tokens.colors.dangerFg },
     };
-    return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
+    return colors[status as keyof typeof colors] || { backgroundColor: tokens.colors.textFaint };
   };
 
   const getStatusBadgeStyle = (status: string) => {
@@ -4702,7 +4702,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
 function SettingItem({
   label,
-  color = "#000",
+  color = tokens.colors.text,
   isLast = false,
   showNotificationDot = false,
   badgeCount,
@@ -5782,7 +5782,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "#DEDEDE",
+    borderColor: tokens.colors.border,
   },
   deleteActionTitle: {
     fontSize: 15,
@@ -5978,7 +5978,7 @@ const styles = StyleSheet.create({
   timelineDotReferredCompleted: {
     backgroundColor: tokens.colors.brand,
     borderWidth: 3,
-    borderColor: "#F9F9F9",
+    borderColor: tokens.colors.border,
     ...Platform.select({
       ios: {
         shadowColor: tokens.colors.brand,
@@ -6132,7 +6132,7 @@ const styles = StyleSheet.create({
   timelineDetailDotReferredCompleted: {
     backgroundColor: tokens.colors.brand,
     borderWidth: 4,
-    borderColor: "#F9F9F9",
+    borderColor: tokens.colors.border,
     ...Platform.select({
       ios: {
         shadowColor: tokens.colors.brand,
@@ -6152,7 +6152,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   timelineDetailLineCompleted: {
-    backgroundColor: "#BBB",
+    backgroundColor: tokens.colors.textFaint,
   },
   timelineDetailRight: {
     flex: 1,
