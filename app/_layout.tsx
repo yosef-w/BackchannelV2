@@ -115,40 +115,44 @@ export default function RootLayout() {
     }
   }, [accessToken, fetchFromBackend]);
 
-  // Hold the tree until fonts (or the load error) settles. Native splash is
-  // still up at this point — see preventAutoHideAsync above — so the user
-  // never sees a blank frame.
-  if (!fontsLoaded && !fontsError) return null;
+  // Fonts are still loading — native splash is up so the user sees nothing.
+  // GHRV and QueryClientProvider are mounted unconditionally so GHRV's native
+  // touch-responder chain is stable before fonts resolve and hideAsync fires.
+  // Only the inner navigation tree is gated.
+  const fontsReady = fontsLoaded || !!fontsError;
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <GestureHandlerRootView style={styles.root}>
           <StatusBar style="auto" />
+          {!fontsReady ? null : (
+            <>
+              {/* Main navigation stack for Backchannel */}
+              <Stack initialRouteName="splash">
+                <Stack.Screen name="splash" options={{ headerShown: false }} />
+                <Stack.Screen name="choose-role" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="dashboard"
+                  options={{
+                    headerShown: false,
+                    // Prevent iOS swipe-back from ever leaving the dashboard.
+                    // All in-app navigation is handled by MainApp's own view state.
+                    gestureEnabled: false,
+                  }}
+                />
+                {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
+                <Stack.Screen
+                  name="verify-email"
+                  options={{ headerShown: false }}
+                />
+              </Stack>
 
-          {/* Main navigation stack for Backchannel */}
-          <Stack initialRouteName="splash">
-            <Stack.Screen name="splash" options={{ headerShown: false }} />
-            <Stack.Screen name="choose-role" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="dashboard"
-              options={{
-                headerShown: false,
-                // Prevent iOS swipe-back from ever leaving the dashboard.
-                // All in-app navigation is handled by MainApp's own view state.
-                gestureEnabled: false,
-              }}
-            />
-            {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
-            <Stack.Screen
-              name="verify-email"
-              options={{ headerShown: false }}
-            />
-          </Stack>
-
-          {/* Global toast — overlays all screens */}
-          <AppToast />
+              {/* Global toast — overlays all screens */}
+              <AppToast />
+            </>
+          )}
         </GestureHandlerRootView>
       </ThemeProvider>
     </QueryClientProvider>
