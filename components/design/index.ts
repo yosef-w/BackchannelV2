@@ -13,6 +13,9 @@ export type { CardProps } from "./Card";
 export { Divider } from "./Divider";
 export type { DividerProps } from "./Divider";
 
+export { HeroBackdrop } from "./HeroBackdrop";
+export type { HeroBackdropProps } from "./HeroBackdrop";
+
 export { Input } from "./Input";
 export type { InputProps } from "./Input";
 

@@ -1,139 +1,134 @@
-import React, { useEffect } from 'react';
-import { Platform, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Button,
+  HeroBackdrop,
+  Pill,
+  Screen,
+  Text,
+} from "@/components/design";
+import { tokens } from "@/constants/theme";
+import React, { useEffect } from "react";
+import { StatusBar, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withTiming
-} from 'react-native-reanimated';
+  withTiming,
+} from "react-native-reanimated";
 
 interface SplashScreenProps {
   onGetStarted: () => void;
 }
 
+/**
+ * Splash / welcome screen. Mirrors the BackChannel beta-site hero —
+ * "live" pill badge, two-line serif headline (regular + italic accent),
+ * body copy, and a single CTA. Editorial paper-and-ink against soft orbs.
+ */
 export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
+  const badgeOpacity = useSharedValue(0);
+  const badgeTranslate = useSharedValue(12);
   const titleOpacity = useSharedValue(0);
-  const titleScale = useSharedValue(0.98);
-  const buttonOpacity = useSharedValue(0);
-  const buttonTranslateY = useSharedValue(15);
+  const titleTranslate = useSharedValue(18);
+  const bodyOpacity = useSharedValue(0);
+  const bodyTranslate = useSharedValue(14);
+  const ctaOpacity = useSharedValue(0);
+  const ctaTranslate = useSharedValue(14);
 
   useEffect(() => {
-    // Smooth, elegant entrance
-    titleOpacity.value = withTiming(1, { duration: 1500 });
-    titleScale.value = withTiming(1, { duration: 1500 });
-    
-    buttonOpacity.value = withDelay(1000, withTiming(1, { duration: 800 }));
-    buttonTranslateY.value = withDelay(1000, withTiming(0, { duration: 800 }));
+    badgeOpacity.value = withTiming(1, { duration: 600 });
+    badgeTranslate.value = withTiming(0, { duration: 600 });
+    titleOpacity.value = withDelay(180, withTiming(1, { duration: 700 }));
+    titleTranslate.value = withDelay(180, withTiming(0, { duration: 700 }));
+    bodyOpacity.value = withDelay(420, withTiming(1, { duration: 600 }));
+    bodyTranslate.value = withDelay(420, withTiming(0, { duration: 600 }));
+    ctaOpacity.value = withDelay(620, withTiming(1, { duration: 600 }));
+    ctaTranslate.value = withDelay(620, withTiming(0, { duration: 600 }));
+    // Shared values are stable refs; safe to omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const badgeStyle = useAnimatedStyle(() => ({
+    opacity: badgeOpacity.value,
+    transform: [{ translateY: badgeTranslate.value }],
+  }));
   const titleStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
-    transform: [{ scale: titleScale.value }],
+    transform: [{ translateY: titleTranslate.value }],
   }));
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    opacity: buttonOpacity.value,
-    transform: [{ translateY: buttonTranslateY.value }],
+  const bodyStyle = useAnimatedStyle(() => ({
+    opacity: bodyOpacity.value,
+    transform: [{ translateY: bodyTranslate.value }],
+  }));
+  const ctaStyle = useAnimatedStyle(() => ({
+    opacity: ctaOpacity.value,
+    transform: [{ translateY: ctaTranslate.value }],
   }));
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
-      <View style={styles.centerContent}>
-        <Animated.View style={[styles.brandWrapper, titleStyle]}>
-          <Text style={styles.brandName}>
-            BACK<Text style={styles.brandSerif}>CHANNEL</Text>
-          </Text>
-          
-          <View style={styles.horizontalRule} />
-          
-          <Text style={styles.tagline}>
-            Get referred. Get hired. Get ahead.
+    <Screen background="paper">
+      <StatusBar barStyle="dark-content" />
+      <HeroBackdrop />
+
+      <View style={styles.frame}>
+        <View style={styles.centerStack}>
+          <Animated.View style={badgeStyle}>
+            <Pill tone="neutral" dot dotColor={tokens.colors.live} uppercase>
+              Closed beta
+            </Pill>
+          </Animated.View>
+
+          <Animated.View style={[styles.headline, titleStyle]}>
+            <Text variant="heroSerif" align="center">
+              Welcome to
+            </Text>
+            <Text variant="heroSerifItalic" align="center">
+              BackChannel.
+            </Text>
+          </Animated.View>
+
+          <Animated.View style={[styles.bodyWrap, bodyStyle]}>
+            <Text variant="bodyLarge" align="center">
+              Get referred. Get hired. Get ahead. A quieter way to find your
+              next role — one champion at a time.
+            </Text>
+          </Animated.View>
+        </View>
+
+        <Animated.View style={[styles.footer, ctaStyle]}>
+          <Button label="Get Connected" onPress={onGetStarted} block size="lg" />
+          <Text variant="meta" align="center" style={styles.fineprint}>
+            By continuing you agree to the closed-beta terms.
           </Text>
         </Animated.View>
       </View>
-
-      <SafeAreaView style={styles.footer}>
-        <Animated.View style={[styles.buttonContainer, buttonStyle]}>
-          <TouchableOpacity 
-            activeOpacity={0.85} 
-            onPress={onGetStarted} 
-            style={styles.button}
-          >
-            <Text style={styles.buttonText}>Get Connected</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </SafeAreaView>
-    </View>
+    </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  frame: {
     flex: 1,
-    backgroundColor: '#000000',
+    paddingHorizontal: tokens.layout.screenPaddingH,
+    justifyContent: "space-between",
   },
-  centerContent: {
+  centerStack: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    gap: tokens.spacing.l,
   },
-  brandWrapper: {
-    alignItems: 'center',
+  headline: {
+    alignItems: "center",
   },
-  brandName: {
-    fontSize: 34,
-    fontWeight: '300',
-    color: '#FFFFFF',
-    letterSpacing: 6, // High-end spacing
-  },
-  brandSerif: {
-    // Professional Serif contrast
-    fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif',
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  horizontalRule: {
-    width: 28,
-    height: 1.5,
-    backgroundColor: '#333',
-    marginVertical: 24,
-  },
-  tagline: {
-    fontSize: 15,
-    color: '#999999',
-    fontWeight: '400',
-    letterSpacing: -0.2,
-    textAlign: 'center',
+  bodyWrap: {
+    maxWidth: 360,
+    paddingHorizontal: tokens.spacing.m,
   },
   footer: {
-    alignItems: 'center',
-    paddingBottom: 60,
+    paddingBottom: tokens.spacing.xl,
+    gap: tokens.spacing.sm,
   },
-  buttonContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  button: {
-    width: '65%', 
-    height: 56,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Elegant shadow for depth
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
-    marginBottom: 80,
-  },
-  buttonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+  fineprint: {
+    paddingHorizontal: tokens.spacing.l,
   },
 });
