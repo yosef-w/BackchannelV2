@@ -72,6 +72,7 @@ import Animated, {
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
+import { tokens } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -1014,14 +1015,14 @@ export function MatchesView({
                 style={[
                   styles.profileImage,
                   {
-                    backgroundColor: "#000",
+                    backgroundColor: tokens.colors.brand,
                     alignItems: "center",
                     justifyContent: "center",
                   },
                 ]}
               >
                 <Text
-                  style={{ fontSize: 26, fontWeight: "800", color: "#FFF" }}
+                  style={{ fontSize: 26, fontWeight: "800", color: tokens.colors.brandText }}
                 >
                   {(match.name || "?")[0].toUpperCase()}
                 </Text>
@@ -1032,7 +1033,7 @@ export function MatchesView({
             </Text>
             {grouped ? (
               <View style={styles.cardRolesPill}>
-                <Briefcase size={11} color="#666" />
+                <Briefcase size={11} color={tokens.colors.textBody} />
                 <Text style={styles.rolesPillText}>
                   {group.items.length} roles
                 </Text>
@@ -1045,12 +1046,12 @@ export function MatchesView({
           </TouchableOpacity>
           {opts.showMatchedBadge && (
             <View style={styles.matchBadgeCard}>
-              <CheckCircle size={14} color="#000" />
+              <CheckCircle size={14} color={tokens.colors.text} />
               <Text style={styles.matchBadgeText}>Matched!</Text>
             </View>
           )}
           <TouchableOpacity style={styles.messageBtn} onPress={onMessagePress}>
-            <MessageCircle color="#FFF" size={16} strokeWidth={2.5} />
+            <MessageCircle color={tokens.colors.brandText} size={16} strokeWidth={2.5} />
             <Text style={styles.messageBtnText}>Message</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -1428,7 +1429,7 @@ export function MatchesView({
               {!sponsorRequestsLoading && sponsorRequests.length === 0 ? (
                 <View style={styles.emptyLikedSection}>
                   <View style={styles.emptyIconContainer}>
-                    <BellRing size={32} color="#CCC" />
+                    <BellRing size={32} color={tokens.colors.textFaint} />
                   </View>
                   <Text style={styles.emptyLikedTitle}>No requests yet</Text>
                   <Text style={styles.emptyLikedText}>
@@ -1463,7 +1464,7 @@ export function MatchesView({
                             style={[
                               styles.profileImage,
                               {
-                                backgroundColor: "#F2F2F2",
+                                backgroundColor: tokens.colors.bgSurface,
                                 alignItems: "center",
                                 justifyContent: "center",
                               },
@@ -1473,7 +1474,7 @@ export function MatchesView({
                               style={{
                                 fontSize: 24,
                                 fontWeight: "700",
-                                color: "#999",
+                                color: tokens.colors.textMuted,
                               }}
                             >
                               {(req.applicantName || "?")[0].toUpperCase()}
@@ -1488,7 +1489,7 @@ export function MatchesView({
                           <Text
                             style={[
                               styles.cardRole,
-                              { color: "#999", fontSize: 12 },
+                              { color: tokens.colors.textMuted, fontSize: 12 },
                             ]}
                             numberOfLines={1}
                           >
@@ -1536,7 +1537,7 @@ export function MatchesView({
               interestedApplicants.length === 0 ? (
                 <View style={styles.emptySponsorsContainer}>
                   <View style={styles.emptyIconContainer}>
-                    <Heart size={32} color="#CCC" />
+                    <Heart size={32} color={tokens.colors.textFaint} />
                   </View>
                   <Text style={styles.emptyLikedTitle}>No Interest Yet</Text>
                   <Text style={styles.emptyLikedText}>
@@ -1640,7 +1641,7 @@ export function MatchesView({
               )}
               {!matchesLoading && matches.length === 0 ? (
                 <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text style={{ color: "#666", fontSize: 15 }}>
+                  <Text style={{ color: tokens.colors.textBody, fontSize: 15 }}>
                     No matches yet. Keep swiping!
                   </Text>
                 </View>
@@ -1683,7 +1684,7 @@ export function MatchesView({
                   style={styles.pipelineEmptyState}
                 >
                   <View style={styles.pipelineEmptyIcon}>
-                    <Users size={28} color="#CCC" />
+                    <Users size={28} color={tokens.colors.textFaint} />
                   </View>
                   <Text style={styles.pipelineEmptyTitle}>
                     No referrals yet
@@ -1730,7 +1731,7 @@ export function MatchesView({
                           style={[
                             styles.listImage,
                             {
-                              backgroundColor: "#000",
+                              backgroundColor: tokens.colors.brand,
                               alignItems: "center",
                               justifyContent: "center",
                             },
@@ -1740,7 +1741,7 @@ export function MatchesView({
                             style={{
                               fontSize: 20,
                               fontWeight: "800",
-                              color: "#FFF",
+                              color: tokens.colors.brandText,
                             }}
                           >
                             {(applicantName || "?")[0].toUpperCase()}
@@ -1857,7 +1858,7 @@ export function MatchesView({
               {!likedJobsLoading && likedJobs.length === 0 ? (
                 <View style={styles.emptyLikedSection}>
                   <View style={styles.emptyIconContainer}>
-                    <Heart size={32} color="#CCC" />
+                    <Heart size={32} color={tokens.colors.textFaint} />
                   </View>
                   <Text style={styles.emptyLikedTitle}>
                     No Applications Yet
@@ -1912,9 +1913,9 @@ export function MatchesView({
                           )}
                           {job.status === "MATCHED" ? (
                             <View style={styles.waitingBadge}>
-                              <CheckCircle size={10} color="#000" />
+                              <CheckCircle size={10} color={tokens.colors.text} />
                               <Text
-                                style={[styles.waitingText, { color: "#000" }]}
+                                style={[styles.waitingText, { color: tokens.colors.text }]}
                               >
                                 Matched!
                               </Text>
@@ -1953,11 +1954,11 @@ export function MatchesView({
                   <View
                     style={[
                       styles.pendingBadge,
-                      { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+                      { backgroundColor: tokens.colors.bgSurface, borderColor: tokens.colors.border },
                     ]}
                   >
-                    <Sparkles size={12} color="#000" />
-                    <Text style={[styles.pendingText, { color: "#000" }]}>
+                    <Sparkles size={12} color={tokens.colors.text} />
+                    <Text style={[styles.pendingText, { color: tokens.colors.text }]}>
                       Sponsored!
                     </Text>
                   </View>
@@ -1979,7 +1980,7 @@ export function MatchesView({
               {!waitlistedJobsLoading && waitlistedJobs.length === 0 ? (
                 <View style={styles.emptyLikedSection}>
                   <View style={styles.emptyIconContainer}>
-                    <Clock size={32} color="#CCC" />
+                    <Clock size={32} color={tokens.colors.textFaint} />
                   </View>
                   <Text style={styles.emptyLikedTitle}>No Waitlisted Jobs</Text>
                   <Text style={styles.emptyLikedText}>
@@ -2038,9 +2039,9 @@ export function MatchesView({
                                 styles.waitingBadgeSponsored,
                               ]}
                             >
-                              <CheckCircle size={10} color="#000" />
+                              <CheckCircle size={10} color={tokens.colors.text} />
                               <Text
-                                style={[styles.waitingText, { color: "#000" }]}
+                                style={[styles.waitingText, { color: tokens.colors.text }]}
                               >
                                 Now Sponsored!
                               </Text>
@@ -2052,9 +2053,9 @@ export function MatchesView({
                                 styles.waitingBadgeWaitlist,
                               ]}
                             >
-                              <Clock size={10} color="#666" />
+                              <Clock size={10} color={tokens.colors.textBody} />
                               <Text
-                                style={[styles.waitingText, { color: "#666" }]}
+                                style={[styles.waitingText, { color: tokens.colors.textBody }]}
                               >
                                 Waiting for sponsor
                               </Text>
@@ -2123,7 +2124,7 @@ export function MatchesView({
               {!interestedSponsorsLoading && interestedSponsors.length === 0 ? (
                 <View style={styles.emptySponsorsContainer}>
                   <View style={styles.emptyIconContainer}>
-                    <Users size={32} color="#CCC" />
+                    <Users size={32} color={tokens.colors.textFaint} />
                   </View>
                   <Text style={styles.emptyLikedTitle}>No Sponsors Yet</Text>
                   <Text style={styles.emptyLikedText}>
@@ -2229,7 +2230,7 @@ export function MatchesView({
                   style={styles.pipelineEmptyState}
                 >
                   <View style={styles.pipelineEmptyIcon}>
-                    <Award size={28} color="#CCC" />
+                    <Award size={28} color={tokens.colors.textFaint} />
                   </View>
                   <Text style={styles.pipelineEmptyTitle}>
                     No Referrals Yet
@@ -2282,7 +2283,7 @@ export function MatchesView({
                               {referral.jobCompany || "Company"}
                             </Text>
                           </View>
-                          <ChevronRight size={18} color="#CCC" />
+                          <ChevronRight size={18} color={tokens.colors.textFaint} />
                         </View>
 
                         <View style={styles.referralCardDivider} />
@@ -2375,7 +2376,7 @@ export function MatchesView({
           }
           primaryCta={{
             label: `Message ${selectedProfile.name?.split(" ")[0] ?? (userType === "sponsor" ? "Applicant" : "Sponsor")}`,
-            icon: <MessageCircle color="#FFF" size={18} strokeWidth={2.5} />,
+            icon: <MessageCircle color={tokens.colors.brandText} size={18} strokeWidth={2.5} />,
             onPress: () => {
               trackMatchMessageTapped({ jobId: selectedProfile.jobId });
               closeAllModals();
@@ -2422,7 +2423,7 @@ export function MatchesView({
               likingApplicantId === selectedInterestedApplicant.applicantUserId
                 ? "Connecting..."
                 : `Connect with ${selectedInterestedApplicant.name.split(" ")[0]}`,
-            icon: <Heart color="#FFF" size={18} strokeWidth={2.5} />,
+            icon: <Heart color={tokens.colors.brandText} size={18} strokeWidth={2.5} />,
             loading:
               likingApplicantId === selectedInterestedApplicant.applicantUserId,
             onPress: () => handleLikeBackApplicant(selectedInterestedApplicant),
@@ -2467,7 +2468,7 @@ export function MatchesView({
                       style={[
                         styles.rolePickerAvatar,
                         {
-                          backgroundColor: "#000",
+                          backgroundColor: tokens.colors.brand,
                           alignItems: "center",
                           justifyContent: "center",
                         },
@@ -2477,7 +2478,7 @@ export function MatchesView({
                         style={{
                           fontSize: 20,
                           fontWeight: "800",
-                          color: "#FFF",
+                          color: tokens.colors.brandText,
                         }}
                       >
                         {(roleGroup.items[0].name || "?")[0].toUpperCase()}
@@ -2544,7 +2545,7 @@ export function MatchesView({
                         }}
                       >
                         <MessageCircle
-                          color="#FFF"
+                          color={tokens.colors.brandText}
                           size={16}
                           strokeWidth={2.5}
                         />
@@ -2589,7 +2590,7 @@ export function MatchesView({
                 <View style={styles.jobModalTopRow}>
                   {selectedJob.status === "MATCHED" ? (
                     <View style={styles.jobModalMatchedBadge}>
-                      <CheckCircle size={12} color="#000" />
+                      <CheckCircle size={12} color={tokens.colors.text} />
                       <Text style={styles.jobModalMatchedText}>Matched!</Text>
                     </View>
                   ) : (
@@ -2629,7 +2630,7 @@ export function MatchesView({
                   </Text>
                   {!!selectedJob.location && (
                     <View style={styles.jobModalLocationRow}>
-                      <MapPin size={13} color="#999" />
+                      <MapPin size={13} color={tokens.colors.textMuted} />
                       <Text style={styles.jobModalLocationText}>
                         {selectedJob.location}
                       </Text>
@@ -2645,7 +2646,7 @@ export function MatchesView({
                 {/* Compensation Strip */}
                 <View style={styles.jobModalCompStrip}>
                   <View style={styles.jobModalCompCell}>
-                    <DollarSign size={14} color="#555" />
+                    <DollarSign size={14} color={tokens.colors.textBody} />
                     <View>
                       <Text style={styles.jobModalCompLabel}>SALARY</Text>
                       <Text style={styles.jobModalCompValue}>
@@ -2663,7 +2664,7 @@ export function MatchesView({
                         styles.jobModalCompCellBorder,
                       ]}
                     >
-                      <Briefcase size={14} color="#555" />
+                      <Briefcase size={14} color={tokens.colors.textBody} />
                       <View>
                         <Text style={styles.jobModalCompLabel}>EXPERIENCE</Text>
                         <Text style={styles.jobModalCompValue}>
@@ -2679,14 +2680,14 @@ export function MatchesView({
                 {!!selectedJob.workArrangement && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <Info size={16} color="#000" />
+                      <Info size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Role Details
                       </Text>
                     </View>
                     <View style={styles.skillsRow}>
                       <View style={styles.roleDetailChip}>
-                        <MapPin size={13} color="#000" />
+                        <MapPin size={13} color={tokens.colors.text} />
                         <Text style={styles.roleDetailChipText}>
                           {selectedJob.workArrangement}
                         </Text>
@@ -2699,7 +2700,7 @@ export function MatchesView({
                 {!!selectedJob.coreResponsibilities && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <Briefcase size={16} color="#000" />
+                      <Briefcase size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Core Responsibilities
                       </Text>
@@ -2716,7 +2717,7 @@ export function MatchesView({
                 {selectedJob.skills.length > 0 && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <TrendingUp size={16} color="#000" />
+                      <TrendingUp size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Required Skills
                       </Text>
@@ -2735,12 +2736,12 @@ export function MatchesView({
                 {selectedJob.benefits.length > 0 && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <Sparkles size={16} color="#000" />
+                      <Sparkles size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>Highlights</Text>
                     </View>
                     {selectedJob.benefits.map((benefit, idx) => (
                       <View key={idx} style={styles.benefitRow}>
-                        <Check size={14} color="#000" />
+                        <Check size={14} color={tokens.colors.text} />
                         <Text style={styles.benefitText}>{benefit}</Text>
                       </View>
                     ))}
@@ -2761,13 +2762,13 @@ export function MatchesView({
                 {/* Sponsor Card */}
                 <View style={styles.sponsorInfoCard}>
                   <View style={styles.sponsorCardHeader}>
-                    <Users size={16} color="#000" />
+                    <Users size={16} color={tokens.colors.text} />
                     <Text style={[styles.sponsorCardTitle, { flex: 1 }]}>
                       Introduced By
                     </Text>
                     {selectedJob.status === "MATCHED" && (
                       <View style={styles.jobMatchedSponsorBadge}>
-                        <CheckCircle size={10} color="#000" />
+                        <CheckCircle size={10} color={tokens.colors.text} />
                         <Text style={styles.jobMatchedSponsorText}>
                           Matched Sponsor
                         </Text>
@@ -2817,7 +2818,7 @@ export function MatchesView({
                       onNavigateToMessages(jid);
                     }}
                   >
-                    <MessageCircle color="#FFF" size={20} strokeWidth={2.5} />
+                    <MessageCircle color={tokens.colors.brandText} size={20} strokeWidth={2.5} />
                     <Text style={styles.applyBtnLargeText}>
                       Message{" "}
                       {selectedJob.sponsorInfo.name !== "Pending"
@@ -2831,7 +2832,7 @@ export function MatchesView({
                     onPress={closeAllModals}
                     activeOpacity={0.6}
                   >
-                    <Clock color="#FFF" size={20} strokeWidth={2.5} />
+                    <Clock color={tokens.colors.brandText} size={20} strokeWidth={2.5} />
                     <Text style={styles.applyBtnLargeText}>Pending Match</Text>
                   </TouchableOpacity>
                 )}
@@ -2936,7 +2937,7 @@ export function MatchesView({
                     {/* Referred By — the sponsor */}
                     <View style={styles.sponsorInfoCard}>
                       <View style={styles.sponsorCardHeader}>
-                        <Award size={16} color="#000" />
+                        <Award size={16} color={tokens.colors.text} />
                         <Text style={styles.sponsorCardTitle}>Referred By</Text>
                       </View>
                       <View style={styles.sponsorCardContent}>
@@ -2968,7 +2969,7 @@ export function MatchesView({
                     {/* What this means */}
                     <View style={styles.detailSection}>
                       <View style={styles.detailSectionHeader}>
-                        <Info size={16} color="#000" />
+                        <Info size={16} color={tokens.colors.text} />
                         <Text style={styles.detailSectionTitle}>
                           What This Means
                         </Text>
@@ -2991,7 +2992,7 @@ export function MatchesView({
                         }}
                       >
                         <MessageCircle
-                          color="#FFF"
+                          color={tokens.colors.brandText}
                           size={20}
                           strokeWidth={2.5}
                         />
@@ -3065,12 +3066,12 @@ export function MatchesView({
                         width: 64,
                         height: 64,
                         borderRadius: 32,
-                        backgroundColor: "#F4F4F5",
+                        backgroundColor: tokens.colors.bgSurface,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <Users color="#BBB" size={28} strokeWidth={2} />
+                      <Users color={tokens.colors.textFaint} size={28} strokeWidth={2} />
                     </View>
                     <Text style={styles.interestedLoadingText}>
                       Loading profile…
@@ -3171,7 +3172,7 @@ export function MatchesView({
                             {interestedSponsorProfile?.sponsor_profile
                               ?.OPEN_TO_REFERRALS && (
                               <View style={styles.sponsorCapBadge}>
-                                <CheckCircle size={11} color="#000" />
+                                <CheckCircle size={11} color={tokens.colors.text} />
                                 <Text style={styles.sponsorCapBadgeText}>
                                   Open to Referrals
                                 </Text>
@@ -3180,7 +3181,7 @@ export function MatchesView({
                             {interestedSponsorProfile?.sponsor_profile
                               ?.FINANCIAL_REWARD && (
                               <View style={styles.sponsorCapBadge}>
-                                <DollarSign size={11} color="#000" />
+                                <DollarSign size={11} color={tokens.colors.text} />
                                 <Text style={styles.sponsorCapBadgeText}>
                                   Financial Reward
                                 </Text>
@@ -3189,7 +3190,7 @@ export function MatchesView({
                             {!!interestedSponsorProfile?.sponsor_profile
                               ?.DURATION && (
                               <View style={styles.sponsorCapBadge}>
-                                <Award size={11} color="#000" />
+                                <Award size={11} color={tokens.colors.text} />
                                 <Text style={styles.sponsorCapBadgeText}>
                                   {
                                     interestedSponsorProfile.sponsor_profile
@@ -3228,7 +3229,7 @@ export function MatchesView({
                         {/* Page 2: Insights */}
                         <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
                           <View style={styles.insightsHeader}>
-                            <Sparkles size={20} color="#000" />
+                            <Sparkles size={20} color={tokens.colors.text} />
                             <Text style={styles.insightsTitle}>
                               Why They Sponsor
                             </Text>
@@ -3246,7 +3247,7 @@ export function MatchesView({
                               ) => (
                                 <View key={idx} style={styles.promptWrapper}>
                                   <View style={styles.promptHeaderRow}>
-                                    <Zap size={14} color="#000" />
+                                    <Zap size={14} color={tokens.colors.text} />
                                     <Text style={styles.insightLabel}>
                                       {insight.question}
                                     </Text>
@@ -3269,7 +3270,7 @@ export function MatchesView({
                               { alignSelf: "flex-start", marginTop: 16 },
                             ]}
                           >
-                            <CheckCircle size={14} color="#000" />
+                            <CheckCircle size={14} color={tokens.colors.text} />
                             <Text style={styles.statLabel}>Active Sponsor</Text>
                           </View>
                         </View>
@@ -3313,10 +3314,10 @@ export function MatchesView({
                     >
                       {likingBackSponsorId ===
                       selectedInterestedSponsor.likeId ? (
-                        <ActivityIndicator color="#FFF" size="small" />
+                        <ActivityIndicator color={tokens.colors.brandText} size="small" />
                       ) : (
                         <>
-                          <Heart color="#FFF" size={20} strokeWidth={2.5} />
+                          <Heart color={tokens.colors.brandText} size={20} strokeWidth={2.5} />
                           <Text style={styles.applyBtnLargeText}>
                             Connect with {selectedInterestedSponsor.firstName}
                           </Text>
@@ -3375,7 +3376,7 @@ export function MatchesView({
                   </Text>
                   {!!selectedWaitlistedJob.location && (
                     <View style={styles.jobModalLocationRow}>
-                      <MapPin size={13} color="#999" />
+                      <MapPin size={13} color={tokens.colors.textMuted} />
                       <Text style={styles.jobModalLocationText}>
                         {selectedWaitlistedJob.location}
                       </Text>
@@ -3392,9 +3393,9 @@ export function MatchesView({
                 {selectedWaitlistedJob.is_now_sponsored ? (
                   <View
                     style={{
-                      backgroundColor: "#F4F4F5",
+                      backgroundColor: tokens.colors.bgSurface,
                       borderWidth: 1,
-                      borderColor: "#E5E5E5",
+                      borderColor: tokens.colors.border,
                       borderRadius: 18,
                       padding: 18,
                       marginBottom: 20,
@@ -3403,13 +3404,13 @@ export function MatchesView({
                       gap: 14,
                     }}
                   >
-                    <CheckCircle size={22} color="#000" />
+                    <CheckCircle size={22} color={tokens.colors.text} />
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
                           fontSize: 15,
                           fontWeight: "800",
-                          color: "#000",
+                          color: tokens.colors.text,
                           marginBottom: 4,
                         }}
                       >
@@ -3418,7 +3419,7 @@ export function MatchesView({
                       <Text
                         style={{
                           fontSize: 13,
-                          color: "#555",
+                          color: tokens.colors.textBody,
                           lineHeight: 19,
                           fontWeight: "500",
                         }}
@@ -3431,9 +3432,9 @@ export function MatchesView({
                 ) : (
                   <View
                     style={{
-                      backgroundColor: "#F4F4F5",
+                      backgroundColor: tokens.colors.bgSurface,
                       borderWidth: 1,
-                      borderColor: "#E5E5E5",
+                      borderColor: tokens.colors.border,
                       borderRadius: 18,
                       padding: 18,
                       marginBottom: 20,
@@ -3442,13 +3443,13 @@ export function MatchesView({
                       gap: 14,
                     }}
                   >
-                    <Clock size={22} color="#666" />
+                    <Clock size={22} color={tokens.colors.textBody} />
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
                           fontSize: 15,
                           fontWeight: "800",
-                          color: "#666",
+                          color: tokens.colors.textBody,
                           marginBottom: 4,
                         }}
                       >
@@ -3457,7 +3458,7 @@ export function MatchesView({
                       <Text
                         style={{
                           fontSize: 13,
-                          color: "#555",
+                          color: tokens.colors.textBody,
                           lineHeight: 19,
                           fontWeight: "500",
                         }}
@@ -3474,7 +3475,7 @@ export function MatchesView({
                   style={{
                     fontSize: 12,
                     fontWeight: "600",
-                    color: "#BBB",
+                    color: tokens.colors.textFaint,
                     textAlign: "center",
                     marginBottom: 28,
                   }}
@@ -3526,7 +3527,7 @@ export function MatchesView({
                       onPress={() => setSrStep(1)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <X size={20} color="#999" />
+                      <X size={20} color={tokens.colors.textMuted} />
                     </TouchableOpacity>
                     <View style={styles.srStepDots}>
                       <View style={[styles.srDot, styles.srDotActive]} />
@@ -3541,7 +3542,7 @@ export function MatchesView({
                       onPress={() => setSrStep(2)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <X size={20} color="#999" />
+                      <X size={20} color={tokens.colors.textMuted} />
                     </TouchableOpacity>
                     <View style={styles.srStepDots}>
                       <View style={[styles.srDot, styles.srDotActive]} />
@@ -3562,7 +3563,7 @@ export function MatchesView({
                     <>
                       {/* Header tag */}
                       <View style={styles.interestedModalTag}>
-                        <BellRing size={12} color="#000" />
+                        <BellRing size={12} color={tokens.colors.text} />
                         <Text style={styles.interestedModalTagText}>
                           Asked for sponsorship
                           {selectedSponsorRequest.createdAt
@@ -3635,7 +3636,7 @@ export function MatchesView({
                             Tap to review this role
                           </Text>
                         </View>
-                        <ChevronRight color="#CCC" size={18} />
+                        <ChevronRight color={tokens.colors.textFaint} size={18} />
                       </TouchableOpacity>
 
                       {/* What happens callout */}
@@ -3661,7 +3662,7 @@ export function MatchesView({
                         style={styles.applyBtnLarge}
                         onPress={() => setSrStep(2)}
                       >
-                        <Briefcase color="#FFF" size={20} strokeWidth={2.5} />
+                        <Briefcase color={tokens.colors.brandText} size={20} strokeWidth={2.5} />
                         <Text style={styles.applyBtnLargeText}>
                           Sponsor & Connect
                         </Text>
@@ -3857,10 +3858,10 @@ export function MatchesView({
                         }
                       >
                         {srSponsoring ? (
-                          <ActivityIndicator color="#FFF" size="small" />
+                          <ActivityIndicator color={tokens.colors.brandText} size="small" />
                         ) : (
                           <>
-                            <Check color="#FFF" size={20} strokeWidth={2.5} />
+                            <Check color={tokens.colors.brandText} size={20} strokeWidth={2.5} />
                             <Text style={styles.applyBtnLargeText}>
                               Confirm Sponsorship
                             </Text>
@@ -3877,7 +3878,7 @@ export function MatchesView({
                       style={styles.srSuccessContainer}
                     >
                       <View style={styles.srSuccessIconCircle}>
-                        <Check color="#FFF" size={36} strokeWidth={3} />
+                        <Check color={tokens.colors.brandText} size={36} strokeWidth={3} />
                       </View>
                       <Text style={styles.srSuccessTitle}>
                         Sponsorship Confirmed!
@@ -3909,7 +3910,7 @@ export function MatchesView({
                           }}
                         >
                           <MessageCircle
-                            color="#FFF"
+                            color={tokens.colors.brandText}
                             size={20}
                             strokeWidth={2.5}
                           />
@@ -3964,7 +3965,7 @@ export function MatchesView({
               onPress={() => setSrJobDetailVisible(false)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <ChevronLeft size={18} color="#000" />
+              <ChevronLeft size={18} color={tokens.colors.text} />
               <Text style={styles.srJobDetailBackText}>Back to Request</Text>
             </TouchableOpacity>
 
@@ -3975,12 +3976,12 @@ export function MatchesView({
                     width: 64,
                     height: 64,
                     borderRadius: 32,
-                    backgroundColor: "#F4F4F5",
+                    backgroundColor: tokens.colors.bgSurface,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Briefcase color="#BBB" size={28} strokeWidth={1.8} />
+                  <Briefcase color={tokens.colors.textFaint} size={28} strokeWidth={1.8} />
                 </View>
                 <Text style={styles.interestedLoadingText}>
                   Loading role details…
@@ -4023,7 +4024,7 @@ export function MatchesView({
                   </Text>
                   {!!srJobDetail.FULL_LOCATION && (
                     <View style={styles.jobModalLocationRow}>
-                      <MapPin size={13} color="#999" />
+                      <MapPin size={13} color={tokens.colors.textMuted} />
                       <Text style={styles.jobModalLocationText}>
                         {srJobDetail.FULL_LOCATION}
                       </Text>
@@ -4045,7 +4046,7 @@ export function MatchesView({
                       srJobDetail.SALARY_ANNUAL_MAX
                     ) && (
                       <View style={styles.jobModalCompCell}>
-                        <DollarSign size={14} color="#555" />
+                        <DollarSign size={14} color={tokens.colors.textBody} />
                         <View>
                           <Text style={styles.jobModalCompLabel}>SALARY</Text>
                           <Text style={styles.jobModalCompValue}>
@@ -4066,7 +4067,7 @@ export function MatchesView({
                             styles.jobModalCompCellBorder,
                         ]}
                       >
-                        <Briefcase size={14} color="#555" />
+                        <Briefcase size={14} color={tokens.colors.textBody} />
                         <View>
                           <Text style={styles.jobModalCompLabel}>
                             EXPERIENCE
@@ -4084,7 +4085,7 @@ export function MatchesView({
                 {!!(srJobDetail.EMPLOYMENT_TYPES || srJobDetail.IS_REMOTE) && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <Info size={16} color="#000" />
+                      <Info size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Role Details
                       </Text>
@@ -4099,7 +4100,7 @@ export function MatchesView({
                       )}
                       {srJobDetail.IS_REMOTE && (
                         <View style={styles.roleDetailChip}>
-                          <MapPin size={13} color="#000" />
+                          <MapPin size={13} color={tokens.colors.text} />
                           <Text style={styles.roleDetailChipText}>Remote</Text>
                         </View>
                       )}
@@ -4111,7 +4112,7 @@ export function MatchesView({
                 {parseSkillsField(srJobDetail.SKILLS).length > 0 && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <TrendingUp size={16} color="#000" />
+                      <TrendingUp size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Required Skills
                       </Text>
@@ -4246,7 +4247,7 @@ export function MatchesView({
                         disabled={isProcessing}
                       >
                         {isProcessing ? (
-                          <ActivityIndicator size="small" color="#FFF" />
+                          <ActivityIndicator size="small" color={tokens.colors.brandText} />
                         ) : (
                           <Text style={styles.withdrawConfirmBtnText}>
                             Yes, withdraw
@@ -4289,16 +4290,16 @@ export function MatchesView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1, backgroundColor: tokens.colors.bg },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 100 },
   header: { marginBottom: 30 },
   title: { fontSize: 32, fontWeight: "800", letterSpacing: -1 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 4 },
+  subtitle: { fontSize: 16, color: tokens.colors.textBody, marginTop: 4 },
   sectionContainer: { marginBottom: 40 },
   listSectionTitle: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.2,
     textTransform: "uppercase",
     marginBottom: 15,
@@ -4312,11 +4313,11 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   profileImage: { width: 70, height: 70, borderRadius: 35, marginBottom: 12 },
   cardName: { fontSize: 16, fontWeight: "700" },
-  cardRole: { fontSize: 13, color: "#666", marginBottom: 15 },
+  cardRole: { fontSize: 13, color: tokens.colors.textBody, marginBottom: 15 },
   // Roles pill shown in place of the single-role line on a grouped match
   // card (same person matched on multiple roles). marginBottom mirrors
   // cardRole so grouped and single cards keep a consistent height.
@@ -4324,7 +4325,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -4334,7 +4335,7 @@ const styles = StyleSheet.create({
   rolesPillText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: tokens.colors.textBody,
     letterSpacing: 0.3,
   },
   // ── Role picker sheet (grouped match → choose a role) ───────────────
@@ -4347,7 +4348,7 @@ const styles = StyleSheet.create({
   rolePickerName: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
   rolePickerSub: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 3,
     lineHeight: 18,
   },
@@ -4363,19 +4364,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  rolePickerRole: { fontSize: 15, fontWeight: "700", color: "#000" },
-  rolePickerMeta: { fontSize: 13, color: "#999", marginTop: 2 },
+  rolePickerRole: { fontSize: 15, fontWeight: "700", color: tokens.colors.text },
+  rolePickerMeta: { fontSize: 13, color: tokens.colors.textMuted, marginTop: 2 },
   rolePickerMsgBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,
   },
   messageBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: "100%",
     padding: 10,
     borderRadius: 15,
@@ -4383,7 +4384,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
-  messageBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
+  messageBtnText: { color: tokens.colors.brandText, fontWeight: "700", fontSize: 13 },
 
   // Job Cards for Applicants
   jobCard: {
@@ -4392,25 +4393,25 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
-  jobImage: { width: "100%", height: 100, backgroundColor: "#E5E5E5" },
+  jobImage: { width: "100%", height: 100, backgroundColor: tokens.colors.border },
   jobCardInfo: { padding: 16 },
   jobCardCompany: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
   },
   jobCardTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 12,
     lineHeight: 20,
   },
   applyBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: "100%",
     padding: 10,
     borderRadius: 15,
@@ -4418,20 +4419,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
-  applyBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
+  applyBtnText: { color: tokens.colors.brandText, fontWeight: "700", fontSize: 13 },
 
   listSection: { gap: 12 },
   listItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 20,
   },
   listImage: { width: 50, height: 50, borderRadius: 15 },
   listInfo: { flex: 1, marginLeft: 15 },
   listName: { fontSize: 16, fontWeight: "700" },
-  listStatus: { fontSize: 11, color: "#999", fontWeight: "700", marginTop: 2 },
+  listStatus: { fontSize: 11, color: tokens.colors.textMuted, fontWeight: "700", marginTop: 2 },
   // ─── Interested Sponsors Section ─────────────────────────────────────────
   emptySponsorsContainer: {
     alignItems: "center",
@@ -4441,7 +4442,7 @@ const styles = StyleSheet.create({
   interestedSponsorCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 20,
     padding: 14,
     marginBottom: 10,
@@ -4458,23 +4459,23 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   interestedSponsorInitialText: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   interestedSponsorInfo: { flex: 1, gap: 2 },
-  interestedSponsorName: { fontSize: 15, fontWeight: "700", color: "#000" },
-  interestedSponsorRole: { fontSize: 12, color: "#888", fontWeight: "500" },
+  interestedSponsorName: { fontSize: 15, fontWeight: "700", color: tokens.colors.text },
+  interestedSponsorRole: { fontSize: 12, color: tokens.colors.textMuted, fontWeight: "500" },
   // "Wants you for X · Y" — tighter than the sponsor identity line, slight
   // top spacing to separate it as its own piece of info.
   interestedSponsorJobContext: {
     fontSize: 11,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
     marginTop: 4,
   },
@@ -4486,16 +4487,16 @@ const styles = StyleSheet.create({
   },
   interestedSponsorTimestampText: {
     fontSize: 11,
-    color: "#888",
+    color: tokens.colors.textMuted,
     fontWeight: "600",
   },
   interestedSponsorCta: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
   },
-  interestedSponsorCtaText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  interestedSponsorCtaText: { color: tokens.colors.brandText, fontSize: 12, fontWeight: "700" },
 
   // ─── Interested Sponsor Modal ─────────────────────────────────────────────
   interestedModalTag: {
@@ -4530,14 +4531,14 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: "#F2F2F2",
+    backgroundColor: tokens.colors.bgSurface,
     marginBottom: 12,
   },
   sponsorRequestInitial: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: "#F2F2F2",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -4545,12 +4546,12 @@ const styles = StyleSheet.create({
   sponsorRequestInitialText: {
     fontSize: 36,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
   sponsorRequestName: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.3,
     textAlign: "center",
   },
@@ -4559,9 +4560,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     padding: 16,
     borderRadius: 16,
   },
@@ -4569,14 +4570,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   sponsorRequestJobLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 4,
@@ -4584,13 +4585,13 @@ const styles = StyleSheet.create({
   sponsorRequestJobTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 21,
   },
   sponsorRequestJobCompany: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 2,
   },
   interestedLoadingText: {
@@ -4602,14 +4603,14 @@ const styles = StyleSheet.create({
     width: 55,
     height: 55,
     borderRadius: 27,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   sponsorModalInitialText: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   sponsorCapabilityRow: {
     flexDirection: "row",
@@ -4622,19 +4623,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: tokens.colors.border,
   },
-  sponsorCapBadgeText: { fontSize: 11, fontWeight: "700", color: "#333" },
+  sponsorCapBadgeText: { fontSize: 11, fontWeight: "700", color: tokens.colors.text },
   referCompaniesBlock: { marginTop: 16 },
   referCompaniesLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -4644,17 +4645,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   referCompanyChip: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  referCompanyText: { fontSize: 12, fontWeight: "700", color: "#FFF" },
+  referCompanyText: { fontSize: 12, fontWeight: "700", color: tokens.colors.brandText },
 
   // ─── Shared Modal Styles ─────────────────────────────────────────────────────
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -4669,7 +4670,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -4683,30 +4684,30 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 20,
   },
-  jobRefLabel: { fontSize: 10, fontWeight: "900", color: "#999" },
+  jobRefLabel: { fontSize: 10, fontWeight: "900", color: tokens.colors.textMuted },
   jobRefBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   jobRefText: { fontSize: 12, fontWeight: "700" },
-  jobRefCompany: { fontSize: 11, color: "#666", marginTop: 4 },
+  jobRefCompany: { fontSize: 11, color: tokens.colors.textBody, marginTop: 4 },
   matchScoreTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     alignSelf: "flex-start",
     marginBottom: 20,
   },
-  matchScoreText: { fontSize: 12, fontWeight: "800", color: "#000" },
+  matchScoreText: { fontSize: 12, fontWeight: "800", color: tokens.colors.text },
 
   // ─── Sponsor Match Modal (sm) ─────────────────────────────────────────────
   smHeroRow: {
@@ -4719,18 +4720,18 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   smName: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   smMeta: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 18,
     marginBottom: 6,
   },
@@ -4743,33 +4744,33 @@ const styles = StyleSheet.create({
   smMatchedText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   smJobBlock: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 16,
     marginBottom: 16,
   },
   smSectionLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.2,
     marginBottom: 6,
   },
   smJobTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   smJobCompany: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   smLoadingRow: {
     flexDirection: "row",
@@ -4789,17 +4790,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   smCapPill: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: tokens.colors.border,
   },
   smCapPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#333",
+    color: tokens.colors.text,
   },
   smBlock: {
     marginBottom: 20,
@@ -4810,7 +4811,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   smDarkChip: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -4818,13 +4819,13 @@ const styles = StyleSheet.create({
   smDarkChipText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   smInsightItem: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 14,
     marginBottom: 10,
   },
@@ -4839,31 +4840,31 @@ const styles = StyleSheet.create({
   smInsightA: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#222",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
   smFallbackLine: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 22,
   },
   smFallbackNote: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 14,
     marginBottom: 16,
   },
   smFallbackNoteText: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     textAlign: "center",
     lineHeight: 20,
   },
   smMessageBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -4875,7 +4876,7 @@ const styles = StyleSheet.create({
   smMessageBtnText: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
 
   swipableContainer: { width: CARD_WIDTH, alignSelf: "center" },
@@ -4883,9 +4884,9 @@ const styles = StyleSheet.create({
     minHeight: 260,
     borderRadius: 24,
     padding: 20,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   pagination: {
     flexDirection: "row",
@@ -4894,7 +4895,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   dot: { height: 6, borderRadius: 3 },
-  dotActive: { width: 22, backgroundColor: "#000" },
+  dotActive: { width: 22, backgroundColor: tokens.colors.brand },
   dotInactive: { width: 6, backgroundColor: "#DDD" },
 
   // Slide Styles
@@ -4912,9 +4913,9 @@ const styles = StyleSheet.create({
   // the sponsor identity row; muted gray to match the card's job-context
   // styling. Stays hidden when the backend doesn't supply jobTitle/jobCompany.
   likedForPill: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -4924,24 +4925,24 @@ const styles = StyleSheet.create({
   likedForLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   likedForValue: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 19,
   },
   sponsorSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
     marginTop: 2,
   },
-  sponsorCompany: { fontSize: 13, color: "#999", fontWeight: "600" },
-  bioText: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 15 },
+  sponsorCompany: { fontSize: 13, color: tokens.colors.textMuted, fontWeight: "600" },
+  bioText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 20, marginBottom: 15 },
   skillsContainer: {
     flexDirection: "row",
     gap: 8,
@@ -4949,37 +4950,37 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   skillChip: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
-  skillText: { fontSize: 11, fontWeight: "700", color: "#666" },
+  skillText: { fontSize: 11, fontWeight: "700", color: tokens.colors.textBody },
   statsRow: { flexDirection: "row", gap: 8 },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   statLabel: { fontSize: 11, fontWeight: "800" },
   resumeBtn: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     borderRadius: 12,
   },
-  resumeBtnText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  resumeBtnText: { color: tokens.colors.brandText, fontSize: 12, fontWeight: "700" },
 
   insightsHeader: {
     flexDirection: "row",
@@ -4987,7 +4988,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 20,
   },
-  insightsTitle: { color: "#000", fontSize: 18, fontWeight: "800" },
+  insightsTitle: { color: tokens.colors.text, fontSize: 18, fontWeight: "800" },
   insightSection: { marginBottom: 20 },
   insightLabel: {
     fontSize: 10,
@@ -4999,7 +5000,7 @@ const styles = StyleSheet.create({
   insightContent: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
   promptWrapper: { marginBottom: 20 },
@@ -5012,22 +5013,22 @@ const styles = StyleSheet.create({
   promptContent: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#444",
+    color: tokens.colors.textBody,
     fontStyle: "italic",
     lineHeight: 20,
   },
 
   // Liked-job modal: HomeView-mirrored detail sections
   detailSection: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 20,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     marginBottom: 12,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 15,
@@ -5048,19 +5049,19 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 13,
     textTransform: "uppercase",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 0.8,
   },
   jobDetailCard: {
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   jobDetailText: {
     fontSize: 14,
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 21,
   },
   skillsRow: {
@@ -5069,22 +5070,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   skillBadge: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  skillBadgeText: { fontSize: 12, fontWeight: "700", color: tokens.colors.text },
   roleDetailChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  roleDetailChipText: { fontSize: 13, fontWeight: "600", color: "#000" },
+  roleDetailChipText: { fontSize: 13, fontWeight: "600", color: tokens.colors.text },
 
   // Job Modal Styles
   jobModalHeader: {
@@ -5099,48 +5100,48 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 12,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
   },
   jobModalInfo: { flex: 1 },
   jobModalCompany: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
   },
   jobModalTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 8,
   },
   jobModalMeta: { flexDirection: "row", gap: 12 },
   jobModalMetaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  jobModalMetaText: { fontSize: 12, color: "#999", fontWeight: "600" },
+  jobModalMetaText: { fontSize: 12, color: tokens.colors.textMuted, fontWeight: "600" },
   jobSection: { marginBottom: 24 },
   jobSectionTitle: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     textTransform: "uppercase",
     marginBottom: 12,
     letterSpacing: 0.5,
   },
-  jobSectionText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  jobSectionText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 22 },
   benefitRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginBottom: 10,
   },
-  benefitText: { fontSize: 14, color: "#555", fontWeight: "500" },
+  benefitText: { fontSize: 14, color: tokens.colors.textBody, fontWeight: "500" },
   sponsorInfoCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   sponsorCardHeader: {
     flexDirection: "row",
@@ -5151,15 +5152,15 @@ const styles = StyleSheet.create({
   sponsorCardTitle: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     textTransform: "uppercase",
   },
   sponsorCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
   sponsorCardAvatar: { width: 40, height: 40, borderRadius: 20 },
-  sponsorCardName: { fontSize: 14, fontWeight: "800", color: "#000" },
+  sponsorCardName: { fontSize: 14, fontWeight: "800", color: tokens.colors.text },
   sponsorCardRole: {
     fontSize: 12,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -5167,12 +5168,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
   },
   applyBtnLarge: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     borderRadius: 18,
     flexDirection: "row",
@@ -5180,13 +5181,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  applyBtnLargeText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+  applyBtnLargeText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "800" },
 
   // Input
   inputLabel: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     textTransform: "uppercase",
     marginBottom: 10,
   },
@@ -5196,9 +5197,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   replyChip: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 12,
@@ -5214,7 +5215,7 @@ const styles = StyleSheet.create({
   },
   messageInput: { flex: 1, padding: 10, fontSize: 15, maxHeight: 80 },
   sendBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -5225,7 +5226,7 @@ const styles = StyleSheet.create({
   // Active Pipeline Styles
   pipelineRoleText: {
     fontSize: 12,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "500",
     marginBottom: 6,
   },
@@ -5238,18 +5239,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     alignSelf: "flex-start",
-    borderColor: "#EEE",
-    backgroundColor: "#F5F5F5",
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.bgSurface,
   },
-  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#000" },
-  statusText: { fontSize: 11, fontWeight: "700", color: "#000" },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: tokens.colors.brand },
+  statusText: { fontSize: 11, fontWeight: "700", color: tokens.colors.text },
   viewProfileBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
   },
-  viewProfileText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  viewProfileText: { color: tokens.colors.brandText, fontSize: 12, fontWeight: "700" },
 
   // Liked Jobs Section
   sectionHeader: {
@@ -5260,24 +5261,24 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginTop: 2,
   },
   pendingBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: tokens.colors.border,
   },
   pendingText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   likedJobCard: {
     width: 180,
@@ -5285,13 +5286,13 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   likedJobInitial: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -5299,11 +5300,11 @@ const styles = StyleSheet.create({
   likedJobInitialText: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   likedJobLocation: {
     fontSize: 11,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 10,
     marginTop: -6,
   },
@@ -5311,12 +5312,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: tokens.colors.border,
     alignSelf: "flex-start",
   },
   pulsingDot: {
@@ -5328,7 +5329,7 @@ const styles = StyleSheet.create({
   waitingText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   emptyLikedSection: {
     alignItems: "center",
@@ -5339,7 +5340,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -5347,12 +5348,12 @@ const styles = StyleSheet.create({
   emptyLikedTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 8,
   },
   emptyLikedText: {
     fontSize: 14,
-    color: "#999",
+    color: tokens.colors.textMuted,
     textAlign: "center",
     lineHeight: 20,
   },
@@ -5360,7 +5361,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
@@ -5369,7 +5370,7 @@ const styles = StyleSheet.create({
   matchBadgeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobModalTopRow: {
     flexDirection: "row",
@@ -5381,9 +5382,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
@@ -5391,15 +5392,15 @@ const styles = StyleSheet.create({
   jobModalMatchedText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobModalPendingBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
@@ -5407,11 +5408,11 @@ const styles = StyleSheet.create({
   jobModalPendingText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#888",
+    color: tokens.colors.textMuted,
   },
   jobModalLikedDate: {
     fontSize: 12,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "600",
   },
   jobModalHero: {
@@ -5422,7 +5423,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -5430,12 +5431,12 @@ const styles = StyleSheet.create({
   jobModalHeroInitialText: {
     fontSize: 32,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   jobModalHeroTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
     marginBottom: 6,
     letterSpacing: -0.5,
@@ -5443,7 +5444,7 @@ const styles = StyleSheet.create({
   jobModalHeroCompany: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#555",
+    color: tokens.colors.textBody,
     marginBottom: 8,
   },
   jobModalLocationRow: {
@@ -5454,13 +5455,13 @@ const styles = StyleSheet.create({
   },
   jobModalLocationText: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
   },
   jobRemoteBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -5469,7 +5470,7 @@ const styles = StyleSheet.create({
   jobRemoteText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobModalCompStrip: {
     flexDirection: "row",
@@ -5494,20 +5495,20 @@ const styles = StyleSheet.create({
   jobModalCompLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   jobModalCompValue: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobMatchedSponsorBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -5515,33 +5516,33 @@ const styles = StyleSheet.create({
   jobMatchedSponsorText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobSponsorInitialAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   jobSponsorInitialText: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   // Waitlisted Jobs
   waitlistedJobCardSponsored: {
-    borderColor: "#E5E5E5",
-    backgroundColor: "#F4F4F5",
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.bgSurface,
   },
   waitingBadgeWaitlist: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#E5E5E5",
+    backgroundColor: tokens.colors.bgSurface,
+    borderColor: tokens.colors.border,
   },
   waitingBadgeSponsored: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#E5E5E5",
+    backgroundColor: tokens.colors.bgSurface,
+    borderColor: tokens.colors.border,
   },
 
   // Pipeline empty state
@@ -5554,7 +5555,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -5562,12 +5563,12 @@ const styles = StyleSheet.create({
   pipelineEmptyTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#333",
+    color: tokens.colors.text,
     marginBottom: 6,
   },
   pipelineEmptyText: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     textAlign: "center",
     lineHeight: 18,
   },
@@ -5582,7 +5583,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -5597,8 +5598,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignSelf: "flex-start",
     marginTop: 5,
-    backgroundColor: "#F4F4F5",
-    borderColor: "#E5E5E5",
+    backgroundColor: tokens.colors.bgSurface,
+    borderColor: tokens.colors.border,
   },
   referralBadgeWithdrawn: {
     flexDirection: "row",
@@ -5610,11 +5611,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignSelf: "flex-start",
     marginTop: 5,
-    backgroundColor: "#F5F5F5",
-    borderColor: "#E0E0E0",
+    backgroundColor: tokens.colors.bgSurface,
+    borderColor: tokens.colors.border,
   },
   statusDotReferred: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   statusDotWithdrawn: {
     backgroundColor: "#BBB",
@@ -5622,23 +5623,23 @@ const styles = StyleSheet.create({
   referralStatusTextReferred: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: "#000",
+    color: tokens.colors.text,
   },
   referralStatusTextWithdrawn: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
   // ─── Referrals Received — applicant card ───
   referralCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     padding: 16,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -5652,21 +5653,21 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
-  referralCardInitialText: { fontSize: 19, fontWeight: "800", color: "#FFF" },
-  referralCardJobTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
+  referralCardInitialText: { fontSize: 19, fontWeight: "800", color: tokens.colors.brandText },
+  referralCardJobTitle: { fontSize: 16, fontWeight: "700", color: tokens.colors.text },
   referralCardCompany: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginTop: 2,
   },
   referralCardDivider: {
     height: 1,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     marginVertical: 12,
   },
   referralCardBottom: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -5674,26 +5675,26 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
   },
   referralCardSponsorInitial: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
   referralCardSponsorInitialText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   referralCardSponsorText: {
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#888",
+    color: tokens.colors.textMuted,
   },
   // Monochrome status pill — Referred = black, Withdrawn = grey.
   refPill: {
@@ -5703,16 +5704,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
     borderColor: "#ECECEC",
   },
   refPillDot: { width: 6, height: 6, borderRadius: 3 },
-  refPillDotReferred: { backgroundColor: "#000" },
+  refPillDotReferred: { backgroundColor: tokens.colors.brand },
   refPillDotWithdrawn: { backgroundColor: "#BBB" },
   refPillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
-  refPillTextReferred: { color: "#000" },
-  refPillTextWithdrawn: { color: "#999" },
+  refPillTextReferred: { color: tokens.colors.text },
+  refPillTextWithdrawn: { color: tokens.colors.textMuted },
   pipelineActions: {
     alignItems: "flex-end",
     justifyContent: "center",
@@ -5750,14 +5751,14 @@ const styles = StyleSheet.create({
   withdrawModalTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
     letterSpacing: -0.5,
     marginBottom: 10,
   },
   withdrawModalSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 21,
     fontWeight: "500",
@@ -5766,7 +5767,7 @@ const styles = StyleSheet.create({
   },
   withdrawModalEmphasis: {
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   withdrawWarningCard: {
     backgroundColor: "#FEF2F2",
@@ -5811,7 +5812,7 @@ const styles = StyleSheet.create({
   withdrawCancelBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   withdrawConfirmBtn: {
     flex: 1,
@@ -5826,21 +5827,21 @@ const styles = StyleSheet.create({
     bottom: 100,
     left: 20,
     right: 20,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
   },
   undoToastText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 14,
     fontWeight: "600",
     flex: 1,
@@ -5848,13 +5849,13 @@ const styles = StyleSheet.create({
   },
   undoToastBtn: {
     // White on the dark (#1A1A1A) toast — a black button would vanish.
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
   undoToastBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,
@@ -5862,11 +5863,11 @@ const styles = StyleSheet.create({
   withdrawConfirmBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   referralDateText: {
     fontSize: 11,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     marginTop: 3,
   },
 
@@ -5882,18 +5883,18 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
   },
-  srDotActive: { backgroundColor: "#000", width: 24, borderRadius: 4 },
-  srStepLabel: { fontSize: 12, fontWeight: "700", color: "#999" },
+  srDotActive: { backgroundColor: tokens.colors.brand, width: 24, borderRadius: 4 },
+  srStepLabel: { fontSize: 12, fontWeight: "700", color: tokens.colors.textMuted },
   srOverviewSub: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     marginTop: 4,
   },
   srCallout: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     padding: 20,
     borderRadius: 16,
     marginBottom: 24,
@@ -5903,12 +5904,12 @@ const styles = StyleSheet.create({
   srCalloutTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 8,
   },
-  srCalloutText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  srCalloutText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 22 },
   srDismissBtn: { alignItems: "center", marginTop: 14, paddingVertical: 8 },
-  srDismissBtnText: { fontSize: 14, color: "#999", fontWeight: "600" },
+  srDismissBtnText: { fontSize: 14, color: tokens.colors.textMuted, fontWeight: "600" },
   srJobCardTapHint: {
     fontSize: 11,
     fontWeight: "600",
@@ -5925,7 +5926,7 @@ const styles = StyleSheet.create({
   srJobDetailBackText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   srJobDetailErrorTitle: {
     fontSize: 15,
@@ -5936,7 +5937,7 @@ const styles = StyleSheet.create({
   },
   srJobDetailErrorSub: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginTop: 4,
     textAlign: "center" as const,
     lineHeight: 19,
@@ -5944,12 +5945,12 @@ const styles = StyleSheet.create({
   srStepTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 6,
   },
   srStepSub: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -5957,21 +5958,21 @@ const styles = StyleSheet.create({
   srFieldLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 12,
   },
   srFieldHint: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 12,
     lineHeight: 18,
   },
   srRadioOption: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     marginBottom: 12,
   },
   srRadioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -5982,9 +5983,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#CCC",
   },
-  srRadioCircleActive: { borderColor: "#000", borderWidth: 6 },
-  srRadioText: { fontSize: 15, color: "#666", fontWeight: "600" },
-  srRadioTextActive: { color: "#000", fontWeight: "600" },
+  srRadioCircleActive: { borderColor: tokens.colors.brand, borderWidth: 6 },
+  srRadioText: { fontSize: 15, color: tokens.colors.textBody, fontWeight: "600" },
+  srRadioTextActive: { color: tokens.colors.text, fontWeight: "600" },
   srSideBySide: { flexDirection: "row", gap: 12 },
   srHalfOption: {
     flex: 1,
@@ -5993,19 +5994,19 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   srTextInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     borderRadius: 12,
     padding: 16,
     paddingTop: 16,
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
     minHeight: 110,
     textAlignVertical: "top",
   },
@@ -6018,7 +6019,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -6027,11 +6028,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     marginBottom: 10,
-    color: "#000",
+    color: tokens.colors.text,
   },
   srSuccessDesc: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 30,

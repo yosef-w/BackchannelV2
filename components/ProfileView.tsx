@@ -86,6 +86,7 @@ import {
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
+import { tokens } from "@/constants/theme";
 
 interface ProfileViewProps {
   userType: "applicant" | "sponsor";
@@ -536,8 +537,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
     const colors = {
       applied: { backgroundColor: "#666" },
       reviewing: { backgroundColor: "#666" },
-      interview_scheduled: { backgroundColor: "#000" },
-      offer: { backgroundColor: "#000" },
+      interview_scheduled: { backgroundColor: tokens.colors.brand },
+      offer: { backgroundColor: tokens.colors.brand },
       rejected: { backgroundColor: "#DC2626" },
     };
     return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
@@ -545,32 +546,32 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const getStatusBadgeStyle = (status: string) => {
     const styles = {
-      applied: { backgroundColor: "#F9F9F9", borderColor: "#E5E5E5" },
-      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+      applied: { backgroundColor: tokens.colors.bgOffWhite, borderColor: tokens.colors.border },
+      reviewing: { backgroundColor: tokens.colors.bgSurface, borderColor: tokens.colors.border },
       interview_scheduled: {
-        backgroundColor: "#F4F4F5",
-        borderColor: "#E5E5E5",
+        backgroundColor: tokens.colors.bgSurface,
+        borderColor: tokens.colors.border,
       },
-      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
+      offer: { backgroundColor: tokens.colors.bgSurface, borderColor: tokens.colors.border },
       rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
     };
     return (
       styles[status as keyof typeof styles] || {
-        backgroundColor: "#F5F5F5",
-        borderColor: "#E5E5E5",
+        backgroundColor: tokens.colors.bgSurface,
+        borderColor: tokens.colors.border,
       }
     );
   };
 
   const getStatusTextColor = (status: string) => {
     const colors = {
-      applied: { color: "#000" },
-      reviewing: { color: "#666" },
-      interview_scheduled: { color: "#000" },
-      offer: { color: "#000" },
+      applied: { color: tokens.colors.text },
+      reviewing: { color: tokens.colors.textBody },
+      interview_scheduled: { color: tokens.colors.text },
+      offer: { color: tokens.colors.text },
       rejected: { color: "#DC2626" },
     };
-    return colors[status as keyof typeof colors] || { color: "#666" };
+    return colors[status as keyof typeof colors] || { color: tokens.colors.textBody };
   };
 
   const applicantData: ApplicantProfile = {
@@ -1253,10 +1254,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={tokens.colors.textBody} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={tokens.colors.textBody}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1371,7 +1372,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveCertification}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={tokens.colors.brandText} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -1430,10 +1431,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={tokens.colors.textBody} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={tokens.colors.textBody}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1522,7 +1523,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveLanguage}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={tokens.colors.brandText} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -2133,10 +2134,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={tokens.colors.textBody} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={tokens.colors.textBody}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -2307,7 +2308,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveExperience}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={tokens.colors.brandText} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -2363,10 +2364,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={tokens.colors.textBody} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={tokens.colors.textBody}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -2514,7 +2515,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveEducation}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={tokens.colors.brandText} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -2541,7 +2542,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <Text style={styles.avatarInitials}>{getUserInitials()}</Text>
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Camera color="#999" size={32} strokeWidth={1.5} />
+                  <Camera color={tokens.colors.textMuted} size={32} strokeWidth={1.5} />
                   <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
                 </View>
               )}
@@ -2554,14 +2555,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
             ]}
             onPress={() => setShowImagePickerModal(true)}
           >
-            <Edit color="#FFF" size={14} strokeWidth={2.5} />
+            <Edit color={tokens.colors.brandText} size={14} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
 
         <Text style={styles.name}>{profileData.name}</Text>
 
         <View style={styles.infoRow}>
-          <Briefcase color="#000" size={14} strokeWidth={2} />
+          <Briefcase color={tokens.colors.text} size={14} strokeWidth={2} />
           <Text style={styles.infoText}>
             {userType === "sponsor"
               ? `${sponsorData.role} @ ${sponsorData.company}`
@@ -2570,7 +2571,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
 
         <View style={styles.infoRow}>
-          <MapPin color="#BBB" size={14} strokeWidth={2} />
+          <MapPin color={tokens.colors.textFaint} size={14} strokeWidth={2} />
           {profileData.location ? (
             <Text style={styles.locationText}>{profileData.location}</Text>
           ) : (
@@ -2592,7 +2593,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               setShowEditProfile(true);
             }}
           >
-            <Edit color="#FFF" size={16} />
+            <Edit color={tokens.colors.brandText} size={16} />
             <Text style={styles.blackBtnText}>Edit Profile</Text>
             {personalMissingCount > 0 && (
               <View style={styles.buttonBadge}>
@@ -2649,7 +2650,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <View style={styles.tagCloud}>
                   {applicantData.desiredRoles.map((role) => (
                     <View key={role} style={styles.roleTag}>
-                      <Target size={14} color="#FFF" strokeWidth={2.5} />
+                      <Target size={14} color={tokens.colors.brandText} strokeWidth={2.5} />
                       <Text style={styles.roleTagText}>{role}</Text>
                     </View>
                   ))}
@@ -2671,11 +2672,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
           {/* Header */}
           <View style={styles.resumeSectionHeader}>
             <View style={styles.resumeHeaderLeft}>
-              <FileText size={20} color="#000" strokeWidth={2} />
+              <FileText size={20} color={tokens.colors.text} strokeWidth={2} />
               <Text style={styles.resumeSectionTitle}>Resume</Text>
             </View>
             <View style={styles.aiBadge}>
-              <Zap size={12} color="#FFF" fill="#FFF" />
+              <Zap size={12} color={tokens.colors.brandText} fill={tokens.colors.brandText} />
               <Text style={styles.aiBadgeText}>AI</Text>
             </View>
           </View>
@@ -2691,7 +2692,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               onPress={handleResumeUpload}
               activeOpacity={0.75}
             >
-              <Upload size={18} color="#FFF" strokeWidth={2} />
+              <Upload size={18} color={tokens.colors.brandText} strokeWidth={2} />
               <Text style={styles.resumeUploadBtnText}>
                 {resumeLastUpdated ? "Re-upload Resume" : "Upload Resume"}
               </Text>
@@ -2702,7 +2703,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           {resumeUploadStep === "uploading" && (
             <View style={styles.resumeProgressCard}>
               <View style={styles.resumeProgressRow}>
-                <ActivityIndicator color="#000" size="small" />
+                <ActivityIndicator color={tokens.colors.text} size="small" />
                 <View style={styles.resumeProgressTextCol}>
                   <Text style={styles.resumeProgressTitle}>
                     Uploading your resume...
@@ -2724,7 +2725,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onPress={cancelResumeUpload}
                 activeOpacity={0.7}
               >
-                <X size={12} color="#666" strokeWidth={2.5} />
+                <X size={12} color={tokens.colors.textBody} strokeWidth={2.5} />
                 <Text style={styles.resumeCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -2734,7 +2735,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           {resumeUploadStep === "analyzing" && (
             <View style={styles.resumeProgressCard}>
               <View style={styles.resumeProgressRow}>
-                <ActivityIndicator color="#000" size="small" />
+                <ActivityIndicator color={tokens.colors.text} size="small" />
                 <View style={styles.resumeProgressTextCol}>
                   <Text style={styles.resumeProgressTitle}>
                     AI is analyzing your resume...
@@ -2758,7 +2759,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onPress={cancelResumeUpload}
                 activeOpacity={0.7}
               >
-                <X size={12} color="#666" strokeWidth={2.5} />
+                <X size={12} color={tokens.colors.textBody} strokeWidth={2.5} />
                 <Text style={styles.resumeCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -2771,7 +2772,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               style={styles.resumeSuccessCard}
             >
               <View style={styles.resumeSuccessHeader}>
-                <CheckCircle2 size={20} color="#000" strokeWidth={2.5} />
+                <CheckCircle2 size={20} color={tokens.colors.text} strokeWidth={2.5} />
                 <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
               </View>
               {resumeFieldsUpdated.length > 0 && (
@@ -2795,7 +2796,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={styles.resumeUploadAgainBtn}
                 onPress={() => setResumeUploadStep("idle")}
               >
-                <RefreshCw size={14} color="#666" strokeWidth={2} />
+                <RefreshCw size={14} color={tokens.colors.textBody} strokeWidth={2} />
                 <Text style={styles.resumeUploadAgainText}>Upload again</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -2827,11 +2828,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
               setShowEditResume(true);
             }}
           >
-            <Edit size={14} color="#666" strokeWidth={2} />
+            <Edit size={14} color={tokens.colors.textBody} strokeWidth={2} />
             <Text style={styles.resumeManualLinkText}>
               Edit resume details manually
             </Text>
-            <ChevronRight size={14} color="#BBB" />
+            <ChevronRight size={14} color={tokens.colors.textFaint} />
           </TouchableOpacity>
         </View>
       )}
@@ -2879,7 +2880,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           )}
           <SettingItem
             label="Log Out"
-            color="#000"
+            color={tokens.colors.text}
             isLast
             onPress={handleLogout}
           />
@@ -2910,7 +2911,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Profile Photo</Text>
               <TouchableOpacity onPress={() => setShowImagePickerModal(false)}>
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -2926,7 +2927,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 ]}
                 onPress={takePhoto}
               >
-                <Camera color="#FFF" size={18} />
+                <Camera color={tokens.colors.brandText} size={18} />
                 <Text style={styles.blackBtnText}>Take Photo</Text>
               </TouchableOpacity>
 
@@ -2937,7 +2938,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 ]}
                 onPress={pickImage}
               >
-                <ImageIcon color="#000" size={18} />
+                <ImageIcon color={tokens.colors.text} size={18} />
                 <Text style={styles.whiteBtnText}>Choose from Gallery</Text>
               </TouchableOpacity>
             </View>
@@ -2969,7 +2970,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Log Out</Text>
               <TouchableOpacity onPress={() => setShowLogoutModal(false)}>
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -2986,7 +2987,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 ]}
                 onPress={confirmLogout}
               >
-                <LogOut color="#FFF" size={18} />
+                <LogOut color={tokens.colors.brandText} size={18} />
                 <Text style={styles.blackBtnText}>Log Out</Text>
               </TouchableOpacity>
 
@@ -3031,7 +3032,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Profile</Text>
               <TouchableOpacity onPress={() => setShowEditProfile(false)}>
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
             {personalMissingCount > 0 && (
@@ -3089,7 +3090,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("firstName")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3100,7 +3101,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <Text style={styles.fieldText}>
                       {firstName || "Not set"}
                     </Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3125,7 +3126,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("lastName")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3136,7 +3137,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <Text style={styles.fieldText}>
                       {lastName || "Not set"}
                     </Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3161,7 +3162,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("role")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3170,7 +3171,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("role", role)}
                   >
                     <Text style={styles.fieldText}>{role}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3194,7 +3195,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         style={styles.saveBtn}
                         onPress={() => handleSaveField("company")}
                       >
-                        <Check color="#FFF" size={18} />
+                        <Check color={tokens.colors.brandText} size={18} />
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -3203,7 +3204,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onPress={() => handleEditField("company", company)}
                     >
                       <Text style={styles.fieldText}>{company}</Text>
-                      <Edit color="#666" size={16} />
+                      <Edit color={tokens.colors.textBody} size={16} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -3224,7 +3225,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   }}
                 >
                   <Text style={styles.fieldText}>{email}</Text>
-                  <Edit color="#666" size={16} />
+                  <Edit color={tokens.colors.textBody} size={16} />
                 </TouchableOpacity>
               </View>
 
@@ -3238,17 +3239,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <Text
                       style={[
                         styles.fieldText,
-                        !workEmail && { color: "#999", fontStyle: "italic" },
+                        !workEmail && { color: tokens.colors.textMuted, fontStyle: "italic" },
                       ]}
                     >
                       {workEmail || "Not set"}
                     </Text>
-                    <Lock color="#999" size={16} />
+                    <Lock color={tokens.colors.textMuted} size={16} />
                   </View>
                   <Text
                     style={{
                       fontSize: 11,
-                      color: "#999",
+                      color: tokens.colors.textMuted,
                       marginTop: 4,
                       fontStyle: "italic",
                     }}
@@ -3280,7 +3281,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("phone")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3289,7 +3290,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("phone", phone)}
                   >
                     <Text style={styles.fieldText}>{phone}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3319,7 +3320,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       ]}
                       onPress={() => handleSaveField("bio")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3328,7 +3329,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("bio", bio)}
                   >
                     <Text style={styles.fieldText}>{bio}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3362,7 +3363,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("portfolio")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3373,7 +3374,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <Text style={styles.fieldText}>
                       {portfolio || "Not set"}
                     </Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3421,7 +3422,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         style={styles.saveBtn}
                         onPress={() => handleSaveField("street")}
                       >
-                        <Check color="#FFF" size={18} />
+                        <Check color={tokens.colors.brandText} size={18} />
                       </TouchableOpacity>
                     </View>
                   )
@@ -3437,7 +3438,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("street")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3446,7 +3447,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("street", street)}
                   >
                     <Text style={styles.fieldText}>{street || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3476,7 +3477,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("city")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3485,7 +3486,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("city", city)}
                   >
                     <Text style={styles.fieldText}>{city || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3515,7 +3516,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("state")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3524,7 +3525,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("state", state)}
                   >
                     <Text style={styles.fieldText}>{state || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3550,7 +3551,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("zip")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3559,7 +3560,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("zip", zip)}
                   >
                     <Text style={styles.fieldText}>{zip || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3589,7 +3590,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.saveBtn}
                       onPress={() => handleSaveField("country")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3598,7 +3599,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     onPress={() => handleEditField("country", country)}
                   >
                     <Text style={styles.fieldText}>{country || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3622,7 +3623,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       <TouchableOpacity
                         onPress={() => handleRemoveTag("expertise", index)}
                       >
-                        <X color="#000" size={14} />
+                        <X color={tokens.colors.text} size={14} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -3643,7 +3644,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.addTagBtn}
                       onPress={() => handleAddTag("expertise")}
                     >
-                      <Plus color="#FFF" size={18} />
+                      <Plus color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -3673,7 +3674,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                             ]}
                           >
                             {workPreferences.includes(preference) && (
-                              <Check color="#FFF" size={16} strokeWidth={3} />
+                              <Check color={tokens.colors.brandText} size={16} strokeWidth={3} />
                             )}
                           </View>
                           <Text
@@ -3701,7 +3702,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                               handleRemoveTag("desiredRoles", index)
                             }
                           >
-                            <X color="#000" size={14} />
+                            <X color={tokens.colors.text} size={14} />
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -3723,7 +3724,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                             handleAddTag("desiredRoles", newRoleTag)
                           }
                         >
-                          <Plus color="#FFF" size={18} />
+                          <Plus color={tokens.colors.brandText} size={18} />
                         </TouchableOpacity>
                       </View>
                     )}
@@ -3776,7 +3777,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Resume Information</Text>
               <TouchableOpacity onPress={() => setShowEditResume(false)}>
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
             {professionalMissingCount > 0 && (
@@ -3820,7 +3821,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {professionalExperiences.length === 0 && (
                 <View style={styles.emptyStateCard}>
-                  <Briefcase size={32} color="#999" />
+                  <Briefcase size={32} color={tokens.colors.textMuted} />
                   <Text style={styles.emptyStateText}>
                     No work experience added yet.{"\n"}
                     Add your professional experience here.
@@ -3840,7 +3841,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={styles.addItemBtn}
                 onPress={handleAddExperience}
               >
-                <Plus color="#000" size={18} />
+                <Plus color={tokens.colors.text} size={18} />
                 <Text style={styles.addItemText}>Add Work Experience</Text>
               </TouchableOpacity>
 
@@ -3853,7 +3854,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
               {educationEntries.length === 0 && (
                 <View style={styles.emptyStateCard}>
-                  <GraduationCap size={32} color="#999" />
+                  <GraduationCap size={32} color={tokens.colors.textMuted} />
                   <Text style={styles.emptyStateText}>
                     No education added yet.{"\n"}
                     Add your degrees and schools here.
@@ -3873,7 +3874,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={styles.addItemBtn}
                 onPress={handleAddEducation}
               >
-                <Plus color="#000" size={18} />
+                <Plus color={tokens.colors.text} size={18} />
                 <Text style={styles.addItemText}>Add Education</Text>
               </TouchableOpacity>
 
@@ -3894,7 +3895,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   style={styles.addItemBtn}
                   onPress={handleAddCertification}
                 >
-                  <Plus color="#000" size={18} />
+                  <Plus color={tokens.colors.text} size={18} />
                   <Text style={styles.addItemText}>Add Certification</Text>
                 </TouchableOpacity>
               </View>
@@ -3909,7 +3910,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   style={styles.addItemBtn}
                   onPress={handleAddLanguage}
                 >
-                  <Plus color="#000" size={18} />
+                  <Plus color={tokens.colors.text} size={18} />
                   <Text style={styles.addItemText}>Add Language</Text>
                 </TouchableOpacity>
               </View>
@@ -3934,7 +3935,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       ]}
                       onPress={() => handleSaveField("achievements")}
                     >
-                      <Check color="#FFF" size={18} />
+                      <Check color={tokens.colors.brandText} size={18} />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -3947,7 +3948,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <Text style={styles.fieldText}>
                       {achievements || "Not set"}
                     </Text>
-                    <Edit color="#666" size={16} />
+                    <Edit color={tokens.colors.textBody} size={16} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3984,7 +3985,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           }}
         >
           <View style={styles.privacyIconContainer}>
-            <Lock color="#000" size={18} />
+            <Lock color={tokens.colors.text} size={18} />
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.privacyActionTitle}>Change Password</Text>
@@ -3992,7 +3993,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               Update your password
             </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={tokens.colors.textFaint} size={20} />
         </TouchableOpacity>
 
         {/* Terms & Conditions */}
@@ -4005,7 +4006,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           }}
         >
           <View style={styles.privacyIconContainer}>
-            <Briefcase color="#000" size={18} />
+            <Briefcase color={tokens.colors.text} size={18} />
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.privacyActionTitle}>Terms & Conditions</Text>
@@ -4013,7 +4014,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               Read our terms of service
             </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={tokens.colors.textFaint} size={20} />
         </TouchableOpacity>
 
         {/* Privacy Policy */}
@@ -4026,7 +4027,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           }}
         >
           <View style={styles.privacyIconContainer}>
-            <Lock color="#000" size={18} />
+            <Lock color={tokens.colors.text} size={18} />
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.privacyActionTitle}>Privacy Policy</Text>
@@ -4034,7 +4035,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               How we handle your data
             </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={tokens.colors.textFaint} size={20} />
         </TouchableOpacity>
 
         {/* Delete Account */}
@@ -4043,7 +4044,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           onPress={handleDeleteAccount}
         >
           <View style={styles.privacyIconContainer}>
-            <Trash2 color="#000" size={18} />
+            <Trash2 color={tokens.colors.text} size={18} />
           </View>
           <View style={styles.privacyActionContent}>
             <Text style={styles.deleteActionTitle}>Delete Account</Text>
@@ -4051,7 +4052,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               Remove your account permanently
             </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={tokens.colors.textFaint} size={20} />
         </TouchableOpacity>
       </SimpleModal>
 
@@ -4421,7 +4422,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   setEmailPassword("");
                 }}
               >
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -4529,7 +4530,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   setConfirmPassword("");
                 }}
               >
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -4727,7 +4728,7 @@ function SettingItem({
           </View>
         )}
       </View>
-      <ChevronRight color="#BBB" size={18} />
+      <ChevronRight color={tokens.colors.textFaint} size={18} />
     </TouchableOpacity>
   );
 }
@@ -4809,7 +4810,7 @@ function EditInsightsModal({
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Profile Insights</Text>
             <TouchableOpacity onPress={onClose}>
-              <X color="#000" size={24} />
+              <X color={tokens.colors.text} size={24} />
             </TouchableOpacity>
           </View>
 
@@ -4882,7 +4883,7 @@ function EditInsightsModal({
                     style={styles.selectQuestionBtn}
                     onPress={() => setShowQuestionPicker(!showQuestionPicker)}
                   >
-                    <Plus color="#000" size={20} />
+                    <Plus color={tokens.colors.text} size={20} />
                     <Text style={styles.selectQuestionText}>
                       Select a Question
                     </Text>
@@ -4899,7 +4900,7 @@ function EditInsightsModal({
                           setNewAnswer("");
                         }}
                       >
-                        <X color="#666" size={18} />
+                        <X color={tokens.colors.textBody} size={18} />
                       </TouchableOpacity>
                     </View>
                     <TextInput
@@ -4935,7 +4936,7 @@ function EditInsightsModal({
                         <Text style={styles.questionOptionText}>
                           {question}
                         </Text>
-                        <ChevronRight color="#666" size={18} />
+                        <ChevronRight color={tokens.colors.textBody} size={18} />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -4985,7 +4986,7 @@ function SimpleModal({
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
-              <X color="#000" size={24} />
+              <X color={tokens.colors.text} size={24} />
             </TouchableOpacity>
           </View>
 
@@ -5005,7 +5006,7 @@ function SimpleModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   scrollContent: {
     paddingHorizontal: 28,
@@ -5024,16 +5025,16 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   avatarInitials: {
     fontSize: 36,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 1,
   },
   avatarPlaceholder: {
@@ -5044,7 +5045,7 @@ const styles = StyleSheet.create({
   avatarPlaceholderText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -5052,35 +5053,35 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
   },
   editFabHighlight: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   profileImageIndicator: {
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
   },
   name: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -1,
   },
   infoRow: {
@@ -5092,16 +5093,16 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   locationText: {
     fontSize: 14,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "500",
   },
   bio: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
@@ -5114,7 +5115,7 @@ const styles = StyleSheet.create({
   },
   blackBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -5123,29 +5124,29 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   blackBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontWeight: "700",
     fontSize: 14,
   },
   whiteBtn: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   whiteBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "700",
     fontSize: 14,
   },
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     padding: 24,
     marginBottom: 32,
@@ -5157,12 +5158,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     marginTop: 4,
     letterSpacing: 1,
   },
@@ -5172,7 +5173,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -5186,14 +5187,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   tagText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // Applicant-Specific Styles
@@ -5201,14 +5202,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   preferenceText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   roleTag: {
     flexDirection: "row",
@@ -5217,12 +5218,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 14,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -5235,7 +5236,7 @@ const styles = StyleSheet.create({
   roleTagText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
 
   // Sponsor-Specific Styles
@@ -5243,25 +5244,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   companyText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
 
   settingsSection: {
     marginTop: 8,
   },
   settingsGroup: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 24,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   settingItem: {
     flexDirection: "row",
@@ -5288,7 +5289,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 32,
@@ -5303,11 +5304,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     marginBottom: 24,
     lineHeight: 20,
   },
@@ -5317,7 +5318,7 @@ const styles = StyleSheet.create({
 
   // Progress Indicator Styles
   modalProgressContainer: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
@@ -5325,20 +5326,20 @@ const styles = StyleSheet.create({
   modalProgressText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginBottom: 8,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   modalProgressBar: {
     height: 4,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
     borderRadius: 2,
     overflow: "hidden",
   },
   modalProgressFill: {
     height: "100%",
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 2,
   },
 
@@ -5347,7 +5348,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     minWidth: 24,
     height: 24,
     borderRadius: 12,
@@ -5355,15 +5356,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 8,
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
   },
   buttonBadgeText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 12,
     fontWeight: "800",
   },
   settingBadge: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     minWidth: 20,
     height: 20,
     borderRadius: 10,
@@ -5372,7 +5373,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   settingBadgeText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 11,
     fontWeight: "800",
   },
@@ -5385,7 +5386,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 8,
     letterSpacing: 0.5,
   },
@@ -5407,15 +5408,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   fieldText: {
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
     flex: 1,
   },
   editRow: {
@@ -5428,20 +5429,20 @@ const styles = StyleSheet.create({
   },
   fieldInput: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 12,
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   bioInput: {
     minHeight: 100,
     textAlignVertical: "top",
   },
   saveBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -5459,12 +5460,12 @@ const styles = StyleSheet.create({
   sectionHeaderLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
   },
   sectionHeaderText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 1.2,
     paddingHorizontal: 16,
   },
@@ -5480,17 +5481,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   editableTagText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   addTagRow: {
     flexDirection: "row",
@@ -5498,15 +5499,15 @@ const styles = StyleSheet.create({
   },
   tagInput: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 12,
     borderRadius: 12,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   addTagBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -5516,12 +5517,12 @@ const styles = StyleSheet.create({
 
   // Insights Modal Styles
   insightCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   insightCardHeader: {
     flexDirection: "row",
@@ -5532,24 +5533,24 @@ const styles = StyleSheet.create({
   insightQuestion: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 0.5,
     flex: 1,
   },
   insightAnswer: {
     fontSize: 15,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 22,
     fontStyle: "italic",
   },
   insightInput: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 12,
     borderRadius: 12,
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     minHeight: 80,
     textAlignVertical: "top",
   },
@@ -5563,23 +5564,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
   },
   cancelBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   saveInsightBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   saveInsightBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   addInsightSection: {
     marginTop: 8,
@@ -5588,31 +5589,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     borderStyle: "dashed",
   },
   selectQuestionText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   newInsightCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   questionPicker: {
     marginTop: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     overflow: "hidden",
   },
   questionOption: {
@@ -5626,7 +5627,7 @@ const styles = StyleSheet.create({
   questionOptionText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     flex: 1,
   },
 
@@ -5642,11 +5643,11 @@ const styles = StyleSheet.create({
   settingRowLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   settingRowValue: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   privacySection: {
     marginBottom: 24,
@@ -5655,11 +5656,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   privacyContent: {
     flex: 1,
@@ -5667,44 +5668,44 @@ const styles = StyleSheet.create({
   privacyLabel: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
   },
   privacyDescription: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   privacyValue: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
-    backgroundColor: "#FFF",
+    color: tokens.colors.text,
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   privacyActionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   privacyIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   privacyActionContent: {
     flex: 1,
@@ -5712,29 +5713,29 @@ const styles = StyleSheet.create({
   privacyActionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   privacyActionSubtitle: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   legalLastUpdated: {
     fontSize: 12,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 12,
     fontStyle: "italic",
   },
   legalIntro: {
     fontSize: 14,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 21,
     marginBottom: 20,
   },
   legalSectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginTop: 20,
     marginBottom: 6,
     letterSpacing: 0.1,
@@ -5742,19 +5743,19 @@ const styles = StyleSheet.create({
   legalSubSectionTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#333",
+    color: tokens.colors.text,
     marginTop: 10,
     marginBottom: 4,
   },
   legalBody: {
     fontSize: 14,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 21,
     marginBottom: 4,
   },
   legalBullet: {
     fontSize: 14,
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 21,
     paddingLeft: 4,
     marginBottom: 3,
@@ -5762,7 +5763,7 @@ const styles = StyleSheet.create({
   legalContact: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
     marginTop: 4,
   },
   // Delete-account card — same shape as the sibling privacy cards but a
@@ -5772,7 +5773,7 @@ const styles = StyleSheet.create({
   deleteActionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EBEBEB",
+    backgroundColor: tokens.colors.bgSurface,
     padding: 16,
     borderRadius: 12,
     marginTop: 16,
@@ -5782,24 +5783,24 @@ const styles = StyleSheet.create({
   deleteActionTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   passwordInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 56,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     gap: 12,
   },
   passwordInput: {
     flex: 1,
     fontSize: 16,
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "500",
   },
   errorContainer: {
@@ -5826,13 +5827,13 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // Tab Navigation
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     padding: 4,
     marginBottom: 32,
@@ -5844,10 +5845,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tabActive: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
@@ -5860,10 +5861,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
   tabTextActive: {
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // Applications Section
@@ -5873,21 +5874,21 @@ const styles = StyleSheet.create({
   applicationsTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
   },
   applicationsSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     marginBottom: 24,
   },
   applicationCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   appCardHeader: {
     flexDirection: "row",
@@ -5898,7 +5899,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   appCardInfo: {
     flex: 1,
@@ -5907,12 +5908,12 @@ const styles = StyleSheet.create({
   appJobTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   appCompany: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
   },
   statusDot: {
@@ -5934,7 +5935,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   statusBadgeBlack: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
@@ -5942,7 +5943,7 @@ const styles = StyleSheet.create({
   statusBadgeBlackText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   timelineContainer: {
     marginBottom: 20,
@@ -5957,13 +5958,13 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
     marginTop: 4,
   },
   timelineDotCompleted: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   timelineDotReferred: {
     width: 14,
@@ -5971,12 +5972,12 @@ const styles = StyleSheet.create({
     borderRadius: 7,
   },
   timelineDotReferredCompleted: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderWidth: 3,
     borderColor: "#F9F9F9",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 3,
@@ -5992,7 +5993,7 @@ const styles = StyleSheet.create({
     top: 18,
     width: 2,
     height: 24,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
   },
   timelineContent: {
     marginLeft: 12,
@@ -6001,10 +6002,10 @@ const styles = StyleSheet.create({
   timelineStage: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
   timelineStageCompleted: {
-    color: "#000",
+    color: tokens.colors.text,
   },
   timelineStageReferred: {
     fontSize: 15,
@@ -6013,7 +6014,7 @@ const styles = StyleSheet.create({
   },
   timelineDate: {
     fontSize: 12,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     marginTop: 2,
   },
   appCardFooter: {
@@ -6027,7 +6028,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   sponsorInfo: {
     flex: 1,
@@ -6036,20 +6037,20 @@ const styles = StyleSheet.create({
   sponsorLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1,
   },
   sponsorName: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // Application Detail Modal
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -6068,19 +6069,19 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 18,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     marginBottom: 16,
   },
   appDetailTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
     marginBottom: 4,
   },
   appDetailCompany: {
     fontSize: 16,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
     marginBottom: 16,
   },
@@ -6090,12 +6091,12 @@ const styles = StyleSheet.create({
   detailSectionTitle: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.2,
     marginBottom: 12,
   },
   timelineDetailContainer: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     padding: 20,
   },
@@ -6112,12 +6113,12 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
     borderWidth: 3,
-    borderColor: "#FFF",
+    borderColor: tokens.colors.bg,
   },
   timelineDetailDotCompleted: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   timelineDetailDotReferred: {
     width: 18,
@@ -6125,12 +6126,12 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   timelineDetailDotReferredCompleted: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderWidth: 4,
     borderColor: "#F9F9F9",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -6143,7 +6144,7 @@ const styles = StyleSheet.create({
   timelineDetailLine: {
     width: 2,
     height: 32,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: tokens.colors.border,
     marginTop: 4,
   },
   timelineDetailLineCompleted: {
@@ -6156,11 +6157,11 @@ const styles = StyleSheet.create({
   timelineDetailStage: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 2,
   },
   timelineDetailStageCompleted: {
-    color: "#000",
+    color: tokens.colors.text,
   },
   timelineDetailStageReferred: {
     fontSize: 16,
@@ -6169,13 +6170,13 @@ const styles = StyleSheet.create({
   },
   timelineDetailDate: {
     fontSize: 13,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontWeight: "600",
   },
   sponsorCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     padding: 16,
   },
@@ -6183,7 +6184,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   sponsorDetailInfo: {
     flex: 1,
@@ -6192,42 +6193,42 @@ const styles = StyleSheet.create({
   sponsorDetailName: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   sponsorDetailRole: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
   },
   nextActionCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   nextActionText: {
     flex: 1,
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   messageBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     borderRadius: 16,
     marginTop: 12,
   },
   messageBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -6237,46 +6238,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   certificationName: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
   },
   certificationOrg: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
   },
   addItemBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 14,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     borderStyle: "dashed",
   },
   addItemText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // Experience & Education Entry Card Styles
   entryCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     marginBottom: 16,
     overflow: "hidden",
   },
@@ -6285,7 +6286,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   entryCardTitle: {
     flex: 1,
@@ -6294,12 +6295,12 @@ const styles = StyleSheet.create({
   entryCardMainText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   entryCardSubText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   entryCardActions: {
     flexDirection: "row",
@@ -6317,38 +6318,38 @@ const styles = StyleSheet.create({
   entryFieldLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: tokens.colors.textBody,
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginBottom: 4,
   },
   entryFieldInput: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 12,
     borderRadius: 10,
     fontSize: 14,
-    color: "#000",
+    color: tokens.colors.text,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   entryFieldDisplay: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     padding: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   entryFieldText: {
     fontSize: 14,
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
   entryFieldPlaceholder: {
     fontSize: 14,
-    color: "#999",
+    color: tokens.colors.textMuted,
   },
   entrySaveBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -6358,7 +6359,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   entrySaveBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -6380,16 +6381,16 @@ const styles = StyleSheet.create({
   },
   emptyHint: {
     fontSize: 13,
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     fontStyle: "italic",
     marginTop: 4,
   },
   emptyStateCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 24,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
@@ -6397,7 +6398,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 14,
-    color: "#999",
+    color: tokens.colors.textMuted,
     textAlign: "center",
     lineHeight: 20,
   },
@@ -6410,14 +6411,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   workPreferenceOptionSelected: {
-    backgroundColor: "#F9F9F9",
-    borderColor: "#000",
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderColor: tokens.colors.brand,
   },
   workPreferenceCheckbox: {
     width: 20,
@@ -6425,22 +6426,22 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 2,
     borderColor: "#CCC",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
   },
   workPreferenceCheckboxSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: tokens.colors.brand,
+    borderColor: tokens.colors.brand,
   },
   workPreferenceText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
     flex: 1,
   },
   workPreferenceTextSelected: {
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "700",
   },
   checkboxRow: {
@@ -6452,18 +6453,18 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
 
   // ── Resume Upload Section ─────────────────────────────────────────────────
   resumeSection: {
     marginHorizontal: 20,
     marginBottom: 8,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   resumeSectionHeader: {
     flexDirection: "row",
@@ -6479,26 +6480,26 @@ const styles = StyleSheet.create({
   resumeSectionTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   aiBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 20,
   },
   aiBadgeText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.5,
   },
   resumeSectionSubtitle: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
     marginBottom: 16,
     lineHeight: 18,
@@ -6511,7 +6512,7 @@ const styles = StyleSheet.create({
   },
   resumeStatusText: {
     fontSize: 12,
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "700",
   },
   resumeUploadBtn: {
@@ -6519,23 +6520,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 14,
     borderRadius: 14,
   },
   resumeUploadBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "700",
   },
   resumeProgressCard: {
     flexDirection: "column",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   resumeProgressRow: {
     flexDirection: "row",
@@ -6549,17 +6550,17 @@ const styles = StyleSheet.create({
   resumeProgressTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   resumeProgressSub: {
     fontSize: 12,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "600",
   },
   resumeElapsedText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     minWidth: 28,
     textAlign: "right",
   },
@@ -6573,17 +6574,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#DDD",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   resumeCancelText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   resumeSuccessCard: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     borderRadius: 14,
     padding: 16,
     gap: 10,
@@ -6596,7 +6597,7 @@ const styles = StyleSheet.create({
   resumeSuccessTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   resumeSuccessSubtitle: {
     fontSize: 13,
@@ -6609,17 +6610,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   resumeFieldPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   resumeFieldPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   resumeUploadAgainBtn: {
     flexDirection: "row",
@@ -6630,7 +6631,7 @@ const styles = StyleSheet.create({
   },
   resumeUploadAgainText: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
   },
   resumeErrorCard: {
@@ -6651,7 +6652,7 @@ const styles = StyleSheet.create({
   },
   resumeErrorSub: {
     fontSize: 12,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
   },
   resumeRetryBtn: {
@@ -6661,13 +6662,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   resumeRetryText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 12,
     fontWeight: "700",
   },
   resumeDivider: {
     height: 1,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     marginVertical: 14,
   },
   resumeManualLink: {
@@ -6678,7 +6679,7 @@ const styles = StyleSheet.create({
   resumeManualLinkText: {
     flex: 1,
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
   },
 });

@@ -74,6 +74,7 @@ import { WebView } from "react-native-webview";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
+import { tokens } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -1096,7 +1097,7 @@ export function JobsView() {
             activeOpacity={0.9}
             onPress={openCreateModal}
           >
-            <Plus color="#FFF" size={20} strokeWidth={3} />
+            <Plus color={tokens.colors.brandText} size={20} strokeWidth={3} />
             <Text style={styles.createButtonText}>Create Listing</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -1114,13 +1115,13 @@ export function JobsView() {
             style={styles.loadingContainer}
           >
             <View style={styles.loadingSpinner}>
-              <Sparkles size={32} color="#000" />
+              <Sparkles size={32} color={tokens.colors.text} />
             </View>
             <Text style={styles.loadingText}>Finding opportunities...</Text>
           </Animated.View>
         ) : error ? (
           <EmptyState
-            icon={<Zap size={40} color="#000" strokeWidth={2.5} />}
+            icon={<Zap size={40} color={tokens.colors.text} strokeWidth={2.5} />}
             title="Something went wrong"
             description="We couldn't load jobs right now. Please try again in a moment."
             actionText="Retry"
@@ -1259,7 +1260,7 @@ export function JobsView() {
                 {jobs.length === 0 ? (
                   <EmptyState
                     icon={
-                      <Briefcase size={40} color="#000" strokeWidth={2.5} />
+                      <Briefcase size={40} color={tokens.colors.text} strokeWidth={2.5} />
                     }
                     title="No available jobs"
                     description="Check back soon for new opportunities, or create your own listing."
@@ -1293,7 +1294,7 @@ export function JobsView() {
                         onPress={() => setDisplayLimit((prev) => prev + 20)}
                       >
                         <Text style={styles.loadMoreText}>Load More Jobs</Text>
-                        <ChevronRight size={16} color="#000" />
+                        <ChevronRight size={16} color={tokens.colors.text} />
                       </TouchableOpacity>
                     )}
                   </>
@@ -1309,7 +1310,7 @@ export function JobsView() {
                     entering={FadeIn.duration(300)}
                     style={styles.simpleEmptyState}
                   >
-                    <Sparkles size={24} color="#999" strokeWidth={2.5} />
+                    <Sparkles size={24} color={tokens.colors.textMuted} strokeWidth={2.5} />
                     <View style={styles.simpleEmptyTextContainer}>
                       <Text style={styles.simpleEmptyText}>
                         Loading your sponsored jobs...
@@ -1321,7 +1322,7 @@ export function JobsView() {
                     entering={FadeIn.duration(400)}
                     style={styles.simpleEmptyState}
                   >
-                    <Sparkles size={24} color="#999" strokeWidth={2.5} />
+                    <Sparkles size={24} color={tokens.colors.textMuted} strokeWidth={2.5} />
                     <View style={styles.simpleEmptyTextContainer}>
                       <Text style={styles.simpleEmptyText}>
                         You haven't sponsored any jobs yet
@@ -1387,7 +1388,7 @@ export function JobsView() {
                     : "Sponsorship Active!"}
               </Text>
               <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
             {sponsorshipStep === 1 ? (
@@ -1616,7 +1617,7 @@ export function JobsView() {
             ) : (
               <Animated.View entering={FadeIn} style={styles.successStep}>
                 <View style={styles.successIconCircle}>
-                  <Check color="#FFF" size={32} strokeWidth={3} />
+                  <Check color={tokens.colors.brandText} size={32} strokeWidth={3} />
                 </View>
                 <Text style={styles.successTitle}>Sponsorship Confirmed!</Text>
                 <Text style={styles.successDesc}>
@@ -1671,7 +1672,7 @@ export function JobsView() {
                 onPress={closeCreateModal}
                 style={styles.closeButton}
               >
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -1681,7 +1682,7 @@ export function JobsView() {
 
             {/* URL Input */}
             <View style={styles.urlInputContainer}>
-              <Globe color="#999" size={18} />
+              <Globe color={tokens.colors.textMuted} size={18} />
               <TextInput
                 style={styles.urlTextInput}
                 placeholder="https://jobs.company.com/role"
@@ -1701,7 +1702,7 @@ export function JobsView() {
                   onPress={() => setJobUrlInput("")}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <X color="#999" size={16} />
+                  <X color={tokens.colors.textMuted} size={16} />
                 </TouchableOpacity>
               )}
             </View>
@@ -1731,7 +1732,7 @@ export function JobsView() {
               <Text
                 style={[
                   styles.confirmBtnText,
-                  !jobUrlInput.trim() && { color: "#999" },
+                  !jobUrlInput.trim() && { color: tokens.colors.textMuted },
                 ]}
               >
                 Preview Job
@@ -1755,11 +1756,11 @@ export function JobsView() {
               style={styles.createWebViewNavBtn}
               activeOpacity={0.7}
             >
-              <X color="#000" size={22} />
+              <X color={tokens.colors.text} size={22} />
             </TouchableOpacity>
 
             <View style={styles.createWebViewUrlWrap}>
-              <Globe color="#999" size={13} />
+              <Globe color={tokens.colors.textMuted} size={13} />
               <Text style={styles.createWebViewUrl} numberOfLines={1}>
                 {previewUrl}
               </Text>
@@ -1812,7 +1813,7 @@ export function JobsView() {
           {/* Loading overlay */}
           {webviewLoading && (
             <View style={styles.webviewLoadingOverlay} pointerEvents="none">
-              <ActivityIndicator size="large" color="#000" />
+              <ActivityIndicator size="large" color={tokens.colors.text} />
             </View>
           )}
 
@@ -1820,7 +1821,7 @@ export function JobsView() {
           <View style={styles.confirmJobBar}>
             <View style={styles.confirmJobBarInner}>
               <View style={styles.confirmJobStepPill}>
-                <Sparkles color="#FFF" size={11} />
+                <Sparkles color={tokens.colors.brandText} size={11} />
                 <Text style={styles.confirmJobStepText}>Step 1 of 2</Text>
               </View>
               <Text style={styles.confirmJobBarLabel}>
@@ -1833,12 +1834,12 @@ export function JobsView() {
                 activeOpacity={0.85}
               >
                 {isScraping ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color={tokens.colors.brandText} />
                 ) : (
                   <>
-                    <Check color="#FFF" size={17} strokeWidth={2.5} />
+                    <Check color={tokens.colors.brandText} size={17} strokeWidth={2.5} />
                     <Text style={styles.confirmJobBtnText}>Confirm Job</Text>
-                    <ChevronRight color="#FFF" size={17} />
+                    <ChevronRight color={tokens.colors.brandText} size={17} />
                   </>
                 )}
               </TouchableOpacity>
@@ -1881,7 +1882,7 @@ export function JobsView() {
                 onPress={() => setCreateFlowStep("webview")}
                 style={[styles.closeButton, { marginRight: 4 }]}
               >
-                <ChevronLeft color="#000" size={24} />
+                <ChevronLeft color={tokens.colors.text} size={24} />
               </TouchableOpacity>
               <Text style={[styles.modalMainTitle, { flex: 1 }]}>
                 BackChannel Insights
@@ -1890,7 +1891,7 @@ export function JobsView() {
                 onPress={closeCreateModal}
                 style={styles.closeButton}
               >
-                <X color="#000" size={22} />
+                <X color={tokens.colors.text} size={22} />
               </TouchableOpacity>
             </View>
 
@@ -2003,10 +2004,10 @@ export function JobsView() {
               activeOpacity={0.85}
             >
               {isCreatingJob ? (
-                <ActivityIndicator color="#FFF" size="small" />
+                <ActivityIndicator color={tokens.colors.brandText} size="small" />
               ) : (
                 <>
-                  <Sparkles color="#FFF" size={18} />
+                  <Sparkles color={tokens.colors.brandText} size={18} />
                   <Text style={styles.confirmBtnText}>Create Job</Text>
                 </>
               )}
@@ -2099,7 +2100,7 @@ export function JobsView() {
                   activeOpacity={0.8}
                 >
                   {isSavingLogo ? (
-                    <ActivityIndicator size="small" color="#FFF" />
+                    <ActivityIndicator size="small" color={tokens.colors.brandText} />
                   ) : (
                     <Text style={styles.unsponsorConfirmBtnText}>
                       Save Logo
@@ -2194,7 +2195,7 @@ export function JobsView() {
                       activeOpacity={0.7}
                     >
                       <View style={styles.menuIconContainer}>
-                        <ImageIcon size={18} color="#666" />
+                        <ImageIcon size={18} color={tokens.colors.textBody} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.menuOptionTitle}>Replace Logo</Text>
@@ -2209,7 +2210,7 @@ export function JobsView() {
                       activeOpacity={0.7}
                     >
                       <View style={styles.menuIconContainer}>
-                        <Trash2 size={18} color="#666" />
+                        <Trash2 size={18} color={tokens.colors.textBody} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
@@ -2226,7 +2227,7 @@ export function JobsView() {
                     activeOpacity={0.7}
                   >
                     <View style={styles.menuIconContainer}>
-                      <ThumbsDown size={18} color="#666" />
+                      <ThumbsDown size={18} color={tokens.colors.textBody} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.menuOptionTitle}>Not Interested</Text>
@@ -2285,7 +2286,7 @@ export function JobsView() {
                   </Text>
                   {!!viewJobDetails.location && (
                     <View style={styles.jobModalLocationRow}>
-                      <MapPin size={13} color="#999" />
+                      <MapPin size={13} color={tokens.colors.textMuted} />
                       <Text style={styles.jobModalLocationText}>
                         {viewJobDetails.location}
                       </Text>
@@ -2301,7 +2302,7 @@ export function JobsView() {
                 {/* Compensation Strip */}
                 <View style={styles.jobModalCompStrip}>
                   <View style={styles.jobModalCompCell}>
-                    <DollarSign size={14} color="#555" />
+                    <DollarSign size={14} color={tokens.colors.textBody} />
                     <View style={{ flex: 1, flexShrink: 1 }}>
                       <Text style={styles.jobModalCompLabel}>SALARY</Text>
                       <Text style={styles.jobModalCompValue}>
@@ -2322,7 +2323,7 @@ export function JobsView() {
                         styles.jobModalCompCellBorder,
                       ]}
                     >
-                      <Briefcase size={14} color="#555" />
+                      <Briefcase size={14} color={tokens.colors.textBody} />
                       <View style={{ flex: 1, flexShrink: 1 }}>
                         <Text style={styles.jobModalCompLabel}>EXPERIENCE</Text>
                         <Text style={styles.jobModalCompValue}>
@@ -2338,7 +2339,7 @@ export function JobsView() {
                   !!viewJobDetails.type) && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <Info size={16} color="#000" />
+                      <Info size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Role Details
                       </Text>
@@ -2346,7 +2347,7 @@ export function JobsView() {
                     <View style={styles.skillsRow}>
                       {!!viewJobDetails.workArrangement && (
                         <View style={styles.roleDetailChip}>
-                          <MapPin size={13} color="#000" />
+                          <MapPin size={13} color={tokens.colors.text} />
                           <Text style={styles.roleDetailChipText}>
                             {viewJobDetails.workArrangement}
                           </Text>
@@ -2354,7 +2355,7 @@ export function JobsView() {
                       )}
                       {!!viewJobDetails.type && (
                         <View style={styles.roleDetailChip}>
-                          <Briefcase size={13} color="#000" />
+                          <Briefcase size={13} color={tokens.colors.text} />
                           <Text style={styles.roleDetailChipText}>
                             {viewJobDetails.type}
                           </Text>
@@ -2368,7 +2369,7 @@ export function JobsView() {
                 {!!viewJobDetails.coreResponsibilities && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <Briefcase size={16} color="#000" />
+                      <Briefcase size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Core Responsibilities
                       </Text>
@@ -2385,7 +2386,7 @@ export function JobsView() {
                 {(viewJobDetails.skills || []).length > 0 && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <TrendingUp size={16} color="#000" />
+                      <TrendingUp size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>
                         Required Skills
                       </Text>
@@ -2405,7 +2406,7 @@ export function JobsView() {
                   !!viewJobDetails.requirements && (
                     <View style={styles.detailSection}>
                       <View style={styles.detailSectionHeader}>
-                        <TrendingUp size={16} color="#000" />
+                        <TrendingUp size={16} color={tokens.colors.text} />
                         <Text style={styles.detailSectionTitle}>
                           Requirements
                         </Text>
@@ -2422,12 +2423,12 @@ export function JobsView() {
                 {(viewJobDetails.benefits || []).length > 0 && (
                   <View style={styles.detailSection}>
                     <View style={styles.detailSectionHeader}>
-                      <Sparkles size={16} color="#000" />
+                      <Sparkles size={16} color={tokens.colors.text} />
                       <Text style={styles.detailSectionTitle}>Highlights</Text>
                     </View>
                     {viewJobDetails.benefits.map((benefit, i) => (
                       <View key={i} style={styles.benefitRow}>
-                        <Check size={14} color="#000" />
+                        <Check size={14} color={tokens.colors.text} />
                         <Text style={styles.benefitText}>{benefit}</Text>
                       </View>
                     ))}
@@ -2448,7 +2449,7 @@ export function JobsView() {
                 {(viewJobDetails.currentSponsors || []).length > 0 && (
                   <View style={styles.sponsorInfoCard}>
                     <View style={styles.sponsorCardHeader}>
-                      <Users size={16} color="#000" />
+                      <Users size={16} color={tokens.colors.text} />
                       <Text style={styles.sponsorCardTitle}>Job Sponsors</Text>
                     </View>
                     <View style={{ gap: 12 }}>
@@ -2464,7 +2465,7 @@ export function JobsView() {
                               style={[
                                 styles.sponsorCardAvatar,
                                 {
-                                  backgroundColor: "#000",
+                                  backgroundColor: tokens.colors.brand,
                                   alignItems: "center",
                                   justifyContent: "center",
                                 },
@@ -2474,7 +2475,7 @@ export function JobsView() {
                                 style={{
                                   fontSize: 16,
                                   fontWeight: "800",
-                                  color: "#FFF",
+                                  color: tokens.colors.brandText,
                                 }}
                               >
                                 {(sponsor.name || "?")[0].toUpperCase()}
@@ -2493,7 +2494,7 @@ export function JobsView() {
                           </View>
                           {sponsor.canRefer && (
                             <View style={styles.canReferBadge}>
-                              <CheckCircle size={12} color="#000" />
+                              <CheckCircle size={12} color={tokens.colors.text} />
                             </View>
                           )}
                         </View>
@@ -2516,7 +2517,7 @@ export function JobsView() {
                     return (
                       <View style={styles.unsponsorBtnContainer}>
                         <View style={styles.unsponsorBtn}>
-                          <Check color="#000" size={18} strokeWidth={3} />
+                          <Check color={tokens.colors.text} size={18} strokeWidth={3} />
                           <Text style={styles.unsponsorBtnText}>
                             Already Sponsoring
                           </Text>
@@ -2556,10 +2557,10 @@ export function JobsView() {
                           }}
                         >
                           {isBusy ? (
-                            <ActivityIndicator size="small" color="#FFF" />
+                            <ActivityIndicator size="small" color={tokens.colors.brandText} />
                           ) : (
                             <>
-                              <Trash2 size={15} color="#FFF" />
+                              <Trash2 size={15} color={tokens.colors.brandText} />
                               <Text style={styles.unsponsorActiveBtnText}>
                                 Remove Sponsorship
                               </Text>
@@ -2580,7 +2581,7 @@ export function JobsView() {
                       }, 50);
                     }}
                   >
-                    <Zap color="#FFF" size={20} fill="#FFF" />
+                    <Zap color={tokens.colors.brandText} size={20} fill={tokens.colors.brandText} />
                     <Text style={styles.applyBtnLargeText}>Sponsor</Text>
                   </TouchableOpacity>
                 )}
@@ -2633,7 +2634,7 @@ export function JobsView() {
                 }}
                 style={styles.closeButton}
               >
-                <X color="#000" size={24} />
+                <X color={tokens.colors.text} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -2643,11 +2644,11 @@ export function JobsView() {
             >
               {isLoadingApplicants ? (
                 <View style={{ padding: 40, alignItems: "center" }}>
-                  <ActivityIndicator size="small" color="#000" />
+                  <ActivityIndicator size="small" color={tokens.colors.text} />
                   <Text
                     style={{
                       marginTop: 12,
-                      color: "#999",
+                      color: tokens.colors.textMuted,
                       fontSize: 13,
                       fontWeight: "600",
                     }}
@@ -2671,7 +2672,7 @@ export function JobsView() {
               ) : jobApplicants.length === 0 ? (
                 <View style={{ padding: 20, alignItems: "center" }}>
                   <Text
-                    style={{ textAlign: "center", color: "#999", fontSize: 16 }}
+                    style={{ textAlign: "center", color: tokens.colors.textMuted, fontSize: 16 }}
                   >
                     No applicants yet.
                   </Text>
@@ -2703,7 +2704,7 @@ export function JobsView() {
                         style={[
                           styles.applicantAvatar,
                           {
-                            backgroundColor: "#000",
+                            backgroundColor: tokens.colors.brand,
                             alignItems: "center",
                             justifyContent: "center",
                           },
@@ -2713,7 +2714,7 @@ export function JobsView() {
                           style={{
                             fontSize: 18,
                             fontWeight: "800",
-                            color: "#FFF",
+                            color: tokens.colors.brandText,
                           }}
                         >
                           {(applicant.name || "?")[0].toUpperCase()}
@@ -2733,7 +2734,7 @@ export function JobsView() {
                         centered against the avatar, not pinned to the name. */}
                     {applicant.status === "MATCHED" && (
                       <View style={styles.applicantMatchedTag}>
-                        <CheckCircle size={11} color="#000" />
+                        <CheckCircle size={11} color={tokens.colors.text} />
                         <Text style={styles.applicantMatchedTagText}>
                           Matched
                         </Text>
@@ -2742,7 +2743,7 @@ export function JobsView() {
                     {/* Chevron now a visual affordance only — the entire
                         row above handles the tap. */}
                     <View style={styles.messageApplicantBtn}>
-                      <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                      <ChevronRight color={tokens.colors.brandText} size={18} strokeWidth={2.5} />
                     </View>
                   </TouchableOpacity>
                 ))
@@ -2780,11 +2781,11 @@ export function JobsView() {
               style={styles.gateCloseBtn}
               onPress={() => setShowSponsorGate(null)}
             >
-              <X color="#666" size={20} />
+              <X color={tokens.colors.textBody} size={20} />
             </TouchableOpacity>
 
             <View style={styles.gateIconContainer}>
-              <Lock size={32} color="#000" />
+              <Lock size={32} color={tokens.colors.text} />
             </View>
             <Text style={styles.gateTitle}>Sponsor to View</Text>
             <Text style={styles.gateDesc}>
@@ -2838,7 +2839,7 @@ export function JobsView() {
           badge={
             selectedApplicantForMessage.status === "MATCHED"
               ? // Monochrome to match the "Matched" tag on the list row.
-                { label: "Matched", color: "#000", bgColor: "#F4F4F5" }
+                { label: "Matched", color: tokens.colors.text, bgColor: "#F4F4F5" }
               : { label: "Liked your role" }
           }
           roleContext={
@@ -2856,7 +2857,7 @@ export function JobsView() {
                   // than asking the sponsor to match again.
                   label: "Matched",
                   icon: (
-                    <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />
+                    <CheckCircle color={tokens.colors.brandText} size={18} strokeWidth={2.5} />
                   ),
                   disabled: true,
                   onPress: () => {},
@@ -2864,7 +2865,7 @@ export function JobsView() {
               : {
                   label: `Match with ${selectedApplicantForMessage.name.split(" ")[0]}`,
                   icon: (
-                    <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />
+                    <CheckCircle color={tokens.colors.brandText} size={18} strokeWidth={2.5} />
                   ),
                   loading: isMatching,
                   disabled: !matchJobPostingsId,
@@ -2944,7 +2945,7 @@ function JobCard({
       {/* Already-sponsoring banner — only shown in browse tab for sponsored jobs */}
       {isSponsored && onSponsor !== undefined && (
         <View style={styles.sponsoredBanner} pointerEvents="none">
-          <Check color="#000" size={12} strokeWidth={3} />
+          <Check color={tokens.colors.text} size={12} strokeWidth={3} />
           <Text style={styles.sponsoredBannerText}>Already Sponsoring</Text>
         </View>
       )}
@@ -2970,17 +2971,17 @@ function JobCard({
             }}
             activeOpacity={0.7}
           >
-            <MoreHorizontal color="#999" size={20} />
+            <MoreHorizontal color={tokens.colors.textMuted} size={20} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.tagsRow}>
           <View style={styles.tag}>
-            <MapPin size={10} color="#666" />
+            <MapPin size={10} color={tokens.colors.textBody} />
             <Text style={styles.tagText}>{job.location}</Text>
           </View>
           <View style={styles.tag}>
-            <DollarSign size={10} color="#666" />
+            <DollarSign size={10} color={tokens.colors.textBody} />
             <Text style={styles.tagText}>{job.salary}</Text>
           </View>
         </View>
@@ -2996,7 +2997,7 @@ function JobCard({
               activeOpacity={0.7}
               style={styles.applicantBadge}
             >
-              <Users color="#000" size={12} />
+              <Users color={tokens.colors.text} size={12} />
               <Text style={styles.applicantText}>
                 {job.applicants} Applicants
               </Text>
@@ -3018,8 +3019,8 @@ function JobCard({
             {isSponsored && (
               <Zap
                 size={14}
-                color="#FFF"
-                fill="#FFF"
+                color={tokens.colors.brandText}
+                fill={tokens.colors.brandText}
                 style={{ marginRight: 4 }}
               />
             )}
@@ -3039,14 +3040,14 @@ function JobCard({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1, backgroundColor: tokens.colors.bg },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 20 },
   header: { marginBottom: 24, paddingHorizontal: 4 },
-  title: { fontSize: 32, fontWeight: "800", color: "#000", letterSpacing: -1 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 6, fontWeight: "500" },
+  title: { fontSize: 32, fontWeight: "800", color: tokens.colors.text, letterSpacing: -1 },
+  subtitle: { fontSize: 16, color: tokens.colors.textBody, marginTop: 6, fontWeight: "500" },
 
   createButton: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     flexDirection: "row",
     height: 56,
     borderRadius: 28,
@@ -3054,17 +3055,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     marginBottom: 32,
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
-  createButtonText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  createButtonText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
   listSectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#999",
+    color: tokens.colors.textMuted,
     letterSpacing: 1.2,
     textTransform: "uppercase",
     paddingLeft: 4,
@@ -3085,20 +3086,20 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 24,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
   },
-  sponsoredCardBorder: { borderColor: "#000", borderWidth: 1.5 },
+  sponsoredCardBorder: { borderColor: tokens.colors.brand, borderWidth: 1.5 },
   sponsoredBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 24,
     paddingVertical: 9,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderBottomWidth: 1,
@@ -3107,13 +3108,13 @@ const styles = StyleSheet.create({
   sponsoredBannerText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
   cardShadow: {
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.18,
         shadowRadius: 30,
@@ -3135,15 +3136,15 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 14,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   headerInfo: { flex: 1 },
   companyName: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#666",
+    color: tokens.colors.textBody,
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -3151,7 +3152,7 @@ const styles = StyleSheet.create({
   jobTitleText: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.5,
   },
   moreBtn: { padding: 12, margin: -8, alignSelf: "flex-start" },
@@ -3166,12 +3167,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
-  tagText: { fontSize: 12, fontWeight: "600", color: "#444" },
+  tagText: { fontSize: 12, fontWeight: "600", color: tokens.colors.textBody },
   cardDescription: {
     fontSize: 14,
-    color: "#555",
+    color: tokens.colors.textBody,
     lineHeight: 20,
     marginBottom: 16,
   },
@@ -3189,12 +3190,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  applicantText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  applicantText: { fontSize: 12, fontWeight: "700", color: tokens.colors.text },
 
   cardSponsorBtn: {
     flexDirection: "row",
@@ -3206,20 +3207,20 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   cardSponsorBtnDefault: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
   },
   cardSponsorBtnActive: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
   },
   cardSponsorBtnText: { fontSize: 13, fontWeight: "700" },
-  textBlack: { color: "#000" },
+  textBlack: { color: tokens.colors.text },
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -3232,11 +3233,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  modalMainTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  modalMainTitle: { fontSize: 24, fontWeight: "800", color: tokens.colors.text },
   closeButton: { padding: 4 },
   modalSubTitle: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 20,
     marginBottom: 32,
   },
@@ -3244,15 +3245,15 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 12,
   },
   radioOption: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     marginBottom: 12,
   },
   radioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -3263,9 +3264,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#CCC",
   },
-  radioCircleActive: { borderColor: "#000", borderWidth: 6 },
-  radioText: { fontSize: 15, color: "#666", fontWeight: "600" },
-  radioTextActive: { color: "#000", fontWeight: "600" },
+  radioCircleActive: { borderColor: tokens.colors.brand, borderWidth: 6 },
+  radioText: { fontSize: 15, color: tokens.colors.textBody, fontWeight: "600" },
+  radioTextActive: { color: tokens.colors.text, fontWeight: "600" },
   sideBySide: { flexDirection: "row", gap: 12 },
   halfOption: {
     flex: 1,
@@ -3274,26 +3275,26 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   confirmBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 18,
     borderRadius: 18,
     alignItems: "center",
     width: "100%",
   },
-  confirmBtnDisabled: { backgroundColor: "#E5E5E5" },
-  confirmBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  textWhite: { color: "#FFF" },
+  confirmBtnDisabled: { backgroundColor: tokens.colors.border },
+  confirmBtnText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
+  textWhite: { color: tokens.colors.brandText },
   successStep: { alignItems: "center", paddingVertical: 20, width: "100%" },
   successIconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -3301,14 +3302,14 @@ const styles = StyleSheet.create({
   successTitle: { fontSize: 22, fontWeight: "800", marginBottom: 10 },
   successDesc: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 30,
     paddingHorizontal: 20,
   },
   createModalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 32,
@@ -3321,9 +3322,9 @@ const styles = StyleSheet.create({
   urlInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 2,
@@ -3332,13 +3333,13 @@ const styles = StyleSheet.create({
   urlTextInput: {
     flex: 1,
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
     paddingVertical: 14,
     fontWeight: "500",
   },
   urlHintText: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginTop: 10,
     fontWeight: "500",
     lineHeight: 18,
@@ -3347,7 +3348,7 @@ const styles = StyleSheet.create({
   // WebView Preview Step
   webviewModalContainer: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
   },
   createWebViewHeader: {
     flexDirection: "row",
@@ -3356,7 +3357,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     gap: 8,
   },
   createWebViewNavBtn: {
@@ -3365,14 +3366,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 18,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
   },
   createWebViewUrlWrap: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -3380,7 +3381,7 @@ const styles = StyleSheet.create({
   createWebViewUrl: {
     flex: 1,
     fontSize: 12,
-    color: "#555",
+    color: tokens.colors.textBody,
     fontWeight: "500",
   },
   createWebViewNavGroup: {
@@ -3396,7 +3397,7 @@ const styles = StyleSheet.create({
   confirmJobBar: {
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 8,
@@ -3409,7 +3410,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -3417,20 +3418,20 @@ const styles = StyleSheet.create({
   confirmJobStepText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
     letterSpacing: 0.3,
   },
   confirmJobBarLabel: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   confirmJobBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     paddingHorizontal: 28,
     borderRadius: 18,
@@ -3439,7 +3440,7 @@ const styles = StyleSheet.create({
   confirmJobBtnText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
 
   // Insights Step
@@ -3452,11 +3453,11 @@ const styles = StyleSheet.create({
   insightsStepLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginLeft: 4,
   },
   createJobBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -3471,17 +3472,17 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 24,
   },
-  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#E5E5E5" },
-  stepDotActive: { backgroundColor: "#000", width: 24 },
+  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.colors.border },
+  stepDotActive: { backgroundColor: tokens.colors.brand, width: 24 },
   createScrollView: { maxHeight: 420 },
   textInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 15,
-    color: "#000",
+    color: tokens.colors.text,
   },
   skillsInput: { minHeight: 50 },
   multilineInput: { minHeight: 100, textAlignVertical: "top", paddingTop: 16 },
@@ -3495,26 +3496,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
   },
-  previewSkillText: { fontSize: 13, fontWeight: "700", color: "#FFF" },
+  previewSkillText: { fontSize: 13, fontWeight: "700", color: tokens.colors.brandText },
   skillsTagContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   skillTag: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
   },
-  skillTagActive: { backgroundColor: "#000", borderColor: "#000" },
-  skillTagText: { fontSize: 13, fontWeight: "600", color: "#666" },
-  skillTagTextActive: { color: "#FFF" },
+  skillTagActive: { backgroundColor: tokens.colors.brand, borderColor: tokens.colors.brand },
+  skillTagText: { fontSize: 13, fontWeight: "600", color: tokens.colors.textBody },
+  skillTagTextActive: { color: tokens.colors.brandText },
   backchannelCallout: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     padding: 20,
     borderRadius: 16,
     marginBottom: 24,
@@ -3524,32 +3525,32 @@ const styles = StyleSheet.create({
   backchannelTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 8,
   },
-  backchannelText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  backchannelText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 22 },
   reviewCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   reviewSection: { marginBottom: 20 },
   reviewLabel: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginBottom: 6,
     letterSpacing: 0.5,
   },
   reviewValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
-  reviewSubValue: { fontSize: 14, color: "#666" },
+  reviewSubValue: { fontSize: 14, color: tokens.colors.textBody },
   reviewSkills: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -3557,28 +3558,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   reviewSkillBadge: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
-  reviewSkillText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  reviewSkillText: { fontSize: 12, fontWeight: "700", color: tokens.colors.text },
   navigationButtons: { flexDirection: "row", gap: 12, marginTop: 20 },
   backNavBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 18,
   },
-  backNavText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  backNavText: { fontSize: 16, fontWeight: "700", color: tokens.colors.text },
   nextBtn: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -3587,7 +3588,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   infoCallout: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     padding: 20,
     borderRadius: 16,
     marginBottom: 24,
@@ -3597,72 +3598,72 @@ const styles = StyleSheet.create({
   infoCalloutTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 8,
   },
-  infoCalloutText: { fontSize: 14, color: "#555", lineHeight: 22 },
-  fieldHint: { fontSize: 13, color: "#999", marginBottom: 12, lineHeight: 18 },
+  infoCalloutText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 22 },
+  fieldHint: { fontSize: 13, color: tokens.colors.textMuted, marginBottom: 12, lineHeight: 18 },
   radioOptionWithDesc: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     marginBottom: 12,
   },
   radioDescription: {
     fontSize: 12,
-    color: "#999",
+    color: tokens.colors.textMuted,
     marginTop: 4,
     lineHeight: 18,
   },
   supportOptions: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 12,
     gap: 12,
   },
   supportItem: { flexDirection: "row", alignItems: "center", gap: 10 },
-  supportText: { fontSize: 14, color: "#666", fontWeight: "600", flex: 1 },
+  supportText: { fontSize: 14, color: tokens.colors.textBody, fontWeight: "600", flex: 1 },
 
   // Menu Modal
   menuOptionCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   menuIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   menuOptionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
-  menuOptionDesc: { fontSize: 13, color: "#666", fontWeight: "500" },
+  menuOptionDesc: { fontSize: 13, color: tokens.colors.textBody, fontWeight: "500" },
   // ── Unsponsor-reason step ──
   unsponsorReasonHeading: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
   },
   unsponsorReasonSub: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "500",
     marginBottom: 10,
   },
@@ -3683,41 +3684,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  radioOuterActive: { borderColor: "#000" },
+  radioOuterActive: { borderColor: tokens.colors.brand },
   radioInner: {
     width: 11,
     height: 11,
     borderRadius: 6,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   reasonLabel: {
     flex: 1,
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
   },
   reasonOtherInput: {
     marginTop: 14,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     padding: 14,
     fontSize: 14,
-    color: "#000",
+    color: tokens.colors.text,
     minHeight: 72,
     textAlignVertical: "top",
   },
   unsponsorConfirmBtn: {
     marginTop: 16,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   unsponsorConfirmBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -3730,12 +3731,12 @@ const styles = StyleSheet.create({
   menuSheetJobTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   menuSheetJobCompany: {
     fontSize: 14,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "500",
   },
 
@@ -3743,7 +3744,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -3757,7 +3758,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -3765,12 +3766,12 @@ const styles = StyleSheet.create({
   jobModalHeroInitialText: {
     fontSize: 32,
     fontWeight: "800",
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   jobModalHeroTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     textAlign: "center",
     marginBottom: 6,
     letterSpacing: -0.5,
@@ -3778,7 +3779,7 @@ const styles = StyleSheet.create({
   jobModalHeroCompany: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#555",
+    color: tokens.colors.textBody,
     marginBottom: 8,
   },
   jobModalLocationRow: {
@@ -3789,13 +3790,13 @@ const styles = StyleSheet.create({
   },
   jobModalLocationText: {
     fontSize: 13,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500",
   },
   jobRemoteBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -3804,7 +3805,7 @@ const styles = StyleSheet.create({
   jobRemoteText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobModalCompStrip: {
     flexDirection: "row",
@@ -3829,14 +3830,14 @@ const styles = StyleSheet.create({
   jobModalCompLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   jobModalCompValue: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   detailSection: {
     marginBottom: 24,
@@ -3850,7 +3851,7 @@ const styles = StyleSheet.create({
   detailSectionTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
   },
   skillsRow: {
     flexDirection: "row",
@@ -3858,9 +3859,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   skillBadge: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -3868,7 +3869,7 @@ const styles = StyleSheet.create({
   skillBadgeText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 0.2,
   },
   roleDetailChip: {
@@ -3883,10 +3884,10 @@ const styles = StyleSheet.create({
   roleDetailChipText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
   },
   jobDetailCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -3894,7 +3895,7 @@ const styles = StyleSheet.create({
   },
   jobDetailText: {
     fontSize: 14,
-    color: "#333",
+    color: tokens.colors.text,
     lineHeight: 21,
     fontWeight: "500",
   },
@@ -3902,12 +3903,12 @@ const styles = StyleSheet.create({
   jobSectionTitle: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     textTransform: "uppercase",
     marginBottom: 12,
     letterSpacing: 0.5,
   },
-  jobSectionText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  jobSectionText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 22 },
   jobSectionEmpty: {
     fontSize: 13,
     color: "#AAA",
@@ -3920,14 +3921,14 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 10,
   },
-  benefitText: { fontSize: 14, color: "#555", fontWeight: "500" },
+  benefitText: { fontSize: 14, color: tokens.colors.textBody, fontWeight: "500" },
   sponsorInfoCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   sponsorCardHeader: {
     flexDirection: "row",
@@ -3938,15 +3939,15 @@ const styles = StyleSheet.create({
   sponsorCardTitle: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     textTransform: "uppercase",
   },
   sponsorCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
   sponsorCardAvatar: { width: 40, height: 40, borderRadius: 20 },
-  sponsorCardName: { fontSize: 14, fontWeight: "800", color: "#000" },
+  sponsorCardName: { fontSize: 14, fontWeight: "800", color: tokens.colors.text },
   sponsorCardRole: {
     fontSize: 12,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -3954,12 +3955,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
   },
   applyBtnLarge: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     borderRadius: 18,
     flexDirection: "row",
@@ -3967,16 +3968,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  applyBtnLargeText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+  applyBtnLargeText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "800" },
 
   unsponsorBtnContainer: {
     alignItems: "center",
     gap: 6,
   },
   unsponsorBtn: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
     paddingVertical: 16,
     borderRadius: 18,
     flexDirection: "row",
@@ -3986,13 +3987,13 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   unsponsorBtnText: {
-    color: "#000",
+    color: tokens.colors.text,
     fontSize: 16,
     fontWeight: "800" as const,
   },
   unsponsorBtnSubtext: {
     fontSize: 12,
-    color: "#999",
+    color: tokens.colors.textMuted,
     fontWeight: "500" as const,
   },
   unsponsorActiveBtn: {
@@ -4000,13 +4001,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 18,
     paddingVertical: 16,
     width: "100%",
   },
   unsponsorActiveBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "700" as const,
   },
@@ -4024,16 +4025,16 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
   },
-  applicantName: { fontSize: 16, fontWeight: "700", color: "#000" },
+  applicantName: { fontSize: 16, fontWeight: "700", color: tokens.colors.text },
   // Monochrome "Matched" status tag — black icon/text on a light-gray pill,
   // matching the app's black/gray palette.
   applicantMatchedTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -4042,24 +4043,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.2,
-    color: "#000",
+    color: tokens.colors.text,
   },
-  applicantRole: { fontSize: 13, color: "#666", marginTop: 2 },
+  applicantRole: { fontSize: 13, color: tokens.colors.textBody, marginTop: 2 },
   messageApplicantBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
   matchScoreBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -4067,7 +4068,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  matchScoreText: { color: "#000", fontWeight: "800", fontSize: 12 },
+  matchScoreText: { color: tokens.colors.text, fontWeight: "800", fontSize: 12 },
 
   // Swipeable Card Modal Styles (from MatchesView)
   jobRefTag: {
@@ -4079,12 +4080,12 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 20,
   },
-  jobRefLabel: { fontSize: 10, fontWeight: "900", color: "#999" },
+  jobRefLabel: { fontSize: 10, fontWeight: "900", color: tokens.colors.textMuted },
   jobRefBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -4095,9 +4096,9 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 24,
     padding: 20,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   pagination: {
     flexDirection: "row",
@@ -4106,7 +4107,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   dot: { height: 6, borderRadius: 3 },
-  dotActive: { width: 22, backgroundColor: "#000" },
+  dotActive: { width: 22, backgroundColor: tokens.colors.brand },
   dotInactive: { width: 6, backgroundColor: "#DDD" },
   infoCardHeader: {
     flexDirection: "row",
@@ -4118,7 +4119,7 @@ const styles = StyleSheet.create({
   modalName: { fontSize: 20, fontWeight: "800" },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
-  bioText: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 15 },
+  bioText: { fontSize: 14, color: tokens.colors.textBody, lineHeight: 20, marginBottom: 15 },
   skillsContainer: {
     flexDirection: "row",
     gap: 8,
@@ -4126,44 +4127,44 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   skillChip: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
-  skillText: { fontSize: 11, fontWeight: "700", color: "#666" },
+  skillText: { fontSize: 11, fontWeight: "700", color: tokens.colors.textBody },
   statsRow: { flexDirection: "row", gap: 8 },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: tokens.colors.border,
   },
   statLabel: { fontSize: 11, fontWeight: "800" },
   resumeBtn: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     borderRadius: 12,
   },
-  resumeBtnText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  resumeBtnText: { color: tokens.colors.brandText, fontSize: 12, fontWeight: "700" },
   insightsHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     marginBottom: 20,
   },
-  insightsTitle: { color: "#000", fontSize: 18, fontWeight: "800" },
+  insightsTitle: { color: tokens.colors.text, fontSize: 18, fontWeight: "800" },
   insightSection: { marginBottom: 20 },
   insightLabel: {
     fontSize: 10,
@@ -4175,7 +4176,7 @@ const styles = StyleSheet.create({
   insightContent: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
   promptWrapper: { marginBottom: 20 },
@@ -4188,7 +4189,7 @@ const styles = StyleSheet.create({
   promptContent: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#444",
+    color: tokens.colors.textBody,
     fontStyle: "italic",
     lineHeight: 20,
   },
@@ -4207,14 +4208,14 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#EEE",
+    backgroundColor: tokens.colors.border,
   },
-  messageModalName: { fontSize: 18, fontWeight: "800", color: "#000" },
-  messageModalRole: { fontSize: 14, color: "#666", marginTop: 2 },
+  messageModalName: { fontSize: 18, fontWeight: "800", color: tokens.colors.text },
+  messageModalRole: { fontSize: 14, color: tokens.colors.textBody, marginTop: 2 },
   inputLabel: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     textTransform: "uppercase",
     marginBottom: 10,
   },
@@ -4224,9 +4225,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   replyChip: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: tokens.colors.brand,
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 12,
@@ -4242,7 +4243,7 @@ const styles = StyleSheet.create({
   },
   messageInput: { flex: 1, padding: 10, fontSize: 15, maxHeight: 80 },
   sendBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -4255,12 +4256,12 @@ const styles = StyleSheet.create({
   matchHintText: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 19,
     marginBottom: 14,
   },
   matchBtn: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     borderRadius: 16,
     flexDirection: "row",
@@ -4269,7 +4270,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   matchBtnText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: -0.2,
@@ -4287,13 +4288,13 @@ const styles = StyleSheet.create({
   apName: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.4,
   },
   apMeta: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 18,
     marginTop: 4,
   },
@@ -4303,7 +4304,7 @@ const styles = StyleSheet.create({
     gap: 4,
     alignSelf: "flex-start",
     marginTop: 8,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -4311,34 +4312,34 @@ const styles = StyleSheet.create({
   apInterestedText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: 0.2,
   },
   apJobBlock: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 16,
     marginBottom: 16,
   },
   apSectionLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: tokens.colors.textFaint,
     letterSpacing: 1.2,
     marginBottom: 6,
   },
   apJobTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 2,
   },
   apBodyText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#444",
+    color: tokens.colors.textBody,
     lineHeight: 22,
   },
   apLoadingRow: {
@@ -4355,28 +4356,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   apCapPill: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: tokens.colors.border,
   },
-  apCapPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
+  apCapPillText: { fontSize: 11, fontWeight: "700", color: tokens.colors.text },
   apBlock: { marginBottom: 20 },
   apChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   apDarkChip: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  apDarkChipText: { fontSize: 12, fontWeight: "700", color: "#FFF" },
+  apDarkChipText: { fontSize: 12, fontWeight: "700", color: tokens.colors.brandText },
   apInsightItem: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 14,
     marginBottom: 10,
   },
@@ -4391,20 +4392,20 @@ const styles = StyleSheet.create({
   apInsightA: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#222",
+    color: tokens.colors.text,
     lineHeight: 20,
   },
   apFallbackNote: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: tokens.colors.bgOffWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderColor: tokens.colors.border,
     padding: 14,
     marginBottom: 16,
   },
   apFallbackNoteText: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     fontWeight: "500",
     lineHeight: 19,
   },
@@ -4417,13 +4418,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   gateModalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 24,
     padding: 32,
     alignItems: "center",
     width: "100%",
     maxWidth: 340,
-    shadowColor: "#000",
+    shadowColor: tokens.colors.brand,
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.2,
     shadowRadius: 20,
@@ -4440,7 +4441,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: tokens.colors.bgSurface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -4448,42 +4449,42 @@ const styles = StyleSheet.create({
   gateTitle: {
     fontSize: 22,
     fontWeight: "900",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 12,
     textAlign: "center",
   },
   gateDesc: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   gateActions: { width: "100%", gap: 12 },
   gateBtnPrimary: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
     width: "100%",
   },
-  gateBtnPrimaryText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  gateBtnPrimaryText: { color: tokens.colors.brandText, fontSize: 16, fontWeight: "700" },
   gateBtnSecondary: { paddingVertical: 12, alignItems: "center" },
-  gateBtnSecondaryText: { color: "#666", fontSize: 15, fontWeight: "600" },
+  gateBtnSecondaryText: { color: tokens.colors.textBody, fontSize: 15, fontWeight: "600" },
 
   // Empty State Styles
   emptyStateContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 24,
     padding: 40,
     marginHorizontal: 4,
     marginVertical: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: tokens.colors.brand,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
         shadowRadius: 12,
@@ -4500,19 +4501,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   emptyStateTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 12,
     textAlign: "center",
     letterSpacing: -0.3,
   },
   emptyStateDescription: {
     fontSize: 15,
-    color: "#666",
+    color: tokens.colors.textBody,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
@@ -4520,7 +4521,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   emptyStateButton: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
@@ -4528,7 +4529,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyStateButtonText: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
     fontSize: 15,
     fontWeight: "700",
     letterSpacing: 0.2,
@@ -4539,12 +4540,12 @@ const styles = StyleSheet.create({
     padding: 60,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: tokens.colors.bg,
     borderRadius: 24,
     marginHorizontal: 4,
     marginVertical: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   loadingSpinner: {
     width: 64,
@@ -4557,7 +4558,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: "#000",
+    color: tokens.colors.text,
     fontWeight: "700",
     letterSpacing: -0.2,
   },
@@ -4567,13 +4568,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: tokens.colors.bgOffWhite,
     padding: 20,
     paddingHorizontal: 24,
     borderRadius: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: tokens.colors.border,
   },
   simpleEmptyTextContainer: {
     flex: 1,
@@ -4581,13 +4582,13 @@ const styles = StyleSheet.create({
   simpleEmptyText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     marginBottom: 4,
     letterSpacing: -0.2,
   },
   simpleEmptySubtext: {
     fontSize: 13,
-    color: "#666",
+    color: tokens.colors.textBody,
     lineHeight: 18,
     fontWeight: "500",
   },
@@ -4607,7 +4608,7 @@ const styles = StyleSheet.create({
   segmentedControl: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: "#F0F0F0",
+    backgroundColor: tokens.colors.border,
     borderRadius: 12,
     padding: 3,
   },
@@ -4622,16 +4623,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   segmentActive: {
-    backgroundColor: "#000",
+    backgroundColor: tokens.colors.brand,
   },
   segmentText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#666",
+    color: tokens.colors.textBody,
     letterSpacing: -0.2,
   },
   segmentTextActive: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   segmentBadge: {
     paddingHorizontal: 7,
@@ -4647,10 +4648,10 @@ const styles = StyleSheet.create({
   segmentBadgeText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: tokens.colors.textBody,
   },
   segmentBadgeTextActive: {
-    color: "#FFF",
+    color: tokens.colors.brandText,
   },
   // Ghost filter — borderless chip sitting next to the segmented control,
   // showing which company is scoping the Browse tab. Renders a chevron
@@ -4667,7 +4668,7 @@ const styles = StyleSheet.create({
   ghostFilterText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
     flexShrink: 1,
   },
@@ -4685,12 +4686,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 20,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: tokens.colors.border,
   },
   loadMoreText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: tokens.colors.text,
     letterSpacing: -0.2,
   },
 });
