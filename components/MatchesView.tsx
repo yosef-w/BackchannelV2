@@ -70,7 +70,7 @@ import Animated, {
     SlideOutDown,
 } from "react-native-reanimated";
 import { CompanyLogo } from "./ui/CompanyLogo";
-import { DismissibleSheet } from "./ui/DismissibleSheet";
+import { DismissibleSheet, SheetScrollView } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 import { tokens } from "@/constants/theme";
 
@@ -2474,6 +2474,7 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={() => setRoleGroup(null)}
             style={styles.modalContent}
+            scrollCoupled
           >
             {roleGroup && (
               <>
@@ -2516,9 +2517,8 @@ export function MatchesView({
                   </View>
                 </View>
 
-                <ScrollView
+                <SheetScrollView
                   showsVerticalScrollIndicator={false}
-                  bounces={false}
                   style={{ marginTop: 8 }}
                 >
                   {roleGroup.items.map((m) => (
@@ -2572,7 +2572,7 @@ export function MatchesView({
                       </TouchableOpacity>
                     </View>
                   ))}
-                </ScrollView>
+                </SheetScrollView>
               </>
             )}
           </DismissibleSheet>
@@ -2599,11 +2599,11 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={closeAllModals}
             style={styles.modalContent}
+            scrollCoupled
           >
             {selectedJob && (
-              <ScrollView
+              <SheetScrollView
                 showsVerticalScrollIndicator={false}
-                bounces={false}
                 contentContainerStyle={{ paddingBottom: 8 }}
               >
                 {/* Status + Liked Date Row */}
@@ -2856,7 +2856,7 @@ export function MatchesView({
                     <Text style={styles.applyBtnLargeText}>Pending Match</Text>
                   </TouchableOpacity>
                 )}
-              </ScrollView>
+              </SheetScrollView>
             )}
           </DismissibleSheet>
         </KeyboardAvoidingView>
@@ -2884,6 +2884,7 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={closeAllModals}
             style={styles.modalContent}
+            scrollCoupled
           >
             {selectedReferral &&
               (() => {
@@ -2898,9 +2899,8 @@ export function MatchesView({
                 const canMessage =
                   isReferred && !!onNavigateToMessages && !!r.jobId;
                 return (
-                  <ScrollView
+                  <SheetScrollView
                     showsVerticalScrollIndicator={false}
-                    bounces={false}
                     contentContainerStyle={{ paddingBottom: 8 }}
                   >
                     {/* Status + date */}
@@ -3029,7 +3029,7 @@ export function MatchesView({
                         <Text style={styles.applyBtnLargeText}>Got It</Text>
                       </TouchableOpacity>
                     )}
-                  </ScrollView>
+                  </SheetScrollView>
                 );
               })()}
           </DismissibleSheet>
@@ -3061,11 +3061,11 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={closeAllModals}
             style={styles.modalContent}
+            scrollCoupled
           >
             {selectedInterestedSponsor && (
-              <ScrollView
+              <SheetScrollView
                 showsVerticalScrollIndicator={false}
-                bounces={false}
                 contentContainerStyle={{ paddingBottom: 8 }}
               >
                 {/* "Expressed Interest" tag */}
@@ -3346,7 +3346,7 @@ export function MatchesView({
                     </TouchableOpacity>
                   </>
                 )}
-              </ScrollView>
+              </SheetScrollView>
             )}
           </DismissibleSheet>
         </KeyboardAvoidingView>
@@ -3373,11 +3373,11 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={closeAllModals}
             style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.65 }]}
+            scrollCoupled
           >
             {selectedWaitlistedJob && (
-              <ScrollView
+              <SheetScrollView
                 showsVerticalScrollIndicator={false}
-                bounces={false}
                 contentContainerStyle={{ paddingBottom: 8 }}
               >
                 {/* Hero */}
@@ -3505,7 +3505,7 @@ export function MatchesView({
                   Waitlisted{" "}
                   {getRelativeTime(selectedWaitlistedJob.waitlisted_at)}
                 </Text>
-              </ScrollView>
+              </SheetScrollView>
             )}
           </DismissibleSheet>
         </KeyboardAvoidingView>
@@ -3539,6 +3539,7 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={closeAllModals}
             style={styles.modalContent}
+            scrollCoupled
           >
             {selectedSponsorRequest && (
               <>
@@ -3574,9 +3575,8 @@ export function MatchesView({
                   </View>
                 )}
 
-                <ScrollView
+                <SheetScrollView
                   showsVerticalScrollIndicator={false}
-                  bounces={false}
                   keyboardShouldPersistTaps="handled"
                   contentContainerStyle={{ paddingBottom: 8 }}
                 >
@@ -3952,7 +3952,7 @@ export function MatchesView({
                       </TouchableOpacity>
                     </Animated.View>
                   )}
-                </ScrollView>
+                </SheetScrollView>
               </>
             )}
           </DismissibleSheet>
@@ -3980,6 +3980,7 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={() => setSrJobDetailVisible(false)}
             style={styles.modalContent}
+            scrollCoupled
           >
             {/* Header row — back to request */}
             <TouchableOpacity
@@ -4020,9 +4021,8 @@ export function MatchesView({
                 </Text>
               </View>
             ) : srJobDetail ? (
-              <ScrollView
+              <SheetScrollView
                 showsVerticalScrollIndicator={false}
-                bounces={false}
                 contentContainerStyle={{ paddingBottom: 8 }}
               >
                 {/* Hero — company logo, title, company, location */}
@@ -4160,7 +4160,7 @@ export function MatchesView({
                     </Text>
                   </View>
                 )}
-              </ScrollView>
+              </SheetScrollView>
             ) : null}
           </DismissibleSheet>
         </KeyboardAvoidingView>
@@ -4188,6 +4188,7 @@ export function MatchesView({
           <DismissibleSheet
             onDismiss={() => setConfirmingWithdrawReferral(null)}
             style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.6 }]}
+            fullSheetGesture
           >
             {confirmingWithdrawReferral &&
               (() => {
