@@ -74,6 +74,7 @@ export function Button({
           <Text
             variant={variant === "primary" ? "buttonPrimary" : "buttonGhost"}
             color={variantLabelColor(variant)}
+            style={styles.labelText}
           >
             {label}
           </Text>
@@ -143,4 +144,8 @@ const styles = StyleSheet.create({
   },
   leading: { marginRight: 2 },
   trailing: { marginLeft: 2 },
+  // Slight horizontal breathing room so the trailing glyph isn't clipped
+  // on iOS when the label uses negative letter-spacing (the measured text
+  // width sits a hair short of the visual width).
+  labelText: { paddingHorizontal: 2 },
 });

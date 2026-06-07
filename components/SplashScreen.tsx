@@ -53,6 +53,8 @@ export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
   const welcomeOpacity = useSharedValue(0);
   const welcomeTranslate = useSharedValue(18);
   const cursorOpacity = useSharedValue(1);
+  const taglineOpacity = useSharedValue(0);
+  const taglineTranslate = useSharedValue(12);
   const ctaOpacity = useSharedValue(0);
   const ctaTranslate = useSharedValue(14);
 
@@ -113,8 +115,19 @@ export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
     };
     timer = setTimeout(type, TYPE_START_DELAY_MS);
 
-    // 6. CTA fades up just after the typewriter resolves.
-    const ctaDelay = TYPE_START_DELAY_MS + APPROX_TYPING_MS + 280;
+    // 6. Tagline + CTA fade up just after the typewriter resolves. The
+    //    tagline arrives a beat before the button so the eye lands on
+    //    the copy first.
+    const taglineDelay = TYPE_START_DELAY_MS + APPROX_TYPING_MS + 240;
+    taglineOpacity.value = withDelay(
+      taglineDelay,
+      withTiming(1, { duration: 550 }),
+    );
+    taglineTranslate.value = withDelay(
+      taglineDelay,
+      withTiming(0, { duration: 550 }),
+    );
+    const ctaDelay = taglineDelay + 180;
     ctaOpacity.value = withDelay(ctaDelay, withTiming(1, { duration: 550 }));
     ctaTranslate.value = withDelay(ctaDelay, withTiming(0, { duration: 550 }));
 
@@ -140,6 +153,10 @@ export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
   const cursorStyle = useAnimatedStyle(() => ({
     opacity: cursorOpacity.value,
   }));
+  const taglineStyle = useAnimatedStyle(() => ({
+    opacity: taglineOpacity.value,
+    transform: [{ translateY: taglineTranslate.value }],
+  }));
   const ctaStyle = useAnimatedStyle(() => ({
     opacity: ctaOpacity.value,
     transform: [{ translateY: ctaTranslate.value }],
@@ -164,18 +181,32 @@ export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
         </Animated.View>
 
         <Animated.View style={[styles.headline, welcomeStyle]}>
-          <Text variant="heroSerif" align="center">
+          <Text variant="heroSerif" align="center" style={styles.headlineText}>
             Welcome to
           </Text>
           <View style={styles.typeRow}>
-            <Text variant="heroSerifItalic">{typed}</Text>
+            <Text variant="heroSerifItalic" style={styles.typedText}>
+              {typed}
+            </Text>
             <Animated.View style={[styles.cursor, cursorStyle]} />
           </View>
         </Animated.View>
 
-        <Animated.View style={[styles.footer, ctaStyle]}>
-          <Button label="Get started" onPress={onGetStarted} block size="lg" />
-        </Animated.View>
+        <View style={styles.footer}>
+          <Animated.View style={taglineStyle}>
+            <Text variant="bodyLarge" align="center" style={styles.tagline}>
+              Get referred. Get hired. Get ahead.
+            </Text>
+          </Animated.View>
+          <Animated.View style={ctaStyle}>
+            <Button
+              label="Get started"
+              onPress={onGetStarted}
+              block
+              size="lg"
+            />
+          </Animated.View>
+        </View>
       </View>
     </Screen>
   );
@@ -231,9 +262,20 @@ const styles = StyleSheet.create({
   },
   headline: {
     flex: 1,
+    width: "100%",
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
+    // Extra horizontal room so the heroSerif's trailing glyph (the "o"
+    // in "to", the "." in "BackChannel.") isn't clipped by iOS's text
+    // measurement under heavy negative letter-spacing.
+    paddingHorizontal: tokens.spacing.m,
+  },
+  // Stretch the centred headline text across the full available width so
+  // textAlign:center has room to breathe and the trailing character has
+  // pixels to render its full glyph.
+  headlineText: {
+    alignSelf: "stretch",
   },
   // Typewriter line — italic serif Text + an inline blinking cursor View.
   // Centred horizontally so as the text grows both edges expand outward
@@ -246,6 +288,13 @@ const styles = StyleSheet.create({
     // collapse before any characters have been typed.
     minHeight: 48,
   },
+  // The typewriter text intentionally shrink-wraps to its current
+  // character count so the cursor sits flush against the trailing
+  // glyph. paddingRight gives the trailing italic serif a few pixels
+  // of room so it isn't clipped by iOS text measurement.
+  typedText: {
+    paddingRight: 2,
+  },
   cursor: {
     width: 3,
     height: 34,
@@ -255,6 +304,14 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   footer: {
-    gap: tokens.spacing.sm,
+    gap: tokens.spacing.m,
+  },
+  // Brand tagline above the CTA — the one line we kept from the original
+  // body paragraph, scaled down so it reads as a quiet caption beneath
+  // the typewriter rather than a competing block of copy.
+  tagline: {
+    fontSize: 15,
+    lineHeight: 22,
+    paddingHorizontal: tokens.spacing.m,
   },
 });

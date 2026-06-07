@@ -10,6 +10,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
@@ -148,7 +149,12 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
         </View>
       </View>
 
-      <View style={styles.body}>
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+        bounces
+      >
         <Animated.View entering={FadeInUp.duration(500)} style={styles.hero}>
           <View style={styles.heroBadge}>
             <Pill tone="neutral" dot dotColor={tokens.colors.live} uppercase>
@@ -201,7 +207,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
         <Animated.View entering={FadeInUp.delay(360).duration(500)}>
           <Divider label="Not sure? Pick the one that matches your real life." />
         </Animated.View>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
@@ -224,8 +230,14 @@ const styles = StyleSheet.create({
   navRight: {},
   body: {
     flex: 1,
+  },
+  // ScrollView contentContainerStyle — pads + gaps go here rather than on
+  // the outer style so the scroll-bounce surface fills the screen and
+  // shorter content still hugs the top.
+  bodyContent: {
     paddingHorizontal: tokens.layout.screenPaddingH,
     paddingTop: tokens.spacing.xxl,
+    paddingBottom: tokens.spacing.xl,
     gap: tokens.spacing.l,
   },
   hero: {
