@@ -171,14 +171,6 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
           >
             BackChannel?
           </Text>
-          <Text
-            variant="bodyLarge"
-            align="center"
-            style={styles.heroBody}
-          >
-            Pick the one that matches your real life. You can switch later
-            from Settings.
-          </Text>
         </Animated.View>
 
         <View style={styles.cards}>
@@ -186,7 +178,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
             eyebrow="I'm looking for a job"
             title="I'm an"
             titleItalic="Applicant"
-            description="You want someone on the inside to champion your application. Browse jobs, connect with sponsors, and skip the black hole of sending résumés into the void."
+            description="Get someone on the inside to endorse your application."
             cta="Continue as Applicant"
             selected={selected === "applicant"}
             onPress={() => handleSelect("applicant")}
@@ -196,7 +188,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
             eyebrow="I work at a company"
             title="I'm a"
             titleItalic="Sponsor"
-            description="You refer talented people to open roles at your company. Browse applicant profiles, match with candidates you'd vouch for, and make introductions that matter."
+            description="Refer the people you'd actually vouch for to open roles at your company."
             cta="Continue as Sponsor"
             selected={selected === "sponsor"}
             onPress={() => handleSelect("sponsor")}
@@ -250,10 +242,6 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 36,
     lineHeight: 40,
-  },
-  heroBody: {
-    maxWidth: 340,
-    marginTop: tokens.spacing.sm,
   },
   cards: {
     gap: tokens.spacing.sm,

@@ -2383,7 +2383,7 @@ export function HomeView({
                 <View style={styles.emptyIconCircle}>
                   <RefreshCcw color={tokens.colors.text} size={32} />
                 </View>
-                <Text style={styles.emptyTitle}>All Caught Up!</Text>
+                <Text style={styles.emptyTitle}>All caught up.</Text>
                 <Text style={styles.emptySub}>
                   You've reviewed your deck. Come back tomorrow for more.
                 </Text>
@@ -2560,7 +2560,7 @@ export function HomeView({
                 <View style={styles.emptyIconCircle}>
                   <RefreshCcw color={tokens.colors.text} size={32} />
                 </View>
-                <Text style={styles.emptyTitle}>Couldn't Load Profiles</Text>
+                <Text style={styles.emptyTitle}>Couldn't load profiles.</Text>
                 <Text style={styles.emptySub}>
                   We hit a snag fetching applicants for this role.
                   {"\n\n"}
@@ -2644,7 +2644,7 @@ export function HomeView({
                 <View style={styles.emptyIconCircle}>
                   <RefreshCcw color={tokens.colors.text} size={32} />
                 </View>
-                <Text style={styles.emptyTitle}>Couldn't Load Roles</Text>
+                <Text style={styles.emptyTitle}>Couldn't load roles.</Text>
                 <Text style={styles.emptySub}>
                   Something went wrong fetching your deck. Check your connection
                   and try again.
@@ -5258,6 +5258,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    // Breathing room above the progress counter so it doesn't crowd the
+    // BackChannel wordmark in the top bar — the SafeAreaView only covers
+    // the device's safe inset, it doesn't add visual padding from the
+    // hairline border above.
+    paddingTop: 16,
     marginBottom: 28,
     gap: 12,
   },
@@ -6855,30 +6860,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 60,
   },
+  // Editorial empty-state — drops the previous 64 px bordered icon circle.
+  // The icon is rendered inline above the title as a small unchromed glyph
+  // so it still reads as a moment without the boxy "card" feel.
   emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: tokens.colors.bgOffWhite,
-    borderWidth: tokens.borders.hairline,
-    borderColor: tokens.colors.border,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontFamily: tokens.fontFamilies.serif,
+    fontFamily: tokens.fontFamilies.serifItalic,
     fontSize: 28,
     lineHeight: 32,
-    color: tokens.colors.text,
+    color: tokens.colors.textMuted,
     letterSpacing: -0.4,
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: "center",
   },
   emptySub: {
     fontFamily: tokens.fontFamilies.sans300,
-    fontSize: 16,
-    color: tokens.colors.textBody,
+    fontSize: 15,
+    color: tokens.colors.textFaint,
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 30,

@@ -36,7 +36,7 @@ const applicantSlides: Slide[] = [
   {
     Icon: UserCheck,
     eyebrow: "Insiders, not algorithms",
-    title: "Champions",
+    title: "Support",
     titleItalic: "on the inside.",
     description:
       "Connect with people who actually work at your dream companies — and would vouch for you.",

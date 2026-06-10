@@ -1396,12 +1396,20 @@ export function MatchesView({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Opportunities</Text>
-          <Text style={styles.subtitle}>
+        {/* ─── Editorial page hero ───────────────────────────────────────
+            Eyebrow + serif title + DM Sans 300 body intro. Same pattern
+            we apply on Profile, Inbox, and the rest of the redesigned
+            tab pages. Reads as the lede paragraph of an article rather
+            than a generic page title. */}
+        <View style={styles.heroV2}>
+          <Text style={styles.heroEyebrow}>
+            {userType === "applicant" ? "Applicant" : "Sponsor"}
+          </Text>
+          <Text style={styles.heroTitle}>Opportunities.</Text>
+          <Text style={styles.heroBody}>
             {userType === "applicant"
-              ? "Your active opportunities & sponsors"
-              : "Talent you are sponsoring"}
+              ? "Your active opportunities and the sponsors moving them forward."
+              : "Talent you're matched with, sponsoring, and tracking."}
           </Text>
         </View>
 
@@ -1420,23 +1428,16 @@ export function MatchesView({
                 Applicants asking you to sponsor a role at your company
               </Text>
               {sponsorRequestsError && (
-                <Text
-                  style={{
-                    color: tokens.colors.dangerFg,
-                    marginBottom: 12,
-                    paddingHorizontal: 20,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {sponsorRequestsError}
                 </Text>
               )}
               {!sponsorRequestsLoading && sponsorRequests.length === 0 ? (
-                <View style={styles.emptyLikedSection}>
-                  <View style={styles.emptyIconContainer}>
-                    <BellRing size={32} color={tokens.colors.textFaint} />
-                  </View>
-                  <Text style={styles.emptyLikedTitle}>No requests yet</Text>
-                  <Text style={styles.emptyLikedText}>
+                <View style={styles.sectionEmpty}>
+                  <Text style={styles.sectionEmptyTitle}>
+                    No requests yet.
+                  </Text>
+                  <Text style={styles.sectionEmptySub}>
                     When applicants ask for sponsorship on a job at your
                     company, they'll show up here.
                   </Text>
@@ -1526,27 +1527,20 @@ export function MatchesView({
               </View>
 
               {interestedApplicantsError && (
-                <Text
-                  style={{
-                    color: tokens.colors.dangerFg,
-                    marginBottom: 12,
-                    fontSize: 13,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {interestedApplicantsError}
                 </Text>
               )}
 
               {!interestedApplicantsLoading &&
               interestedApplicants.length === 0 ? (
-                <View style={styles.emptySponsorsContainer}>
-                  <View style={styles.emptyIconContainer}>
-                    <Heart size={32} color={tokens.colors.textFaint} />
-                  </View>
-                  <Text style={styles.emptyLikedTitle}>No Interest Yet</Text>
-                  <Text style={styles.emptyLikedText}>
+                <View style={styles.sectionEmpty}>
+                  <Text style={styles.sectionEmptyTitle}>
+                    No interest yet.
+                  </Text>
+                  <Text style={styles.sectionEmptySub}>
                     Applicants who swipe right on your jobs will appear here.
-                    Keep your jobs visible!
+                    Keep your jobs visible.
                   </Text>
                 </View>
               ) : (
@@ -1633,26 +1627,17 @@ export function MatchesView({
                 conversation
               </Text>
               {matchesError && (
-                <Text
-                  style={{
-                    color: tokens.colors.dangerFg,
-                    marginBottom: 12,
-                    paddingHorizontal: 20,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {matchesError}
                 </Text>
               )}
               {!matchesLoading && matches.length === 0 ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text
-                    style={{
-                      fontFamily: tokens.fontFamilies.sans400,
-                      color: tokens.colors.textBody,
-                      fontSize: 15,
-                    }}
-                  >
-                    No matches yet. Keep swiping.
+                <View style={styles.sectionEmpty}>
+                  <Text style={styles.sectionEmptyTitle}>
+                    No matches yet.
+                  </Text>
+                  <Text style={styles.sectionEmptySub}>
+                    Keep swiping — applicants who say yes will land here.
                   </Text>
                 </View>
               ) : (
@@ -1682,29 +1667,19 @@ export function MatchesView({
                 Applicants you've formally referred — track their status here
               </Text>
               {referralsError && (
-                <Text
-                  style={{
-                    fontFamily: tokens.fontFamilies.sans500,
-                    color: tokens.colors.dangerFg,
-                    marginBottom: 12,
-                    fontSize: 13,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {referralsError}
                 </Text>
               )}
               {!referralsLoading && referrals.length === 0 ? (
                 <Animated.View
                   entering={FadeInUp}
-                  style={styles.pipelineEmptyState}
+                  style={styles.sectionEmpty}
                 >
-                  <View style={styles.pipelineEmptyIcon}>
-                    <Users size={28} color={tokens.colors.textFaint} />
-                  </View>
-                  <Text style={styles.pipelineEmptyTitle}>
-                    No referrals yet
+                  <Text style={styles.sectionEmptyTitle}>
+                    No referrals yet.
                   </Text>
-                  <Text style={styles.pipelineEmptyText}>
+                  <Text style={styles.sectionEmptySub}>
                     When you submit a referral from the Messages tab, it will
                     appear here with live status tracking.
                   </Text>
@@ -1860,26 +1835,17 @@ export function MatchesView({
                 </View>
               </View>
               {likedJobsError && (
-                <Text
-                  style={{
-                    color: tokens.colors.dangerFg,
-                    marginBottom: 12,
-                    paddingHorizontal: 20,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {likedJobsError}
                 </Text>
               )}
               {!likedJobsLoading && likedJobs.length === 0 ? (
-                <View style={styles.emptyLikedSection}>
-                  <View style={styles.emptyIconContainer}>
-                    <Heart size={32} color={tokens.colors.textFaint} />
-                  </View>
-                  <Text style={styles.emptyLikedTitle}>
-                    No Applications Yet
+                <View style={styles.sectionEmpty}>
+                  <Text style={styles.sectionEmptyTitle}>
+                    No applications yet.
                   </Text>
-                  <Text style={styles.emptyLikedText}>
-                    Start exploring jobs and express your interest!
+                  <Text style={styles.sectionEmptySub}>
+                    Start exploring jobs and express your interest.
                   </Text>
                 </View>
               ) : (
@@ -1981,26 +1947,19 @@ export function MatchesView({
               </View>
 
               {waitlistedJobsError && (
-                <Text
-                  style={{
-                    color: tokens.colors.dangerFg,
-                    marginBottom: 12,
-                    paddingHorizontal: 20,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {waitlistedJobsError}
                 </Text>
               )}
 
               {!waitlistedJobsLoading && waitlistedJobs.length === 0 ? (
-                <View style={styles.emptyLikedSection}>
-                  <View style={styles.emptyIconContainer}>
-                    <Clock size={32} color={tokens.colors.textFaint} />
-                  </View>
-                  <Text style={styles.emptyLikedTitle}>No Waitlisted Jobs</Text>
-                  <Text style={styles.emptyLikedText}>
-                    Join a waitlist when you see a job without a sponsor —
-                    you’ll be notified the moment one signs on.
+                <View style={styles.sectionEmpty}>
+                  <Text style={styles.sectionEmptyTitle}>
+                    No waitlisted jobs.
+                  </Text>
+                  <Text style={styles.sectionEmptySub}>
+                    Join a waitlist when you see a job without a sponsor — we'll
+                    notify you the moment one signs on.
                   </Text>
                 </View>
               ) : (
@@ -2125,24 +2084,17 @@ export function MatchesView({
               </View>
 
               {interestedSponsorsError && (
-                <Text
-                  style={{
-                    color: tokens.colors.dangerFg,
-                    marginBottom: 12,
-                    fontSize: 13,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {interestedSponsorsError}
                 </Text>
               )}
 
               {!interestedSponsorsLoading && interestedSponsors.length === 0 ? (
-                <View style={styles.emptySponsorsContainer}>
-                  <View style={styles.emptyIconContainer}>
-                    <Users size={32} color={tokens.colors.textFaint} />
-                  </View>
-                  <Text style={styles.emptyLikedTitle}>No Sponsors Yet</Text>
-                  <Text style={styles.emptyLikedText}>
+                <View style={styles.sectionEmpty}>
+                  <Text style={styles.sectionEmptyTitle}>
+                    No sponsors yet.
+                  </Text>
+                  <Text style={styles.sectionEmptySub}>
                     Keep building your profile — sponsors who want to connect
                     with you will appear here.
                   </Text>
@@ -2232,30 +2184,17 @@ export function MatchesView({
               </Text>
 
               {referralsError && (
-                <Text
-                  style={{
-                    fontFamily: tokens.fontFamilies.sans500,
-                    color: tokens.colors.dangerFg,
-                    fontSize: 13,
-                    marginBottom: 12,
-                  }}
-                >
+                <Text style={styles.sectionErrorNote}>
                   {referralsError}
                 </Text>
               )}
 
               {!referralsLoading && referrals.length === 0 ? (
-                <Animated.View
-                  entering={FadeInUp}
-                  style={styles.pipelineEmptyState}
-                >
-                  <View style={styles.pipelineEmptyIcon}>
-                    <Award size={28} color={tokens.colors.textFaint} />
-                  </View>
-                  <Text style={styles.pipelineEmptyTitle}>
-                    No Referrals Yet
+                <Animated.View entering={FadeInUp} style={styles.sectionEmpty}>
+                  <Text style={styles.sectionEmptyTitle}>
+                    No referrals yet.
                   </Text>
-                  <Text style={styles.pipelineEmptyText}>
+                  <Text style={styles.sectionEmptySub}>
                     When a matched sponsor formally refers you for a role, it
                     will appear here.
                   </Text>
@@ -4314,11 +4253,88 @@ export function MatchesView({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.colors.bg },
-  scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 100 },
+  scrollContent: { paddingHorizontal: 28, paddingTop: 16, paddingBottom: 100 },
+
+  // ─── EDITORIAL V2 ──────────────────────────────────────────────────────────
+  // Same hero + hairline-section rhythm we apply across Profile, the
+  // redesigned splash, and the rest of the tab pages. The page reads
+  // top-to-bottom like a printed spread: eyebrow, serif title, body
+  // lede, then articles separated by hairline rules.
+
+  heroV2: {
+    paddingBottom: 32,
+  },
+  heroEyebrow: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginBottom: 14,
+  },
+  heroTitle: {
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 34,
+    lineHeight: 38,
+    color: tokens.colors.text,
+    letterSpacing: -0.6,
+    marginBottom: 10,
+  },
+  heroBody: {
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 15,
+    lineHeight: 24,
+    color: tokens.colors.textBody,
+  },
+
+  // Inline error note — appears beneath the section eyebrow when a
+  // section's API call failed. Editorial alternative to the previous
+  // ad-hoc red Text blocks.
+  sectionErrorNote: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 13,
+    color: tokens.colors.dangerFg,
+    marginBottom: 12,
+    letterSpacing: -0.1,
+  },
+
+  // Section empty state — drops the big icon circle in favour of an
+  // italic-serif "headline" and a one-line sans-300 sub. Matches the
+  // editorialEmpty pattern used in ProfileView.
+  sectionEmpty: {
+    paddingVertical: 8,
+  },
+  sectionEmptyTitle: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 20,
+    lineHeight: 26,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  sectionEmptySub: {
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 14,
+    lineHeight: 22,
+    color: tokens.colors.textFaint,
+  },
+
+  // Legacy page-header styles — kept for any lingering references but
+  // not used by the v2 render. Safe to delete in a future cleanup.
   header: { marginBottom: 30 },
   title: { fontSize: 32, fontWeight: "800", letterSpacing: -1 },
   subtitle: { fontSize: 16, color: tokens.colors.textBody, marginTop: 4 },
-  sectionContainer: { marginBottom: 40 },
+
+  // Sections now read as printed articles — hairline rule on top,
+  // generous vertical breathing room around the content. The first
+  // section sits directly under the hero; the hairline above it acts
+  // as the page's first divider.
+  sectionContainer: {
+    paddingTop: 28,
+    paddingBottom: 28,
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+  },
   listSectionTitle: {
     fontFamily: tokens.fontFamilies.sans600,
     fontSize: 11,
@@ -4478,7 +4494,17 @@ const styles = StyleSheet.create({
   },
   applyBtnText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText, fontSize: 13, letterSpacing: -0.1 },
 
-  listSection: { gap: 12 },
+  // Editorial section variant for vertical-list sections (active pipeline,
+  // interested sponsors, referrals received). Same hairline rhythm as
+  // sectionContainer; the inner `gap: 12` controls the breathing room
+  // between stacked list rows.
+  listSection: {
+    paddingTop: 28,
+    paddingBottom: 28,
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+    gap: 12,
+  },
   listItem: {
     flexDirection: "row",
     alignItems: "center",

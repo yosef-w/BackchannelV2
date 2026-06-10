@@ -1249,16 +1249,26 @@ export function MessagesView({
                 </View>
               )}
               <View style={styles.headerInfo}>
-                <Text style={styles.headerName}>
+                <Text style={styles.headerName} numberOfLines={1}>
                   {conversation.otherParticipant.name}
                 </Text>
-                <Text style={styles.headerRole}>
-                  {conversation.otherParticipant.role &&
-                  conversation.otherParticipant.company
-                    ? `${conversation.otherParticipant.role} @ ${conversation.otherParticipant.company}`
-                    : conversation.otherParticipant.role ||
-                      conversation.otherParticipant.company ||
-                      ""}
+                {/* The job this thread is about — answers "which role is
+                    this conversation about?" reliably for both sides. We
+                    previously rendered the participant's role/company,
+                    but that fell back to APPLICANT_POSITIONS[0] for the
+                    sponsor-viewing-applicant direction, which is stub /
+                    questionnaire data and can be literal "dummy" on test
+                    accounts. Job title comes off the job posting and is
+                    populated on every conversation.
+                    Single-line with tail ellipsis so long titles (e.g.
+                    "Senior Software Engineer, Platform Infra") clip with
+                    "…" instead of pushing into the Refer button. */}
+                <Text
+                  style={styles.headerRole}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {conversation.jobContext.jobTitle || ""}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -2666,9 +2676,15 @@ export function MessagesView({
           if (expandedGroups.size) setExpandedGroups(new Set());
         }}
       >
+        {/* ─── Editorial page hero ───────────────────────────────────────
+            Eyebrow + serif title + DM Sans 300 lede — same shape as
+            every other redesigned tab page. */}
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.title}>Inbox</Text>
-          <Text style={styles.subtitle}>Direct lines to your connections</Text>
+          <Text style={styles.heroEyebrow}>Messages</Text>
+          <Text style={styles.title}>Inbox.</Text>
+          <Text style={styles.subtitle}>
+            Direct lines to your connections.
+          </Text>
         </View>
 
       {conversationsLoading ? (
@@ -2681,22 +2697,18 @@ export function MessagesView({
           <Text style={styles.threadStatusSub}>{conversationsError}</Text>
         </View>
       ) : conversations.length === 0 ? (
-        <View style={{ padding: 40, alignItems: "center" }}>
-          <MessageCircle size={48} color={tokens.colors.textFaint} style={{ marginBottom: 16 }} />
-          <Text style={[styles.threadEmptyTitle, { marginBottom: 8 }]}>
-            No conversations yet.
-          </Text>
+        <View style={styles.inboxEmpty}>
+          <Text style={styles.threadEmptyTitle}>No conversations yet.</Text>
           <Text style={styles.threadEmptySub}>
             Start matching with people to begin conversations.
           </Text>
         </View>
       ) : (
         <>
-          {/* Active Messages */}
           {activeConversations.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                ACTIVE MESSAGES ({activeConversations.length})
+                Active Messages · {activeConversations.length}
               </Text>
               <View style={styles.list}>
                 {renderGroupedList(activeConversations, "active")}
@@ -2711,7 +2723,7 @@ export function MessagesView({
           {pastConversations.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                PAST CONNECTIONS ({pastConversations.length})
+                Past Connections · {pastConversations.length}
               </Text>
               <View style={styles.list}>
                 {renderGroupedList(pastConversations, "past")}
@@ -2719,11 +2731,10 @@ export function MessagesView({
             </View>
           )}
 
-          {/* Hidden Messages */}
           {hiddenConversations.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                HIDDEN (30+ DAYS INACTIVE) ({hiddenConversations.length})
+                Hidden after 30 days · {hiddenConversations.length}
               </Text>
               <View style={styles.list}>
                 {renderGroupedList(hiddenConversations, "hidden")}
@@ -2753,8 +2764,20 @@ export function MessagesView({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.colors.bg },
-  scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
-  headerTitleContainer: { marginBottom: 32 },
+  scrollContent: { paddingHorizontal: 28, paddingTop: 16, paddingBottom: 140 },
+
+  // ─── EDITORIAL V2 ──────────────────────────────────────────────────────────
+  // Hero: eyebrow + serif title + DM Sans 300 lede. Sections separated by
+  // hairline rules. Empty / error states quiet italic-serif sign-offs.
+  headerTitleContainer: { paddingBottom: 8 },
+  heroEyebrow: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginBottom: 14,
+  },
   title: {
     fontFamily: tokens.fontFamilies.serif,
     fontSize: 38,
@@ -2763,20 +2786,37 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   subtitle: {
-    fontFamily: tokens.fontFamilies.sans400,
-    fontSize: 16,
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 15,
     color: tokens.colors.textBody,
     lineHeight: 24,
     marginTop: 8,
   },
-  section: { marginBottom: 40 },
+  // Sections now read as printed articles — hairline rule on top, generous
+  // vertical breathing room. The first section sits directly under the
+  // hero; the hairline above it acts as the page's first divider.
+  section: {
+    paddingTop: 28,
+    paddingBottom: 28,
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+  },
+  // Page-level empty state (no conversations at all). Drops the
+  // MessageCircle icon — italic-serif sign-off is enough.
+  inboxEmpty: {
+    paddingTop: 56,
+    paddingBottom: 24,
+    alignItems: "center",
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+  },
   sectionTitle: {
     fontFamily: tokens.fontFamilies.sans600,
     fontSize: 11,
     color: tokens.colors.textMuted,
     letterSpacing: 1.6,
     textTransform: "uppercase",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   list: { gap: 4 },
   loadMoreBtn: {
@@ -2964,7 +3004,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   headerImage: { width: 40, height: 40, borderRadius: 20 },
-  headerInfo: { marginLeft: 12 },
+  // flex: 1 + minWidth: 0 lets the name + role column shrink as the
+  // Refer / status pills on the right take their natural width. Without
+  // it, long job titles push the column past the right edge and bleed
+  // under the Refer button. minWidth:0 is required on iOS to enable the
+  // shrink (flex children otherwise treat their intrinsic width as a
+  // minimum).
+  headerInfo: { flex: 1, minWidth: 0, marginLeft: 12 },
   headerName: {
     fontFamily: tokens.fontFamilies.serif,
     fontSize: 18,

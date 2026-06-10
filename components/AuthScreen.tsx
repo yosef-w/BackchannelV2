@@ -5,6 +5,7 @@ import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StatusBar,
@@ -432,7 +433,18 @@ export function AuthScreen({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {showForgotPasswordModal && (
+      {/* Rendered through React Native's <Modal> so the tinted backdrop
+          covers the whole device window — including the status-bar zone
+          and the home-indicator zone — instead of being clipped by the
+          Screen primitive's SafeAreaView. statusBarTranslucent is needed
+          on Android to let the overlay paint under the status bar. */}
+      <Modal
+        visible={showForgotPasswordModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={handleCloseForgotPasswordModal}
+      >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
@@ -518,7 +530,7 @@ export function AuthScreen({
             )}
           </Animated.View>
         </View>
-      )}
+      </Modal>
     </Screen>
   );
 }

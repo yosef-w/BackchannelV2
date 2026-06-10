@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
     AlertCircle,
+    ArrowUpRight,
     Briefcase,
     Camera,
     Check,
@@ -2553,318 +2554,396 @@ export function ProfileView({ userType }: ProfileViewProps) {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="always"
     >
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarWrapper}>
-          {profileImage ? (
-            <Image source={{ uri: profileImage }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatar}>
-              {getUserInitials() ? (
-                <Text style={styles.avatarInitials}>{getUserInitials()}</Text>
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Camera color={tokens.colors.textMuted} size={32} strokeWidth={1.5} />
-                  <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
-                </View>
-              )}
+      {/* ─── Editorial Hero — left-aligned identity block ───────────────── */}
+      <View style={styles.heroV2}>
+        <View style={styles.heroEyebrowRow}>
+          <Text style={styles.heroEyebrow}>
+            {userType === "applicant" ? "Applicant" : "Sponsor"}
+          </Text>
+          {personalMissingCount > 0 && (
+            <View style={styles.completionPill}>
+              <View style={styles.completionDot} />
+              <Text style={styles.completionPillText}>
+                {personalMissingCount} field
+                {personalMissingCount !== 1 ? "s" : ""} to add
+              </Text>
             </View>
           )}
-          <TouchableOpacity
-            style={[
-              styles.editFab,
-              isFieldMissing("profileImage") && styles.editFabHighlight,
-            ]}
-            onPress={() => setShowImagePickerModal(true)}
-          >
-            <Edit color={tokens.colors.brandText} size={14} strokeWidth={2.5} />
-          </TouchableOpacity>
         </View>
 
-        <Text style={styles.name}>{profileData.name}</Text>
+        <View style={styles.identityRow}>
+          <View style={styles.heroAvatarWrap}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.heroAvatar}
+              />
+            ) : (
+              <View style={[styles.heroAvatar, styles.heroAvatarPlaceholder]}>
+                {getUserInitials() ? (
+                  <Text style={styles.heroAvatarInitial}>
+                    {getUserInitials()}
+                  </Text>
+                ) : (
+                  <Camera
+                    color={tokens.colors.textMuted}
+                    size={22}
+                    strokeWidth={1.5}
+                  />
+                )}
+              </View>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.heroAvatarEdit,
+                isFieldMissing("profileImage") && styles.heroAvatarEditMissing,
+              ]}
+              onPress={() => setShowImagePickerModal(true)}
+              activeOpacity={0.7}
+              hitSlop={6}
+            >
+              <Edit
+                color={tokens.colors.text}
+                size={11}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.infoRow}>
-          <Briefcase color={tokens.colors.text} size={14} strokeWidth={2} />
-          <Text style={styles.infoText}>
-            {userType === "sponsor"
-              ? `${sponsorData.role} @ ${sponsorData.company}`
-              : applicantData.role}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MapPin color={tokens.colors.textFaint} size={14} strokeWidth={2} />
-          {profileData.location ? (
-            <Text style={styles.locationText}>{profileData.location}</Text>
-          ) : (
-            <Text style={styles.emptyHint}>No location added yet</Text>
-          )}
+          <View style={styles.identityCopy}>
+            <Text style={styles.heroName} numberOfLines={2}>
+              {profileData.name
+                ? `${profileData.name}${profileData.name.trim().endsWith(".") ? "" : "."}`
+                : "Add your name."}
+            </Text>
+            {userType === "sponsor" ? (
+              <Text style={styles.heroRole} numberOfLines={2}>
+                {sponsorData.role && sponsorData.company
+                  ? `${sponsorData.role} at ${sponsorData.company}`
+                  : sponsorData.role ||
+                    sponsorData.company ||
+                    "Add your role and company"}
+              </Text>
+            ) : (
+              <Text style={styles.heroRole} numberOfLines={2}>
+                {applicantData.role || "Add your current role"}
+              </Text>
+            )}
+            {profileData.location ? (
+              <Text style={styles.heroLocation}>
+                {profileData.location}
+              </Text>
+            ) : null}
+          </View>
         </View>
 
         {profileData.bio ? (
-          <Text style={styles.bio}>{profileData.bio}</Text>
-        ) : (
-          <Text style={styles.emptyHint}>Tap "Edit Profile" to add a bio</Text>
-        )}
+          <View style={styles.bioBlock}>
+            <View style={styles.bioRule} />
+            <Text style={styles.bioText}>{profileData.bio}</Text>
+          </View>
+        ) : null}
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.blackBtn}
-            onPress={() => {
-              trackProfileEditOpened({ section: "personal" });
-              setShowEditProfile(true);
-            }}
-          >
-            <Edit color={tokens.colors.brandText} size={16} />
-            <Text style={styles.blackBtnText}>Edit Profile</Text>
-            {personalMissingCount > 0 && (
-              <View style={styles.buttonBadge}>
-                <Text style={styles.buttonBadgeText}>
-                  {personalMissingCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.editProfileLink}
+          onPress={() => {
+            trackProfileEditOpened({ section: "personal" });
+            setShowEditProfile(true);
+          }}
+          activeOpacity={0.7}
+          hitSlop={6}
+        >
+          <Text style={styles.editProfileLinkText}>Edit profile</Text>
+          <ArrowUpRight
+            size={14}
+            color={tokens.colors.text}
+            strokeWidth={2}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Profile Content */}
-      <>
-        {/* Expertise Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
-          {profileData.expertise.length > 0 ? (
-            <View style={styles.tagCloud}>
-              {profileData.expertise.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyHint}>No skills added yet</Text>
-          )}
+      {/* ─── Expertise ──────────────────────────────────────────────────── */}
+      <View style={styles.editorialSection}>
+        <View style={styles.editorialSectionHeader}>
+          <Text style={styles.editorialEyebrow}>
+            {profileData.expertiseLabel}
+          </Text>
         </View>
-
-        {/* Applicant-Specific Sections */}
-        {userType === "applicant" && (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Work Preferences</Text>
-              {applicantData.workPreferences.length > 0 ? (
-                <View style={styles.tagCloud}>
-                  {applicantData.workPreferences.map((pref) => (
-                    <View key={pref} style={styles.preferenceTag}>
-                      <Text style={styles.preferenceText}>{pref}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyHint}>
-                  No work preferences added yet
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Desired Roles</Text>
-              {applicantData.desiredRoles.length > 0 ? (
-                <View style={styles.tagCloud}>
-                  {applicantData.desiredRoles.map((role) => (
-                    <View key={role} style={styles.roleTag}>
-                      <Target size={14} color={tokens.colors.brandText} strokeWidth={2.5} />
-                      <Text style={styles.roleTagText}>{role}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyHint}>No desired roles added yet</Text>
-              )}
-            </View>
-          </>
+        {profileData.expertise.length > 0 ? (
+          <View style={styles.editorialPillRow}>
+            {profileData.expertise.map((tag) => (
+              <View key={tag} style={styles.editorialPill}>
+                <Text style={styles.editorialPillText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.editorialEmpty}>
+            Add skills so sponsors can find you.
+          </Text>
         )}
+      </View>
 
-        {/* Sponsor-Specific Sections */}
-        {userType === "sponsor" && <></>}
-      </>
-
-      {/* Resume Upload Section — Applicant Only */}
       {userType === "applicant" && (
-        <View style={styles.resumeSection}>
-          {/* Header */}
-          <View style={styles.resumeSectionHeader}>
-            <View style={styles.resumeHeaderLeft}>
-              <FileText size={20} color={tokens.colors.text} strokeWidth={2} />
-              <Text style={styles.resumeSectionTitle}>Resume</Text>
+        <>
+          {/* ─── Work Preferences ──────────────────────────────────────── */}
+          <View style={styles.editorialSection}>
+            <View style={styles.editorialSectionHeader}>
+              <Text style={styles.editorialEyebrow}>Work Preferences</Text>
             </View>
-            <View style={styles.aiBadge}>
-              <Zap size={12} color={tokens.colors.brandText} fill={tokens.colors.brandText} />
-              <Text style={styles.aiBadgeText}>AI</Text>
+            {applicantData.workPreferences.length > 0 ? (
+              <View style={styles.editorialPillRow}>
+                {applicantData.workPreferences.map((pref) => (
+                  <View key={pref} style={styles.editorialPillSoft}>
+                    <Text style={styles.editorialPillSoftText}>{pref}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.editorialEmpty}>
+                Add the work you'd say yes to.
+              </Text>
+            )}
+          </View>
+
+          {/* ─── Desired Roles ────────────────────────────────────────── */}
+          <View style={styles.editorialSection}>
+            <View style={styles.editorialSectionHeader}>
+              <Text style={styles.editorialEyebrow}>Desired Roles</Text>
+            </View>
+            {applicantData.desiredRoles.length > 0 ? (
+              <View style={styles.editorialPillRow}>
+                {applicantData.desiredRoles.map((role) => (
+                  <View key={role} style={styles.editorialPillTarget}>
+                    <Target
+                      size={11}
+                      color={tokens.colors.text}
+                      strokeWidth={2.2}
+                    />
+                    <Text style={styles.editorialPillText}>{role}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.editorialEmpty}>
+                Tell us the roles you want to be matched for.
+              </Text>
+            )}
+          </View>
+        </>
+      )}
+
+      {/* ─── Résumé — applicant only ─────────────────────────────────── */}
+      {userType === "applicant" && (
+        <View style={styles.editorialSection}>
+          <View style={styles.editorialSectionHeader}>
+            <Text style={styles.editorialEyebrow}>Résumé</Text>
+            <View style={styles.aiCaptionRow}>
+              <Zap
+                size={10}
+                color={tokens.colors.textMuted}
+                fill={tokens.colors.textMuted}
+              />
+              <Text style={styles.aiCaption}>AI auto-fills profile</Text>
             </View>
           </View>
 
-          <Text style={styles.resumeSectionSubtitle}>
-            Upload your resume and AI will auto-fill your profile
-          </Text>
-
-          {/* Idle state — upload button */}
           {resumeUploadStep === "idle" && (
-            <TouchableOpacity
-              style={styles.resumeUploadBtn}
-              onPress={handleResumeUpload}
-              activeOpacity={0.75}
-            >
-              <Upload size={18} color={tokens.colors.brandText} strokeWidth={2} />
-              <Text style={styles.resumeUploadBtnText}>
-                {resumeLastUpdated ? "Re-upload Resume" : "Upload Resume"}
+            <>
+              <Text style={styles.resumeIntro}>
+                Upload your résumé and we'll auto-fill the rest of your
+                profile for you.
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.resumeActionLink}
+                onPress={handleResumeUpload}
+                activeOpacity={0.7}
+                hitSlop={6}
+              >
+                <Text style={styles.resumeActionLinkText}>
+                  {resumeLastUpdated ? "Re-upload résumé" : "Upload résumé"}
+                </Text>
+                <ArrowUpRight
+                  size={14}
+                  color={tokens.colors.text}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </>
           )}
 
-          {/* Uploading state */}
           {resumeUploadStep === "uploading" && (
-            <View style={styles.resumeProgressCard}>
-              <View style={styles.resumeProgressRow}>
+            <View style={styles.resumeStateBlock}>
+              <View style={styles.resumeStateRow}>
                 <ActivityIndicator color={tokens.colors.text} size="small" />
-                <View style={styles.resumeProgressTextCol}>
-                  <Text style={styles.resumeProgressTitle}>
-                    Uploading your resume...
+                <View style={styles.resumeStateCopy}>
+                  <Text style={styles.resumeStateTitle}>
+                    Uploading your résumé…
                   </Text>
-                  <Text style={styles.resumeProgressSub}>
+                  <Text style={styles.resumeStateSub}>
                     {resumeElapsedSecs < 6
-                      ? "Reading your file..."
+                      ? "Reading your file."
                       : resumeElapsedSecs < 20
-                        ? "Extracting text..."
-                        : "Taking a bit longer than usual..."}
+                        ? "Extracting text."
+                        : "Taking a bit longer than usual."}
                   </Text>
                 </View>
-                <Text style={styles.resumeElapsedText}>
+                <Text style={styles.resumeStateElapsed}>
                   {resumeElapsedSecs}s
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.resumeCancelBtn}
+                style={styles.resumeCancelLink}
                 onPress={cancelResumeUpload}
                 activeOpacity={0.7}
+                hitSlop={6}
               >
-                <X size={12} color={tokens.colors.textBody} strokeWidth={2.5} />
-                <Text style={styles.resumeCancelText}>Cancel</Text>
+                <X
+                  size={11}
+                  color={tokens.colors.textMuted}
+                  strokeWidth={2.5}
+                />
+                <Text style={styles.resumeCancelLinkText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Analyzing state */}
           {resumeUploadStep === "analyzing" && (
-            <View style={styles.resumeProgressCard}>
-              <View style={styles.resumeProgressRow}>
+            <View style={styles.resumeStateBlock}>
+              <View style={styles.resumeStateRow}>
                 <ActivityIndicator color={tokens.colors.text} size="small" />
-                <View style={styles.resumeProgressTextCol}>
-                  <Text style={styles.resumeProgressTitle}>
-                    AI is analyzing your resume...
+                <View style={styles.resumeStateCopy}>
+                  <Text style={styles.resumeStateTitle}>
+                    Analyzing your résumé…
                   </Text>
-                  <Text style={styles.resumeProgressSub}>
+                  <Text style={styles.resumeStateSub}>
                     {resumeElapsedSecs < 10
-                      ? "Auto-filling your profile..."
+                      ? "Auto-filling your profile."
                       : resumeElapsedSecs < 30
-                        ? "Classifying your experience..."
+                        ? "Classifying your experience."
                         : resumeElapsedSecs < 60
-                          ? "Almost done..."
-                          : "Hang tight, deep analysis takes a moment..."}
+                          ? "Almost done."
+                          : "Hang tight — deep analysis takes a moment."}
                   </Text>
                 </View>
-                <Text style={styles.resumeElapsedText}>
+                <Text style={styles.resumeStateElapsed}>
                   {resumeElapsedSecs}s
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.resumeCancelBtn}
+                style={styles.resumeCancelLink}
                 onPress={cancelResumeUpload}
                 activeOpacity={0.7}
+                hitSlop={6}
               >
-                <X size={12} color={tokens.colors.textBody} strokeWidth={2.5} />
-                <Text style={styles.resumeCancelText}>Cancel</Text>
+                <X
+                  size={11}
+                  color={tokens.colors.textMuted}
+                  strokeWidth={2.5}
+                />
+                <Text style={styles.resumeCancelLinkText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Done state */}
           {resumeUploadStep === "done" && (
             <Animated.View
               entering={FadeInUp.duration(400)}
-              style={styles.resumeSuccessCard}
+              style={styles.resumeStateBlock}
             >
-              <View style={styles.resumeSuccessHeader}>
-                <CheckCircle2 size={20} color={tokens.colors.text} strokeWidth={2.5} />
-                <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
+              <View style={styles.resumeStateRow}>
+                <CheckCircle2
+                  size={18}
+                  color={tokens.colors.successFg}
+                  strokeWidth={2.5}
+                />
+                <View style={styles.resumeStateCopy}>
+                  <Text style={styles.resumeStateTitle}>Profile updated.</Text>
+                  {resumeFieldsUpdated.length > 0 && (
+                    <Text style={styles.resumeStateSub}>
+                      AI filled in {resumeFieldsUpdated.length} field
+                      {resumeFieldsUpdated.length !== 1 ? "s" : ""}.
+                    </Text>
+                  )}
+                </View>
               </View>
               {resumeFieldsUpdated.length > 0 && (
-                <>
-                  <Text style={styles.resumeSuccessSubtitle}>
-                    AI filled in {resumeFieldsUpdated.length} field
-                    {resumeFieldsUpdated.length !== 1 ? "s" : ""}:
-                  </Text>
-                  <View style={styles.resumeUpdatedFields}>
-                    {resumeFieldsUpdated.map((field) => (
-                      <View key={field} style={styles.resumeFieldPill}>
-                        <Text style={styles.resumeFieldPillText}>
-                          {formatFieldName(field)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
+                <View style={styles.editorialPillRow}>
+                  {resumeFieldsUpdated.map((field) => (
+                    <View key={field} style={styles.editorialPillSoft}>
+                      <Text style={styles.editorialPillSoftText}>
+                        {formatFieldName(field)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               )}
               <TouchableOpacity
-                style={styles.resumeUploadAgainBtn}
+                style={styles.resumeCancelLink}
                 onPress={() => setResumeUploadStep("idle")}
+                activeOpacity={0.7}
+                hitSlop={6}
               >
-                <RefreshCw size={14} color={tokens.colors.textBody} strokeWidth={2} />
-                <Text style={styles.resumeUploadAgainText}>Upload again</Text>
+                <RefreshCw
+                  size={11}
+                  color={tokens.colors.textMuted}
+                  strokeWidth={2.5}
+                />
+                <Text style={styles.resumeCancelLinkText}>Upload again</Text>
               </TouchableOpacity>
             </Animated.View>
           )}
 
-          {/* Error state */}
           {resumeUploadStep === "error" && (
-            <View style={styles.resumeErrorCard}>
-              <AlertCircle size={18} color={tokens.colors.dangerFg} strokeWidth={2} />
+            <View style={styles.resumeErrorBlock}>
+              <AlertCircle
+                size={16}
+                color={tokens.colors.dangerFg}
+                strokeWidth={2}
+              />
               <View style={{ flex: 1 }}>
-                <Text style={styles.resumeErrorTitle}>Upload Failed</Text>
+                <Text style={styles.resumeErrorTitle}>Upload failed.</Text>
                 <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
               </View>
               <TouchableOpacity
-                style={styles.resumeRetryBtn}
+                style={styles.resumeRetryLink}
                 onPress={() => setResumeUploadStep("idle")}
+                activeOpacity={0.7}
               >
-                <Text style={styles.resumeRetryText}>Retry</Text>
+                <Text style={styles.resumeRetryLinkText}>Retry</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Divider + manual edit link */}
-          <View style={styles.resumeDivider} />
+          {/* Manual edit link — sub-action under the resume area */}
           <TouchableOpacity
-            style={styles.resumeManualLink}
+            style={styles.manualEditLink}
             onPress={() => {
               trackProfileEditOpened({ section: "resume" });
               setShowEditResume(true);
             }}
+            activeOpacity={0.7}
           >
-            <Edit size={14} color={tokens.colors.textBody} strokeWidth={2} />
-            <Text style={styles.resumeManualLinkText}>
-              Edit resume details manually
+            <Text style={styles.manualEditLinkText}>
+              Edit résumé details manually
             </Text>
-            <ChevronRight size={14} color={tokens.colors.textFaint} />
+            <ArrowUpRight
+              size={12}
+              color={tokens.colors.textMuted}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Settings List */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <View style={styles.settingsGroup}>
+      {/* ─── Account ──────────────────────────────────────────────────── */}
+      <View style={styles.editorialSection}>
+        <View style={styles.editorialSectionHeader}>
+          <Text style={styles.editorialEyebrow}>Account</Text>
+        </View>
+        <View style={styles.accountList}>
           <SettingItem
-            label="Edit Profile Insights"
+            label="Edit profile insights"
             onPress={() => {
               trackProfileEditOpened({ section: "insights" });
               setShowEditInsights(true);
@@ -2872,7 +2951,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           />
           {userType === "applicant" && (
             <SettingItem
-              label="Edit Resume Information"
+              label="Edit résumé information"
               badgeCount={professionalMissingCount}
               onPress={() => {
                 trackProfileEditOpened({ section: "resume" });
@@ -2881,7 +2960,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             />
           )}
           <SettingItem
-            label="Privacy & Security"
+            label="Privacy & security"
             onPress={() => setShowPrivacySecurity(true)}
           />
           <SettingItem
@@ -2890,7 +2969,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           />
           {PREMIUM_ENABLED && (
             <SettingItem
-              label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
+              label={isPremium ? "Manage subscription" : "Upgrade to Pro"}
               onPress={async () => {
                 if (isPremium) {
                   await presentCustomerCenter();
@@ -2900,13 +2979,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
             />
           )}
-          <SettingItem
-            label="Log Out"
-            color={tokens.colors.text}
-            isLast
-            onPress={handleLogout}
-          />
         </View>
+
+        {/* Log out — visually set apart from the main account list as a
+            quiet "end of page" action, in italic serif so it reads as a
+            page sign-off rather than a primary tap. */}
+        <TouchableOpacity
+          style={styles.logoutRow}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+          hitSlop={6}
+        >
+          <Text style={styles.logoutLabel}>Log out</Text>
+          <ArrowUpRight
+            size={14}
+            color={tokens.colors.textMuted}
+            strokeWidth={2}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* IMAGE PICKER MODAL */}
@@ -3979,102 +4069,122 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* PRIVACY & SECURITY MODAL */}
+      {/* PRIVACY & SECURITY MODAL — editorial flat-row redesign.
+          Drops the previous icon-circle + card-wrapped rows in favour of
+          a hairline-divided list, with the destructive Delete Account
+          action set apart at the bottom in italic serif (same pattern
+          as the Log out affordance on the main profile page). */}
       <SimpleModal
         visible={showPrivacySecurity}
         onClose={() => setShowPrivacySecurity(false)}
         title="Privacy & Security"
       >
-        {/* Profile Visibility */}
-        <View style={styles.privacySection}>
-          <View style={styles.privacyRow}>
-            <View style={styles.privacyContent}>
-              <Text style={styles.privacyLabel}>Profile Visibility</Text>
-              <Text style={styles.privacyDescription}>
-                Who can see your profile
+        <Text style={styles.settingsModalLede}>
+          Manage your data, password, and account.
+        </Text>
+
+        {/* Visibility */}
+        <View style={styles.settingsModalSection}>
+          <Text style={styles.editorialEyebrow}>Visibility</Text>
+          <View style={styles.settingsValueRow}>
+            <View style={styles.settingsRowContent}>
+              <Text style={styles.settingsRowLabel}>Profile visibility</Text>
+              <Text style={styles.settingsRowSub}>
+                Who can see your profile.
               </Text>
             </View>
-            <Text style={styles.privacyValue}>Public</Text>
+            <View style={styles.settingsValuePill}>
+              <Text style={styles.settingsValuePillText}>Public</Text>
+            </View>
           </View>
         </View>
 
-        {/* Change Password */}
-        <TouchableOpacity
-          style={styles.privacyActionCard}
-          onPress={() => {
-            setShowPrivacySecurity(false);
-            setTimeout(() => setShowPasswordChange(true), 300);
-          }}
-        >
-          <View style={styles.privacyIconContainer}>
-            <Lock color={tokens.colors.text} size={18} />
+        {/* Account */}
+        <View style={styles.settingsModalSection}>
+          <Text style={styles.editorialEyebrow}>Account</Text>
+          <View style={styles.settingsList}>
+            <TouchableOpacity
+              style={styles.settingsActionRow}
+              onPress={() => {
+                setShowPrivacySecurity(false);
+                setTimeout(() => setShowPasswordChange(true), 300);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsRowContent}>
+                <Text style={styles.settingsRowLabel}>Change password</Text>
+                <Text style={styles.settingsRowSub}>
+                  Update your password.
+                </Text>
+              </View>
+              <ArrowUpRight
+                size={14}
+                color={tokens.colors.textMuted}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsActionRow}
+              onPress={() => {
+                trackTermsTapped();
+                setShowPrivacySecurity(false);
+                setTimeout(() => setShowTerms(true), 300);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsRowContent}>
+                <Text style={styles.settingsRowLabel}>Terms & conditions</Text>
+                <Text style={styles.settingsRowSub}>
+                  Read our terms of service.
+                </Text>
+              </View>
+              <ArrowUpRight
+                size={14}
+                color={tokens.colors.textMuted}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingsActionRow, styles.settingsActionRowLast]}
+              onPress={() => {
+                trackPrivacyPolicyTapped();
+                setShowPrivacySecurity(false);
+                setTimeout(() => setShowPrivacyPolicy(true), 300);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsRowContent}>
+                <Text style={styles.settingsRowLabel}>Privacy policy</Text>
+                <Text style={styles.settingsRowSub}>
+                  How we handle your data.
+                </Text>
+              </View>
+              <ArrowUpRight
+                size={14}
+                color={tokens.colors.textMuted}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
           </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.privacyActionTitle}>Change Password</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              Update your password
-            </Text>
-          </View>
-          <ChevronRight color={tokens.colors.textFaint} size={20} />
-        </TouchableOpacity>
+        </View>
 
-        {/* Terms & Conditions */}
+        {/* Delete Account — destructive, set apart in italic serif so it
+            reads as a quiet "end of page" action rather than a tappable
+            row that sits in the same visual stack as the others. The
+            native Alert in handleDeleteAccount is still the actual
+            confirmation safety net. */}
         <TouchableOpacity
-          style={styles.privacyActionCard}
-          onPress={() => {
-            trackTermsTapped();
-            setShowPrivacySecurity(false);
-            setTimeout(() => setShowTerms(true), 300);
-          }}
-        >
-          <View style={styles.privacyIconContainer}>
-            <Briefcase color={tokens.colors.text} size={18} />
-          </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.privacyActionTitle}>Terms & Conditions</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              Read our terms of service
-            </Text>
-          </View>
-          <ChevronRight color={tokens.colors.textFaint} size={20} />
-        </TouchableOpacity>
-
-        {/* Privacy Policy */}
-        <TouchableOpacity
-          style={styles.privacyActionCard}
-          onPress={() => {
-            trackPrivacyPolicyTapped();
-            setShowPrivacySecurity(false);
-            setTimeout(() => setShowPrivacyPolicy(true), 300);
-          }}
-        >
-          <View style={styles.privacyIconContainer}>
-            <Lock color={tokens.colors.text} size={18} />
-          </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.privacyActionTitle}>Privacy Policy</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              How we handle your data
-            </Text>
-          </View>
-          <ChevronRight color={tokens.colors.textFaint} size={20} />
-        </TouchableOpacity>
-
-        {/* Delete Account */}
-        <TouchableOpacity
-          style={styles.deleteActionCard}
+          style={styles.dangerRow}
           onPress={handleDeleteAccount}
+          activeOpacity={0.7}
+          hitSlop={6}
         >
-          <View style={styles.privacyIconContainer}>
-            <Trash2 color={tokens.colors.text} size={18} />
-          </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.deleteActionTitle}>Delete Account</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              Remove your account permanently
-            </Text>
-          </View>
-          <ChevronRight color={tokens.colors.textFaint} size={20} />
+          <Text style={styles.dangerRowLabel}>Delete account</Text>
+          <ArrowUpRight
+            size={14}
+            color={tokens.colors.dangerFg}
+            strokeWidth={2}
+          />
         </TouchableOpacity>
       </SimpleModal>
 
@@ -4085,7 +4195,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         title="Terms & Conditions"
       >
         <Text style={styles.legalLastUpdated}>
-          Last updated: April 15, 2026
+          Last updated · April 15, 2026
         </Text>
         <Text style={styles.legalIntro}>
           Please read these Terms and Conditions carefully before using the
@@ -4229,7 +4339,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         title="Privacy Policy"
       >
         <Text style={styles.legalLastUpdated}>
-          Last updated: April 15, 2026
+          Last updated · April 15, 2026
         </Text>
         <Text style={styles.legalIntro}>
           This Privacy Policy describes how Backchannel ("we", "us", or "our")
@@ -4639,84 +4749,98 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* NOTIFICATIONS MODAL */}
+      {/* NOTIFICATIONS MODAL — editorial flat-row toggle list. Same
+          hairline-divided rhythm as Privacy & Security, only the trailing
+          affordance is a native Switch instead of an arrow. */}
       <SimpleModal
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         title="Notifications"
       >
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>New Matches</Text>
-          <Switch
-            value={isNotifEnabled("match")}
-            onValueChange={(v) => handleNotifToggle("match", v)}
-            disabled={notifSaving === "match"}
-            trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-            thumbColor={tokens.colors.bg}
-          />
+        <Text style={styles.settingsModalLede}>
+          Choose what you want to hear about.
+        </Text>
+
+        <View style={styles.settingsList}>
+          <View style={styles.settingsToggleRow}>
+            <Text style={styles.settingsRowLabel}>New matches</Text>
+            <Switch
+              value={isNotifEnabled("match")}
+              onValueChange={(v) => handleNotifToggle("match", v)}
+              disabled={notifSaving === "match"}
+              trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
+              thumbColor={tokens.colors.bg}
+            />
+          </View>
+          <View style={styles.settingsToggleRow}>
+            <Text style={styles.settingsRowLabel}>New messages</Text>
+            <Switch
+              value={isNotifEnabled("message")}
+              onValueChange={(v) => handleNotifToggle("message", v)}
+              disabled={notifSaving === "message"}
+              trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
+              thumbColor={tokens.colors.bg}
+            />
+          </View>
+          {userType === "applicant" && (
+            <>
+              <View style={styles.settingsToggleRow}>
+                <Text style={styles.settingsRowLabel}>Referral updates</Text>
+                <Switch
+                  value={isNotifEnabled("referral")}
+                  onValueChange={(v) => handleNotifToggle("referral", v)}
+                  disabled={notifSaving === "referral"}
+                  trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
+                  thumbColor={tokens.colors.bg}
+                />
+              </View>
+              <View
+                style={[styles.settingsToggleRow, styles.settingsActionRowLast]}
+              >
+                <Text style={styles.settingsRowLabel}>
+                  Saved job got sponsored
+                </Text>
+                <Switch
+                  value={isNotifEnabled("waitlist")}
+                  onValueChange={(v) => handleNotifToggle("waitlist", v)}
+                  disabled={notifSaving === "waitlist"}
+                  trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
+                  thumbColor={tokens.colors.bg}
+                />
+              </View>
+            </>
+          )}
+          {userType === "sponsor" && (
+            <>
+              <View style={styles.settingsToggleRow}>
+                <Text style={styles.settingsRowLabel}>
+                  Someone applied to your job
+                </Text>
+                <Switch
+                  value={isNotifEnabled("job_like")}
+                  onValueChange={(v) => handleNotifToggle("job_like", v)}
+                  disabled={notifSaving === "job_like"}
+                  trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
+                  thumbColor={tokens.colors.bg}
+                />
+              </View>
+              <View
+                style={[styles.settingsToggleRow, styles.settingsActionRowLast]}
+              >
+                <Text style={styles.settingsRowLabel}>
+                  Someone requested your sponsorship
+                </Text>
+                <Switch
+                  value={isNotifEnabled("sponsor_request")}
+                  onValueChange={(v) => handleNotifToggle("sponsor_request", v)}
+                  disabled={notifSaving === "sponsor_request"}
+                  trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
+                  thumbColor={tokens.colors.bg}
+                />
+              </View>
+            </>
+          )}
         </View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>New Messages</Text>
-          <Switch
-            value={isNotifEnabled("message")}
-            onValueChange={(v) => handleNotifToggle("message", v)}
-            disabled={notifSaving === "message"}
-            trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-            thumbColor={tokens.colors.bg}
-          />
-        </View>
-        {userType === "applicant" && (
-          <>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Referral Updates</Text>
-              <Switch
-                value={isNotifEnabled("referral")}
-                onValueChange={(v) => handleNotifToggle("referral", v)}
-                disabled={notifSaving === "referral"}
-                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor={tokens.colors.bg}
-              />
-            </View>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Saved Job Got Sponsored</Text>
-              <Switch
-                value={isNotifEnabled("waitlist")}
-                onValueChange={(v) => handleNotifToggle("waitlist", v)}
-                disabled={notifSaving === "waitlist"}
-                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor={tokens.colors.bg}
-              />
-            </View>
-          </>
-        )}
-        {userType === "sponsor" && (
-          <>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>
-                Someone Applied to Your Job
-              </Text>
-              <Switch
-                value={isNotifEnabled("job_like")}
-                onValueChange={(v) => handleNotifToggle("job_like", v)}
-                disabled={notifSaving === "job_like"}
-                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor={tokens.colors.bg}
-              />
-            </View>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>
-                Someone Requested Your Sponsorship
-              </Text>
-              <Switch
-                value={isNotifEnabled("sponsor_request")}
-                onValueChange={(v) => handleNotifToggle("sponsor_request", v)}
-                disabled={notifSaving === "sponsor_request"}
-                trackColor={{ false: tokens.colors.border, true: tokens.colors.brand }}
-                thumbColor={tokens.colors.bg}
-              />
-            </View>
-          </>
-        )}
       </SimpleModal>
     </ScrollView>
   );
@@ -4739,18 +4863,24 @@ function SettingItem({
 }) {
   return (
     <TouchableOpacity
-      style={[styles.settingItem, isLast && { borderBottomWidth: 0 }]}
+      style={[styles.accountRow, isLast && styles.accountRowLast]}
       onPress={onPress}
+      activeOpacity={0.7}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Text style={[styles.settingLabel, { color }]}>{label}</Text>
+      <View style={styles.accountRowLeft}>
+        <Text style={[styles.accountRowLabel, { color }]}>{label}</Text>
         {typeof badgeCount === "number" && badgeCount > 0 && (
-          <View style={styles.settingBadge}>
-            <Text style={styles.settingBadgeText}>{badgeCount}</Text>
+          <View style={styles.accountRowBadge}>
+            <Text style={styles.accountRowBadgeText}>{badgeCount}</Text>
           </View>
         )}
+        {showNotificationDot && <View style={styles.accountRowDot} />}
       </View>
-      <ChevronRight color={tokens.colors.textFaint} size={18} />
+      <ArrowUpRight
+        color={tokens.colors.textMuted}
+        size={14}
+        strokeWidth={2}
+      />
     </TouchableOpacity>
   );
 }
@@ -5032,8 +5162,467 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 28,
-    paddingTop: 20,
+    paddingTop: 16,
     paddingBottom: 140,
+  },
+
+  // ─── EDITORIAL V2 ──────────────────────────────────────────────────────────
+  // The redesigned profile layout. Pattern: eyebrow → identity block →
+  // hairline-divided sections, each with its own eyebrow + content. Reads
+  // top-to-bottom like a printed page rather than a stack of cards.
+
+  // Hero — left-aligned identity (eyebrow row + avatar + name + meta + bio).
+  heroV2: {
+    paddingBottom: 32,
+  },
+  heroEyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 24,
+    marginBottom: 20,
+  },
+  heroEyebrow: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+  },
+  // Completion indicator pill — uses the warning tone so it reads as a
+  // gentle "needs attention" cue rather than a hard error.
+  completionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: tokens.radii.pill,
+    backgroundColor: tokens.colors.warningBg,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.warningBorder,
+  },
+  completionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: tokens.colors.warningFg,
+  },
+  completionPillText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 10,
+    color: tokens.colors.warningFg,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+
+  // Identity row — medium avatar (80 px) beside the name + role + location.
+  // Left-aligned reads as editorial byline, not centered social profile.
+  identityRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 18,
+  },
+  heroAvatarWrap: {
+    position: "relative",
+  },
+  heroAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: tokens.colors.bgOffWhite,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+  },
+  heroAvatarPlaceholder: {
+    backgroundColor: tokens.colors.bgSurface,
+  },
+  // DM Serif Display initial matches the fallback-avatar treatment we use
+  // everywhere else (HomeView, MatchesView, MessagesView, etc.).
+  heroAvatarInitial: {
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 28,
+    lineHeight: 32,
+    color: tokens.colors.text,
+    letterSpacing: -0.5,
+  },
+  heroAvatarEdit: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: tokens.colors.bg,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.borderStrong,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Warm bump when no profile image is set — invites the user to add one
+  // without nagging them with red.
+  heroAvatarEditMissing: {
+    backgroundColor: tokens.colors.warningBg,
+    borderColor: tokens.colors.warningBorder,
+  },
+  identityCopy: {
+    flex: 1,
+    paddingTop: 2,
+    gap: 6,
+  },
+  // The user's name as the page's serif statement. Trailing period is added
+  // in JSX to match the editorial wordmark voice ("BackChannel.", etc.).
+  heroName: {
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 30,
+    lineHeight: 34,
+    color: tokens.colors.text,
+    letterSpacing: -0.6,
+  },
+  heroRole: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 14,
+    lineHeight: 20,
+    color: tokens.colors.textBody,
+    letterSpacing: -0.1,
+  },
+  heroLocation: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 13,
+    color: tokens.colors.textMuted,
+  },
+
+  // Bio as a pull-quote — left vertical rule + italic serif body. Borrows
+  // the "blockquote" pattern from the website's testing-guide pages.
+  bioBlock: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    marginTop: 22,
+    gap: 14,
+  },
+  bioRule: {
+    width: 2,
+    alignSelf: "stretch",
+    backgroundColor: tokens.colors.border,
+    borderRadius: 1,
+  },
+  bioText: {
+    flex: 1,
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 16,
+    lineHeight: 26,
+    color: tokens.colors.textBody,
+    letterSpacing: -0.2,
+  },
+
+  // "Edit profile" inline link — quiet text with trailing arrow instead of
+  // the previous solid ink "Edit Profile" button.
+  editProfileLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 20,
+    alignSelf: "flex-start",
+  },
+  editProfileLinkText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 14,
+    color: tokens.colors.text,
+    letterSpacing: -0.1,
+  },
+
+  // Editorial section pattern — eyebrow header + content. Hairline divider
+  // appears at the TOP of each section so the page reads as a stack of
+  // numbered articles separated by rules, not as a stack of cards.
+  editorialSection: {
+    paddingVertical: 28,
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+  },
+  editorialSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  editorialEyebrow: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+  },
+
+  // Pill clusters — three flavours used across the section types.
+  editorialPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  // Primary expertise pill — surface-toned with a hairline border. Matches
+  // the chip language we use on MatchesView / MessagesView / JobsView.
+  editorialPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: tokens.radii.pill,
+    backgroundColor: tokens.colors.bgSurface,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+  },
+  editorialPillText: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 13,
+    color: tokens.colors.text,
+    letterSpacing: -0.1,
+  },
+  // Soft pill — for secondary metadata (work preferences, résumé filled-
+  // field chips). Off-white background, muted ink.
+  editorialPillSoft: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: tokens.radii.pill,
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+  },
+  editorialPillSoftText: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 13,
+    color: tokens.colors.textBody,
+    letterSpacing: -0.1,
+  },
+  // Target pill — the "Desired Roles" pills with a small target icon up
+  // front. Same chassis as `editorialPill` plus a flex-row + icon gap.
+  editorialPillTarget: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: tokens.radii.pill,
+    backgroundColor: tokens.colors.bgSurface,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+  },
+  // Section empty-state — italic serif so it reads as quiet inviting copy
+  // rather than a system "no data" message.
+  editorialEmpty: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 15,
+    lineHeight: 22,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.1,
+  },
+
+  // AI caption right of the "Résumé" eyebrow.
+  aiCaptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  aiCaption: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 10,
+    color: tokens.colors.textMuted,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+
+  // Résumé — editorial states (idle / uploading / analyzing / done / error)
+  resumeIntro: {
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 15,
+    lineHeight: 24,
+    color: tokens.colors.textBody,
+    marginBottom: 16,
+  },
+  resumeActionLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  resumeActionLinkText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 14,
+    color: tokens.colors.text,
+    letterSpacing: -0.1,
+  },
+  resumeStateBlock: {
+    backgroundColor: tokens.colors.bgOffWhite,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.m,
+    padding: 16,
+    gap: 12,
+  },
+  resumeStateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  resumeStateCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  resumeStateTitle: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 14,
+    color: tokens.colors.text,
+    letterSpacing: -0.2,
+  },
+  resumeStateSub: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 12,
+    color: tokens.colors.textMuted,
+    lineHeight: 18,
+  },
+  resumeStateElapsed: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 12,
+    color: tokens.colors.textFaint,
+    minWidth: 28,
+    textAlign: "right",
+  },
+  resumeCancelLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+  },
+  resumeCancelLinkText: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 12,
+    color: tokens.colors.textMuted,
+  },
+  resumeErrorBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: tokens.colors.dangerBg,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.dangerBorder,
+    borderRadius: tokens.radii.m,
+    padding: 14,
+  },
+  resumeErrorTitle: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 13,
+    color: tokens.colors.dangerFg,
+    letterSpacing: -0.1,
+    marginBottom: 2,
+  },
+  resumeErrorSub: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 12,
+    color: tokens.colors.textBody,
+    lineHeight: 18,
+  },
+  resumeRetryLink: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: tokens.radii.pill,
+    backgroundColor: tokens.colors.bg,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.dangerBorder,
+  },
+  resumeRetryLinkText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.dangerFg,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+
+  // Sub-action below the résumé state block — separated by a hairline so
+  // it reads as a related but distinct affordance.
+  manualEditLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+  },
+  manualEditLinkText: {
+    flex: 1,
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 13,
+    color: tokens.colors.textBody,
+    letterSpacing: -0.1,
+  },
+
+  // Account list — flat hairline-divided rows. No card wrap; rows sit
+  // directly on the page so they read as a list of articles, not as a
+  // settings panel.
+  accountList: {
+    gap: 0,
+  },
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    borderBottomWidth: tokens.borders.hairline,
+    borderBottomColor: tokens.colors.border,
+  },
+  accountRowLast: {
+    borderBottomWidth: 0,
+  },
+  accountRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  accountRowLabel: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 15,
+    color: tokens.colors.text,
+    letterSpacing: -0.2,
+  },
+  accountRowBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: tokens.colors.warningBg,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.warningBorder,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  accountRowBadgeText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 10,
+    color: tokens.colors.warningFg,
+    letterSpacing: 0.4,
+  },
+  accountRowDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: tokens.colors.dangerFg,
+  },
+  // Log out — set apart from the rest of the account list. Italic serif
+  // reads as a quiet page sign-off rather than a primary tap target.
+  logoutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 28,
+    paddingTop: 18,
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+  },
+  logoutLabel: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 17,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.3,
   },
   profileHeader: {
     alignItems: "center",
@@ -5666,9 +6255,115 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: tokens.colors.textBody,
   },
-  privacySection: {
+  // ─── SETTINGS V2 — modal sub-screens ──────────────────────────────────
+  // Privacy & Security and Notifications now use the same flat editorial
+  // row pattern as the Account list on the main profile page: an eyebrow
+  // header above each grouping, hairline-divided rows, ArrowUpRight
+  // trailing affordances. Drops the previous icon-circle + card-wrapped
+  // rows that read as "old-design settings".
+
+  // Lede under the modal title — DM Sans 300 intro sentence.
+  settingsModalLede: {
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 14,
+    lineHeight: 22,
+    color: tokens.colors.textBody,
     marginBottom: 24,
   },
+  // Grouping of related rows under an eyebrow.
+  settingsModalSection: {
+    marginBottom: 28,
+  },
+  // Stack of hairline-divided rows.
+  settingsList: {
+    marginTop: 12,
+  },
+  // Display row — label + sub on the left, a small pill on the right
+  // (e.g. "Public" for the visibility row).
+  settingsValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  // Action row — label + sub on the left, ArrowUpRight on the right.
+  settingsActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    borderBottomWidth: tokens.borders.hairline,
+    borderBottomColor: tokens.colors.border,
+  },
+  settingsActionRowLast: {
+    borderBottomWidth: 0,
+  },
+  // Toggle row — same chassis as the action row but with a Switch on the
+  // right edge instead of an arrow.
+  settingsToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: tokens.borders.hairline,
+    borderBottomColor: tokens.colors.border,
+  },
+  settingsRowContent: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  settingsRowLabel: {
+    fontFamily: tokens.fontFamilies.sans500,
+    fontSize: 15,
+    color: tokens.colors.text,
+    letterSpacing: -0.2,
+  },
+  settingsRowSub: {
+    fontFamily: tokens.fontFamilies.sans400,
+    fontSize: 13,
+    lineHeight: 18,
+    color: tokens.colors.textMuted,
+    marginTop: 2,
+  },
+  settingsValuePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: tokens.radii.pill,
+    backgroundColor: tokens.colors.bgSurface,
+    borderWidth: tokens.borders.hairline,
+    borderColor: tokens.colors.border,
+  },
+  settingsValuePillText: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  // Destructive "Delete account" row — set apart from the main list with
+  // an italic-serif label, top hairline rule, and dangerFg trailing arrow.
+  // Same affordance pattern as the Log-out row on the main profile page.
+  dangerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 24,
+    paddingTop: 18,
+    borderTopWidth: tokens.borders.hairline,
+    borderTopColor: tokens.colors.border,
+  },
+  dangerRowLabel: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 17,
+    color: tokens.colors.dangerFg,
+    letterSpacing: -0.3,
+  },
+
+  // ─── LEGACY (still referenced by some sub-modals like password change /
+  // email change — keep so those screens don't break). Safe to delete in
+  // a future cleanup once nothing else touches them.
+  privacySection: { marginBottom: 24 },
   privacyRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -5676,133 +6371,93 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bgOffWhite,
     padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: tokens.borders.hairline,
     borderColor: tokens.colors.border,
   },
-  privacyContent: {
-    flex: 1,
-  },
+  privacyContent: { flex: 1 },
   privacyLabel: {
     fontSize: 15,
     fontWeight: "700",
     color: tokens.colors.text,
     marginBottom: 4,
   },
-  privacyDescription: {
-    fontSize: 13,
-    color: tokens.colors.textBody,
-  },
+  privacyDescription: { fontSize: 13, color: tokens.colors.textBody },
   privacyValue: {
     fontSize: 15,
     fontWeight: "600",
     color: tokens.colors.text,
-    backgroundColor: tokens.colors.bg,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
   },
-  privacyActionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: tokens.colors.bgOffWhite,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
-  privacyIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: tokens.colors.bg,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
-  privacyActionContent: {
-    flex: 1,
-  },
+  privacyActionCard: { display: "none" },
+  privacyIconContainer: { display: "none" },
+  privacyActionContent: { flex: 1 },
   privacyActionTitle: {
     fontSize: 15,
     fontWeight: "700",
     color: tokens.colors.text,
-    marginBottom: 2,
   },
-  privacyActionSubtitle: {
-    fontSize: 13,
-    color: tokens.colors.textBody,
-  },
+  privacyActionSubtitle: { fontSize: 13, color: tokens.colors.textBody },
+
+  // ─── Legal pages — editorial typography. "Last updated" reads as an
+  // eyebrow, intro is DM Sans 300, section titles use the eyebrow spec,
+  // body is DM Sans 400 with 22 px line-height. ──────────────────────
   legalLastUpdated: {
-    fontSize: 12,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
     color: tokens.colors.textMuted,
-    marginBottom: 12,
-    fontStyle: "italic",
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginBottom: 18,
   },
   legalIntro: {
-    fontSize: 14,
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 15,
+    lineHeight: 24,
     color: tokens.colors.textBody,
-    lineHeight: 21,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   legalSectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: tokens.colors.text,
-    marginTop: 20,
-    marginBottom: 6,
-    letterSpacing: 0.1,
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginTop: 28,
+    marginBottom: 10,
   },
   legalSubSectionTitle: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 13,
-    fontWeight: "600",
     color: tokens.colors.text,
-    marginTop: 10,
-    marginBottom: 4,
+    letterSpacing: -0.1,
+    marginTop: 14,
+    marginBottom: 6,
   },
   legalBody: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 14,
     color: tokens.colors.textBody,
-    lineHeight: 21,
+    lineHeight: 22,
     marginBottom: 4,
   },
   legalBullet: {
+    fontFamily: tokens.fontFamilies.sans400,
     fontSize: 14,
     color: tokens.colors.textBody,
-    lineHeight: 21,
+    lineHeight: 22,
     paddingLeft: 4,
     marginBottom: 3,
   },
   legalContact: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 14,
-    fontWeight: "600",
     color: tokens.colors.text,
-    marginTop: 4,
+    letterSpacing: -0.1,
+    marginTop: 8,
   },
-  // Delete-account card — same shape as the sibling privacy cards but a
-  // tick darker on the background so it visually pulls forward from the
-  // row above. The native Alert confirmation in handleDeleteAccount is
-  // still the actual safety net.
-  deleteActionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: tokens.colors.bgSurface,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
-  deleteActionTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    marginBottom: 2,
-  },
+  // (legacy delete-account card styles removed — the editorial dangerRow
+  // above replaced them.)
+  deleteActionCard: { display: "none" },
+  deleteActionTitle: { fontSize: 15, color: tokens.colors.text },
   passwordInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -5833,18 +6488,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
+  // (legacy toggleRow / toggleLabel — replaced by settingsToggleRow +
+  // settingsRowLabel. Kept here only so any old reference still compiles.)
   toggleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
-    borderBottomWidth: 1,
+    paddingVertical: 12,
+    borderBottomWidth: tokens.borders.hairline,
     borderBottomColor: tokens.colors.border,
   },
   toggleLabel: {
+    fontFamily: tokens.fontFamilies.sans500,
     fontSize: 15,
-    fontWeight: "600",
     color: tokens.colors.text,
+    letterSpacing: -0.2,
   },
 
   // Tab Navigation
@@ -6646,17 +7304,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
   },
-  resumeErrorTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: tokens.colors.dangerFg,
-    marginBottom: 2,
-  },
-  resumeErrorSub: {
-    fontSize: 12,
-    color: tokens.colors.textBody,
-    fontWeight: "600",
-  },
+  // (legacy resumeErrorTitle / resumeErrorSub removed — replaced by the
+  // editorial-v2 versions defined higher in this StyleSheet.)
   resumeRetryBtn: {
     backgroundColor: tokens.colors.dangerFg,
     paddingHorizontal: 12,

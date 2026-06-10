@@ -427,13 +427,14 @@ export function NotificationsView({
 
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Notifications</Text>
+            <Text style={styles.heroEyebrow}>Inbox</Text>
+            <Text style={styles.title}>Notifications.</Text>
             <Text style={styles.subtitle}>
               {isLoading
                 ? "Loading…"
                 : unreadCount > 0
-                  ? `${unreadCount} unread`
-                  : "You're all caught up"}
+                  ? `${unreadCount} unread.`
+                  : "You're all caught up."}
             </Text>
           </View>
 
@@ -466,29 +467,14 @@ export function NotificationsView({
       {/* Loading state */}
       {isLoading && (
         <View style={styles.centeredState}>
-          <View style={styles.stateIconCircle}>
-            <Bell color={tokens.colors.textFaint} size={28} strokeWidth={2} />
-          </View>
-          <Text
-            style={{
-              fontFamily: tokens.fontFamilies.sans500,
-              fontSize: 14,
-              color: tokens.colors.textFaint,
-              marginTop: 4,
-            }}
-          >
-            Loading notifications…
-          </Text>
+          <Text style={styles.loadingLine}>Loading notifications…</Text>
         </View>
       )}
 
       {/* Error state */}
       {!isLoading && error && (
         <View style={styles.centeredState}>
-          <View style={styles.stateIconCircle}>
-            <Bell color={tokens.colors.textFaint} size={28} strokeWidth={2} />
-          </View>
-          <Text style={styles.errorText}>Couldn't load notifications</Text>
+          <Text style={styles.errorText}>Couldn't load notifications.</Text>
           <TouchableOpacity
             onPress={() => fetchNotifications()}
             style={styles.retryButton}
@@ -622,10 +608,7 @@ export function NotificationsView({
       {/* Empty state — user has no notifications at all */}
       {!isLoading && !error && notifications.length === 0 && (
         <View style={styles.emptyState}>
-          <View style={styles.stateIconCircle}>
-            <Bell color={tokens.colors.textFaint} size={30} strokeWidth={2} />
-          </View>
-          <Text style={styles.emptyStateTitle}>No notifications yet</Text>
+          <Text style={styles.emptyStateTitle}>No notifications yet.</Text>
           <Text style={styles.emptyStateText}>
             Matches, messages, and referral updates will show up here.
           </Text>
@@ -662,6 +645,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  // Editorial hero — eyebrow + serif title + sans-300 lede. Matches every
+  // other redesigned tab page.
+  heroEyebrow: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginBottom: 12,
+  },
   title: {
     fontFamily: tokens.fontFamilies.serif,
     fontSize: 34,
@@ -670,10 +663,19 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
   },
   subtitle: {
-    fontFamily: tokens.fontFamilies.sans400,
-    fontSize: 13,
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 14,
+    lineHeight: 22,
     color: tokens.colors.textMuted,
-    marginTop: 4,
+    marginTop: 6,
+  },
+  // Quiet italic-serif single line shown while notifications load. Drops
+  // the previous 64 px circle + Bell-icon chrome.
+  loadingLine: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 18,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.2,
   },
   actionPill: {
     backgroundColor: tokens.colors.bgSurface,
@@ -706,9 +708,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: {
-    fontFamily: tokens.fontFamilies.sans500,
-    fontSize: 15,
-    color: tokens.colors.textBody,
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 20,
+    lineHeight: 26,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.3,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -857,12 +861,13 @@ const styles = StyleSheet.create({
     paddingVertical: 70,
   },
   emptyStateTitle: {
-    fontFamily: tokens.fontFamilies.serif,
+    fontFamily: tokens.fontFamilies.serifItalic,
     fontSize: 22,
-    lineHeight: 26,
-    color: tokens.colors.text,
-    letterSpacing: -0.4,
+    lineHeight: 28,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.3,
     marginBottom: 8,
+    textAlign: "center",
   },
   emptyStateText: {
     fontFamily: tokens.fontFamilies.sans300,

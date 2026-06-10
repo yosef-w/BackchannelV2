@@ -23,6 +23,7 @@ import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { formatSalary, parseEmploymentType } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
+  ArrowUpRight,
   Briefcase,
   Check,
   CheckCircle,
@@ -88,8 +89,13 @@ interface SponsorInfo {
 }
 
 // Empty State Component
+/**
+ * Editorial empty state — italic-serif title and a sans-300 sub, with the
+ * action surfaced as a quiet `Action ↗` link rather than a black pill.
+ * `icon` is retained in the type for callers but no longer rendered; the
+ * editorial empty state intentionally drops the icon-circle chrome.
+ */
 const EmptyState = ({
-  icon,
   title,
   description,
   actionText,
@@ -105,16 +111,21 @@ const EmptyState = ({
     entering={FadeIn.duration(400)}
     style={styles.emptyStateContainer}
   >
-    <View style={styles.emptyStateIconContainer}>{icon}</View>
     <Text style={styles.emptyStateTitle}>{title}</Text>
     <Text style={styles.emptyStateDescription}>{description}</Text>
     {actionText && onAction && (
       <TouchableOpacity
-        style={styles.emptyStateButton}
+        style={styles.emptyStateActionLink}
         onPress={onAction}
-        activeOpacity={0.8}
+        activeOpacity={0.7}
+        hitSlop={6}
       >
-        <Text style={styles.emptyStateButtonText}>{actionText}</Text>
+        <Text style={styles.emptyStateActionLinkText}>{actionText}</Text>
+        <ArrowUpRight
+          size={14}
+          color={tokens.colors.text}
+          strokeWidth={2}
+        />
       </TouchableOpacity>
     )}
   </Animated.View>
@@ -1084,10 +1095,14 @@ export function JobsView() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* ─── Editorial page hero ───────────────────────────────────────
+            Eyebrow + serif title + DM Sans 300 lede. Same pattern as
+            Profile, Matches, and Inbox. */}
         <View style={styles.header}>
-          <Text style={styles.title}>Job Board</Text>
-          <Text style={styles.subtitle}>
-            Manage your listings and find the right talent
+          <Text style={styles.heroEyebrow}>Sponsor</Text>
+          <Text style={styles.heroTitle}>Job Board.</Text>
+          <Text style={styles.heroBody}>
+            Manage your listings and find the right talent.
           </Text>
         </View>
 
@@ -1114,10 +1129,7 @@ export function JobsView() {
             entering={FadeIn.duration(300)}
             style={styles.loadingContainer}
           >
-            <View style={styles.loadingSpinner}>
-              <Sparkles size={32} color={tokens.colors.text} />
-            </View>
-            <Text style={styles.loadingText}>Finding opportunities...</Text>
+            <Text style={styles.loadingText}>Finding opportunities…</Text>
           </Animated.View>
         ) : error ? (
           <EmptyState
@@ -1310,28 +1322,22 @@ export function JobsView() {
                     entering={FadeIn.duration(300)}
                     style={styles.simpleEmptyState}
                   >
-                    <Sparkles size={24} color={tokens.colors.textMuted} strokeWidth={2.5} />
-                    <View style={styles.simpleEmptyTextContainer}>
-                      <Text style={styles.simpleEmptyText}>
-                        Loading your sponsored jobs...
-                      </Text>
-                    </View>
+                    <Text style={styles.simpleEmptyText}>
+                      Loading your sponsored jobs…
+                    </Text>
                   </Animated.View>
                 ) : myJobs.length === 0 ? (
                   <Animated.View
                     entering={FadeIn.duration(400)}
                     style={styles.simpleEmptyState}
                   >
-                    <Sparkles size={24} color={tokens.colors.textMuted} strokeWidth={2.5} />
-                    <View style={styles.simpleEmptyTextContainer}>
-                      <Text style={styles.simpleEmptyText}>
-                        You haven't sponsored any jobs yet
-                      </Text>
-                      <Text style={styles.simpleEmptySubtext}>
-                        Sponsor a listing to unlock applicant profiles and get
-                        featured
-                      </Text>
-                    </View>
+                    <Text style={styles.simpleEmptyText}>
+                      You haven't sponsored any jobs yet.
+                    </Text>
+                    <Text style={styles.simpleEmptySubtext}>
+                      Sponsor a listing to unlock applicant profiles and get
+                      featured.
+                    </Text>
                   </Animated.View>
                 ) : (
                   myJobs.map((job, index) => (
@@ -3048,8 +3054,37 @@ function JobCard({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.colors.bg },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 20 },
-  header: { marginBottom: 24, paddingHorizontal: 4 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 16 },
+
+  // ─── EDITORIAL V2 ──────────────────────────────────────────────────────────
+  // Hero: eyebrow + serif title + DM Sans 300 lede. Empty / loading states
+  // are quiet italic-serif sign-offs rather than card-and-icon panels.
+  header: { paddingBottom: 28, paddingHorizontal: 4 },
+  heroEyebrow: {
+    fontFamily: tokens.fontFamilies.sans600,
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginBottom: 14,
+  },
+  heroTitle: {
+    fontFamily: tokens.fontFamilies.serif,
+    fontSize: 34,
+    lineHeight: 38,
+    color: tokens.colors.text,
+    letterSpacing: -0.6,
+    marginBottom: 10,
+  },
+  heroBody: {
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 15,
+    lineHeight: 24,
+    color: tokens.colors.textBody,
+  },
+
+  // Legacy page-header styles — kept for any lingering references but not
+  // used by the v2 render. Safe to delete in a future cleanup.
   title: { fontSize: 32, fontWeight: "800", color: tokens.colors.text, letterSpacing: -1 },
   subtitle: { fontSize: 16, color: tokens.colors.textBody, marginTop: 6, fontWeight: "500" },
 
@@ -4710,121 +4745,80 @@ const styles = StyleSheet.create({
   gateBtnSecondaryText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.textBody, fontSize: 15, letterSpacing: -0.1 },
 
   // Empty State Styles
+  // ─── Empty state — editorial. Drops the big rounded card + 80 px icon
+  //    circle + black pill action button in favour of a quiet italic-serif
+  //    sign-off and an `Action ↗` link. Reads as a paragraph at the end of
+  //    a column rather than an "uh oh nothing here" panel. ──────────────
   emptyStateContainer: {
-    backgroundColor: tokens.colors.bg,
-    borderRadius: 24,
-    padding: 40,
-    marginHorizontal: 4,
-    marginVertical: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: tokens.colors.brand,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-  emptyStateIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: tokens.colors.bgOffWhite,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
+    paddingVertical: 36,
+    paddingHorizontal: 4,
+    alignItems: "flex-start",
   },
   emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: tokens.colors.text,
-    marginBottom: 12,
-    textAlign: "center",
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 22,
+    lineHeight: 28,
+    color: tokens.colors.textMuted,
     letterSpacing: -0.3,
+    marginBottom: 8,
   },
   emptyStateDescription: {
+    fontFamily: tokens.fontFamilies.sans300,
     fontSize: 15,
-    color: tokens.colors.textBody,
-    textAlign: "center",
+    color: tokens.colors.textFaint,
     lineHeight: 22,
-    marginBottom: 24,
-    paddingHorizontal: 20,
-    fontWeight: "500",
+    marginBottom: 16,
   },
-  emptyStateButton: {
-    backgroundColor: tokens.colors.brand,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
-    minWidth: 160,
-    alignItems: "center",
-  },
-  emptyStateButtonText: { fontFamily: tokens.fontFamilies.sans600, color: tokens.colors.brandText,
-    fontSize: 15,
-    letterSpacing: 0.2 },
-
-  // Loading State Styles
-  loadingContainer: {
-    padding: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: tokens.colors.bg,
-    borderRadius: 24,
-    marginHorizontal: 4,
-    marginVertical: 20,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
-  loadingSpinner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: tokens.colors.bgOffWhite,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: tokens.colors.text,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-
-  // Simple Empty State for Sponsored Section
-  simpleEmptyState: {
+  // Inline `Action ↗` link instead of a black pill — matches the
+  // editorial link affordances we use on Profile.
+  emptyStateActionLink: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    backgroundColor: tokens.colors.bgOffWhite,
-    padding: 20,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
+    gap: 4,
+    alignSelf: "flex-start",
   },
-  simpleEmptyTextContainer: {
-    flex: 1,
-  },
-  simpleEmptyText: {
+  emptyStateActionLinkText: {
+    fontFamily: tokens.fontFamilies.sans600,
     fontSize: 14,
-    fontWeight: "700",
     color: tokens.colors.text,
-    marginBottom: 4,
+    letterSpacing: -0.1,
+  },
+
+  // Loading state — drops the boxed card + 64 px circle spinner. Just a
+  // single italic-serif line in the centre of the column.
+  loadingContainer: {
+    paddingVertical: 56,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 18,
+    color: tokens.colors.textMuted,
     letterSpacing: -0.2,
   },
+
+  // Simple empty state for the Sponsored tab. Drops the rounded card +
+  // sparkles icon. Italic-serif title + sans-300 sub.
+  simpleEmptyState: {
+    paddingVertical: 28,
+    paddingHorizontal: 4,
+    marginBottom: 20,
+  },
+  simpleEmptyText: {
+    fontFamily: tokens.fontFamilies.serifItalic,
+    fontSize: 20,
+    lineHeight: 26,
+    color: tokens.colors.textMuted,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
   simpleEmptySubtext: {
-    fontSize: 13,
-    color: tokens.colors.textBody,
-    lineHeight: 18,
-    fontWeight: "500",
+    fontFamily: tokens.fontFamilies.sans300,
+    fontSize: 14,
+    lineHeight: 22,
+    color: tokens.colors.textFaint,
   },
 
   // Action bar — holds the segmented tab control on the left and the

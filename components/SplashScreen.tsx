@@ -79,18 +79,23 @@ export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
     welcomeOpacity.value = withDelay(220, withTiming(1, { duration: 650 }));
     welcomeTranslate.value = withDelay(220, withTiming(0, { duration: 650 }));
 
-    // 4. Cursor blink — ~8 full cycles then fade to invisible. Each cycle
-    //    fades to 0 then snaps back to 1; over 8 cycles that's ~3s of blink
-    //    before the final 400 ms fade out.
+    // 4. Cursor blink — step-end, ~1 s per cycle. Visible 500 ms → snap
+    //    off → invisible 500 ms → snap on. Mirrors the cadence of a real
+    //    terminal / iOS text cursor instead of the previous fast 380 ms
+    //    continuous-fade rhythm, which read as "loading spinner" rather
+    //    than "typewriter cursor". 5 cycles ≈ 5 s of blinking, then a
+    //    gentle 400 ms taper so the cursor doesn't pop out abruptly.
     cursorOpacity.value = withDelay(
       TYPE_START_DELAY_MS,
       withSequence(
         withRepeat(
           withSequence(
-            withTiming(0, { duration: 380, easing: Easing.linear }),
-            withTiming(1, { duration: 0 }),
+            // Hold visible 500 ms, then snap to invisible.
+            withDelay(500, withTiming(0, { duration: 0 })),
+            // Hold invisible 500 ms, then snap to visible.
+            withDelay(500, withTiming(1, { duration: 0 })),
           ),
-          8,
+          5,
           false,
         ),
         withTiming(0, { duration: 400 }),
@@ -297,10 +302,15 @@ const styles = StyleSheet.create({
   },
   cursor: {
     width: 3,
-    height: 34,
+    // Height ≈ the italic serif's cap-height (DM Serif Display at 44 px ≈ 30 px
+    // cap-height). At the previous 34 px the cursor extended below the baseline
+    // and read as "sitting low" relative to the typed text. Pairing this with
+    // a slightly bigger marginBottom shifts the bounding box's centre up so
+    // alignItems: "center" lands the visible cursor on the cap line.
+    height: 30,
     backgroundColor: tokens.colors.textMuted,
     marginLeft: 3,
-    marginBottom: 4,
+    marginBottom: 8,
     borderRadius: 1,
   },
   footer: {
