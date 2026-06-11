@@ -1,6 +1,7 @@
 import { AppToast } from "@/components/ui/AppToast";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { initAnalytics, trackAppOpened } from "@/lib/analytics/mixpanel";
+import { initSentry, sentryWrap } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
@@ -16,11 +17,16 @@ import { useEffect, useRef } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+// Initialize crash reporting at module scope — before any UI mounts — so
+// even crashes during the very first render are captured. No-ops when
+// EXPO_PUBLIC_SENTRY_DSN is unset (see lib/sentry.ts).
+initSentry();
+
 /**
  * Create ONE QueryClient for the entire app.
  * useRef ensures it persists across re-renders.
  */
-export default function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
 
   const queryClientRef = useRef<QueryClient | null>(null);
@@ -123,3 +129,7 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
 });
+
+// Sentry's root wrapper adds the top-level error boundary + touch/navigation
+// instrumentation. Harmless no-op shell when the DSN isn't configured.
+export default sentryWrap(RootLayout);
