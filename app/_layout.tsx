@@ -105,6 +105,11 @@ export default function RootLayout() {
               name="verify-email"
               options={{ headerShown: false }}
             />
+            {/* Deep-link target for `backchannelv2://reset-password?token=…` */}
+            <Stack.Screen
+              name="reset-password"
+              options={{ headerShown: false }}
+            />
           </Stack>
 
           {/* Global toast — overlays all screens */}

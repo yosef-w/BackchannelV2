@@ -323,6 +323,18 @@ export function trackResendVerificationRequested(args: {
   safeTrack("Resend Verification Requested", { request_source: args.source });
 }
 
+export function trackResetPasswordOpened(args: { hasToken: boolean }): void {
+  safeTrack("Reset Password Opened", { has_token: args.hasToken });
+}
+
+export function trackResetPasswordSucceeded(): void {
+  safeTrack("Reset Password Succeeded");
+}
+
+export function trackResetPasswordFailed(reason: string): void {
+  safeTrack("Reset Password Failed", { reason });
+}
+
 // ─── Feed: applicant (jobs deck) ──────────────────────────────────────────────
 
 export function trackJobCardViewed(args: {
