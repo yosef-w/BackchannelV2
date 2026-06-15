@@ -59,6 +59,23 @@ import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+// ── Foreground push display ──────────────────────────────────────────────
+// When a push arrives while the app is open, iOS does NOT show it
+// automatically — it hands the notification to this handler to decide what
+// to do, and the default with no handler is to show NOTHING. That's why a
+// user actively testing (app on screen) sees no banner even when delivery
+// works. Registered at module scope so it's set once before any UI mounts.
+// (Background / killed display is handled by the OS from the aps payload and
+// does not depend on this handler.)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
+
 interface MainAppProps {
   userType: "applicant" | "sponsor";
 }
@@ -459,6 +476,17 @@ export function MainApp({ userType }: MainAppProps) {
     );
 
     return () => subscription.remove();
+  }, [isAuthenticated]);
+
+  // ── Refresh the bell badge the instant a push arrives in the foreground ──
+  // The handler above shows the banner; this bumps the unread count right
+  // away instead of waiting up to 60s for the next poll.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const received = Notifications.addNotificationReceivedListener(() => {
+      fetchUnreadCount();
+    });
+    return () => received.remove();
   }, [isAuthenticated]);
 
   const handleNavigateToMessages = (jobId: string, userId?: string) => {
