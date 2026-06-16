@@ -22,6 +22,7 @@ import {
     withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
     AlertTriangle,
@@ -76,6 +77,13 @@ import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
+
+// React Query key for the matched-list fetch. Caching this is what makes the
+// Matches tab render instantly on re-entry instead of re-spinning every time:
+// the cached list paints immediately while a fresh fetch runs in the
+// background (stale-while-revalidate). Mutations that change the match set
+// invalidate this prefix to force a refetch.
+const MATCHES_QUERY_KEY = ["matchesScreen", "matches"] as const;
 
 interface Match {
   // String (was number) — backend LIKE_IDs are UUIDs, and coercing them
@@ -404,10 +412,10 @@ export function MatchesView({
   const [srSponsoring, setSrSponsoring] = useState(false);
   const [srNewJobId, setSrNewJobId] = useState<string | null>(null);
 
-  // Real matches state
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [matchesLoading, setMatchesLoading] = useState(true);
-  const [matchesError, setMatchesError] = useState<string | null>(null);
+  // Real matches — fetched via React Query so the list is cached across tab
+  // switches. On re-entry the cached matches paint instantly (no spinner) and
+  // a background refetch keeps them fresh. `matchesLoading` / `matchesError`
+  // below preserve the exact shapes the JSX already consumes.
 
   // Liked jobs state (for applicants)
   const [likedJobs, setLikedJobs] = useState<JobOpportunity[]>([]);
@@ -440,132 +448,136 @@ export function MatchesView({
     useState<string>("");
   const withdrawTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useToastStore((state) => state.showToast);
+  const queryClient = useQueryClient();
 
-  // Fetch matches on mount
-  useEffect(() => {
-    const fetchMatches = async () => {
-      try {
-        setMatchesLoading(true);
-        console.log("[MatchesView] Fetching matches for:", userType);
+  // Matches list — cached so the tab paints instantly on re-entry. The
+  // queryFn holds the same role-aware fetch + transform logic as before;
+  // errors propagate to React Query (the api client already logs them) and
+  // surface through `matchesError` below.
+  const {
+    data: matches = [],
+    isPending: matchesLoading,
+    error: matchesErrorObj,
+  } = useQuery({
+    queryKey: [...MATCHES_QUERY_KEY, userType],
+    queryFn: async (): Promise<Match[]> => {
+      if (userType === "applicant") {
+        const response = await getMatches();
 
-        if (userType === "applicant") {
-          const response = await getMatches();
-          console.log("[MatchesView] Applicant matches:", response);
+        // API returns job_matches and profile_matches
+        const rawMatches =
+          response.job_matches || response.profile_matches || [];
 
-          // API returns job_matches and profile_matches
-          const matches =
-            response.job_matches || response.profile_matches || [];
+        // Transform API response to Match interface
+        return rawMatches.map((m) => {
+          const match = m as any;
+          const sponsorName = match.sponsor?.name
+            ? match.sponsor.name
+            : `${match.SPONSOR_FIRST_NAME || ""} ${match.SPONSOR_LAST_NAME || ""}`.trim();
+          const matchedAt = match.matched_at || match.MATCHED_AT;
 
-          // Transform API response to Match interface
-          const transformedMatches: Match[] = matches.map((m) => {
-            const match = m as any;
-            const sponsorName = match.sponsor?.name
-              ? match.sponsor.name
-              : `${match.SPONSOR_FIRST_NAME || ""} ${match.SPONSOR_LAST_NAME || ""}`.trim();
-            const matchedAt = match.matched_at || match.MATCHED_AT;
-
-            return {
-              id: String(match.id || match.LIKE_ID || ""),
-              name: sponsorName || "Sponsor",
-              role: match.sponsor?.role || match.SPONSOR_JOB_TITLE || "Sponsor",
-              company:
-                match.sponsor?.company ||
-                match.job?.company ||
-                match.COMPANY ||
-                "",
-              image:
-                match.sponsor?.profile_image_url ||
-                match.SPONSOR_PHOTO_URL ||
-                "",
-              // Defensive: backend doesn't currently join LOGO_URL onto
-              // /api/matches/ but if/when it does, pick it up automatically.
-              companyLogoUrl:
-                match.LOGO_URL ||
-                match.logo_url ||
-                match.ORGANIZATION_LOGO ||
-                undefined,
-              status: "connected",
-              date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
-              appliedRole:
-                match.job?.title || match.TITLE || match.JOB_TITLE || "",
-              experience: "", // Not provided by API
-              skills: [], // Not provided by API
-              jobId: match.JOB_ID || match.job?.id || "",
-              sponsorUserId: match.sponsor?.id || match.SPONSOR_USER_ID || "",
-              insights: undefined,
-              prompts: undefined,
-            };
-          });
-
-          setMatches(transformedMatches);
-        } else {
-          // Sponsor view
-          const response = await getSponsorMatches();
-          console.log("[MatchesView] Sponsor matches:", response);
-
-          // Transform API response to Match interface
-          const transformedMatches: Match[] = response.matches.map((m) => {
-            // The Postgres adapter uppercases every returned column name
-            // (pg_utils.py:110), so SQL aliases written lowercase like
-            // `applicant_user_id` and `matched_at` come back as
-            // APPLICANT_USER_ID / MATCHED_AT. Read uppercase first, fall
-            // back to lowercase to stay tolerant if the backend ever
-            // changes the adapter behavior.
-            const match = m as any;
-            const applicantName =
-              `${match.FIRST_NAME || ""} ${match.LAST_NAME || ""}`.trim();
-            const matchedAt = match.MATCHED_AT || match.matched_at;
-            const applicantUserId =
-              match.APPLICANT_USER_ID || match.applicant_user_id || "";
-
-            // SKILLS arrives as a JSON-encoded string from Snowflake ::TEXT cast
-            let skills: string[] = [];
-            if (match.SKILLS) {
-              try {
-                const parsed = JSON.parse(match.SKILLS);
-                skills = Array.isArray(parsed) ? parsed : [];
-              } catch {
-                skills = [];
-              }
-            }
-
-            return {
-              id: String(match.LIKE_ID || ""),
-              name: applicantName || "Applicant",
-              role: "Job Seeker",
-              company: "",
-              image: match.PHOTO_URL || "",
-              companyLogoUrl:
-                match.LOGO_URL ||
-                match.logo_url ||
-                match.ORGANIZATION_LOGO ||
-                undefined,
-              status: "connected",
-              date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
-              appliedRole: match.TITLE || "",
-              experience: "",
-              skills,
-              jobId: match.JOB_ID || "",
-              applicantUserId,
-              insights: undefined,
-              prompts: undefined,
-            };
-          });
-
-          setMatches(transformedMatches);
-        }
-      } catch (err) {
-        console.warn("[MatchesView] Failed to fetch matches:", err);
-        setMatchesError(
-          err instanceof Error ? err.message : "Failed to fetch matches",
-        );
-      } finally {
-        setMatchesLoading(false);
+          return {
+            id: String(match.id || match.LIKE_ID || ""),
+            name: sponsorName || "Sponsor",
+            role: match.sponsor?.role || match.SPONSOR_JOB_TITLE || "Sponsor",
+            company:
+              match.sponsor?.company ||
+              match.job?.company ||
+              match.COMPANY ||
+              "",
+            image:
+              match.sponsor?.profile_image_url ||
+              match.SPONSOR_PHOTO_URL ||
+              "",
+            // Defensive: backend doesn't currently join LOGO_URL onto
+            // /api/matches/ but if/when it does, pick it up automatically.
+            companyLogoUrl:
+              match.LOGO_URL ||
+              match.logo_url ||
+              match.ORGANIZATION_LOGO ||
+              undefined,
+            status: "connected",
+            date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
+            appliedRole:
+              match.job?.title || match.TITLE || match.JOB_TITLE || "",
+            experience: "", // Not provided by API
+            skills: [], // Not provided by API
+            jobId: match.JOB_ID || match.job?.id || "",
+            sponsorUserId: match.sponsor?.id || match.SPONSOR_USER_ID || "",
+            insights: undefined,
+            prompts: undefined,
+          };
+        });
       }
-    };
 
-    fetchMatches();
-  }, [userType, matchesRefreshKey]);
+      // Sponsor view
+      const response = await getSponsorMatches();
+
+      // Transform API response to Match interface
+      return response.matches.map((m) => {
+        // The Postgres adapter uppercases every returned column name
+        // (pg_utils.py:110), so SQL aliases written lowercase like
+        // `applicant_user_id` and `matched_at` come back as
+        // APPLICANT_USER_ID / MATCHED_AT. Read uppercase first, fall
+        // back to lowercase to stay tolerant if the backend ever
+        // changes the adapter behavior.
+        const match = m as any;
+        const applicantName =
+          `${match.FIRST_NAME || ""} ${match.LAST_NAME || ""}`.trim();
+        const matchedAt = match.MATCHED_AT || match.matched_at;
+        const applicantUserId =
+          match.APPLICANT_USER_ID || match.applicant_user_id || "";
+
+        // SKILLS arrives as a JSON-encoded string from Snowflake ::TEXT cast
+        let skills: string[] = [];
+        if (match.SKILLS) {
+          try {
+            const parsed = JSON.parse(match.SKILLS);
+            skills = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            skills = [];
+          }
+        }
+
+        return {
+          id: String(match.LIKE_ID || ""),
+          name: applicantName || "Applicant",
+          role: "Job Seeker",
+          company: "",
+          image: match.PHOTO_URL || "",
+          companyLogoUrl:
+            match.LOGO_URL ||
+            match.logo_url ||
+            match.ORGANIZATION_LOGO ||
+            undefined,
+          status: "connected",
+          date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
+          appliedRole: match.TITLE || "",
+          experience: "",
+          skills,
+          jobId: match.JOB_ID || "",
+          applicantUserId,
+          insights: undefined,
+          prompts: undefined,
+        };
+      });
+    },
+  });
+  const matchesError =
+    matchesErrorObj instanceof Error
+      ? matchesErrorObj.message
+      : matchesErrorObj
+        ? "Failed to fetch matches"
+        : null;
+
+  // Called after any mutation that changes the match set. Invalidates the
+  // cached matches query (so it refetches in the background) and bumps the
+  // legacy refresh key the still-manual sub-sections (interested sponsors /
+  // applicants, sponsor requests) depend on, keeping the whole screen in sync.
+  const refreshMatchSections = () => {
+    queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+    setMatchesRefreshKey((k) => k + 1);
+  };
 
   // Fetch liked jobs for applicants
   useEffect(() => {
@@ -1190,7 +1202,7 @@ export function MatchesView({
       setSponsorRequests((prev) =>
         prev.filter((r) => r.requestId !== request.requestId),
       );
-      setMatchesRefreshKey((k) => k + 1);
+      refreshMatchSections();
 
       // Advance to success screen
       setSrStep(4);
@@ -1224,7 +1236,7 @@ export function MatchesView({
         setInterestedApplicants((prev) =>
           prev.filter((a) => a.applicantUserId !== applicant.applicantUserId),
         );
-        setMatchesRefreshKey((k) => k + 1);
+        refreshMatchSections();
       }
       closeAllModals();
       showToast(
@@ -1250,7 +1262,7 @@ export function MatchesView({
       setSponsorRequests((prev) =>
         prev.filter((r) => r.requestId !== request.requestId),
       );
-      setMatchesRefreshKey((k) => k + 1);
+      refreshMatchSections();
       closeAllModals();
       showToast(
         res.matched
@@ -1296,7 +1308,7 @@ export function MatchesView({
         setInterestedSponsors((prev) =>
           prev.filter((s) => s.likeId !== sponsor.likeId),
         );
-        setMatchesRefreshKey((k) => k + 1);
+        refreshMatchSections();
       }
       closeAllModals();
       showToast(res.message, res.matched ? "success" : "info");
