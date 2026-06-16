@@ -225,6 +225,7 @@ export function JobsView() {
   const jobs = useJobsStore((state) => state.jobs);
   const isLoading = useJobsStore((state) => state.isLoading);
   const error = useJobsStore((state) => state.error);
+  const lastFetched = useJobsStore((state) => state.lastFetched);
   const setJobs = useJobsStore((state) => state.setJobs);
   const setLoading = useJobsStore((state) => state.setLoading);
   const setError = useJobsStore((state) => state.setError);
@@ -291,12 +292,14 @@ export function JobsView() {
   const [activeTab, setActiveTab] = useState<"browse" | "sponsored">("browse");
   const [displayLimit, setDisplayLimit] = useState(20);
 
-  // Fetch browse jobs on mount.
+  // Fetch browse jobs on mount. The store is in-memory and survives tab
+  // switches, so on re-entry we serve the cached list instantly: the
+  // full-screen spinner only shows on a true cold load (`silent === false`),
+  // and when results already exist we refetch silently in the background.
   useEffect(() => {
-    const loadJobs = async () => {
+    const loadJobs = async (silent: boolean) => {
       try {
-        setLoading(true);
-        console.log("[JobsView] Fetching browse jobs for sponsor");
+        if (!silent) setLoading(true);
         trackBrowseJobsViewed();
         const response = await browseJobs({ limit: 50 });
         console.log("[JobsView] Browse response:", response);
@@ -362,13 +365,23 @@ export function JobsView() {
         setJobs(transformedJobs);
       } catch (err) {
         console.warn("Failed to fetch browse jobs:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch jobs");
+        // Don't surface an error screen over a list the user can already see.
+        if (!silent)
+          setError(err instanceof Error ? err.message : "Failed to fetch jobs");
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     };
 
-    loadJobs();
+    // Skip the network entirely when the cached list is still fresh; otherwise
+    // refetch — silently if we already have results to show, with the spinner
+    // only on a true cold load.
+    const FRESH_MS = 2 * 60 * 1000;
+    const isFresh =
+      !!lastFetched &&
+      Date.now() - new Date(lastFetched).getTime() < FRESH_MS;
+    if (jobs.length > 0 && isFresh) return;
+    loadJobs(jobs.length > 0);
     // isSponsored flags are synced by a separate effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -517,10 +530,14 @@ export function JobsView() {
     }
   };
 
-  // Fetch real sponsored jobs from backend whenever the "My Sponsored" tab is opened
+  // Fetch real sponsored jobs whenever the "My Sponsored" tab is opened.
+  // Show the spinner only on a cold load; when the list is already cached
+  // (in-memory store survives tab switches), refresh silently in the
+  // background so the tab paints instantly.
   useEffect(() => {
     if (activeTab !== "sponsored") return;
-    refreshMyJobs();
+    refreshMyJobs(myJobs.length === 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Pre-populate both sponsoredJobs (for green borders) AND myJobs (for tab count)
@@ -1108,7 +1125,7 @@ export function JobsView() {
           <Text style={styles.listSectionTitle}>Available Jobs</Text>
         </Animated.View>
 
-        {isLoading ? (
+        {isLoading && jobs.length === 0 ? (
           <Animated.View
             entering={FadeIn.duration(300)}
             style={styles.loadingContainer}
@@ -1304,7 +1321,7 @@ export function JobsView() {
             {/* Sponsored Jobs Tab */}
             {activeTab === "sponsored" && (
               <>
-                {isMyJobsLoading ? (
+                {isMyJobsLoading && myJobs.length === 0 ? (
                   <Animated.View
                     entering={FadeIn.duration(300)}
                     style={styles.simpleEmptyState}

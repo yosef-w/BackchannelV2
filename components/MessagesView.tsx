@@ -38,7 +38,8 @@ import {
     UserCheck,
     X,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -102,6 +103,7 @@ export function MessagesView({
   // Store current user ID from profile API to determine which participant to show
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const showToast = useToastStore((state) => state.showToast);
+  const queryClient = useQueryClient();
 
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
@@ -123,12 +125,67 @@ export function MessagesView({
   const keyboard = useAnimatedKeyboard();
 
   // Real data state
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [conversationsLoading, setConversationsLoading] = useState(true);
-  const [conversationsError, setConversationsError] = useState<string | null>(
-    null,
-  );
   const [conversationsTotalCount, setConversationsTotalCount] = useState(0);
+
+  // Conversations list — backed by React Query so it survives tab switches and
+  // paints instantly on re-entry. staleTime: Infinity + refetchOnWindowFocus:
+  // false means React Query NEVER auto-refetches behind the live inbox
+  // WebSocket; the socket and pagination keep the cached list current through
+  // the `setConversations` shim below, which has the exact signature of a
+  // useState setter so every existing call site (WS updates, pagination,
+  // mark-read/closed) is unchanged. Explicit refreshes go through
+  // refreshConversations() → refetchConversations().
+  const {
+    data: conversations = [],
+    isLoading: conversationsQueryLoading,
+    error: conversationsErrorObj,
+    refetch: refetchConversations,
+  } = useQuery({
+    queryKey: ["conversations", "list", currentUserId],
+    enabled: !!currentUserId,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    queryFn: async (): Promise<any[]> => {
+      try {
+        const response = await getConversations({ limit: 20, offset: 0 });
+        setConversationsTotalCount(
+          response.total_count ?? response.conversations.length,
+        );
+        return response.conversations.map((conv) =>
+          transformConversation(conv as any),
+        );
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch conversations";
+        // 404 = endpoint not available yet or no conversations — empty state.
+        if (errorMessage.includes("Not found") || errorMessage.includes("404"))
+          return [];
+        throw err;
+      }
+    },
+  });
+  // Before the user id resolves we're still "loading" (matches the old
+  // initial `true`); after that, follow the query's first-load state only —
+  // background refetches keep `conversations` visible (no flash).
+  const conversationsLoading = !currentUserId || conversationsQueryLoading;
+  const conversationsError =
+    conversationsErrorObj instanceof Error ? conversationsErrorObj.message : null;
+
+  // Shim with the exact (value | updater) signature of a useState setter, so
+  // every existing setConversations(...) call site works unchanged while the
+  // list actually lives in the React Query cache.
+  const setConversations = useCallback(
+    (next: any[] | ((prev: any[]) => any[])) => {
+      queryClient.setQueryData<any[]>(
+        ["conversations", "list", currentUserId],
+        (prev) =>
+          typeof next === "function"
+            ? (next as (p: any[]) => any[])(prev ?? [])
+            : next,
+      );
+    },
+    [queryClient, currentUserId],
+  );
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   // Inbox grouping: which participant-groups are expanded (keyed by the
   // other participant's user id). Multi-thread people collapse into one row;
@@ -197,16 +254,8 @@ export function MessagesView({
     fetchCurrentUser();
   }, []);
 
-  // Fetch conversations once the current user is known. The actual fetch
-  // lives in `refreshConversations` (defined below) so it can be reused by
-  // the inbox WebSocket and the refetch-on-return fallback.
-  useEffect(() => {
-    if (!currentUserId) {
-      console.log("[MessagesView] Waiting for current user ID...");
-      return;
-    }
-    refreshConversations();
-  }, [currentUserId]);
+  // (Initial fetch is handled by the conversations useQuery above, which runs
+  // automatically once `currentUserId` is set — no manual effect needed.)
 
   // Build a transformed conversation object from raw API response (shared by initial fetch + load more)
   const transformConversation = (c: any) => {
@@ -284,39 +333,15 @@ export function MessagesView({
     };
   };
 
-  // Re-fetch the conversation list. `silent` skips the full-screen loading
-  // state and the error screen — used by background refreshers (the inbox
-  // socket, returning to the list from a thread) so the list updates without
-  // a visible flash and a transient network error never wipes a good list.
-  const refreshConversations = async (silent = false) => {
+  // Re-fetch the conversation list. Used by background refreshers (the inbox
+  // socket, returning to the list from a thread). React Query keeps the
+  // previous list visible during the refetch and on error, so the update is
+  // inherently flash-free and a transient network error never wipes a good
+  // list — the `silent` param is kept for call-site compatibility but is no
+  // longer needed.
+  const refreshConversations = async (_silent = false) => {
     if (!currentUserId) return;
-    try {
-      if (!silent) setConversationsLoading(true);
-      const response = await getConversations({ limit: 20, offset: 0 });
-      setConversationsTotalCount(
-        response.total_count ?? response.conversations.length,
-      );
-      setConversations(
-        response.conversations.map((conv) =>
-          transformConversation(conv as any),
-        ),
-      );
-      setConversationsError(null);
-    } catch (err) {
-      console.warn("[MessagesView] Failed to fetch conversations:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch conversations";
-      // 404 = endpoint not available yet or no conversations — show the
-      // empty state, not an error.
-      if (errorMessage.includes("Not found") || errorMessage.includes("404")) {
-        setConversations([]);
-        setConversationsError(null);
-      } else if (!silent) {
-        setConversationsError(errorMessage);
-      }
-    } finally {
-      if (!silent) setConversationsLoading(false);
-    }
+    await refetchConversations();
   };
 
   const loadMoreConversations = async () => {

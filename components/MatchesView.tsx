@@ -22,6 +22,7 @@ import {
     withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
     AlertTriangle,
@@ -76,6 +77,28 @@ import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
+
+// React Query keys for every list on the Matches screen. Caching these is
+// what makes the tab render instantly on re-entry instead of re-spinning
+// every time: each cached list paints immediately while a fresh fetch runs
+// in the background (stale-while-revalidate). All keys share the
+// "matchesScreen" root so a single invalidate refetches the whole screen
+// after a mutation that changes any of them.
+const MATCHES_SCREEN_ROOT = "matchesScreen";
+const matchesScreenKeys = {
+  root: [MATCHES_SCREEN_ROOT] as const,
+  matches: (u: string) => [MATCHES_SCREEN_ROOT, "matches", u] as const,
+  likedJobs: (u: string) => [MATCHES_SCREEN_ROOT, "likedJobs", u] as const,
+  waitlistedJobs: (u: string) =>
+    [MATCHES_SCREEN_ROOT, "waitlistedJobs", u] as const,
+  interestedSponsors: (u: string) =>
+    [MATCHES_SCREEN_ROOT, "interestedSponsors", u] as const,
+  sponsorRequests: (u: string) =>
+    [MATCHES_SCREEN_ROOT, "sponsorRequests", u] as const,
+  interestedApplicants: (u: string) =>
+    [MATCHES_SCREEN_ROOT, "interestedApplicants", u] as const,
+  referrals: (u: string) => [MATCHES_SCREEN_ROOT, "referrals", u] as const,
+};
 
 interface Match {
   // String (was number) — backend LIKE_IDs are UUIDs, and coercing them
@@ -337,30 +360,16 @@ export function MatchesView({
   // Public-profile fetch state for the matched-profile modal moved into
   // the shared ProfileDetailSheet component — no longer needed here.
 
-  // Interested applicants state (applicants who liked a sponsored job, sponsor hasn't liked back)
-  const [interestedApplicants, setInterestedApplicants] = useState<
-    InterestedApplicant[]
-  >([]);
-  const [interestedApplicantsLoading, setInterestedApplicantsLoading] =
-    useState(false);
-  const [interestedApplicantsError, setInterestedApplicantsError] = useState<
-    string | null
-  >(null);
+  // Interested applicants (applicants who liked a sponsored job, sponsor
+  // hasn't liked back). UI-only selection/spinner state stays local; the list
+  // itself is cached via useQuery further below.
   const [selectedInterestedApplicant, setSelectedInterestedApplicant] =
     useState<InterestedApplicant | null>(null);
   const [likingApplicantId, setLikingApplicantId] = useState<string | null>(
     null,
   );
 
-  // Interested sponsors state (sponsors who liked the applicant, no match yet)
-  const [interestedSponsors, setInterestedSponsors] = useState<
-    InterestedSponsor[]
-  >([]);
-  const [interestedSponsorsLoading, setInterestedSponsorsLoading] =
-    useState(false);
-  const [interestedSponsorsError, setInterestedSponsorsError] = useState<
-    string | null
-  >(null);
+  // Interested sponsors (sponsors who liked the applicant, no match yet).
   const [selectedInterestedSponsor, setSelectedInterestedSponsor] =
     useState<InterestedSponsor | null>(null);
   const [interestedSponsorProfile, setInterestedSponsorProfile] =
@@ -371,17 +380,9 @@ export function MatchesView({
   const [likingBackSponsorId, setLikingBackSponsorId] = useState<string | null>(
     null,
   );
-  // Bumped after a successful like-back to force matches/interested re-fetch
-  const [matchesRefreshKey, setMatchesRefreshKey] = useState(0);
 
-  // Sponsor-requests state — applicants asking sponsors at the company to
-  // sponsor a specific job. Source is notifications filtered by type;
-  // when a dedicated GET endpoint ships this will be swapped out cleanly.
-  const [sponsorRequests, setSponsorRequests] = useState<SponsorRequest[]>([]);
-  const [sponsorRequestsLoading, setSponsorRequestsLoading] = useState(false);
-  const [sponsorRequestsError, setSponsorRequestsError] = useState<
-    string | null
-  >(null);
+  // Sponsor-requests — applicants asking sponsors at the company to sponsor a
+  // specific job. List cached via useQuery below; selection state stays local.
   const [selectedSponsorRequest, setSelectedSponsorRequest] =
     useState<SponsorRequest | null>(null);
   const [isConnectingToApplicant, setIsConnectingToApplicant] = useState(false);
@@ -404,29 +405,16 @@ export function MatchesView({
   const [srSponsoring, setSrSponsoring] = useState(false);
   const [srNewJobId, setSrNewJobId] = useState<string | null>(null);
 
-  // Real matches state
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [matchesLoading, setMatchesLoading] = useState(true);
-  const [matchesError, setMatchesError] = useState<string | null>(null);
+  // Real matches — fetched via React Query so the list is cached across tab
+  // switches. On re-entry the cached matches paint instantly (no spinner) and
+  // a background refetch keeps them fresh. `matchesLoading` / `matchesError`
+  // below preserve the exact shapes the JSX already consumes.
 
-  // Liked jobs state (for applicants)
-  const [likedJobs, setLikedJobs] = useState<JobOpportunity[]>([]);
-  const [likedJobsLoading, setLikedJobsLoading] = useState(false);
-  const [likedJobsError, setLikedJobsError] = useState<string | null>(null);
-
-  // Waitlisted jobs state (for applicants)
-  const [waitlistedJobs, setWaitlistedJobs] = useState<WaitlistedJob[]>([]);
-  const [waitlistedJobsLoading, setWaitlistedJobsLoading] = useState(false);
-  const [waitlistedJobsError, setWaitlistedJobsError] = useState<string | null>(
-    null,
-  );
+  // Liked / waitlisted jobs (applicants) and referrals (both roles) — all
+  // cached via useQuery below; only the selection/spinner UI state stays local.
   const [selectedWaitlistedJob, setSelectedWaitlistedJob] =
     useState<WaitlistedJob | null>(null);
 
-  // Referrals state (for sponsors — submitted referrals & their statuses)
-  const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [referralsLoading, setReferralsLoading] = useState(false);
-  const [referralsError, setReferralsError] = useState<string | null>(null);
   const [withdrawingReferralId, setWithdrawingReferralId] = useState<
     string | null
   >(null);
@@ -440,144 +428,175 @@ export function MatchesView({
     useState<string>("");
   const withdrawTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useToastStore((state) => state.showToast);
+  const queryClient = useQueryClient();
 
-  // Fetch matches on mount
-  useEffect(() => {
-    const fetchMatches = async () => {
-      try {
-        setMatchesLoading(true);
-        console.log("[MatchesView] Fetching matches for:", userType);
+  // Matches list — cached so the tab paints instantly on re-entry. The
+  // queryFn holds the same role-aware fetch + transform logic as before;
+  // errors propagate to React Query (the api client already logs them) and
+  // surface through `matchesError` below.
+  const {
+    data: matches = [],
+    isPending: matchesLoading,
+    error: matchesErrorObj,
+  } = useQuery({
+    queryKey: matchesScreenKeys.matches(userType),
+    queryFn: async (): Promise<Match[]> => {
+      if (userType === "applicant") {
+        const response = await getMatches();
 
-        if (userType === "applicant") {
-          const response = await getMatches();
-          console.log("[MatchesView] Applicant matches:", response);
+        // API returns job_matches and profile_matches
+        const rawMatches =
+          response.job_matches || response.profile_matches || [];
 
-          // API returns job_matches and profile_matches
-          const matches =
-            response.job_matches || response.profile_matches || [];
+        // Transform API response to Match interface
+        return rawMatches.map((m) => {
+          const match = m as any;
+          const sponsorName = match.sponsor?.name
+            ? match.sponsor.name
+            : `${match.SPONSOR_FIRST_NAME || ""} ${match.SPONSOR_LAST_NAME || ""}`.trim();
+          const matchedAt = match.matched_at || match.MATCHED_AT;
 
-          // Transform API response to Match interface
-          const transformedMatches: Match[] = matches.map((m) => {
-            const match = m as any;
-            const sponsorName = match.sponsor?.name
-              ? match.sponsor.name
-              : `${match.SPONSOR_FIRST_NAME || ""} ${match.SPONSOR_LAST_NAME || ""}`.trim();
-            const matchedAt = match.matched_at || match.MATCHED_AT;
-
-            return {
-              id: String(match.id || match.LIKE_ID || ""),
-              name: sponsorName || "Sponsor",
-              role: match.sponsor?.role || match.SPONSOR_JOB_TITLE || "Sponsor",
-              company:
-                match.sponsor?.company ||
-                match.job?.company ||
-                match.COMPANY ||
-                "",
-              image:
-                match.sponsor?.profile_image_url ||
-                match.SPONSOR_PHOTO_URL ||
-                "",
-              // Defensive: backend doesn't currently join LOGO_URL onto
-              // /api/matches/ but if/when it does, pick it up automatically.
-              companyLogoUrl:
-                match.LOGO_URL ||
-                match.logo_url ||
-                match.ORGANIZATION_LOGO ||
-                undefined,
-              status: "connected",
-              date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
-              appliedRole:
-                match.job?.title || match.TITLE || match.JOB_TITLE || "",
-              experience: "", // Not provided by API
-              skills: [], // Not provided by API
-              jobId: match.JOB_ID || match.job?.id || "",
-              sponsorUserId: match.sponsor?.id || match.SPONSOR_USER_ID || "",
-              insights: undefined,
-              prompts: undefined,
-            };
-          });
-
-          setMatches(transformedMatches);
-        } else {
-          // Sponsor view
-          const response = await getSponsorMatches();
-          console.log("[MatchesView] Sponsor matches:", response);
-
-          // Transform API response to Match interface
-          const transformedMatches: Match[] = response.matches.map((m) => {
-            // The Postgres adapter uppercases every returned column name
-            // (pg_utils.py:110), so SQL aliases written lowercase like
-            // `applicant_user_id` and `matched_at` come back as
-            // APPLICANT_USER_ID / MATCHED_AT. Read uppercase first, fall
-            // back to lowercase to stay tolerant if the backend ever
-            // changes the adapter behavior.
-            const match = m as any;
-            const applicantName =
-              `${match.FIRST_NAME || ""} ${match.LAST_NAME || ""}`.trim();
-            const matchedAt = match.MATCHED_AT || match.matched_at;
-            const applicantUserId =
-              match.APPLICANT_USER_ID || match.applicant_user_id || "";
-
-            // SKILLS arrives as a JSON-encoded string from Snowflake ::TEXT cast
-            let skills: string[] = [];
-            if (match.SKILLS) {
-              try {
-                const parsed = JSON.parse(match.SKILLS);
-                skills = Array.isArray(parsed) ? parsed : [];
-              } catch {
-                skills = [];
-              }
-            }
-
-            return {
-              id: String(match.LIKE_ID || ""),
-              name: applicantName || "Applicant",
-              role: "Job Seeker",
-              company: "",
-              image: match.PHOTO_URL || "",
-              companyLogoUrl:
-                match.LOGO_URL ||
-                match.logo_url ||
-                match.ORGANIZATION_LOGO ||
-                undefined,
-              status: "connected",
-              date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
-              appliedRole: match.TITLE || "",
-              experience: "",
-              skills,
-              jobId: match.JOB_ID || "",
-              applicantUserId,
-              insights: undefined,
-              prompts: undefined,
-            };
-          });
-
-          setMatches(transformedMatches);
-        }
-      } catch (err) {
-        console.warn("[MatchesView] Failed to fetch matches:", err);
-        setMatchesError(
-          err instanceof Error ? err.message : "Failed to fetch matches",
-        );
-      } finally {
-        setMatchesLoading(false);
+          return {
+            id: String(match.id || match.LIKE_ID || ""),
+            name: sponsorName || "Sponsor",
+            role: match.sponsor?.role || match.SPONSOR_JOB_TITLE || "Sponsor",
+            company:
+              match.sponsor?.company ||
+              match.job?.company ||
+              match.COMPANY ||
+              "",
+            image:
+              match.sponsor?.profile_image_url ||
+              match.SPONSOR_PHOTO_URL ||
+              "",
+            // Defensive: backend doesn't currently join LOGO_URL onto
+            // /api/matches/ but if/when it does, pick it up automatically.
+            companyLogoUrl:
+              match.LOGO_URL ||
+              match.logo_url ||
+              match.ORGANIZATION_LOGO ||
+              undefined,
+            status: "connected",
+            date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
+            appliedRole:
+              match.job?.title || match.TITLE || match.JOB_TITLE || "",
+            experience: "", // Not provided by API
+            skills: [], // Not provided by API
+            jobId: match.JOB_ID || match.job?.id || "",
+            sponsorUserId: match.sponsor?.id || match.SPONSOR_USER_ID || "",
+            insights: undefined,
+            prompts: undefined,
+          };
+        });
       }
-    };
 
-    fetchMatches();
-  }, [userType, matchesRefreshKey]);
+      // Sponsor view
+      const response = await getSponsorMatches();
 
-  // Fetch liked jobs for applicants
-  useEffect(() => {
-    const fetchLikedJobs = async () => {
-      if (userType !== "applicant") return;
+      // Transform API response to Match interface
+      return response.matches.map((m) => {
+        // The Postgres adapter uppercases every returned column name
+        // (pg_utils.py:110), so SQL aliases written lowercase like
+        // `applicant_user_id` and `matched_at` come back as
+        // APPLICANT_USER_ID / MATCHED_AT. Read uppercase first, fall
+        // back to lowercase to stay tolerant if the backend ever
+        // changes the adapter behavior.
+        const match = m as any;
+        const applicantName =
+          `${match.FIRST_NAME || ""} ${match.LAST_NAME || ""}`.trim();
+        const matchedAt = match.MATCHED_AT || match.matched_at;
+        const applicantUserId =
+          match.APPLICANT_USER_ID || match.applicant_user_id || "";
 
-      try {
-        setLikedJobsLoading(true);
-        console.log("[MatchesView] Fetching liked jobs for applicant...");
+        // SKILLS arrives as a JSON-encoded string from Snowflake ::TEXT cast
+        let skills: string[] = [];
+        if (match.SKILLS) {
+          try {
+            const parsed = JSON.parse(match.SKILLS);
+            skills = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            skills = [];
+          }
+        }
 
+        return {
+          id: String(match.LIKE_ID || ""),
+          name: applicantName || "Applicant",
+          role: "Job Seeker",
+          company: "",
+          image: match.PHOTO_URL || "",
+          companyLogoUrl:
+            match.LOGO_URL ||
+            match.logo_url ||
+            match.ORGANIZATION_LOGO ||
+            undefined,
+          status: "connected",
+          date: matchedAt ? new Date(matchedAt).toLocaleDateString() : "",
+          appliedRole: match.TITLE || "",
+          experience: "",
+          skills,
+          jobId: match.JOB_ID || "",
+          applicantUserId,
+          insights: undefined,
+          prompts: undefined,
+        };
+      });
+    },
+  });
+  const matchesError =
+    matchesErrorObj instanceof Error
+      ? matchesErrorObj.message
+      : matchesErrorObj
+        ? "Failed to fetch matches"
+        : null;
+
+  // Called after any mutation that changes the match set. Invalidates every
+  // cached list on the screen (shared "matchesScreen" root) so they all
+  // refetch in the background and stay in sync.
+  const refreshMatchSections = () => {
+    queryClient.invalidateQueries({ queryKey: matchesScreenKeys.root });
+  };
+
+  // Optimistic-update helpers — patch a cached sub-section list in place.
+  // Each keeps the exact (prev) => ... updater shape the mutation handlers
+  // used with their old useState setters, so the call sites are unchanged.
+  const patchSponsorRequests = (
+    updater: (prev: SponsorRequest[]) => SponsorRequest[],
+  ) =>
+    queryClient.setQueryData<SponsorRequest[]>(
+      matchesScreenKeys.sponsorRequests(userType),
+      (prev) => updater(prev ?? []),
+    );
+  const patchInterestedApplicants = (
+    updater: (prev: InterestedApplicant[]) => InterestedApplicant[],
+  ) =>
+    queryClient.setQueryData<InterestedApplicant[]>(
+      matchesScreenKeys.interestedApplicants(userType),
+      (prev) => updater(prev ?? []),
+    );
+  const patchInterestedSponsors = (
+    updater: (prev: InterestedSponsor[]) => InterestedSponsor[],
+  ) =>
+    queryClient.setQueryData<InterestedSponsor[]>(
+      matchesScreenKeys.interestedSponsors(userType),
+      (prev) => updater(prev ?? []),
+    );
+  const patchReferrals = (updater: (prev: Referral[]) => Referral[]) =>
+    queryClient.setQueryData<Referral[]>(
+      matchesScreenKeys.referrals(userType),
+      (prev) => updater(prev ?? []),
+    );
+
+  // Liked jobs (applicant) — cached so the section paints instantly on re-entry.
+  const {
+    data: likedJobs = [],
+    isLoading: likedJobsLoading,
+    error: likedJobsErrorObj,
+  } = useQuery({
+    queryKey: matchesScreenKeys.likedJobs(userType),
+    enabled: userType === "applicant",
+    queryFn: async (): Promise<JobOpportunity[]> => {
         const response = await getLikedJobs();
-        console.log("[MatchesView] Liked jobs response:", response);
 
         // API returns array directly or object with liked_jobs
         const likedJobsArray = Array.isArray(response)
@@ -602,7 +621,7 @@ export function MatchesView({
         };
 
         // Transform API response to JobOpportunity interface
-        const transformedJobs: JobOpportunity[] = likedJobsArray.map(
+        return likedJobsArray.map(
           (likedJob: any) => ({
             id: String(
               likedJob.LIKE_ID || likedJob.id || `tmp-${Math.random()}`,
@@ -651,33 +670,25 @@ export function MatchesView({
             },
           }),
         );
+    },
+  });
+  const likedJobsError =
+    likedJobsErrorObj instanceof Error ? likedJobsErrorObj.message : null;
 
-        setLikedJobs(transformedJobs);
-      } catch (err) {
-        console.warn("[MatchesView] Failed to fetch liked jobs:", err);
-        setLikedJobsError(
-          err instanceof Error ? err.message : "Failed to fetch liked jobs",
-        );
-      } finally {
-        setLikedJobsLoading(false);
-      }
-    };
-
-    fetchLikedJobs();
-  }, [userType]);
-
-  // Fetch interested sponsors (sponsors who liked applicant but haven't matched)
-  useEffect(() => {
-    const fetchInterestedSponsors = async () => {
-      if (userType !== "applicant") return;
-
+  // Interested sponsors (applicant) — cached for instant re-entry.
+  const {
+    data: interestedSponsors = [],
+    isLoading: interestedSponsorsLoading,
+    error: interestedSponsorsErrorObj,
+  } = useQuery({
+    queryKey: matchesScreenKeys.interestedSponsors(userType),
+    enabled: userType === "applicant",
+    queryFn: async (): Promise<InterestedSponsor[]> => {
       try {
-        setInterestedSponsorsLoading(true);
         const response = await getInterestedSponsors();
         const sponsorArray = Array.isArray(response) ? response : [];
 
-        setInterestedSponsors(
-          sponsorArray.map((s: any) => ({
+        return sponsorArray.map((s: any) => ({
             likeId: s.LIKE_ID || String(Math.random()),
             userId: s.SPONSOR_USER_ID || "",
             likedAt: s.LIKED_AT || "",
@@ -695,43 +706,36 @@ export function MatchesView({
             // line on the Interested-in-You card below.
             jobTitle: s.JOB_TITLE || "",
             jobCompany: s.JOB_COMPANY || "",
-          })),
-        );
+          }));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        // 404 = endpoint not yet deployed on backend — show empty state silently
-        if (msg === "Not found" || msg.includes("404")) {
-          console.log(
-            "[MatchesView] /api/likes/profiles/received/ not available yet — showing empty state",
-          );
-          setInterestedSponsors([]);
-        } else {
-          console.warn(
-            "[MatchesView] Failed to fetch interested sponsors:",
-            err,
-          );
-          setInterestedSponsorsError(msg);
-        }
-      } finally {
-        setInterestedSponsorsLoading(false);
+        // 404 = endpoint not yet deployed on backend — treat as empty state.
+        if (msg === "Not found" || msg.includes("404")) return [];
+        throw err;
       }
-    };
-
-    fetchInterestedSponsors();
-  }, [userType, matchesRefreshKey]);
+    },
+  });
+  const interestedSponsorsError =
+    interestedSponsorsErrorObj instanceof Error
+      ? interestedSponsorsErrorObj.message
+      : null;
 
   // Fetch sponsor-requests (sponsor view) — applicants asking employees at
   // the sponsor's company to sponsor a job. Source of truth is
   // `matching.sponsor_requests` via GET /api/jobs/sponsor-requests/ (PR #57),
   // so this section is robust to the sponsor deleting / marking-read the
   // associated notification on the Notifications screen.
-  useEffect(() => {
-    const fetchSponsorRequests = async () => {
-      if (userType !== "sponsor") return;
+  const {
+    data: sponsorRequests = [],
+    isLoading: sponsorRequestsLoading,
+    error: sponsorRequestsErrorObj,
+  } = useQuery({
+    queryKey: matchesScreenKeys.sponsorRequests(userType),
+    enabled: userType === "sponsor",
+    queryFn: async (): Promise<SponsorRequest[]> => {
       try {
-        setSponsorRequestsLoading(true);
         const response = await getSponsorRequests({ limit: 50 });
-        const requests: SponsorRequest[] = (response.requests || [])
+        return (response.requests || [])
           .filter((r) => !!r.APPLICANT_USER_ID && !!r.JOB_ID)
           .map((r) => {
             const name =
@@ -748,45 +752,39 @@ export function MatchesView({
               createdAt: r.CREATED_AT,
             };
           });
-        setSponsorRequests(requests);
-        setSponsorRequestsError(null);
       } catch (err) {
         const msg =
           err instanceof Error
             ? err.message
             : "Failed to load sponsor requests";
-        if (msg.includes("404") || msg.includes("Not found")) {
-          setSponsorRequests([]);
-        } else {
-          console.warn("[MatchesView] Failed to fetch sponsor requests:", err);
-          setSponsorRequestsError(msg);
-        }
-      } finally {
-        setSponsorRequestsLoading(false);
+        // 404 = endpoint not deployed yet — treat as empty state.
+        if (msg.includes("404") || msg.includes("Not found")) return [];
+        throw err;
       }
-    };
-    fetchSponsorRequests();
-  }, [userType, matchesRefreshKey]);
+    },
+  });
+  const sponsorRequestsError =
+    sponsorRequestsErrorObj instanceof Error
+      ? sponsorRequestsErrorObj.message
+      : null;
 
   // Fetch interested applicants (sponsor view) — applicants who swiped right
   // on one of the sponsor's active jobs but the sponsor hasn't liked them back.
   // Queries all active sponsored jobs in parallel, then flattens and deduplicates.
-  useEffect(() => {
-    const fetchInterestedApplicants = async () => {
-      if (userType !== "sponsor") return;
-
+  const {
+    data: interestedApplicants = [],
+    isLoading: interestedApplicantsLoading,
+    error: interestedApplicantsErrorObj,
+  } = useQuery({
+    queryKey: matchesScreenKeys.interestedApplicants(userType),
+    enabled: userType === "sponsor",
+    queryFn: async (): Promise<InterestedApplicant[]> => {
       try {
-        setInterestedApplicantsLoading(true);
-        setInterestedApplicantsError(null);
-
         // Get the sponsor's own active jobs
         const myJobsRes = await getMyJobs();
         const activeJobs = (myJobsRes.jobs || []).filter((j) => j.IS_ACTIVE);
 
-        if (activeJobs.length === 0) {
-          setInterestedApplicants([]);
-          return;
-        }
+        if (activeJobs.length === 0) return [];
 
         // Fetch applicant likes for each active job in parallel
         const results = await Promise.allSettled(
@@ -835,58 +833,52 @@ export function MatchesView({
           (a, b) =>
             new Date(b.likedAt).getTime() - new Date(a.likedAt).getTime(),
         );
-        setInterestedApplicants(all);
+        return all;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
-          setInterestedApplicants([]);
-        } else {
-          console.warn(
-            "[MatchesView] Failed to fetch interested applicants:",
-            err,
-          );
-          setInterestedApplicantsError(msg);
-        }
-      } finally {
-        setInterestedApplicantsLoading(false);
+        // 404 = nothing yet — treat as empty state.
+        if (msg.includes("404") || msg.toLowerCase().includes("not found"))
+          return [];
+        throw err;
       }
-    };
+    },
+  });
+  const interestedApplicantsError =
+    interestedApplicantsErrorObj instanceof Error
+      ? interestedApplicantsErrorObj.message
+      : null;
 
-    fetchInterestedApplicants();
-  }, [userType, matchesRefreshKey]);
+  // Waitlisted jobs (applicant) — cached for instant re-entry.
+  const {
+    data: waitlistedJobs = [],
+    isLoading: waitlistedJobsLoading,
+    error: waitlistedJobsErrorObj,
+  } = useQuery({
+    queryKey: matchesScreenKeys.waitlistedJobs(userType),
+    enabled: userType === "applicant",
+    queryFn: async (): Promise<WaitlistedJob[]> => {
+      const response = await getWaitlistedJobs();
+      return response.jobs;
+    },
+  });
+  const waitlistedJobsError =
+    waitlistedJobsErrorObj instanceof Error
+      ? waitlistedJobsErrorObj.message
+      : null;
 
-  // Fetch waitlisted jobs for applicants
-  useEffect(() => {
-    const fetchWaitlistedJobs = async () => {
-      if (userType !== "applicant") return;
-
+  // Referrals (both roles) — sponsors see submitted, applicants see received.
+  // Cached for instant re-entry.
+  const {
+    data: referrals = [],
+    isLoading: referralsLoading,
+    error: referralsErrorObj,
+  } = useQuery({
+    queryKey: matchesScreenKeys.referrals(userType),
+    queryFn: async (): Promise<Referral[]> => {
       try {
-        setWaitlistedJobsLoading(true);
-        const response = await getWaitlistedJobs();
-        setWaitlistedJobs(response.jobs);
-      } catch (err) {
-        console.warn("[MatchesView] Failed to fetch waitlisted jobs:", err);
-        setWaitlistedJobsError(
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch waitlisted jobs",
-        );
-      } finally {
-        setWaitlistedJobsLoading(false);
-      }
-    };
-
-    fetchWaitlistedJobs();
-  }, [userType]);
-
-  // Fetch referrals — role-aware: sponsors see submitted referrals, applicants see received referrals
-  useEffect(() => {
-    const fetchReferrals = async () => {
-      try {
-        setReferralsLoading(true);
         const response = await listReferrals({ limit: 50, offset: 0 });
 
-        const transformed: Referral[] = (response.referrals || []).map(
+        return (response.referrals || []).map(
           (r: any) => ({
             referralId: r.REFERRAL_ID || r.referral_id || "",
             jobId: r.JOB_ID || r.job_id || "",
@@ -912,21 +904,17 @@ export function MatchesView({
             jobLogoUrl: r.LOGO_URL || r.logo_url || r.ORGANIZATION_LOGO || null,
           }),
         );
-        setReferrals(transformed);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        // 404 means no referrals yet — show empty state, not an error
-        if (!msg.includes("404") && !msg.toLowerCase().includes("not found")) {
-          console.warn("[MatchesView] Failed to fetch referrals:", err);
-          setReferralsError(msg);
-        }
-      } finally {
-        setReferralsLoading(false);
+        // 404 means no referrals yet — empty state, not an error.
+        if (msg.includes("404") || msg.toLowerCase().includes("not found"))
+          return [];
+        throw err;
       }
-    };
-
-    fetchReferrals();
-  }, [userType]);
+    },
+  });
+  const referralsError =
+    referralsErrorObj instanceof Error ? referralsErrorObj.message : null;
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
@@ -1187,10 +1175,10 @@ export function MatchesView({
       // Step C: drop the row from the local list. The next fetch reads from
       // `matching.sponsor_requests` (PR #57), which the backend has already
       // transitioned out of the active set once the like+match landed.
-      setSponsorRequests((prev) =>
+      patchSponsorRequests((prev) =>
         prev.filter((r) => r.requestId !== request.requestId),
       );
-      setMatchesRefreshKey((k) => k + 1);
+      refreshMatchSections();
 
       // Advance to success screen
       setSrStep(4);
@@ -1221,10 +1209,10 @@ export function MatchesView({
         jobId: applicant.jobId,
       });
       if (res.matched) {
-        setInterestedApplicants((prev) =>
+        patchInterestedApplicants((prev) =>
           prev.filter((a) => a.applicantUserId !== applicant.applicantUserId),
         );
-        setMatchesRefreshKey((k) => k + 1);
+        refreshMatchSections();
       }
       closeAllModals();
       showToast(
@@ -1247,10 +1235,10 @@ export function MatchesView({
     setIsConnectingToApplicant(true);
     try {
       const res = await likeProfile(request.applicantUserId, request.jobId);
-      setSponsorRequests((prev) =>
+      patchSponsorRequests((prev) =>
         prev.filter((r) => r.requestId !== request.requestId),
       );
-      setMatchesRefreshKey((k) => k + 1);
+      refreshMatchSections();
       closeAllModals();
       showToast(
         res.matched
@@ -1293,10 +1281,10 @@ export function MatchesView({
       if (res.matched) {
         // Pull them out of "Interested in You" and re-fetch matches so they
         // appear under "Matched Opportunities".
-        setInterestedSponsors((prev) =>
+        patchInterestedSponsors((prev) =>
           prev.filter((s) => s.likeId !== sponsor.likeId),
         );
-        setMatchesRefreshKey((k) => k + 1);
+        refreshMatchSections();
       }
       closeAllModals();
       showToast(res.message, res.matched ? "success" : "info");
@@ -1316,7 +1304,7 @@ export function MatchesView({
     } catch (err) {
       console.warn("[MatchesView] Failed to withdraw referral:", err);
       // Revert the optimistic update on error
-      setReferrals((prev) =>
+      patchReferrals((prev) =>
         prev.map((r) =>
           r.referralId === referralId ? { ...r, status: "REFERRED" } : r,
         ),
@@ -1344,7 +1332,7 @@ export function MatchesView({
     setConfirmingWithdrawReferral(null);
 
     // Optimistically mark as withdrawn in local state
-    setReferrals((prev) =>
+    patchReferrals((prev) =>
       prev.map((r) =>
         r.referralId === referralId ? { ...r, status: "WITHDRAWN" } : r,
       ),
@@ -1372,7 +1360,7 @@ export function MatchesView({
     }
     // Revert optimistic update
     if (pendingWithdrawReferralId) {
-      setReferrals((prev) =>
+      patchReferrals((prev) =>
         prev.map((r) =>
           r.referralId === pendingWithdrawReferralId
             ? { ...r, status: "REFERRED" }

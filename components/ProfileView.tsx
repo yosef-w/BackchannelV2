@@ -4825,52 +4825,66 @@ function EditInsightsModal({
             {/* Existing Insights */}
             {insights.map((insight, index) => (
               <View key={index} style={styles.insightCard}>
-                <View style={styles.insightCardHeader}>
-                  <Text style={styles.insightQuestion}>{insight.question}</Text>
-                  <TouchableOpacity onPress={() => onRemoveInsight(index)}>
-                    <Trash2 color="#DC2626" size={18} />
-                  </TouchableOpacity>
-                </View>
-
-                {editingInsightIndex === index ? (
-                  <View>
-                    <TextInput
-                      style={styles.insightInput}
-                      value={newAnswer}
-                      onChangeText={setNewAnswer}
-                      placeholder="Your answer..."
-                      multiline
-                      numberOfLines={3}
-                      autoFocus
-                    />
-                    <View style={styles.insightActions}>
-                      <TouchableOpacity
-                        style={styles.cancelBtn}
-                        onPress={() => {
-                          setEditingInsightIndex(null);
-                          setNewAnswer("");
-                        }}
-                      >
-                        <Text style={styles.cancelBtnText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.saveInsightBtn}
-                        onPress={() => handleUpdateExisting(index)}
-                      >
-                        <Text style={styles.saveInsightBtnText}>Save</Text>
-                      </TouchableOpacity>
-                    </View>
+                {/* Vertical black accent stripe — mirrors the "in their own
+                    words" insight cards on the applicant/sponsor feed. */}
+                <View style={styles.insightAccent} />
+                <View style={styles.insightBody}>
+                  <View style={styles.insightCardHeader}>
+                    <Text style={styles.insightQuestion}>
+                      {insight.question}
+                    </Text>
+                    <TouchableOpacity onPress={() => onRemoveInsight(index)}>
+                      <Trash2 color="#DC2626" size={18} />
+                    </TouchableOpacity>
                   </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditingInsightIndex(index);
-                      setNewAnswer(insight.answer);
-                    }}
-                  >
-                    <Text style={styles.insightAnswer}>{insight.answer}</Text>
-                  </TouchableOpacity>
-                )}
+
+                  {editingInsightIndex === index ? (
+                    <View>
+                      <TextInput
+                        style={styles.insightInput}
+                        value={newAnswer}
+                        onChangeText={setNewAnswer}
+                        placeholder="Your answer..."
+                        multiline
+                        numberOfLines={3}
+                        autoFocus
+                      />
+                      <View style={styles.insightActions}>
+                        <TouchableOpacity
+                          style={styles.cancelBtn}
+                          onPress={() => {
+                            setEditingInsightIndex(null);
+                            setNewAnswer("");
+                          }}
+                        >
+                          <Text style={styles.cancelBtnText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.saveInsightBtn}
+                          onPress={() => handleUpdateExisting(index)}
+                        >
+                          <Text style={styles.saveInsightBtnText}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditingInsightIndex(index);
+                        setNewAnswer(insight.answer);
+                      }}
+                    >
+                      {/* Decorative opening quote + indented answer — the
+                          "in their own words" treatment from the feed. */}
+                      <View style={styles.insightAnswerRow}>
+                        <Text style={styles.insightQuoteMark}>“</Text>
+                        <Text style={styles.insightAnswer}>
+                          {insight.answer}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             ))}
 
@@ -4889,37 +4903,42 @@ function EditInsightsModal({
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.newInsightCard}>
-                    <View style={styles.insightCardHeader}>
-                      <Text style={styles.insightQuestion}>
-                        {selectedQuestion}
-                      </Text>
+                    <View style={styles.insightAccent} />
+                    <View style={styles.insightBody}>
+                      <View style={styles.insightCardHeader}>
+                        <Text style={styles.insightQuestion}>
+                          {selectedQuestion}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedQuestion("");
+                            setNewAnswer("");
+                          }}
+                        >
+                          <X color="#666" size={18} />
+                        </TouchableOpacity>
+                      </View>
+                      <TextInput
+                        style={styles.insightInput}
+                        value={newAnswer}
+                        onChangeText={setNewAnswer}
+                        placeholder="Your answer..."
+                        multiline
+                        numberOfLines={3}
+                        autoFocus
+                      />
                       <TouchableOpacity
-                        onPress={() => {
-                          setSelectedQuestion("");
-                          setNewAnswer("");
-                        }}
+                        style={[
+                          styles.saveInsightBtn,
+                          { alignSelf: "flex-end", marginTop: 12 },
+                        ]}
+                        onPress={handleSaveNew}
                       >
-                        <X color="#666" size={18} />
+                        <Text style={styles.saveInsightBtnText}>
+                          Add Insight
+                        </Text>
                       </TouchableOpacity>
                     </View>
-                    <TextInput
-                      style={styles.insightInput}
-                      value={newAnswer}
-                      onChangeText={setNewAnswer}
-                      placeholder="Your answer..."
-                      multiline
-                      numberOfLines={3}
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={[
-                        styles.saveInsightBtn,
-                        { alignSelf: "flex-end", marginTop: 12 },
-                      ]}
-                      onPress={handleSaveNew}
-                    >
-                      <Text style={styles.saveInsightBtnText}>Add Insight</Text>
-                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -5515,32 +5534,65 @@ const styles = StyleSheet.create({
   },
 
   // Insights Modal Styles
+  // ── Insight cards — match the "in their own words" quote treatment used
+  //    on the HomeView applicant/sponsor feed (white card, black accent
+  //    stripe, muted uppercase label, big quote mark + indented answer).
   insightCard: {
-    backgroundColor: "#F9F9F9",
-    padding: 20,
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: "#EAEAEA",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  insightAccent: {
+    width: 3,
+    backgroundColor: "#000",
+  },
+  insightBody: {
+    flex: 1,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
   },
   insightCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   insightQuestion: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1.0,
+    textTransform: "uppercase",
     flex: 1,
+    marginRight: 8,
+  },
+  insightAnswerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  insightQuoteMark: {
+    fontSize: 36,
+    lineHeight: 30,
+    fontWeight: "800",
+    color: "#000",
+    marginRight: 8,
+    marginTop: -2,
   },
   insightAnswer: {
-    fontSize: 15,
-    color: "#444",
-    lineHeight: 22,
-    fontStyle: "italic",
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1A1A1A",
+    lineHeight: 24,
   },
   insightInput: {
     backgroundColor: "#FFF",
@@ -5601,11 +5653,17 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   newInsightCard: {
-    backgroundColor: "#F9F9F9",
-    padding: 20,
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: "#EAEAEA",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
   questionPicker: {
     marginTop: 12,
