@@ -12,13 +12,7 @@ import {
     Trash2,
     UserPlus,
 } from "lucide-react-native";
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Image,
     RefreshControl,
@@ -43,6 +37,13 @@ import {
     markNotificationAsRead,
 } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+// React Query key for the notifications list. Caching it means the screen
+// paints instantly on re-entry instead of re-fetching every time, while a
+// 20s refetch interval keeps it live. Optimistic mutations (mark-read,
+// delete, clear) write to this cache via setQueryData.
+const NOTIFICATIONS_QUERY_KEY = ["notifications", "list"] as const;
 
 interface NotificationsViewProps {
   userType: "applicant" | "sponsor";
@@ -157,13 +158,54 @@ export function NotificationsView({
   onOpenConversation,
   onOpenTab,
 }: NotificationsViewProps) {
-  const [notifications, setNotifications] = useState<BackendNotification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [isClearingRead, setIsClearingRead] = useState(false);
   const showToast = useToastStore((state) => state.showToast);
+  const queryClient = useQueryClient();
+
+  // Notifications list — cached so the screen paints instantly on re-entry.
+  // refetchInterval replaces the old manual `?since=` polling: it re-pulls
+  // the list every 20s (server is the source of truth for read/delete state).
+  const {
+    data: notifications = [],
+    isPending: isLoading,
+    error: errorObj,
+    refetch,
+  } = useQuery({
+    queryKey: NOTIFICATIONS_QUERY_KEY,
+    queryFn: async (): Promise<BackendNotification[]> => {
+      try {
+        const response = await getNotifications({ limit: 50 });
+        return response.notifications;
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Failed to load notifications";
+        // 404 = endpoint not yet seeded / user has no notifications — empty.
+        if (msg.includes("404") || msg.includes("Not found")) return [];
+        throw err;
+      }
+    },
+    refetchInterval: 20_000,
+  });
+  const error =
+    errorObj instanceof Error
+      ? errorObj.message
+      : errorObj
+        ? "Failed to load notifications"
+        : null;
+
+  // Optimistically patch the cached notifications list. Mirrors the previous
+  // setNotifications((prev) => ...) calls; the updater shape is identical.
+  const patchNotifications = useCallback(
+    (updater: (prev: BackendNotification[]) => BackendNotification[]) => {
+      queryClient.setQueryData<BackendNotification[]>(
+        NOTIFICATIONS_QUERY_KEY,
+        (prev) => updater(prev ?? []),
+      );
+    },
+    [queryClient],
+  );
 
   // Bump this counter every 30s so relative-time strings refresh on screen
   // without re-fetching from the server.
@@ -173,101 +215,48 @@ export function NotificationsView({
     return () => clearInterval(id);
   }, []);
 
-  const fetchNotifications = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      try {
-        if (!opts?.silent) setIsLoading(true);
-        setError(null);
-        const response = await getNotifications({ limit: 50 });
-        setNotifications(response.notifications);
-      } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : "Failed to load notifications";
-        // 404 = endpoint not yet seeded / user has no notifications — show empty
-        if (msg.includes("404") || msg.includes("Not found")) {
-          setNotifications([]);
-        } else if (!opts?.silent) {
-          setError(msg);
-        }
-      } finally {
-        if (!opts?.silent) setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  // Live polling via the ?since= query param shipped in PR #43. Every 20s
-  // we ask the server for rows created strictly after the newest one we have
-  // and prepend any new arrivals. Cheaper than a full refetch and means the
-  // list updates without the user pulling to refresh.
-  const latestCreatedAtRef = useRef<string | null>(null);
-  useEffect(() => {
-    latestCreatedAtRef.current = notifications[0]?.CREATED_AT ?? null;
-  }, [notifications]);
-
-  useEffect(() => {
-    const id = setInterval(async () => {
-      const since = latestCreatedAtRef.current;
-      if (!since) return; // initial load handles the no-rows case
-      try {
-        const response = await getNotifications({ limit: 50, since });
-        const fresh = response.notifications;
-        if (fresh.length === 0) return;
-        setNotifications((prev) => {
-          const seen = new Set(prev.map((n) => n.NOTIFICATION_ID));
-          const newOnes = fresh.filter((n) => !seen.has(n.NOTIFICATION_ID));
-          return newOnes.length > 0 ? [...newOnes, ...prev] : prev;
-        });
-      } catch {
-        // Silent — the next pull-to-refresh will catch any missed rows.
-      }
-    }, 20_000);
-    return () => clearInterval(id);
-  }, []);
-
   const handlePullToRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await fetchNotifications({ silent: true });
+      await refetch();
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchNotifications]);
+  }, [refetch]);
 
-  const markOneRead = useCallback(async (notification: BackendNotification) => {
-    if (notification.IS_READ) return;
-    // Optimistic UI
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.NOTIFICATION_ID === notification.NOTIFICATION_ID
-          ? { ...n, IS_READ: true }
-          : n,
-      ),
-    );
-    try {
-      await markNotificationAsRead(notification.NOTIFICATION_ID);
-      trackNotificationMarkedRead({
-        notificationId: notification.NOTIFICATION_ID,
-      });
-    } catch (err) {
-      // Revert on failure — the gesture/tap shouldn't lie about state
-      setNotifications((prev) =>
+  const markOneRead = useCallback(
+    async (notification: BackendNotification) => {
+      if (notification.IS_READ) return;
+      // Optimistic UI
+      patchNotifications((prev) =>
         prev.map((n) =>
           n.NOTIFICATION_ID === notification.NOTIFICATION_ID
-            ? { ...n, IS_READ: false }
+            ? { ...n, IS_READ: true }
             : n,
         ),
       );
-      console.warn(
-        "[NotificationsView] Failed to mark notification as read:",
-        err,
-      );
-    }
-  }, []);
+      try {
+        await markNotificationAsRead(notification.NOTIFICATION_ID);
+        trackNotificationMarkedRead({
+          notificationId: notification.NOTIFICATION_ID,
+        });
+      } catch (err) {
+        // Revert on failure — the gesture/tap shouldn't lie about state
+        patchNotifications((prev) =>
+          prev.map((n) =>
+            n.NOTIFICATION_ID === notification.NOTIFICATION_ID
+              ? { ...n, IS_READ: false }
+              : n,
+          ),
+        );
+        console.warn(
+          "[NotificationsView] Failed to mark notification as read:",
+          err,
+        );
+      }
+    },
+    [patchNotifications],
+  );
 
   const handleMarkAllRead = async () => {
     if (isMarkingAll) return;
@@ -275,7 +264,7 @@ export function NotificationsView({
     try {
       const unreadCount = notifications.filter((n) => !n.IS_READ).length;
       await markAllNotificationsAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, IS_READ: true })));
+      patchNotifications((prev) => prev.map((n) => ({ ...n, IS_READ: true })));
       trackAllNotificationsMarkedRead({ count: unreadCount });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (err) {
@@ -291,8 +280,11 @@ export function NotificationsView({
   // doesn't lie about its existence.
   const handleDeleteNotification = useCallback(
     async (n: BackendNotification) => {
-      const previous = notifications;
-      setNotifications((prev) =>
+      const previous =
+        queryClient.getQueryData<BackendNotification[]>(
+          NOTIFICATIONS_QUERY_KEY,
+        ) ?? [];
+      patchNotifications((prev) =>
         prev.filter((row) => row.NOTIFICATION_ID !== n.NOTIFICATION_ID),
       );
       try {
@@ -300,26 +292,28 @@ export function NotificationsView({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (err) {
         console.warn("[NotificationsView] Failed to delete:", err);
-        setNotifications(previous);
+        queryClient.setQueryData(NOTIFICATIONS_QUERY_KEY, previous);
         showToast("Couldn't delete that. Please try again.", "error");
       }
     },
-    [notifications, showToast],
+    [patchNotifications, queryClient, showToast],
   );
 
   // Bulk-delete every notification that's already read.
   const handleClearRead = async () => {
     if (isClearingRead) return;
     setIsClearingRead(true);
-    const previous = notifications;
+    const previous =
+      queryClient.getQueryData<BackendNotification[]>(NOTIFICATIONS_QUERY_KEY) ??
+      [];
     // Optimistic — pull the read rows out immediately.
-    setNotifications((prev) => prev.filter((n) => !n.IS_READ));
+    patchNotifications((prev) => prev.filter((n) => !n.IS_READ));
     try {
       await clearReadNotifications();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (err) {
       console.warn("[NotificationsView] Failed to clear read:", err);
-      setNotifications(previous);
+      queryClient.setQueryData(NOTIFICATIONS_QUERY_KEY, previous);
       showToast("Couldn't clear read notifications.", "error");
     } finally {
       setIsClearingRead(false);
@@ -489,7 +483,7 @@ export function NotificationsView({
           </View>
           <Text style={styles.errorText}>Couldn't load notifications</Text>
           <TouchableOpacity
-            onPress={() => fetchNotifications()}
+            onPress={() => refetch()}
             style={styles.retryButton}
             activeOpacity={0.8}
           >
