@@ -1,10 +1,12 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-06-17
+**Last updated:** 2026-06-18
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Housekeeping (2026-06-17):** §A (verify-email / reset-password web pages) **shipped** in PR #67. The current top-priority item is **§C — account deletion must actually erase user data (App Store blocker)**, added below. Also still open: the unshipped half of the unsponsor-reason work (§B), the email-deployment checklist, and `change_email` (still returns 501 — the app now hides the change-email UI until it's implemented; re-enable on the app side when it ships).
+> **Open items:** **§C** — account deletion must erase user data (App Store blocker, top priority); **§B** — act on the captured unsponsor reason (low priority); the **email deployment checklist** at the bottom (env config, not code); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
+>
+> Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
 
 ---
 
@@ -47,88 +49,6 @@ Anonymize is usually the pragmatic choice given the referral/message foreign key
 ### Acceptance test
 
 Create an account, upload a resume + photo, then delete the account. Confirm: (a) the email can be re-registered as if new, (b) the user's name/email/phone/DOB/resume no longer appear in any DB query or API response, and (c) the resume + photo objects are gone from DigitalOcean Spaces.
-
----
-
-## §A — Web fallback pages for verify-email and password-reset links 🔴 Launch blocker
-
-**Frontend files:** `app/verify-email.tsx` (existing), `app/reset-password.tsx` (new, shipped 2026-06-10 on `fix/launch-blockers`)
-**Backend files:**
-- `bc_microservices/templates/landing/` → new `app_link.html` template
-- `bc_microservices/views_landing.py` → two new page views
-- `django_bc/urls.py` → two new routes
-
-### The problem
-
-The transactional emails link to web URLs that don't exist anywhere:
-
-- `services/email.py:45` → password reset: `{FRONTEND_URL}/reset-password?token=<JWT>`
-- `services/email.py:77,108` → email / work-email verification: `{FRONTEND_URL}/verify-email?token=<JWT>`
-
-Two failures compound here:
-
-1. **No pages exist at those paths.** The Django service serves only the landing page at `/`; `/verify-email` and `/reset-password` 404. The mobile app *does* handle `backchannelv2://verify-email?token=…` and `backchannelv2://reset-password?token=…` deep links, but email clients can't open custom-scheme links directly — the emails must link to https URLs, which means something on the web has to receive the click and bounce the user into the app.
-2. **`FRONTEND_URL` defaults to `http://localhost:3000`** (`settings.py:219`) and is likely unset in the deployed environment — so even the (dead) links currently point at localhost.
-
-Net effect: **every tester who registers gets a verification email with a dead link, and anyone who forgets their password is locked out.** This is the first flow every new user hits.
-
-### Required change
-
-Serve two small GET pages on the existing Django service that forward the token into the app via its custom scheme (`backchannelv2`, per the app's `app.json`):
-
-```
-GET /verify-email?token=<JWT>     → bounce page → backchannelv2://verify-email?token=<JWT>
-GET /reset-password?token=<JWT>   → bounce page → backchannelv2://reset-password?token=<JWT>
-```
-
-Each page should:
-- Attempt an automatic redirect to the deep link (a short `setTimeout` + `window.location.href` — browsers sometimes block non-user-initiated custom-scheme navigations).
-- Show a prominent **"Open in BackChannel"** button as the reliable tap-to-open path.
-- Include a hint for the app-not-installed / opened-on-desktop cases ("re-open this link on your phone").
-- **Strictly percent-encode the token** before interpolating it into the deep link (`urllib.parse.quote(token, safe='')`), so the resulting URL contains no characters needing HTML/JS escaping. Never reflect the raw query value into the page.
-
-Suggested shape (paths chosen to match the email URLs exactly — note **no trailing slash**, so the existing email templates need zero changes):
-
-```python
-# views_landing.py
-APP_SCHEME = 'backchannelv2'
-
-def _app_link_page(request, app_path, title, description):
-    from urllib.parse import quote
-    token = request.GET.get('token', '')
-    deep_link = f"{APP_SCHEME}://{app_path}?token={quote(token, safe='')}"
-    return render(request, 'landing/app_link.html', {
-        'title': title, 'description': description, 'deep_link': deep_link,
-    })
-
-def verify_email_page(request):
-    return _app_link_page(request, 'verify-email', 'Verify your email', '…')
-
-def reset_password_page(request):
-    return _app_link_page(request, 'reset-password', 'Reset your password', '…')
-```
-
-```python
-# urls.py
-path('verify-email', verify_email_page, name='verify_email_page'),
-path('reset-password', reset_password_page, name='reset_password_page'),
-```
-
-Plus a single shared `landing/app_link.html` template (BackChannel-branded card, auto-redirect script, open button).
-
-### Deployment prerequisite (no code)
-
-Set **`FRONTEND_URL`** in the deployed backend environment to the service's own public origin (e.g. `https://oyster-app-4pg5w.ondigitalocean.app`) so the emails link to these new pages. Until this is set, emails link to `localhost:3000` regardless of the code change.
-
-### Frontend impact (when this ships)
-
-None — both deep-link targets are already implemented and registered in the app's router:
-- `backchannelv2://verify-email?token=…` → existing verify screen (calls `POST /api/auth/verify-email/`).
-- `backchannelv2://reset-password?token=…` → new reset screen (calls `POST /api/reset-password/` with `{token, newPassword}`; expects the existing 15-minute token expiry and surfaces expired-token errors with a "request a new link" hint).
-
-### Future improvement (not for this pass)
-
-Proper universal links (iOS `associatedDomains` + AASA file, Android App Links) would open the app directly from the email with no bounce page. That requires coordinated app + infra work; the bounce page is the right v1 and remains the fallback for app-not-installed even after universal links ship.
 
 ---
 
@@ -176,7 +96,7 @@ None — the reason step and the `unsponsorJob(jobId, reason, reasonDetail)` cal
 
 > **These are deployment / environment checks, not code changes.** The code paths are complete; whether the flows work in production depends on env configuration that can't be confirmed from source.
 
-1. **`FRONTEND_URL`** is set on the backend host to the service's public origin (see §A). Default is `http://localhost:3000`, which silently produces dead links in every verification and reset email.
+1. **`FRONTEND_URL`** is set on the backend host to the service's **own public origin** (the backend serves the verify-email / reset-password web pages). Default is `http://localhost:3000`, which silently produces dead links in every verification and reset email.
 2. **SMTP env vars are set** on the backend host: `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`. If `EMAIL_HOST` is unset, `settings.py` silently falls back to the **console email backend** — every "sent" email is merely printed to the server log; `send_mail` still reports success. This affects *all* transactional email (welcome, verification, work-email verification, password reset). Resend values, per `.env.example`:
    ```
    EMAIL_HOST=smtp.resend.com
@@ -184,4 +104,4 @@ None — the reason step and the `unsponsorJob(jobId, reason, reasonDetail)` cal
    EMAIL_HOST_PASSWORD=re_YourApiKeyHere
    ```
 3. **The sending domain is verified in Resend.** `DEFAULT_FROM_EMAIL` defaults to `noreply@backchannel.app` — Resend rejects mail from an unverified domain.
-4. **End-to-end smoke test** against the deployed backend: register → verification email arrives → link opens the §A bounce page → app opens and verifies; then forgot-password → email → reset in app → sign in with the new password. `services/email.py` logs `Email sent to <addr>` vs `Failed to send email to <addr>` to tell SMTP outcomes apart.
+4. **End-to-end smoke test** against the deployed backend: register → verification email arrives → link opens the backend's web verify page and confirms; then forgot-password → email → reset on the web reset page → sign in with the new password. `services/email.py` logs `Email sent to <addr>` vs `Failed to send email to <addr>` to tell SMTP outcomes apart.
