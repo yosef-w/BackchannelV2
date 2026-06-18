@@ -21,6 +21,9 @@
         "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "test_BtjUlyxGvOEJuCqpCTHcvxerWvM",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "test_BtjUlyxGvOEJuCqpCTHcvxerWvM",
         "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyDcunBp_5r4k1AidIFtfbEaRU9HsJBTQJY",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://427de0f24246c5a59c25f6787ec8f3a8@o4511583907676160.ingest.us.sentry.io/4511583914033152",
+        "SENTRY_ORG": "backchannel-f6",
+        "SENTRY_PROJECT": "react-native",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
