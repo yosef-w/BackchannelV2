@@ -30,6 +30,7 @@ import {
     Alert,
     Image,
     KeyboardAvoidingView,
+    Linking,
     Modal,
     Platform,
     ScrollView,
@@ -119,6 +120,11 @@ interface ProfileInsight {
   answer: string;
 }
 
+// Public legal pages (hosted). Settings links open these in the browser so the
+// in-app text and the App Store-listed policy URLs never drift apart.
+const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
+const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
+
 const AVAILABLE_QUESTIONS = [
   "MY SECRET SUPERPOWER",
   "I'M BEST KNOWN FOR",
@@ -193,8 +199,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -3209,23 +3213,31 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
               )}
 
-              {/* Email — tap to open change-email modal */}
+              {/* Login email — read-only. The backend change-email endpoint
+                  still returns 501 (not implemented), so we don't expose the
+                  always-failing change modal. The modal + handlers below stay
+                  dormant and can be re-enabled the moment the backend ships
+                  the verification flow. Mirrors the work-email field's
+                  read-only treatment. */}
               <View style={styles.editField}>
                 <View style={styles.fieldLabelRow}>
                   <Text style={styles.fieldLabel}>EMAIL</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.fieldDisplay}
-                  onPress={() => {
-                    setNewEmail("");
-                    setEmailPassword("");
-                    setEmailError("");
-                    setShowEmailChange(true);
+                <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
+                  <Text style={styles.fieldText}>{email}</Text>
+                  <Lock color="#999" size={16} />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: "#999",
+                    marginTop: 4,
+                    fontStyle: "italic",
                   }}
                 >
-                  <Text style={styles.fieldText}>{email}</Text>
-                  <Edit color="#666" size={16} />
-                </TouchableOpacity>
+                  The email you log in with. Can&apos;t be changed here yet —
+                  contact support to update it.
+                </Text>
               </View>
 
               {/* Work Email — sponsor only, read-only (set via questionnaire / onboarding) */}
@@ -3995,20 +4007,19 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
 
-        {/* Terms & Conditions */}
+        {/* Terms & Conditions — opens the hosted page in the browser */}
         <TouchableOpacity
           style={styles.privacyActionCard}
           onPress={() => {
             trackTermsTapped();
-            setShowPrivacySecurity(false);
-            setTimeout(() => setShowTerms(true), 300);
+            Linking.openURL(TERMS_URL).catch(() => {});
           }}
         >
           <View style={styles.privacyIconContainer}>
             <Briefcase color="#000" size={18} />
           </View>
           <View style={styles.privacyActionContent}>
-            <Text style={styles.privacyActionTitle}>Terms & Conditions</Text>
+            <Text style={styles.privacyActionTitle}>Terms of Service</Text>
             <Text style={styles.privacyActionSubtitle}>
               Read our terms of service
             </Text>
@@ -4016,13 +4027,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
 
-        {/* Privacy Policy */}
+        {/* Privacy Policy — opens the hosted page in the browser */}
         <TouchableOpacity
           style={styles.privacyActionCard}
           onPress={() => {
             trackPrivacyPolicyTapped();
-            setShowPrivacySecurity(false);
-            setTimeout(() => setShowPrivacyPolicy(true), 300);
+            Linking.openURL(PRIVACY_POLICY_URL).catch(() => {});
           }}
         >
           <View style={styles.privacyIconContainer}>
@@ -4053,338 +4063,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </View>
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
-      </SimpleModal>
-
-      {/* TERMS & CONDITIONS MODAL */}
-      <SimpleModal
-        visible={showTerms}
-        onClose={() => setShowTerms(false)}
-        title="Terms & Conditions"
-      >
-        <Text style={styles.legalLastUpdated}>
-          Last updated: April 15, 2026
-        </Text>
-        <Text style={styles.legalIntro}>
-          Please read these Terms and Conditions carefully before using the
-          Backchannel mobile application operated by Backchannel ("us", "we", or
-          "our").
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>1. Acceptance of Terms</Text>
-        <Text style={styles.legalBody}>
-          By downloading, installing, or using Backchannel, you agree to be
-          bound by these Terms. If you do not agree to these Terms, do not use
-          the app.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>2. Description of Service</Text>
-        <Text style={styles.legalBody}>
-          Backchannel is a professional networking platform that connects job
-          seekers ("Applicants") with employed professionals ("Sponsors") who
-          can provide referrals and career guidance. The service includes
-          profile creation, job matching, direct messaging, and referral
-          facilitation.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>3. Eligibility</Text>
-        <Text style={styles.legalBody}>
-          You must be at least 18 years of age to use Backchannel. By using the
-          app, you represent and warrant that you meet this requirement.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>4. User Accounts</Text>
-        <Text style={styles.legalBullet}>
-          • You are responsible for maintaining the confidentiality of your
-          account credentials.
-        </Text>
-        <Text style={styles.legalBullet}>
-          • You are responsible for all activity that occurs under your account.
-        </Text>
-        <Text style={styles.legalBullet}>
-          • You must provide accurate, current, and complete information during
-          registration.
-        </Text>
-        <Text style={styles.legalBullet}>
-          • You may not create an account on behalf of another person without
-          their explicit consent.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>5. Acceptable Use</Text>
-        <Text style={styles.legalBody}>You agree not to:</Text>
-        <Text style={styles.legalBullet}>
-          • Post false, misleading, or fraudulent information on your profile
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Impersonate any person or entity
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Use the platform to harass, abuse, or harm other users
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Spam or send unsolicited messages
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Attempt to gain unauthorized access to any part of the service
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Use the service for any unlawful purpose
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>6. Content You Provide</Text>
-        <Text style={styles.legalBody}>
-          By submitting content (including profile information, messages, and
-          resumes) to Backchannel, you grant us a non-exclusive, worldwide,
-          royalty-free license to use, store, and display that content solely
-          for the purpose of operating and improving the service.{"\n\n"}You
-          represent that you own or have the right to submit all content you
-          provide.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>7. Referrals</Text>
-        <Text style={styles.legalBody}>
-          Backchannel facilitates introductions between Applicants and Sponsors.
-          We do not guarantee employment outcomes, referral success, or
-          interview results. Any referral arrangement is solely between the
-          Applicant and Sponsor.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>
-          8. Subscriptions and Payments
-        </Text>
-        <Text style={styles.legalBody}>
-          Certain features of Backchannel may require a paid subscription.
-          Subscriptions are billed through the Apple App Store or Google Play
-          Store and are subject to their respective terms. All purchases are
-          final unless otherwise required by applicable law.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>9. Termination</Text>
-        <Text style={styles.legalBody}>
-          We reserve the right to suspend or terminate your account at any time
-          if you violate these Terms or engage in conduct we determine to be
-          harmful to other users or the platform.{"\n\n"}You may delete your
-          account at any time through Settings › Privacy & Security › Delete
-          Account.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>10. Disclaimers</Text>
-        <Text style={styles.legalBody}>
-          The service is provided "as is" without warranties of any kind. We do
-          not guarantee that the service will be error-free, uninterrupted, or
-          that any particular employment outcome will result from use of the
-          platform.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>
-          11. Limitation of Liability
-        </Text>
-        <Text style={styles.legalBody}>
-          To the maximum extent permitted by law, Backchannel shall not be
-          liable for any indirect, incidental, special, or consequential damages
-          arising from your use of the service.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>12. Changes to Terms</Text>
-        <Text style={styles.legalBody}>
-          We may update these Terms at any time. Continued use of the app after
-          changes constitutes acceptance of the new Terms. We will notify users
-          of material changes through the app.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>13. Contact</Text>
-        <Text style={styles.legalBody}>
-          If you have questions about these Terms, please contact us at:
-        </Text>
-        <Text style={styles.legalContact}>support@backchannelapp.io</Text>
-        <View style={{ height: 16 }} />
-      </SimpleModal>
-
-      {/* PRIVACY POLICY MODAL */}
-      <SimpleModal
-        visible={showPrivacyPolicy}
-        onClose={() => setShowPrivacyPolicy(false)}
-        title="Privacy Policy"
-      >
-        <Text style={styles.legalLastUpdated}>
-          Last updated: April 15, 2026
-        </Text>
-        <Text style={styles.legalIntro}>
-          This Privacy Policy describes how Backchannel ("we", "us", or "our")
-          collects, uses, and shares information when you use our mobile
-          application.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>1. Information We Collect</Text>
-        <Text style={styles.legalSubSectionTitle}>Information You Provide</Text>
-        <Text style={styles.legalBullet}>
-          • Account information: Name, email address, phone number
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Profile information: Job title, company, location, biography,
-          skills, work preferences, desired roles, profile photo
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Resume data: Uploaded resume files and the extracted text content
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Professional history: Work experience, education, certifications,
-          languages
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Messages: Content of messages sent between users on the platform
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Work email: Provided by Sponsors to indicate professional
-          affiliation
-        </Text>
-        <Text style={styles.legalSubSectionTitle}>
-          Information Collected Automatically
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Device information: Device type, operating system, push notification
-          token
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Usage data: Features used, interactions within the app, session
-          activity
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Log data: IP address, app version, crash reports
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>
-          2. How We Use Your Information
-        </Text>
-        <Text style={styles.legalBody}>
-          We use the information we collect to:
-        </Text>
-        <Text style={styles.legalBullet}>• Create and manage your account</Text>
-        <Text style={styles.legalBullet}>
-          • Match Applicants with relevant job opportunities and Sponsors
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Enable messaging and referral facilitation between users
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Send push notifications about matches, messages, and referrals
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Improve and personalize the service
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Detect and prevent fraud or abuse
-        </Text>
-        <Text style={styles.legalBullet}>• Comply with legal obligations</Text>
-
-        <Text style={styles.legalSectionTitle}>
-          3. How We Share Your Information
-        </Text>
-        <Text style={styles.legalBody}>
-          We do not sell your personal information. We may share your
-          information in the following circumstances:
-        </Text>
-        <Text style={styles.legalBullet}>
-          • With other users: Your public profile information is visible to
-          other users for matching and networking purposes
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Service providers: We work with third-party providers who process
-          data on our behalf under confidentiality agreements
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Legal requirements: We may disclose information if required by law
-          or to protect the rights and safety of our users
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Business transfers: In the event of a merger or acquisition, user
-          data may be transferred as part of that transaction
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>4. Data Retention</Text>
-        <Text style={styles.legalBody}>
-          We retain your data for as long as your account is active. When you
-          delete your account, we will delete or anonymize your personal
-          information within 30 days, except where retention is required by law.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>5. Your Rights</Text>
-        <Text style={styles.legalBody}>
-          Depending on your location, you may have the right to:
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Access the personal data we hold about you
-        </Text>
-        <Text style={styles.legalBullet}>• Correct inaccurate data</Text>
-        <Text style={styles.legalBullet}>
-          • Request deletion of your data (via Settings › Privacy & Security ›
-          Delete Account)
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Object to or restrict certain processing of your data
-        </Text>
-        <Text style={styles.legalBullet}>• Data portability</Text>
-        <Text style={[styles.legalBody, { marginTop: 8 }]}>
-          To exercise these rights, contact us at support@backchannelapp.io.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>6. Push Notifications</Text>
-        <Text style={styles.legalBody}>
-          We may send push notifications for matches, messages, and referral
-          activity. You can disable push notifications at any time through your
-          device settings. Your push notification token is unregistered from our
-          servers when you log out.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>7. Payments</Text>
-        <Text style={styles.legalBody}>
-          Subscription payments are processed by Apple or Google through their
-          respective app store platforms. We do not store your payment card
-          information. Payment processing is subject to Apple's and Google's
-          privacy policies.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>8. Children's Privacy</Text>
-        <Text style={styles.legalBody}>
-          Backchannel is not directed at children under the age of 18. We do not
-          knowingly collect personal information from anyone under 18. If we
-          learn we have collected such information, we will delete it promptly.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>9. Security</Text>
-        <Text style={styles.legalBody}>
-          We implement industry-standard security measures including encrypted
-          token storage, HTTPS for all API communication, and JWT-based
-          authentication. However, no method of transmission or storage is 100%
-          secure.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>10. Third-Party Services</Text>
-        <Text style={styles.legalBody}>
-          Our app uses the following third-party services which have their own
-          privacy policies:
-        </Text>
-        <Text style={styles.legalBullet}>
-          • Apple Push Notification Service / Firebase Cloud Messaging — push
-          notifications
-        </Text>
-        <Text style={styles.legalBullet}>
-          • DigitalOcean — cloud infrastructure
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>11. Changes to This Policy</Text>
-        <Text style={styles.legalBody}>
-          We may update this Privacy Policy from time to time. We will notify
-          you of significant changes through the app. Continued use after
-          changes constitutes acceptance of the updated policy.
-        </Text>
-
-        <Text style={styles.legalSectionTitle}>12. Contact</Text>
-        <Text style={styles.legalBody}>
-          If you have questions about this Privacy Policy or how we handle your
-          data, contact us at:
-        </Text>
-        <Text style={styles.legalContact}>support@backchannelapp.io</Text>
-        <View style={{ height: 16 }} />
       </SimpleModal>
 
       {/* PASSWORD CHANGE MODAL */}

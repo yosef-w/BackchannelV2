@@ -1,10 +1,52 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-06-10
+**Last updated:** 2026-06-17
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Housekeeping (2026-06-10):** all previously-tracked items have shipped and were removed from this doc — §1–§11 and the push-notification recommendation landed in PRs #54–#61 (see [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record). What remains: one **new launch-blocking item** (§A, from the 2026-06-10 pre-launch audit), the unshipped half of the unsponsor-reason work (§B, formerly §12), and the email-deployment verification checklist (now expanded to include `FRONTEND_URL`).
+> **Housekeeping (2026-06-17):** §A (verify-email / reset-password web pages) **shipped** in PR #67. The current top-priority item is **§C — account deletion must actually erase user data (App Store blocker)**, added below. Also still open: the unshipped half of the unsponsor-reason work (§B), the email-deployment checklist, and `change_email` (still returns 501 — the app now hides the change-email UI until it's implemented; re-enable on the app side when it ships).
+
+---
+
+## §C — "Delete Account" must actually delete / anonymize the user's data 🔴 App Store blocker
+
+**Backend files:**
+- `bc_microservices/queries/users.py` → `deactivate_user()` ([line 191](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/users.py#L191))
+- `bc_microservices/services/auth.py` → `deactivate_account()` (the cascade that calls it)
+
+**Frontend (no change needed):** `components/ProfileView.tsx` → `handleDeleteAccount` already presents this as a permanent **deletion** ("This will permanently delete your account and all your data. This action cannot be undone.") and calls `POST /api/profile/deactivate/`. The copy is correct and should **stay** — the backend needs to match it.
+
+### What's wrong
+
+The user-facing "Delete Account" flow promises permanent deletion of all data, but the backend only does a soft deactivation. `deactivate_account()` runs a cascade (closes conversations, withdraws likes/referrals, cancels waitlist, deactivates jobs and device tokens) — good — but the actual user record is only flagged:
+
+```python
+def deactivate_user(user_id):
+    """Set IS_ACTIVE = FALSE for user_id."""
+    q = "UPDATE user_info.users SET IS_ACTIVE = FALSE WHERE USER_ID = %s"
+    execute_query(q, (user_id,))
+```
+
+So after a user "deletes" their account, **all their PII remains in the database** — name, email, phone, date of birth, location/address, profile photo, and their **uploaded resume (file + extracted text + AI-classified data)**. Nothing is erased.
+
+### Why this is a launch blocker (not a nice-to-have)
+
+1. **Apple App Store rejection — Guideline 5.1.1(v).** Apps that let users create an account **must** let them initiate **deletion** of the account and its data. Apple's guideline explicitly states that **merely deactivating or disabling an account does not satisfy this requirement**. A reviewer who exercises "Delete Account" (or reads that it's a deactivation) can reject the submission. This is one of the more commonly enforced rejection reasons.
+2. **The app makes a promise the backend breaks.** Users are told their data is permanently deleted; it isn't. That's a misrepresentation, and the retained data includes **resumes** (employment history, education) and **date of birth** — sensitive categories.
+3. **GDPR / CCPA "right to erasure."** Retaining identifiable personal data after a user requests deletion is a legal-compliance exposure, independent of Apple.
+
+### Required change
+
+On account deletion, **actually remove the user's personal data** — either approach is acceptable:
+
+- **Hard delete:** delete the `user_info.users` row (and the applicant/sponsor profile rows, resume blobs, and the stored profile photo / resume file in DigitalOcean Spaces) within the existing transaction.
+- **Anonymize (tombstone):** if rows must be retained for referential integrity (e.g., referrals/messages reference the user id), **scrub the PII in place** — null/blank `FIRST_NAME`, `LAST_NAME`, `PHONE_NUMBER`, `DATE_OF_BIRTH`, `LOCATION`/address fields, `PORTFOLIO_URL`, `BIO`; delete `RESUME_DATA` + extracted text; delete the photo/resume objects from Spaces; and set `EMAIL`/`USERNAME` to a non-reversible tombstone such as `deleted-<user_id>@deleted.invalid`. Keep only the non-identifying foreign-key skeleton.
+
+Anonymize is usually the pragmatic choice given the referral/message foreign keys. Whichever path: the **resume file + photo in object storage must be deleted too** (not just the DB rows), and the operation should stay inside the existing all-or-nothing transaction.
+
+### Acceptance test
+
+Create an account, upload a resume + photo, then delete the account. Confirm: (a) the email can be re-registered as if new, (b) the user's name/email/phone/DOB/resume no longer appear in any DB query or API response, and (c) the resume + photo objects are gone from DigitalOcean Spaces.
 
 ---
 
