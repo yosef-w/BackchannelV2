@@ -33,6 +33,13 @@ applies it to the highest-risk surfaces, then lists what remains.
 - **Card overflow**: added `numberOfLines={1}` to the JobsView job-card **company name** and the MessagesView chat-header **name** (both could stretch on a long unbroken string). HomeView deck names already cap at 2–3 lines; MatchesView card names already `numberOfLines={1}`.
 - **Message input** (`MessagesView`) capped at `maxLength={2000}`.
 - Also: applicant onboarding welcome toast now mentions the spam folder (parity with the sponsor flow).
+- **Job insights** (the sponsor's day-to-day / team-culture / who-thrives /
+  everything-else prompts when creating or sponsoring a job): both input
+  surfaces — `JobsView` SponsorInsightCards and the `MatchesView` sponsor-request
+  flow — capped at `maxLength={500}` per prompt with a counter; the
+  applicant-facing render on the Home deck card (`HomeView` jobInsightBodyText)
+  now uses `ExpandableText` (6-line collapse) so a long answer can't balloon the
+  card.
 
 ---
 

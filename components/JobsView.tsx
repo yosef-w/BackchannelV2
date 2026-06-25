@@ -287,6 +287,11 @@ type SponsorInsightKey =
   | "idealCandidate"
   | "insiderInsights";
 
+// Per-prompt character cap for the sponsor's job insights. Generous enough for
+// a real paragraph, bounded so one answer can't balloon the applicant's home
+// card (where these render) or bloat the job record.
+const SPONSOR_INSIGHT_MAXLEN = 500;
+
 const SPONSOR_INSIGHT_FIELDS: {
   key: SponsorInsightKey;
   Icon: React.ComponentType<any>;
@@ -449,8 +454,12 @@ function SponsorInsightCards({
                 onChangeText={(t) => onChange(field.key, t)}
                 multiline
                 autoFocus
+                maxLength={SPONSOR_INSIGHT_MAXLEN}
                 textAlignVertical="top"
               />
+              <Text style={styles.siCharCount}>
+                {value.length}/{SPONSOR_INSIGHT_MAXLEN}
+              </Text>
 
               <Text style={styles.siChipHint}>Tap to add a prompt</Text>
               <View style={styles.siChipRow}>
@@ -3866,6 +3875,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     borderWidth: 1,
     borderColor: "#EEE",
+  },
+  siCharCount: {
+    alignSelf: "flex-end",
+    marginTop: 6,
+    fontSize: 11,
+    color: "#AAA",
+    fontWeight: "500",
   },
   siChipHint: {
     fontSize: 12,

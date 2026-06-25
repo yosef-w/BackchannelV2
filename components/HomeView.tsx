@@ -84,6 +84,7 @@ import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
+import { ExpandableText } from "./ui/ExpandableText";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -2911,13 +2912,14 @@ export function HomeView({
                                               </Text>
                                             </View>
                                             <View style={styles.jobInsightBody}>
-                                              <Text
+                                              <ExpandableText
                                                 style={
                                                   styles.jobInsightBodyText
                                                 }
+                                                numberOfLines={6}
                                               >
                                                 {it.text}
-                                              </Text>
+                                              </ExpandableText>
                                             </View>
                                           </View>
                                         ))}
