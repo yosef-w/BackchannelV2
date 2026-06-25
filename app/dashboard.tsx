@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo } from "react";
+import { View } from "react-native";
 import { MainApp } from "../components/MainApp";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
@@ -42,6 +43,18 @@ export default function DashboardScreen() {
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated, router]);
+
+  // Once the session is cleared (logout / token expiry), stop rendering
+  // MainApp immediately. Otherwise, during the 800 ms redirect debounce above,
+  // `userType` recomputes to its "applicant" default (role + profileData were
+  // just wiped) and the dashboard briefly flashes the applicant profile —
+  // including applicant-only sections like "Upload Resume" — before the splash
+  // screen appears. A neutral blank screen bridges the gap instead.
+  if (!isAuthenticated) {
+    // Black to match the splash screen's background, so logging out reads as a
+    // seamless fade to splash rather than a flash of a different color.
+    return <View style={{ flex: 1, backgroundColor: "#000000" }} />;
+  }
 
   return <MainApp userType={userType} />;
 }
