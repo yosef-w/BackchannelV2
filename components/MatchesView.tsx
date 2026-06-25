@@ -11,7 +11,6 @@ import {
     getLikedJobs,
     getMatches,
     getMyJobs,
-    getPublicProfile,
     getSponsorMatches,
     getSponsorRequests,
     getWaitlistedJobs,
@@ -56,6 +55,7 @@ import {
     NativeScrollEvent,
     NativeSyntheticEvent,
     Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -372,10 +372,6 @@ export function MatchesView({
   // Interested sponsors (sponsors who liked the applicant, no match yet).
   const [selectedInterestedSponsor, setSelectedInterestedSponsor] =
     useState<InterestedSponsor | null>(null);
-  const [interestedSponsorProfile, setInterestedSponsorProfile] =
-    useState<any>(null);
-  const [interestedSponsorProfileLoading, setInterestedSponsorProfileLoading] =
-    useState(false);
   // likeId of the sponsor we're currently "liking back" (shows a spinner)
   const [likingBackSponsorId, setLikingBackSponsorId] = useState<string | null>(
     null,
@@ -555,6 +551,21 @@ export function MatchesView({
   // refetch in the background and stay in sync.
   const refreshMatchSections = () => {
     queryClient.invalidateQueries({ queryKey: matchesScreenKeys.root });
+  };
+
+  // Pull-to-refresh. Nothing else live-updates this screen (no socket, and a
+  // like from another device produces no client event), so this is the user's
+  // reliable manual way to pull new likes/matches/requests. Invalidating the
+  // shared root refetches every section; awaiting it keeps the spinner up
+  // until the lists actually settle.
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: matchesScreenKeys.root });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Optimistic-update helpers — patch a cached sub-section list in place.
@@ -1050,24 +1061,10 @@ export function MatchesView({
     setActiveSlide(0);
   };
 
-  const openInterestedSponsor = async (sponsor: InterestedSponsor) => {
-    setActiveSlide(0);
-    setInterestedSponsorProfile(null);
+  const openInterestedSponsor = (sponsor: InterestedSponsor) => {
+    // The shared ProfileDetailSheet fetches the public profile itself from
+    // `userId`, so this just flags which sponsor is selected.
     setSelectedInterestedSponsor(sponsor);
-    if (sponsor.userId) {
-      try {
-        setInterestedSponsorProfileLoading(true);
-        const profile = await getPublicProfile(sponsor.userId);
-        setInterestedSponsorProfile(profile);
-      } catch (err) {
-        console.warn(
-          "[MatchesView] Failed to load sponsor public profile:",
-          err,
-        );
-      } finally {
-        setInterestedSponsorProfileLoading(false);
-      }
-    }
   };
 
   /** Fetch full role detail for the currently selected sponsor request. */
@@ -1120,7 +1117,6 @@ export function MatchesView({
     setSelectedJob(null);
     setSelectedReferral(null);
     setSelectedInterestedSponsor(null);
-    setInterestedSponsorProfile(null);
     setSelectedInterestedApplicant(null);
     setSelectedWaitlistedJob(null);
     setSelectedSponsorRequest(null);
@@ -1223,8 +1219,32 @@ export function MatchesView({
         res.matched ? "success" : "info",
       );
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.warn("[MatchesView] Failed to like back applicant:", err);
-      showToast("Couldn't do that right now. Please try again.", "error");
+      // Surface the actual reason instead of a generic retry message. The
+      // backend's like_applicant_profile rejects with 404 "not owned" when the
+      // job isn't owned by this sponsor (e.g. on a stale list whose job was
+      // since deactivated/unsponsored), and 401 when the session has lapsed.
+      // A generic toast made these indistinguishable in TestFlight where there
+      // are no dev logs to read.
+      const lower = msg.toLowerCase();
+      const looksLikeNotOwned =
+        lower.includes("404") ||
+        lower.includes("403") ||
+        lower.includes("not owned") ||
+        lower.includes("not found");
+      const looksLikeSession =
+        lower.includes("session") ||
+        lower.includes("401") ||
+        lower.includes("log in");
+      showToast(
+        looksLikeSession
+          ? "Your session expired — please sign out and back in, then try again."
+          : looksLikeNotOwned
+            ? "That job is no longer active on your side. Pull to refresh and try again."
+            : `Couldn't connect right now: ${msg}`,
+        "error",
+      );
     } finally {
       setLikingApplicantId(null);
     }
@@ -1378,6 +1398,13 @@ export function MatchesView({
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#000"
+          />
+        }
       >
         <View style={styles.header}>
           <Text style={styles.title}>Opportunities</Text>
@@ -3003,321 +3030,52 @@ export function MatchesView({
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Interested Sponsor Profile Modal */}
-      <Modal
-        visible={!!selectedInterestedSponsor}
-        transparent
-        animationType="none"
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeAllModals}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={closeAllModals}
-            style={styles.modalContent}
-          >
-            {selectedInterestedSponsor && (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                contentContainerStyle={{ paddingBottom: 8 }}
-              >
-                {/* "Expressed Interest" tag */}
-                <View style={styles.interestedModalTag}>
-                  <Heart size={12} color="#DC2626" />
-                  <Text style={styles.interestedModalTagText}>
-                    Wants to connect with you
-                    {selectedInterestedSponsor.likedAt
-                      ? ` · ${getRelativeTime(selectedInterestedSponsor.likedAt)}`
-                      : ""}
-                  </Text>
-                </View>
-
-                {interestedSponsorProfileLoading ? (
-                  <View style={styles.interestedLoadingContainer}>
-                    <View
-                      style={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 32,
-                        backgroundColor: "#F4F4F5",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Users color="#BBB" size={28} strokeWidth={2} />
-                    </View>
-                    <Text style={styles.interestedLoadingText}>
-                      Loading profile…
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    {/* Swipeable cards */}
-                    <View style={styles.swipableContainer}>
-                      <ScrollView
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                      >
-                        {/* Page 1: Profile Overview */}
-                        <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                          <View style={styles.infoCardHeader}>
-                            {selectedInterestedSponsor.image ? (
-                              <Image
-                                source={{
-                                  uri: selectedInterestedSponsor.image,
-                                }}
-                                style={styles.modalAvatar}
-                              />
-                            ) : (
-                              <View style={styles.sponsorModalInitial}>
-                                <Text style={styles.sponsorModalInitialText}>
-                                  {(selectedInterestedSponsor.name ||
-                                    "S")[0].toUpperCase()}
-                                </Text>
-                              </View>
-                            )}
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.modalName}>
-                                {selectedInterestedSponsor.name}
-                              </Text>
-                              {!!selectedInterestedSponsor.role && (
-                                <Text style={styles.sponsorSubtitle}>
-                                  {selectedInterestedSponsor.role}
-                                </Text>
-                              )}
-                              {!!selectedInterestedSponsor.company && (
-                                <Text style={styles.sponsorCompany}>
-                                  {selectedInterestedSponsor.company}
-                                </Text>
-                              )}
-                            </View>
-                          </View>
-
-                          {/* Role the sponsor liked the applicant FOR — pill
-                              sits under the sponsor identity. Backed by
-                              JOB_TITLE / JOB_COMPANY on received-likes (PR #55). */}
-                          {!!(
-                            selectedInterestedSponsor.jobTitle ||
-                            selectedInterestedSponsor.jobCompany
-                          ) && (
-                            <View style={styles.likedForPill}>
-                              <Text style={styles.likedForLabel}>
-                                WANTS YOU FOR
-                              </Text>
-                              <Text
-                                style={styles.likedForValue}
-                                numberOfLines={2}
-                              >
-                                {selectedInterestedSponsor.jobTitle}
-                                {selectedInterestedSponsor.jobTitle &&
-                                selectedInterestedSponsor.jobCompany
-                                  ? " · "
-                                  : ""}
-                                {selectedInterestedSponsor.jobCompany}
-                              </Text>
-                            </View>
-                          )}
-
-                          {/* Location */}
-                          {!!interestedSponsorProfile?.LOCATION && (
-                            <View
-                              style={[styles.locationRow, { marginBottom: 12 }]}
-                            >
-                              <MapPin size={12} color="#AAA" />
-                              <Text style={styles.locationText}>
-                                {interestedSponsorProfile.LOCATION}
-                              </Text>
-                            </View>
-                          )}
-
-                          {/* Bio */}
-                          {!!interestedSponsorProfile?.BIO && (
-                            <Text style={styles.bioText}>
-                              {interestedSponsorProfile.BIO}
-                            </Text>
-                          )}
-
-                          {/* Capability Badges */}
-                          <View style={styles.sponsorCapabilityRow}>
-                            {interestedSponsorProfile?.sponsor_profile
-                              ?.OPEN_TO_REFERRALS && (
-                              <View style={styles.sponsorCapBadge}>
-                                <CheckCircle size={11} color="#000" />
-                                <Text style={styles.sponsorCapBadgeText}>
-                                  Open to Referrals
-                                </Text>
-                              </View>
-                            )}
-                            {interestedSponsorProfile?.sponsor_profile
-                              ?.FINANCIAL_REWARD && (
-                              <View style={styles.sponsorCapBadge}>
-                                <DollarSign size={11} color="#000" />
-                                <Text style={styles.sponsorCapBadgeText}>
-                                  Financial Reward
-                                </Text>
-                              </View>
-                            )}
-                            {!!interestedSponsorProfile?.sponsor_profile
-                              ?.DURATION && (
-                              <View style={styles.sponsorCapBadge}>
-                                <Award size={11} color="#000" />
-                                <Text style={styles.sponsorCapBadgeText}>
-                                  {
-                                    interestedSponsorProfile.sponsor_profile
-                                      .DURATION
-                                  }
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-
-                          {/* Companies Can Refer To */}
-                          {(interestedSponsorProfile?.sponsor_profile
-                            ?.COMPANIES_CAN_REFER_TO?.length ?? 0) > 0 && (
-                            <View style={styles.referCompaniesBlock}>
-                              <Text style={styles.referCompaniesLabel}>
-                                CAN REFER TO
-                              </Text>
-                              <View style={styles.referCompaniesList}>
-                                {interestedSponsorProfile.sponsor_profile.COMPANIES_CAN_REFER_TO.map(
-                                  (co: string, i: number) => (
-                                    <View
-                                      key={i}
-                                      style={styles.referCompanyChip}
-                                    >
-                                      <Text style={styles.referCompanyText}>
-                                        {co}
-                                      </Text>
-                                    </View>
-                                  ),
-                                )}
-                              </View>
-                            </View>
-                          )}
-                        </View>
-
-                        {/* Page 2: Insights */}
-                        <View style={[styles.infoCard, { width: CARD_WIDTH }]}>
-                          <View style={styles.insightsHeader}>
-                            <Sparkles size={20} color="#000" />
-                            <Text style={styles.insightsTitle}>
-                              Why They Sponsor
-                            </Text>
-                          </View>
-
-                          {(interestedSponsorProfile?.sponsor_profile?.INSIGHTS
-                            ?.length ?? 0) > 0 ? (
-                            interestedSponsorProfile.sponsor_profile.INSIGHTS.map(
-                              (
-                                insight: {
-                                  question: string;
-                                  answer: string;
-                                },
-                                idx: number,
-                              ) => (
-                                <View key={idx} style={styles.promptWrapper}>
-                                  <View style={styles.promptHeaderRow}>
-                                    <Zap size={14} color="#000" />
-                                    <Text style={styles.insightLabel}>
-                                      {insight.question}
-                                    </Text>
-                                  </View>
-                                  <Text style={styles.promptContent}>
-                                    {insight.answer}
-                                  </Text>
-                                </View>
-                              ),
-                            )
-                          ) : (
-                            <Text style={styles.bioText}>
-                              No insights shared yet.
-                            </Text>
-                          )}
-
-                          <View
-                            style={[
-                              styles.statItem,
-                              { alignSelf: "flex-start", marginTop: 16 },
-                            ]}
-                          >
-                            <CheckCircle size={14} color="#000" />
-                            <Text style={styles.statLabel}>Active Sponsor</Text>
-                          </View>
-                        </View>
-                      </ScrollView>
-
-                      {/* Page indicators */}
-                      <View style={styles.pagination}>
-                        <View
-                          style={[
-                            styles.dot,
-                            activeSlide === 0
-                              ? styles.dotActive
-                              : styles.dotInactive,
-                          ]}
-                        />
-                        <View
-                          style={[
-                            styles.dot,
-                            activeSlide === 1
-                              ? styles.dotActive
-                              : styles.dotInactive,
-                          ]}
-                        />
-                      </View>
-                    </View>
-
-                    {/* CTA — connect back to close the loop and create a match */}
-                    <TouchableOpacity
-                      style={[
-                        styles.applyBtnLarge,
-                        { marginTop: 20 },
-                        likingBackSponsorId ===
-                          selectedInterestedSponsor.likeId && { opacity: 0.6 },
-                      ]}
-                      onPress={() =>
-                        handleLikeBackSponsor(selectedInterestedSponsor)
-                      }
-                      disabled={
-                        likingBackSponsorId === selectedInterestedSponsor.likeId
-                      }
-                    >
-                      {likingBackSponsorId ===
-                      selectedInterestedSponsor.likeId ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                      ) : (
-                        <>
-                          <Heart color="#FFF" size={20} strokeWidth={2.5} />
-                          <Text style={styles.applyBtnLargeText}>
-                            Connect with {selectedInterestedSponsor.firstName}
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </>
-                )}
-              </ScrollView>
-            )}
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* Interested-sponsor detail sheet — applicant tapped a sponsor who
+          wants to connect but isn't matched yet. Uses the shared
+          ProfileDetailSheet so it matches every other profile modal on this
+          screen; the Connect CTA likes them back to create the match. */}
+      {selectedInterestedSponsor && (
+        <ProfileDetailSheet
+          visible={!!selectedInterestedSponsor}
+          onDismiss={closeAllModals}
+          userId={selectedInterestedSponsor.userId}
+          variant="sponsor"
+          initial={{
+            name: selectedInterestedSponsor.name,
+            image: selectedInterestedSponsor.image,
+            role: selectedInterestedSponsor.role,
+            company: selectedInterestedSponsor.company,
+          }}
+          badge={{
+            label: selectedInterestedSponsor.likedAt
+              ? `Wants to connect · ${getRelativeTime(selectedInterestedSponsor.likedAt)}`
+              : "Wants to connect with you",
+            color: "#DC2626",
+            bgColor: "#FEF2F2",
+          }}
+          roleContext={
+            selectedInterestedSponsor.jobTitle ||
+            selectedInterestedSponsor.jobCompany
+              ? {
+                  label: "WANTS YOU FOR",
+                  title:
+                    selectedInterestedSponsor.jobTitle ||
+                    "A role at their company",
+                  company: selectedInterestedSponsor.jobCompany,
+                }
+              : undefined
+          }
+          primaryCta={{
+            label:
+              likingBackSponsorId === selectedInterestedSponsor.likeId
+                ? "Connecting..."
+                : `Connect with ${selectedInterestedSponsor.firstName}`,
+            icon: <Heart color="#FFF" size={18} strokeWidth={2.5} />,
+            loading: likingBackSponsorId === selectedInterestedSponsor.likeId,
+            onPress: () => handleLikeBackSponsor(selectedInterestedSponsor),
+          }}
+        />
+      )}
 
       {/* Waitlisted Job Detail Modal */}
       <Modal visible={!!selectedWaitlistedJob} transparent animationType="none">

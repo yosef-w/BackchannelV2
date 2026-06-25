@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
@@ -143,6 +144,7 @@ function NavItem({
 
 export function MainApp({ userType }: MainAppProps) {
   const params = useLocalSearchParams<{ tab?: string }>();
+  const queryClient = useQueryClient();
   const [activeView, setActiveView] = useState<ViewType>("home");
   const [previousView, setPreviousView] = useState<ViewType>("home");
   const [isBottomNavHidden, setIsBottomNavHidden] = useState(false);
@@ -480,14 +482,34 @@ export function MainApp({ userType }: MainAppProps) {
 
   // ── Refresh the bell badge the instant a push arrives in the foreground ──
   // The handler above shows the banner; this bumps the unread count right
-  // away instead of waiting up to 60s for the next poll.
+  // away instead of waiting up to 60s for the next poll. It also invalidates
+  // the Matches screen's cached lists for relationship-changing pushes so a
+  // new like/match/referral appears without the user pulling to refresh.
+  // ("matchesScreen" is MatchesView's MATCHES_SCREEN_ROOT query key — keep in
+  // sync if that constant is ever renamed.) Note: a sponsor liking an
+  // applicant's profile without a match currently sends NO push, so the
+  // applicant's "Interested in You" list still relies on focus/pull-to-refresh.
   useEffect(() => {
     if (!isAuthenticated) return;
-    const received = Notifications.addNotificationReceivedListener(() => {
-      fetchUnreadCount();
-    });
+    const received = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        fetchUnreadCount();
+        const data = notification.request.content.data as
+          | Record<string, string>
+          | undefined;
+        const type = data?.type;
+        if (
+          type === "match" ||
+          type === "referral" ||
+          type === "job_like" ||
+          type === "waitlist"
+        ) {
+          queryClient.invalidateQueries({ queryKey: ["matchesScreen"] });
+        }
+      },
+    );
     return () => received.remove();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, queryClient]);
 
   const handleNavigateToMessages = (jobId: string, userId?: string) => {
     setPendingMessageJobId(jobId || null);

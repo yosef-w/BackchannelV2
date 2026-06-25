@@ -10,11 +10,15 @@ import {
     DefaultTheme,
     ThemeProvider,
 } from "@react-navigation/native";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+    focusManager,
+    QueryClient,
+    QueryClientProvider,
+} from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { StyleSheet } from "react-native";
+import { AppState, AppStateStatus, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Initialize crash reporting at module scope — before any UI mounts — so
@@ -42,6 +46,19 @@ function RootLayout() {
       },
     });
   }
+
+  // React Query's `refetchOnWindowFocus` relies on browser focus events, which
+  // don't exist in React Native — so without this bridge the setting is a
+  // silent no-op and lists (matches, "interested in you", etc.) never refresh
+  // when the app returns to the foreground. Wire focusManager to AppState so
+  // every query re-validates on foreground, the way it would on the web.
+  useEffect(() => {
+    const onAppStateChange = (status: AppStateStatus) => {
+      focusManager.setFocused(status === "active");
+    };
+    const sub = AppState.addEventListener("change", onAppStateChange);
+    return () => sub.remove();
+  }, []);
 
   const loadTokens = useAuthStore((state) => state.loadTokens);
   const loadUserProfileData = useUserProfileStore(
