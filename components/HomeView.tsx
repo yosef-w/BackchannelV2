@@ -1,4 +1,6 @@
 import {
+  trackHomeIntroDismissed,
+  trackHomeIntroShown,
   trackJobCardViewed,
   trackJobLiked,
   trackJobSkipped,
@@ -10,6 +12,7 @@ import {
   trackSponsorRequested,
   trackTesterModeEnabled,
 } from "@/lib/analytics/mixpanel";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   fetchJobsPack,
   fetchProfilesPack,
@@ -85,6 +88,7 @@ import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ExpandableText } from "./ui/ExpandableText";
+import { HomeIntroOverlay } from "./ui/HomeIntroOverlay";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -419,6 +423,10 @@ export function HomeView({
   // activeSponsoredJobId, which both re-fetches the profile pack for that
   // role AND becomes the JOB_ID stamped on every like the sponsor creates.
   const [showJobSwitcher, setShowJobSwitcher] = useState(false);
+  // First-run intro overlay. Shown once per role the first time the deck is
+  // actually live (so it overlays real cards, not a spinner/empty state).
+  const [showIntro, setShowIntro] = useState(false);
+  const introCheckedRef = useRef(false);
   const activeSponsoredJob = sponsoredJobs.find(
     (j) => j.jobId === activeSponsoredJobId,
   );
@@ -652,6 +660,39 @@ export function HomeView({
     ) &&
     !(userType === "applicant" && jobsError != null && jobs.length === 0) &&
     !(userType === "applicant" && !jobsLoading && jobs.length === 0);
+
+  // ── First-run intro overlay ───────────────────────────────────────────────
+  // Persist "seen" per role (one account = one role; per-role key still shows
+  // the right copy if someone uses both on a device). Show it once, the first
+  // time the deck is genuinely live — never over a spinner or empty state.
+  const introStorageKey = `@bc/homeIntroSeen:${userType}`;
+  useEffect(() => {
+    if (introCheckedRef.current || !deckIsActive) return;
+    introCheckedRef.current = true;
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem(introStorageKey);
+        if (!seen) {
+          setShowIntro(true);
+          trackHomeIntroShown("first_time");
+        }
+      } catch {
+        // Storage unavailable — skip the intro rather than block the deck.
+      }
+    })();
+  }, [deckIsActive, introStorageKey]);
+
+  const handleIntroDone = (action: "start" | "skip") => {
+    setShowIntro(false);
+    trackHomeIntroDismissed(action);
+    AsyncStorage.setItem(introStorageKey, "1").catch(() => {});
+  };
+
+  // Replay affordance (the header "?") — re-show without touching the flag.
+  const handleReplayIntro = () => {
+    trackHomeIntroShown("replay");
+    setShowIntro(true);
+  };
 
   // Bootstrap sponsor state on mount — ensures activeSponsoredJobId is set
   // even when the user lands on the dashboard before visiting the jobs tab.
@@ -1608,6 +1649,16 @@ export function HomeView({
                 <ChevronDown color="#555" size={14} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
+
+            {/* Replay the first-run "how it works" intro. */}
+            <TouchableOpacity
+              style={styles.introHelpBtn}
+              onPress={handleReplayIntro}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+            >
+              <Info color="#999" size={16} strokeWidth={2.4} />
+            </TouchableOpacity>
           </Animated.View>
 
           {isDeckFinished ? (
@@ -4025,6 +4076,14 @@ export function HomeView({
           </ScrollView>
         </Animated.View>
       </Modal>
+
+      {/* First-run "how it works" intro — one-time per role, replayable via
+          the header "?". Rendered last so it layers above the deck + nav. */}
+      <HomeIntroOverlay
+        visible={showIntro}
+        userType={userType}
+        onDone={handleIntroDone}
+      />
     </View>
   );
 }
@@ -4515,6 +4574,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 28,
     gap: 12,
+  },
+  introHelpBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F4F4F5",
+    alignItems: "center",
+    justifyContent: "center",
   },
   progressHeaderContainer: { flex: 1 },
   // 2026-05-27 redesign — progress indicator typography + segmented dots.

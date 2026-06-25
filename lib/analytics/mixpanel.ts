@@ -220,6 +220,16 @@ export function trackScreenViewed(
   safeTrack("Screen Viewed", { screen_name: screenName, ...extra });
 }
 
+// ─── First-run Home intro overlay ─────────────────────────────────────────────
+
+export function trackHomeIntroShown(trigger: "first_time" | "replay"): void {
+  safeTrack("Home Intro Shown", { trigger });
+}
+
+export function trackHomeIntroDismissed(action: "start" | "skip"): void {
+  safeTrack("Home Intro Dismissed", { action });
+}
+
 // ─── Auth & onboarding ────────────────────────────────────────────────────────
 
 export function trackSignUpRoleSelected(role: AnalyticsUserType): void {
