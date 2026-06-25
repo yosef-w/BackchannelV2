@@ -5,6 +5,7 @@ import {
   trackSignUpSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
@@ -45,6 +46,7 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { CompanyAutocomplete } from "./ui/CompanyAutocomplete";
 
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
@@ -240,7 +242,7 @@ export function SponsorQuestionnaire({
         // and the work-email verification we just kicked off (PR #42).
         setTimeout(() => {
           showToast(
-            "Welcome! Check your inbox — we sent two verification emails (login + work).",
+            "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
             "success",
           );
         }, 500);
@@ -277,6 +279,20 @@ export function SponsorQuestionnaire({
   };
 
   const handleNext = () => {
+    // Validate the work-email step before advancing. Blank is allowed (they
+    // can verify later via the in-app gate), but a typed value must be a real
+    // email so the verification send doesn't silently fail.
+    const current = questions[currentQuestion];
+    if (current.type === "email") {
+      const val = (answers[currentQuestion] || "").trim();
+      if (val && !isValidEmail(val)) {
+        showToast(
+          "Enter a valid work email, or leave it blank to verify later.",
+          "error",
+        );
+        return;
+      }
+    }
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
@@ -467,6 +483,30 @@ export function SponsorQuestionnaire({
                     and what it's like to work with you
                   </Text>
                 </View>
+              ) : currentQuestion === 0 ? (
+                // Company question — autocomplete against real ATS
+                // organizations so the stored company matches the job-browse
+                // filter exactly (prevents misspelling / naming mismatches).
+                // Free text is still allowed for companies not yet in the ATS.
+                <View>
+                  <CompanyAutocomplete
+                    value={answers[currentQuestion] || ""}
+                    onChangeText={(v) =>
+                      setAnswers({ ...answers, [currentQuestion]: v })
+                    }
+                    onSelectOrganization={(org) =>
+                      setAnswers({ ...answers, [currentQuestion]: org })
+                    }
+                    placeholder={question.placeholder}
+                    autoFocus
+                    inputWrapperStyle={styles.inputWrapper}
+                    inputStyle={styles.textInput}
+                  />
+                  <Text style={styles.companyHelper}>
+                    Pick your company from the list so we can match you to the
+                    right job listings.
+                  </Text>
+                </View>
               ) : question.type === "text" || question.type === "email" ? (
                 <View style={styles.inputWrapper}>
                   {question.type === "email" && (
@@ -629,6 +669,14 @@ const styles = StyleSheet.create({
     height: 64,
   },
   textInput: { flex: 1, fontSize: 18, color: "#000", fontWeight: "500" },
+  companyHelper: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "500",
+    lineHeight: 18,
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
 
   // Insights styles
   insightsSubtitle: {

@@ -8,17 +8,22 @@ import {
   trackJobUnsponsored,
 } from "@/lib/analytics/mixpanel";
 import {
+  type AtsOrganization,
   browseJobs,
   createJobFromUrl,
   getJobApplicantsLikes,
   getMyJobs,
   likeProfile,
+  searchAtsOrganizations,
   sponsorJob,
   unsponsorJob,
   updateJob,
+  updateSponsorProfile,
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { isValidUrl, normalizeUrl } from "@/lib/validation";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
 import { formatSalary, parseEmploymentType } from "@/types/jobs";
 import { BlurView } from "expo-blur";
@@ -38,6 +43,7 @@ import {
   MapPin,
   MoreHorizontal,
   Plus,
+  Search,
   Sparkles,
   ThumbsDown,
   Trash2,
@@ -218,6 +224,52 @@ function formatExperienceLevel(raw: string | null | undefined): string {
   if (s === "2-5") return "Mid-Level (2–5 yrs)";
   if (s === "5+") return "Senior (5+ yrs)";
   return s;
+}
+
+// Transform a browse (SILVER_JOBS) API response into the UI Job shape. Shared
+// by the mount load and the "did you mean" company-correction refetch so both
+// produce identical cards. `sponsoredJobs` marks which ATS jobs the sponsor
+// has already sponsored (drives the green-border state).
+function transformBrowseResponse(
+  apiJobs: BrowseJobResponse[],
+  sponsoredJobs: { atsJobId?: string }[],
+): Job[] {
+  return apiJobs.map((job) => {
+    const isSponsored = sponsoredJobs.some((sj) => sj.atsJobId === job.JOB_ID);
+    const salary = formatSalary(
+      job.SALARY_ANNUAL_MIN,
+      job.SALARY_ANNUAL_MAX,
+      job.SALARY_CURRENCY,
+    );
+    return {
+      id: job.JOB_ID,
+      title: job.TITLE,
+      company: job.ORGANIZATION,
+      location: job.FULL_LOCATION,
+      locations: [job.FULL_LOCATION],
+      type: parseEmploymentType(job.EMPLOYMENT_TYPES),
+      salary: salary !== "Salary not specified" ? salary : "Competitive",
+      salaryMin: job.SALARY_ANNUAL_MIN,
+      salaryMax: job.SALARY_ANNUAL_MAX,
+      salaryCurrency: job.SALARY_CURRENCY || "USD",
+      postedAt: new Date(job.DATE_POSTED).toLocaleDateString(),
+      description: cleanJobText(job.DESCRIPTION_TEXT),
+      summary: cleanJobText(job.DESCRIPTION_TEXT).substring(0, 150),
+      skills: parseSkillsField(job.SKILLS),
+      highlights: [],
+      experienceLevel: formatExperienceLevel(job.EXPERIENCE_LEVEL),
+      workArrangement: job.IS_REMOTE ? "Remote" : "On-site",
+      isRemote: job.IS_REMOTE,
+      url: "",
+      applicants: 0,
+      image:
+        job.ORGANIZATION_LOGO ||
+        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+      currentSponsors: [],
+      benefits: [],
+      isSponsored,
+    } as Job;
+  });
 }
 
 // Extend Job type with UI-specific fields (JobPosting is now just an alias)
@@ -478,6 +530,25 @@ export function JobsView() {
   const removeMyJob = useJobsStore((state) => state.removeMyJob);
   const showToast = useToastStore((state) => state.showToast);
 
+  // Sponsor's company drives the ATS browse filter. We read it here so an
+  // empty board can offer "did you mean…" corrections, and write it back when
+  // the sponsor picks a suggestion.
+  const sponsorCompany = useUserProfileStore(
+    (state) => state.data.professional.company,
+  );
+  const updateProfessional = useUserProfileStore(
+    (state) => state.updateProfessional,
+  );
+  // "Did you mean…" suggestions for an empty board (likely a company typo /
+  // naming mismatch). Fetched lazily once browse comes back empty.
+  const [companySuggestions, setCompanySuggestions] = useState<
+    AtsOrganization[]
+  >([]);
+  const [applyingCompany, setApplyingCompany] = useState<string | null>(null);
+  // Remember which company we already searched suggestions for, so the effect
+  // doesn't refire on every render while the board stays empty.
+  const suggestionsForCompany = useRef<string | null>(null);
+
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewJobDetails, setViewJobDetails] = useState<JobPosting | null>(null);
 
@@ -539,65 +610,9 @@ export function JobsView() {
         if (!silent) setLoading(true);
         trackBrowseJobsViewed();
         const response = await browseJobs({ limit: 50 });
-        console.log("[JobsView] Browse response:", response);
-
-        // Transform SILVER_JOBS (browse) response to Job format
-        const transformedJobs: Job[] = response.jobs.map(
-          (job: BrowseJobResponse) => {
-            // Check if this job was already sponsored (check by ATS job ID)
-            const isSponsored = sponsoredJobs.some(
-              (sj) => sj.atsJobId === job.JOB_ID,
-            );
-
-            return {
-              id: job.JOB_ID,
-              title: job.TITLE,
-              company: job.ORGANIZATION,
-              location: job.FULL_LOCATION,
-              locations: [job.FULL_LOCATION],
-              type: parseEmploymentType(job.EMPLOYMENT_TYPES),
-              salary:
-                formatSalary(
-                  job.SALARY_ANNUAL_MIN,
-                  job.SALARY_ANNUAL_MAX,
-                  job.SALARY_CURRENCY,
-                ) !== "Salary not specified"
-                  ? formatSalary(
-                      job.SALARY_ANNUAL_MIN,
-                      job.SALARY_ANNUAL_MAX,
-                      job.SALARY_CURRENCY,
-                    )
-                  : "Competitive",
-              salaryMin: job.SALARY_ANNUAL_MIN,
-              salaryMax: job.SALARY_ANNUAL_MAX,
-              salaryCurrency: job.SALARY_CURRENCY || "USD",
-              postedAt: new Date(job.DATE_POSTED).toLocaleDateString(),
-              description: cleanJobText(job.DESCRIPTION_TEXT),
-              summary: cleanJobText(job.DESCRIPTION_TEXT).substring(0, 150),
-              skills: parseSkillsField(job.SKILLS),
-              highlights: [],
-              experienceLevel: formatExperienceLevel(job.EXPERIENCE_LEVEL),
-              workArrangement: job.IS_REMOTE ? "Remote" : "On-site",
-              isRemote: job.IS_REMOTE,
-              url: "",
-              applicants: 0,
-              // PR #62 — ORGANIZATION_LOGO resolved by Logo.dev pipeline.
-              // Fall back to the generic Unsplash placeholder so existing
-              // cards never render with a broken image.
-              image:
-                job.ORGANIZATION_LOGO ||
-                "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
-              currentSponsors: [],
-              benefits: [],
-              isSponsored, // Mark based on Zustand store
-            };
-          },
-        );
-
-        console.log("[JobsView] Transformed jobs:", transformedJobs.length);
-        console.log(
-          "[JobsView] Sponsored jobs from store:",
-          sponsoredJobs.length,
+        const transformedJobs = transformBrowseResponse(
+          response.jobs as BrowseJobResponse[],
+          sponsoredJobs,
         );
         setJobs(transformedJobs);
       } catch (err) {
@@ -635,6 +650,60 @@ export function JobsView() {
       })),
     );
   }, [sponsoredJobs]);
+
+  // When the browse board comes back empty, the likeliest cause is a company
+  // typo / naming mismatch (the filter matches the sponsor's company string
+  // against ATS org names). Fetch fuzzy "did you mean…" suggestions once per
+  // company so we can offer one-tap corrections. Skips while loading, when
+  // there are results, or when we've already searched this exact company.
+  useEffect(() => {
+    const company = (sponsorCompany || "").trim();
+    if (isLoading || jobs.length > 0 || !company) return;
+    if (suggestionsForCompany.current === company) return;
+    suggestionsForCompany.current = company;
+    let cancelled = false;
+    (async () => {
+      const res = await searchAtsOrganizations(company, 6);
+      if (cancelled || res === null) return;
+      // Drop an exact match (that's the value that already returned nothing)
+      // and surface the closest near-matches.
+      const near = res.filter(
+        (o) => o.organization.toLowerCase() !== company.toLowerCase(),
+      );
+      setCompanySuggestions(near.slice(0, 5));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sponsorCompany, jobs.length, isLoading]);
+
+  // Sponsor tapped a "did you mean…" suggestion — correct their stored company
+  // (backend + local store) and refetch the board against the new company.
+  const handleApplyCompany = async (organization: string) => {
+    setApplyingCompany(organization);
+    try {
+      await updateSponsorProfile({ company: organization });
+      await updateProfessional({ company: organization });
+      // Let the suggestion effect re-run for the new company if needed.
+      suggestionsForCompany.current = null;
+      setCompanySuggestions([]);
+      setLoading(true);
+      const response = await browseJobs({ limit: 50 });
+      setJobs(
+        transformBrowseResponse(
+          response.jobs as BrowseJobResponse[],
+          sponsoredJobs,
+        ),
+      );
+      showToast(`Showing jobs for ${organization}`, "success");
+    } catch (err) {
+      console.warn("[JobsView] Failed to apply company correction:", err);
+      showToast("Couldn't update your company. Please try again.", "error");
+    } finally {
+      setApplyingCompany(null);
+      setLoading(false);
+    }
+  };
 
   // Shared helper — fetch sponsor's own jobs and update store
   const refreshMyJobs = async (showLoadingSpinner = true) => {
@@ -1174,9 +1243,12 @@ export function JobsView() {
   };
 
   const handlePreviewJob = () => {
-    let url = jobUrlInput.trim();
-    if (url && !url.startsWith("http")) url = "https://" + url;
-    setPreviewUrl(url);
+    const raw = jobUrlInput.trim();
+    if (!isValidUrl(raw)) {
+      showToast("Enter a valid job posting link (e.g. company.com/role).", "error");
+      return;
+    }
+    setPreviewUrl(normalizeUrl(raw));
     setWebviewLoading(true);
     setCreateFlowStep("webview");
   };
@@ -1511,15 +1583,95 @@ export function JobsView() {
             {activeTab === "browse" && (
               <>
                 {jobs.length === 0 ? (
-                  <EmptyState
-                    icon={
-                      <Briefcase size={40} color="#000" strokeWidth={2.5} />
-                    }
-                    title="No available jobs"
-                    description="Check back soon for new opportunities, or create your own listing."
-                    actionText="Create Listing"
-                    onAction={openCreateModal}
-                  />
+                  companySuggestions.length > 0 ? (
+                    /* "Did you mean…" — the board is empty for the sponsor's
+                       stored company, but the ATS has close matches. Likely a
+                       typo or naming-convention mismatch; offer one-tap fixes
+                       that update their company and reload the board. */
+                    <View style={styles.didYouMeanCard}>
+                      <View style={styles.didYouMeanIcon}>
+                        <Search size={28} color="#000" strokeWidth={2.5} />
+                      </View>
+                      <Text style={styles.didYouMeanTitle}>
+                        No jobs found for "{sponsorCompany}"
+                      </Text>
+                      <Text style={styles.didYouMeanSub}>
+                        We couldn't match that to a company in our listings. Did
+                        you mean one of these?
+                      </Text>
+
+                      <View style={styles.didYouMeanList}>
+                        {companySuggestions.map((org) => {
+                          const applying =
+                            applyingCompany === org.organization;
+                          return (
+                            <TouchableOpacity
+                              key={org.organization}
+                              style={styles.didYouMeanRow}
+                              activeOpacity={0.7}
+                              disabled={!!applyingCompany}
+                              onPress={() =>
+                                handleApplyCompany(org.organization)
+                              }
+                            >
+                              <CompanyLogo
+                                logoUrl={org.logo_url ?? undefined}
+                                name={org.organization}
+                                size={38}
+                                borderRadius={10}
+                                initialFontSize={16}
+                              />
+                              <View style={styles.didYouMeanRowText}>
+                                <Text
+                                  style={styles.didYouMeanRowName}
+                                  numberOfLines={1}
+                                >
+                                  {org.organization}
+                                </Text>
+                                {org.job_count > 0 && (
+                                  <Text style={styles.didYouMeanRowMeta}>
+                                    {org.job_count}{" "}
+                                    {org.job_count === 1
+                                      ? "open role"
+                                      : "open roles"}
+                                  </Text>
+                                )}
+                              </View>
+                              {applying ? (
+                                <ActivityIndicator size="small" color="#000" />
+                              ) : (
+                                <ChevronRight size={18} color="#BBB" />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      <Text style={styles.didYouMeanFootnote}>
+                        Not here? Check the spelling in your{" "}
+                        profile, or create your own listing.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.didYouMeanCreateBtn}
+                        onPress={openCreateModal}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.didYouMeanCreateText}>
+                          Create a Listing
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <EmptyState
+                      icon={
+                        <Briefcase size={40} color="#000" strokeWidth={2.5} />
+                      }
+                      title="No available jobs"
+                      description="Check back soon for new opportunities, or create your own listing."
+                      actionText="Create Listing"
+                      onAction={openCreateModal}
+                    />
+                  )
                 ) : (
                   <>
                     {jobs.slice(0, displayLimit).map((job, index) => (
@@ -3089,7 +3241,9 @@ function JobCard({
             borderRadius={14}
           />
           <View style={styles.headerInfo}>
-            <Text style={styles.companyName}>{job.company}</Text>
+            <Text style={styles.companyName} numberOfLines={1}>
+              {job.company}
+            </Text>
             <Text style={styles.jobTitleText} numberOfLines={1}>
               {job.title}
             </Text>
@@ -4798,6 +4952,85 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+
+  // ── "Did you mean…" empty-board correction ────────────────────────────────
+  didYouMeanCard: {
+    marginTop: 24,
+    marginHorizontal: 4,
+    alignItems: "center",
+  },
+  didYouMeanIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F4F4F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  didYouMeanTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+    letterSpacing: -0.3,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+  },
+  didYouMeanSub: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 22,
+    paddingHorizontal: 16,
+  },
+  didYouMeanList: {
+    width: "100%",
+    backgroundColor: "#FFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    overflow: "hidden",
+  },
+  didYouMeanRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#F0F0F0",
+  },
+  didYouMeanRowText: { flex: 1, minWidth: 0 },
+  didYouMeanRowName: { fontSize: 15, fontWeight: "700", color: "#111" },
+  didYouMeanRowMeta: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+    marginTop: 1,
+  },
+  didYouMeanFootnote: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+    lineHeight: 19,
+    marginTop: 22,
+    marginBottom: 14,
+    paddingHorizontal: 20,
+  },
+  didYouMeanCreateBtn: {
+    backgroundColor: "#000",
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+  },
+  didYouMeanCreateText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: -0.2,
   },
 
   // Loading State Styles
