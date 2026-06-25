@@ -84,8 +84,11 @@ import {
     ProfessionalExperience,
     useUserProfileStore,
 } from "../stores/useUserProfileStore";
+import { logBreadcrumb, Sentry } from "../lib/sentry";
+import { validateProfileField } from "../lib/validation";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
+import { ExpandableText } from "./ui/ExpandableText";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
 
 interface ProfileViewProps {
@@ -162,6 +165,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.presentCustomerCenter,
   );
   const userProfileData = useUserProfileStore((state) => state.data);
+  // Once a sponsor's work email is verified, their Company is locked — they've
+  // vouched for that employer, so they can't silently swap it while keeping
+  // verified status (mirrors the work-email lock).
+  const workEmailVerified = useUserProfileStore(
+    (state) => state.workEmailVerified,
+  );
   const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
   const updateProfessional = useUserProfileStore(
     (state) => state.updateProfessional,
@@ -630,168 +639,186 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const handleSaveField = async (field: string) => {
     trackProfileFieldUpdated({ field });
+    // Validate + clean before persisting. Rejects clearly-bad input (a phone
+    // that isn't a phone, a malformed link, an impossible year/GPA) with a
+    // toast, and trims/collapses/caps everything else so a single field can't
+    // break the UI or the DB. `valueToSave` replaces the raw tempValue below.
+    const { ok, cleaned, error } = validateProfileField(field, tempValue);
+    if (!ok) {
+      showToast(error || "Please check this field and try again.", "error");
+      return;
+    }
+    const valueToSave = cleaned;
     try {
       switch (field) {
         case "firstName":
-          setFirstName(tempValue);
-          setName(`${tempValue} ${lastName}`.trim());
+          setFirstName(valueToSave);
+          setName(`${valueToSave} ${lastName}`.trim());
           await updatePersonal({
-            firstName: tempValue,
-            fullName: `${tempValue} ${lastName}`.trim(),
+            firstName: valueToSave,
+            fullName: `${valueToSave} ${lastName}`.trim(),
           });
-          await updateGeneralProfile({ first_name: tempValue });
+          await updateGeneralProfile({ first_name: valueToSave });
           break;
         case "lastName":
-          setLastName(tempValue);
-          setName(`${firstName} ${tempValue}`.trim());
+          setLastName(valueToSave);
+          setName(`${firstName} ${valueToSave}`.trim());
           await updatePersonal({
-            lastName: tempValue,
-            fullName: `${firstName} ${tempValue}`.trim(),
+            lastName: valueToSave,
+            fullName: `${firstName} ${valueToSave}`.trim(),
           });
-          await updateGeneralProfile({ last_name: tempValue });
+          await updateGeneralProfile({ last_name: valueToSave });
           break;
         case "role":
-          setRole(tempValue);
-          await updateProfessional({ title: tempValue });
+          setRole(valueToSave);
+          await updateProfessional({ title: valueToSave });
           if (userType === "applicant") {
-            await updateApplicantProfile({ current_role: tempValue });
+            await updateApplicantProfile({ current_role: valueToSave });
           } else {
-            await updateSponsorProfile({ job_title: tempValue });
+            await updateSponsorProfile({ job_title: valueToSave });
           }
           break;
         case "company":
-          setCompany(tempValue);
-          await updateProfessional({ company: tempValue });
+          // A verified sponsor's company is locked — the verified work email
+          // vouches for it. Guard here too in case this is ever triggered
+          // outside the (now hidden) inline editor.
+          if (userType === "sponsor" && workEmailVerified) {
+            setEditingField(null);
+            setTempValue("");
+            return;
+          }
+          setCompany(valueToSave);
+          await updateProfessional({ company: valueToSave });
           if (userType === "sponsor") {
-            await updateSponsorProfile({ company: tempValue });
+            await updateSponsorProfile({ company: valueToSave });
           }
           break;
         // email is read-only — changes require a dedicated change-email flow with verification
         case "phone":
-          setPhone(tempValue);
-          await updatePersonal({ phone: tempValue });
+          setPhone(valueToSave);
+          await updatePersonal({ phone: valueToSave });
           // API call for phone
-          await updateGeneralProfile({ phone_number: tempValue });
+          await updateGeneralProfile({ phone_number: valueToSave });
           break;
         case "bio":
-          setBio(tempValue);
-          await updateProfessional({ summary: tempValue });
+          setBio(valueToSave);
+          await updateProfessional({ summary: valueToSave });
           // API call for bio
-          await updateGeneralProfile({ bio: tempValue });
+          await updateGeneralProfile({ bio: valueToSave });
           break;
         case "achievements":
-          setAchievements(tempValue);
-          await updateAchievements(tempValue);
+          setAchievements(valueToSave);
+          await updateAchievements(valueToSave);
           if (userType === "applicant") {
-            await updateApplicantProfile({ achievements: tempValue });
+            await updateApplicantProfile({ achievements: valueToSave });
           }
           break;
         case "jobTitle":
-          setJobTitle(tempValue);
-          await updateProfessional({ title: tempValue });
+          setJobTitle(valueToSave);
+          await updateProfessional({ title: valueToSave });
           if (userType === "applicant") {
-            await updateApplicantProfile({ current_role: tempValue });
+            await updateApplicantProfile({ current_role: valueToSave });
           } else {
-            await updateSponsorProfile({ job_title: tempValue });
+            await updateSponsorProfile({ job_title: valueToSave });
           }
           break;
         case "yearsExperience":
-          setYearsExperience(tempValue);
-          await updateProfessional({ yearsExperience: tempValue });
+          setYearsExperience(valueToSave);
+          await updateProfessional({ yearsExperience: valueToSave });
           // API call for years of experience - applicant only
           if (userType === "applicant") {
-            await updateApplicantProfile({ years_experience: tempValue });
+            await updateApplicantProfile({ years_experience: valueToSave });
           }
           break;
         case "summary":
-          setSummary(tempValue);
-          await updateProfessional({ summary: tempValue });
+          setSummary(valueToSave);
+          await updateProfessional({ summary: valueToSave });
           // API call for summary/bio
-          await updateGeneralProfile({ bio: tempValue });
+          await updateGeneralProfile({ bio: valueToSave });
           break;
         case "degree":
-          setDegree(tempValue);
-          await updateEducation({ degree: tempValue });
+          setDegree(valueToSave);
+          await updateEducation({ degree: valueToSave });
           break;
         case "major":
-          setMajor(tempValue);
-          await updateEducation({ major: tempValue });
+          setMajor(valueToSave);
+          await updateEducation({ major: valueToSave });
           break;
         case "university":
-          setUniversity(tempValue);
-          await updateEducation({ university: tempValue });
+          setUniversity(valueToSave);
+          await updateEducation({ university: valueToSave });
           break;
         case "graduationYear":
-          setGraduationYear(tempValue);
-          await updateEducation({ graduationYear: tempValue });
+          setGraduationYear(valueToSave);
+          await updateEducation({ graduationYear: valueToSave });
           break;
         case "gpa":
-          setGpa(tempValue);
-          await updateEducation({ gpa: tempValue });
+          setGpa(valueToSave);
+          await updateEducation({ gpa: valueToSave });
           break;
         case "workAuthorization":
-          setWorkAuthorization(tempValue);
-          await updatePreferences({ workAuthorization: tempValue });
+          setWorkAuthorization(valueToSave);
+          await updatePreferences({ workAuthorization: valueToSave });
           if (userType === "applicant") {
-            await updateApplicantProfile({ work_authorization: tempValue });
+            await updateApplicantProfile({ work_authorization: valueToSave });
           }
           break;
         case "willingToRelocate":
-          setWillingToRelocate(tempValue);
-          await updatePreferences({ willingToRelocate: tempValue });
+          setWillingToRelocate(valueToSave);
+          await updatePreferences({ willingToRelocate: valueToSave });
           if (userType === "applicant") {
-            await updateApplicantProfile({ willing_to_relocate: tempValue });
+            await updateApplicantProfile({ willing_to_relocate: valueToSave });
           }
           break;
         case "requiresSponsorship":
-          setRequiresSponsorship(tempValue);
-          await updatePreferences({ requiresSponsorship: tempValue });
+          setRequiresSponsorship(valueToSave);
+          await updatePreferences({ requiresSponsorship: valueToSave });
           if (userType === "applicant") {
-            await updateApplicantProfile({ requires_sponsorship: tempValue });
+            await updateApplicantProfile({ requires_sponsorship: valueToSave });
           }
           break;
         case "portfolio":
-          setPortfolio(tempValue);
-          await updatePersonal({ portfolio: tempValue });
-          await updateGeneralProfile({ portfolio_url: tempValue });
+          setPortfolio(valueToSave);
+          await updatePersonal({ portfolio: valueToSave });
+          await updateGeneralProfile({ portfolio_url: valueToSave });
           break;
         case "street":
-          setStreet(tempValue);
+          setStreet(valueToSave);
           await updatePersonal({
-            address: { ...userProfileData.personal.address, street: tempValue },
+            address: { ...userProfileData.personal.address, street: valueToSave },
           });
-          await updateGeneralProfile({ street: tempValue });
+          await updateGeneralProfile({ street: valueToSave });
           break;
         case "city":
-          setCity(tempValue);
+          setCity(valueToSave);
           await updatePersonal({
-            address: { ...userProfileData.personal.address, city: tempValue },
+            address: { ...userProfileData.personal.address, city: valueToSave },
           });
-          await updateGeneralProfile({ city: tempValue });
+          await updateGeneralProfile({ city: valueToSave });
           break;
         case "state":
-          setState(tempValue);
+          setState(valueToSave);
           await updatePersonal({
-            address: { ...userProfileData.personal.address, state: tempValue },
+            address: { ...userProfileData.personal.address, state: valueToSave },
           });
-          await updateGeneralProfile({ state: tempValue });
+          await updateGeneralProfile({ state: valueToSave });
           break;
         case "zip":
-          setZip(tempValue);
+          setZip(valueToSave);
           await updatePersonal({
-            address: { ...userProfileData.personal.address, zip: tempValue },
+            address: { ...userProfileData.personal.address, zip: valueToSave },
           });
-          await updateGeneralProfile({ zip: tempValue });
+          await updateGeneralProfile({ zip: valueToSave });
           break;
         case "country":
-          setCountry(tempValue);
+          setCountry(valueToSave);
           await updatePersonal({
             address: {
               ...userProfileData.personal.address,
-              country: tempValue,
+              country: valueToSave,
             },
           });
-          await updateGeneralProfile({ country: tempValue });
+          await updateGeneralProfile({ country: valueToSave });
           break;
         case "workEmail":
           // workEmail is now read-only in the editor — managed via onboarding.
@@ -1630,7 +1657,31 @@ export function ProfileView({ userType }: ProfileViewProps) {
     return true;
   };
 
+  // Single entry point for opening the photo picker (used by both the avatar
+  // and the FAB). Breadcrumbs the tap plus whether any OTHER modal is already
+  // presented — that's the iOS "two modals at once" race that can silently
+  // swallow the picker's presentation. If a tester reports the picker not
+  // opening, this trail shows whether a stale modal was up at the time.
+  const openImagePicker = () => {
+    const otherModalOpen =
+      showEditProfile ||
+      showEditResume ||
+      showEmailChange ||
+      showPasswordChange ||
+      showLogoutModal ||
+      showEditInsights ||
+      showPrivacySecurity ||
+      showNotifications;
+    logBreadcrumb("profile_photo: open picker tapped", {
+      hasPhoto: !!profileImage,
+      pickerAlreadyOpen: showImagePickerModal,
+      otherModalOpen,
+    });
+    setShowImagePickerModal(true);
+  };
+
   const pickImage = async () => {
+    logBreadcrumb("profile_photo: pick from library");
     const hasPermission = await requestPermissions("gallery");
     if (!hasPermission) return;
 
@@ -1648,6 +1699,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const takePhoto = async () => {
+    logBreadcrumb("profile_photo: take photo (camera)");
     const hasPermission = await requestPermissions("camera");
     if (!hasPermission) return;
 
@@ -1696,6 +1748,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
       showToast("Profile photo updated.", "success");
     } catch (err) {
       console.warn("[ProfileImage] ❌ Failed to upload profile photo:", err);
+      Sentry.captureException(err, {
+        tags: { feature: "profile_photo_upload" },
+      });
       showToast("Failed to upload photo. Please try again.", "error");
     }
   };
@@ -2537,26 +2592,37 @@ export function ProfileView({ userType }: ProfileViewProps) {
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarWrapper}>
-          {profileImage ? (
-            <Image source={{ uri: profileImage }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatar}>
-              {getUserInitials() ? (
-                <Text style={styles.avatarInitials}>{getUserInitials()}</Text>
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Camera color="#999" size={32} strokeWidth={1.5} />
-                  <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
-                </View>
-              )}
-            </View>
-          )}
+          {/* The whole avatar is tappable — not just the small corner button —
+              so tapping the photo opens the picker too. (Previously only the
+              32px FAB had a handler, which testers often missed.) */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={openImagePicker}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
+          >
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatar}>
+                {getUserInitials() ? (
+                  <Text style={styles.avatarInitials}>{getUserInitials()}</Text>
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Camera color="#999" size={32} strokeWidth={1.5} />
+                    <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.editFab,
               isFieldMissing("profileImage") && styles.editFabHighlight,
             ]}
-            onPress={() => setShowImagePickerModal(true)}
+            onPress={openImagePicker}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <Edit color="#FFF" size={14} strokeWidth={2.5} />
           </TouchableOpacity>
@@ -2583,7 +2649,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
 
         {profileData.bio ? (
-          <Text style={styles.bio}>{profileData.bio}</Text>
+          <ExpandableText style={styles.bio} numberOfLines={5}>
+            {profileData.bio}
+          </ExpandableText>
         ) : (
           <Text style={styles.emptyHint}>Tap "Edit Profile" to add a bio</Text>
         )}
@@ -3184,9 +3252,31 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <View style={styles.editField}>
                   <View style={styles.fieldLabelRow}>
                     <Text style={styles.fieldLabel}>COMPANY</Text>
-                    {!company && <Text style={styles.requiredStar}>*</Text>}
+                    {!company && !workEmailVerified && (
+                      <Text style={styles.requiredStar}>*</Text>
+                    )}
                   </View>
-                  {editingField === "company" ? (
+                  {workEmailVerified ? (
+                    // Locked — the verified work email vouches for this company,
+                    // so it can't be changed without re-verifying.
+                    <>
+                      <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
+                        <Text style={styles.fieldText}>{company}</Text>
+                        <Lock color="#999" size={16} />
+                      </View>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: "#999",
+                          marginTop: 4,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        Locked to your verified work email. Contact support to
+                        change your company.
+                      </Text>
+                    </>
+                  ) : editingField === "company" ? (
                     <View style={styles.editRow}>
                       <TextInput
                         style={styles.fieldInput}
@@ -3322,8 +3412,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       multiline
                       numberOfLines={4}
+                      maxLength={1000}
                       autoFocus
                     />
+                    <Text style={styles.charCounter}>{tempValue.length}/1000</Text>
                     <TouchableOpacity
                       style={[
                         styles.saveBtn,
@@ -3937,8 +4029,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       onChangeText={setTempValue}
                       placeholder="Notable achievements, awards, publications, speaking engagements..."
                       multiline
+                      maxLength={1000}
                       autoFocus
                     />
+                    <Text style={styles.charCounter}>{tempValue.length}/1000</Text>
                     <TouchableOpacity
                       style={[
                         styles.saveBtn,
@@ -5136,6 +5230,13 @@ const styles = StyleSheet.create({
   bioInput: {
     minHeight: 100,
     textAlignVertical: "top",
+  },
+  charCounter: {
+    fontSize: 12,
+    color: "#AAA",
+    fontWeight: "500",
+    alignSelf: "flex-end",
+    marginTop: 6,
   },
   saveBtn: {
     backgroundColor: "#000",
