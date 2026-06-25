@@ -290,7 +290,7 @@ export function ApplicantQuestionnaire({
         // surface it so users know to check their inbox.
         setTimeout(() => {
           showToast(
-            "Welcome! We sent a verification email — check your inbox.",
+            "Welcome! We sent a verification email — check your inbox and spam folder.",
             "success",
           );
         }, 500);

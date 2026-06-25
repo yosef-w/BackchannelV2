@@ -78,6 +78,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
+import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
@@ -457,6 +458,21 @@ export function HomeView({
   const setProgress = useJobsStore((state) => state.setProgress);
   const resetNavigation = useJobsStore((state) => state.resetNavigation);
   const lastFetched = useJobsStore((state) => state.lastFetched);
+
+  // Premium / paywall — the end-of-deck "unlock more cards" upsell reuses the
+  // same RevenueCat paywall as ProfileView's "Upgrade to Pro". No-ops in
+  // builds where PREMIUM_ENABLED is false (presentPaywall returns false).
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+  const presentPaywall = useSubscriptionStore((state) => state.presentPaywall);
+
+  // Tapping "Unlock more cards" opens the paywall. On a successful purchase we
+  // reset the deck so they can keep swiping immediately. (A larger/unlimited
+  // daily allotment for premium users needs backend support — see note in
+  // docs/BACKEND_CHANGES_NEEDED.md; for now this returns them to the top.)
+  const handleUnlockMoreCards = async () => {
+    const purchased = await presentPaywall();
+    if (purchased) resetNavigation();
+  };
 
   const scrollRef = useRef<ScrollView>(null);
   // Initialize loading based on whether we already have data
@@ -1510,21 +1526,54 @@ export function HomeView({
 
           {isDeckFinished ? (
             <View style={styles.fullEmptyContainer}>
-              <Animated.View entering={FadeInUp} style={styles.emptyState}>
-                <View style={styles.emptyIconCircle}>
-                  <RefreshCcw color="#000" size={32} />
+              <Animated.View entering={FadeInUp} style={styles.deckDoneCard}>
+                {/* Accomplishment badge */}
+                <View style={styles.deckDoneBadge}>
+                  <Check color="#FFF" size={30} strokeWidth={3} />
                 </View>
-                <Text style={styles.emptyTitle}>All Caught Up!</Text>
-                <Text style={styles.emptySub}>
-                  You've reviewed your deck. Come back tomorrow for more.
+
+                {/* Context pill — makes the daily-allotment limit explicit */}
+                <View style={styles.deckDonePill}>
+                  <Sparkles color="#000" size={12} strokeWidth={2.5} />
+                  <Text style={styles.deckDonePillText}>
+                    DAILY DECK COMPLETE · {DECK_SIZE}/{DECK_SIZE}
+                  </Text>
+                </View>
+
+                <Text style={styles.deckDoneTitle}>You're all caught up</Text>
+                <Text style={styles.deckDoneSub}>
+                  You've reviewed all {DECK_SIZE} cards in today's deck — that's
+                  your daily allotment. A fresh set unlocks tomorrow.
                 </Text>
+
+                {/* Primary CTA — unlock more cards via the paywall. Hidden for
+                    users who already hold premium. */}
+                {!isPremium && (
+                  <TouchableOpacity
+                    style={styles.deckDonePrimary}
+                    onPress={handleUnlockMoreCards}
+                    activeOpacity={0.85}
+                  >
+                    <Sparkles color="#FFF" size={18} strokeWidth={2.5} />
+                    <Text style={styles.deckDonePrimaryText}>
+                      Unlock more cards
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Secondary CTA — replay the same deck from the top */}
                 <TouchableOpacity
-                  style={styles.returnBtn}
+                  style={[
+                    styles.deckDoneSecondary,
+                    isPremium && styles.deckDoneSecondaryAlone,
+                  ]}
                   onPress={() => {
                     resetNavigation();
                   }}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.returnBtnText}>Refresh Deck</Text>
+                  <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+                  <Text style={styles.deckDoneSecondaryText}>Review again</Text>
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -3421,7 +3470,9 @@ export function HomeView({
                             await updatePersonalStore({ workEmail: trimmed });
                             setIsEditingWorkEmail(false);
                             setEditedWorkEmail("");
-                            setEmailVerifyError(`Sent! Check ${trimmed}.`);
+                            setEmailVerifyError(
+                              `Sent! Check ${trimmed} — including your spam folder.`,
+                            );
                           } catch (err) {
                             const msg =
                               err instanceof Error
@@ -3475,6 +3526,14 @@ export function HomeView({
                 </>
               );
             })()}
+
+            <View style={styles.emailVerifSpamHint}>
+              <Info color="#999" size={13} strokeWidth={2} />
+              <Text style={styles.emailVerifSpamHintText}>
+                Don't see it? Check your spam or junk folder — it can take a
+                minute to arrive.
+              </Text>
+            </View>
 
             <View style={styles.emailVerifInfoBox}>
               <Text style={styles.emailVerifInfoText}>
@@ -3552,7 +3611,9 @@ export function HomeView({
                 setEmailVerifyError("");
                 try {
                   await authApi.sendWorkEmailVerification(workEmail);
-                  setEmailVerifyError("Sent! Check your inbox.");
+                  setEmailVerifyError(
+                    "Sent! Check your inbox and spam folder.",
+                  );
                 } catch (err) {
                   const msg =
                     err instanceof Error ? err.message : "Couldn't resend.";
@@ -5930,6 +5991,100 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   returnBtnText: { color: "#FFF", fontWeight: "700" },
+
+  // ── End-of-deck "You're all caught up" state ───────────────────────────────
+  deckDoneCard: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    width: "100%",
+    maxWidth: 420,
+  },
+  deckDoneBadge: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 22,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  deckDonePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F4F4F5",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 16,
+  },
+  deckDonePillText: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#000",
+    letterSpacing: 0.6,
+  },
+  deckDoneTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.5,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  deckDoneSub: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  deckDonePrimary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    borderRadius: 16,
+    width: "100%",
+  },
+  deckDonePrimaryText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  deckDoneSecondary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 15,
+    borderRadius: 16,
+    width: "100%",
+    marginTop: 10,
+    borderWidth: 1.5,
+    borderColor: "#E6E6E6",
+    backgroundColor: "#FFF",
+  },
+  // When premium hides the primary CTA, the "Review again" button is the only
+  // action — drop the top margin that otherwise spaces it under the primary.
+  deckDoneSecondaryAlone: {
+    marginTop: 0,
+  },
+  deckDoneSecondaryText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
   primaryBtn: {
     backgroundColor: "#000",
     paddingVertical: 16,
@@ -6737,6 +6892,22 @@ const styles = StyleSheet.create({
   emailVerifAddress: {
     fontWeight: "700",
     color: "#000",
+  },
+  emailVerifSpamHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    marginTop: 14,
+    marginBottom: 18,
+  },
+  emailVerifSpamHintText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: "#999",
+    fontWeight: "500",
+    lineHeight: 17,
   },
   emailVerifInfoBox: {
     backgroundColor: "#F9F9F9",

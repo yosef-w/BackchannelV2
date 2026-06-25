@@ -25,6 +25,7 @@ import {
     trackSignUpFormSubmitted,
 } from "../lib/analytics/mixpanel";
 import { authApi, LoginResponse } from "../lib/auth-api";
+import { isValidEmail } from "../lib/validation";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
@@ -182,6 +183,10 @@ export function AuthScreen({
         showToast("Please enter your email address.", "error");
         return;
       }
+      if (!isValidEmail(email)) {
+        showToast("Please enter a valid email address.", "error");
+        return;
+      }
       if (!password || password.length < 8) {
         showToast("Password must be at least 8 characters.", "error");
         return;
@@ -220,6 +225,10 @@ export function AuthScreen({
   const handleSendResetEmail = () => {
     if (!forgotPasswordEmail) {
       showToast("Please enter your email address.", "error");
+      return;
+    }
+    if (!isValidEmail(forgotPasswordEmail)) {
+      showToast("Please enter a valid email address.", "error");
       return;
     }
     forgotPasswordMutation.mutate();
@@ -461,10 +470,16 @@ export function AuthScreen({
                   </View>
                   <Text style={styles.modalTitle}>Check Your Email</Text>
                   <Text style={styles.modalSubtitle}>
-                    We've sent a password reset link to{"\n"}
+                    If an account exists for{"\n"}
                     <Text style={styles.emailHighlight}>
                       {forgotPasswordEmail}
                     </Text>
+                    , we've sent a password reset link.
+                  </Text>
+
+                  <Text style={styles.modalSpamHint}>
+                    Don't see it? Check your spam or junk folder — it can take a
+                    minute to arrive.
                   </Text>
 
                   <TouchableOpacity
@@ -662,6 +677,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: "center",
     lineHeight: 22,
+  },
+  modalSpamHint: {
+    fontSize: 12.5,
+    color: "#999",
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 17,
+    marginBottom: 24,
+    paddingHorizontal: 8,
   },
   modalInputWrapper: {
     flexDirection: "row",
