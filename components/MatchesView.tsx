@@ -70,6 +70,7 @@ import Animated, {
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
+import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
@@ -3590,9 +3591,7 @@ export function MatchesView({
                             maxLength={500}
                             onSubmitEditing={() => Keyboard.dismiss()}
                           />
-                          <Text style={styles.srCharCount}>
-                            {value.length}/500
-                          </Text>
+                          <CharCounter count={value.length} max={500} />
                         </View>
                       ))}
 
@@ -5758,13 +5757,6 @@ const styles = StyleSheet.create({
     color: "#000",
     minHeight: 110,
     textAlignVertical: "top",
-  },
-  srCharCount: {
-    alignSelf: "flex-end",
-    marginTop: 6,
-    fontSize: 11,
-    color: "#AAA",
-    fontWeight: "500",
   },
   srSuccessContainer: {
     alignItems: "center",

@@ -88,6 +88,7 @@ import { logBreadcrumb, Sentry } from "../lib/sentry";
 import { validateProfileField } from "../lib/validation";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
+import { CharCounter } from "./ui/CharCounter";
 import { ExpandableText } from "./ui/ExpandableText";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
 
@@ -3415,7 +3416,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       maxLength={1000}
                       autoFocus
                     />
-                    <Text style={styles.charCounter}>{tempValue.length}/1000</Text>
+                    <CharCounter count={tempValue.length} max={1000} />
                     <TouchableOpacity
                       style={[
                         styles.saveBtn,
@@ -4032,7 +4033,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       maxLength={1000}
                       autoFocus
                     />
-                    <Text style={styles.charCounter}>{tempValue.length}/1000</Text>
+                    <CharCounter count={tempValue.length} max={1000} />
                     <TouchableOpacity
                       style={[
                         styles.saveBtn,
@@ -5230,13 +5231,6 @@ const styles = StyleSheet.create({
   bioInput: {
     minHeight: 100,
     textAlignVertical: "top",
-  },
-  charCounter: {
-    fontSize: 12,
-    color: "#AAA",
-    fontWeight: "500",
-    alignSelf: "flex-end",
-    marginTop: 6,
   },
   saveBtn: {
     backgroundColor: "#000",

@@ -68,6 +68,7 @@ import Animated, {
     useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
@@ -1438,7 +1439,17 @@ export function MessagesView({
               </Text>
             </View>
           ) : (
-            <View style={styles.inputArea}>
+            <View>
+              {/* Only surface the counter as you approach the 2000-char cap so
+                  it doesn't clutter normal chatting. */}
+              {messageText.length >= 1800 && (
+                <CharCounter
+                  count={messageText.length}
+                  max={2000}
+                  style={{ marginRight: 16, marginBottom: 4, marginTop: 0 }}
+                />
+              )}
+              <View style={styles.inputArea}>
               <TextInput
                 value={messageText}
                 onChangeText={setMessageText}
@@ -1459,6 +1470,7 @@ export function MessagesView({
               >
                 <Send color="#FFF" size={18} strokeWidth={2.5} />
               </TouchableOpacity>
+              </View>
             </View>
           )}
         </Animated.View>

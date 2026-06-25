@@ -80,6 +80,7 @@ import Animated, {
   SlideOutDown,
 } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
+import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
@@ -457,9 +458,7 @@ function SponsorInsightCards({
                 maxLength={SPONSOR_INSIGHT_MAXLEN}
                 textAlignVertical="top"
               />
-              <Text style={styles.siCharCount}>
-                {value.length}/{SPONSOR_INSIGHT_MAXLEN}
-              </Text>
+              <CharCounter count={value.length} max={SPONSOR_INSIGHT_MAXLEN} />
 
               <Text style={styles.siChipHint}>Tap to add a prompt</Text>
               <View style={styles.siChipRow}>
@@ -3875,13 +3874,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     borderWidth: 1,
     borderColor: "#EEE",
-  },
-  siCharCount: {
-    alignSelf: "flex-end",
-    marginTop: 6,
-    fontSize: 11,
-    color: "#AAA",
-    fontWeight: "500",
   },
   siChipHint: {
     fontSize: 12,
