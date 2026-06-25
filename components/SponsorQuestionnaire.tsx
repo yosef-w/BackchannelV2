@@ -418,6 +418,7 @@ export function SponsorQuestionnaire({
                         }}
                         multiline
                         returnKeyType="default"
+                        autoCapitalize="sentences"
                         style={styles.insightAnswerInput}
                         maxLength={200}
                       />
@@ -524,7 +525,9 @@ export function SponsorQuestionnaire({
                     keyboardType={
                       question.type === "email" ? "email-address" : "default"
                     }
-                    autoCapitalize="none"
+                    autoCapitalize={
+                      question.type === "email" ? "none" : "words"
+                    }
                   />
                 </View>
               ) : (

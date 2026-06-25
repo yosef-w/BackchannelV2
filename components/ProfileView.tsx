@@ -1320,6 +1320,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   isNameMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={cert.name}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateCertification(index, { name: text })
                 }
@@ -1351,6 +1352,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   isOrgMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={cert.organization}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateCertification(index, { organization: text })
                 }
@@ -1382,6 +1384,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   isYearMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={cert.year}
+                autoCapitalize="none"
                 onChangeText={(text) =>
                   handleUpdateCertification(index, { year: text })
                 }
@@ -1500,6 +1503,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   },
                 ]}
                 value={lang.language}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateLanguage(index, { language: text })
                 }
@@ -1534,6 +1538,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   },
                 ]}
                 value={lang.proficiency}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateLanguage(index, { proficiency: text })
                 }
@@ -2231,6 +2236,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   },
                 ]}
                 value={experience.jobTitle}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateExperience(experience.id, { jobTitle: text })
                 }
@@ -2265,6 +2271,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   },
                 ]}
                 value={experience.company}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateExperience(experience.id, { company: text })
                 }
@@ -2299,6 +2306,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   },
                 ]}
                 value={experience.startDate}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateExperience(experience.id, { startDate: text })
                 }
@@ -2328,6 +2336,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <TextInput
                   style={styles.entryFieldInput}
                   value={experience.endDate}
+                  autoCapitalize="words"
                   onChangeText={(text) =>
                     handleUpdateExperience(experience.id, { endDate: text })
                   }
@@ -2345,6 +2354,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   { minHeight: 100, textAlignVertical: "top" },
                 ]}
                 value={experience.description}
+                autoCapitalize="sentences"
                 onChangeText={(text) =>
                   handleUpdateExperience(experience.id, { description: text })
                 }
@@ -2458,6 +2468,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   isDegreeMissing && { borderColor: "#FECACA", borderWidth: 2 },
                 ]}
                 value={education.degree}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateEducation(education.id, { degree: text })
                 }
@@ -2471,6 +2482,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={styles.entryFieldInput}
                 value={education.major}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateEducation(education.id, { major: text })
                 }
@@ -2505,6 +2517,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   },
                 ]}
                 value={education.university}
+                autoCapitalize="words"
                 onChangeText={(text) =>
                   handleUpdateEducation(education.id, { university: text })
                 }
@@ -2539,6 +2552,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   },
                 ]}
                 value={education.graduationYear}
+                autoCapitalize="none"
                 onChangeText={(text) =>
                   handleUpdateEducation(education.id, { graduationYear: text })
                 }
@@ -2553,6 +2567,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={styles.entryFieldInput}
                 value={education.gpa}
+                autoCapitalize="none"
                 onChangeText={(text) =>
                   handleUpdateEducation(education.id, { gpa: text })
                 }
@@ -3156,6 +3171,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.fieldInput}
                       value={tempValue}
                       onChangeText={setTempValue}
+                      autoCapitalize="words"
                       autoFocus
                     />
                     <TouchableOpacity
@@ -3192,6 +3208,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.fieldInput}
                       value={tempValue}
                       onChangeText={setTempValue}
+                      autoCapitalize="words"
                       autoFocus
                     />
                     <TouchableOpacity
@@ -3228,6 +3245,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.fieldInput}
                       value={tempValue}
                       onChangeText={setTempValue}
+                      autoCapitalize="words"
                       autoFocus
                     />
                     <TouchableOpacity
@@ -3283,6 +3301,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         style={styles.fieldInput}
                         value={tempValue}
                         onChangeText={setTempValue}
+                        autoCapitalize="words"
                         autoFocus
                       />
                       <TouchableOpacity
@@ -3377,6 +3396,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       value={tempValue}
                       onChangeText={setTempValue}
                       keyboardType="phone-pad"
+                      autoCapitalize="none"
                       autoFocus
                     />
                     <TouchableOpacity
@@ -3414,6 +3434,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       multiline
                       numberOfLines={4}
                       maxLength={1000}
+                      autoCapitalize="sentences"
                       autoFocus
                     />
                     <CharCounter count={tempValue.length} max={1000} />
@@ -3520,6 +3541,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         style={styles.fieldInput}
                         value={tempValue}
                         onChangeText={setTempValue}
+                        autoCapitalize="words"
                         autoFocus
                       />
                       <TouchableOpacity
@@ -3536,6 +3558,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.fieldInput}
                       value={tempValue}
                       onChangeText={setTempValue}
+                      autoCapitalize="words"
                       autoFocus
                     />
                     <TouchableOpacity
@@ -3649,6 +3672,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       value={tempValue}
                       onChangeText={setTempValue}
                       keyboardType="numeric"
+                      autoCapitalize="none"
                       autoFocus
                     />
                     <TouchableOpacity
@@ -3817,6 +3841,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                           style={styles.tagInput}
                           placeholder="Add role..."
                           value={newRoleTag}
+                          autoCapitalize="words"
                           onChangeText={setNewRoleTag}
                           onSubmitEditing={() =>
                             handleAddTag("desiredRoles", newRoleTag)
@@ -4031,6 +4056,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       placeholder="Notable achievements, awards, publications, speaking engagements..."
                       multiline
                       maxLength={1000}
+                      autoCapitalize="sentences"
                       autoFocus
                     />
                     <CharCounter count={tempValue.length} max={1000} />
@@ -4616,6 +4642,7 @@ function EditInsightsModal({
                       <TextInput
                         style={styles.insightInput}
                         value={newAnswer}
+                        autoCapitalize="sentences"
                         onChangeText={setNewAnswer}
                         placeholder="Your answer..."
                         multiline
@@ -4694,6 +4721,7 @@ function EditInsightsModal({
                       <TextInput
                         style={styles.insightInput}
                         value={newAnswer}
+                        autoCapitalize="sentences"
                         onChangeText={setNewAnswer}
                         placeholder="Your answer..."
                         multiline

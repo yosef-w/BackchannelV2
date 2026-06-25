@@ -3589,6 +3589,7 @@ export function MatchesView({
                             multiline
                             numberOfLines={4}
                             maxLength={500}
+                            autoCapitalize="sentences"
                             onSubmitEditing={() => Keyboard.dismiss()}
                           />
                           <CharCounter count={value.length} max={500} />

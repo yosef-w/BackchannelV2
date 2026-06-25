@@ -506,6 +506,7 @@ export function ApplicantQuestionnaire({
                         setAnswers({ ...answers, [currentQuestion]: v })
                       }
                       style={styles.textInput}
+                      autoCapitalize="words"
                       autoFocus
                     />
                   </View>
@@ -524,6 +525,7 @@ export function ApplicantQuestionnaire({
                         placeholderTextColor="#BBB"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        autoCapitalize="none"
                         style={styles.searchInput}
                       />
                     </View>
@@ -622,6 +624,7 @@ export function ApplicantQuestionnaire({
                           }}
                           multiline
                           returnKeyType="default"
+                          autoCapitalize="sentences"
                           style={styles.insightAnswerInput}
                           maxLength={200}
                         />

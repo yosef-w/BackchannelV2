@@ -488,6 +488,7 @@ export function ApplicantCheckInModal({
                 value={note}
                 onChangeText={setNote}
                 maxLength={NOTE_MAX}
+                autoCapitalize="sentences"
                 textAlignVertical="top"
               />
 

@@ -456,6 +456,7 @@ function SponsorInsightCards({
                 multiline
                 autoFocus
                 maxLength={SPONSOR_INSIGHT_MAXLEN}
+                autoCapitalize="sentences"
                 textAlignVertical="top"
               />
               <CharCounter count={value.length} max={SPONSOR_INSIGHT_MAXLEN} />
@@ -2445,6 +2446,7 @@ export function JobsView() {
                       value={unsponsorReasonDetail}
                       onChangeText={setUnsponsorReasonDetail}
                       multiline
+                      autoCapitalize="sentences"
                     />
                   )}
                 </ScrollView>

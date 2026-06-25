@@ -296,6 +296,7 @@ export function AuthScreen({
                           placeholderTextColor="#BBB"
                           value={firstName}
                           onChangeText={setFirstName}
+                          autoCapitalize="words"
                           style={styles.input}
                         />
                       </View>
@@ -310,6 +311,7 @@ export function AuthScreen({
                           placeholderTextColor="#BBB"
                           value={lastName}
                           onChangeText={setLastName}
+                          autoCapitalize="words"
                           style={styles.input}
                         />
                       </View>
@@ -343,6 +345,7 @@ export function AuthScreen({
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
+                      autoCapitalize="none"
                       style={styles.input}
                     />
                     <TouchableOpacity

@@ -1458,6 +1458,7 @@ export function MessagesView({
                 style={styles.textInput}
                 multiline
                 maxLength={2000}
+                autoCapitalize="sentences"
                 onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
               />
               <TouchableOpacity
