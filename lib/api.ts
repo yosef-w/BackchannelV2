@@ -296,6 +296,53 @@ export async function getJobDetail(jobId: string): Promise<any> {
   return api.get<any>(`/api/jobs/silver/${jobId}/`);
 }
 
+export interface AtsOrganization {
+  organization: string;
+  job_count: number;
+  logo_url?: string | null;
+}
+
+/**
+ * 🏢 Search ATS organizations (canonical company names)
+ *
+ * Powers (a) the company autocomplete at sponsor signup — so the chosen
+ * company is GUARANTEED to match the ATS `ORGANIZATION` strings the browse
+ * filter uses — and (b) the "did you mean…" suggestions when a sponsor's
+ * job board comes back empty (likely a typo / naming mismatch).
+ *
+ * Backend contract (see docs/BACKEND_CHANGES_NEEDED.md §G):
+ *   GET /api/ats/organizations/?q=<text>&limit=<n>
+ *   → { organizations: [{ organization, job_count, logo_url }] }
+ * Results should combine substring (ILIKE) matches for typeahead AND
+ * trigram-similar matches so misspellings still surface for "did you mean".
+ *
+ * Returns `null` when the endpoint isn't available yet (404 / network), so
+ * callers can gracefully fall back to plain free-text entry. An empty array
+ * means "endpoint works, no matches".
+ */
+export async function searchAtsOrganizations(
+  query: string,
+  limit = 20,
+): Promise<AtsOrganization[] | null> {
+  const q = query.trim();
+  if (!q) return [];
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  try {
+    const res = await api.get<
+      { organizations?: AtsOrganization[] } | AtsOrganization[]
+    >(`/api/ats/organizations/?${params.toString()}`);
+    const arr = Array.isArray(res) ? res : res.organizations || [];
+    // Defensive: only keep rows with a usable organization string.
+    return arr.filter((o) => !!o && !!o.organization);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // 404 = endpoint not deployed yet; treat any failure as "unavailable" so
+    // signup/browse keep working as free text rather than throwing.
+    console.warn("[api] searchAtsOrganizations unavailable:", msg);
+    return null;
+  }
+}
+
 /**
  * ⚡ Sponsor a Job
  * Sponsor an ATS job (creates a JOB_POSTINGS entry)

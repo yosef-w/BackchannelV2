@@ -50,5 +50,18 @@ export function initSentry(): void {
  */
 export const sentryWrap = Sentry.wrap;
 
+/**
+ * Drop a breadcrumb onto the Sentry timeline. Breadcrumbs are attached to the
+ * next captured event, so they're how you reconstruct "what led up to this".
+ * No-ops safely when Sentry isn't initialized (no DSN / dev).
+ */
+export function logBreadcrumb(
+  message: string,
+  data?: Record<string, unknown>,
+  category = "ui",
+): void {
+  Sentry.addBreadcrumb({ message, data, category, level: "info" });
+}
+
 /** Re-export for manual capture sites (e.g. catch blocks worth reporting). */
 export { Sentry };
