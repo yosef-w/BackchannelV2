@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+    Dimensions,
     Keyboard,
     Platform,
     ScrollView,
@@ -9,6 +10,9 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const DROPDOWN_MAX_HEIGHT = 200;
 
 interface AutocompleteInputProps {
   value: string;
@@ -34,7 +38,30 @@ export function AutocompleteInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const [justSelected, setJustSelected] = useState(false);
+  // When the field sits low on the screen (e.g. the last question in a long
+  // form) and the keyboard is up, a dropdown rendered *below* the input is
+  // hidden behind the keyboard. Track the keyboard height and the input's
+  // position so we can flip the dropdown to render *above* the input when
+  // there isn't enough room beneath it.
+  const [dropUp, setDropUp] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const inputRef = useRef<TextInput>(null);
+  const containerRef = useRef<View>(null);
+
+  useEffect(() => {
+    const showEvt =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) =>
+      setKeyboardHeight(e.endCoordinates?.height ?? 0),
+    );
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     // Don't show suggestions if we just selected an item
@@ -59,6 +86,21 @@ export function AutocompleteInput({
     }
   }, [value, suggestions, maxSuggestions, justSelected]);
 
+  // Whenever the dropdown is about to show (or the keyboard moves), measure the
+  // input and decide whether to drop down or flip up. Measuring on the next
+  // tick lets layout settle so measureInWindow returns the on-screen frame.
+  useEffect(() => {
+    if (!showSuggestions) return;
+    const id = setTimeout(() => {
+      containerRef.current?.measureInWindow((_x, y, _w, h) => {
+        const spaceBelow = SCREEN_HEIGHT - keyboardHeight - (y + h);
+        // Flip up when the visible space below the field can't fit the menu.
+        setDropUp(spaceBelow < DROPDOWN_MAX_HEIGHT + 24);
+      });
+    }, 0);
+    return () => clearTimeout(id);
+  }, [showSuggestions, keyboardHeight, filteredSuggestions.length]);
+
   const handleSelectSuggestion = (item: string) => {
     setJustSelected(true);
     setShowSuggestions(false);
@@ -74,7 +116,7 @@ export function AutocompleteInput({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} ref={containerRef}>
       <TextInput
         ref={inputRef}
         style={[styles.input, style]}
@@ -88,7 +130,12 @@ export function AutocompleteInput({
       />
 
       {showSuggestions && filteredSuggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
+        <View
+          style={[
+            styles.suggestionsContainer,
+            dropUp ? styles.suggestionsAbove : styles.suggestionsBelow,
+          ]}
+        >
           <ScrollView
             style={styles.suggestionsList}
             keyboardShouldPersistTaps="always"
@@ -130,15 +177,13 @@ const styles = StyleSheet.create({
   },
   suggestionsContainer: {
     position: "absolute",
-    top: "100%",
     left: 0,
     right: 0,
-    marginTop: 4,
     backgroundColor: "#FFF",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E5E5",
-    maxHeight: 200,
+    maxHeight: DROPDOWN_MAX_HEIGHT,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -152,8 +197,19 @@ const styles = StyleSheet.create({
     }),
     zIndex: 1001,
   },
+  // Default — menu hangs below the input.
+  suggestionsBelow: {
+    top: "100%",
+    marginTop: 4,
+  },
+  // Flipped — menu sits above the input (used when the field is low on screen
+  // and the keyboard would otherwise cover a below-positioned menu).
+  suggestionsAbove: {
+    bottom: "100%",
+    marginBottom: 4,
+  },
   suggestionsList: {
-    maxHeight: 200,
+    maxHeight: DROPDOWN_MAX_HEIGHT,
   },
   suggestionItem: {
     flexDirection: "row",

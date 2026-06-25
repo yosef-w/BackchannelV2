@@ -22,6 +22,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { ExpandableText } from "./ui/ExpandableText";
 
 interface ApplicantPublicProfileViewProps {
   userData: any;
@@ -168,7 +169,11 @@ export function ApplicantPublicProfileView({
             </View>
           ) : null}
 
-          {bio ? <Text style={styles.bio}>{bio}</Text> : null}
+          {bio ? (
+            <ExpandableText style={styles.bio} numberOfLines={5}>
+              {bio}
+            </ExpandableText>
+          ) : null}
         </View>
 
         {/* Stats Grid — shown once profile has loaded */}
@@ -390,7 +395,9 @@ export function ApplicantPublicProfileView({
               </Text>
             </View>
             <View style={styles.achievementsCard}>
-              <Text style={styles.achievementsText}>{achievements}</Text>
+              <ExpandableText style={styles.achievementsText} numberOfLines={5}>
+                {achievements}
+              </ExpandableText>
             </View>
           </View>
         ) : null}

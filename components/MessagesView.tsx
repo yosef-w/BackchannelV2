@@ -1247,7 +1247,7 @@ export function MessagesView({
                 </View>
               )}
               <View style={styles.headerInfo}>
-                <Text style={styles.headerName}>
+                <Text style={styles.headerName} numberOfLines={1}>
                   {conversation.otherParticipant.name}
                 </Text>
                 <Text style={styles.headerRole}>
@@ -1446,6 +1446,7 @@ export function MessagesView({
                 placeholderTextColor="#BBB"
                 style={styles.textInput}
                 multiline
+                maxLength={2000}
                 onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
               />
               <TouchableOpacity

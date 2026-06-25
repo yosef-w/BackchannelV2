@@ -21,6 +21,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { ExpandableText } from "./ui/ExpandableText";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
@@ -139,7 +140,11 @@ export function SponsorPublicProfileView({
             </View>
           ) : null}
 
-          {bio ? <Text style={styles.bio}>{bio}</Text> : null}
+          {bio ? (
+            <ExpandableText style={styles.bio} numberOfLines={5}>
+              {bio}
+            </ExpandableText>
+          ) : null}
         </View>
 
         {/* Stats grid removed — the only quantified field we have is
