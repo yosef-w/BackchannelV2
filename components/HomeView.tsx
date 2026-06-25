@@ -110,6 +110,10 @@ interface HomeViewProps {
 }
 
 const DECK_SIZE = 10;
+// How long a cached per-role deck stays "fresh" before a role re-fetches on
+// re-entry (so new applicants surface). Keeps rapid role-switching instant
+// without serving a stale deck all day.
+const DECK_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const SkeletonCard = () => {
   const opacity = useSharedValue(0.3);
@@ -430,6 +434,18 @@ export function HomeView({
   // state for one render between the role change and the effect
   // firing, and a failed fetch leaves the empty state stuck.
   const [profilesJobId, setProfilesJobId] = useState<string | null>(null);
+  // Per-role deck cache so switching roles is instant + consistent: each
+  // entry holds the role's deck plus the sponsor's position in it
+  // (index/progress). On switch we snapshot the role we're leaving and
+  // restore the one we're entering, instead of re-downloading and resetting
+  // the progress bar every time. Entries expire after DECK_CACHE_TTL_MS so a
+  // role eventually re-fetches (new applicants show up).
+  const deckCacheRef = useRef<
+    Map<
+      string,
+      { profiles: any[]; index: number; progress: number; fetchedAt: number }
+    >
+  >(new Map());
   // Cache of lazily-fetched full profiles keyed by USER_ID
   const [fullProfileCache, setFullProfileCache] = useState<Record<string, any>>(
     {},
@@ -760,10 +776,25 @@ export function HomeView({
           return;
         }
 
-        // Snapshot the id we're fetching for. If the user clicks a
-        // different role before this resolves, we'll detect the
-        // mismatch and discard the response so we don't overwrite
-        // a fresher fetch with stale data.
+        // Per-role cache: if we have a fresh deck for this role, restore it
+        // (and the sponsor's exact position) instantly — no spinner, no
+        // re-download, no progress reset. This is what makes switching back
+        // to a role consistent instead of reshuffling a fresh pack.
+        const cached = deckCacheRef.current.get(activeSponsoredJobId);
+        if (cached && Date.now() - cached.fetchedAt < DECK_CACHE_TTL_MS) {
+          setProfiles(cached.profiles);
+          setProfilesJobId(activeSponsoredJobId);
+          setCurrentProfileIndex(cached.index);
+          setProgress(cached.progress);
+          setProfilesLoading(false);
+          return;
+        }
+
+        // No fresh cache → fetch a new deck and start at card 1. Snapshot the
+        // id we're fetching for so a response that resolves AFTER the user has
+        // already switched roles is discarded instead of overwriting the
+        // newer deck (the previous code snapshotted this id but never checked
+        // it — the actual cause of the inconsistent reload).
         const fetchingForJobId = activeSponsoredJobId;
         try {
           console.log(
@@ -772,7 +803,17 @@ export function HomeView({
           );
           setProfilesLoading(true);
           setProfilesError(null);
+          // Fresh deck → reset to card 1 (no cached position to restore).
+          resetNavigation();
           const response = await fetchProfilesPack(fetchingForJobId);
+          // Race guard: if the sponsor switched to a different role while this
+          // was in flight, drop the response so it can't overwrite the newer
+          // role's deck.
+          if (
+            useJobsStore.getState().activeSponsoredJobId !== fetchingForJobId
+          ) {
+            return;
+          }
           console.log(
             "[HomeView] Profile pack response:",
             JSON.stringify(response, null, 2),
@@ -834,14 +875,32 @@ export function HomeView({
           // check can tell genuine "no applicants" apart from "still
           // loading after a role switch".
           setProfilesJobId(fetchingForJobId);
+          // Cache the fresh deck (at the start) so re-entering this role is
+          // instant and consistent until the TTL expires.
+          deckCacheRef.current.set(fetchingForJobId, {
+            profiles: transformedProfiles,
+            index: 0,
+            progress: 1,
+            fetchedAt: Date.now(),
+          });
         } catch (err) {
           console.warn("[HomeView] Failed to fetch profiles:", err);
-          setProfilesError(
-            err instanceof Error ? err.message : "Failed to fetch profiles",
-          );
+          // Don't clobber a newer role's error state with a stale failure.
+          if (
+            useJobsStore.getState().activeSponsoredJobId === fetchingForJobId
+          ) {
+            setProfilesError(
+              err instanceof Error ? err.message : "Failed to fetch profiles",
+            );
+          }
           // profilesError drives the error state — deck stays empty
         } finally {
-          setProfilesLoading(false);
+          // Only flip loading off if we're still on the role we fetched for.
+          if (
+            useJobsStore.getState().activeSponsoredJobId === fetchingForJobId
+          ) {
+            setProfilesLoading(false);
+          }
         }
       }
     };
@@ -1239,6 +1298,32 @@ export function HomeView({
       setCurrentProfileIndex(currentProfileIndex + 1);
       swipeOpacity.value = withTiming(1, { duration: 280 });
     }, 220);
+  };
+
+  // Switch the active sponsored role from the pill's job switcher. Snapshots
+  // the role we're leaving (deck + the sponsor's exact position) so we can
+  // restore it on return; the load effect then restores the target role from
+  // cache or fetches it fresh. Progress is no longer blindly reset here — that
+  // was the "switching resets the progress bar" complaint.
+  const handleSwitchRole = (newJobId: string) => {
+    setShowJobSwitcher(false);
+    if (!newJobId || newJobId === activeSponsoredJobId) return;
+    if (
+      activeSponsoredJobId &&
+      profilesJobId === activeSponsoredJobId &&
+      profiles.length > 0
+    ) {
+      const prev = deckCacheRef.current.get(activeSponsoredJobId);
+      deckCacheRef.current.set(activeSponsoredJobId, {
+        profiles,
+        index: currentProfileIndex,
+        progress,
+        // Keep the original fetch time so the TTL is based on when the deck
+        // was downloaded, not when it was last viewed.
+        fetchedAt: prev?.fetchedAt ?? Date.now(),
+      });
+    }
+    setActiveSponsoredJobId(newJobId);
   };
 
   const handleMatchModalDismiss = () => {
@@ -3302,14 +3387,7 @@ export function HomeView({
                       styles.jobSwitcherRow,
                       isActive && styles.jobSwitcherRowActive,
                     ]}
-                    onPress={() => {
-                      if (!isActive) {
-                        setActiveSponsoredJobId(job.jobId);
-                        // Fresh pack for the new role — start at card 1.
-                        resetNavigation();
-                      }
-                      setShowJobSwitcher(false);
-                    }}
+                    onPress={() => handleSwitchRole(job.jobId)}
                     activeOpacity={0.7}
                   >
                     <View style={{ flex: 1 }}>
