@@ -1,12 +1,54 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-06-18
+**Last updated:** 2026-06-23
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§C** — account deletion must erase user data (App Store blocker, top priority); **§B** — act on the captured unsponsor reason (low priority); the **email deployment checklist** at the bottom (env config, not code); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
+> **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
 >
 > Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
+
+---
+
+## §E — `POST /api/profiles/like/` returns 500 for some accounts (blocks sponsor "like back" / matching) 🔴 High priority
+
+**Symptom (observed in TestFlight, 2026-06-23):** A sponsor taps a profile under **"Interested in Your Jobs"** and tries to connect/like back. The request fails with HTTP 500; the app now surfaces it verbatim as *"Couldn't connect right now: Internal server error."* It reproduces for one tester's account but **not** for another on the **same backend + same DB**, so it's a **data-specific** crash, not environment/build.
+
+**Important:** the failing account is a **brand-new sponsor account**, so the crash is *not* explained by that sponsor's own prior like history (see the de-prioritized hypothesis below). The trigger is more likely the **specific applicant or job** in the attempt — e.g. an applicant with an incomplete profile row / null fields read by the match/conversation/notify step, or a job created via the sponsor-from-Browse/ATS path that left a field null. The unguarded `create_profile_like` insert is still worth confirming, but the mutual-match path (a real match fires because the applicant already liked the job) is now the more probable location.
+
+**First step — read the traceback.** The production middleware masks the real error (`middleware.py:42` → `"Internal server error"` when `DEBUG=False`). The actual stack trace is in **backend Sentry** (and/or DigitalOcean runtime logs) for `POST /api/profiles/like/`. That names the exact line; the analysis below is a code-read hypothesis to check against it.
+
+**Backend files:**
+- `bc_microservices/views_matching.py` → `like_applicant_profile` ([line 142](../../Backchannel-backend/BackChannel-backend/bc_microservices/views_matching.py#L142))
+- `bc_microservices/services/matching.py` → `like_applicant_profile` ([line 158](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/matching.py#L158))
+- `bc_microservices/queries/likes.py` → `create_profile_like` ([line 44](../../Backchannel-backend/BackChannel-backend/bc_microservices/queries/likes.py#L44)) — **prime suspect**
+
+### Leading hypothesis
+
+The match-creation block in the service is wrapped in `try/except` (a failure there sets `matched=False` and returns 200, so it can't produce the 500). The unguarded work that runs *before* it is the suspect — most likely `create_profile_like`'s upsert:
+
+```sql
+INSERT INTO matching.likes (LIKE_ID, USER_ID, PROFILE_ID, JOB_ID, CREATED_AT, STATUS)
+VALUES (%s, %s, %s, %s, NOW(), 'ACTIVE')
+ON CONFLICT (user_id, profile_id)
+WHERE profile_id IS NOT NULL AND status IN ('ACTIVE', 'MATCHED')
+DO UPDATE SET JOB_ID = COALESCE(EXCLUDED.JOB_ID, matching.likes.JOB_ID)
+```
+
+The `ON CONFLICT` only catches conflicts among rows that are currently **ACTIVE/MATCHED**. If the sponsor already has a **non-active** like row for that applicant (e.g. a prior `PASSED`/`WITHDRAWN`), the re-insert can violate a *broader* unique constraint on `(user_id, profile_id)` that this partial clause doesn't cover → unhandled `UniqueViolation` → 500. An account with no prior like row for that applicant never hits it — which matches "works for me, not for the tester."
+
+### Suggested fix (pending the traceback)
+
+- Confirm which unique index/constraint exists on `matching.likes (user_id, profile_id)`. If there's a **full** unique constraint alongside (or instead of) the partial one, align the `ON CONFLICT` target with the actual constraint so all prior-row states are handled (e.g. conflict on the real constraint and `DO UPDATE SET STATUS='ACTIVE', JOB_ID=COALESCE(...)`), or pre-delete/transition any stale non-active row before insert.
+- Whatever the root cause, `like_applicant_profile` should not let a DB exception escape as a raw 500 — wrap the insert so a re-like is idempotent and returns a clean result.
+
+### Acceptance test
+
+With a sponsor account that has previously **passed on** (or withdrawn interest in) a given applicant, have that applicant like the sponsor's active job, then from the sponsor's "Interested in Your Jobs" tap connect/like back. It should create the match (or return a clean, non-500 result) instead of erroring.
+
+### Frontend status
+
+No change needed — the app already calls `POST /api/profiles/like/` correctly and now surfaces the real error text (`components/MatchesView.tsx` → `handleLikeBackApplicant`). Once the backend stops 500-ing, the existing flow matches as designed.
 
 ---
 
@@ -49,6 +91,131 @@ Anonymize is usually the pragmatic choice given the referral/message foreign key
 ### Acceptance test
 
 Create an account, upload a resume + photo, then delete the account. Confirm: (a) the email can be re-registered as if new, (b) the user's name/email/phone/DOB/resume no longer appear in any DB query or API response, and (c) the resume + photo objects are gone from DigitalOcean Spaces.
+
+---
+
+## §D — Notify the applicant when a sponsor likes their profile 🟡 (UX freshness)
+
+**Backend files:**
+- `bc_microservices/services/matching.py` → `like_applicant_profile()` ([line 158](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/matching.py#L158)) and the existing `notify_sponsor_of_like()` ([line 90](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/matching.py#L90)) as the mirror template.
+
+### What's missing
+
+When a sponsor likes an applicant's profile, the applicant should appear under the applicant's **"Interested in You"** section (`/api/likes/profiles/received/`). Today `like_applicant_profile` only sends a notification when the like results in a **mutual match** (`notify_match`). A **one-sided** profile like sends the applicant **no notification and no push at all** — so nothing tells their app to refresh, and the new admirer doesn't appear until the app is re-foregrounded or the user pulls to refresh.
+
+This is the inverse of the already-shipped `notify_sponsor_of_like` (applicant likes a job → sponsor is notified with `notif_type='job_like'`). The applicant-facing direction was never wired.
+
+### Required change
+
+Add a best-effort `notify_applicant_of_like(applicant_user_id, sponsor_id, job_id)` (mirroring `notify_sponsor_of_like`) and call it from `like_applicant_profile` on the **non-match** path — i.e. after `create_profile_like`, when `matched` is false. Suggested `notif_type='profile_like'`, title e.g. "Someone's interested in you", body naming the sponsor's company/role if available. Must never raise (wrap like the existing notifiers).
+
+### Frontend impact
+
+The app is already prepared for this:
+- The bell badge and the "Interested in You" list will pick it up on the next fetch.
+- `components/MainApp.tsx` already invalidates the Matches screen's cached lists on incoming `match` / `referral` / `job_like` / `waitlist` pushes — **add `'profile_like'` to that list** once the backend ships it, so the new like appears live without a manual refresh. (Until then, focus-refetch + pull-to-refresh cover it.)
+
+### Acceptance test
+
+From device A (sponsor), like an applicant's profile for a job the applicant has **not** liked (so no match). On device B (that applicant), with the app already foregrounded on another tab: a push/notification arrives, the bell badge increments, and the sponsor appears under "Interested in You" without manually refreshing.
+
+---
+
+## §G — ATS organizations search endpoint (company autocomplete + "did you mean") 🟡 (data quality)
+
+**Why:** A sponsor's jobs board is filtered by matching their **free-text** company (from `sponsor_profiles.COMPANY`, set at signup) against `ats.silver_jobs.ORGANIZATION` using `UPPER(ORGANIZATION) ILIKE '%' || UPPER(company) || '%'` (`queries/jobs.py:493`, with legal-suffix normalization in `services/jobs.py:_normalize_company`). That handles casing and suffixes, but **not** misspellings, spacing/word-boundary differences ("JP Morgan" vs "JPMorgan Chase"), aliases (Facebook vs Meta), or over-matching short names — and on a mismatch the sponsor just sees an **empty board with no explanation**.
+
+The frontend now fixes this from both ends, but needs one read-only endpoint to do it:
+- **Company autocomplete at signup** (`components/ui/CompanyAutocomplete.tsx`) so the stored company is an *exact* ATS organization string (mismatch can't happen).
+- **"Did you mean…"** suggestions when the board is empty (`components/JobsView.tsx`) — one tap re-saves the corrected company and reloads.
+
+### Required endpoint
+
+```
+GET /api/ats/organizations/?q=<text>&limit=<n>   (auth required; sponsor)
+→ 200 { "organizations": [
+        { "organization": "Google", "job_count": 42, "logo_url": "https://…" },
+        { "organization": "Google Cloud", "job_count": 8, "logo_url": null }
+      ] }
+```
+
+- Distinct `ORGANIZATION` values from `ats.silver_jobs WHERE is_active = TRUE`, with the **active job count** per org and the org logo (`ORGANIZATION_LOGO`) when available.
+- **Matching must serve two needs:**
+  1. **Typeahead** — substring/prefix (`ILIKE '%' || q || '%'`) for as-you-type autocomplete.
+  2. **Fuzzy "did you mean"** — so a *misspelled* stored company ("Gogle") still surfaces "Google". Use **`pg_trgm` similarity** (`similarity(ORGANIZATION, q) > ~0.3`), ordered by similarity desc, then `job_count` desc. Requires `CREATE EXTENSION pg_trgm;` and ideally a GIN trigram index on `ORGANIZATION` for speed.
+- Combine both (substring OR trigram-similar), de-duplicate by `ORGANIZATION`, cap at `limit` (frontend asks for 6–8).
+
+### Frontend status
+
+Shipped and live behind a graceful fallback: `lib/api.ts → searchAtsOrganizations()` returns `null` on 404/error, so until this endpoint exists the company field is plain free-text and the empty board shows the normal empty state — **nothing breaks**. The autocomplete and "did you mean" light up automatically once the endpoint is deployed.
+
+### Optional follow-up (stronger guarantee)
+
+Consider normalizing/validating `sponsor_profiles.COMPANY` against this canonical list on write (or storing a chosen org id), so the browse filter can match on an exact key rather than `ILIKE`.
+
+---
+
+## §H — Password-reset email not arriving 🔴 (transactional email)
+
+**Symptom (reported 2026-06-24):** A tester used "Forgot password?" and never received the reset email. The UI shows success because the endpoint intentionally returns a generic *"If an account exists, a link has been sent"* (anti-enumeration), so the failure is invisible from the app.
+
+**Code is correctly wired — this is config + one latent bug, not missing code.** Path: `AuthScreen` → `POST /api/forgot-password/` → `services/auth.py:generate_reset_token` → `services/email.py:send_password_reset_email` → `send_mail(fail_silently=False)` on a background thread.
+
+### What to check, in order
+
+1. **SMTP / Resend env on the deployed host (most likely).** In production (`DEBUG=False`), `settings.py:206-211` always uses the SMTP backend and falls back to `EMAIL_HOST="localhost"` when `EMAIL_HOST` is unset — so sends hit `localhost:587`, fail, and get logged as *"Failed to send email to &lt;addr&gt;"*. This breaks **all** transactional email (welcome, verify, reset). Confirm these are set on the backend host:
+   ```
+   EMAIL_HOST=smtp.resend.com
+   EMAIL_HOST_USER=resend
+   EMAIL_HOST_PASSWORD=<resend_api_key>
+   DEFAULT_FROM_EMAIL=BackChannel <noreply@your-verified-domain>
+   FRONTEND_URL=<backend's own public origin>   # also makes the reset link valid
+   ```
+   …and the sending domain must be **verified in Resend** (otherwise Resend rejects the send → same "Failed to send" log).
+
+2. **Case-sensitive email lookup (real code bug).** `queries/users.py:find_user_by_email` does `WHERE EMAIL = %s` (exact case), and email is **never lowercased** on register (`services/auth.py:register_applicant:86`). If the tester registered as `Tester@Gmail.com` and typed `tester@gmail.com`, no user is found, no email is sent, and the generic success is still returned. (This also breaks **login** under a casing mismatch.) **Fix:** normalize email to lowercase on store and on every lookup (register, login, forgot-password, `email_exists`).
+
+3. **Spam / Resend dashboard** — if logs show *"Email sent to &lt;addr&gt;"*, it really sent; check spam and Resend for a bounce.
+
+### How to tell which one (one log read)
+
+Watch the deployed logs during a reset attempt:
+- *"Sending password-reset email for user &lt;id&gt;"* then *"Failed to send email to &lt;addr&gt;"* → **#1** (SMTP/Resend config or unverified domain).
+- **No** *"Sending password-reset email"* line at all → **#2** (user not found: casing / wrong email / never registered).
+- *"Email sent to &lt;addr&gt;"* → it sent; check spam (**#3**).
+
+### Frontend status
+
+No change needed — `authApi.forgotPassword` / the reset screen (`app/reset-password.tsx`) are wired correctly and work as soon as the backend actually delivers the email.
+
+---
+
+## §I — Lock a sponsor's company server-side once their work email is verified 🟡 (trust integrity)
+
+**Why:** The work-email verification proves a sponsor works at a given company; the **Company** field is what that verification vouches for. If a verified sponsor can change their company, they keep the verified badge while displaying an employer their verified email doesn't back (verify `name@google.com`, then switch company to "Stripe"). The app now **locks the Company field in the UI once `work_email_verified` is true** (`components/ProfileView.tsx` — read-only + lock icon, plus a guard on the save handler), but that's client-side only.
+
+**Required change:** In the sponsor-profile update path (`services/profiles.py` → `update_sponsor_profile`, backing `PATCH /api/profile/sponsor/update/`), **reject (or ignore) a `company` change when `work_email_verified` is TRUE** for that user. Return a clear error (e.g. 409 / 400 "Company is locked to your verified work email") so the client can surface it. Changing the **work email** itself already correctly resets `work_email_verified = FALSE` — so the intended way to change company remains: update the work email → re-verify → company editable again.
+
+**Notes / edge cases:**
+- Scope strictly to sponsors; applicant company is not a trust signal and stays editable.
+- Allow company edits freely while `work_email_verified` is FALSE (so a typo can be fixed before verifying).
+- Optional stronger version: validate that the company aligns with the verified work-email domain (domain → org), rather than trusting free text. Out of scope for the basic lock.
+
+**Frontend status:** Already enforced in `ProfileView` (field is read-only + a save guard) once `workEmailVerified` is true; this ticket is the server-side counterpart so the rule can't be bypassed by calling the API directly.
+
+---
+
+## §F — Larger daily deck (card allotment) for premium users 🟡 (monetization)
+
+**Context:** The Home feed serves a fixed daily deck of **`DECK_SIZE = 10`** cards (`components/HomeView.tsx`), cached per day and rolling over at midnight. The new end-of-deck screen ("You're all caught up") now shows an **"Unlock more cards"** button that opens the existing RevenueCat paywall (`useSubscriptionStore.presentPaywall`, same one ProfileView uses for "Upgrade to Pro").
+
+**What's missing (backend):** there is currently **no larger/unlimited allotment** for users who purchase premium — the deck endpoint caps everyone at the same daily set. So today, after a successful purchase, the app can only `resetNavigation()` (replay the same 10), which isn't real added value.
+
+**Required change (when monetization is turned on):**
+- Have the deck/feed endpoint return a larger (or unlimited) daily set for entitled/premium users — i.e. read the user's entitlement and raise the cap server-side.
+- Expose the per-user cap (or "has more") so the app can fetch the next batch after purchase instead of replaying.
+
+**Frontend status:** the paywall button is wired and the upsell only shows to non-premium users (`!isPremium`). Once the backend serves more cards to premium accounts, swap the post-purchase `resetNavigation()` for a real "fetch next batch". Gated behind `PREMIUM_ENABLED` (`constants/config.ts`), which is **false** today, so the button is inert until premium is switched on.
 
 ---
 
@@ -104,4 +271,19 @@ None — the reason step and the `unsponsorJob(jobId, reason, reasonDetail)` cal
    EMAIL_HOST_PASSWORD=re_YourApiKeyHere
    ```
 3. **The sending domain is verified in Resend.** `DEFAULT_FROM_EMAIL` defaults to `noreply@backchannel.app` — Resend rejects mail from an unverified domain.
-4. **End-to-end smoke test** against the deployed backend: register → verification email arrives → link opens the backend's web verify page and confirms; then forgot-password → email → reset on the web reset page → sign in with the new password. `services/email.py` logs `Email sent to <addr>` vs `Failed to send email to <addr>` to tell SMTP outcomes apart.
+4. **Email deliverability — emails landing in spam (observed 2026-06-24).** 🔴
+
+   **Context / the issue we're solving:** Testers report the **work-email verification** email (and likely the others) arriving in the **spam/junk folder** rather than the inbox. This is a *deliverability* problem, separate from "no email at all" (§H): the mail is being sent and accepted, but receiving providers (Gmail, Outlook, etc.) are scoring it as untrusted and filing it as spam. Sponsors who don't think to check spam never verify, which **soft-blocks them from swiping** (the work-email gate in `HomeView`), so this directly costs activated sponsors.
+
+   **Frontend mitigation already shipped (band-aid, not a fix):** the verification modal and the onboarding/resend confirmations now tell users to "check your spam or junk folder." This reduces drop-off but does **not** fix the root cause.
+
+   **Root cause is almost always missing/incorrect domain authentication.** Mailbox providers spam-file mail whose sending domain isn't authenticated. To fix, on the **sending domain used in `DEFAULT_FROM_EMAIL`**:
+   - **SPF** — publish a TXT record authorizing Resend to send for the domain.
+   - **DKIM** — add the CNAME/TXT keys Resend provides so messages are cryptographically signed.
+   - **DMARC** — publish a `_dmarc` TXT policy (start `p=none` for monitoring, tighten later).
+   - Resend's domain dashboard lists the exact records and shows green once they propagate. Don't send from a free-mailbox domain (e.g. `@gmail.com`) or an unverified domain — both tank deliverability.
+   - Secondary factors worth checking: a real, branded **From** name/address (not `noreply@` on an unknown domain if avoidable), a working **reply-to**, and avoiding spammy subject lines. Warm-up/volume matters less at current scale.
+
+   **How to verify:** after DNS is set, use Resend's domain status (all green) and a tool like **mail-tester.com** — send a verification email to its address and aim for ~10/10. Re-test in a real Gmail and Outlook account to confirm it lands in the inbox.
+
+5. **End-to-end smoke test** against the deployed backend: register → verification email arrives → link opens the backend's web verify page and confirms; then forgot-password → email → reset on the web reset page → sign in with the new password. `services/email.py` logs `Email sent to <addr>` vs `Failed to send email to <addr>` to tell SMTP outcomes apart.
