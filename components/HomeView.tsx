@@ -88,7 +88,7 @@ import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ExpandableText } from "./ui/ExpandableText";
-import { HomeIntroOverlay } from "./ui/HomeIntroOverlay";
+import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -423,8 +423,8 @@ export function HomeView({
   // activeSponsoredJobId, which both re-fetches the profile pack for that
   // role AND becomes the JOB_ID stamped on every like the sponsor creates.
   const [showJobSwitcher, setShowJobSwitcher] = useState(false);
-  // First-run intro overlay. Shown once per role the first time the deck is
-  // actually live (so it overlays real cards, not a spinner/empty state).
+  // First-run editorial intro. Shown once per role the first time the deck is
+  // live (so it lands as a "you've arrived" brand moment, not over a spinner).
   const [showIntro, setShowIntro] = useState(false);
   const introCheckedRef = useRef(false);
   const activeSponsoredJob = sponsoredJobs.find(
@@ -661,34 +661,33 @@ export function HomeView({
     !(userType === "applicant" && jobsError != null && jobs.length === 0) &&
     !(userType === "applicant" && !jobsLoading && jobs.length === 0);
 
-  // ── First-run intro overlay ───────────────────────────────────────────────
-  // Persist "seen" per role (one account = one role; per-role key still shows
-  // the right copy if someone uses both on a device). Show it once, the first
-  // time the deck is genuinely live — never over a spinner or empty state.
-  const introStorageKey = `@bc/homeIntroSeen:${userType}`;
+  // ── First-run editorial intro ─────────────────────────────────────────────
+  // Shown once, ONLY to users who just signed up: signup sets a one-time
+  // "pending" flag, which we consume on the first Home view and then clear.
+  // Existing users (login) never see it.
   useEffect(() => {
-    if (introCheckedRef.current || !deckIsActive) return;
+    if (introCheckedRef.current) return;
     introCheckedRef.current = true;
     (async () => {
       try {
-        const seen = await AsyncStorage.getItem(introStorageKey);
-        if (!seen) {
+        const pending = await AsyncStorage.getItem(HOME_INTRO_PENDING_KEY);
+        if (pending === "1") {
           setShowIntro(true);
           trackHomeIntroShown("first_time");
         }
       } catch {
-        // Storage unavailable — skip the intro rather than block the deck.
+        // Storage unavailable — skip silently.
       }
     })();
-  }, [deckIsActive, introStorageKey]);
+  }, []);
 
-  const handleIntroDone = (action: "start" | "skip") => {
+  const handleIntroDone = (action: "complete" | "skip") => {
     setShowIntro(false);
     trackHomeIntroDismissed(action);
-    AsyncStorage.setItem(introStorageKey, "1").catch(() => {});
+    AsyncStorage.removeItem(HOME_INTRO_PENDING_KEY).catch(() => {});
   };
 
-  // Replay affordance (the header "?") — re-show without touching the flag.
+  // Replay affordance (the header "?").
   const handleReplayIntro = () => {
     trackHomeIntroShown("replay");
     setShowIntro(true);
@@ -4077,9 +4076,9 @@ export function HomeView({
         </Animated.View>
       </Modal>
 
-      {/* First-run "how it works" intro — one-time per role, replayable via
-          the header "?". Rendered last so it layers above the deck + nav. */}
-      <HomeIntroOverlay
+      {/* First-run editorial intro — full-screen, one-time per role,
+          replayable via the header "?". */}
+      <HomeIntro
         visible={showIntro}
         userType={userType}
         onDone={handleIntroDone}

@@ -226,7 +226,7 @@ export function trackHomeIntroShown(trigger: "first_time" | "replay"): void {
   safeTrack("Home Intro Shown", { trigger });
 }
 
-export function trackHomeIntroDismissed(action: "start" | "skip"): void {
+export function trackHomeIntroDismissed(action: "complete" | "skip"): void {
   safeTrack("Home Intro Dismissed", { action });
 }
 

@@ -11,6 +11,8 @@ import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { HOME_INTRO_PENDING_KEY } from "@/components/ui/HomeIntro";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
@@ -191,6 +193,8 @@ export function SponsorQuestionnaire({
       });
       trackSignUpSucceeded("sponsor");
       trackOnboardingCompleted("sponsor");
+      // Show the first-run Home intro once on their first Home view.
+      AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
       // Link this backend user ID to their RevenueCat customer record.
       rcIdentifyUser(String(data.user_id));
 

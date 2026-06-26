@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
@@ -45,6 +46,7 @@ import {
   trackSignUpFailed,
   trackSignUpSucceeded,
 } from "../lib/analytics/mixpanel";
+import { HOME_INTRO_PENDING_KEY } from "./ui/HomeIntro";
 import { classifyResume, uploadAndParseResume } from "../lib/api";
 import { authApi } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -225,6 +227,8 @@ export function ApplicantQuestionnaire({
       });
       trackSignUpSucceeded("applicant");
       trackOnboardingCompleted("applicant");
+      // Show the first-run Home intro once on their first Home view.
+      AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
       // Link this backend user ID to their RevenueCat customer record.
       rcIdentifyUser(String(data.user_id));
 
