@@ -42,7 +42,9 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import { GOOGLE_PLACES_API_KEY } from "../constants/config";
 import { SKILLS_BY_INDUSTRY } from "../constants/skills";
+import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
 import {
   identifyUser,
   trackOnboardingCompleted,
@@ -223,6 +225,9 @@ export function ApplicantQuestionnaire({
   // pattern the resume uses.
   const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
   const [locationText, setLocationText] = useState("");
+  // Falls back to a plain text field if Google Places isn't configured/available
+  // or the user chooses to type it in manually.
+  const [locationManual, setLocationManual] = useState(false);
 
   const applicantData = useOnboardingStore((state) => state.applicantData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
@@ -938,20 +943,41 @@ export function ApplicantQuestionnaire({
 
                 {question.type === "location" && (
                   <View style={styles.inputContainer}>
-                    <View style={styles.locationInputWrap}>
-                      <MapPin color="#BBB" size={20} />
-                      <TextInput
-                        placeholder="e.g., San Francisco, CA"
-                        placeholderTextColor="#BBB"
-                        value={locationText}
-                        onChangeText={setLocationText}
-                        autoCapitalize="words"
+                    {GOOGLE_PLACES_API_KEY && !locationManual ? (
+                      // Google Places (city mode) so the stored location is a
+                      // standardized "City, State" — no "SF" vs "San Francisco"
+                      // vs "San Fran" fragmentation across the matching data.
+                      <PlacesAutocomplete
+                        mode="city"
                         autoFocus
-                        style={styles.locationInput}
-                        returnKeyType="done"
-                        onSubmitEditing={() => canContinue && handleNext()}
+                        placeholder="e.g., San Francisco"
+                        initialValue={locationText}
+                        inputStyle={styles.locationInput}
+                        onSelect={(addr) => {
+                          const combined = [addr.city, addr.state]
+                            .filter(Boolean)
+                            .join(", ");
+                          setLocationText(combined || addr.city);
+                        }}
+                        onError={(m) => showToast(m, "error")}
+                        onSwitchToManual={() => setLocationManual(true)}
                       />
-                    </View>
+                    ) : (
+                      <View style={styles.locationInputWrap}>
+                        <MapPin color="#BBB" size={20} />
+                        <TextInput
+                          placeholder="e.g., San Francisco, CA"
+                          placeholderTextColor="#BBB"
+                          value={locationText}
+                          onChangeText={setLocationText}
+                          autoCapitalize="words"
+                          autoFocus
+                          style={styles.locationInput}
+                          returnKeyType="done"
+                          onSubmitEditing={() => canContinue && handleNext()}
+                        />
+                      </View>
+                    )}
                   </View>
                 )}
 

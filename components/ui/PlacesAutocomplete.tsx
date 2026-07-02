@@ -100,6 +100,12 @@ interface PlacesAutocompleteProps {
   autoFocus?: boolean;
   /** ISO 3166-1 alpha-2 lowercase. Defaults to ["us"]. Pass a stable reference. */
   regionCodes?: readonly string[];
+  /**
+   * "address" (default) → full street-address autocomplete; requires a street
+   * on selection. "city" → restrict suggestions to cities and resolve to a
+   * standardized city + state (no street), so a free-text city gets normalized.
+   */
+  mode?: "address" | "city";
 }
 
 export function PlacesAutocomplete({
@@ -111,6 +117,7 @@ export function PlacesAutocomplete({
   inputStyle,
   autoFocus,
   regionCodes = DEFAULT_REGION_CODES,
+  mode = "address",
 }: PlacesAutocompleteProps) {
   // Stable string key for the deps array — guards against callers passing
   // a fresh array every render, which would otherwise loop the effect.
@@ -156,6 +163,12 @@ export function PlacesAutocomplete({
             // Reconstruct from the stable key so we don't depend on the
             // (possibly unstable) regionCodes array reference.
             includedRegionCodes: regionCodesKey ? regionCodesKey.split(",") : [],
+            // City mode: restrict predictions to cities so the user can't pick
+            // a street/business — the "(cities)" type collection covers
+            // localities and their administrative equivalents.
+            ...(mode === "city"
+              ? { includedPrimaryTypes: ["(cities)"] }
+              : {}),
           }),
         });
 
@@ -193,7 +206,7 @@ export function PlacesAutocomplete({
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(handle);
-  }, [query, regionCodesKey]);
+  }, [query, regionCodesKey, mode]);
 
   const handleSelect = async (suggestion: Suggestion) => {
     Keyboard.dismiss();
@@ -217,8 +230,13 @@ export function PlacesAutocomplete({
 
       const data: DetailsResponse = await res.json();
       const parsed = parseAddressComponents(data.addressComponents);
-      if (!parsed.street) {
-        onError?.("Couldn't read that address. Please try another or enter manually.");
+      // Cities have no street — validate on the field that matters per mode.
+      if (mode === "city" ? !parsed.city : !parsed.street) {
+        onError?.(
+          mode === "city"
+            ? "Couldn't read that city. Please try another or enter manually."
+            : "Couldn't read that address. Please try another or enter manually.",
+        );
         return;
       }
 
