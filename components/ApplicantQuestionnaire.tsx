@@ -2,12 +2,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "react-native";
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
   Check,
   ChevronRight,
   FileText,
+  MapPin,
   Plus,
   Search,
   Sparkles,
@@ -47,7 +51,12 @@ import {
   trackSignUpSucceeded,
 } from "../lib/analytics/mixpanel";
 import { HOME_INTRO_PENDING_KEY } from "./ui/HomeIntro";
-import { classifyResume, uploadAndParseResume } from "../lib/api";
+import {
+  classifyResume,
+  updateGeneralProfile,
+  uploadAndParseResume,
+  uploadProfileImage,
+} from "../lib/api";
 import { authApi } from "../lib/auth-api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
@@ -145,7 +154,19 @@ const questions = [
     type: "workPreferences",
     subtitle: "Select all that apply",
   },
-  { id: 7, question: "Upload your professional resume", type: "file" },
+  {
+    id: 7,
+    question: "Add a profile photo",
+    type: "photo",
+    subtitle: "Sponsors see this first — a clear headshot goes a long way",
+  },
+  {
+    id: 8,
+    question: "Where are you based?",
+    type: "location",
+    subtitle: "Used to surface roles near you",
+  },
+  { id: 9, question: "Upload your professional resume", type: "file" },
 ];
 
 export function ApplicantQuestionnaire({
@@ -195,6 +216,14 @@ export function ApplicantQuestionnaire({
     string[]
   >([]);
 
+  // Phase 3 — photo + location collected in onboarding so applicants land at
+  // the swipe gate already complete (both are required by the gate but neither
+  // signup nor the resume reliably provides them). The photo URI is uploaded
+  // after registration (the upload endpoint needs auth), the same deferral
+  // pattern the resume uses.
+  const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
+  const [locationText, setLocationText] = useState("");
+
   const applicantData = useOnboardingStore((state) => state.applicantData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
@@ -223,6 +252,28 @@ export function ApplicantQuestionnaire({
   const handleReviewConfirm = () => {
     setShowReview(false);
     completeOnboarding();
+  };
+
+  // Pick a profile photo from the library. Kept local (URI only) until after
+  // registration, when it's uploaded — the upload endpoint requires auth.
+  const handlePickPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showToast(
+        "Photo access is off — enable it in Settings to add a photo.",
+        "info",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedPhotoUri(result.assets[0].uri);
+    }
   };
 
   const createProfileMutation = useMutation({
@@ -305,6 +356,35 @@ export function ApplicantQuestionnaire({
       // moment the user already expects.
       setShowSuccess(true);
 
+      // Apply the photo + location captured during onboarding (both required
+      // gate fields). The photo upload endpoint needs auth, so it runs here
+      // after registration — the same deferral the resume uses. Best-effort and
+      // bounded: a failure/timeout must never trap the user; they can re-add in
+      // their profile. The subsequent fetchFromBackend pulls these into the
+      // local store so the swipe gate sees a complete profile.
+      try {
+        await withTimeout(
+          (async () => {
+            if (selectedPhotoUri) {
+              const photoForm = new FormData();
+              photoForm.append("image", {
+                uri: selectedPhotoUri,
+                name: "photo.jpg",
+                type: "image/jpeg",
+              } as any);
+              const { cdn_url } = await uploadProfileImage(photoForm);
+              if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
+            }
+            if (locationText.trim()) {
+              await updateGeneralProfile({ location: locationText.trim() });
+            }
+          })(),
+          RESUME_PROCESS_TIMEOUT_MS,
+        );
+      } catch (err) {
+        console.warn("[Questionnaire] Photo/location save failed:", err);
+      }
+
       if (selectedFileAsset) {
         // Parse + AI-classify the resume, then SHOW the user what we extracted
         // (Phase 2) instead of filling their profile invisibly. Bounded by a
@@ -359,8 +439,14 @@ export function ApplicantQuestionnaire({
         }
         completeOnboarding();
       } else {
-        // No resume uploaded — keep the brief success beat, then continue.
-        setTimeout(completeOnboarding, 2200);
+        // No resume uploaded — still refresh so the photo/location we just
+        // saved land in the local store for the swipe gate, then continue.
+        try {
+          await fetchFromBackend();
+        } catch (err) {
+          console.warn("[Questionnaire] Post-signup profile refresh failed:", err);
+        }
+        completeOnboarding();
       }
     },
     onError: (error: Error) => {
@@ -456,6 +542,8 @@ export function ApplicantQuestionnaire({
   const isTextScreen = question.type === "text";
   const isInsightsScreen = question.type === "insights";
   const isWorkPreferencesScreen = question.type === "workPreferences";
+  const isPhotoScreen = question.type === "photo";
+  const isLocationScreen = question.type === "location";
   const canContinue = isSkillsScreen
     ? selectedSkills.length > 0 && selectedSkills.length <= 5
     : isTextScreen
@@ -466,7 +554,11 @@ export function ApplicantQuestionnaire({
           selectedInsights.every((i) => i.answer.trim().length > 0)
         : isWorkPreferencesScreen
           ? true // Optional — no minimum required
-          : true;
+          : isPhotoScreen
+            ? !!selectedPhotoUri // Required — photo is a gate field
+            : isLocationScreen
+              ? locationText.trim().length > 0 // Required — gate field
+              : true;
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: withTiming(`${progress}%`, { duration: 400 }),
@@ -803,6 +895,63 @@ export function ApplicantQuestionnaire({
                     <Text style={styles.selectionCount}>
                       {selectedWorkPreferences.length} selected
                     </Text>
+                  </View>
+                )}
+
+                {question.type === "photo" && (
+                  <View style={styles.photoStep}>
+                    <TouchableOpacity
+                      onPress={handlePickPhoto}
+                      activeOpacity={0.8}
+                      style={styles.photoCircle}
+                    >
+                      {selectedPhotoUri ? (
+                        <Image
+                          source={{ uri: selectedPhotoUri }}
+                          style={styles.photoImage}
+                        />
+                      ) : (
+                        <Camera color="#BBB" size={40} />
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handlePickPhoto}
+                      style={styles.photoPickBtn}
+                    >
+                      <Text style={styles.photoPickText}>
+                        {selectedPhotoUri ? "Change photo" : "Choose a photo"}
+                      </Text>
+                    </TouchableOpacity>
+                    {/* Escape hatch so a denied photo-library permission can't
+                        trap the user. The swipe gate still requires a photo, so
+                        skippers are simply prompted again there. */}
+                    {!selectedPhotoUri && (
+                      <TouchableOpacity
+                        onPress={handleNext}
+                        style={styles.photoSkipBtn}
+                      >
+                        <Text style={styles.photoSkipText}>Skip for now</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
+                {question.type === "location" && (
+                  <View style={styles.inputContainer}>
+                    <View style={styles.locationInputWrap}>
+                      <MapPin color="#BBB" size={20} />
+                      <TextInput
+                        placeholder="e.g., San Francisco, CA"
+                        placeholderTextColor="#BBB"
+                        value={locationText}
+                        onChangeText={setLocationText}
+                        autoCapitalize="words"
+                        autoFocus
+                        style={styles.locationInput}
+                        returnKeyType="done"
+                        onSubmitEditing={() => canContinue && handleNext()}
+                      />
+                    </View>
                   </View>
                 )}
 
@@ -1397,6 +1546,43 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   successSpinner: { marginTop: 24 },
+
+  // ── Phase 3 photo + location steps ───────────────────────────────────────
+  photoStep: { alignItems: "center", paddingTop: 8 },
+  photoCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "#F4F4F5",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  photoImage: { width: "100%", height: "100%" },
+  photoPickBtn: { marginTop: 20, paddingVertical: 8, paddingHorizontal: 16 },
+  photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
+  photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
+  inputContainer: { paddingTop: 8 },
+  locationInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    backgroundColor: "#FFF",
+  },
+  locationInput: {
+    flex: 1,
+    fontSize: 18,
+    color: "#000",
+    paddingVertical: 14,
+  },
 
   // ── Phase 2 resume-review screen ─────────────────────────────────────────
   reviewSafeArea: { flex: 1 },

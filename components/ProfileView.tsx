@@ -1898,7 +1898,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
       // (extracted_text will be null). Use parsing_error to surface a relevant
       // message: transient service errors → "try again"; format errors → PDF hint.
       if (!parseResult.extracted_text) {
-        const serverMsg: string | undefined = parseResult.parsing_error;
+        const serverMsg: string | undefined =
+          parseResult.parsing_error ?? undefined;
         console.warn(
           "[Resume] ❌ Text extraction failed — extracted_text is null. parsing_error:",
           serverMsg,
