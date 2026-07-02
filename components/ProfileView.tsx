@@ -378,7 +378,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     return result;
   }, [userProfileData]);
 
-  const hasIncompleteProfile = profileCompletion.percentage < 90;
+  // Mirror the swipe gate: incomplete = any required field still missing
+  // (not a percentage threshold), so the banner/prompts and the gate agree.
+  const hasIncompleteProfile = !profileCompletion.isComplete;
 
   useEffect(() => {
     // Update profile display when user profile data changes
