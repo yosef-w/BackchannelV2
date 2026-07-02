@@ -317,7 +317,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [requiresSponsorship, setRequiresSponsorship] = useState("");
 
   // Personal information fields (for edit profile modal)
-  const [portfolio, setPortfolio] = useState("");
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -403,7 +402,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
       );
       setPhone(userProfileData.personal.phone);
       setProfileImage(userProfileData.personal.profileImage || null);
-      setPortfolio(userProfileData.personal.portfolio);
       setStreet(userProfileData.personal.address.street);
       setCity(userProfileData.personal.address.city);
       setState(userProfileData.personal.address.state);
@@ -791,11 +789,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           if (userType === "applicant") {
             await updateApplicantProfile({ requires_sponsorship: valueToSave });
           }
-          break;
-        case "portfolio":
-          setPortfolio(valueToSave);
-          await updatePersonal({ portfolio: valueToSave });
-          await updateGeneralProfile({ portfolio_url: valueToSave });
           break;
         case "street":
           setStreet(valueToSave);
@@ -3482,44 +3475,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 <View style={styles.sectionHeaderLine} />
                 <Text style={styles.sectionHeaderText}>CONTACT & LINKS</Text>
                 <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {/* Portfolio */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>PORTFOLIO URL</Text>
-                  {isFieldMissing("portfolio") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "portfolio" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="https://yourportfolio.com"
-                      autoCapitalize="none"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("portfolio")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("portfolio", portfolio)}
-                  >
-                    <Text style={styles.fieldText}>
-                      {portfolio || "Not set"}
-                    </Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
               </View>
 
               {/* Address Section */}
