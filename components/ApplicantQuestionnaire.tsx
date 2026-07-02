@@ -53,9 +53,29 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useToastStore } from "../stores/useToastStore";
-import { useUserProfileStore } from "../stores/useUserProfileStore";
+import {
+  EducationEntry,
+  ProfessionalExperience,
+  useUserProfileStore,
+} from "../stores/useUserProfileStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Upper bound on how long we'll block onboarding waiting for the resume to be
+// parsed + AI-classified before proceeding anyway. The classify step is an AI
+// call and can occasionally be slow; a new user must never be trapped on a
+// spinner, so we race it against this timeout and finish gracefully either way.
+const RESUME_PROCESS_TIMEOUT_MS = 25000;
+
+/** Resolve when `promise` settles, or reject once `ms` elapses. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), ms),
+    ),
+  ]);
+}
 
 const AVAILABLE_QUESTIONS = [
   "MY SECRET SUPERPOWER",
@@ -145,6 +165,15 @@ export function ApplicantQuestionnaire({
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  // Phase 2 — resume review. After the resume is parsed + AI-classified we show
+  // the user what we extracted (a confirmation moment) instead of filling the
+  // profile invisibly. Null until we have something worth reviewing.
+  const [showReview, setShowReview] = useState(false);
+  const [reviewData, setReviewData] = useState<{
+    experiences: ProfessionalExperience[];
+    education: EducationEntry[];
+    skills: string[];
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
@@ -175,6 +204,26 @@ export function ApplicantQuestionnaire({
   );
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
+
+  // Final exit from onboarding → dashboard. Shared by the no-resume path, the
+  // resume-processing fallbacks, and the review screen's confirm button.
+  const completeOnboarding = () => {
+    setIsSubmitting(false);
+    onComplete();
+    // Backend sends a verification email automatically on register (PR #38).
+    // Verification isn't enforced — we just surface it, after the transition.
+    setTimeout(() => {
+      showToast(
+        "Welcome! We sent a verification email — check your inbox and spam folder.",
+        "success",
+      );
+    }, 500);
+  };
+
+  const handleReviewConfirm = () => {
+    setShowReview(false);
+    completeOnboarding();
+  };
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
@@ -251,8 +300,15 @@ export function ApplicantQuestionnaire({
       // Clear onboarding data
       clearOnboardingData();
 
-      // Fire resume upload in the background — don't block the success flow
+      // Show the "Profile Created" screen right away. It doubles as the loading
+      // beat while we read the resume, so the AI latency is masked behind a
+      // moment the user already expects.
+      setShowSuccess(true);
+
       if (selectedFileAsset) {
+        // Parse + AI-classify the resume, then SHOW the user what we extracted
+        // (Phase 2) instead of filling their profile invisibly. Bounded by a
+        // timeout so a slow classify never traps them on the spinner.
         const form = new FormData();
         // Backend endpoint POST /api/upload-and-parse/ expects field name "file"
         // (same as ProfileView's upload flow — NOT "resume")
@@ -265,41 +321,47 @@ export function ApplicantQuestionnaire({
           source: "questionnaire",
           fileSizeBytes: selectedFileAsset.size,
         });
-        uploadAndParseResume(form)
-          .then(() => classifyResume())
-          .then(() => {
-            // Refresh the store so AI-populated fields (experiences, education,
-            // skills, etc.) are available in "Edit Resume Information" without
-            // requiring the user to re-open the app.
-            return fetchFromBackend();
-          })
-          .catch((err) => {
-            console.warn("[Questionnaire] Background resume upload failed:", err);
-            showToast(
-              "Resume upload failed. You can re-upload your resume from your profile.",
-              "error",
-            );
-          });
-      }
-
-      // Show success modal
-      setShowSuccess(true);
-
-      // Navigate to dashboard after 2.2 seconds
-      setTimeout(() => {
-        setIsSubmitting(false);
-        onComplete();
-        // Delay toast until after the navigation transition finishes.
-        // Backend now sends a verification email automatically on register
-        // (PR #38, 2026-04-30). Verification is not enforced — we just
-        // surface it so users know to check their inbox.
-        setTimeout(() => {
-          showToast(
-            "Welcome! We sent a verification email — check your inbox and spam folder.",
-            "success",
+        try {
+          await withTimeout(
+            uploadAndParseResume(form)
+              .then(() => classifyResume())
+              .then(() => fetchFromBackend()),
+            RESUME_PROCESS_TIMEOUT_MS,
           );
-        }, 500);
-      }, 2200);
+
+          // Read the freshly classified profile from the store.
+          const data = useUserProfileStore.getState().data;
+          const experiences = (data.professional.experiences || []).filter(
+            (e) => e.jobTitle?.trim() || e.company?.trim(),
+          );
+          const education = (data.education.entries || []).filter(
+            (e) => e.degree?.trim() || e.university?.trim(),
+          );
+          const skills = data.skills || [];
+
+          if (experiences.length || education.length || skills.length) {
+            // Hand off to the review screen; onboarding finishes when the user
+            // confirms there (see handleReviewConfirm).
+            setReviewData({ experiences, education, skills });
+            setShowSuccess(false);
+            setShowReview(true);
+            setIsSubmitting(false);
+            return;
+          }
+          // Nothing usable came back (e.g. an image-only/unparseable resume) —
+          // just continue; they can add details in their profile.
+        } catch (err) {
+          console.warn("[Questionnaire] Resume processing failed:", err);
+          showToast(
+            "We couldn't read your resume automatically — you can add your details in your profile.",
+            "info",
+          );
+        }
+        completeOnboarding();
+      } else {
+        // No resume uploaded — keep the brief success beat, then continue.
+        setTimeout(completeOnboarding, 2200);
+      }
     },
     onError: (error: Error) => {
       console.warn("[ApplicantQuestionnaire] Registration failed:", error);
@@ -876,9 +938,124 @@ export function ApplicantQuestionnaire({
                 entering={FadeInDown.delay(600)}
                 style={styles.successSub}
               >
-                Welcome to BackChannel
+                {selectedFileAsset
+                  ? "Building your profile from your resume…"
+                  : "Welcome to BackChannel"}
               </Animated.Text>
+              {selectedFileAsset && (
+                <Animated.View
+                  entering={FadeIn.delay(800)}
+                  style={styles.successSpinner}
+                >
+                  <ActivityIndicator color="#000" />
+                </Animated.View>
+              )}
             </View>
+          </BlurView>
+        </Animated.View>
+      )}
+
+      {showReview && reviewData && (
+        <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
+          <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill}>
+            <SafeAreaView style={styles.reviewSafeArea}>
+              <View style={styles.reviewHeader}>
+                <View style={styles.reviewBadge}>
+                  <Sparkles color="#000" size={22} />
+                </View>
+                <Text style={styles.reviewTitle}>Here&apos;s what we found</Text>
+                <Text style={styles.reviewSub}>
+                  We built your profile straight from your resume. Give it a
+                  quick look — you can fine-tune anything later.
+                </Text>
+              </View>
+
+              <ScrollView
+                contentContainerStyle={styles.reviewScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                {reviewData.experiences.length > 0 && (
+                  <View style={styles.reviewSection}>
+                    <Text style={styles.reviewSectionLabel}>
+                      WORK EXPERIENCE · {reviewData.experiences.length}
+                    </Text>
+                    {reviewData.experiences.map((exp, i) => (
+                      <View key={exp.id || `exp-${i}`} style={styles.reviewCard}>
+                        <Text style={styles.reviewCardTitle}>
+                          {exp.jobTitle || "Role"}
+                        </Text>
+                        <Text style={styles.reviewCardSub}>
+                          {[
+                            exp.company,
+                            [
+                              exp.startDate,
+                              exp.current ? "Present" : exp.endDate,
+                            ]
+                              .filter(Boolean)
+                              .join(" – "),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {reviewData.education.length > 0 && (
+                  <View style={styles.reviewSection}>
+                    <Text style={styles.reviewSectionLabel}>
+                      EDUCATION · {reviewData.education.length}
+                    </Text>
+                    {reviewData.education.map((edu, i) => (
+                      <View key={edu.id || `edu-${i}`} style={styles.reviewCard}>
+                        <Text style={styles.reviewCardTitle}>
+                          {[edu.degree, edu.major].filter(Boolean).join(", ") ||
+                            edu.university ||
+                            "Education"}
+                        </Text>
+                        <Text style={styles.reviewCardSub}>
+                          {[edu.university, edu.graduationYear]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {reviewData.skills.length > 0 && (
+                  <View style={styles.reviewSection}>
+                    <Text style={styles.reviewSectionLabel}>
+                      SKILLS · {reviewData.skills.length}
+                    </Text>
+                    <View style={styles.reviewChips}>
+                      {reviewData.skills.map((skill, i) => (
+                        <View key={`skill-${i}`} style={styles.reviewChip}>
+                          <Text style={styles.reviewChipText}>{skill}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+
+              <View style={styles.reviewFooter}>
+                <TouchableOpacity
+                  style={styles.reviewPrimaryBtn}
+                  onPress={handleReviewConfirm}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.reviewPrimaryText}>
+                    Looks good — start swiping
+                  </Text>
+                  <ArrowRight color="#FFF" size={20} />
+                </TouchableOpacity>
+                <Text style={styles.reviewFootnote}>
+                  You can edit every detail anytime in your profile.
+                </Text>
+              </View>
+            </SafeAreaView>
           </BlurView>
         </Animated.View>
       )}
@@ -1218,5 +1395,111 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
+  },
+  successSpinner: { marginTop: 24 },
+
+  // ── Phase 2 resume-review screen ─────────────────────────────────────────
+  reviewSafeArea: { flex: 1 },
+  reviewHeader: {
+    paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  reviewBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F4F4F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  reviewTitle: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.5,
+  },
+  reviewSub: {
+    fontSize: 15,
+    color: "#666",
+    lineHeight: 21,
+    marginTop: 10,
+  },
+  reviewScroll: {
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  reviewSection: { marginBottom: 28 },
+  reviewSectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#999",
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  reviewCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    padding: 16,
+    marginBottom: 10,
+  },
+  reviewCardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
+  },
+  reviewCardSub: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  reviewChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  reviewChip: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  reviewChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+  },
+  reviewFooter: {
+    paddingHorizontal: 28,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
+  },
+  reviewPrimaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#000",
+    borderRadius: 16,
+    paddingVertical: 18,
+  },
+  reviewPrimaryText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  reviewFootnote: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+    marginTop: 12,
   },
 });
