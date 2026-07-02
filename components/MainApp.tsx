@@ -188,6 +188,10 @@ export function MainApp({ userType }: MainAppProps) {
   const [pendingMessageUserId, setPendingMessageUserId] = useState<
     string | null
   >(null);
+  // Deep-link target when a message push is tapped — the specific conversation
+  // to open. MessagesView consumes it once the thread is loaded.
+  const [pendingMessageConversationId, setPendingMessageConversationId] =
+    useState<string | null>(null);
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const setDeviceToken = useAuthStore((state) => state.setDeviceToken);
@@ -450,35 +454,69 @@ export function MainApp({ userType }: MainAppProps) {
   }, [isAuthenticated, setDeviceToken]);
 
   // ── Handle push notification taps (deep-link to the right screen) ────────
+  // Shared routing for a tapped push, used by BOTH the live listener (below)
+  // and the cold-start path. The launching tap can surface through both
+  // channels, so we dedupe on the notification identifier and act on it once.
+  const lastHandledPushIdRef = useRef<string | null>(null);
+  const handlePushResponse = (
+    response: Notifications.NotificationResponse | null,
+  ) => {
+    if (!response) return;
+    const id = response.notification.request.identifier;
+    if (id && lastHandledPushIdRef.current === id) return;
+    lastHandledPushIdRef.current = id ?? null;
+
+    const data = response.notification.request.content.data as
+      | Record<string, string>
+      | undefined;
+    if (!data) return;
+
+    const type = data.type as string | undefined;
+    trackPushNotificationTapped({ pushType: type });
+    if (type === "match" || type === "referral") {
+      setActiveView("matches");
+    } else if (type === "message") {
+      // Deep-link straight into the conversation the push named, not just the
+      // inbox. related_conversation_id is set on every message notification.
+      const convId = data.related_conversation_id;
+      if (convId) setPendingMessageConversationId(convId);
+      setActiveView("messages");
+    } else {
+      // Generic fallback — open notifications list so the user can act on it
+      setActiveView("notifications");
+    }
+    // Refresh unread count now that we're acting on a push
+    fetchUnreadCount();
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
 
     // Fired when the user taps a notification while the app is in foreground
-    // or when it's brought to the foreground from background/killed state.
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data as
-          | Record<string, string>
-          | undefined;
-        if (!data) return;
-
-        const type = data.type as string | undefined;
-        trackPushNotificationTapped({ pushType: type });
-        if (type === "match" || type === "referral") {
-          setActiveView("matches");
-        } else if (type === "message") {
-          setActiveView("messages");
-        } else {
-          // Generic fallback — open notifications list so the user can act on it
-          setActiveView("notifications");
-        }
-        // Refresh unread count now that we're acting on a push
-        fetchUnreadCount();
-      },
-    );
+    // or when it's brought to the foreground from the background. This does
+    // NOT fire for a tap that launches the app from a killed state — that case
+    // is handled by the cold-start effect below.
+    const subscription =
+      Notifications.addNotificationResponseReceivedListener(handlePushResponse);
 
     return () => subscription.remove();
   }, [isAuthenticated]);
+
+  // ── Cold start: route from the notification that launched the app ────────
+  // When the app is killed and the user taps a push from the lock screen, the
+  // OS launches the app and delivers the tap BEFORE the listener above mounts,
+  // so it's lost and the app opens to its default (home) screen — the bug a
+  // tester hit where a "new message" push from the lock screen landed on Home
+  // instead of the inbox. useLastNotificationResponse() surfaces that launching
+  // tap once the app (and auth) are ready, so it routes the same way a
+  // background tap does. It returns `undefined` until ready and `null` when
+  // there's no response; handlePushResponse guards both, and its dedupe ref
+  // stops the live listener from acting on the same tap twice.
+  const lastNotificationResponse = Notifications.useLastNotificationResponse();
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    handlePushResponse(lastNotificationResponse ?? null);
+  }, [isAuthenticated, lastNotificationResponse]);
 
   // ── Refresh the bell badge the instant a push arrives in the foreground ──
   // The handler above shows the banner; this bumps the unread count right
@@ -630,6 +668,10 @@ export function MainApp({ userType }: MainAppProps) {
                   setPendingMessageJobId(null);
                   setPendingMessageUserId(null);
                 }}
+                pendingConversationId={pendingMessageConversationId}
+                onPendingConversationConsumed={() =>
+                  setPendingMessageConversationId(null)
+                }
               />
             </View>
           )}

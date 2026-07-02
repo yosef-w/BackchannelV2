@@ -96,6 +96,18 @@ interface ProfileViewProps {
   userType: "applicant" | "sponsor";
 }
 
+// Shared Switch coloring. Monochrome to match the app's black/white branding:
+// ON = solid black track, OFF = a medium neutral gray. The previous OFF track
+// (#E5E5E5) was so close to the white sheet that the white thumb vanished into
+// it — especially on iOS, where the *resting* off color is driven by
+// `ios_backgroundColor` (NOT `trackColor.false`), which wasn't set at all. The
+// gray below frames the white thumb clearly while staying on-brand.
+const SWITCH_COLORS = {
+  trackColor: { false: "#B0B3BA", true: "#000" },
+  thumbColor: "#FFF",
+  ios_backgroundColor: "#B0B3BA",
+} as const;
+
 interface ApplicantProfile {
   name: string;
   role: string;
@@ -1809,10 +1821,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const handleResumeUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "application/pdf",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ],
+        type: ["application/pdf"],
         copyToCacheDirectory: true,
       });
       if (result.canceled || !result.assets?.[0]) {
@@ -1883,16 +1892,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
         extracted_text_preview: parseResult.extracted_text?.slice(0, 200),
       });
 
-      // The backend returns HTTP 201 even when Snowflake Cortex fails to extract
-      // text (extracted_text will be null). Catch this here so we show a clear
-      // error rather than a confusing "no resume text" message from classifyResume.
+      // The backend returns HTTP 201 even when text extraction fails
+      // (extracted_text will be null). Use parsing_error to surface a relevant
+      // message: transient service errors → "try again"; format errors → PDF hint.
       if (!parseResult.extracted_text) {
+        const serverMsg: string | undefined = parseResult.parsing_error;
         console.warn(
           "[Resume] ❌ Text extraction failed — extracted_text is null. parsing_error:",
-          parseResult.parsing_error,
+          serverMsg,
         );
+        const isServiceError =
+          serverMsg?.includes("please try again") ||
+          serverMsg?.includes("unavailable") ||
+          serverMsg?.includes("configured");
         throw new Error(
-          "Resume uploaded but text extraction failed. Please try a PDF with selectable (non-scanned) text.",
+          isServiceError
+            ? `Resume uploaded but text could not be read — ${serverMsg}`
+            : "Resume uploaded but text extraction failed. Please try a PDF with selectable (non-scanned) text.",
         );
       }
 
@@ -2324,8 +2340,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     endDate: value ? "" : experience.endDate,
                   })
                 }
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
-                thumbColor="#FFF"
+                {...SWITCH_COLORS}
               />
               <Text style={styles.checkboxLabel}>I currently work here</Text>
             </View>
@@ -4427,8 +4442,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             value={isNotifEnabled("match")}
             onValueChange={(v) => handleNotifToggle("match", v)}
             disabled={notifSaving === "match"}
-            trackColor={{ false: "#E5E5E5", true: "#000" }}
-            thumbColor="#FFF"
+            {...SWITCH_COLORS}
           />
         </View>
         <View style={styles.toggleRow}>
@@ -4437,8 +4451,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             value={isNotifEnabled("message")}
             onValueChange={(v) => handleNotifToggle("message", v)}
             disabled={notifSaving === "message"}
-            trackColor={{ false: "#E5E5E5", true: "#000" }}
-            thumbColor="#FFF"
+            {...SWITCH_COLORS}
           />
         </View>
         {userType === "applicant" && (
@@ -4449,8 +4462,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("referral")}
                 onValueChange={(v) => handleNotifToggle("referral", v)}
                 disabled={notifSaving === "referral"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
-                thumbColor="#FFF"
+                {...SWITCH_COLORS}
               />
             </View>
             <View style={styles.toggleRow}>
@@ -4459,8 +4471,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("waitlist")}
                 onValueChange={(v) => handleNotifToggle("waitlist", v)}
                 disabled={notifSaving === "waitlist"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
-                thumbColor="#FFF"
+                {...SWITCH_COLORS}
               />
             </View>
           </>
@@ -4475,8 +4486,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("job_like")}
                 onValueChange={(v) => handleNotifToggle("job_like", v)}
                 disabled={notifSaving === "job_like"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
-                thumbColor="#FFF"
+                {...SWITCH_COLORS}
               />
             </View>
             <View style={styles.toggleRow}>
@@ -4487,8 +4497,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 value={isNotifEnabled("sponsor_request")}
                 onValueChange={(v) => handleNotifToggle("sponsor_request", v)}
                 disabled={notifSaving === "sponsor_request"}
-                trackColor={{ false: "#E5E5E5", true: "#000" }}
-                thumbColor="#FFF"
+                {...SWITCH_COLORS}
               />
             </View>
           </>

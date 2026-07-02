@@ -798,6 +798,10 @@ export function MatchesView({
 
         if (activeJobs.length === 0) return [];
 
+        // All jobs share the same SPONSOR_ID — use it to guard against
+        // the backend returning the sponsor's own record as an "interested" applicant.
+        const myUserId = activeJobs[0]?.SPONSOR_ID;
+
         // Fetch applicant likes for each active job in parallel
         const results = await Promise.allSettled(
           activeJobs.map((job) =>
@@ -819,6 +823,7 @@ export function MatchesView({
           const { jobId, jobTitle, jobCompany, applicants } = result.value;
           for (const a of applicants) {
             if (a.STATUS !== "ACTIVE") continue;
+            if (myUserId && a.APPLICANT_USER_ID === myUserId) continue;
             if (seen.has(a.APPLICANT_USER_ID)) continue;
             seen.add(a.APPLICANT_USER_ID);
             all.push({

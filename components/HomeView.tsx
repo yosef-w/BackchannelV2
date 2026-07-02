@@ -81,6 +81,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "../stores/useJobsStore";
+import { useToastStore } from "../stores/useToastStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
@@ -400,6 +401,8 @@ export function HomeView({
   const updatePersonalStore = useUserProfileStore(
     (state) => state.updatePersonal,
   );
+
+  const showToast = useToastStore((state) => state.showToast);
 
   // Jobs store
   const jobs = useJobsStore((state) => state.jobs);
@@ -1151,6 +1154,8 @@ export function HomeView({
     if (isAccept) {
       // Call like API when accepting
       let didMatch = false;
+      let jobGone = false;
+      let apiError = false;
       try {
         if (userType === "applicant") {
           // Applicant liking a job
@@ -1273,10 +1278,28 @@ export function HomeView({
         }
       } catch (err) {
         console.warn("[HomeView] Failed to record like:", err);
-        // Continue with UI update even if API fails
+        const msg = err instanceof Error ? err.message.toLowerCase() : "";
+        if (
+          msg.includes("not found") ||
+          msg.includes("inactive") ||
+          msg.includes("404")
+        ) {
+          // Job was unsponsored/deleted since the deck was fetched.
+          jobGone = true;
+        } else {
+          // Server error (5xx) or network failure — the like was not recorded.
+          // Do not show "Request Sent!" which would falsely imply success.
+          apiError = true;
+        }
       }
 
-      if (!didMatch) {
+      if (jobGone) {
+        showToast("This job is no longer available.", "info");
+        nextProfile(true);
+      } else if (apiError) {
+        showToast("Couldn't connect right now. Please try again.", "error");
+        // Keep the card in place so the user can retry the swipe.
+      } else if (!didMatch) {
         // Standard swipe-right toast — only shown when there is no mutual match
         setShowCelebration(true);
         setTimeout(() => {

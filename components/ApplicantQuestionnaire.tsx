@@ -273,12 +273,13 @@ export function ApplicantQuestionnaire({
             // requiring the user to re-open the app.
             return fetchFromBackend();
           })
-          .catch((err) =>
-            console.warn(
-              "[Questionnaire] Background resume upload failed:",
-              err,
-            ),
-          );
+          .catch((err) => {
+            console.warn("[Questionnaire] Background resume upload failed:", err);
+            showToast(
+              "Resume upload failed. You can re-upload your resume from your profile.",
+              "error",
+            );
+          });
       }
 
       // Show success modal
@@ -365,11 +366,8 @@ export function ApplicantQuestionnaire({
   const handleFilePick = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "application/pdf",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ],
+        type: ["application/pdf"],
+        copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];

@@ -89,6 +89,10 @@ interface MessagesViewProps {
   // required for sponsors with multiple matched applicants on the same job.
   pendingUserId?: string | null;
   onPendingJobConsumed?: () => void;
+  // Deep-link target from a push notification tap — the conversation to open
+  // directly (the push carries related_conversation_id). Consumed once opened.
+  pendingConversationId?: string | null;
+  onPendingConversationConsumed?: () => void;
 }
 
 export function MessagesView({
@@ -100,6 +104,8 @@ export function MessagesView({
   pendingJobId,
   pendingUserId,
   onPendingJobConsumed,
+  pendingConversationId,
+  onPendingConversationConsumed,
 }: MessagesViewProps) {
   // Store current user ID from profile API to determine which participant to show
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -761,6 +767,20 @@ export function MessagesView({
       onPendingJobConsumed?.();
     }
   }, [pendingJobId, pendingUserId, conversations]);
+
+  // Deep-link from a push-notification tap: open the exact conversation the
+  // push named (related_conversation_id) as soon as it's present in the loaded
+  // list. The just-messaged conversation sorts to the top, so it's in the
+  // first page in practice. Consume-once so returning to Messages later doesn't
+  // force this thread back open.
+  useEffect(() => {
+    if (!pendingConversationId || conversations.length === 0) return;
+    const conv = conversations.find((c) => c.id === pendingConversationId);
+    if (conv) {
+      handleConversationSelect(conv.id);
+      onPendingConversationConsumed?.();
+    }
+  }, [pendingConversationId, conversations]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedConversation || sendingMessage) return;

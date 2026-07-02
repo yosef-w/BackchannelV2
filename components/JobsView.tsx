@@ -20,6 +20,7 @@ import {
   updateJob,
   updateSponsorProfile,
 } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { isValidUrl, normalizeUrl } from "@/lib/validation";
@@ -520,6 +521,7 @@ function SponsorInsightCards({
 
 export function JobsView() {
   // Zustand store
+  const queryClient = useQueryClient();
   const jobs = useJobsStore((state) => state.jobs);
   const isLoading = useJobsStore((state) => state.isLoading);
   const error = useJobsStore((state) => state.error);
@@ -835,6 +837,9 @@ export function JobsView() {
     try {
       await unsponsorJob(job.id, reason, reasonDetail);
       trackJobUnsponsored({ jobId: job.id, reason });
+      // Flush the Matches screen's "Interested in Your Jobs" cache so the
+      // applicants who liked this job don't appear as ghost entries.
+      queryClient.invalidateQueries({ queryKey: ["matchesScreen"] });
     } catch (err) {
       console.warn("[JobsView] Failed to unsponsor job:", err);
       // Revert by re-fetching the real list from backend

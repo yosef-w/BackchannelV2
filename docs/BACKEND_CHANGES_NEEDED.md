@@ -1,10 +1,10 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-06-23
+**Last updated:** 2026-07-01
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
+> **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§J** — self-like not rejected server-side (sponsor sees themselves in "Interested in Your Jobs", medium priority); **§K** — unsponsor doesn't invalidate the affected applicants' caches (phantom match for ~15s on the applicant's Matches screen, medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
 >
 > Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
 
@@ -46,9 +46,9 @@ The `ON CONFLICT` only catches conflicts among rows that are currently **ACTIVE/
 
 With a sponsor account that has previously **passed on** (or withdrawn interest in) a given applicant, have that applicant like the sponsor's active job, then from the sponsor's "Interested in Your Jobs" tap connect/like back. It should create the match (or return a clean, non-500 result) instead of erroring.
 
-### Frontend status
+### Frontend status (updated 2026-07-01)
 
-No change needed — the app already calls `POST /api/profiles/like/` correctly and now surfaces the real error text (`components/MatchesView.tsx` → `handleLikeBackApplicant`). Once the backend stops 500-ing, the existing flow matches as designed.
+Fixed: `components/HomeView.tsx` → `handleSwipe` now sets `apiError = true` on any non-404 catch and shows "Couldn't connect right now. Please try again." **without** advancing the card — so the user is never shown a false "Request Sent!" when the API call failed. Previously, a 500 fell through to `setShowCelebration(true)`, which looked like success. The card is now held in place so the user can retry the swipe once the backend is fixed.
 
 ---
 
@@ -287,3 +287,74 @@ None — the reason step and the `unsponsorJob(jobId, reason, reasonDetail)` cal
    **How to verify:** after DNS is set, use Resend's domain status (all green) and a tool like **mail-tester.com** — send a verification email to its address and aim for ~10/10. Re-test in a real Gmail and Outlook account to confirm it lands in the inbox.
 
 5. **End-to-end smoke test** against the deployed backend: register → verification email arrives → link opens the backend's web verify page and confirms; then forgot-password → email → reset on the web reset page → sign in with the new password. `services/email.py` logs `Email sent to <addr>` vs `Failed to send email to <addr>` to tell SMTP outcomes apart.
+
+---
+
+## §J — Sponsor sees themselves in "Interested in Your Jobs" (self-like not rejected server-side) 🟡 Medium priority
+
+**Symptom (observed in beta, 2026-07-01):** A sponsor who just completed signup opens the Matches screen and sees their **own profile** listed under "Interested in Your Jobs." A user should never appear in their own matches list.
+
+**Frontend workaround shipped (2026-07-01):** The `interestedApplicants` query in `MatchesView.tsx` now derives the current user's ID from `activeJobs[0].SPONSOR_ID` (all of the sponsor's jobs share the same `SPONSOR_ID`) and skips any `APPLICANT_USER_ID` that matches. This prevents the self-entry from rendering even when the backend returns it.
+
+**Backend root causes — two places to fix:**
+
+**1. `like_job` does not reject self-likes** (`services/matching.py`, line 131):
+```python
+def like_job(user_id, job_id, notes=''):
+    job = jobs_q.job_exists_active(job_id)
+    ...
+    like_id = likes_q.create_job_like(user_id, job_id, notes)  # no self-check
+```
+Add before the insert:
+```python
+if str(job.get('SPONSOR_ID', '')) == str(user_id):
+    return Result.bad_request("You cannot like your own job")
+```
+
+**2. `get_applicants_who_liked_job` does not exclude the job owner** (`queries/likes.py`, line 244):
+```sql
+WHERE l.JOB_ID = %s AND l.STATUS IN ('ACTIVE','MATCHED')
+-- missing: AND l.USER_ID != <sponsor_id>
+```
+The calling service (`get_job_applicants` in `services/matching.py`, line 226) already has the `sponsor_id`. Pass it to the query and add `AND l.USER_ID != %s` to the WHERE clause.
+
+**Files:**
+- `bc_microservices/services/matching.py` → `like_job` (line 131), `get_job_applicants` (line 226)
+- `bc_microservices/queries/likes.py` → `get_applicants_who_liked_job` (line 244)
+
+---
+
+## §K — Unsponsoring a job leaves stale matches/likes in the *affected applicants'* caches 🟡 Medium priority
+
+**Symptom (found in code audit, 2026-07-01):** When a sponsor unsponsors a job, the applicants who had **matched** with (or liked) that job can still see the now-dead match/job on **their own** Matches screen for up to ~15s, and a tap can open a conversation that was just closed. The DB is correct (likes → `WITHDRAWN`, `job_postings` row deleted, conversations closed); the problem is purely a **cache-invalidation gap**.
+
+**Root cause** (`services/jobs.py` → `unsponsor_job`, line 902): the post-transaction `invalidate(...)` clears the *sponsor's* view and the job-scoped keys —
+```python
+invalidate(
+    f"job_active:{job_id}", f"sp_job:{job_id}",
+    f"job_owner:{job_id}:{sponsor_id}", f"job_owner_any:{job_id}:{sponsor_id}",
+    f"job_likes:{job_id}", f"sponsor_matches:{sponsor_id}",
+    f"job_score_criteria:{job_id}",
+)
+```
+…but it never invalidates the **per-applicant** keys for the users whose likes were just withdrawn:
+- `job_matches:{applicant_id}` — the applicant's "Matched Opportunities" list (still shows the dead match)
+- `liked_jobs:{applicant_id}` — the applicant's liked/applied list (still shows the job)
+- `received_likes:{applicant_id}` — if the sponsor had also profile-liked them
+
+All three use `TTL_SHORT = 15s`, so the stale window is ≤15s — but within it, a pull-to-refresh on the applicant's device still returns the phantom entry from Redis (the cache holds the fully-computed rows, so the deleted `job_postings` JOIN doesn't save us).
+
+**Suggested fix:** collect the affected applicant IDs **before** withdrawing, then invalidate their keys after the transaction. `withdraw_likes_for_job` already runs inside the transaction, so capture the ids first:
+```python
+# before the transaction (or as the first step inside it)
+affected = likes_q.get_user_ids_with_active_or_matched_likes_for_job(job_id)  # new helper
+...
+# after the transaction, alongside the existing invalidate(...)
+for uid in affected:
+    invalidate(f"job_matches:{uid}", f"liked_jobs:{uid}", f"received_likes:{uid}")
+```
+(`withdraw_likes_for_job` in `queries/likes.py:288` currently only invalidates `job_likes:{job_id}` — the per-user keys must be cleared by the caller since it doesn't know the user set.)
+
+**Acceptance test:** Applicant A matches with sponsor S's job. S unsponsors it. Within 5s, A pulls to refresh their Matches screen → the match is gone immediately (not after a 15s wait), and the applicant's liked-jobs list no longer shows it.
+
+**Frontend status:** The sponsor's own device is already handled — `JobsView.tsx → handleUnsponsor` invalidates the local `["matchesScreen"]` React Query cache on success. The applicant's device has **no live signal** at all (no push is sent on unsponsor), so it relies on focus-refetch / pull-to-refresh; once this backend cache gap is closed, that refresh returns clean data immediately. (Optional future enhancement: send a lightweight push to affected applicants on unsponsor so their screen updates without a manual refresh — not required for correctness.)

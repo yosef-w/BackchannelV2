@@ -276,13 +276,6 @@ export function AuthScreen({
                 </Text>
               </View>
 
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.line} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.line} />
-              </View>
-
               {/* Form */}
               <View style={styles.form}>
                 {!isLogin && (
@@ -557,24 +550,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#000",
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#F0F0F0",
-  },
-  dividerText: {
-    paddingHorizontal: 16,
-    fontSize: 13,
-    color: "#BBB",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    fontWeight: "600",
   },
   form: {
     gap: 16,
