@@ -5,6 +5,7 @@ import {
   trackSignUpSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { updateGeneralProfile, uploadProfileImage } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -15,9 +16,11 @@ import { HOME_INTRO_PENDING_KEY } from "@/components/ui/HomeIntro";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
+import * as ImagePicker from "expo-image-picker";
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
   Check,
   Mail,
   Plus,
@@ -25,9 +28,10 @@ import {
   UserCheck,
   X,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -53,6 +57,21 @@ import { CompanyAutocomplete } from "./ui/CompanyAutocomplete";
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
   onBack: () => void;
+}
+
+// Upper bound on how long we'll block onboarding applying the photo + bio
+// after registration before proceeding anyway. Uploads must never trap a new
+// user on the success spinner, so we race them against this timeout.
+const PROCESS_TIMEOUT_MS = 25000;
+
+/** Resolve when `promise` settles, or reject once `ms` elapses. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), ms),
+    ),
+  ]);
 }
 
 const AVAILABLE_QUESTIONS = [
@@ -122,6 +141,18 @@ const questions = [
     type: "email",
     placeholder: "name@company.com",
   },
+  {
+    id: 9,
+    question: "Add a profile photo",
+    type: "photo",
+    subtitle: "Candidates see this on your profile — a clear headshot builds trust",
+  },
+  {
+    id: 10,
+    question: "Write a short bio",
+    type: "bio",
+    subtitle: "We drafted one from your answers — edit it to sound like you",
+  },
 ];
 
 export function SponsorQuestionnaire({
@@ -139,6 +170,13 @@ export function SponsorQuestionnaire({
     Array<{ question: string; answer: string }>
   >([]);
   const [showQuestionPicker, setShowQuestionPicker] = useState(false);
+
+  // Photo + bio (added to the sponsor flow so their applicant-facing card
+  // isn't bare). The photo URI is uploaded after registration (the upload
+  // endpoint needs auth); the bio is pre-drafted client-side from the
+  // company/title/tenure answers so the sponsor edits instead of starts blank.
+  const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
+  const [bioText, setBioText] = useState("");
 
   const scrollViewRef = useRef<ScrollView>(null);
   const cardYPositions = useRef<number[]>([]);
@@ -221,6 +259,33 @@ export function SponsorQuestionnaire({
       // Show success modal
       setShowSuccess(true);
 
+      // Apply the photo + bio captured during onboarding so the sponsor's
+      // applicant-facing card isn't bare. Photo upload needs auth, so it runs
+      // here after registration. Best-effort and bounded — a failure/timeout
+      // must never trap the user; they can re-add these in their profile.
+      try {
+        await withTimeout(
+          (async () => {
+            if (selectedPhotoUri) {
+              const photoForm = new FormData();
+              photoForm.append("image", {
+                uri: selectedPhotoUri,
+                name: "photo.jpg",
+                type: "image/jpeg",
+              } as any);
+              const { cdn_url } = await uploadProfileImage(photoForm);
+              if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
+            }
+            if (bioText.trim()) {
+              await updateGeneralProfile({ bio: bioText.trim() });
+            }
+          })(),
+          PROCESS_TIMEOUT_MS,
+        );
+      } catch (err) {
+        console.warn("[SponsorQuestionnaire] Photo/bio save failed:", err);
+      }
+
       // Fire-and-forget the work-email verification send (PR #42). The
       // backend hands out a JWT scoped to `purpose: "work_email_verification"`
       // and emails it to the work email the sponsor just provided. Sponsors
@@ -282,6 +347,57 @@ export function SponsorQuestionnaire({
     createProfileMutation.mutate();
   };
 
+  // Compose a first-draft bio from what the sponsor already told us, so the
+  // bio step starts populated instead of blank (the "no-resume" analog of the
+  // applicant's resume autofill). Fully editable afterwards.
+  const buildDraftBio = () => {
+    const company = (answers[0] || "").trim();
+    const title = (answers[1] || "").trim();
+    const tenure = (answers[2] || "").trim();
+    const openToRefer = (answers[3] || "").toLowerCase();
+    const parts: string[] = [];
+    if (title && company) parts.push(`${title} at ${company}.`);
+    else if (company) parts.push(`Works at ${company}.`);
+    else if (title) parts.push(`${title}.`);
+    if (tenure) parts.push(`${tenure} at the company.`);
+    if (openToRefer.includes("yes") || openToRefer.includes("absolut"))
+      parts.push("Open to referring qualified candidates.");
+    else if (openToRefer.includes("case"))
+      parts.push("Open to referrals on a case-by-case basis.");
+    return parts.join(" ");
+  };
+
+  // Pre-fill the bio the first time the sponsor lands on the bio step (only if
+  // they haven't typed anything), so they see an editable draft, not a blank box.
+  useEffect(() => {
+    if (question.type === "bio" && !bioText.trim()) {
+      setBioText(buildDraftBio());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion]);
+
+  // Pick a profile photo. Kept local (URI) until after registration, when it's
+  // uploaded — the upload endpoint requires auth.
+  const handlePickPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showToast(
+        "Photo access is off — enable it in Settings to add a photo.",
+        "info",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedPhotoUri(result.assets[0].uri);
+    }
+  };
+
   const handleNext = () => {
     // Validate the work-email step before advancing. Blank is allowed (they
     // can verify later via the in-app gate), but a typed value must be a real
@@ -313,11 +429,17 @@ export function SponsorQuestionnaire({
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const isLastQuestion = currentQuestion === questions.length - 1;
   const isInsightsScreen = question.type === "insights";
+  const isPhotoScreen = question.type === "photo";
+  const isBioScreen = question.type === "bio";
   const canContinue = isInsightsScreen
     ? selectedInsights.length >= 2 &&
       selectedInsights.length <= 3 &&
       selectedInsights.every((i) => i.answer.trim().length > 0)
-    : answers[currentQuestion] && answers[currentQuestion].length > 0;
+    : isPhotoScreen
+      ? !!selectedPhotoUri // Required — has a "Skip for now" escape hatch below
+      : isBioScreen
+        ? bioText.trim().length > 0
+        : answers[currentQuestion] && answers[currentQuestion].length > 0;
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: withTiming(`${progress}%`, { duration: 400 }),
@@ -511,6 +633,52 @@ export function SponsorQuestionnaire({
                     Pick your company from the list so we can match you to the
                     right job listings.
                   </Text>
+                </View>
+              ) : question.type === "photo" ? (
+                <View style={styles.photoStep}>
+                  <TouchableOpacity
+                    onPress={handlePickPhoto}
+                    activeOpacity={0.8}
+                    style={styles.photoCircle}
+                  >
+                    {selectedPhotoUri ? (
+                      <Image
+                        source={{ uri: selectedPhotoUri }}
+                        style={styles.photoImage}
+                      />
+                    ) : (
+                      <Camera color="#BBB" size={40} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handlePickPhoto}
+                    style={styles.photoPickBtn}
+                  >
+                    <Text style={styles.photoPickText}>
+                      {selectedPhotoUri ? "Change photo" : "Choose a photo"}
+                    </Text>
+                  </TouchableOpacity>
+                  {!selectedPhotoUri && (
+                    <TouchableOpacity
+                      onPress={handleNext}
+                      style={styles.photoSkipBtn}
+                    >
+                      <Text style={styles.photoSkipText}>Skip for now</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : question.type === "bio" ? (
+                <View style={styles.bioWrapper}>
+                  <TextInput
+                    placeholder="A sentence or two about you"
+                    placeholderTextColor="#BBB"
+                    value={bioText}
+                    onChangeText={setBioText}
+                    style={styles.bioInput}
+                    multiline
+                    autoFocus
+                    maxLength={300}
+                  />
                 </View>
               ) : question.type === "text" || question.type === "email" ? (
                 <View style={styles.inputWrapper}>
@@ -838,5 +1006,39 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
+  },
+
+  // ── Photo + bio steps ────────────────────────────────────────────────────
+  photoStep: { alignItems: "center", paddingTop: 8 },
+  photoCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "#F4F4F5",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  photoImage: { width: "100%", height: "100%" },
+  photoPickBtn: { marginTop: 20, paddingVertical: 8, paddingHorizontal: 16 },
+  photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
+  photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
+  bioWrapper: {
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  bioInput: {
+    fontSize: 18,
+    color: "#000",
+    fontWeight: "500",
+    minHeight: 120,
+    textAlignVertical: "top",
   },
 });
