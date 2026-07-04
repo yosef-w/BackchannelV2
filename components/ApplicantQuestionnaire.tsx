@@ -55,6 +55,7 @@ import {
 import { HOME_INTRO_PENDING_KEY } from "./ui/HomeIntro";
 import {
   classifyResume,
+  updateApplicantProfile,
   updateGeneralProfile,
   uploadAndParseResume,
   uploadProfileImage,
@@ -151,59 +152,77 @@ const WORK_PREFERENCE_OPTIONS = [
   "Series A–C",
 ];
 
+// Resume-first flow. The resume comes FIRST: after it's parsed + AI-classified
+// we skip the steps it fills (industry, current role, skills) and only ask for
+// what a resume can't provide. Steps are keyed (not positional) so the list can
+// shrink without breaking answer lookups. If no resume is given, every step is
+// shown (the classic manual flow).
 const questions = [
   {
-    id: 1,
+    key: "resume",
+    question: "Start with your résumé",
+    type: "file",
+    subtitle:
+      "We'll build your profile from it automatically — or skip and fill it in yourself.",
+  },
+  {
+    key: "industry",
     question: "What industry are you targeting?",
     type: "select",
     options: ["Technology", "Finance", "Healthcare", "Education", "Marketing"],
   },
   {
-    id: 2,
+    key: "currentRole",
     question: "What role are you currently in?",
     type: "text",
     placeholder: "e.g., Software Engineer",
   },
   {
-    id: 3,
+    key: "seekingPosition",
     question: "What position are you seeking?",
     type: "text",
     placeholder: "e.g., Senior Product Lead",
   },
-  { id: 4, question: "Choose up to 5 skills to highlight", type: "skills" },
+  { key: "skills", question: "Choose up to 5 skills to highlight", type: "skills" },
   {
-    id: 5,
+    key: "insights",
     question: "Add personality to your profile",
     type: "insights",
     subtitle: "Answer at least one prompt — add up to 3 if you're inspired",
   },
   {
-    id: 6,
+    key: "workPreferences",
     question: "What are your work preferences?",
     type: "workPreferences",
     subtitle: "Select all that apply",
   },
   {
-    id: 7,
+    key: "photo",
     question: "Add a profile photo",
     type: "photo",
     subtitle: "Sponsors see this first — a clear headshot goes a long way",
   },
   {
-    id: 8,
+    key: "location",
     question: "Where are you based?",
     type: "location",
     subtitle: "Used to surface roles near you",
   },
-  { id: 9, question: "Upload your professional resume", type: "file" },
 ];
+
+// Steps the résumé classify fills, and which we therefore skip once it succeeds.
+const RESUME_FILLED_KEYS = ["industry", "currentRole", "skills"];
 
 export function ApplicantQuestionnaire({
   onComplete,
   onBack,
 }: ApplicantQuestionnaireProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, any>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // True once the résumé has been parsed + classified — hides the steps it fills.
+  const [resumeFilled, setResumeFilled] = useState(false);
+  // Guards against double-registration (registration now fires at the résumé step).
+  const registeredRef = useRef(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileAsset, setSelectedFileAsset] = useState<{
     name: string;
@@ -269,9 +288,12 @@ export function ApplicantQuestionnaire({
   // Final exit from onboarding → dashboard. Shared by the no-resume path, the
   // resume-processing fallbacks, and the review screen's confirm button.
   const completeOnboarding = () => {
-    // Onboarding finished — stop autosaving and discard the saved draft.
+    // Onboarding finished — stop autosaving, discard the draft, clear the
+    // in-memory onboarding data (auth basics no longer needed).
     hydratedRef.current = false;
     AsyncStorage.removeItem(APPLICANT_DRAFT_KEY).catch(() => {});
+    clearOnboardingData();
+    trackOnboardingCompleted("applicant");
     setIsSubmitting(false);
     onComplete();
     // Backend sends a verification email automatically on register (PR #38).
@@ -356,8 +378,9 @@ export function ApplicantQuestionnaire({
           if (Array.isArray(d.selectedWorkPreferences))
             setSelectedWorkPreferences(d.selectedWorkPreferences);
           if (typeof d.locationText === "string") setLocationText(d.locationText);
-          if (typeof d.currentQuestion === "number")
-            setCurrentQuestion(d.currentQuestion);
+          // Intentionally NOT restoring the step index: registration happens on
+          // the first (résumé) step, so we must always re-enter there. Restoring
+          // a later step would skip registration and 401 the final save.
         }
       } catch {
         // Ignore a corrupt/absent draft — just start fresh.
@@ -377,7 +400,6 @@ export function ApplicantQuestionnaire({
       selectedInsights,
       selectedWorkPreferences,
       locationText,
-      currentQuestion,
     };
     AsyncStorage.setItem(APPLICANT_DRAFT_KEY, JSON.stringify(draft)).catch(
       () => {},
@@ -388,7 +410,6 @@ export function ApplicantQuestionnaire({
     selectedInsights,
     selectedWorkPreferences,
     locationText,
-    currentQuestion,
   ]);
 
   const createProfileMutation = useMutation({
@@ -407,6 +428,8 @@ export function ApplicantQuestionnaire({
         );
       }
       console.log("[ApplicantQuestionnaire] Starting registration...");
+      // Resume-first: register with auth-only data. The résumé classify + a
+      // final PATCH (handleFinalize) fill the profile fields afterward.
       return authApi.createProfile({
         userType: "applicant",
         firstName: applicantData.firstName || "",
@@ -414,155 +437,52 @@ export function ApplicantQuestionnaire({
         email: applicantData.email || "",
         password: applicantData.password || "",
         profileData: {
-          targetIndustry: answers[0],
-          currentRole: answers[1],
-          seekingPosition: answers[2],
-          skills: selectedSkills,
-          insights: selectedInsights,
-          workPreferences: selectedWorkPreferences,
-          resumeUrl: undefined, // Uploaded separately after account creation via API
+          targetIndustry: undefined,
+          currentRole: undefined,
+          seekingPosition: undefined,
+          skills: [],
+          insights: [],
+          workPreferences: [],
+          resumeUrl: undefined,
         },
       });
     },
     onSuccess: async (data) => {
       console.log("[ApplicantQuestionnaire] Registration successful:", data);
 
-      // Save auth tokens
+      // Save auth tokens so the subsequent authed calls (classify, PATCH,
+      // image upload) work.
       await setAuthTokens(data.access_token, data.refresh_token, "Applicant");
 
-      // Identify the new user for the rest of their session and stamp basic
-      // profile attributes onto Mixpanel's People record.
       identifyUser({
         userId: String(data.user_id),
         userType: "applicant",
         email: applicantData.email ?? null,
         firstName: applicantData.firstName ?? null,
         lastName: applicantData.lastName ?? null,
-        currentRole: answers[1] ?? null,
+        currentRole: answers["currentRole"] ?? null,
       });
       trackSignUpSucceeded("applicant");
-      trackOnboardingCompleted("applicant");
       // Show the first-run Home intro once on their first Home view.
       AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
-      // Link this backend user ID to their RevenueCat customer record.
       rcIdentifyUser(String(data.user_id));
 
-      // Load profile data into local store
+      // Seed the local store with the basics; the résumé classify + final PATCH
+      // populate the rest.
       await loadFromProfile({
         firstName: applicantData.firstName,
         lastName: applicantData.lastName,
         email: applicantData.email,
         profileData: {
-          targetIndustry: answers[0],
-          currentRole: answers[1],
-          seekingPosition: answers[2],
-          skills: selectedSkills,
-          insights: selectedInsights,
-          workPreferences: selectedWorkPreferences,
-          resumeUrl: undefined, // Uploaded separately
+          targetIndustry: undefined,
+          currentRole: undefined,
+          seekingPosition: undefined,
+          skills: [],
+          insights: [],
+          workPreferences: [],
+          resumeUrl: undefined,
         },
       });
-
-      // Clear onboarding data
-      clearOnboardingData();
-
-      // Show the "Profile Created" screen right away. It doubles as the loading
-      // beat while we read the resume, so the AI latency is masked behind a
-      // moment the user already expects.
-      setShowSuccess(true);
-
-      // Apply the photo + location captured during onboarding (both required
-      // gate fields). The photo upload endpoint needs auth, so it runs here
-      // after registration — the same deferral the resume uses. Best-effort and
-      // bounded: a failure/timeout must never trap the user; they can re-add in
-      // their profile. The subsequent fetchFromBackend pulls these into the
-      // local store so the swipe gate sees a complete profile.
-      try {
-        await withTimeout(
-          (async () => {
-            if (selectedPhotoUri) {
-              const photoForm = new FormData();
-              photoForm.append("image", {
-                uri: selectedPhotoUri,
-                name: "photo.jpg",
-                type: "image/jpeg",
-              } as any);
-              const { cdn_url } = await uploadProfileImage(photoForm);
-              if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
-            }
-            if (locationText.trim()) {
-              await updateGeneralProfile({ location: locationText.trim() });
-            }
-          })(),
-          RESUME_PROCESS_TIMEOUT_MS,
-        );
-      } catch (err) {
-        console.warn("[Questionnaire] Photo/location save failed:", err);
-      }
-
-      if (selectedFileAsset) {
-        // Parse + AI-classify the resume, then SHOW the user what we extracted
-        // (Phase 2) instead of filling their profile invisibly. Bounded by a
-        // timeout so a slow classify never traps them on the spinner.
-        const form = new FormData();
-        // Backend endpoint POST /api/upload-and-parse/ expects field name "file"
-        // (same as ProfileView's upload flow — NOT "resume")
-        form.append("file", {
-          uri: selectedFileAsset.uri,
-          name: selectedFileAsset.name,
-          type: selectedFileAsset.mimeType,
-        } as any);
-        trackResumeUploaded({
-          source: "questionnaire",
-          fileSizeBytes: selectedFileAsset.size,
-        });
-        try {
-          await withTimeout(
-            uploadAndParseResume(form)
-              .then(() => classifyResume())
-              .then(() => fetchFromBackend()),
-            RESUME_PROCESS_TIMEOUT_MS,
-          );
-
-          // Read the freshly classified profile from the store.
-          const data = useUserProfileStore.getState().data;
-          const experiences = (data.professional.experiences || []).filter(
-            (e) => e.jobTitle?.trim() || e.company?.trim(),
-          );
-          const education = (data.education.entries || []).filter(
-            (e) => e.degree?.trim() || e.university?.trim(),
-          );
-          const skills = data.skills || [];
-
-          if (experiences.length || education.length || skills.length) {
-            // Hand off to the review screen; onboarding finishes when the user
-            // confirms there (see handleReviewConfirm).
-            setReviewData({ experiences, education, skills });
-            setShowSuccess(false);
-            setShowReview(true);
-            setIsSubmitting(false);
-            return;
-          }
-          // Nothing usable came back (e.g. an image-only/unparseable resume) —
-          // just continue; they can add details in their profile.
-        } catch (err) {
-          console.warn("[Questionnaire] Resume processing failed:", err);
-          showToast(
-            "We couldn't read your resume automatically — you can add your details in your profile.",
-            "info",
-          );
-        }
-        completeOnboarding();
-      } else {
-        // No resume uploaded — still refresh so the photo/location we just
-        // saved land in the local store for the swipe gate, then continue.
-        try {
-          await fetchFromBackend();
-        } catch (err) {
-          console.warn("[Questionnaire] Post-signup profile refresh failed:", err);
-        }
-        completeOnboarding();
-      }
     },
     onError: (error: Error) => {
       console.warn("[ApplicantQuestionnaire] Registration failed:", error);
@@ -589,7 +509,7 @@ export function ApplicantQuestionnaire({
   });
 
   const filteredSkills = useMemo(() => {
-    const selectedIndustry = answers[0] || "Other";
+    const selectedIndustry = answers["industry"] || "Other";
     const industrySkills =
       SKILLS_BY_INDUSTRY[selectedIndustry] || SKILLS_BY_INDUSTRY.Other;
     return industrySkills
@@ -599,17 +519,132 @@ export function ApplicantQuestionnaire({
       .sort((a, b) => a.localeCompare(b));
   }, [searchQuery, answers]);
 
-  const handleFinalSubmit = async () => {
+  // Résumé step: register once (auth-only), then parse + AI-classify the résumé
+  // if one was provided, then advance. On success we set resumeFilled so the
+  // steps it covers (industry/role/skills) are skipped.
+  const handleResumeStep = async () => {
     setIsSubmitting(true);
-    // Trigger the mutation which calls the real API
-    createProfileMutation.mutate();
+    if (!registeredRef.current) {
+      try {
+        await createProfileMutation.mutateAsync();
+        registeredRef.current = true;
+      } catch {
+        // onError surfaced the message; stay on the résumé step so they can fix
+        // it (e.g. email already in use → go back and change it).
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    if (selectedFileAsset) {
+      setShowSuccess(true); // doubles as the "Building your profile…" beat
+      try {
+        const form = new FormData();
+        // POST /api/upload-and-parse/ expects field name "file".
+        form.append("file", {
+          uri: selectedFileAsset.uri,
+          name: selectedFileAsset.name,
+          type: selectedFileAsset.mimeType,
+        } as any);
+        trackResumeUploaded({
+          source: "questionnaire",
+          fileSizeBytes: selectedFileAsset.size,
+        });
+        await withTimeout(
+          uploadAndParseResume(form)
+            .then(() => classifyResume())
+            .then(() => fetchFromBackend()),
+          RESUME_PROCESS_TIMEOUT_MS,
+        );
+        setResumeFilled(true);
+      } catch (err) {
+        console.warn("[Questionnaire] Résumé processing failed:", err);
+        showToast(
+          "We couldn't read your résumé automatically — you can fill those details in yourself.",
+          "info",
+        );
+        // resumeFilled stays false → the manual industry/role/skills steps show.
+      } finally {
+        setShowSuccess(false);
+      }
+    }
+    setIsSubmitting(false);
+    setCurrentQuestion((q) => q + 1);
+  };
+
+  // Final step: persist everything collected after registration, then show the
+  // résumé review (if we classified one) or finish.
+  const handleFinalize = async () => {
+    setIsSubmitting(true);
+    setShowSuccess(true);
+    try {
+      await withTimeout(
+        (async () => {
+          const patch: Parameters<typeof updateApplicantProfile>[0] = {
+            positions: answers["seekingPosition"]
+              ? [answers["seekingPosition"]]
+              : [],
+            insights: selectedInsights,
+            work_preferences: selectedWorkPreferences,
+          };
+          // Industry/role/skills are filled by the résumé classify when present;
+          // only send them from the manual steps when there was no résumé.
+          if (!resumeFilled) {
+            if (answers["industry"]) patch.industry = answers["industry"];
+            if (answers["currentRole"])
+              patch.current_role = answers["currentRole"];
+            patch.skills = selectedSkills;
+          }
+          await updateApplicantProfile(patch);
+
+          if (selectedPhotoUri) {
+            const photoForm = new FormData();
+            photoForm.append("image", {
+              uri: selectedPhotoUri,
+              name: "photo.jpg",
+              type: "image/jpeg",
+            } as any);
+            const { cdn_url } = await uploadProfileImage(photoForm);
+            if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
+          }
+          if (locationText.trim()) {
+            await updateGeneralProfile({ location: locationText.trim() });
+          }
+          await fetchFromBackend();
+        })(),
+        RESUME_PROCESS_TIMEOUT_MS,
+      );
+    } catch (err) {
+      console.warn("[Questionnaire] Finalize failed:", err);
+    }
+
+    // Résumé users get the "here's what we found" review; others just finish.
+    if (resumeFilled) {
+      const data = useUserProfileStore.getState().data;
+      const experiences = (data.professional.experiences || []).filter(
+        (e) => e.jobTitle?.trim() || e.company?.trim(),
+      );
+      const education = (data.education.entries || []).filter(
+        (e) => e.degree?.trim() || e.university?.trim(),
+      );
+      const skills = data.skills || [];
+      if (experiences.length || education.length || skills.length) {
+        setReviewData({ experiences, education, skills });
+        setShowSuccess(false);
+        setShowReview(true);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    completeOnboarding();
   };
 
   const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+    if (question.type === "file") {
+      handleResumeStep();
+    } else if (isLastQuestion) {
+      handleFinalize();
     } else {
-      handleFinalSubmit();
+      setCurrentQuestion((q) => q + 1);
     }
   };
 
@@ -641,16 +676,27 @@ export function ApplicantQuestionnaire({
           size: asset.size || 0,
         });
         setSelectedFile(asset.name);
-        setAnswers({ ...answers, [currentQuestion]: asset.uri });
       }
     } catch (error) {
       console.warn(error);
     }
   };
 
-  const question = questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
-  const isLastQuestion = currentQuestion === questions.length - 1;
+  // The steps actually shown: once the résumé is classified, drop the ones it
+  // filled so the user only answers what's left.
+  const activeQuestions = useMemo(
+    () =>
+      resumeFilled
+        ? questions.filter((q) => !RESUME_FILLED_KEYS.includes(q.key))
+        : questions,
+    [resumeFilled],
+  );
+  // Guard the index against the list shrinking under us (e.g. resumeFilled flips).
+  const safeIndex = Math.min(currentQuestion, activeQuestions.length - 1);
+  const question = activeQuestions[safeIndex];
+  const progress = ((safeIndex + 1) / activeQuestions.length) * 100;
+  const isLastQuestion = safeIndex === activeQuestions.length - 1;
+  const isResumeScreen = question.type === "file";
 
   // UPDATED LOGIC: Allow 1-5 skills, require text input, and require 2-3 insights
   const isSkillsScreen = question.type === "skills";
@@ -659,10 +705,12 @@ export function ApplicantQuestionnaire({
   const isWorkPreferencesScreen = question.type === "workPreferences";
   const isPhotoScreen = question.type === "photo";
   const isLocationScreen = question.type === "location";
-  const canContinue = isSkillsScreen
+  const canContinue = isResumeScreen
+    ? true // Résumé is optional — can upload or skip
+    : isSkillsScreen
     ? selectedSkills.length > 0 && selectedSkills.length <= 5
     : isTextScreen
-      ? answers[currentQuestion]?.trim().length > 0
+      ? answers[question.key]?.trim().length > 0
       : isInsightsScreen
         ? // Lowered from 2 to 1 — writing multiple answers is the heaviest
           // step in signup; one is enough to add personality, more is optional.
@@ -694,8 +742,8 @@ export function ApplicantQuestionnaire({
             <ArrowLeft color="#000" size={24} />
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
-            {currentQuestion + 1} of {questions.length}
-            {currentQuestion === 0 ? " · about 2 min" : ""}
+            {safeIndex + 1} of {activeQuestions.length}
+            {safeIndex === 0 ? " · about 2 min" : ""}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -721,10 +769,15 @@ export function ApplicantQuestionnaire({
               >
                 <Text style={styles.questionText}>{question.question}</Text>
 
+                {(isResumeScreen || isPhotoScreen || isLocationScreen) &&
+                  question.subtitle && (
+                    <Text style={styles.stepSubtitle}>{question.subtitle}</Text>
+                  )}
+
                 {question.type === "select" && (
                   <View style={styles.optionsContainer}>
                     {question.options?.map((option) => {
-                      const isSelected = answers[currentQuestion] === option;
+                      const isSelected = answers[question.key] === option;
                       const isEnabled = option === "Technology";
                       return (
                         <TouchableOpacity
@@ -733,7 +786,7 @@ export function ApplicantQuestionnaire({
                             isEnabled &&
                             setAnswers({
                               ...answers,
-                              [currentQuestion]: option,
+                              [question.key]: option,
                             })
                           }
                           activeOpacity={isEnabled ? 0.7 : 1}
@@ -775,9 +828,9 @@ export function ApplicantQuestionnaire({
                     <TextInput
                       placeholder={question.placeholder}
                       placeholderTextColor="#BBB"
-                      value={answers[currentQuestion] || ""}
+                      value={answers[question.key] || ""}
                       onChangeText={(v) =>
-                        setAnswers({ ...answers, [currentQuestion]: v })
+                        setAnswers({ ...answers, [question.key]: v })
                       }
                       style={styles.textInput}
                       autoCapitalize="words"
@@ -1161,10 +1214,6 @@ export function ApplicantQuestionnaire({
                             onPress={() => {
                               setSelectedFileAsset(null);
                               setSelectedFile(null);
-                              setAnswers({
-                                ...answers,
-                                [currentQuestion]: undefined,
-                              });
                             }}
                             activeOpacity={0.7}
                           >
@@ -1210,7 +1259,11 @@ export function ApplicantQuestionnaire({
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
-                    {isLastQuestion ? "Complete Profile" : "Continue"}
+                    {isResumeScreen && !selectedFileAsset
+                      ? "Skip for now"
+                      : isLastQuestion
+                        ? "Complete Profile"
+                        : "Continue"}
                   </Text>
                   <ArrowRight color="#FFF" size={20} />
                 </>
@@ -1395,6 +1448,13 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     lineHeight: 38,
     marginBottom: 40,
+  },
+  stepSubtitle: {
+    fontSize: 16,
+    color: "#666",
+    lineHeight: 22,
+    marginTop: -28,
+    marginBottom: 32,
   },
   optionsContainer: { gap: 12 },
   optionCard: {
