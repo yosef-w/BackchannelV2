@@ -33,6 +33,7 @@ import {
     Linking,
     Modal,
     Platform,
+    SafeAreaView,
     ScrollView,
     StyleSheet,
     Switch,
@@ -87,10 +88,17 @@ import {
 import { logBreadcrumb, Sentry } from "../lib/sentry";
 import { validateProfileField } from "../lib/validation";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
+import {
+  APPLICANT_PROMPT_CATEGORIES,
+  APPLICANT_PROMPT_EXAMPLES,
+  SPONSOR_PROMPT_CATEGORIES,
+  SPONSOR_PROMPT_EXAMPLES,
+} from "../constants/prompts";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
 import { CharCounter } from "./ui/CharCounter";
 import { ExpandableText } from "./ui/ExpandableText";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
+import { PromptsIntake } from "./ui/PromptsIntake";
 
 interface ProfileViewProps {
   userType: "applicant" | "sponsor";
@@ -140,24 +148,6 @@ interface ProfileInsight {
 // in-app text and the App Store-listed policy URLs never drift apart.
 const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
-
-const AVAILABLE_QUESTIONS = [
-  "MY SECRET SUPERPOWER",
-  "I'M BEST KNOWN FOR",
-  "IF I WASN'T IN TECH",
-  "MY FAVORITE BRAINSTORMING FUEL",
-  "WHAT I LOOK FOR IN TALENT",
-  "ONE THING THAT SURPRISED ME",
-  "THE PROJECT I'M MOST PROUD OF",
-  "MY DESIGN PHILOSOPHY",
-  "MY MENTORSHIP STYLE",
-  "WHY I SPONSOR",
-  "WHAT ENERGIZES ME",
-  "MY UNPOPULAR OPINION",
-  "THE BEST ADVICE I'VE RECEIVED",
-  "HOW I RECHARGE",
-  "WHAT I'M LEARNING RIGHT NOW",
-];
 
 export function ProfileView({ userType }: ProfileViewProps) {
   const router = useRouter();
@@ -982,60 +972,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
-  const handleAddInsight = async (question: string, answer: string) => {
+  // Single source of truth for the prompts editor — PromptsIntake hands back
+  // the full array; we persist it (locally + backend, role-specific). Optimistic
+  // local update; revert on failure.
+  const handleInsightsChange = async (next: ProfileInsight[]) => {
+    const prev = profileInsights;
+    setProfileInsights(next);
     try {
-      if (profileInsights.length >= 3) {
-        showToast("You can add a maximum of 3 profile insights.", "info");
-        return;
-      }
-      const newInsights = [...profileInsights, { question, answer }];
-      setProfileInsights(newInsights);
-      await updateInsights(newInsights);
-      // API call to sync with backend - role specific
+      await updateInsights(next);
       if (userType === "applicant") {
-        await updateApplicantProfile({ insights: newInsights });
+        await updateApplicantProfile({ insights: next });
       } else {
-        await updateSponsorProfile({ insights: newInsights });
+        await updateSponsorProfile({ insights: next });
       }
     } catch (error) {
-      console.warn("Failed to add insight:", error);
-      showToast("Failed to save insight. Please try again.", "error");
-    }
-  };
-
-  const handleRemoveInsight = async (index: number) => {
-    try {
-      const updatedInsights = profileInsights.filter((_, i) => i !== index);
-      setProfileInsights(updatedInsights);
-      await updateInsights(updatedInsights);
-      // API call to sync with backend - role specific
-      if (userType === "applicant") {
-        await updateApplicantProfile({ insights: updatedInsights });
-      } else {
-        await updateSponsorProfile({ insights: updatedInsights });
-      }
-    } catch (error) {
-      console.warn("Failed to remove insight:", error);
-      showToast("Failed to remove insight. Please try again.", "error");
-    }
-  };
-
-  const handleUpdateInsight = async (index: number, answer: string) => {
-    try {
-      const updated = profileInsights.map((insight, i) =>
-        i === index ? { ...insight, answer } : insight,
-      );
-      setProfileInsights(updated);
-      await updateInsights(updated);
-      // API call to sync with backend - role specific
-      if (userType === "applicant") {
-        await updateApplicantProfile({ insights: updated });
-      } else {
-        await updateSponsorProfile({ insights: updated });
-      }
-    } catch (error) {
-      console.warn("Failed to update insight:", error);
-      showToast("Failed to save insight. Please try again.", "error");
+      console.warn("Failed to save insights:", error);
+      setProfileInsights(prev);
+      showToast("Failed to save. Please try again.", "error");
     }
   };
 
@@ -3846,9 +3799,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         visible={showEditInsights}
         onClose={() => setShowEditInsights(false)}
         insights={profileInsights}
-        onAddInsight={handleAddInsight}
-        onRemoveInsight={handleRemoveInsight}
-        onUpdateInsight={handleUpdateInsight}
+        onChange={handleInsightsChange}
+        userType={userType}
       />
 
       {/* EDIT RESUME MODAL */}
@@ -4503,235 +4455,52 @@ function EditInsightsModal({
   visible,
   onClose,
   insights,
-  onAddInsight,
-  onRemoveInsight,
-  onUpdateInsight,
+  onChange,
+  userType,
 }: {
   visible: boolean;
   onClose: () => void;
   insights: ProfileInsight[];
-  onAddInsight: (question: string, answer: string) => void;
-  onRemoveInsight: (index: number) => void;
-  onUpdateInsight: (index: number, answer: string) => void;
+  onChange: (next: ProfileInsight[]) => void;
+  userType: "applicant" | "sponsor";
 }) {
-  const [showQuestionPicker, setShowQuestionPicker] = useState(false);
-  const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(
-    null,
-  );
-  const [newAnswer, setNewAnswer] = useState("");
-  const [selectedQuestion, setSelectedQuestion] = useState("");
-
-  const handleSelectQuestion = (question: string) => {
-    setSelectedQuestion(question);
-    setShowQuestionPicker(false);
-    setNewAnswer("");
-  };
-
-  const handleSaveNew = () => {
-    if (selectedQuestion && newAnswer.trim()) {
-      onAddInsight(selectedQuestion, newAnswer.trim());
-      setSelectedQuestion("");
-      setNewAnswer("");
-    }
-  };
-
-  const handleUpdateExisting = (index: number) => {
-    if (newAnswer.trim()) {
-      onUpdateInsight(index, newAnswer.trim());
-      setEditingInsightIndex(null);
-      setNewAnswer("");
-    }
-  };
-
-  const usedQuestions = insights.map((i) => i.question);
-  const availableQuestions = AVAILABLE_QUESTIONS.filter(
-    (q) => !usedQuestions.includes(q),
-  );
+  const categories =
+    userType === "applicant"
+      ? APPLICANT_PROMPT_CATEGORIES
+      : SPONSOR_PROMPT_CATEGORIES;
+  const examples =
+    userType === "applicant"
+      ? APPLICANT_PROMPT_EXAMPLES
+      : SPONSOR_PROMPT_EXAMPLES;
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.modalOverlay}
-      >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={onClose}
-        >
-          <BlurView
-            intensity={60}
-            style={StyleSheet.absoluteFill}
-            tint="dark"
-          />
-        </TouchableOpacity>
-
-        <Animated.View
-          entering={SlideInDown}
-          exiting={SlideOutDown}
-          style={styles.modalContent}
-          pointerEvents="auto"
-        >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Profile Insights</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X color="#000" size={24} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.modalSubtitle}>
-            Add up to 3 fun facts or prompts to showcase your personality
-          </Text>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={styles.modalScroll}
-            keyboardShouldPersistTaps="always"
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={styles.insightsEditorSafe}>
+        <View style={styles.insightsEditorHeader}>
+          <Text style={styles.modalTitle}>Profile Prompts</Text>
+          <TouchableOpacity
+            onPress={onClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            {/* Existing Insights */}
-            {insights.map((insight, index) => (
-              <View key={index} style={styles.insightCard}>
-                {/* Vertical black accent stripe — mirrors the "in their own
-                    words" insight cards on the applicant/sponsor feed. */}
-                <View style={styles.insightAccent} />
-                <View style={styles.insightBody}>
-                  <View style={styles.insightCardHeader}>
-                    <Text style={styles.insightQuestion}>
-                      {insight.question}
-                    </Text>
-                    <TouchableOpacity onPress={() => onRemoveInsight(index)}>
-                      <Trash2 color="#DC2626" size={18} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {editingInsightIndex === index ? (
-                    <View>
-                      <TextInput
-                        style={styles.insightInput}
-                        value={newAnswer}
-                        autoCapitalize="sentences"
-                        onChangeText={setNewAnswer}
-                        placeholder="Your answer..."
-                        multiline
-                        numberOfLines={3}
-                        autoFocus
-                      />
-                      <View style={styles.insightActions}>
-                        <TouchableOpacity
-                          style={styles.cancelBtn}
-                          onPress={() => {
-                            setEditingInsightIndex(null);
-                            setNewAnswer("");
-                          }}
-                        >
-                          <Text style={styles.cancelBtnText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.saveInsightBtn}
-                          onPress={() => handleUpdateExisting(index)}
-                        >
-                          <Text style={styles.saveInsightBtnText}>Save</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setEditingInsightIndex(index);
-                        setNewAnswer(insight.answer);
-                      }}
-                    >
-                      {/* Decorative opening quote + indented answer — the
-                          "in their own words" treatment from the feed. */}
-                      <View style={styles.insightAnswerRow}>
-                        <Text style={styles.insightQuoteMark}>“</Text>
-                        <Text style={styles.insightAnswer}>
-                          {insight.answer}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            ))}
-
-            {/* Add New Insight */}
-            {insights.length < 3 && (
-              <View style={styles.addInsightSection}>
-                {!selectedQuestion ? (
-                  <TouchableOpacity
-                    style={styles.selectQuestionBtn}
-                    onPress={() => setShowQuestionPicker(!showQuestionPicker)}
-                  >
-                    <Plus color="#000" size={20} />
-                    <Text style={styles.selectQuestionText}>
-                      Select a Question
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.newInsightCard}>
-                    <View style={styles.insightAccent} />
-                    <View style={styles.insightBody}>
-                      <View style={styles.insightCardHeader}>
-                        <Text style={styles.insightQuestion}>
-                          {selectedQuestion}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setSelectedQuestion("");
-                            setNewAnswer("");
-                          }}
-                        >
-                          <X color="#666" size={18} />
-                        </TouchableOpacity>
-                      </View>
-                      <TextInput
-                        style={styles.insightInput}
-                        value={newAnswer}
-                        autoCapitalize="sentences"
-                        onChangeText={setNewAnswer}
-                        placeholder="Your answer..."
-                        multiline
-                        numberOfLines={3}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={[
-                          styles.saveInsightBtn,
-                          { alignSelf: "flex-end", marginTop: 12 },
-                        ]}
-                        onPress={handleSaveNew}
-                      >
-                        <Text style={styles.saveInsightBtnText}>
-                          Add Insight
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* Question Picker */}
-                {showQuestionPicker && (
-                  <View style={styles.questionPicker}>
-                    {availableQuestions.map((question) => (
-                      <TouchableOpacity
-                        key={question}
-                        style={styles.questionOption}
-                        onPress={() => handleSelectQuestion(question)}
-                      >
-                        <Text style={styles.questionOptionText}>
-                          {question}
-                        </Text>
-                        <ChevronRight color="#666" size={18} />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
-          </ScrollView>
-        </Animated.View>
-      </KeyboardAvoidingView>
+            <X color="#000" size={24} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView
+          contentContainerStyle={styles.insightsEditorScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <PromptsIntake
+            value={insights}
+            onChange={onChange}
+            categories={categories}
+            examples={examples}
+            min={2}
+            max={3}
+            subtitle="Pick prompts that show your personality — edit or swap anytime."
+          />
+        </ScrollView>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -5091,6 +4860,22 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
     color: "#000",
+  },
+  insightsEditorSafe: { flex: 1, backgroundColor: "#FFF" },
+  insightsEditorHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  insightsEditorScroll: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 48,
   },
   modalSubtitle: {
     fontSize: 14,
