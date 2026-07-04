@@ -234,6 +234,9 @@ export function ApplicantQuestionnaire({
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  // Distinguishes the two loading beats behind the success overlay: the résumé
+  // parse (after step 1) vs. the final save (last step).
+  const [finalizing, setFinalizing] = useState(false);
   // Phase 2 — resume review. After the resume is parsed + AI-classified we show
   // the user what we extracted (a confirmation moment) instead of filling the
   // profile invisibly. Null until we have something worth reviewing.
@@ -546,6 +549,7 @@ export function ApplicantQuestionnaire({
       }
     }
     if (selectedFileAsset) {
+      setFinalizing(false); // this beat is the résumé parse, not the final save
       setShowSuccess(true); // doubles as the "Building your profile…" beat
       try {
         const form = new FormData();
@@ -585,6 +589,7 @@ export function ApplicantQuestionnaire({
   // résumé review (if we classified one) or finish.
   const handleFinalize = async () => {
     setIsSubmitting(true);
+    setFinalizing(true);
     setShowSuccess(true);
     try {
       await withTimeout(
@@ -1297,24 +1302,22 @@ export function ApplicantQuestionnaire({
                 entering={FadeInDown.delay(400)}
                 style={styles.successTitle}
               >
-                {selectedFileAsset ? "Creating your profile" : "Profile created"}
+                {finalizing ? "Finishing up" : "Creating your profile"}
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.delay(600)}
                 style={styles.successSub}
               >
-                {selectedFileAsset
-                  ? "We're using your résumé to set things up — this'll just take a moment."
-                  : "Welcome to BackChannel"}
+                {finalizing
+                  ? "Putting the finishing touches on your profile…"
+                  : "We're using your résumé to set things up — this'll just take a moment."}
               </Animated.Text>
-              {selectedFileAsset && (
-                <Animated.View
-                  entering={FadeIn.delay(800)}
-                  style={styles.successSpinner}
-                >
-                  <ActivityIndicator color="#000" />
-                </Animated.View>
-              )}
+              <Animated.View
+                entering={FadeIn.delay(800)}
+                style={styles.successSpinner}
+              >
+                <ActivityIndicator color="#000" />
+              </Animated.View>
             </View>
           </BlurView>
         </Animated.View>
