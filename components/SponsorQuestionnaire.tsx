@@ -92,6 +92,27 @@ const AVAILABLE_QUESTIONS = [
   "MY LEADERSHIP PHILOSOPHY",
 ];
 
+// Per-prompt example answers, shown as the input placeholder so the box is
+// never blank — a concrete starting point cuts the "what do I write?" friction.
+// (Examples, not pre-filled text, so nobody submits the sample.)
+const INSIGHT_EXAMPLES: Record<string, string> = {
+  "MY SECRET SUPERPOWER": "e.g., Spotting talent others overlook",
+  "I'M BEST KNOWN FOR": "e.g., Opening doors for people early in their careers",
+  "IF I WASN'T IN TECH": "e.g., I'd be coaching a college debate team",
+  "MY FAVORITE BRAINSTORMING FUEL": "e.g., A long walk and a good question",
+  "WHAT I LOOK FOR IN TALENT": "e.g., Curiosity and follow-through over pedigree",
+  "ONE THING THAT SURPRISED ME": "e.g., The best hires rarely look best on paper",
+  "THE PROJECT I'M MOST PROUD OF": "e.g., Mentored 5 juniors into senior roles",
+  "MY MENTORSHIP STYLE": "e.g., Ask more than I tell, then get out of the way",
+  "WHY I SPONSOR": "e.g., Someone took a chance on me — paying it forward",
+  "WHAT ENERGIZES ME": "e.g., Watching someone level up faster than they expected",
+  "MY UNPOPULAR OPINION": "e.g., Culture fit is overrated; culture add isn't",
+  "THE BEST ADVICE I'VE RECEIVED": "e.g., Hire for slope, not intercept",
+  "HOW I RECHARGE": "e.g., Weekends fully offline with family",
+  "WHAT I'M LEARNING RIGHT NOW": "e.g., How to give feedback that actually lands",
+  "MY LEADERSHIP PHILOSOPHY": "e.g., Set the bar, then clear the obstacles",
+};
+
 const questions = [
   {
     id: 1,
@@ -133,7 +154,7 @@ const questions = [
     id: 7,
     question: "Share your professional personality",
     type: "insights",
-    subtitle: "Pick 2-3 questions to help candidates know what you're about",
+    subtitle: "Answer at least one — add up to 3 to help candidates know you",
   },
   {
     id: 8,
@@ -432,7 +453,8 @@ export function SponsorQuestionnaire({
   const isPhotoScreen = question.type === "photo";
   const isBioScreen = question.type === "bio";
   const canContinue = isInsightsScreen
-    ? selectedInsights.length >= 2 &&
+    ? // One prompt is enough — writing several is the heaviest signup step.
+      selectedInsights.length >= 1 &&
       selectedInsights.length <= 3 &&
       selectedInsights.every((i) => i.answer.trim().length > 0)
     : isPhotoScreen
@@ -521,7 +543,10 @@ export function SponsorQuestionnaire({
                       </View>
 
                       <TextInput
-                        placeholder="Share your answer..."
+                        placeholder={
+                          INSIGHT_EXAMPLES[insight.question] ||
+                          "Share your answer..."
+                        }
                         placeholderTextColor="#BBB"
                         value={insight.answer}
                         onFocus={() => {

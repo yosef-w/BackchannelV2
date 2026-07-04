@@ -106,6 +106,27 @@ const AVAILABLE_QUESTIONS = [
   "WHY I CHOSE THIS CAREER",
 ];
 
+// Per-prompt example answers, shown as the input placeholder so the box is
+// never blank — a concrete starting point cuts the "what do I write?" friction.
+// (These are examples, not pre-filled text, so nobody submits the sample.)
+const INSIGHT_EXAMPLES: Record<string, string> = {
+  "MY SECRET SUPERPOWER": "e.g., Turning fuzzy ideas into a shippable plan",
+  "I'M BEST KNOWN FOR": "e.g., Being the calm one when a launch is on fire",
+  "IF I WASN'T IN TECH": "e.g., I'd be running a small coffee roastery",
+  "MY FAVORITE BRAINSTORMING FUEL": "e.g., A whiteboard and way too much coffee",
+  "WHAT I LOOK FOR IN A TEAM": "e.g., People who disagree kindly and ship fast",
+  "ONE THING THAT SURPRISED ME": "e.g., How much of the job is good writing",
+  "THE PROJECT I'M MOST PROUD OF": "e.g., Rebuilt onboarding, cut drop-off 40%",
+  "MY DESIGN PHILOSOPHY": "e.g., Make the right thing the easy thing",
+  "WHAT ENERGIZES ME": "e.g., Untangling a messy problem into something simple",
+  "MY UNPOPULAR OPINION": "e.g., Most meetings should have been a doc",
+  "THE BEST ADVICE I'VE RECEIVED": "e.g., Strong opinions, loosely held",
+  "HOW I RECHARGE": "e.g., A long trail run with no podcast",
+  "WHAT I'M LEARNING RIGHT NOW": "e.g., Getting fluent with Rust on weekends",
+  "MY WORK STYLE": "e.g., Deep-focus mornings, collaborative afternoons",
+  "WHY I CHOSE THIS CAREER": "e.g., I like building things people actually use",
+};
+
 interface ApplicantQuestionnaireProps {
   onComplete: () => void;
   onBack: () => void;
@@ -148,7 +169,7 @@ const questions = [
     id: 5,
     question: "Add personality to your profile",
     type: "insights",
-    subtitle: "Pick 2-3 questions and share what makes you unique",
+    subtitle: "Answer at least one prompt — add up to 3 if you're inspired",
   },
   {
     id: 6,
@@ -554,7 +575,9 @@ export function ApplicantQuestionnaire({
     : isTextScreen
       ? answers[currentQuestion]?.trim().length > 0
       : isInsightsScreen
-        ? selectedInsights.length >= 2 &&
+        ? // Lowered from 2 to 1 — writing multiple answers is the heaviest
+          // step in signup; one is enough to add personality, more is optional.
+          selectedInsights.length >= 1 &&
           selectedInsights.length <= 3 &&
           selectedInsights.every((i) => i.answer.trim().length > 0)
         : isWorkPreferencesScreen
@@ -759,7 +782,10 @@ export function ApplicantQuestionnaire({
                         </View>
 
                         <TextInput
-                          placeholder="Share your answer..."
+                          placeholder={
+                            INSIGHT_EXAMPLES[insight.question] ||
+                            "Share your answer..."
+                          }
                           placeholderTextColor="#BBB"
                           value={insight.answer}
                           onFocus={() => {
