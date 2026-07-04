@@ -22,7 +22,6 @@ import {
     Trash2,
     Upload,
     X,
-    Zap,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -2720,35 +2719,75 @@ export function ProfileView({ userType }: ProfileViewProps) {
       {/* Resume Upload Section — Applicant Only */}
       {userType === "applicant" && (
         <View style={styles.resumeSection}>
-          {/* Header */}
-          <View style={styles.resumeSectionHeader}>
-            <View style={styles.resumeHeaderLeft}>
-              <FileText size={20} color="#000" strokeWidth={2} />
-              <Text style={styles.resumeSectionTitle}>Resume</Text>
-            </View>
-            <View style={styles.aiBadge}>
-              <Zap size={12} color="#FFF" fill="#FFF" />
-              <Text style={styles.aiBadgeText}>AI</Text>
-            </View>
-          </View>
+          <Text style={styles.resumeSectionLabel}>RÉSUMÉ</Text>
 
-          <Text style={styles.resumeSectionSubtitle}>
-            Upload your resume and AI will auto-fill your profile
-          </Text>
-
-          {/* Idle state — upload button */}
-          {resumeUploadStep === "idle" && (
-            <TouchableOpacity
-              style={styles.resumeUploadBtn}
-              onPress={handleResumeUpload}
-              activeOpacity={0.75}
-            >
-              <Upload size={18} color="#FFF" strokeWidth={2} />
-              <Text style={styles.resumeUploadBtnText}>
-                {resumeLastUpdated ? "Re-upload Resume" : "Upload Resume"}
-              </Text>
-            </TouchableOpacity>
-          )}
+          {/* Idle — document card (on file) or dropzone (none) */}
+          {resumeUploadStep === "idle" &&
+            (resumeLastUpdated ? (
+              <>
+                <View style={styles.docCard}>
+                  <View style={styles.docGlyph}>
+                    <FileText size={22} color="#000" strokeWidth={1.75} />
+                  </View>
+                  <View style={styles.docInfo}>
+                    <Text style={styles.docTitle}>Your résumé</Text>
+                    <Text style={styles.docMeta}>
+                      Updated {formatRelativeTime(resumeLastUpdated)}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.docCaption}>
+                  AI keeps your profile in sync with your résumé.
+                </Text>
+                <View style={styles.docActions}>
+                  <TouchableOpacity
+                    style={styles.docReplaceBtn}
+                    onPress={handleResumeUpload}
+                    activeOpacity={0.75}
+                  >
+                    <Upload size={15} color="#000" strokeWidth={2} />
+                    <Text style={styles.docReplaceText}>Replace</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.docEditLink}
+                    onPress={() => {
+                      trackProfileEditOpened({ section: "resume" });
+                      setShowEditResume(true);
+                    }}
+                  >
+                    <Text style={styles.docEditText}>Edit details</Text>
+                    <ChevronRight size={14} color="#BBB" />
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.dropzone}
+                  onPress={handleResumeUpload}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.dropzoneIcon}>
+                    <Upload size={24} color="#000" strokeWidth={2} />
+                  </View>
+                  <Text style={styles.dropzoneTitle}>Upload your résumé</Text>
+                  <Text style={styles.dropzoneSub}>
+                    AI auto-fills your profile · PDF
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.docManualLink}
+                  onPress={() => {
+                    trackProfileEditOpened({ section: "resume" });
+                    setShowEditResume(true);
+                  }}
+                >
+                  <Text style={styles.docEditText}>
+                    Or enter details manually
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ))}
 
           {/* Uploading state */}
           {resumeUploadStep === "uploading" && (
@@ -2856,9 +2895,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
           {/* Error state */}
           {resumeUploadStep === "error" && (
             <View style={styles.resumeErrorCard}>
-              <AlertCircle size={18} color="#DC2626" strokeWidth={2} />
+              <AlertCircle size={18} color="#000" strokeWidth={2} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.resumeErrorTitle}>Upload Failed</Text>
+                <Text style={styles.resumeErrorTitle}>Upload failed</Text>
                 <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
               </View>
               <TouchableOpacity
@@ -2869,22 +2908,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
               </TouchableOpacity>
             </View>
           )}
-
-          {/* Divider + manual edit link */}
-          <View style={styles.resumeDivider} />
-          <TouchableOpacity
-            style={styles.resumeManualLink}
-            onPress={() => {
-              trackProfileEditOpened({ section: "resume" });
-              setShowEditResume(true);
-            }}
-          >
-            <Edit size={14} color="#666" strokeWidth={2} />
-            <Text style={styles.resumeManualLinkText}>
-              Edit resume details manually
-            </Text>
-            <ChevronRight size={14} color="#BBB" />
-          </TouchableOpacity>
         </View>
       )}
 
@@ -6076,6 +6099,91 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F0F0F0",
   },
+  // ── Résumé — document card (Route A) ─────────────────────────────────────
+  resumeSectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1,
+    marginBottom: 14,
+  },
+  docCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    padding: 16,
+  },
+  docGlyph: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  docInfo: { flex: 1, gap: 3 },
+  docTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
+  docMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  docCaption: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 18,
+    marginTop: 12,
+  },
+  docActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 14,
+  },
+  docReplaceBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#000",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  docReplaceText: { fontSize: 14, fontWeight: "700", color: "#000" },
+  docEditLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginLeft: "auto",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  docEditText: { fontSize: 14, fontWeight: "600", color: "#666" },
+  docManualLink: { alignSelf: "center", marginTop: 16, paddingVertical: 6 },
+  dropzone: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#DDD",
+    borderRadius: 18,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FAFAFA",
+  },
+  dropzoneIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  dropzoneTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
+  dropzoneSub: { fontSize: 13, color: "#999", marginTop: 6 },
   resumeSectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -6248,16 +6356,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "#F9F9F9",
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: "#E5E5E5",
     borderRadius: 14,
     padding: 14,
   },
   resumeErrorTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#DC2626",
+    color: "#000",
     marginBottom: 2,
   },
   resumeErrorSub: {
@@ -6266,7 +6374,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   resumeRetryBtn: {
-    backgroundColor: "#DC2626",
+    backgroundColor: "#000",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
