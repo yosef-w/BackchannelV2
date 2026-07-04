@@ -419,6 +419,32 @@ export function SponsorQuestionnaire({
     }
   };
 
+  // Capture a photo with the camera (alternative to the library).
+  const handleTakePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      showToast(
+        "Camera access is off — enable it in Settings to take a photo.",
+        "info",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedPhotoUri(result.assets[0].uri);
+    }
+  };
+
+  // Initials for the photo-step placeholder — a friendlier default than an icon.
+  const initials =
+    `${sponsorData.firstName?.[0] ?? ""}${sponsorData.lastName?.[0] ?? ""}`
+      .toUpperCase()
+      .trim();
+
   const handleNext = () => {
     // Validate the work-email step before advancing. Blank is allowed (they
     // can verify later via the in-app gate), but a typed value must be a real
@@ -481,6 +507,7 @@ export function SponsorQuestionnaire({
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
             {currentQuestion + 1} of {questions.length}
+            {currentQuestion === 0 ? " · about 2 min" : ""}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -671,18 +698,28 @@ export function SponsorQuestionnaire({
                         source={{ uri: selectedPhotoUri }}
                         style={styles.photoImage}
                       />
+                    ) : initials ? (
+                      <Text style={styles.photoInitials}>{initials}</Text>
                     ) : (
                       <Camera color="#BBB" size={40} />
                     )}
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handlePickPhoto}
-                    style={styles.photoPickBtn}
-                  >
-                    <Text style={styles.photoPickText}>
-                      {selectedPhotoUri ? "Change photo" : "Choose a photo"}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.photoBtnRow}>
+                    <TouchableOpacity
+                      onPress={handlePickPhoto}
+                      style={styles.photoPickBtn}
+                    >
+                      <Text style={styles.photoPickText}>
+                        {selectedPhotoUri ? "Change photo" : "Choose photo"}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleTakePhoto}
+                      style={styles.photoPickBtn}
+                    >
+                      <Text style={styles.photoPickText}>Take photo</Text>
+                    </TouchableOpacity>
+                  </View>
                   {!selectedPhotoUri && (
                     <TouchableOpacity
                       onPress={handleNext}
@@ -1047,7 +1084,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   photoImage: { width: "100%", height: "100%" },
-  photoPickBtn: { marginTop: 20, paddingVertical: 8, paddingHorizontal: 16 },
+  photoInitials: { fontSize: 52, fontWeight: "800", color: "#999" },
+  photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
+  photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
   photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
   photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
