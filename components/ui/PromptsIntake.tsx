@@ -8,8 +8,7 @@
 // Pure UI over the existing insights data shape (`{ question, answer }[]`), so
 // it drops into both signup questionnaires with no data-model change.
 
-import { BlurView } from "expo-blur";
-import { ChevronRight, Pencil, Plus, Search, Sparkles, X } from "lucide-react-native";
+import { ChevronRight, Pencil, Plus, Search, X } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -23,7 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import type { PromptCategory } from "../../constants/prompts";
 
 export interface PromptAnswer {
@@ -143,33 +142,33 @@ export function PromptsIntake({
 
       {/* Answered prompts */}
       {value.map((item, index) => (
-        <Animated.View
-          key={`${item.question}-${index}`}
-          entering={ZoomIn.springify().damping(16).stiffness(180)}
-          style={styles.filledCard}
-        >
+        <View key={`${item.question}-${index}`} style={styles.filledCard}>
+          <View style={styles.filledHeader}>
+            <View style={styles.promptBadge}>
+              <Text style={styles.promptBadgeText}>{item.question}</Text>
+            </View>
+            <View style={styles.filledActions}>
+              <TouchableOpacity
+                onPress={() => openEditorForExisting(index)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Pencil size={16} color="#999" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => removeAt(index)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={16} color="#999" />
+              </TouchableOpacity>
+            </View>
+          </View>
           <TouchableOpacity
-            style={styles.filledBody}
             activeOpacity={0.7}
             onPress={() => openEditorForExisting(index)}
           >
-            <View style={styles.filledHeader}>
-              <View style={styles.promptBadge}>
-                <Sparkles size={12} color="#000" />
-                <Text style={styles.promptBadgeText}>{item.question}</Text>
-              </View>
-              <Pencil size={15} color="#999" />
-            </View>
             <Text style={styles.filledAnswer}>{item.answer}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.removeBtn}
-            onPress={() => removeAt(index)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <X size={16} color="#999" />
-          </TouchableOpacity>
-        </Animated.View>
+        </View>
       ))}
 
       {/* Empty slots up to the minimum */}
@@ -271,40 +270,37 @@ export function PromptsIntake({
       <Modal
         visible={editorPrompt !== null}
         animationType="slide"
-        transparent
         onRequestClose={closeEditor}
         statusBarTranslucent
       >
-        <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill}>
-          <SafeAreaView style={styles.editorSafe}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
-              style={styles.editorFlex}
-            >
-              <View style={styles.editorHeader}>
-                <TouchableOpacity
-                  onPress={closeEditor}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <X size={24} color="#000" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                contentContainerStyle={styles.editorScroll}
-                keyboardShouldPersistTaps="handled"
+        <SafeAreaView style={styles.editorSafe}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={styles.editorFlex}
+          >
+            <View style={styles.editorHeader}>
+              <TouchableOpacity
+                onPress={closeEditor}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Animated.View entering={FadeInDown.duration(350)}>
-                  <View style={styles.editorBadge}>
-                    <Sparkles size={13} color="#000" />
-                    <Text style={styles.editorBadgeText}>{editorPrompt}</Text>
-                  </View>
+                <X size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={styles.editorScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Animated.View entering={FadeInDown.duration(350)}>
+                <View style={styles.editorBadge}>
+                  <Text style={styles.editorBadgeText}>{editorPrompt}</Text>
+                </View>
                   <TextInput
                     placeholder={
                       (editorPrompt && examples[editorPrompt]) ||
                       "Share your answer…"
                     }
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor="#A3A3A3"
                     value={draft}
                     onChangeText={setDraft}
                     style={styles.editorInput}
@@ -342,9 +338,8 @@ export function PromptsIntake({
                   <Text style={styles.saveBtnText}>Save answer</Text>
                 </TouchableOpacity>
               </Animated.View>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-        </BlurView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
     </View>
   );
@@ -367,7 +362,6 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 14,
   },
-  filledBody: { paddingRight: 24 },
   filledHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -375,9 +369,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   promptBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
     backgroundColor: "#FFF",
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -391,10 +382,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#000",
     letterSpacing: 0.5,
-    flexShrink: 1,
+  },
+  filledActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 18,
+    paddingLeft: 12,
   },
   filledAnswer: { fontSize: 16, color: "#000", lineHeight: 22, fontWeight: "500" },
-  removeBtn: { position: "absolute", top: 14, right: 14, padding: 2 },
 
   // Empty slot
   emptySlot: {
@@ -459,7 +454,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     marginBottom: 8,
   },
-  searchInput: { flex: 1, fontSize: 16, color: "#000", fontWeight: "500" },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#000",
+    fontWeight: "500",
+    // Kill the platform's default vertical padding so the text/placeholder sits
+    // centered in the field instead of dropping low / getting clipped.
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: "center",
+  },
   sheetScroll: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 40 },
   category: { marginBottom: 24 },
   categoryTitle: {
@@ -487,7 +492,7 @@ const styles = StyleSheet.create({
   noResults: { fontSize: 15, color: "#999", textAlign: "center", marginTop: 24 },
 
   // Answer editor
-  editorSafe: { flex: 1 },
+  editorSafe: { flex: 1, backgroundColor: "#FFF" },
   editorFlex: { flex: 1 },
   editorHeader: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 },
   editorScroll: { paddingHorizontal: 28, paddingTop: 12 },
