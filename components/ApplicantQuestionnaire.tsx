@@ -1297,14 +1297,14 @@ export function ApplicantQuestionnaire({
                 entering={FadeInDown.delay(400)}
                 style={styles.successTitle}
               >
-                Profile Created
+                {selectedFileAsset ? "Creating your profile" : "Profile created"}
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.delay(600)}
                 style={styles.successSub}
               >
                 {selectedFileAsset
-                  ? "Building your profile from your resume…"
+                  ? "We're using your résumé to set things up — this'll just take a moment."
                   : "Welcome to BackChannel"}
               </Animated.Text>
               {selectedFileAsset && (
