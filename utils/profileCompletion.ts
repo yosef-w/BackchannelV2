@@ -11,7 +11,20 @@ export interface ProfileCompletenessResult {
 }
 
 /**
- * Check if user profile has all required fields for autofill
+ * Check whether an applicant's profile has the fields required to swipe.
+ *
+ * The required set is deliberately limited to fields the app actually USES —
+ * either as a matching signal (scoring.py: skills, role, experience, location)
+ * or on the sponsor-facing card (name, photo, bio, experience, education,
+ * skills, location). Fields the product never reads — phone, street/ZIP/country
+ * (only city is used), portfolio, DOB — are intentionally NOT gated, so users
+ * aren't forced to hand-type data that does nothing. (See the onboarding rework
+ * notes — Phase 1.)
+ *
+ * `isComplete` is true only when EVERY required field is present (not a
+ * percentage threshold), so photo and bio are genuinely mandatory rather than
+ * skippable-if-you-fill-enough-else. `percentage` is retained purely to drive
+ * the progress UI.
  */
 export function checkProfileCompleteness(
   data: AutofillData,
@@ -24,28 +37,22 @@ export function checkProfileCompleteness(
   let totalFields = 0;
   let filledFields = 0;
 
-  // Personal Information (Required for autofill)
+  // Identity + display fields the sponsor card renders. `role` (title) and
+  // `city` are also matching signals. Phone, street, ZIP, country and state are
+  // NOT required — the app never uses them (only city feeds the location
+  // signal), so gating on them was pure friction.
   const personalChecks = [
     { key: "firstName", label: "First name", value: data.personal.firstName },
     { key: "lastName", label: "Last name", value: data.personal.lastName },
     { key: "role", label: "Title", value: data.professional.title },
     { key: "email", label: "Email", value: data.personal.email },
-    { key: "phone", label: "Phone", value: data.personal.phone },
     { key: "bio", label: "Bio", value: data.professional.summary },
     {
       key: "profileImage",
       label: "Photo",
       value: data.personal.profileImage,
     },
-    {
-      key: "street",
-      label: "Street",
-      value: data.personal.address.street,
-    },
     { key: "city", label: "City", value: data.personal.address.city },
-    { key: "state", label: "State", value: data.personal.address.state },
-    { key: "zip", label: "Zip", value: data.personal.address.zip },
-    { key: "country", label: "Country", value: data.personal.address.country },
   ];
 
   personalChecks.forEach((check) => {
@@ -62,7 +69,7 @@ export function checkProfileCompleteness(
     }
   });
 
-  // Skills (At least 1 required) - Part of main profile display
+  // Skills (At least 1 required) - matching signal + card display
   totalFields++;
   if (data.skills && data.skills.length > 0) {
     filledFields++;
@@ -116,7 +123,9 @@ export function checkProfileCompleteness(
   }
 
   const percentage = Math.round((filledFields / totalFields) * 100);
-  const isComplete = percentage >= 90; // 90% threshold
+  // Every field in the required set is essential, so completion means none are
+  // missing — not merely clearing a percentage bar.
+  const isComplete = missingFields.length === 0;
 
   return {
     isComplete,

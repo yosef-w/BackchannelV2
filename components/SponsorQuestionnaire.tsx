@@ -5,6 +5,7 @@ import {
   trackSignUpSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { updateGeneralProfile, uploadProfileImage } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -15,19 +16,19 @@ import { HOME_INTRO_PENDING_KEY } from "@/components/ui/HomeIntro";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
+import * as ImagePicker from "expo-image-picker";
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
   Check,
   Mail,
-  Plus,
-  Sparkles,
   UserCheck,
-  X,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -48,30 +49,37 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import {
+  SPONSOR_PROMPT_CATEGORIES,
+  SPONSOR_PROMPT_EXAMPLES,
+} from "@/constants/prompts";
 import { CompanyAutocomplete } from "./ui/CompanyAutocomplete";
+import { PromptsIntake } from "./ui/PromptsIntake";
 
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
   onBack: () => void;
 }
 
-const AVAILABLE_QUESTIONS = [
-  "MY SECRET SUPERPOWER",
-  "I'M BEST KNOWN FOR",
-  "IF I WASN'T IN TECH",
-  "MY FAVORITE BRAINSTORMING FUEL",
-  "WHAT I LOOK FOR IN TALENT",
-  "ONE THING THAT SURPRISED ME",
-  "THE PROJECT I'M MOST PROUD OF",
-  "MY MENTORSHIP STYLE",
-  "WHY I SPONSOR",
-  "WHAT ENERGIZES ME",
-  "MY UNPOPULAR OPINION",
-  "THE BEST ADVICE I'VE RECEIVED",
-  "HOW I RECHARGE",
-  "WHAT I'M LEARNING RIGHT NOW",
-  "MY LEADERSHIP PHILOSOPHY",
-];
+// Upper bound on how long we'll block onboarding applying the photo + bio
+// after registration before proceeding anyway. Uploads must never trap a new
+// user on the success spinner, so we race them against this timeout.
+const PROCESS_TIMEOUT_MS = 25000;
+
+// AsyncStorage key for the in-progress sponsor questionnaire, so a killed app
+// mid-signup doesn't lose their answers. Stores typed content + step only —
+// never the password (security) and never the picked photo URI (temp path).
+const SPONSOR_DRAFT_KEY = "onboarding_draft_sponsor_v1";
+
+/** Resolve when `promise` settles, or reject once `ms` elapses. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), ms),
+    ),
+  ]);
+}
 
 const questions = [
   {
@@ -114,13 +122,26 @@ const questions = [
     id: 7,
     question: "Share your professional personality",
     type: "insights",
-    subtitle: "Pick 2-3 questions to help candidates know what you're about",
+    subtitle:
+      "Answer 2 prompts so candidates get a feel for how you work.",
   },
   {
     id: 8,
     question: "Verify your employment",
     type: "email",
     placeholder: "name@company.com",
+  },
+  {
+    id: 9,
+    question: "Add a profile photo",
+    type: "photo",
+    subtitle: "Candidates see this on your profile — a clear headshot builds trust",
+  },
+  {
+    id: 10,
+    question: "Write a short bio",
+    type: "bio",
+    subtitle: "We drafted one from your answers — edit it to sound like you",
   },
 ];
 
@@ -134,14 +155,19 @@ export function SponsorQuestionnaire({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Insights state
+  // Insights state (prompts). The prompt library + editor live in PromptsIntake.
   const [selectedInsights, setSelectedInsights] = useState<
     Array<{ question: string; answer: string }>
   >([]);
-  const [showQuestionPicker, setShowQuestionPicker] = useState(false);
+
+  // Photo + bio (added to the sponsor flow so their applicant-facing card
+  // isn't bare). The photo URI is uploaded after registration (the upload
+  // endpoint needs auth); the bio is pre-drafted client-side from the
+  // company/title/tenure answers so the sponsor edits instead of starts blank.
+  const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
+  const [bioText, setBioText] = useState("");
 
   const scrollViewRef = useRef<ScrollView>(null);
-  const cardYPositions = useRef<number[]>([]);
 
   const sponsorData = useOnboardingStore((state) => state.sponsorData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
@@ -149,6 +175,42 @@ export function SponsorQuestionnaire({
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
+
+  // ── Resumable onboarding (autosave) ──────────────────────────────────────
+  // `hydratedRef` gates the save effect so it can't clobber a stored draft with
+  // the initial empty state before the restore has run.
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SPONSOR_DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          if (d.answers) setAnswers(d.answers);
+          if (Array.isArray(d.selectedInsights))
+            setSelectedInsights(d.selectedInsights);
+          if (typeof d.bioText === "string") setBioText(d.bioText);
+          if (typeof d.currentQuestion === "number")
+            setCurrentQuestion(d.currentQuestion);
+        }
+      } catch {
+        // Ignore a corrupt/absent draft — just start fresh.
+      } finally {
+        hydratedRef.current = true;
+      }
+    })();
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const draft = { answers, selectedInsights, bioText, currentQuestion };
+    AsyncStorage.setItem(SPONSOR_DRAFT_KEY, JSON.stringify(draft)).catch(
+      () => {},
+    );
+  }, [answers, selectedInsights, bioText, currentQuestion]);
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
@@ -215,11 +277,40 @@ export function SponsorQuestionnaire({
         },
       });
 
-      // Clear onboarding data
+      // Clear onboarding data + the saved draft (stop autosaving first).
       clearOnboardingData();
+      hydratedRef.current = false;
+      AsyncStorage.removeItem(SPONSOR_DRAFT_KEY).catch(() => {});
 
       // Show success modal
       setShowSuccess(true);
+
+      // Apply the photo + bio captured during onboarding so the sponsor's
+      // applicant-facing card isn't bare. Photo upload needs auth, so it runs
+      // here after registration. Best-effort and bounded — a failure/timeout
+      // must never trap the user; they can re-add these in their profile.
+      try {
+        await withTimeout(
+          (async () => {
+            if (selectedPhotoUri) {
+              const photoForm = new FormData();
+              photoForm.append("image", {
+                uri: selectedPhotoUri,
+                name: "photo.jpg",
+                type: "image/jpeg",
+              } as any);
+              const { cdn_url } = await uploadProfileImage(photoForm);
+              if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
+            }
+            if (bioText.trim()) {
+              await updateGeneralProfile({ bio: bioText.trim() });
+            }
+          })(),
+          PROCESS_TIMEOUT_MS,
+        );
+      } catch (err) {
+        console.warn("[SponsorQuestionnaire] Photo/bio save failed:", err);
+      }
 
       // Fire-and-forget the work-email verification send (PR #42). The
       // backend hands out a JWT scoped to `purpose: "work_email_verification"`
@@ -282,6 +373,83 @@ export function SponsorQuestionnaire({
     createProfileMutation.mutate();
   };
 
+  // Compose a first-draft bio from what the sponsor already told us, so the
+  // bio step starts populated instead of blank (the "no-resume" analog of the
+  // applicant's resume autofill). Fully editable afterwards.
+  const buildDraftBio = () => {
+    const company = (answers[0] || "").trim();
+    const title = (answers[1] || "").trim();
+    const tenure = (answers[2] || "").trim();
+    const openToRefer = (answers[3] || "").toLowerCase();
+    const parts: string[] = [];
+    if (title && company) parts.push(`${title} at ${company}.`);
+    else if (company) parts.push(`Works at ${company}.`);
+    else if (title) parts.push(`${title}.`);
+    if (tenure) parts.push(`${tenure} at the company.`);
+    if (openToRefer.includes("yes") || openToRefer.includes("absolut"))
+      parts.push("Open to referring qualified candidates.");
+    else if (openToRefer.includes("case"))
+      parts.push("Open to referrals on a case-by-case basis.");
+    return parts.join(" ");
+  };
+
+  // Pre-fill the bio the first time the sponsor lands on the bio step (only if
+  // they haven't typed anything), so they see an editable draft, not a blank box.
+  useEffect(() => {
+    if (question.type === "bio" && !bioText.trim()) {
+      setBioText(buildDraftBio());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion]);
+
+  // Pick a profile photo. Kept local (URI) until after registration, when it's
+  // uploaded — the upload endpoint requires auth.
+  const handlePickPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showToast(
+        "Photo access is off — enable it in Settings to add a photo.",
+        "info",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedPhotoUri(result.assets[0].uri);
+    }
+  };
+
+  // Capture a photo with the camera (alternative to the library).
+  const handleTakePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      showToast(
+        "Camera access is off — enable it in Settings to take a photo.",
+        "info",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedPhotoUri(result.assets[0].uri);
+    }
+  };
+
+  // Initials for the photo-step placeholder — a friendlier default than an icon.
+  const initials =
+    `${sponsorData.firstName?.[0] ?? ""}${sponsorData.lastName?.[0] ?? ""}`
+      .toUpperCase()
+      .trim();
+
   const handleNext = () => {
     // Validate the work-email step before advancing. Blank is allowed (they
     // can verify later via the in-app gate), but a typed value must be a real
@@ -313,11 +481,17 @@ export function SponsorQuestionnaire({
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const isLastQuestion = currentQuestion === questions.length - 1;
   const isInsightsScreen = question.type === "insights";
+  const isPhotoScreen = question.type === "photo";
+  const isBioScreen = question.type === "bio";
   const canContinue = isInsightsScreen
     ? selectedInsights.length >= 2 &&
       selectedInsights.length <= 3 &&
       selectedInsights.every((i) => i.answer.trim().length > 0)
-    : answers[currentQuestion] && answers[currentQuestion].length > 0;
+    : isPhotoScreen
+      ? !!selectedPhotoUri // Required — has a "Skip for now" escape hatch below
+      : isBioScreen
+        ? bioText.trim().length > 0
+        : answers[currentQuestion] && answers[currentQuestion].length > 0;
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: withTiming(`${progress}%`, { duration: 400 }),
@@ -337,6 +511,7 @@ export function SponsorQuestionnaire({
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
             {currentQuestion + 1} of {questions.length}
+            {currentQuestion === 0 ? " · about 2 min" : ""}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -362,132 +537,15 @@ export function SponsorQuestionnaire({
               <Text style={styles.questionText}>{question.question}</Text>
 
               {question.type === "insights" ? (
-                <View>
-                  {question.subtitle && (
-                    <Text style={styles.insightsSubtitle}>
-                      {question.subtitle}
-                    </Text>
-                  )}
-
-                  {/* Display selected insights */}
-                  {selectedInsights.map((insight, index) => (
-                    <Animated.View
-                      key={index}
-                      entering={FadeInDown.delay(index * 100)}
-                      style={styles.insightCard}
-                      onLayout={(e) => {
-                        cardYPositions.current[index] = e.nativeEvent.layout.y;
-                      }}
-                    >
-                      <View style={styles.insightCardHeader}>
-                        <View style={styles.insightQuestionBadge}>
-                          <Sparkles size={12} color="#000" />
-                          <Text style={styles.insightQuestion}>
-                            {insight.question}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setSelectedInsights(
-                              selectedInsights.filter((_, i) => i !== index),
-                            );
-                          }}
-                          style={styles.removeInsightBtn}
-                        >
-                          <X size={16} color="#999" />
-                        </TouchableOpacity>
-                      </View>
-
-                      <TextInput
-                        placeholder="Share your answer..."
-                        placeholderTextColor="#BBB"
-                        value={insight.answer}
-                        onFocus={() => {
-                          const y = cardYPositions.current[index];
-                          if (y !== undefined) {
-                            scrollViewRef.current?.scrollTo({
-                              y,
-                              animated: true,
-                            });
-                          }
-                        }}
-                        onChangeText={(text) => {
-                          if (text.includes("\n")) {
-                            Keyboard.dismiss();
-                            text = text.replace(/\n/g, "");
-                          }
-                          const updated = [...selectedInsights];
-                          updated[index].answer = text;
-                          setSelectedInsights(updated);
-                        }}
-                        multiline
-                        returnKeyType="default"
-                        autoCapitalize="sentences"
-                        style={styles.insightAnswerInput}
-                        maxLength={200}
-                      />
-                      <Text style={styles.charCount}>
-                        {insight.answer.length}/200
-                      </Text>
-                    </Animated.View>
-                  ))}
-
-                  {/* Add new insight button */}
-                  {selectedInsights.length < 3 && (
-                    <TouchableOpacity
-                      onPress={() => setShowQuestionPicker(!showQuestionPicker)}
-                      style={styles.addInsightBtn}
-                    >
-                      <Plus size={20} color="#000" />
-                      <Text style={styles.addInsightText}>
-                        {selectedInsights.length === 0
-                          ? "Choose your first question"
-                          : `Add question (${selectedInsights.length}/3)`}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Question picker */}
-                  {showQuestionPicker && (
-                    <Animated.View
-                      entering={FadeInDown}
-                      style={styles.questionPickerContainer}
-                    >
-                      <Text style={styles.pickerTitle}>Choose a question</Text>
-                      <ScrollView
-                        style={styles.questionsList}
-                        nestedScrollEnabled
-                      >
-                        {AVAILABLE_QUESTIONS.filter(
-                          (q) =>
-                            !selectedInsights.some(
-                              (insight) => insight.question === q,
-                            ),
-                        ).map((q) => (
-                          <TouchableOpacity
-                            key={q}
-                            onPress={() => {
-                              setSelectedInsights([
-                                ...selectedInsights,
-                                { question: q, answer: "" },
-                              ]);
-                              setShowQuestionPicker(false);
-                            }}
-                            style={styles.questionOption}
-                          >
-                            <Text style={styles.questionOptionText}>{q}</Text>
-                            <Plus size={18} color="#000" />
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </Animated.View>
-                  )}
-
-                  <Text style={styles.insightsHelper}>
-                    💡 These help candidates understand your mentorship style
-                    and what it's like to work with you
-                  </Text>
-                </View>
+                <PromptsIntake
+                  value={selectedInsights}
+                  onChange={setSelectedInsights}
+                  categories={SPONSOR_PROMPT_CATEGORIES}
+                  examples={SPONSOR_PROMPT_EXAMPLES}
+                  min={2}
+                  max={3}
+                  subtitle={question.subtitle}
+                />
               ) : currentQuestion === 0 ? (
                 // Company question — autocomplete against real ATS
                 // organizations so the stored company matches the job-browse
@@ -511,6 +569,62 @@ export function SponsorQuestionnaire({
                     Pick your company from the list so we can match you to the
                     right job listings.
                   </Text>
+                </View>
+              ) : question.type === "photo" ? (
+                <View style={styles.photoStep}>
+                  <TouchableOpacity
+                    onPress={handlePickPhoto}
+                    activeOpacity={0.8}
+                    style={styles.photoCircle}
+                  >
+                    {selectedPhotoUri ? (
+                      <Image
+                        source={{ uri: selectedPhotoUri }}
+                        style={styles.photoImage}
+                      />
+                    ) : initials ? (
+                      <Text style={styles.photoInitials}>{initials}</Text>
+                    ) : (
+                      <Camera color="#BBB" size={40} />
+                    )}
+                  </TouchableOpacity>
+                  <View style={styles.photoBtnRow}>
+                    <TouchableOpacity
+                      onPress={handlePickPhoto}
+                      style={styles.photoPickBtn}
+                    >
+                      <Text style={styles.photoPickText}>
+                        {selectedPhotoUri ? "Change photo" : "Choose photo"}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleTakePhoto}
+                      style={styles.photoPickBtn}
+                    >
+                      <Text style={styles.photoPickText}>Take photo</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {!selectedPhotoUri && (
+                    <TouchableOpacity
+                      onPress={handleNext}
+                      style={styles.photoSkipBtn}
+                    >
+                      <Text style={styles.photoSkipText}>Skip for now</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : question.type === "bio" ? (
+                <View style={styles.bioWrapper}>
+                  <TextInput
+                    placeholder="A sentence or two about you"
+                    placeholderTextColor="#BBB"
+                    value={bioText}
+                    onChangeText={setBioText}
+                    style={styles.bioInput}
+                    multiline
+                    autoFocus
+                    maxLength={300}
+                  />
                 </View>
               ) : question.type === "text" || question.type === "email" ? (
                 <View style={styles.inputWrapper}>
@@ -685,115 +799,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
 
-  // Insights styles
-  insightsSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  insightCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  insightCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  insightQuestionBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-    backgroundColor: "#FFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  insightQuestion: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 0.5,
-    flex: 1,
-  },
-  removeInsightBtn: { padding: 4 },
-  insightAnswerInput: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: "#000",
-    minHeight: 100,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    fontWeight: "500",
-  },
-  charCount: { fontSize: 12, color: "#999", marginTop: 8, textAlign: "right" },
-  addInsightBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#FFF",
-    borderWidth: 2,
-    borderColor: "#000",
-    borderStyle: "dashed",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  addInsightText: { fontSize: 15, fontWeight: "700", color: "#000" },
-  questionPickerContainer: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    maxHeight: 300,
-  },
-  pickerTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1,
-    marginBottom: 16,
-    textTransform: "uppercase",
-  },
-  questionsList: { maxHeight: 240 },
-  questionOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  questionOptionText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    flex: 1,
-    letterSpacing: 0.3,
-  },
-  insightsHelper: {
-    fontSize: 14,
-    color: "#999",
-    lineHeight: 20,
-    marginTop: 8,
-    fontStyle: "italic",
-  },
-
   footer: { paddingHorizontal: 28, paddingBottom: 30, paddingTop: 20 },
   nextButton: {
     backgroundColor: "#000",
@@ -838,5 +843,41 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
+  },
+
+  // ── Photo + bio steps ────────────────────────────────────────────────────
+  photoStep: { alignItems: "center", paddingTop: 8 },
+  photoCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "#F4F4F5",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  photoImage: { width: "100%", height: "100%" },
+  photoInitials: { fontSize: 52, fontWeight: "800", color: "#999" },
+  photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
+  photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
+  photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
+  photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
+  bioWrapper: {
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  bioInput: {
+    fontSize: 18,
+    color: "#000",
+    fontWeight: "500",
+    minHeight: 120,
+    textAlignVertical: "top",
   },
 });

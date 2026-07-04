@@ -1114,12 +1114,10 @@ export function HomeView({
   }, [currentData?.USER_ID, userType]);
 
   const handleSwipe = async (isAccept: boolean) => {
-    // Check profile completeness for applicants before any swipe action (unless they're a tester)
-    if (
-      userType === "applicant" &&
-      profileCompletion.percentage < 90 &&
-      !isTester
-    ) {
+    // Check profile completeness for applicants before any swipe action (unless they're a tester).
+    // Gate on isComplete (every required field present) rather than a percentage
+    // threshold, so no single required field — e.g. photo or bio — can be skipped.
+    if (userType === "applicant" && !profileCompletion.isComplete && !isTester) {
       setShowProfileCompletionModal(true);
       return;
     }

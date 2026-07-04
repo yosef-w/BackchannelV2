@@ -4,7 +4,7 @@
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§J** — self-like not rejected server-side (sponsor sees themselves in "Interested in Your Jobs", medium priority); **§K** — unsponsor doesn't invalidate the affected applicants' caches (phantom match for ~15s on the applicant's Matches screen, medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
+> **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§J** — self-like not rejected server-side (sponsor sees themselves in "Interested in Your Jobs", medium priority); **§K** — unsponsor doesn't invalidate the affected applicants' caches (phantom match for ~15s on the applicant's Matches screen, medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (portfolio, DOB, LinkedIn, unused address/phone — cleanup + PII minimization, low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
 >
 > Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
 
@@ -358,3 +358,28 @@ for uid in affected:
 **Acceptance test:** Applicant A matches with sponsor S's job. S unsponsors it. Within 5s, A pulls to refresh their Matches screen → the match is gone immediately (not after a 15s wait), and the applicant's liked-jobs list no longer shows it.
 
 **Frontend status:** The sponsor's own device is already handled — `JobsView.tsx → handleUnsponsor` invalidates the local `["matchesScreen"]` React Query cache on success. The applicant's device has **no live signal** at all (no push is sent on unsponsor), so it relies on focus-refetch / pull-to-refresh; once this backend cache gap is closed, that refresh returns clean data immediately. (Optional future enhancement: send a lightweight push to affected applicants on unsponsor so their screen updates without a manual refresh — not required for correctness.)
+
+---
+
+## §L — Unused profile fields — collected/stored but never read (onboarding rework, Phase 4) 🟢 Low priority (cleanup + PII minimization)
+
+**Context (2026-07-01):** The onboarding/profile rework audited every field the applicant profile collects against the two things that actually consume profile data — the matching algorithm (`services/scoring.py`: skills, role, experience, location) and the sponsor-facing card (name, photo, title, bio, city/state, experience, education, certifications, languages, achievements, skills, insights, industry). Several collected fields feed neither.
+
+**Findings — fields the product does not use:**
+
+| Field | Backend column | Status |
+|---|---|---|
+| Portfolio URL | `user_profiles.PORTFOLIO_URL` | **Frontend UI removed** (ProfileView, Phase 4). Not scored, not shown on the card. Column now unwritten by the app. |
+| Street address | address street | Not scored, not displayed (only city/state feed `LOCATION`). Frontend UI removal pending (coupled to the combined address editor — deferred until the onboarding branch is tested). |
+| ZIP | `ZIP` | Same — unused, UI removal pending. |
+| Country | address country | Same — unused, UI removal pending. |
+| Phone number | `PHONE_NUMBER` | Collected historically; **no longer gated** (Phase 1) and not used by any feature (no call/SMS). UI still present. Product decision to keep for future contact/verification vs. drop. |
+| Date of birth | `DATE_OF_BIRTH` | **Dead** — zero UI in the app (never collected or displayed). Column exists only. |
+| LinkedIn | `LINKED_IN` | **Dead** — zero UI in the app. Column exists only. |
+
+**Requested backend action (no rush; coordinate with the frontend cleanup):**
+- These columns can be considered for **dropping** (or at least never requiring). This aligns with **§C** (account-deletion / PII minimization): `DATE_OF_BIRTH` in particular is sensitive PII that is collected nowhere and read nowhere, so retaining the column is pure liability.
+- Do **not** drop anything the ATS-autofill (`services/autofill.py`) or resume-classify (`services/documents.py`) paths write to without checking those first.
+- No endpoint contract changes are required for the frontend — `updateGeneralProfile` simply stops sending `portfolio_url` (and, once the UI is removed, `street`/`zip`/`country`). The fields remaining in the PATCH schema are harmless if unused.
+
+**Frontend status:** Phase 4 removed the Portfolio field UI. The address street/ZIP/country fields and the (unused) phone field are documented here for a follow-up pass — deliberately deferred rather than ripped out of the tightly-coupled address editor before the onboarding branch has been run on-device.
