@@ -23,10 +23,7 @@ import {
   Camera,
   Check,
   Mail,
-  Plus,
-  Sparkles,
   UserCheck,
-  X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -52,7 +49,12 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
+import {
+  SPONSOR_PROMPT_CATEGORIES,
+  SPONSOR_PROMPT_EXAMPLES,
+} from "@/constants/prompts";
 import { CompanyAutocomplete } from "./ui/CompanyAutocomplete";
+import { PromptsIntake } from "./ui/PromptsIntake";
 
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
@@ -78,45 +80,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     ),
   ]);
 }
-
-const AVAILABLE_QUESTIONS = [
-  "MY SECRET SUPERPOWER",
-  "I'M BEST KNOWN FOR",
-  "IF I WASN'T IN TECH",
-  "MY FAVORITE BRAINSTORMING FUEL",
-  "WHAT I LOOK FOR IN TALENT",
-  "ONE THING THAT SURPRISED ME",
-  "THE PROJECT I'M MOST PROUD OF",
-  "MY MENTORSHIP STYLE",
-  "WHY I SPONSOR",
-  "WHAT ENERGIZES ME",
-  "MY UNPOPULAR OPINION",
-  "THE BEST ADVICE I'VE RECEIVED",
-  "HOW I RECHARGE",
-  "WHAT I'M LEARNING RIGHT NOW",
-  "MY LEADERSHIP PHILOSOPHY",
-];
-
-// Per-prompt example answers, shown as the input placeholder so the box is
-// never blank — a concrete starting point cuts the "what do I write?" friction.
-// (Examples, not pre-filled text, so nobody submits the sample.)
-const INSIGHT_EXAMPLES: Record<string, string> = {
-  "MY SECRET SUPERPOWER": "e.g., Spotting talent others overlook",
-  "I'M BEST KNOWN FOR": "e.g., Opening doors for people early in their careers",
-  "IF I WASN'T IN TECH": "e.g., I'd be coaching a college debate team",
-  "MY FAVORITE BRAINSTORMING FUEL": "e.g., A long walk and a good question",
-  "WHAT I LOOK FOR IN TALENT": "e.g., Curiosity and follow-through over pedigree",
-  "ONE THING THAT SURPRISED ME": "e.g., The best hires rarely look best on paper",
-  "THE PROJECT I'M MOST PROUD OF": "e.g., Mentored 5 juniors into senior roles",
-  "MY MENTORSHIP STYLE": "e.g., Ask more than I tell, then get out of the way",
-  "WHY I SPONSOR": "e.g., Someone took a chance on me — paying it forward",
-  "WHAT ENERGIZES ME": "e.g., Watching someone level up faster than they expected",
-  "MY UNPOPULAR OPINION": "e.g., Culture fit is overrated; culture add isn't",
-  "THE BEST ADVICE I'VE RECEIVED": "e.g., Hire for slope, not intercept",
-  "HOW I RECHARGE": "e.g., Weekends fully offline with family",
-  "WHAT I'M LEARNING RIGHT NOW": "e.g., How to give feedback that actually lands",
-  "MY LEADERSHIP PHILOSOPHY": "e.g., Set the bar, then clear the obstacles",
-};
 
 const questions = [
   {
@@ -159,7 +122,8 @@ const questions = [
     id: 7,
     question: "Share your professional personality",
     type: "insights",
-    subtitle: "Answer at least one — add up to 3 to help candidates know you",
+    subtitle:
+      "Answer 2 prompts so candidates get a feel for how you work.",
   },
   {
     id: 8,
@@ -191,11 +155,10 @@ export function SponsorQuestionnaire({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Insights state
+  // Insights state (prompts). The prompt library + editor live in PromptsIntake.
   const [selectedInsights, setSelectedInsights] = useState<
     Array<{ question: string; answer: string }>
   >([]);
-  const [showQuestionPicker, setShowQuestionPicker] = useState(false);
 
   // Photo + bio (added to the sponsor flow so their applicant-facing card
   // isn't bare). The photo URI is uploaded after registration (the upload
@@ -205,7 +168,6 @@ export function SponsorQuestionnaire({
   const [bioText, setBioText] = useState("");
 
   const scrollViewRef = useRef<ScrollView>(null);
-  const cardYPositions = useRef<number[]>([]);
 
   const sponsorData = useOnboardingStore((state) => state.sponsorData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
@@ -522,8 +484,7 @@ export function SponsorQuestionnaire({
   const isPhotoScreen = question.type === "photo";
   const isBioScreen = question.type === "bio";
   const canContinue = isInsightsScreen
-    ? // One prompt is enough — writing several is the heaviest signup step.
-      selectedInsights.length >= 1 &&
+    ? selectedInsights.length >= 2 &&
       selectedInsights.length <= 3 &&
       selectedInsights.every((i) => i.answer.trim().length > 0)
     : isPhotoScreen
@@ -576,135 +537,15 @@ export function SponsorQuestionnaire({
               <Text style={styles.questionText}>{question.question}</Text>
 
               {question.type === "insights" ? (
-                <View>
-                  {question.subtitle && (
-                    <Text style={styles.insightsSubtitle}>
-                      {question.subtitle}
-                    </Text>
-                  )}
-
-                  {/* Display selected insights */}
-                  {selectedInsights.map((insight, index) => (
-                    <Animated.View
-                      key={index}
-                      entering={FadeInDown.delay(index * 100)}
-                      style={styles.insightCard}
-                      onLayout={(e) => {
-                        cardYPositions.current[index] = e.nativeEvent.layout.y;
-                      }}
-                    >
-                      <View style={styles.insightCardHeader}>
-                        <View style={styles.insightQuestionBadge}>
-                          <Sparkles size={12} color="#000" />
-                          <Text style={styles.insightQuestion}>
-                            {insight.question}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setSelectedInsights(
-                              selectedInsights.filter((_, i) => i !== index),
-                            );
-                          }}
-                          style={styles.removeInsightBtn}
-                        >
-                          <X size={16} color="#999" />
-                        </TouchableOpacity>
-                      </View>
-
-                      <TextInput
-                        placeholder={
-                          INSIGHT_EXAMPLES[insight.question] ||
-                          "Share your answer..."
-                        }
-                        placeholderTextColor="#BBB"
-                        value={insight.answer}
-                        onFocus={() => {
-                          const y = cardYPositions.current[index];
-                          if (y !== undefined) {
-                            scrollViewRef.current?.scrollTo({
-                              y,
-                              animated: true,
-                            });
-                          }
-                        }}
-                        onChangeText={(text) => {
-                          if (text.includes("\n")) {
-                            Keyboard.dismiss();
-                            text = text.replace(/\n/g, "");
-                          }
-                          const updated = [...selectedInsights];
-                          updated[index].answer = text;
-                          setSelectedInsights(updated);
-                        }}
-                        multiline
-                        returnKeyType="default"
-                        autoCapitalize="sentences"
-                        style={styles.insightAnswerInput}
-                        maxLength={200}
-                      />
-                      <Text style={styles.charCount}>
-                        {insight.answer.length}/200
-                      </Text>
-                    </Animated.View>
-                  ))}
-
-                  {/* Add new insight button */}
-                  {selectedInsights.length < 3 && (
-                    <TouchableOpacity
-                      onPress={() => setShowQuestionPicker(!showQuestionPicker)}
-                      style={styles.addInsightBtn}
-                    >
-                      <Plus size={20} color="#000" />
-                      <Text style={styles.addInsightText}>
-                        {selectedInsights.length === 0
-                          ? "Choose your first question"
-                          : `Add question (${selectedInsights.length}/3)`}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Question picker */}
-                  {showQuestionPicker && (
-                    <Animated.View
-                      entering={FadeInDown}
-                      style={styles.questionPickerContainer}
-                    >
-                      <Text style={styles.pickerTitle}>Choose a question</Text>
-                      <ScrollView
-                        style={styles.questionsList}
-                        nestedScrollEnabled
-                      >
-                        {AVAILABLE_QUESTIONS.filter(
-                          (q) =>
-                            !selectedInsights.some(
-                              (insight) => insight.question === q,
-                            ),
-                        ).map((q) => (
-                          <TouchableOpacity
-                            key={q}
-                            onPress={() => {
-                              setSelectedInsights([
-                                ...selectedInsights,
-                                { question: q, answer: "" },
-                              ]);
-                              setShowQuestionPicker(false);
-                            }}
-                            style={styles.questionOption}
-                          >
-                            <Text style={styles.questionOptionText}>{q}</Text>
-                            <Plus size={18} color="#000" />
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </Animated.View>
-                  )}
-
-                  <Text style={styles.insightsHelper}>
-                    💡 These help candidates understand your mentorship style
-                    and what it's like to work with you
-                  </Text>
-                </View>
+                <PromptsIntake
+                  value={selectedInsights}
+                  onChange={setSelectedInsights}
+                  categories={SPONSOR_PROMPT_CATEGORIES}
+                  examples={SPONSOR_PROMPT_EXAMPLES}
+                  min={2}
+                  max={3}
+                  subtitle={question.subtitle}
+                />
               ) : currentQuestion === 0 ? (
                 // Company question — autocomplete against real ATS
                 // organizations so the stored company matches the job-browse

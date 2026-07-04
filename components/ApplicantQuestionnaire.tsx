@@ -12,7 +12,6 @@ import {
   ChevronRight,
   FileText,
   MapPin,
-  Plus,
   Search,
   Sparkles,
   Upload,
@@ -23,7 +22,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -43,8 +41,13 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY } from "../constants/config";
+import {
+  APPLICANT_PROMPT_CATEGORIES,
+  APPLICANT_PROMPT_EXAMPLES,
+} from "../constants/prompts";
 import { SKILLS_BY_INDUSTRY } from "../constants/skills";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
+import { PromptsIntake } from "./ui/PromptsIntake";
 import {
   identifyUser,
   trackOnboardingCompleted,
@@ -94,45 +97,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     ),
   ]);
 }
-
-const AVAILABLE_QUESTIONS = [
-  "MY SECRET SUPERPOWER",
-  "I'M BEST KNOWN FOR",
-  "IF I WASN'T IN TECH",
-  "MY FAVORITE BRAINSTORMING FUEL",
-  "WHAT I LOOK FOR IN A TEAM",
-  "ONE THING THAT SURPRISED ME",
-  "THE PROJECT I'M MOST PROUD OF",
-  "MY DESIGN PHILOSOPHY",
-  "WHAT ENERGIZES ME",
-  "MY UNPOPULAR OPINION",
-  "THE BEST ADVICE I'VE RECEIVED",
-  "HOW I RECHARGE",
-  "WHAT I'M LEARNING RIGHT NOW",
-  "MY WORK STYLE",
-  "WHY I CHOSE THIS CAREER",
-];
-
-// Per-prompt example answers, shown as the input placeholder so the box is
-// never blank — a concrete starting point cuts the "what do I write?" friction.
-// (These are examples, not pre-filled text, so nobody submits the sample.)
-const INSIGHT_EXAMPLES: Record<string, string> = {
-  "MY SECRET SUPERPOWER": "e.g., Turning fuzzy ideas into a shippable plan",
-  "I'M BEST KNOWN FOR": "e.g., Being the calm one when a launch is on fire",
-  "IF I WASN'T IN TECH": "e.g., I'd be running a small coffee roastery",
-  "MY FAVORITE BRAINSTORMING FUEL": "e.g., A whiteboard and way too much coffee",
-  "WHAT I LOOK FOR IN A TEAM": "e.g., People who disagree kindly and ship fast",
-  "ONE THING THAT SURPRISED ME": "e.g., How much of the job is good writing",
-  "THE PROJECT I'M MOST PROUD OF": "e.g., Rebuilt onboarding, cut drop-off 40%",
-  "MY DESIGN PHILOSOPHY": "e.g., Make the right thing the easy thing",
-  "WHAT ENERGIZES ME": "e.g., Untangling a messy problem into something simple",
-  "MY UNPOPULAR OPINION": "e.g., Most meetings should have been a doc",
-  "THE BEST ADVICE I'VE RECEIVED": "e.g., Strong opinions, loosely held",
-  "HOW I RECHARGE": "e.g., A long trail run with no podcast",
-  "WHAT I'M LEARNING RIGHT NOW": "e.g., Getting fluent with Rust on weekends",
-  "MY WORK STYLE": "e.g., Deep-focus mornings, collaborative afternoons",
-  "WHY I CHOSE THIS CAREER": "e.g., I like building things people actually use",
-};
 
 interface ApplicantQuestionnaireProps {
   onComplete: () => void;
@@ -188,7 +152,8 @@ const questions = [
     key: "insights",
     question: "Add personality to your profile",
     type: "insights",
-    subtitle: "Answer at least one prompt — add up to 3 if you're inspired",
+    subtitle:
+      "Answer 2 prompts so sponsors get a feel for you beyond your résumé.",
   },
   {
     key: "workPreferences",
@@ -249,18 +214,12 @@ export function ApplicantQuestionnaire({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-  // Insights state
+  // Insights state (prompts). The prompt library + editor live in PromptsIntake.
   const [selectedInsights, setSelectedInsights] = useState<
     Array<{ question: string; answer: string }>
   >([]);
-  const [showQuestionPicker, setShowQuestionPicker] = useState(false);
-  const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(
-    null,
-  );
-  const [tempAnswer, setTempAnswer] = useState("");
 
   const scrollViewRef = useRef<ScrollView>(null);
-  const cardYPositions = useRef<number[]>([]);
 
   // Work preferences state
   const [selectedWorkPreferences, setSelectedWorkPreferences] = useState<
@@ -727,9 +686,7 @@ export function ApplicantQuestionnaire({
     : isTextScreen
       ? answers[question.key]?.trim().length > 0
       : isInsightsScreen
-        ? // Lowered from 2 to 1 — writing multiple answers is the heaviest
-          // step in signup; one is enough to add personality, more is optional.
-          selectedInsights.length >= 1 &&
+        ? selectedInsights.length >= 2 &&
           selectedInsights.length <= 3 &&
           selectedInsights.every((i) => i.answer.trim().length > 0)
         : isWorkPreferencesScreen
@@ -902,143 +859,15 @@ export function ApplicantQuestionnaire({
                 )}
 
                 {question.type === "insights" && (
-                  <View>
-                    {question.subtitle && (
-                      <Text style={styles.insightsSubtitle}>
-                        {question.subtitle}
-                      </Text>
-                    )}
-
-                    {/* Display selected insights */}
-                    {selectedInsights.map((insight, index) => (
-                      <Animated.View
-                        key={index}
-                        entering={FadeInDown.delay(index * 100)}
-                        style={styles.insightCard}
-                        onLayout={(e) => {
-                          cardYPositions.current[index] =
-                            e.nativeEvent.layout.y;
-                        }}
-                      >
-                        <View style={styles.insightCardHeader}>
-                          <View style={styles.insightQuestionBadge}>
-                            <Sparkles size={12} color="#000" />
-                            <Text style={styles.insightQuestion}>
-                              {insight.question}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            onPress={() => {
-                              setSelectedInsights(
-                                selectedInsights.filter((_, i) => i !== index),
-                              );
-                            }}
-                            style={styles.removeInsightBtn}
-                          >
-                            <X size={16} color="#999" />
-                          </TouchableOpacity>
-                        </View>
-
-                        <TextInput
-                          placeholder={
-                            INSIGHT_EXAMPLES[insight.question] ||
-                            "Share your answer..."
-                          }
-                          placeholderTextColor="#BBB"
-                          value={insight.answer}
-                          onFocus={() => {
-                            const y = cardYPositions.current[index];
-                            if (y !== undefined) {
-                              scrollViewRef.current?.scrollTo({
-                                y,
-                                animated: true,
-                              });
-                            }
-                          }}
-                          onChangeText={(text) => {
-                            // Multiline TextInputs treat Return as a newline by
-                            // default. Treat it as "done" instead: dismiss the
-                            // keyboard and drop the newline char from the value.
-                            if (text.includes("\n")) {
-                              Keyboard.dismiss();
-                              text = text.replace(/\n/g, "");
-                            }
-                            const updated = [...selectedInsights];
-                            updated[index].answer = text;
-                            setSelectedInsights(updated);
-                          }}
-                          multiline
-                          returnKeyType="default"
-                          autoCapitalize="sentences"
-                          style={styles.insightAnswerInput}
-                          maxLength={200}
-                        />
-                        <Text style={styles.charCount}>
-                          {insight.answer.length}/200
-                        </Text>
-                      </Animated.View>
-                    ))}
-
-                    {/* Add new insight button */}
-                    {selectedInsights.length < 3 && (
-                      <TouchableOpacity
-                        onPress={() =>
-                          setShowQuestionPicker(!showQuestionPicker)
-                        }
-                        style={styles.addInsightBtn}
-                      >
-                        <Plus size={20} color="#000" />
-                        <Text style={styles.addInsightText}>
-                          {selectedInsights.length === 0
-                            ? "Choose your first question"
-                            : `Add question (${selectedInsights.length}/3)`}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Question picker */}
-                    {showQuestionPicker && (
-                      <Animated.View
-                        entering={FadeInDown}
-                        style={styles.questionPickerContainer}
-                      >
-                        <Text style={styles.pickerTitle}>
-                          Choose a question
-                        </Text>
-                        <ScrollView
-                          style={styles.questionsList}
-                          nestedScrollEnabled
-                        >
-                          {AVAILABLE_QUESTIONS.filter(
-                            (q) =>
-                              !selectedInsights.some(
-                                (insight) => insight.question === q,
-                              ),
-                          ).map((q) => (
-                            <TouchableOpacity
-                              key={q}
-                              onPress={() => {
-                                setSelectedInsights([
-                                  ...selectedInsights,
-                                  { question: q, answer: "" },
-                                ]);
-                                setShowQuestionPicker(false);
-                              }}
-                              style={styles.questionOption}
-                            >
-                              <Text style={styles.questionOptionText}>{q}</Text>
-                              <Plus size={18} color="#000" />
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </Animated.View>
-                    )}
-
-                    <Text style={styles.insightsHelper}>
-                      💡 These help sponsors get to know the real you beyond
-                      your resume
-                    </Text>
-                  </View>
+                  <PromptsIntake
+                    value={selectedInsights}
+                    onChange={setSelectedInsights}
+                    categories={APPLICANT_PROMPT_CATEGORIES}
+                    examples={APPLICANT_PROMPT_EXAMPLES}
+                    min={2}
+                    max={3}
+                    subtitle={question.subtitle}
+                  />
                 )}
 
                 {question.type === "workPreferences" && (
