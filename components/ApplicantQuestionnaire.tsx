@@ -19,7 +19,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react-native";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -77,6 +77,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 // call and can occasionally be slow; a new user must never be trapped on a
 // spinner, so we race it against this timeout and finish gracefully either way.
 const RESUME_PROCESS_TIMEOUT_MS = 25000;
+
+// AsyncStorage key for the in-progress applicant questionnaire, so a user who
+// backgrounds/kills the app mid-signup doesn't lose their answers. We store
+// ONLY the typed content + step — never the password (security) and never the
+// picked photo URI (a temp cache path that won't survive a relaunch).
+const APPLICANT_DRAFT_KEY = "onboarding_draft_applicant_v1";
 
 /** Resolve when `promise` settles, or reject once `ms` elapses. */
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -263,6 +269,9 @@ export function ApplicantQuestionnaire({
   // Final exit from onboarding → dashboard. Shared by the no-resume path, the
   // resume-processing fallbacks, and the review screen's confirm button.
   const completeOnboarding = () => {
+    // Onboarding finished — stop autosaving and discard the saved draft.
+    hydratedRef.current = false;
+    AsyncStorage.removeItem(APPLICANT_DRAFT_KEY).catch(() => {});
     setIsSubmitting(false);
     onComplete();
     // Backend sends a verification email automatically on register (PR #38).
@@ -328,6 +337,59 @@ export function ApplicantQuestionnaire({
     `${applicantData.firstName?.[0] ?? ""}${applicantData.lastName?.[0] ?? ""}`
       .toUpperCase()
       .trim();
+
+  // ── Resumable onboarding (autosave) ──────────────────────────────────────
+  // `hydrated` gates the save effect so it can't clobber a stored draft with
+  // the initial empty state before the restore has run.
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(APPLICANT_DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          if (d.answers) setAnswers(d.answers);
+          if (Array.isArray(d.selectedSkills)) setSelectedSkills(d.selectedSkills);
+          if (Array.isArray(d.selectedInsights))
+            setSelectedInsights(d.selectedInsights);
+          if (Array.isArray(d.selectedWorkPreferences))
+            setSelectedWorkPreferences(d.selectedWorkPreferences);
+          if (typeof d.locationText === "string") setLocationText(d.locationText);
+          if (typeof d.currentQuestion === "number")
+            setCurrentQuestion(d.currentQuestion);
+        }
+      } catch {
+        // Ignore a corrupt/absent draft — just start fresh.
+      } finally {
+        hydratedRef.current = true;
+      }
+    })();
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const draft = {
+      answers,
+      selectedSkills,
+      selectedInsights,
+      selectedWorkPreferences,
+      locationText,
+      currentQuestion,
+    };
+    AsyncStorage.setItem(APPLICANT_DRAFT_KEY, JSON.stringify(draft)).catch(
+      () => {},
+    );
+  }, [
+    answers,
+    selectedSkills,
+    selectedInsights,
+    selectedWorkPreferences,
+    locationText,
+    currentQuestion,
+  ]);
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {

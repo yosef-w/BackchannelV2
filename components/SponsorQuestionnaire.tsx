@@ -64,6 +64,11 @@ interface SponsorQuestionnaireProps {
 // user on the success spinner, so we race them against this timeout.
 const PROCESS_TIMEOUT_MS = 25000;
 
+// AsyncStorage key for the in-progress sponsor questionnaire, so a killed app
+// mid-signup doesn't lose their answers. Stores typed content + step only —
+// never the password (security) and never the picked photo URI (temp path).
+const SPONSOR_DRAFT_KEY = "onboarding_draft_sponsor_v1";
+
 /** Resolve when `promise` settles, or reject once `ms` elapses. */
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -209,6 +214,42 @@ export function SponsorQuestionnaire({
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
 
+  // ── Resumable onboarding (autosave) ──────────────────────────────────────
+  // `hydratedRef` gates the save effect so it can't clobber a stored draft with
+  // the initial empty state before the restore has run.
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SPONSOR_DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          if (d.answers) setAnswers(d.answers);
+          if (Array.isArray(d.selectedInsights))
+            setSelectedInsights(d.selectedInsights);
+          if (typeof d.bioText === "string") setBioText(d.bioText);
+          if (typeof d.currentQuestion === "number")
+            setCurrentQuestion(d.currentQuestion);
+        }
+      } catch {
+        // Ignore a corrupt/absent draft — just start fresh.
+      } finally {
+        hydratedRef.current = true;
+      }
+    })();
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const draft = { answers, selectedInsights, bioText, currentQuestion };
+    AsyncStorage.setItem(SPONSOR_DRAFT_KEY, JSON.stringify(draft)).catch(
+      () => {},
+    );
+  }, [answers, selectedInsights, bioText, currentQuestion]);
+
   const createProfileMutation = useMutation({
     mutationFn: async () => {
       console.log("[SponsorQuestionnaire] Starting registration...");
@@ -274,8 +315,10 @@ export function SponsorQuestionnaire({
         },
       });
 
-      // Clear onboarding data
+      // Clear onboarding data + the saved draft (stop autosaving first).
       clearOnboardingData();
+      hydratedRef.current = false;
+      AsyncStorage.removeItem(SPONSOR_DRAFT_KEY).catch(() => {});
 
       // Show success modal
       setShowSuccess(true);
