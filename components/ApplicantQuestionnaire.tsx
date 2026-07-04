@@ -528,10 +528,20 @@ export function ApplicantQuestionnaire({
       try {
         await createProfileMutation.mutateAsync();
         registeredRef.current = true;
-      } catch {
-        // onError surfaced the message; stay on the résumé step so they can fix
-        // it (e.g. email already in use → go back and change it).
+      } catch (err) {
         setIsSubmitting(false);
+        // The email field lives on the previous (auth) screen. If the failure is
+        // an already-registered email, send them straight back there to fix it
+        // instead of leaving them stuck on the résumé step. onError already
+        // surfaced the "email already registered" toast, which stays visible.
+        const msg = err instanceof Error ? err.message.toLowerCase() : "";
+        if (
+          msg.includes("already in use") ||
+          msg.includes("already exists") ||
+          msg.includes("already registered")
+        ) {
+          onBack();
+        }
         return;
       }
     }
