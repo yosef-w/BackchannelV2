@@ -1,10 +1,12 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-01
+**Last updated:** 2026-07-04
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
 > **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§J** — self-like not rejected server-side (sponsor sees themselves in "Interested in Your Jobs", medium priority); **§K** — unsponsor doesn't invalidate the affected applicants' caches (phantom match for ~15s on the applicant's Matches screen, medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (portfolio, DOB, LinkedIn, unused address/phone — cleanup + PII minimization, low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
+>
+> **New feature requests (see the "🆕 New Features" section near the end):** **§N1** — report/block a user (App Store requirement, top priority, UX plan Phase 4).
 >
 > Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
 
@@ -383,3 +385,44 @@ for uid in affected:
 - No endpoint contract changes are required for the frontend — `updateGeneralProfile` simply stops sending `portfolio_url` (and, once the UI is removed, `street`/`zip`/`country`). The fields remaining in the PATCH schema are harmless if unused.
 
 **Frontend status:** Phase 4 removed the Portfolio field UI. The address street/ZIP/country fields and the (unused) phone field are documented here for a follow-up pass — deliberately deferred rather than ripped out of the tightly-coupled address editor before the onboarding branch has been run on-device.
+
+---
+
+# 🆕 New Features — Backend Support Needed
+
+> This section is separate from the bug-fix tickets above (§B–§L). Those track things the backend already contracts for but doesn't do correctly; **this section tracks backend work for entirely new product features** proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). Entries are numbered **§N1, §N2, …** — independent of the §B–§L lettering above — and appended here as each phase is actually built, not speculatively written in advance.
+>
+> Note: "Phase 4" here refers to the UX improvement plan's **Phase 4 — Safety & Instant Relief**, unrelated to the onboarding-rework "Phase 4" referenced in §L above. Sorry for the overloaded term — two different efforts used the same phase-numbering habit.
+
+## §N1 — Report a user / block a user (UX Plan Phase 4) 🔴 App Store requirement
+
+**Why:** The app has messaging and user-generated content (bios, prompts, messages) but currently only offers **Unmatch** — no way to report abusive behavior or block a user from re-matching. Apple App Store Review Guideline 1.2 requires apps with user-generated content and person-to-person communication to provide (a) a mechanism to report objectionable content/users and (b) the ability to block abusive users. This is expected to gate submission review.
+
+**Frontend status:** Not yet built. Planned: a "Report" option alongside the existing "Unmatch" action in the message-thread menu (`components/MessagesView.tsx`), plus a report affordance on the public profile view. Reporting will also block the reported user (no further matching/messaging in either direction) as a client-visible side effect.
+
+### Requested backend support
+
+```
+POST /api/reports/                      (auth required)
+  body: {
+    reported_user_id: string,
+    reason: string,            // enum: "harassment" | "spam" | "inappropriate" | "fake_profile" | "other"
+    detail?: string,           // free text, optional
+    conversation_id?: string,  // context, if reported from a thread
+  }
+→ 200 { message: string }
+```
+
+- Insert an audit row (new table, e.g. `moderation.reports`) capturing reporter, reported user, reason, detail, timestamp, and conversation context if present. No automated action required initially — manual review is acceptable for a closed beta.
+- **Blocking**: reporting a user should also insert/flip a block relationship (or reuse/extend the existing unmatch mechanism) so:
+  - Existing conversations between the two users close (mirroring what `unmatchConversation` already does).
+  - Neither user can be shown to the other in future decks/matches (extend the like/match query exclusions the same way self-likes are excluded in §J).
+- A **separate, lighter "Block" action** (no report reason required) may also be wanted so a user can silently block without filing a report — same backend relationship, just skip the reason/detail fields. Product call on whether both actions ship together or Report implies Block only.
+
+### Acceptance test
+
+User A reports/blocks User B from a conversation. B disappears from A's Matches/deck immediately (and vice versa), any open conversation between them closes, and the report row is queryable for manual review.
+
+---
+
+*(Further entries for later UX-plan phases — pipeline visibility, retention pushes, funnel nudges, agency/growth — will be appended here as those phases are implemented.)*
