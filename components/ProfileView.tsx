@@ -10,6 +10,7 @@ import {
     CheckCircle2,
     ChevronRight,
     Edit,
+    Eye,
     FileText,
     GraduationCap,
     ImageIcon,
@@ -2690,6 +2691,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
               </View>
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.whiteBtn}
+            onPress={handlePreviewCard}
+          >
+            <Eye color="#000" size={16} />
+            <Text style={styles.whiteBtnText}>
+              {previewLoading ? "Loading…" : "Preview"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -2952,16 +2962,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.settingsGroup}>
-          <SettingItem
-            label={
-              previewLoading
-                ? "Loading Preview…"
-                : userType === "applicant"
-                  ? "Preview My Profile (Sponsor View)"
-                  : "Preview My Profile (Applicant View)"
-            }
-            onPress={handlePreviewCard}
-          />
           <SettingItem
             label="Edit Profile Insights"
             onPress={() => {
