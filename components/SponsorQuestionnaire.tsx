@@ -59,6 +59,13 @@ import { PromptsIntake } from "./ui/PromptsIntake";
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
   onBack: () => void;
+  /**
+   * Called when registration fails because the email is already registered.
+   * Sends the user to a Sign In screen (pre-filled with what they typed)
+   * instead of leaving them stranded on the last question of a 10-question
+   * flow with nothing but a toast.
+   */
+  onEmailAlreadyRegistered: () => void;
 }
 
 // Upper bound on how long we'll block onboarding applying the photo + bio
@@ -130,6 +137,7 @@ const questions = [
     question: "Verify your employment",
     type: "email",
     placeholder: "name@company.com",
+    subtitle: "Optional — you can add and verify this later from your profile.",
   },
   {
     id: 9,
@@ -148,6 +156,7 @@ const questions = [
 export function SponsorQuestionnaire({
   onComplete,
   onBack,
+  onEmailAlreadyRegistered,
 }: SponsorQuestionnaireProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -356,9 +365,13 @@ export function SponsorQuestionnaire({
         errorMessage.includes("already exists")
       ) {
         showToast(
-          "This email is already registered. Please use a different email or sign in.",
+          "This email is already registered — taking you to Sign In.",
           "error",
         );
+        // Sponsor registration happens on the LAST question, so without this
+        // the user would be stranded on a finished 10-question flow with
+        // nothing but a toast and no way forward.
+        onEmailAlreadyRegistered();
       } else if (errorMessage.includes("password")) {
         showToast(`Password requirements not met. ${error.message}`, "error");
       } else {
@@ -483,6 +496,7 @@ export function SponsorQuestionnaire({
   const isInsightsScreen = question.type === "insights";
   const isPhotoScreen = question.type === "photo";
   const isBioScreen = question.type === "bio";
+  const isEmailScreen = question.type === "email";
   const canContinue = isInsightsScreen
     ? selectedInsights.length >= 2 &&
       selectedInsights.length <= 3 &&
@@ -491,7 +505,9 @@ export function SponsorQuestionnaire({
       ? !!selectedPhotoUri // Required — has a "Skip for now" escape hatch below
       : isBioScreen
         ? bioText.trim().length > 0
-        : answers[currentQuestion] && answers[currentQuestion].length > 0;
+        : isEmailScreen
+          ? true // Optional — blank is allowed; handleNext validates a typed value
+          : answers[currentQuestion] && answers[currentQuestion].length > 0;
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: withTiming(`${progress}%`, { duration: 400 }),
@@ -627,26 +643,31 @@ export function SponsorQuestionnaire({
                   />
                 </View>
               ) : question.type === "text" || question.type === "email" ? (
-                <View style={styles.inputWrapper}>
-                  {question.type === "email" && (
-                    <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                <View>
+                  <View style={styles.inputWrapper}>
+                    {question.type === "email" && (
+                      <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                    )}
+                    <TextInput
+                      placeholder={question.placeholder}
+                      placeholderTextColor="#BBB"
+                      value={answers[currentQuestion] || ""}
+                      onChangeText={(v) =>
+                        setAnswers({ ...answers, [currentQuestion]: v })
+                      }
+                      style={styles.textInput}
+                      autoFocus
+                      keyboardType={
+                        question.type === "email" ? "email-address" : "default"
+                      }
+                      autoCapitalize={
+                        question.type === "email" ? "none" : "words"
+                      }
+                    />
+                  </View>
+                  {!!question.subtitle && (
+                    <Text style={styles.companyHelper}>{question.subtitle}</Text>
                   )}
-                  <TextInput
-                    placeholder={question.placeholder}
-                    placeholderTextColor="#BBB"
-                    value={answers[currentQuestion] || ""}
-                    onChangeText={(v) =>
-                      setAnswers({ ...answers, [currentQuestion]: v })
-                    }
-                    style={styles.textInput}
-                    autoFocus
-                    keyboardType={
-                      question.type === "email" ? "email-address" : "default"
-                    }
-                    autoCapitalize={
-                      question.type === "email" ? "none" : "words"
-                    }
-                  />
                 </View>
               ) : (
                 <View style={styles.optionsContainer}>
@@ -751,7 +772,9 @@ const styles = StyleSheet.create({
   stepIndicator: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#BBB",
+    // #767676 is the minimum gray that passes WCAG AA contrast (4.5:1) on
+    // white — #BBB (~2.3:1) failed for text conveying real progress state.
+    color: "#767676",
     textTransform: "uppercase",
     letterSpacing: 1,
   },

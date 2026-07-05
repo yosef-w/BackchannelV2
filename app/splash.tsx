@@ -21,6 +21,7 @@ export default function SplashRoute() {
   return (
     <SplashScreen
       onGetStarted={() => router.replace("/choose-role" as any)}
+      onSignIn={() => router.push("/sign-in" as any)}
     />
   );
 }

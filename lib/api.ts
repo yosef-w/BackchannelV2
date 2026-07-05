@@ -5,6 +5,13 @@ export const API_BASE_URL =
   "https://oyster-app-4pg5w.ondigitalocean.app";
 
 /**
+ * WebSocket origin derived from API_BASE_URL (https→wss, http→ws) so the
+ * chat/inbox sockets in MessagesView follow the same env-configured host as
+ * every REST call instead of a second hardcoded copy of the production URL.
+ */
+export const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws");
+
+/**
  * 🌐 API Client with automatic auth header injection
  */
 class ApiClient {

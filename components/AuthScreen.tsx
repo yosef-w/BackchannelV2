@@ -42,6 +42,16 @@ interface AuthScreenProps {
   userType?: "applicant" | "sponsor";
   /** Whether to start on the sign-in (true) or sign-up (false) tab. Defaults to true. */
   initialIsLogin?: boolean;
+  /**
+   * When this screen is reached WITHOUT a role already chosen (the splash
+   * screen's direct "Sign in" link), we don't know if a "sign up" tap means
+   * applicant or sponsor. Rather than guess (and risk saving their name/email
+   * under the wrong onboarding slice), redirect to role selection instead of
+   * flipping the tab in place. Omit this prop for the normal
+   * choose-role → onboarding → auth flow, where the role is already known
+   * and the in-place toggle is correct.
+   */
+  onRequestSignUp?: () => void;
 }
 
 export function AuthScreen({
@@ -50,6 +60,7 @@ export function AuthScreen({
   onBack,
   userType: propUserType,
   initialIsLogin = true,
+  onRequestSignUp,
 }: AuthScreenProps) {
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const storeUserType = useOnboardingStore((state) => state.userType);
@@ -246,7 +257,12 @@ export function AuthScreen({
       <SafeAreaView style={styles.safeArea}>
         {/* Navigation */}
         <View style={styles.topNav}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
             <ArrowLeft color="#000" size={24} />
           </TouchableOpacity>
         </View>
@@ -345,6 +361,10 @@ export function AuthScreen({
                       onPress={() => setShowPassword((v) => !v)}
                       style={styles.eyeBtn}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
                       {showPassword ? (
                         <EyeOff color="#AAA" size={18} />
@@ -386,7 +406,15 @@ export function AuthScreen({
 
               {/* Toggle Mode */}
               <TouchableOpacity
-                onPress={() => setIsLogin(!isLogin)}
+                onPress={() => {
+                  if (isLogin && onRequestSignUp) {
+                    // No role chosen yet (direct sign-in entry) — send them
+                    // to role selection instead of guessing applicant/sponsor.
+                    onRequestSignUp();
+                  } else {
+                    setIsLogin(!isLogin);
+                  }
+                }}
                 style={styles.toggleBtn}
                 activeOpacity={0.7}
               >

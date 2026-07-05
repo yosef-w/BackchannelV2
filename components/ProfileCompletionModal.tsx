@@ -86,13 +86,18 @@ export function ProfileCompletionModal({
           <Text style={styles.secondaryButtonText}>Maybe Later</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.testerButton}
-          onPress={onTesterMode}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.testerButtonText}>I am a tester</Text>
-        </TouchableOpacity>
+        {/* Dev-only bypass for internal testing — never shown in a production
+            build. Gating a trust/integrity control behind a public button was
+            the actual bug; __DEV__ is stripped from release bundles. */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={styles.testerButton}
+            onPress={onTesterMode}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.testerButtonText}>I am a tester (dev only)</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
     </Modal>
   );

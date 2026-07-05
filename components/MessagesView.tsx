@@ -14,6 +14,7 @@ import {
     sendMessage,
     submitReferral,
     unmatchConversation,
+    WS_BASE_URL,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -93,6 +94,13 @@ interface MessagesViewProps {
   // directly (the push carries related_conversation_id). Consumed once opened.
   pendingConversationId?: string | null;
   onPendingConversationConsumed?: () => void;
+  /**
+   * Fired the first time this session that the user successfully sends a
+   * message. Used by MainApp to trigger the push-notification permission
+   * prompt at a moment the user has an obvious reason to want it, instead of
+   * cold-asking on app open.
+   */
+  onFirstMessageSent?: () => void;
 }
 
 export function MessagesView({
@@ -106,6 +114,7 @@ export function MessagesView({
   onPendingJobConsumed,
   pendingConversationId,
   onPendingConversationConsumed,
+  onFirstMessageSent,
 }: MessagesViewProps) {
   // Store current user ID from profile API to determine which participant to show
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -380,9 +389,16 @@ export function MessagesView({
 
     if (accessToken) {
       try {
-        // Connect to WebSocket for real-time messages
-        const wsUrl = `wss://oyster-app-4pg5w.ondigitalocean.app/ws/chat/${selectedConversation}/?token=${accessToken}`;
-        console.log("[MessagesView] Connecting to WebSocket:", wsUrl);
+        // Connect to WebSocket for real-time messages. Built from the same
+        // env-configured API host as every REST call (see WS_BASE_URL) so
+        // switching environments doesn't require a second hardcoded URL.
+        const wsUrl = `${WS_BASE_URL}/ws/chat/${selectedConversation}/?token=${accessToken}`;
+        // Never log the full URL — it carries the access token in the query
+        // string, and this line was previously leaking it into device logs.
+        console.log(
+          "[MessagesView] Connecting to WebSocket for conversation:",
+          selectedConversation,
+        );
 
         ws = new WebSocket(wsUrl);
 
@@ -565,7 +581,9 @@ export function MessagesView({
       if (!accessToken) return;
 
       try {
-        const wsUrl = `wss://oyster-app-4pg5w.ondigitalocean.app/ws/inbox/?token=${accessToken}`;
+        // Same env-configured host as the per-conversation socket above —
+        // see WS_BASE_URL.
+        const wsUrl = `${WS_BASE_URL}/ws/inbox/?token=${accessToken}`;
         ws = new WebSocket(wsUrl);
       } catch (err) {
         console.warn("[MessagesView] Inbox WebSocket failed to open:", err);
@@ -826,6 +844,7 @@ export function MessagesView({
         conversationId: selectedConversation,
         messageLength: messageToSend.length,
       });
+      onFirstMessageSent?.();
 
       // Reconcile temp message: stamp serverId, keep stable id to avoid flicker
       setMessages((prev) => {

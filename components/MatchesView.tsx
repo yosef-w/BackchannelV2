@@ -1413,7 +1413,10 @@ export function MatchesView({
         }
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Opportunities</Text>
+          {/* Renamed from "Opportunities" to match the "Matches" bottom-nav
+              label — the screen and the tab that opens it should say the
+              same thing. */}
+          <Text style={styles.title}>Matches</Text>
           <Text style={styles.subtitle}>
             {userType === "applicant"
               ? "Your active opportunities & sponsors"
@@ -3542,7 +3545,7 @@ export function MatchesView({
                           💡 Why This Matters
                         </Text>
                         <Text style={styles.srCalloutText}>
-                          Unlike traditional job boards, Backchannel gives
+                          Unlike traditional job boards, BackChannel gives
                           candidates real insider knowledge — which means better
                           applicants and fewer surprises on both sides.
                         </Text>

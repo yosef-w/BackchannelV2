@@ -12,7 +12,7 @@ import {
     Star,
     User,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Dimensions,
     Platform,
@@ -129,15 +129,26 @@ function NavItem({
       }}
       activeOpacity={0.8}
       style={styles.navItem}
+      accessibilityRole="tab"
+      accessibilityLabel={item.label}
+      accessibilityState={{ selected: isActive }}
     >
       <Animated.View style={animatedIconStyle}>
         <Icon
           color={isActive ? "#FFF" : "#666"}
-          size={24}
+          size={22}
           strokeWidth={isActive ? 2.5 : 1.5}
         />
       </Animated.View>
-      {isActive && <View style={styles.activeIndicator} />}
+      {/* Labels were defined in navItems but never rendered — five
+          unlabeled icons (plus a clipboard-check header icon whose meaning
+          is unguessable) was a real discoverability gap. */}
+      <Text
+        style={[styles.navLabel, isActive && styles.navLabelActive]}
+        numberOfLines={1}
+      >
+        {item.label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -380,11 +391,29 @@ export function MainApp({ userType }: MainAppProps) {
     };
   }, [isAuthenticated]);
 
+  // Bumped by requestPushPermission() to trigger a fresh attempt at the
+  // native permission dialog. Starts at 0 so the effect below runs once on
+  // mount too — but that initial run only ever *checks* status and silently
+  // registers a device that's already granted; it never cold-asks (see the
+  // "undetermined" branch below). The actual OS prompt only fires once this
+  // has been bumped by a contextual moment (first match, first message
+  // sent) — see the onMatchCreated / onFirstMessageSent wiring below.
+  const [pushPromptTrigger, setPushPromptTrigger] = useState(0);
+  const requestPushPermission = useCallback(() => {
+    setPushPromptTrigger((n) => n + 1);
+  }, []);
+
   /**
    * Register the device for push notifications whenever the user is
-   * authenticated.  Runs once per login session.
+   * authenticated, re-running whenever requestPushPermission() is called.
    *
-   * - Requests OS permission (prompt shown only on first run).
+   * - Silently registers an already-granted permission on every run (cheap,
+   *   idempotent on the backend).
+   * - Only shows the native OS permission dialog when explicitly triggered
+   *   via pushPromptTrigger — previously this asked immediately on first
+   *   mount, before the user had any reason to say yes, which is the
+   *   single most common way an app burns its one shot at push permission
+   *   on iOS (a decline is effectively permanent).
    * - Gets the Expo push token (requires a valid EAS projectId).
    * - POSTs the token to /api/devices/register/ so the backend can target
    *   this device with Firebase Cloud Messaging.
@@ -408,13 +437,26 @@ export function MainApp({ userType }: MainAppProps) {
           });
         }
 
-        // Request permission — iOS shows a dialog on first call, Android 13+
-        // uses the POST_NOTIFICATIONS permission.
         const { status: current } = await Notifications.getPermissionsAsync();
         let finalStatus = current;
-        if (current !== "granted") {
+        if (current === "undetermined") {
+          // Never asked before — only show the native dialog once a
+          // contextual trigger has fired. On the initial mount (trigger
+          // still at 0) just wait; a later match/message will bump it and
+          // re-run this effect.
+          if (pushPromptTrigger === 0) {
+            console.log(
+              "[MainApp] Deferring push permission prompt until a contextual trigger fires",
+            );
+            return;
+          }
           const { status } = await Notifications.requestPermissionsAsync();
           finalStatus = status;
+        } else if (current !== "granted") {
+          // Previously denied — the OS won't re-prompt anyway, so don't
+          // bother asking again; just leave push notifications off.
+          console.log("[MainApp] Push notification permission previously denied");
+          return;
         }
         if (finalStatus !== "granted") {
           console.log("[MainApp] Push notification permission not granted");
@@ -451,7 +493,7 @@ export function MainApp({ userType }: MainAppProps) {
     return () => {
       active = false;
     };
-  }, [isAuthenticated, setDeviceToken]);
+  }, [isAuthenticated, setDeviceToken, pushPromptTrigger]);
 
   // ── Handle push notification taps (deep-link to the right screen) ────────
   // Shared routing for a tapped push, used by BOTH the live listener (below)
@@ -603,12 +645,16 @@ export function MainApp({ userType }: MainAppProps) {
       <SafeAreaView style={styles.safeArea}>
         {/* Header Bar */}
         <View style={styles.topBar}>
-          <Text style={styles.appTitle}>Backchannel</Text>
+          <Text style={styles.appTitle}>BackChannel</Text>
           <View style={styles.topBarButtons}>
             <TouchableOpacity
               onPress={handleOpenCheckIn}
               activeOpacity={0.7}
               style={styles.headerIconButton}
+              accessibilityRole="button"
+              accessibilityLabel="Referral check-in"
+              accessibilityHint="Review and update the status of your referrals"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
             </TouchableOpacity>
@@ -622,6 +668,13 @@ export function MainApp({ userType }: MainAppProps) {
               }}
               activeOpacity={0.7}
               style={styles.headerIconButton}
+              accessibilityRole="button"
+              accessibilityLabel={
+                unreadNotificationCount > 0
+                  ? `Notifications, ${unreadNotificationCount} unread`
+                  : "Notifications"
+              }
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               <Bell color="#000" size={22} strokeWidth={1.5} />
               {unreadNotificationCount > 0 && (
@@ -639,6 +692,8 @@ export function MainApp({ userType }: MainAppProps) {
               onNavigateToProfile={() => setActiveView("profile")}
               navTranslateY={navTranslateY}
               headerTranslateY={headerTranslateY}
+              onNavigateToMessages={handleNavigateToMessages}
+              onMatchCreated={requestPushPermission}
             />
           )}
           {activeView === "matches" && (
@@ -672,6 +727,7 @@ export function MainApp({ userType }: MainAppProps) {
                 onPendingConversationConsumed={() =>
                   setPendingMessageConversationId(null)
                 }
+                onFirstMessageSent={requestPushPermission}
               />
             </View>
           )}
@@ -834,13 +890,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 60,
     height: 60,
+    gap: 3,
   },
-  activeIndicator: {
-    position: "absolute",
-    bottom: 8,
-    width: 12,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#FFF",
+  navLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#666",
+    letterSpacing: -0.1,
+  },
+  navLabelActive: {
+    color: "#FFF",
+    fontWeight: "700",
   },
 });

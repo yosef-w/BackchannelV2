@@ -7,9 +7,14 @@ const ROLE_KEY = "user_role";
 
 /**
  * Base URL used for direct token refresh calls.
- * Defined here to avoid a circular dependency: useAuthStore → authApi → api → useAuthStore.
+ * Defined here (reading the same env var lib/api.ts does, rather than
+ * importing it) to avoid a circular dependency: useAuthStore → authApi → api
+ * → useAuthStore. Must stay in sync with EXPO_PUBLIC_API_BASE_URL so a
+ * staging/dev build's token refresh doesn't silently hit production.
  */
-const API_BASE_URL = "https://oyster-app-4pg5w.ondigitalocean.app";
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  "https://oyster-app-4pg5w.ondigitalocean.app";
 
 /**
  * Decode the `exp` claim from a JWT without any external library.
