@@ -34,6 +34,7 @@ import {
 } from "../lib/analytics/mixpanel";
 import { ApplicantCheckInStage, submitApplicantCheckIn } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
+import { saveLocalCheckInStage } from "../utils/checkInStageCache";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface CheckInReferral {
@@ -53,6 +54,13 @@ interface Props {
   referrals: CheckInReferral[];
   /** Optional: surface the loading state while parent is fetching referrals. */
   loading?: boolean;
+  /**
+   * Fired right after a check-in successfully submits. This modal is opened
+   * from a global header icon, decoupled from the Matches screen's own data
+   * — without this, submitting a check-in while sitting on Matches wouldn't
+   * refresh its (React Query-cached) pipeline list to show the new stage.
+   */
+  onSubmitted?: () => void;
 }
 
 // ── Stage data ────────────────────────────────────────────────────────────────
@@ -116,6 +124,7 @@ export function ApplicantCheckInModal({
   onDismiss,
   referrals,
   loading = false,
+  onSubmitted,
 }: Props) {
   const showToast = useToastStore((s) => s.showToast);
   const insets = useSafeAreaInsets();
@@ -230,6 +239,11 @@ export function ApplicantCheckInModal({
         stage: opt.stage,
         hasNote: note.trim().length > 0,
       });
+      // Mirror locally so the Matches screen's pipeline timeline reflects
+      // this update immediately — see checkInStageCache.ts for why this is
+      // necessary until the backend returns stages on GET /api/referrals/.
+      saveLocalCheckInStage(currentReferral.referralId, opt.stage);
+      onSubmitted?.();
       setSubmitted(true);
       // Auto-dismiss after the success animation plays
       setTimeout(() => {

@@ -6,7 +6,7 @@
 
 > **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§J** — self-like not rejected server-side (sponsor sees themselves in "Interested in Your Jobs", medium priority); **§K** — unsponsor doesn't invalidate the affected applicants' caches (phantom match for ~15s on the applicant's Matches screen, medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (portfolio, DOB, LinkedIn, unused address/phone — cleanup + PII minimization, low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
 >
-> **New feature requests (see the "🆕 New Features" section near the end):** **§N1** — report/block a user (App Store requirement, top priority, UX plan Phase 4).
+> **New feature requests (see the "🆕 New Features" section near the end):** **§N1** — report/block a user (App Store requirement, top priority, UX plan Phase 4); **§N2** — `/api/referrals/` doesn't return the current pipeline check-in stage, blocking real cross-party pipeline visibility (medium priority, UX plan Phase 5).
 >
 > Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
 
@@ -398,7 +398,7 @@ for uid in affected:
 
 **Why:** The app has messaging and user-generated content (bios, prompts, messages) but currently only offers **Unmatch** — no way to report abusive behavior or block a user from re-matching. Apple App Store Review Guideline 1.2 requires apps with user-generated content and person-to-person communication to provide (a) a mechanism to report objectionable content/users and (b) the ability to block abusive users. This is expected to gate submission review.
 
-**Frontend status:** Not yet built. Planned: a "Report" option alongside the existing "Unmatch" action in the message-thread menu (`components/MessagesView.tsx`), plus a report affordance on the public profile view. Reporting will also block the reported user (no further matching/messaging in either direction) as a client-visible side effect.
+**Frontend status (shipped 2026-07-04):** The thread "..." menu (`components/MessagesView.tsx`) is now a two-step sheet — Report / Unmatch / Cancel, then a reason picker (harassment, spam, inappropriate, fake profile, other) with an optional detail field. Reporting always closes the conversation via the already-shipped `unmatchConversation` endpoint regardless of whether `/api/reports/` exists yet, so the user-visible safety outcome works today; the report call itself (`reportUser()` in `lib/api.ts`) is best-effort and logs a warning on failure rather than blocking the close. **Not yet built:** a report affordance on the public profile view (pre-match) — scoped out for now since reporting typically applies to people you've actually matched/communicated with.
 
 ### Requested backend support
 
@@ -425,4 +425,30 @@ User A reports/blocks User B from a conversation. B disappears from A's Matches/
 
 ---
 
-*(Further entries for later UX-plan phases — pipeline visibility, retention pushes, funnel nudges, agency/growth — will be appended here as those phases are implemented.)*
+## §N2 — `GET /api/referrals/` doesn't return the current pipeline stage (UX Plan Phase 5) 🟡 Medium priority
+
+**Why:** Referral check-ins are write-only today. `POST /api/referrals/<id>/checkin/` (applicant) and `POST /api/referrals/checkin/batch/` (sponsor) record a stage update (per `SponsorCheckInModal.tsx`'s own comment: *"Backend stores referrals in REFERRED/WITHDRAWN at row level; per-stage state lives in `matching.referral_checkins`"*), but `GET /api/referrals/` never reads that table back — it only ever returns the row-level `REFERRED`/`WITHDRAWN` status. So there is currently no way for a sponsor to see what stage an applicant self-reported, or vice versa.
+
+This blocked building real "Your Pipeline" visibility, one of the highest-value items from the UX audit (referral status was found to be the app's most differentiated data and its most buried UI — previously visible only inside the check-in modals, never inline).
+
+**Frontend status (shipped 2026-07-04, partial):** Added a visual pipeline stage timeline (`components/ui/PipelineStageTimeline.tsx`) inline on both the sponsor's "Active Pipeline" and the applicant's "Referrals Received" cards in `MatchesView.tsx`. Since the backend doesn't return the real stage, it's currently backed by a **client-side local mirror** (`utils/checkInStageCache.ts`) that remembers what stage *this device* most recently submitted, written by both check-in modals on successful submit. **This only reflects the submitting user's own last update — it does NOT show the other party's reported stage**, which is the actual point of a shared pipeline view. The Referral type's new `checkInStage` field already prefers a backend value (`CHECKIN_STAGE`/`checkin_stage`) over the local cache, so real data lights this up automatically the moment it ships — no frontend change needed.
+
+### Requested backend change
+
+Have `GET /api/referrals/` join the latest row from `matching.referral_checkins` per referral (ordered by created_at desc, limit 1) and include it in the response, e.g.:
+
+```
+{
+  ...existing referral fields,
+  "CHECKIN_STAGE": "Recruiter Screen",   // latest stage from referral_checkins, or null if none yet
+  "CHECKIN_UPDATED_AT": "2026-07-03T18:22:00Z"
+}
+```
+
+### Acceptance test
+
+Applicant submits a check-in moving a referral to "HM Interview". Sponsor (on a different device/account) refreshes their Matches screen — the pipeline timeline for that referral now shows "HM Interview" as the current stage, without the sponsor having submitted anything themselves.
+
+---
+
+*(Further entries for later UX-plan phases — retention pushes, funnel nudges, agency/growth — will be appended here as those phases are implemented.)*

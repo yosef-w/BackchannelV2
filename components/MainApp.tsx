@@ -802,12 +802,18 @@ export function MainApp({ userType }: MainAppProps) {
         onDismiss={() => setShowApplicantCheckIn(false)}
         referrals={referrals as CheckInReferral[]}
         loading={referralsLoading}
+        onSubmitted={() =>
+          queryClient.invalidateQueries({ queryKey: ["matchesScreen"] })
+        }
       />
       <SponsorCheckInModal
         visible={showSponsorCheckIn}
         onDismiss={() => setShowSponsorCheckIn(false)}
         referrals={referrals as SponsorCheckInReferral[]}
         loading={referralsLoading}
+        onSubmitted={() =>
+          queryClient.invalidateQueries({ queryKey: ["matchesScreen"] })
+        }
       />
     </View>
   );

@@ -65,6 +65,7 @@ import {
     changePassword,
     classifyResume,
     deactivateAccount,
+    getBasicProfile,
     getExtractedResumeText,
     logout,
     unregisterDevice,
@@ -93,6 +94,8 @@ import {
   SPONSOR_PROMPT_CATEGORIES,
   SPONSOR_PROMPT_EXAMPLES,
 } from "../constants/prompts";
+import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
+import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 import { AutocompleteInput } from "./ui/AutocompleteInput";
 import { CharCounter } from "./ui/CharCounter";
 import { ExpandableText } from "./ui/ExpandableText";
@@ -209,6 +212,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
+  // "Preview my profile" — reuses the same public-profile views sponsors and
+  // applicants see of EACH OTHER, pointed at your own USER_ID instead. Seeing
+  // your own card as others see it is the strongest nudge to fill in the
+  // weak spots (missing bio, thin insights, etc).
+  const [showPreviewCard, setShowPreviewCard] = useState(false);
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -2005,6 +2015,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
+  const handlePreviewCard = async () => {
+    if (previewUserId) {
+      setShowPreviewCard(true);
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const basic = await getBasicProfile();
+      setPreviewUserId(String(basic.USER_ID));
+      setShowPreviewCard(true);
+    } catch (err) {
+      console.warn("[ProfileView] Failed to load own profile for preview:", err);
+      showToast("Couldn't load your profile preview. Please try again.", "error");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
@@ -2915,6 +2943,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.settingsGroup}>
+          <SettingItem
+            label={
+              previewLoading
+                ? "Loading Preview…"
+                : userType === "applicant"
+                  ? "Preview My Profile (Sponsor View)"
+                  : "Preview My Profile (Applicant View)"
+            }
+            onPress={handlePreviewCard}
+          />
           <SettingItem
             label="Edit Profile Insights"
             onPress={() => {
@@ -4436,6 +4474,28 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </>
         )}
       </SimpleModal>
+
+      {/* Preview My Profile — full-screen, matches how MainApp presents a
+          match's public profile. Points the SAME view at your own USER_ID
+          so you see your card exactly as the other side would. */}
+      <Modal
+        visible={showPreviewCard}
+        animationType="slide"
+        onRequestClose={() => setShowPreviewCard(false)}
+      >
+        {previewUserId &&
+          (userType === "applicant" ? (
+            <ApplicantPublicProfileView
+              userData={{ USER_ID: previewUserId }}
+              onClose={() => setShowPreviewCard(false)}
+            />
+          ) : (
+            <SponsorPublicProfileView
+              userData={{ USER_ID: previewUserId }}
+              onClose={() => setShowPreviewCard(false)}
+            />
+          ))}
+      </Modal>
     </ScrollView>
   );
 }

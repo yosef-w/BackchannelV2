@@ -520,6 +520,14 @@ export function HomeView({
   const setProgress = useJobsStore((state) => state.setProgress);
   const resetNavigation = useJobsStore((state) => state.resetNavigation);
   const lastFetched = useJobsStore((state) => state.lastFetched);
+  const sessionLikes = useJobsStore((state) => state.sessionLikes);
+  const sessionMatches = useJobsStore((state) => state.sessionMatches);
+  const incrementSessionLikes = useJobsStore(
+    (state) => state.incrementSessionLikes,
+  );
+  const incrementSessionMatches = useJobsStore(
+    (state) => state.incrementSessionMatches,
+  );
 
   // Premium / paywall — the end-of-deck "unlock more cards" upsell reuses the
   // same RevenueCat paywall as ProfileView's "Upgrade to Pro". No-ops in
@@ -1352,6 +1360,7 @@ export function HomeView({
             // Mark sponsored job as applied
             setAppliedJobIds((prev) => new Set([...prev, String(jobId)]));
             setLikedIds((prev) => new Set([...prev, String(jobId)]));
+            incrementSessionLikes();
 
             // Record "liked" in the feed history (fire-and-forget)
             recordJobFeedAction(String(jobId), "liked").catch(() => {});
@@ -1371,6 +1380,7 @@ export function HomeView({
               console.log("[HomeView] 🎉 It's a match!");
               didMatch = true;
               onMatchCreated?.();
+              incrementSessionMatches();
               const matchName =
                 "sponsorInfo" in currentData && currentData.sponsorInfo?.name
                   ? (currentData.sponsorInfo.name as string)
@@ -1421,6 +1431,7 @@ export function HomeView({
             );
             console.log("[HomeView] Like profile response:", response);
             setLikedIds((prev) => new Set([...prev, String(applicantUserId)]));
+            incrementSessionLikes();
 
             trackProfileLiked({
               applicantUserId: String(applicantUserId),
@@ -1442,6 +1453,7 @@ export function HomeView({
               console.log("[HomeView] 🎉 It's a match!");
               didMatch = true;
               onMatchCreated?.();
+              incrementSessionMatches();
               const matchName =
                 (currentData.name as string) ||
                 `${(currentData.FIRST_NAME as string) || ""} ${(currentData.LAST_NAME as string) || ""}`.trim() ||
@@ -1961,6 +1973,28 @@ export function HomeView({
                   You've reviewed all {DECK_SIZE} cards in today's deck — that's
                   your daily allotment. A fresh set unlocks tomorrow.
                 </Text>
+
+                {/* Session recap — turns the dead-end "you're done" screen
+                    into a moment that shows the deck actually did something,
+                    instead of just stopping. Counts live in useJobsStore so
+                    they survive a tab switch and back mid-deck. */}
+                <View style={styles.deckDoneRecap}>
+                  <View style={styles.deckDoneRecapCell}>
+                    <Text style={styles.deckDoneRecapValue}>
+                      {sessionLikes}
+                    </Text>
+                    <Text style={styles.deckDoneRecapLabel}>
+                      {userType === "applicant" ? "Interest sent" : "Connected"}
+                    </Text>
+                  </View>
+                  <View style={styles.deckDoneRecapDivider} />
+                  <View style={styles.deckDoneRecapCell}>
+                    <Text style={styles.deckDoneRecapValue}>
+                      {sessionMatches}
+                    </Text>
+                    <Text style={styles.deckDoneRecapLabel}>Matches</Text>
+                  </View>
+                </View>
 
                 {/* Primary CTA — unlock more cards via the paywall. Hidden for
                     users who already hold premium. */}
@@ -6703,6 +6737,38 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 28,
+  },
+  deckDoneRecap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingVertical: 18,
+    width: "100%",
+    marginBottom: 24,
+  },
+  deckDoneRecapCell: {
+    flex: 1,
+    alignItems: "center",
+  },
+  deckDoneRecapValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.5,
+  },
+  deckDoneRecapLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#999",
+    marginTop: 4,
+  },
+  deckDoneRecapDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: "#E5E5E5",
   },
   deckDonePrimary: {
     flexDirection: "row",

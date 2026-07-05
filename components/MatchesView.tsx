@@ -21,6 +21,7 @@ import {
     withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
+import { getLocalCheckInStages } from "@/utils/checkInStageCache";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
@@ -73,6 +74,7 @@ import Animated, {
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
+import { PipelineStageTimeline } from "./ui/PipelineStageTimeline";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -159,6 +161,15 @@ interface Referral {
    * card will light up automatically once the backend joins it in.
    */
   jobLogoUrl?: string | null;
+  /**
+   * Latest pipeline stage (e.g. "Recruiter Screen"). /api/referrals/ doesn't
+   * return this yet (see docs/BACKEND_CHANGES_NEEDED.md §N2) — it's merged
+   * in client-side from checkInStageCache.ts, which only reflects what the
+   * CURRENT user last submitted from THIS device. Optional so the field
+   * lights up for real, cross-party data automatically once the backend
+   * ships it.
+   */
+  checkInStage?: string | null;
 }
 
 interface JobOpportunity {
@@ -893,33 +904,49 @@ export function MatchesView({
     queryKey: matchesScreenKeys.referrals(userType),
     queryFn: async (): Promise<Referral[]> => {
       try {
-        const response = await listReferrals({ limit: 50, offset: 0 });
+        const [response, localStages] = await Promise.all([
+          listReferrals({ limit: 50, offset: 0 }),
+          getLocalCheckInStages(),
+        ]);
 
         return (response.referrals || []).map(
-          (r: any) => ({
-            referralId: r.REFERRAL_ID || r.referral_id || "",
-            jobId: r.JOB_ID || r.job_id || "",
-            applicantUserId: r.APPLICANT_USER_ID || r.applicant_user_id || "",
-            sponsorUserId: r.SPONSOR_USER_ID || r.sponsor_user_id || "",
-            status: r.STATUS || r.status || "REFERRED",
-            referralNote: r.REFERRAL_NOTE || r.referral_note || null,
-            createdAt: r.CREATED_AT || r.created_at || "",
-            applicantFirstName:
-              r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
-            applicantLastName:
-              r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
-            applicantPhotoUrl:
-              r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
-            sponsorFirstName:
-              r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
-            sponsorLastName: r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
-            sponsorPhotoUrl: r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
-            jobTitle: r.JOB_TITLE || r.job_title || null,
-            jobCompany: r.JOB_COMPANY || r.job_company || null,
-            // Forward-compat — backend doesn't ship logos on /api/referrals/
-            // yet; component falls back to initial when this is null.
-            jobLogoUrl: r.LOGO_URL || r.logo_url || r.ORGANIZATION_LOGO || null,
-          }),
+          (r: any) => {
+            const referralId = r.REFERRAL_ID || r.referral_id || "";
+            return {
+              referralId,
+              jobId: r.JOB_ID || r.job_id || "",
+              applicantUserId: r.APPLICANT_USER_ID || r.applicant_user_id || "",
+              sponsorUserId: r.SPONSOR_USER_ID || r.sponsor_user_id || "",
+              status: r.STATUS || r.status || "REFERRED",
+              referralNote: r.REFERRAL_NOTE || r.referral_note || null,
+              createdAt: r.CREATED_AT || r.created_at || "",
+              applicantFirstName:
+                r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
+              applicantLastName:
+                r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
+              applicantPhotoUrl:
+                r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
+              sponsorFirstName:
+                r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
+              sponsorLastName:
+                r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
+              sponsorPhotoUrl:
+                r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
+              jobTitle: r.JOB_TITLE || r.job_title || null,
+              jobCompany: r.JOB_COMPANY || r.job_company || null,
+              // Forward-compat — backend doesn't ship logos on /api/referrals/
+              // yet; component falls back to initial when this is null.
+              jobLogoUrl:
+                r.LOGO_URL || r.logo_url || r.ORGANIZATION_LOGO || null,
+              // Backend field, when it ships (§N2), takes priority over the
+              // local mirror automatically since it'll be non-null here.
+              checkInStage:
+                r.CHECKIN_STAGE ||
+                r.checkin_stage ||
+                localStages[referralId] ||
+                null,
+            };
+          },
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -1810,6 +1837,11 @@ export function MatchesView({
                             {isReferred ? "Referred" : "Withdrawn"}
                           </Text>
                         </View>
+                        {isReferred && (
+                          <PipelineStageTimeline
+                            currentStage={referral.checkInStage}
+                          />
+                        )}
                       </View>
                       <View style={styles.pipelineActions}>
                         {matchForReferral && (
@@ -2356,6 +2388,12 @@ export function MatchesView({
                             </Text>
                           </View>
                         </View>
+
+                        {isReferred && (
+                          <PipelineStageTimeline
+                            currentStage={referral.checkInStage}
+                          />
+                        )}
                       </TouchableOpacity>
                     </Animated.View>
                   );
