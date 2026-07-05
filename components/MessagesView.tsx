@@ -82,6 +82,50 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
+/**
+ * Conversation starters for a brand-new (empty) thread. Most matches die in
+ * silence because someone has to write the awkward first message — these
+ * give a one-tap way past that, built entirely from data already on the
+ * conversation object (job title/company, skills) so they don't need an
+ * extra profile fetch just to populate an empty state.
+ */
+function getConversationStarters(
+  conversation: any,
+  userType: "applicant" | "sponsor",
+): string[] {
+  const jobTitle: string | undefined = conversation?.jobContext?.jobTitle;
+  const company: string | undefined =
+    conversation?.jobContext?.company || conversation?.company;
+  const skill: string | undefined =
+    Array.isArray(conversation?.skills) && conversation.skills.length > 0
+      ? conversation.skills[0]
+      : undefined;
+
+  if (userType === "applicant") {
+    return [
+      company
+        ? `What's the team culture like at ${company}?`
+        : "What's the team culture like there?",
+      jobTitle
+        ? `What's the interview process like for the ${jobTitle} role?`
+        : "What's the interview process like?",
+      company
+        ? `What made you want to work at ${company}?`
+        : "What made you want to work there?",
+    ];
+  }
+
+  return [
+    jobTitle
+      ? `What interests you about the ${jobTitle} role?`
+      : "What are you looking for in your next role?",
+    skill
+      ? `I noticed you know ${skill} — how have you used that day to day?`
+      : "Tell me a bit about your background.",
+    "What's most important to you in your next role?",
+  ];
+}
+
 interface MessagesViewProps {
   onThreadActiveChange?: (isThreadActive: boolean) => void;
   userType?: "applicant" | "sponsor";
@@ -1253,6 +1297,36 @@ export function MessagesView({
       (c) => c.id === selectedConversation,
     );
 
+    // In-thread referral prompt eligibility (sponsor only) — after a real
+    // back-and-forth (3+ messages each way), nudge the sponsor toward the
+    // Refer flow instead of relying on them remembering the header button
+    // exists. Plain computation, not useMemo/hook — this whole block is
+    // inside a conditional branch of the component, so a hook here would
+    // violate the Rules of Hooks. Message lists are small enough that
+    // recomputing this every render is cheap.
+    let sponsorReferralPromptEligible = false;
+    if (userType === "sponsor" && conversation?.otherParticipant?.id) {
+      const applicantId = conversation.otherParticipant.id;
+      const jobId = conversation.jobContext?.jobId;
+      const alreadyReferred =
+        !!(applicantId && jobId) &&
+        referredSet.has(`${applicantId}:${jobId}`);
+      if (!alreadyReferred) {
+        let mine = 0;
+        let theirs = 0;
+        for (const m of messages) {
+          const isMine = currentUserId
+            ? m.senderId === currentUserId ||
+              m.senderId === "me" ||
+              (m.id.startsWith("temp-") && !m.serverId)
+            : m.id.startsWith("temp-") || m.senderId === "me";
+          if (isMine) mine++;
+          else theirs++;
+        }
+        sponsorReferralPromptEligible = mine >= 3 && theirs >= 3;
+      }
+    }
+
     if (!conversation) {
       // Conversations are still fetching — show a loading state so we don't flash
       // a false "not found" message while the async fetch completes after a
@@ -1457,13 +1531,42 @@ export function MessagesView({
                 </Text>
               </View>
             ) : messages.length === 0 ? (
-              <View style={{ padding: 40, alignItems: "center" }}>
+              <View style={{ padding: 28, alignItems: "center" }}>
                 <Text style={{ color: "#999", fontSize: 15 }}>
                   No messages yet
                 </Text>
-                <Text style={{ color: "#BBB", fontSize: 13, marginTop: 8 }}>
+                <Text
+                  style={{
+                    color: "#BBB",
+                    fontSize: 13,
+                    marginTop: 8,
+                    marginBottom: 20,
+                  }}
+                >
                   Start the conversation!
                 </Text>
+                {/* Conversation starters — most matches die in silence
+                    because someone has to write the awkward first message.
+                    Tapping fills the composer rather than sending straight
+                    away, so the user still reviews/personalizes it. */}
+                <View style={styles.startersHeader}>
+                  <Sparkles size={13} color="#999" strokeWidth={2.2} />
+                  <Text style={styles.startersHeaderText}>BREAK THE ICE</Text>
+                </View>
+                <View style={styles.startersList}>
+                  {getConversationStarters(conversation, userType).map(
+                    (starter, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={styles.starterChip}
+                        onPress={() => setMessageText(starter)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.starterChipText}>{starter}</Text>
+                      </TouchableOpacity>
+                    ),
+                  )}
+                </View>
               </View>
             ) : (
               messages.map((message, index) => {
@@ -1545,6 +1648,31 @@ export function MessagesView({
             </View>
           ) : (
             <View>
+              {/* In-thread referral nudge (sponsor only) — see
+                  sponsorReferralPromptEligible above. Disappears on its own
+                  once the sponsor actually refers (alreadyReferred flips),
+                  no dismiss needed. */}
+              {sponsorReferralPromptEligible && (
+                <TouchableOpacity
+                  style={styles.referralNudge}
+                  onPress={openReferral}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.referralNudgeIconCircle}>
+                    <UserCheck color="#FFF" size={16} strokeWidth={2.5} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.referralNudgeTitle}>
+                      Feeling good about{" "}
+                      {conversation.otherParticipant.name.split(" ")[0]}?
+                    </Text>
+                    <Text style={styles.referralNudgeSubtitle}>
+                      Tap to refer them for the role
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color="#999" />
+                </TouchableOpacity>
+              )}
               {/* Only surface the counter as you approach the 2000-char cap so
                   it doesn't clutter normal chatting. */}
               {messageText.length >= 1800 && (
@@ -2997,6 +3125,37 @@ export function MessagesView({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
+  // Conversation-starter chips shown in a brand-new empty thread.
+  startersHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  startersHeaderText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1,
+  },
+  startersList: {
+    width: "100%",
+    gap: 8,
+  },
+  starterChip: {
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  starterChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "left",
+  },
   headerTitleContainer: { marginBottom: 32 },
   title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.2 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
@@ -3144,6 +3303,37 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     lineHeight: 19,
+  },
+  referralNudge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  referralNudgeIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  referralNudgeTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+  },
+  referralNudgeSubtitle: {
+    fontSize: 11,
+    color: "#999",
+    marginTop: 1,
   },
   chatContainer: { flex: 1, backgroundColor: "#FFF" },
   chatHeader: {
