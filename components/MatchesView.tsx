@@ -45,7 +45,7 @@ import {
     X,
     Zap,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -343,6 +343,7 @@ const getRelativeTime = (dateStr: string): string => {
 export function MatchesView({
   userType = "sponsor",
   onNavigateToMessages,
+  onOpenCheckIn,
 }: {
   userType?: "applicant" | "sponsor";
   // Second arg is the counterpart user id (the OTHER participant in the
@@ -352,6 +353,13 @@ export function MatchesView({
   // shares the same jobId. Optional for legacy call sites where there can
   // only ever be one conversation per job (applicant→sponsor direction).
   onNavigateToMessages?: (jobId: string, userId?: string) => void;
+  /**
+   * Opens the global referral check-in modal (owned by MainApp, triggered
+   * normally via the header clipboard icon). Wired to the stale-referral
+   * nudge banner below so "Check in now" doesn't need its own duplicate
+   * modal — it just opens the same one, pre-loaded with the same data.
+   */
+  onOpenCheckIn?: () => void;
 }) {
   const [selectedProfile, setSelectedProfile] = useState<Match | null>(null);
   // Role-picker for grouped match cards: when a person is matched on several
@@ -960,6 +968,23 @@ export function MatchesView({
   const referralsError =
     referralsErrorObj instanceof Error ? referralsErrorObj.message : null;
 
+  // Stale-referral nudge — a referral that's been sitting at "Referred"
+  // (no progress reported) for a week or more is exactly the kind of thing
+  // that otherwise silently rots: the applicant forgets to update, the
+  // sponsor never finds out either way. Surfaced as a banner rather than a
+  // push, since it needs no backend support at all — just today's already-
+  // fetched referrals list.
+  const STALE_REFERRAL_DAYS = 7;
+  const staleReferrals = useMemo(() => {
+    const cutoff = Date.now() - STALE_REFERRAL_DAYS * 24 * 60 * 60 * 1000;
+    return referrals.filter((r) => {
+      if (r.status !== "REFERRED") return false;
+      if (r.checkInStage && r.checkInStage !== "Referred") return false;
+      const created = Date.parse(r.createdAt);
+      return !isNaN(created) && created <= cutoff;
+    });
+  }, [referrals]);
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
     setActiveSlide(slide);
@@ -1450,6 +1475,33 @@ export function MatchesView({
               : "Talent you are sponsoring"}
           </Text>
         </View>
+
+        {/* Stale-referral nudge — see the staleReferrals memo above for
+            exactly what counts. Only rendered when there's something to
+            act on, and only when the parent actually wired up a way to
+            open the check-in modal. */}
+        {staleReferrals.length > 0 && onOpenCheckIn && (
+          <TouchableOpacity
+            style={styles.staleReferralBanner}
+            onPress={onOpenCheckIn}
+            activeOpacity={0.85}
+          >
+            <View style={styles.staleReferralIconCircle}>
+              <Clock size={18} color="#000" strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.staleReferralTitle}>
+                {staleReferrals.length === 1
+                  ? "A referral needs a status update"
+                  : `${staleReferrals.length} referrals need a status update`}
+              </Text>
+              <Text style={styles.staleReferralSubtitle}>
+                No update in over a week — check in now
+              </Text>
+            </View>
+            <ChevronRight size={18} color="#999" />
+          </TouchableOpacity>
+        )}
 
         {userType === "sponsor" ? (
           /* SPONSOR VIEW */
@@ -4090,6 +4142,37 @@ const styles = StyleSheet.create({
   header: { marginBottom: 30 },
   title: { fontSize: 32, fontWeight: "800", letterSpacing: -1 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 4 },
+  staleReferralBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 30,
+  },
+  staleReferralIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  staleReferralTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  staleReferralSubtitle: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
   sectionContainer: { marginBottom: 40 },
   listSectionTitle: {
     fontSize: 12,

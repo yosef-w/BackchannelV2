@@ -85,6 +85,10 @@ import {
     ProfessionalExperience,
     useUserProfileStore,
 } from "../stores/useUserProfileStore";
+import {
+    cancelDailyDeckReminder,
+    cancelUnfinishedDeckReminder,
+} from "../lib/localNotifications";
 import { logBreadcrumb, Sentry } from "../lib/sentry";
 import { validateProfileField } from "../lib/validation";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
@@ -2055,6 +2059,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
         // Non-fatal — proceed with logout regardless.
       }
     }
+    // Cancel the locally-scheduled "your deck is ready" / unfinished-deck
+    // reminders too — those are on-device schedules, not backend push, so
+    // unregistering the device token alone wouldn't stop them.
+    cancelDailyDeckReminder();
+    cancelUnfinishedDeckReminder();
     try {
       // Call backend logout to invalidate session
       await logout();

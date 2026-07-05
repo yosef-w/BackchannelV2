@@ -146,7 +146,9 @@ function formatRelevancePercent(raw: unknown): number | null {
   return Math.min(100, Math.max(1, Math.round(percent)));
 }
 
-const DECK_SIZE = 10;
+// Exported so MainApp can compute "cards remaining" for the unfinished-deck
+// local-notification reminder without duplicating this constant.
+export const DECK_SIZE = 10;
 // How long a cached per-role deck stays "fresh" before a role re-fetches on
 // re-entry (so new applicants surface). Keeps rapid role-switching instant
 // without serving a stale deck all day.
