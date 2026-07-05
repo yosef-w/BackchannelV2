@@ -85,6 +85,7 @@ import { useToastStore } from "../stores/useToastStore";
 import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
+import { saveSponsorRequestOutcome } from "../utils/sponsorRequestCache";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -1673,6 +1674,13 @@ export function HomeView({
       // Backend's context-aware copy: count of sponsors, "already has a
       // sponsor", "no sponsors at this company yet", duplicate request, etc.
       setSponsorRequestMessage(requestRes.value.message ?? null);
+      // Mirror it locally so the Matches screen's Waitlisted detail can show
+      // it later — the backend doesn't persist/return this message anywhere
+      // (see utils/sponsorRequestCache.ts), so without this it's gone the
+      // moment the user navigates away.
+      if (requestRes.value.message) {
+        saveSponsorRequestOutcome(jobId, requestRes.value.message);
+      }
     } else {
       console.warn("[HomeView] request-sponsor failed:", requestRes.reason);
     }

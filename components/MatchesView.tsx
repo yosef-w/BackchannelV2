@@ -17,11 +17,16 @@ import {
     likeBackSponsor,
     likeProfile,
     listReferrals,
+    requestSponsorForJob,
     sponsorJob,
     withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
 import { getLocalCheckInStages } from "@/utils/checkInStageCache";
+import {
+    getSponsorRequestOutcomes,
+    saveSponsorRequestOutcome,
+} from "@/utils/sponsorRequestCache";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
@@ -287,6 +292,14 @@ interface WaitlistedJob {
    * organization initial when absent.
    */
   organization_logo?: string | null;
+  /**
+   * The context-aware message the backend returned at request time (e.g.
+   * "5 employees notified at Stripe"). Not persisted server-side — merged
+   * in client-side from sponsorRequestCache.ts, so this only reflects a
+   * request made from THIS device. Undefined when no cached outcome exists
+   * (e.g. the job was waitlisted without ever calling request-sponsor).
+   */
+  outcomeMessage?: string;
 }
 
 const QUICK_REPLIES = [
@@ -430,6 +443,8 @@ export function MatchesView({
   // cached via useQuery below; only the selection/spinner UI state stays local.
   const [selectedWaitlistedJob, setSelectedWaitlistedJob] =
     useState<WaitlistedJob | null>(null);
+  const [isNudgingSponsorRequest, setIsNudgingSponsorRequest] =
+    useState(false);
 
   const [withdrawingReferralId, setWithdrawingReferralId] = useState<
     string | null
@@ -571,6 +586,27 @@ export function MatchesView({
   // refetch in the background and stay in sync.
   const refreshMatchSections = () => {
     queryClient.invalidateQueries({ queryKey: matchesScreenKeys.root });
+  };
+
+  // Re-send a sponsor request for a waitlisted job that's gone quiet. Closes
+  // the "request → silence" loop the original request-sponsor flow left
+  // open — previously the only way to nudge again was to find the job in
+  // the deck a second time (if it even reappeared).
+  const handleNudgeSponsorRequest = async (job: WaitlistedJob) => {
+    setIsNudgingSponsorRequest(true);
+    try {
+      const res = await requestSponsorForJob(job.job_id);
+      if (res.message) {
+        await saveSponsorRequestOutcome(job.job_id, res.message);
+      }
+      refreshMatchSections();
+      showToast(res.message || "Request sent again.", "success");
+    } catch (err) {
+      console.warn("[MatchesView] Failed to nudge sponsor request:", err);
+      showToast("Couldn't send that right now. Please try again.", "error");
+    } finally {
+      setIsNudgingSponsorRequest(false);
+    }
   };
 
   // Pull-to-refresh. Nothing else live-updates this screen (no socket, and a
@@ -893,8 +929,14 @@ export function MatchesView({
     queryKey: matchesScreenKeys.waitlistedJobs(userType),
     enabled: userType === "applicant",
     queryFn: async (): Promise<WaitlistedJob[]> => {
-      const response = await getWaitlistedJobs();
-      return response.jobs;
+      const [response, outcomes] = await Promise.all([
+        getWaitlistedJobs(),
+        getSponsorRequestOutcomes(),
+      ]);
+      return response.jobs.map((j) => ({
+        ...j,
+        outcomeMessage: outcomes[j.job_id]?.message,
+      }));
     },
   });
   const waitlistedJobsError =
@@ -3310,6 +3352,20 @@ export function MatchesView({
                         We’ll notify you as soon as someone sponsors this role.
                         Keep an eye on your notifications.
                       </Text>
+                      {!!selectedWaitlistedJob.outcomeMessage && (
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: "#888",
+                            lineHeight: 17,
+                            fontWeight: "500",
+                            marginTop: 10,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {selectedWaitlistedJob.outcomeMessage}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 )}
@@ -3321,12 +3377,50 @@ export function MatchesView({
                     fontWeight: "600",
                     color: "#BBB",
                     textAlign: "center",
-                    marginBottom: 28,
+                    marginBottom: 16,
                   }}
                 >
                   Waitlisted{" "}
                   {getRelativeTime(selectedWaitlistedJob.waitlisted_at)}
                 </Text>
+
+                {/* Nudge again — only once the request has gone quiet for a
+                    while; re-sending immediately would just be noise. */}
+                {!selectedWaitlistedJob.is_now_sponsored &&
+                  Date.now() -
+                    new Date(selectedWaitlistedJob.waitlisted_at).getTime() >=
+                    5 * 24 * 60 * 60 * 1000 && (
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: "#000",
+                        borderRadius: 16,
+                        paddingVertical: 16,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 12,
+                        opacity: isNudgingSponsorRequest ? 0.6 : 1,
+                      }}
+                      onPress={() =>
+                        handleNudgeSponsorRequest(selectedWaitlistedJob)
+                      }
+                      disabled={isNudgingSponsorRequest}
+                      activeOpacity={0.85}
+                    >
+                      {isNudgingSponsorRequest ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <Text
+                          style={{
+                            color: "#FFF",
+                            fontSize: 14,
+                            fontWeight: "700",
+                          }}
+                        >
+                          Nudge again
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
               </ScrollView>
             )}
           </DismissibleSheet>
