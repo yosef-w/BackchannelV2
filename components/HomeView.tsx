@@ -621,6 +621,34 @@ export function HomeView({
   // window that precedes it, not this trailing fade-out window.
   const [leavingItemId, setLeavingItemId] = useState<string | null>(null);
 
+  // ── Undo after Pass ────────────────────────────────────────────────────
+  // A Pass is otherwise instant and irreversible — with only 10 cards a
+  // day, one mis-tap on a card you wanted is expensive. This holds the
+  // analytics/feed-history call for the most recently passed card
+  // uncommitted for a few seconds so an "Undo" tap can cancel it and jump
+  // back, instead of racing the network. Only the MOST RECENT pass is
+  // undoable — passing again before the window closes immediately commits
+  // the earlier one (same one-pending-at-a-time rule the referral-withdraw
+  // undo in MatchesView uses), so a commit is never silently dropped.
+  const pendingPassRef = useRef<{
+    kind: "job" | "profile";
+    id: string;
+    isSponsored?: boolean;
+    jobId?: string;
+    prevIndex: number;
+    prevProgress: number;
+  } | null>(null);
+  const passUndoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const [showPassUndoToast, setShowPassUndoToast] = useState(false);
+  const [passUndoLabel, setPassUndoLabel] = useState("");
+  // nextProfile's own delayed index-advance timeout — see the comment
+  // inside nextProfile for why handleUndoPass needs to be able to cancel it.
+  const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   // Drives the cross-fade between profiles. The old swipeX horizontal
   // translation + rotateY card-flip shared values were removed with the
   // card UI; only the opacity-driven fade survives the redesign.
@@ -1192,6 +1220,76 @@ export function HomeView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentData?.USER_ID, userType]);
 
+  // Fires the analytics + feed-history call for whatever pass is currently
+  // pending, then clears it. A no-op if nothing is pending (safe to call
+  // unconditionally from the undo-window timeout, a new pass flushing the
+  // old one, or the cleanup effect below).
+  const commitPendingPass = useCallback(() => {
+    const pending = pendingPassRef.current;
+    pendingPassRef.current = null;
+    if (!pending) return;
+    if (pending.kind === "job") {
+      trackJobSkipped({
+        jobId: pending.id,
+        isSponsored: !!pending.isSponsored,
+      });
+      recordJobFeedAction(pending.id, "passed").catch(() => {});
+    } else {
+      trackProfileSkipped({
+        applicantUserId: pending.id,
+        jobId: pending.jobId,
+      });
+      if (pending.jobId) {
+        recordProfileFeedAction(pending.jobId, pending.id, "passed").catch(
+          () => {},
+        );
+      }
+    }
+  }, []);
+
+  // A pending pass must never be silently lost — if the user leaves Home
+  // (tab switch unmounts this component) or a sponsor switches roles
+  // (deck swap) while a pass is still inside its undo window, commit it
+  // immediately rather than dropping the feed-history signal.
+  useEffect(() => {
+    return () => {
+      if (passUndoTimeoutRef.current) {
+        clearTimeout(passUndoTimeoutRef.current);
+        passUndoTimeoutRef.current = null;
+      }
+      if (advanceTimeoutRef.current) {
+        clearTimeout(advanceTimeoutRef.current);
+        advanceTimeoutRef.current = null;
+      }
+      commitPendingPass();
+    };
+  }, [activeSponsoredJobId, commitPendingPass]);
+
+  const handleUndoPass = () => {
+    if (passUndoTimeoutRef.current) {
+      clearTimeout(passUndoTimeoutRef.current);
+      passUndoTimeoutRef.current = null;
+    }
+    const pending = pendingPassRef.current;
+    pendingPassRef.current = null;
+    setShowPassUndoToast(false);
+    if (!pending) return;
+    // Cancel nextProfile's own pending index-advance too — if the user
+    // undoes within its 220ms fade-out window, that stale-closured timeout
+    // would otherwise fire moments later and silently redo the exact
+    // advance we're about to undo.
+    if (advanceTimeoutRef.current) {
+      clearTimeout(advanceTimeoutRef.current);
+      advanceTimeoutRef.current = null;
+    }
+    setLeavingItemId(null);
+    // Snap back instantly (no cross-fade) — nothing was ever committed for
+    // this card, so undoing should feel like the pass never happened.
+    swipeOpacity.value = 1;
+    setCurrentProfileIndex(pending.prevIndex);
+    setProgress(pending.prevProgress);
+  };
+
   const handleSwipe = async (isAccept: boolean) => {
     // Check profile completeness for applicants before any swipe action (unless they're a tester).
     // Gate on isComplete (every required field present) rather than a percentage
@@ -1406,37 +1504,61 @@ export function HomeView({
       }
       // When didMatch=true, nextProfile is called when the match modal is dismissed
     } else {
-      // Skip / swipe-left analytics — fired regardless of role.
+      // Pass — held in an undo window rather than committed immediately.
+      // Flush whatever pass was already pending first (only the most
+      // recent one gets undo protection).
+      if (passUndoTimeoutRef.current) {
+        clearTimeout(passUndoTimeoutRef.current);
+        passUndoTimeoutRef.current = null;
+      }
+      commitPendingPass();
+
+      let label = "";
       if (userType === "applicant") {
         const skippedJobId = currentData?.id;
         if (skippedJobId) {
-          trackJobSkipped({
-            jobId: String(skippedJobId),
+          pendingPassRef.current = {
+            kind: "job",
+            id: String(skippedJobId),
             isSponsored:
               "isSponsored" in currentData
                 ? Boolean(currentData.isSponsored)
                 : false,
-          });
-          // Record "passed" in the feed history (fire-and-forget)
-          recordJobFeedAction(String(skippedJobId), "passed").catch(() => {});
+            prevIndex: currentProfileIndex,
+            prevProgress: progress,
+          };
+          label =
+            "title" in currentData && currentData.title
+              ? String(currentData.title)
+              : "this role";
         }
       } else {
         const skippedApplicantId = currentData?.USER_ID || currentData?.id;
         if (skippedApplicantId) {
-          trackProfileSkipped({
-            applicantUserId: String(skippedApplicantId),
+          pendingPassRef.current = {
+            kind: "profile",
+            id: String(skippedApplicantId),
             jobId: activeSponsoredJobId || undefined,
-          });
-          // Record "passed" in the feed history (fire-and-forget)
-          if (activeSponsoredJobId) {
-            recordProfileFeedAction(
-              activeSponsoredJobId,
-              String(skippedApplicantId),
-              "passed",
-            ).catch(() => {});
-          }
+            prevIndex: currentProfileIndex,
+            prevProgress: progress,
+          };
+          label =
+            "name" in currentData && (currentData as any).name
+              ? String((currentData as any).name)
+              : "this applicant";
         }
       }
+
+      if (pendingPassRef.current) {
+        setPassUndoLabel(label);
+        setShowPassUndoToast(true);
+        passUndoTimeoutRef.current = setTimeout(() => {
+          commitPendingPass();
+          setShowPassUndoToast(false);
+          passUndoTimeoutRef.current = null;
+        }, 4000);
+      }
+
       nextProfile(false);
     }
   };
@@ -1458,11 +1580,19 @@ export function HomeView({
 
     swipeOpacity.value = withTiming(0, { duration: 220 });
 
-    setTimeout(() => {
+    // Cancelable — if the user hits "Undo" on the pass-undo toast within
+    // this 220ms fade-out window, handleUndoPass clears this timeout AND
+    // resets currentProfileIndex/progress itself. Without the ability to
+    // cancel it, this closure's stale currentProfileIndex/progress would
+    // fire 220ms later and silently redo the exact advance the user just
+    // undid, since it captured those values before the undo happened.
+    if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
+    advanceTimeoutRef.current = setTimeout(() => {
       setProgress(progress + 1);
       setCurrentProfileIndex(currentProfileIndex + 1);
       swipeOpacity.value = withTiming(1, { duration: 280 });
       setLeavingItemId(null);
+      advanceTimeoutRef.current = null;
     }, 220);
   };
 
@@ -4333,6 +4463,30 @@ export function HomeView({
         userType={userType}
         onDone={handleIntroDone}
       />
+
+      {/* Undo-after-Pass toast — a Pass is otherwise instant and
+          irreversible, which is unforgiving with only 10 cards a day. */}
+      {showPassUndoToast && (
+        <Animated.View
+          entering={SlideInDown.springify().damping(20)}
+          exiting={SlideOutDown.springify().damping(20)}
+          style={styles.passUndoToast}
+          pointerEvents="box-none"
+        >
+          <Text style={styles.passUndoToastText} numberOfLines={1}>
+            Passed{passUndoLabel ? ` on ${passUndoLabel}` : ""}
+          </Text>
+          <TouchableOpacity
+            onPress={handleUndoPass}
+            style={styles.passUndoToastBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Undo pass"
+          >
+            <Text style={styles.passUndoToastBtnText}>Undo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -4341,6 +4495,46 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   safeArea: { flex: 1 },
   scrollContent: { paddingHorizontal: 36, paddingBottom: 100 },
+  // Undo-after-Pass toast — same dark pill + white "Undo" pattern as the
+  // referral-withdraw undo toast in MatchesView. Positioned above the
+  // floating Pass/Connect buttons (which sit at bottom: 20–28, ~64 tall).
+  passUndoToast: {
+    position: "absolute",
+    bottom: 110,
+    left: 20,
+    right: 20,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  passUndoToastText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "600",
+    flex: 1,
+    marginRight: 12,
+  },
+  passUndoToastBtn: {
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  passUndoToastBtnText: {
+    color: "#000",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
   // 2026-05-26 Hinge-style redesign — layout primitives.
   // `pageContainer` is the flex-column that holds the sticky header,
   // the active profile scroll, and the sticky bottom action bar.
