@@ -4486,24 +4486,33 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       {/* Preview My Profile — full-screen, matches how MainApp presents a
           match's public profile. Points the SAME view at your own USER_ID
-          so you see your card exactly as the other side would. */}
+          so you see your card exactly as the other side would.
+          Note: MainApp renders this same component as a child of its own
+          top-level SafeAreaView, so it inherits safe-area insets for free
+          there. A bare <Modal> breaks out of the normal view hierarchy
+          entirely (it doesn't inherit anything from an ancestor
+          SafeAreaView), so this needs its own — without it, the back
+          button and content pushed up against the iPhone's notch/status
+          bar and the bottom content ran into the home-indicator area. */}
       <Modal
         visible={showPreviewCard}
         animationType="slide"
         onRequestClose={() => setShowPreviewCard(false)}
       >
-        {previewUserId &&
-          (userType === "applicant" ? (
-            <ApplicantPublicProfileView
-              userData={{ USER_ID: previewUserId }}
-              onClose={() => setShowPreviewCard(false)}
-            />
-          ) : (
-            <SponsorPublicProfileView
-              userData={{ USER_ID: previewUserId }}
-              onClose={() => setShowPreviewCard(false)}
-            />
-          ))}
+        <SafeAreaView style={styles.previewSafeArea}>
+          {previewUserId &&
+            (userType === "applicant" ? (
+              <ApplicantPublicProfileView
+                userData={{ USER_ID: previewUserId }}
+                onClose={() => setShowPreviewCard(false)}
+              />
+            ) : (
+              <SponsorPublicProfileView
+                userData={{ USER_ID: previewUserId }}
+                onClose={() => setShowPreviewCard(false)}
+              />
+            ))}
+        </SafeAreaView>
       </Modal>
     </ScrollView>
   );
@@ -4954,6 +4963,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   insightsEditorSafe: { flex: 1, backgroundColor: "#FFF" },
+  previewSafeArea: { flex: 1, backgroundColor: "#FFF" },
   insightsEditorHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
