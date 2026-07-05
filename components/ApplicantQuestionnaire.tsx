@@ -88,6 +88,10 @@ const RESUME_PROCESS_TIMEOUT_MS = 25000;
 // picked photo URI (a temp cache path that won't survive a relaunch).
 const APPLICANT_DRAFT_KEY = "onboarding_draft_applicant_v1";
 
+// The résumé picker only accepts PDFs (see handleFilePick) — the upload copy
+// must match, otherwise a Word-résumé user thinks the picker is broken.
+const RESUME_MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB, matches the upload copy
+
 /** Resolve when `promise` settles, or reject once `ms` elapses. */
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -101,6 +105,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 interface ApplicantQuestionnaireProps {
   onComplete: () => void;
   onBack: () => void;
+  /**
+   * Called when registration fails because the email is already registered.
+   * Sends the user to a Sign In screen (pre-filled with what they typed)
+   * instead of just bouncing them back to the sign-up form they were
+   * rejected from — the dead end this used to be.
+   */
+  onEmailAlreadyRegistered: () => void;
 }
 
 const WORK_PREFERENCE_OPTIONS = [
@@ -181,6 +192,7 @@ const RESUME_FILLED_KEYS = ["industry", "currentRole", "skills"];
 export function ApplicantQuestionnaire({
   onComplete,
   onBack,
+  onEmailAlreadyRegistered,
 }: ApplicantQuestionnaireProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -492,17 +504,18 @@ export function ApplicantQuestionnaire({
         registeredRef.current = true;
       } catch (err) {
         setIsSubmitting(false);
-        // The email field lives on the previous (auth) screen. If the failure is
-        // an already-registered email, send them straight back there to fix it
-        // instead of leaving them stuck on the résumé step. onError already
-        // surfaced the "email already registered" toast, which stays visible.
+        // If the failure is an already-registered email, send them straight
+        // to Sign In (pre-filled with what they typed) instead of dropping
+        // them back on the sign-up form they were just rejected from.
+        // onError already surfaced the "email already registered" toast,
+        // which stays visible through the transition.
         const msg = err instanceof Error ? err.message.toLowerCase() : "";
         if (
           msg.includes("already in use") ||
           msg.includes("already exists") ||
           msg.includes("already registered")
         ) {
-          onBack();
+          onEmailAlreadyRegistered();
         }
         return;
       }
@@ -643,6 +656,13 @@ export function ApplicantQuestionnaire({
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
+        if (asset.size && asset.size > RESUME_MAX_SIZE_BYTES) {
+          showToast(
+            "That résumé is over 10 MB — please upload a smaller file.",
+            "error",
+          );
+          return;
+        }
         setSelectedFileAsset({
           name: asset.name,
           uri: asset.uri,
@@ -1020,7 +1040,7 @@ export function ApplicantQuestionnaire({
                           Tap to upload your resume
                         </Text>
                         <Text style={styles.fileSubtitle}>
-                          PDF or Word · Max 10 MB
+                          PDF only · Max 10 MB
                         </Text>
                       </TouchableOpacity>
                     ) : (
@@ -1275,7 +1295,9 @@ const styles = StyleSheet.create({
   stepIndicator: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#BBB",
+    // #767676 is the minimum gray that passes WCAG AA contrast (4.5:1) on
+    // white — #BBB (~2.3:1) failed for text conveying real progress state.
+    color: "#767676",
     textTransform: "uppercase",
     letterSpacing: 1,
   },

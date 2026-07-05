@@ -1,15 +1,10 @@
 import { AppToast } from "@/components/ui/AppToast";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { initAnalytics, trackAppOpened } from "@/lib/analytics/mixpanel";
 import { initSentry, sentryWrap } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
-import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider,
-} from "@react-navigation/native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import {
     focusManager,
     QueryClient,
@@ -31,8 +26,6 @@ initSentry();
  * useRef ensures it persists across re-renders.
  */
 function RootLayout() {
-  const colorScheme = useColorScheme();
-
   const queryClientRef = useRef<QueryClient | null>(null);
 
   if (!queryClientRef.current) {
@@ -105,15 +98,25 @@ function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      {/* Every screen in this app hardcodes a white background and
+          dark-content status bar — there's no dark-mode styling anywhere
+          (the scaffold's ThemedText/ThemedView/useColorScheme are unused).
+          Following the system color scheme here previously left dark-mode
+          users with mismatched nav chrome and, via StatusBar style="auto",
+          a light status bar rendered on a white background. Pin to light
+          until the app actually supports dark mode end-to-end. */}
+      <ThemeProvider value={DefaultTheme}>
         <GestureHandlerRootView style={styles.root}>
-          <StatusBar style="auto" />
+          <StatusBar style="dark" />
 
           {/* Main navigation stack for Backchannel */}
           <Stack initialRouteName="splash">
             <Stack.Screen name="splash" options={{ headerShown: false }} />
             <Stack.Screen name="choose-role" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            {/* Direct sign-in entry for returning users — skips role
+                selection and the onboarding slides. */}
+            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             <Stack.Screen
               name="dashboard"
               options={{

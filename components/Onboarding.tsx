@@ -98,10 +98,19 @@ export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
       <SafeAreaView style={styles.safeArea}>
         {/* Top Navigation */}
         <View style={styles.topNav}>
-          <TouchableOpacity onPress={prevSlide} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={prevSlide}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
             <ArrowLeft color="#000" size={24} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onComplete}>
+          <TouchableOpacity
+            onPress={onComplete}
+            accessibilityRole="button"
+            accessibilityLabel="Skip onboarding"
+          >
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         </View>

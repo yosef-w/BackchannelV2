@@ -25,10 +25,18 @@ export default function OnboardingScreen() {
   }, [userType]);
 
   const [step, setStep] = useState<Step>("onboarding");
-  // True once the user has advanced to the questionnaire step.
-  // When they navigate back, we want to land on sign-up (not sign-in)
-  // with their previously entered data still visible.
-  const [hasStartedSignup, setHasStartedSignup] = useState(false);
+  // Normally the auth step defaults to sign-up (this route is the new-user
+  // path). But if registration later fails because the email is already
+  // registered — discovered mid-questionnaire, since account creation
+  // happens on the questionnaire's first step — we send the user back here
+  // pre-set to Sign In instead of dropping them back on the sign-up form
+  // they just got rejected from.
+  const [authInitialIsLogin, setAuthInitialIsLogin] = useState(false);
+
+  const goToSignInRecovery = () => {
+    setAuthInitialIsLogin(true);
+    setStep("auth");
+  };
 
   if (step === "onboarding") {
     return (
@@ -44,14 +52,17 @@ export default function OnboardingScreen() {
     return (
       <AuthScreen
         userType={userType}
-        // Default to sign-in on first arrival; switch to sign-up only when
-        // the user has already been to the questionnaire step and navigated back.
-        initialIsLogin={!hasStartedSignup}
-        onBack={() => setStep("onboarding")}
-        onComplete={() => {
-          setHasStartedSignup(true);
-          setStep("questionnaire");
+        // This route is only reached via the new-user path (choose-role →
+        // onboarding slides → "Get Started"), so default to sign-up. A user
+        // who already has an account can still tap "Sign in" on this screen,
+        // or use the splash screen's direct sign-in link to skip this flow
+        // entirely.
+        initialIsLogin={authInitialIsLogin}
+        onBack={() => {
+          setAuthInitialIsLogin(false);
+          setStep("onboarding");
         }}
+        onComplete={() => setStep("questionnaire")}
         onLoginComplete={() =>
           router.replace({ pathname: "/dashboard", params: { mode: userType } })
         }
@@ -68,6 +79,7 @@ export default function OnboardingScreen() {
       <SponsorQuestionnaire
         onBack={() => setStep("auth")}
         onComplete={handleComplete}
+        onEmailAlreadyRegistered={goToSignInRecovery}
       />
     );
   }
@@ -76,6 +88,7 @@ export default function OnboardingScreen() {
     <ApplicantQuestionnaire
       onBack={() => setStep("auth")}
       onComplete={handleComplete}
+      onEmailAlreadyRegistered={goToSignInRecovery}
     />
   );
 }

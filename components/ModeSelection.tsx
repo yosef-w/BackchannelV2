@@ -44,6 +44,8 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
           onPress={onBack}
           activeOpacity={0.7}
           style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
         >
           <ArrowLeft color="#000" size={24} />
         </TouchableOpacity>
@@ -68,6 +70,8 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
                   styles.card,
                   selected === "applicant" && styles.cardSelected,
                 ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selected === "applicant" }}
               >
                 <View style={styles.cardMain}>
                   <View
@@ -117,6 +121,8 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
                   styles.card,
                   selected === "sponsor" && styles.cardSelected,
                 ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selected === "sponsor" }}
               >
                 <View style={styles.cardMain}>
                   <View
@@ -161,7 +167,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
 
         {/* Branding Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>- BackChannel Logo -</Text>
+          <Text style={styles.footerText}>BackChannel</Text>
         </View>
       </SafeAreaView>
     </View>

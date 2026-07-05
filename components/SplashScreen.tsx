@@ -9,9 +9,15 @@ import Animated, {
 
 interface SplashScreenProps {
   onGetStarted: () => void;
+  /**
+   * Direct entry to sign-in, skipping role selection and the onboarding
+   * slides entirely. Without this, a returning user had no way back to
+   * login short of walking the full new-user funnel.
+   */
+  onSignIn: () => void;
 }
 
-export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
+export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
   const titleOpacity = useSharedValue(0);
   const titleScale = useSharedValue(0.98);
   const buttonOpacity = useSharedValue(0);
@@ -56,12 +62,23 @@ export const SplashScreen = ({ onGetStarted }: SplashScreenProps) => {
 
       <SafeAreaView style={styles.footer}>
         <Animated.View style={[styles.buttonContainer, buttonStyle]}>
-          <TouchableOpacity 
-            activeOpacity={0.85} 
-            onPress={onGetStarted} 
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={onGetStarted}
             style={styles.button}
           >
             <Text style={styles.buttonText}>Get Connected</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onSignIn}
+            style={styles.signInLink}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.signInLinkText}>
+              Already have an account?{" "}
+              <Text style={styles.signInLinkHighlight}>Sign in</Text>
+            </Text>
           </TouchableOpacity>
         </Animated.View>
       </SafeAreaView>
@@ -116,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    width: '65%', 
+    width: '65%',
     height: 56,
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
@@ -128,7 +145,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 5,
-    marginBottom: 80,
+    marginBottom: 20,
+  },
+  signInLink: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 44,
+  },
+  signInLinkText: {
+    fontSize: 14,
+    color: '#999999',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  signInLinkHighlight: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   buttonText: {
     color: '#000000',

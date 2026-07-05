@@ -95,7 +95,10 @@ export default function ResetPasswordRoute() {
   };
 
   const handleGoToSignIn = () => {
-    router.replace("/splash" as any);
+    // Straight to sign-in, not the splash screen — a user who just reset
+    // their password shouldn't have to walk role-selection + onboarding
+    // slides again to log back in.
+    router.replace("/sign-in" as any);
   };
 
   const canSubmit =

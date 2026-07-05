@@ -112,6 +112,38 @@ interface HomeViewProps {
    * header (up) and nav (down) move in sync.
    */
   headerTranslateY?: import("react-native-reanimated").SharedValue<number>;
+  /**
+   * Opens the given conversation (job + counterpart user) on the Messages
+   * tab. Used by the match-celebration modal's "Message Now" button so it
+   * actually opens the new thread instead of just dismissing the modal.
+   */
+  onNavigateToMessages?: (jobId: string, userId?: string) => void;
+  /**
+   * Fired the moment a mutual match happens. MainApp uses this as the
+   * trigger to (finally) ask for push-notification permission — a match is
+   * the first point in the app where the user has an obvious reason to want
+   * to be notified, unlike the previous cold on-mount ask.
+   */
+  onMatchCreated?: () => void;
+}
+
+/**
+ * Normalizes the backend's job-relevance score into a display percentage.
+ *
+ * The API contract for this field isn't pinned down — it's been observed as
+ * both a 0–1 fraction and an already-scaled percentage — so this guesses
+ * based on magnitude (>1 → already a percent) the same way the inline code
+ * used to. That guess is inherently ambiguous for raw values just over 1
+ * (e.g. is 1.2 "1.2%" or an out-of-range 0–1 fraction?). Until the backend
+ * contract is confirmed and documented, this at least clamps the output to
+ * a sane 1–100 range so a bad value can't render something like "1500% AI
+ * Match" instead of silently doing the wrong-but-plausible thing.
+ */
+function formatRelevancePercent(raw: unknown): number | null {
+  const score = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(score) || score <= 0) return null;
+  const percent = score > 1 ? score : score * 100;
+  return Math.min(100, Math.max(1, Math.round(percent)));
 }
 
 const DECK_SIZE = 10;
@@ -383,6 +415,8 @@ export function HomeView({
   onNavigateToProfile,
   navTranslateY,
   headerTranslateY,
+  onNavigateToMessages,
+  onMatchCreated,
 }: HomeViewProps) {
   const router = useRouter();
   const profileData = useUserProfileStore((state) => state.data);
@@ -513,6 +547,10 @@ export function HomeView({
     image: string;
     role: string;
     jobTitle?: string;
+    /** jobId/userId for the new conversation — lets "Message Now" actually
+     * open it instead of just dismissing the modal. */
+    jobId?: string;
+    userId?: string;
   } | null>(null);
   // 2026-05-26 redesign: the card-flip metaphor was retired in favor of a
   // Hinge-style vertical scroll. All content (front-face hero + former
@@ -567,6 +605,21 @@ export function HomeView({
   const [requestedSponsorJobIds, setRequestedSponsorJobIds] = useState<
     Set<string>
   >(new Set());
+  // Ids (job ids for applicants, applicant user ids for sponsors) already
+  // successfully liked this session. "Review again" (see the deck-done
+  // state) resets currentIndex/progress to replay the same deck, but this
+  // set is untouched by that reset — it's what stops a re-swipe on an
+  // already-actioned card from firing a second like API call / a second
+  // match celebration for something already matched.
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  // Id of the card currently mid-transition away from, set by nextProfile()
+  // for the ~220ms it takes the cross-fade to fade out BEFORE currentIndex
+  // actually advances. Without this, a card that just got added to
+  // likedIds (a fresh like, or the "already liked" overlay's own Continue
+  // tap) would briefly re-qualify as "already liked" during that gap —
+  // showCelebration/matchedUser only cover the celebration/match-modal
+  // window that precedes it, not this trailing fade-out window.
+  const [leavingItemId, setLeavingItemId] = useState<string | null>(null);
 
   // Drives the cross-fade between profiles. The old swipeX horizontal
   // translation + rotateY card-flip shared values were removed with the
@@ -647,6 +700,32 @@ export function HomeView({
       ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
       : applicantJobs[currentProfileIndex % applicantJobs.length];
   const isDeckFinished = progress > DECK_SIZE;
+
+  // True when the current card is one we've already liked this session —
+  // most commonly because "Review again" replayed the deck from the top.
+  // Drives the "already seen" overlay below instead of silently letting a
+  // re-swipe fire a duplicate like.
+  //
+  // `likedIds` is updated the moment a like API call succeeds — which is
+  // BEFORE the "Interest Sent!" celebration (or match modal) plays for that
+  // same still-on-screen card, and that card also stays on screen for a
+  // further ~220ms fade-out AFTER the celebration closes (nextProfile only
+  // swaps currentData once its cross-fade-out finishes — see nextProfile).
+  // Both showCelebration/matchedUser (the celebration window) and
+  // leavingItemId (the trailing fade-out window) need to suppress the
+  // overlay, or it flashes in right as the celebration disappears and just
+  // before the new card swaps in.
+  const currentItemId = currentData
+    ? userType === "applicant"
+      ? (currentData as any)?.id
+      : (currentData as any)?.USER_ID || (currentData as any)?.id
+    : null;
+  const isAlreadyLiked =
+    !!currentItemId &&
+    likedIds.has(String(currentItemId)) &&
+    !showCelebration &&
+    !matchedUser &&
+    String(currentItemId) !== leavingItemId;
 
   // True only when real cards are loaded and being displayed.
   // Used to dim the progress bar + show an em-dash placeholder
@@ -1149,6 +1228,15 @@ export function HomeView({
       return;
     }
 
+    // Already liked this item earlier in the session — most likely because
+    // "Review again" replayed the deck from the top. Skip the API call
+    // entirely (no duplicate like, no duplicate match celebration) and just
+    // advance, the same way a fresh like would.
+    if (isAccept && currentItemId && likedIds.has(String(currentItemId))) {
+      nextProfile(true);
+      return;
+    }
+
     if (isAccept) {
       // Call like API when accepting
       let didMatch = false;
@@ -1165,6 +1253,7 @@ export function HomeView({
 
             // Mark sponsored job as applied
             setAppliedJobIds((prev) => new Set([...prev, String(jobId)]));
+            setLikedIds((prev) => new Set([...prev, String(jobId)]));
 
             // Record "liked" in the feed history (fire-and-forget)
             recordJobFeedAction(String(jobId), "liked").catch(() => {});
@@ -1183,6 +1272,7 @@ export function HomeView({
             if (response.matched) {
               console.log("[HomeView] 🎉 It's a match!");
               didMatch = true;
+              onMatchCreated?.();
               const matchName =
                 "sponsorInfo" in currentData && currentData.sponsorInfo?.name
                   ? (currentData.sponsorInfo.name as string)
@@ -1202,6 +1292,11 @@ export function HomeView({
                 jobTitle:
                   "title" in currentData
                     ? (currentData.title as string)
+                    : undefined,
+                jobId: String(jobId),
+                userId:
+                  "sponsorInfo" in currentData && currentData.sponsorInfo?.userId
+                    ? String(currentData.sponsorInfo.userId)
                     : undefined,
               });
               trackMatchCreated({
@@ -1227,6 +1322,7 @@ export function HomeView({
               activeSponsoredJobId || undefined,
             );
             console.log("[HomeView] Like profile response:", response);
+            setLikedIds((prev) => new Set([...prev, String(applicantUserId)]));
 
             trackProfileLiked({
               applicantUserId: String(applicantUserId),
@@ -1247,6 +1343,7 @@ export function HomeView({
             if (response.matched) {
               console.log("[HomeView] 🎉 It's a match!");
               didMatch = true;
+              onMatchCreated?.();
               const matchName =
                 (currentData.name as string) ||
                 `${(currentData.FIRST_NAME as string) || ""} ${(currentData.LAST_NAME as string) || ""}`.trim() ||
@@ -1261,6 +1358,8 @@ export function HomeView({
                   (currentData.desiredRole as string) ||
                   (currentData.role as string) ||
                   "",
+                jobId: activeSponsoredJobId || undefined,
+                userId: String(applicantUserId),
               });
               trackMatchCreated({
                 matchedWithName: matchName,
@@ -1348,6 +1447,11 @@ export function HomeView({
   // `isAccept` arg is retained for API compatibility but no longer drives
   // a direction since both Pass and Connect feel the same to the layout.
   const nextProfile = (_isAccept: boolean) => {
+    // Mark the card we're leaving so the "already liked" overlay can
+    // suppress itself for it specifically during the fade-out below, even
+    // after showCelebration/matchedUser have already cleared.
+    if (currentItemId) setLeavingItemId(String(currentItemId));
+
     // Scroll back to the top so the next profile starts at its hero, not
     // mid-bio. Snap (not animated) — the cross-fade hides the jump.
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -1358,6 +1462,7 @@ export function HomeView({
       setProgress(progress + 1);
       setCurrentProfileIndex(currentProfileIndex + 1);
       swipeOpacity.value = withTiming(1, { duration: 280 });
+      setLeavingItemId(null);
     }, 220);
   };
 
@@ -1390,6 +1495,18 @@ export function HomeView({
   const handleMatchModalDismiss = () => {
     setMatchedUser(null);
     nextProfile(true);
+  };
+
+  // "Message Now" — actually opens the new conversation instead of just
+  // dismissing the modal like "Continue Exploring" does.
+  const handleMatchModalMessage = () => {
+    const jobId = matchedUser?.jobId;
+    const userId = matchedUser?.userId;
+    setMatchedUser(null);
+    nextProfile(true);
+    if (jobId && onNavigateToMessages) {
+      onNavigateToMessages(jobId, userId);
+    }
   };
 
   // Combined "Get a Sponsor" — fires both APIs in parallel. Request-sponsor
@@ -1436,10 +1553,22 @@ export function HomeView({
   // lift so the swap feels responsive without the abrupt swipe-out the
   // old card UI used. translateX is intentionally dropped; the page is
   // a vertical scroll now, so horizontal motion would feel mis-aligned.
-  const mainAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: swipeOpacity.value,
-    transform: [{ translateY: (1 - swipeOpacity.value) * 8 }],
-  }));
+  //
+  // The dimmed-background look for an "already liked" card is computed
+  // HERE rather than via a separate plain style layered on top in the
+  // style array — Reanimated applies an animated style's props directly on
+  // the UI thread, which wins over a later plain-object opacity in the
+  // array regardless of ordering, so bolting a static { opacity: 0.35 }
+  // onto the array silently had no visual effect. Folding isAlreadyLiked
+  // into the worklet (with it listed as a dependency, since it's a plain
+  // JS/React value, not a shared value) is what actually applies it.
+  const mainAnimatedStyle = useAnimatedStyle(
+    () => ({
+      opacity: isAlreadyLiked ? 0.35 : swipeOpacity.value,
+      transform: [{ translateY: (1 - swipeOpacity.value) * 8 }],
+    }),
+    [isAlreadyLiked],
+  );
 
   // Hinge-style hide-on-scroll for BOTH chrome elements: the bottom nav
   // bar (slides down) and the top header (slides up). The handler runs
@@ -2087,13 +2216,28 @@ export function HomeView({
             </View>
           ) : (
             <>
-              {/* Hinge-style: one big vertically-scrolling profile with a
-                  cross-fade transition between deck entries. The card
-                  metaphor — front face / back face / flip / "show more"
-                  toggle — is gone. Everything that used to be split across
-                  those surfaces now lives inline below the hero, so the
-                  user scrolls through one continuous, well-paced read. */}
-              <Animated.View style={[styles.profileFader, mainAnimatedStyle]}>
+              {/* Wraps the scrollable card AND whatever sits on top of it
+                  (the floating Pass/Connect buttons, or — when the card is
+                  one we've already liked, most commonly because "Review
+                  again" replayed the deck — the "already seen" overlay
+                  below). Giving this its own flex:1 box means an
+                  absoluteFillObject overlay covers exactly the card area,
+                  not the header above it. */}
+              <View style={styles.cardStage}>
+                {/* Hinge-style: one big vertically-scrolling profile with a
+                    cross-fade transition between deck entries. The card
+                    metaphor — front face / back face / flip / "show more"
+                    toggle — is gone. Everything that used to be split across
+                    those surfaces now lives inline below the hero, so the
+                    user scrolls through one continuous, well-paced read. */}
+                <Animated.View
+                  style={[styles.profileFader, mainAnimatedStyle]}
+                  // Already-seen cards are look-but-don't-touch — the
+                  // overlay's Continue button is the only way forward, so
+                  // scrolling/tapping into the dimmed content underneath is
+                  // disabled rather than just visually suggested.
+                  pointerEvents={isAlreadyLiked ? "none" : "auto"}
+                >
                 <Animated.ScrollView
                   ref={scrollRef as any}
                   contentContainerStyle={styles.profileScrollContent}
@@ -2623,21 +2767,23 @@ export function HomeView({
                               </Text>
                             </View>
                           )}
-                          {"relevanceScore" in currentData &&
-                            (currentData as any).relevanceScore > 0 && (
+                          {(() => {
+                            const percent =
+                              "relevanceScore" in currentData
+                                ? formatRelevancePercent(
+                                    (currentData as any).relevanceScore,
+                                  )
+                                : null;
+                            if (percent === null) return null;
+                            return (
                               <View style={styles.heroPillAccent}>
                                 <Zap size={10} color="#FFF" strokeWidth={2.5} />
                                 <Text style={styles.heroPillAccentText}>
-                                  {Math.round(
-                                    (currentData as any).relevanceScore > 1
-                                      ? (currentData as any).relevanceScore
-                                      : (currentData as any).relevanceScore *
-                                          100,
-                                  )}
-                                  % AI Match
+                                  {percent}% AI Match
                                 </Text>
                               </View>
-                            )}
+                            );
+                          })()}
                         </View>
                       </View>
 
@@ -3093,34 +3239,104 @@ export function HomeView({
                 </Animated.ScrollView>
               </Animated.View>
 
-              {/* Floating action buttons — Hinge-style. Two circular
-                  buttons sit on top of the scroll content with no tray
-                  background, drop-shadowed against whatever's behind
-                  them. The wrapper uses pointerEvents="box-none" so taps
-                  on empty space between the buttons fall through to the
-                  scroll, while the buttons themselves still receive
-                  touches. The scroll content has bottom padding that
-                  matches the button stack so the last section isn't
-                  hidden under them. */}
-              <Animated.View
-                style={[styles.floatingActionsRow, floatingActionsAnimatedStyle]}
-                pointerEvents="box-none"
-              >
-                <TouchableOpacity
-                  onPress={() => handleSwipe(false)}
-                  style={styles.floatingPassBtn}
-                  activeOpacity={0.85}
+              {isAlreadyLiked ? (
+                /* "Already seen" overlay — replaces the floating Pass/
+                   Connect buttons when the current card is one we've
+                   already liked this session (almost always because
+                   "Review again" replayed the deck from the top). The
+                   dimmed card underneath is deliberately non-interactive
+                   (see pointerEvents on profileFader above) so the only
+                   way forward is a conscious tap on Continue — no
+                   duplicate like call, no silent no-op that looks like a
+                   bug. */
+                <View style={styles.alreadyLikedOverlay} pointerEvents="box-none">
+                  <Animated.View
+                    entering={FadeIn.duration(200)}
+                    style={styles.alreadyLikedCard}
+                  >
+                    <View style={styles.alreadyLikedIconCircle}>
+                      <Check color="#FFF" size={28} strokeWidth={3} />
+                    </View>
+                    <Text style={styles.alreadyLikedTitle}>
+                      {userType === "applicant"
+                        ? "Already Interested"
+                        : "Already Connected"}
+                    </Text>
+                    <Text style={styles.alreadyLikedSubtitle}>
+                      {userType === "applicant"
+                        ? `You showed interest in ${
+                            "title" in currentData && currentData.title
+                              ? currentData.title
+                              : "this role"
+                          }${
+                            "company" in currentData && currentData.company
+                              ? ` at ${currentData.company}`
+                              : ""
+                          } earlier.`
+                        : `You already connected with ${
+                            "name" in currentData && (currentData as any).name
+                              ? (currentData as any).name
+                              : "this applicant"
+                          }.`}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.alreadyLikedButton}
+                      onPress={() => nextProfile(true)}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel="Continue to next card"
+                    >
+                      <Text style={styles.alreadyLikedButtonText}>
+                        Continue
+                      </Text>
+                      <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                  </Animated.View>
+                </View>
+              ) : (
+                /* Floating action buttons — Hinge-style. Two circular
+                    buttons sit on top of the scroll content with no tray
+                    background, drop-shadowed against whatever's behind
+                    them. The wrapper uses pointerEvents="box-none" so taps
+                    on empty space between the buttons fall through to the
+                    scroll, while the buttons themselves still receive
+                    touches. The scroll content has bottom padding that
+                    matches the button stack so the last section isn't
+                    hidden under them. */
+                <Animated.View
+                  style={[
+                    styles.floatingActionsRow,
+                    floatingActionsAnimatedStyle,
+                  ]}
+                  pointerEvents="box-none"
                 >
-                  <X color="#000" size={26} strokeWidth={2.5} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleSwipe(true)}
-                  style={styles.floatingConnectBtn}
-                  activeOpacity={0.85}
-                >
-                  <Check color="#FFF" size={26} strokeWidth={2.8} />
-                </TouchableOpacity>
-              </Animated.View>
+                  <TouchableOpacity
+                    onPress={() => handleSwipe(false)}
+                    style={styles.floatingPassBtn}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      userType === "applicant" ? "Pass on this role" : "Pass"
+                    }
+                  >
+                    <X color="#000" size={26} strokeWidth={2.5} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleSwipe(true)}
+                    style={styles.floatingConnectBtn}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      userType === "applicant"
+                        ? "Show interest in this role"
+                        : "Connect with this applicant"
+                    }
+                  >
+                    <Check color="#FFF" size={26} strokeWidth={2.8} />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+              </View>
             </>
           )}
         </View>
@@ -3146,13 +3362,11 @@ export function HomeView({
               <View style={styles.successCircle}>
                 <Check color="#FFF" size={32} strokeWidth={3} />
               </View>
-              <Text style={styles.celebrationTitle}>
-                {userType === "sponsor" ? "Request Sent!" : "Application Sent!"}
-              </Text>
+              <Text style={styles.celebrationTitle}>Interest Sent!</Text>
               <Text style={styles.celebrationSub}>
                 {userType === "sponsor"
-                  ? `You've connected with ${"name" in currentData ? currentData.name : ""}`
-                  : `You've applied to ${"title" in currentData ? currentData.title : ""}`}
+                  ? `You've shown interest in ${"name" in currentData ? currentData.name : "this applicant"} — we'll let you know if they connect back.`
+                  : `You've shown interest in ${"title" in currentData ? currentData.title : "this role"} — we'll let you know if the sponsor connects.`}
               </Text>
             </Animated.View>
           </View>
@@ -3273,7 +3487,7 @@ export function HomeView({
               >
                 <TouchableOpacity
                   style={styles.matchMsgBtn}
-                  onPress={handleMatchModalDismiss}
+                  onPress={handleMatchModalMessage}
                   activeOpacity={0.8}
                 >
                   <MessageCircle size={18} color="#FFF" />
@@ -3324,6 +3538,8 @@ export function HomeView({
               <TouchableOpacity
                 onPress={() => setShowApplyModal(false)}
                 style={styles.closeBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
               >
                 <X color="#000" size={24} />
               </TouchableOpacity>
@@ -3780,17 +3996,26 @@ export function HomeView({
               <Text style={styles.emailVerifTesterBtnText}>Resend email</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.emailVerifTesterBtn}
-              onPress={() => {
-                trackTesterModeEnabled({ source: "email_verification_modal" });
-                setIsTester(true);
-                setShowEmailVerificationModal(false);
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.emailVerifTesterBtnText}>I am a tester</Text>
-            </TouchableOpacity>
+            {/* Dev-only bypass for internal testing — never shown in a
+                production build. This gate exists to keep unverified
+                sponsors off the real applicant deck; a public bypass button
+                defeated that entirely. __DEV__ is stripped from release
+                bundles. */}
+            {__DEV__ && (
+              <TouchableOpacity
+                style={styles.emailVerifTesterBtn}
+                onPress={() => {
+                  trackTesterModeEnabled({ source: "email_verification_modal" });
+                  setIsTester(true);
+                  setShowEmailVerificationModal(false);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.emailVerifTesterBtnText}>
+                  I am a tester (dev only)
+                </Text>
+              </TouchableOpacity>
+            )}
           </DismissibleSheet>
         </KeyboardAvoidingView>
       </Modal>
@@ -3908,6 +4133,8 @@ export function HomeView({
                 justifyContent: "center",
               }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
             >
               <X color="#666" size={18} />
             </TouchableOpacity>
@@ -4057,6 +4284,8 @@ export function HomeView({
                 justifyContent: "center",
               }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
             >
               <X color="#666" size={18} />
             </TouchableOpacity>
@@ -4124,12 +4353,81 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 80,
   },
+  // Wraps the profile scroll + whatever floats on top of it (the normal
+  // Pass/Connect buttons, or the "already liked" overlay). Its bounds are
+  // exactly the card area below the header, so an absoluteFillObject
+  // overlay inside it never bleeds over the header/progress bar.
+  cardStage: { flex: 1 },
   // The fade/translate wrapper around the active profile scroll. Drives
-  // the cross-fade between deck entries via `mainAnimatedStyle`.
+  // the cross-fade between deck entries via `mainAnimatedStyle` — which
+  // also folds in the "already liked" dimmed-opacity look (see the comment
+  // on mainAnimatedStyle for why that can't be a separate plain style).
   profileFader: { flex: 1 },
   // Vertical scroll for the active profile. Bottom padding leaves room
   // for the sticky action bar so the last section isn't covered.
   profileScrollContent: { paddingBottom: 120, paddingTop: 4 },
+
+  // ── "Already liked" overlay (Review-again replay guard) ────────────
+  alreadyLikedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+  },
+  alreadyLikedCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  alreadyLikedIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  alreadyLikedTitle: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.4,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  alreadyLikedSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  alreadyLikedButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#000",
+    paddingVertical: 15,
+    borderRadius: 16,
+    width: "100%",
+  },
+  alreadyLikedButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
 
   // ── Hero (applicant identity / job identity) ──────────────────────
   hingeHero: {
