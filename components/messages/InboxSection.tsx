@@ -1,11 +1,18 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ChevronRight } from "lucide-react-native";
+import React, { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface InboxSectionProps {
   title: string;
   count: number;
   children: React.ReactNode;
   hidden?: boolean;
+  /**
+   * Collapsed-by-default sections (Past Connections, Hidden) render just a
+   * tappable summary header — the WhatsApp "Archived" pattern — so dead
+   * threads don't push the inbox down. Active stays always-expanded.
+   */
+  collapsible?: boolean;
 }
 
 /**
@@ -23,20 +30,43 @@ export function InboxSection({
   count,
   children,
   hidden,
+  collapsible,
 }: InboxSectionProps) {
+  const [collapsed, setCollapsed] = useState(!!collapsible);
+
   if (hidden) return null;
+
+  const header = (
+    <>
+      <Text style={styles.title}>{title}</Text>
+      {count > 0 && (
+        <View style={styles.countPill}>
+          <Text style={styles.countText}>{count}</Text>
+        </View>
+      )}
+    </>
+  );
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        {count > 0 && (
-          <View style={styles.countPill}>
-            <Text style={styles.countText}>{count}</Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.group}>{children}</View>
+      {collapsible ? (
+        <TouchableOpacity
+          style={styles.header}
+          onPress={() => setCollapsed((c) => !c)}
+          activeOpacity={0.7}
+        >
+          {header}
+          <View style={{ flex: 1 }} />
+          <ChevronRight
+            size={16}
+            color="#BBB"
+            style={!collapsed && { transform: [{ rotate: "90deg" }] }}
+          />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.header}>{header}</View>
+      )}
+      {!collapsed && <View style={styles.group}>{children}</View>}
     </View>
   );
 }

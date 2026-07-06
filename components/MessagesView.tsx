@@ -1564,70 +1564,111 @@ export function MessagesView({
                 </View>
               </View>
             ) : (
-              messages.map((message, index) => {
+              (() => {
                 // A message is mine if:
                 //  1. sender matches the resolved currentUserId
                 //  2. it is still an unreconciled optimistic temp (senderId may be "me" or real ID)
                 //  3. senderId is literally "me" (fallback before currentUserId loaded)
-                const isMyMessage = currentUserId
-                  ? message.senderId === currentUserId ||
-                    message.senderId === "me" ||
-                    (message.id.startsWith("temp-") && !message.serverId)
-                  : message.id.startsWith("temp-") || message.senderId === "me";
-                const prevMessage = index > 0 ? messages[index - 1] : null;
-                const isFirstOfDay =
-                  !prevMessage ||
-                  new Date(message.createdAt).toDateString() !==
-                    new Date(prevMessage.createdAt).toDateString();
-                const isTapped = tappedMessageId === message.id;
+                const isMine = (m: any) =>
+                  currentUserId
+                    ? m.senderId === currentUserId ||
+                      m.senderId === "me" ||
+                      (m.id.startsWith("temp-") && !m.serverId)
+                    : m.id.startsWith("temp-") || m.senderId === "me";
+                // Two messages cluster when the same sender sends them within
+                // a couple of minutes on the same day — clustered bubbles sit
+                // tight together with softened facing corners (the iMessage/
+                // WhatsApp convention) instead of every bubble floating with
+                // identical spacing.
+                const CLUSTER_WINDOW_MS = 2 * 60 * 1000;
+                const clustersWith = (a: any, b: any) =>
+                  !!a &&
+                  !!b &&
+                  isMine(a) === isMine(b) &&
+                  new Date(a.createdAt).toDateString() ===
+                    new Date(b.createdAt).toDateString() &&
+                  Math.abs(
+                    new Date(a.createdAt).getTime() -
+                      new Date(b.createdAt).getTime(),
+                  ) < CLUSTER_WINDOW_MS;
 
-                return (
-                  <React.Fragment key={message.id}>
-                    {isFirstOfDay && (
-                      <View style={styles.dayHeader}>
-                        <Text style={styles.dayHeaderText}>
-                          {formatDayHeader(message.createdAt)}
-                        </Text>
-                      </View>
-                    )}
-                    <Animated.View
-                      entering={FadeInUp.delay(index * 50)}
-                      style={[
-                        styles.messageWrapper,
-                        isMyMessage ? styles.msgRight : styles.msgLeft,
-                      ]}
-                    >
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={() =>
-                          setTappedMessageId(isTapped ? null : message.id)
-                        }
+                return messages.map((message, index) => {
+                  const isMyMessage = isMine(message);
+                  const prevMessage = index > 0 ? messages[index - 1] : null;
+                  const nextMessage =
+                    index < messages.length - 1 ? messages[index + 1] : null;
+                  const isFirstOfDay =
+                    !prevMessage ||
+                    new Date(message.createdAt).toDateString() !==
+                      new Date(prevMessage.createdAt).toDateString();
+                  const clusteredWithPrev =
+                    !isFirstOfDay && clustersWith(prevMessage, message);
+                  const clusteredWithNext = clustersWith(message, nextMessage);
+                  const isTapped = tappedMessageId === message.id;
+
+                  return (
+                    <React.Fragment key={message.id}>
+                      {isFirstOfDay && (
+                        <View style={styles.dayHeader}>
+                          <Text style={styles.dayHeaderText}>
+                            {formatDayHeader(message.createdAt)}
+                          </Text>
+                        </View>
+                      )}
+                      <Animated.View
+                        entering={FadeInUp.delay(index * 50)}
                         style={[
-                          styles.bubble,
-                          isMyMessage ? styles.bubbleMe : styles.bubbleThem,
+                          styles.messageWrapper,
+                          isMyMessage ? styles.msgRight : styles.msgLeft,
+                          {
+                            marginTop: isFirstOfDay
+                              ? 0
+                              : clusteredWithPrev
+                                ? 3
+                                : 20,
+                          },
                         ]}
                       >
-                        <Text
-                          style={isMyMessage ? styles.txtMe : styles.txtThem}
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          onPress={() =>
+                            setTappedMessageId(isTapped ? null : message.id)
+                          }
+                          style={[
+                            styles.bubble,
+                            isMyMessage ? styles.bubbleMe : styles.bubbleThem,
+                            clusteredWithPrev &&
+                              (isMyMessage
+                                ? styles.bubbleClusterTopMe
+                                : styles.bubbleClusterTopThem),
+                            clusteredWithNext &&
+                              (isMyMessage
+                                ? styles.bubbleClusterBottomMe
+                                : styles.bubbleClusterBottomThem),
+                          ]}
                         >
-                          {message.content}
-                        </Text>
-                      </TouchableOpacity>
-                      {isTapped && (
-                        <Text style={styles.msgTime}>
-                          {new Date(message.createdAt).toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </Text>
-                      )}
-                    </Animated.View>
-                  </React.Fragment>
-                );
-              })
+                          <Text
+                            style={isMyMessage ? styles.txtMe : styles.txtThem}
+                          >
+                            {message.content}
+                          </Text>
+                        </TouchableOpacity>
+                        {isTapped && (
+                          <Text style={styles.msgTime}>
+                            {new Date(message.createdAt).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "numeric",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </Text>
+                        )}
+                      </Animated.View>
+                    </React.Fragment>
+                  );
+                });
+              })()
             )}
           </ScrollView>
           {conversation.status === "CLOSED" ? (
@@ -2791,6 +2832,7 @@ export function MessagesView({
             title="Past Connections"
             count={pastConversations.length}
             hidden={pastConversations.length === 0}
+            collapsible
           >
             <InboxList
               conversations={pastConversations}
@@ -2805,6 +2847,7 @@ export function MessagesView({
             title="Hidden (30+ days inactive)"
             count={hiddenConversations.length}
             hidden={hiddenConversations.length === 0}
+            collapsible
           >
             <InboxList
               conversations={hiddenConversations}
@@ -3003,13 +3046,22 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: { fontSize: 11, fontWeight: "700" },
   messagesScroll: { flex: 1, paddingHorizontal: 20 },
-  messagesContent: { paddingTop: 20, paddingBottom: 28, gap: 20 },
+  // Spacing between messages lives on each messageWrapper (via an inline
+  // marginTop) rather than a container gap, so clustered messages from the
+  // same sender can sit tight while cluster boundaries keep the full gap.
+  messagesContent: { paddingTop: 20, paddingBottom: 28 },
   messageWrapper: { maxWidth: "85%" },
   msgLeft: { alignSelf: "flex-start" },
   msgRight: { alignSelf: "flex-end" },
   bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
   bubbleMe: { backgroundColor: "#000" },
   bubbleThem: { backgroundColor: "#F2F2F2" },
+  // Within a cluster, the corners facing the adjacent bubble tighten so the
+  // run reads as one grouped exchange.
+  bubbleClusterTopMe: { borderTopRightRadius: 6 },
+  bubbleClusterTopThem: { borderTopLeftRadius: 6 },
+  bubbleClusterBottomMe: { borderBottomRightRadius: 6 },
+  bubbleClusterBottomThem: { borderBottomLeftRadius: 6 },
   txtMe: { color: "#FFF", fontSize: 15 },
   txtThem: { color: "#000", fontSize: 15 },
   msgTime: {
