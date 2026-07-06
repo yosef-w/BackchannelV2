@@ -1,7 +1,6 @@
 import {
     trackConversationOpened,
     trackMessageSent,
-    trackPublicProfileOpenedFromMessage,
     trackUnmatchConfirmed,
 } from "@/lib/analytics/mixpanel";
 import {
@@ -18,36 +17,19 @@ import {
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
-import { BlurView } from "expo-blur";
-import {
-    ArrowLeft,
-    CheckCircle,
-    ChevronRight,
-    MessageCircle,
-    MoreHorizontal,
-    Send,
-    Sparkles,
-    User,
-    UserCheck,
-} from "lucide-react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Dimensions,
-    Image,
     Keyboard,
-    Modal,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, {
-    FadeInUp,
+import {
     useAnimatedKeyboard,
     useAnimatedStyle,
 } from "react-native-reanimated";
@@ -55,59 +37,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { InboxList } from "./messages/InboxList";
 import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
-import { ReferralFlowModal } from "./messages/ReferralFlowModal";
-import { ThreadContextStrip } from "./messages/ThreadContextStrip";
-import { ThreadMenuSheet } from "./messages/ThreadMenuSheet";
-import { CharCounter } from "./ui/CharCounter";
-import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
+import { ThreadScreen } from "./messages/ThreadScreen";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
-
-/**
- * Conversation starters for a brand-new (empty) thread. Most matches die in
- * silence because someone has to write the awkward first message — these
- * give a one-tap way past that, built entirely from data already on the
- * conversation object (job title/company, skills) so they don't need an
- * extra profile fetch just to populate an empty state.
- */
-function getConversationStarters(
-  conversation: any,
-  userType: "applicant" | "sponsor",
-): string[] {
-  const jobTitle: string | undefined = conversation?.jobContext?.jobTitle;
-  const company: string | undefined =
-    conversation?.jobContext?.company || conversation?.company;
-  const skill: string | undefined =
-    Array.isArray(conversation?.skills) && conversation.skills.length > 0
-      ? conversation.skills[0]
-      : undefined;
-
-  if (userType === "applicant") {
-    return [
-      company
-        ? `What's the team culture like at ${company}?`
-        : "What's the team culture like there?",
-      jobTitle
-        ? `What's the interview process like for the ${jobTitle} role?`
-        : "What's the interview process like?",
-      company
-        ? `What made you want to work at ${company}?`
-        : "What made you want to work there?",
-    ];
-  }
-
-  return [
-    jobTitle
-      ? `What interests you about the ${jobTitle} role?`
-      : "What are you looking for in your next role?",
-    skill
-      ? `I noticed you know ${skill} — how have you used that day to day?`
-      : "Tell me a bit about your background.",
-    "What's most important to you in your next role?",
-  ];
-}
 
 /** UI-shaped conversation, as transformConversation() produces from a raw
  * ConversationRow — the type every inbox/thread render site consumes. */
@@ -1116,641 +1050,43 @@ export function MessagesView({
     setShowReferralFlow(true);
   };
 
-  /** Normalize a backend ISO string to UTC (append 'Z' when no offset present). */
-  const normalizeToUtc = (s: string): string => {
-    const t = s.trim();
-    return /Z$/i.test(t) || /[+-]\d{2}:?\d{2}$/.test(t) ? s : `${s}Z`;
-  };
-
-  // Day header formatter for message thread dividers
-  const formatDayHeader = (timestamp: string) => {
-    const date = new Date(normalizeToUtc(timestamp));
-    const now = new Date();
-    const todayDate = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const yesterdayDate = new Date(todayDate);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const msgDate = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-    );
-    const timeStr = date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    if (msgDate.getTime() === todayDate.getTime()) {
-      return `Today · ${timeStr}`;
-    } else if (msgDate.getTime() === yesterdayDate.getTime()) {
-      return `Yesterday · ${timeStr}`;
-    } else {
-      const sameYear = date.getFullYear() === now.getFullYear();
-      const dateStr = date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        ...(sameYear ? {} : { year: "numeric" }),
-      });
-      return `${dateStr} · ${timeStr}`;
-    }
-  };
-
   if (selectedConversation) {
-    const conversation = conversations.find(
-      (c) => c.id === selectedConversation,
-    );
-
-    // In-thread referral prompt eligibility (sponsor only) — after a real
-    // back-and-forth (3+ messages each way), nudge the sponsor toward the
-    // Refer flow instead of relying on them remembering the header button
-    // exists. Plain computation, not useMemo/hook — this whole block is
-    // inside a conditional branch of the component, so a hook here would
-    // violate the Rules of Hooks. Message lists are small enough that
-    // recomputing this every render is cheap.
-    let sponsorReferralPromptEligible = false;
-    if (userType === "sponsor" && conversation?.otherParticipant?.id) {
-      const applicantId = conversation.otherParticipant.id;
-      const jobId = conversation.jobContext?.jobId;
-      const alreadyReferred =
-        !!(applicantId && jobId) &&
-        referredSet.has(`${applicantId}:${jobId}`);
-      if (!alreadyReferred) {
-        let mine = 0;
-        let theirs = 0;
-        for (const m of messages) {
-          const isMine = currentUserId
-            ? m.senderId === currentUserId ||
-              m.senderId === "me" ||
-              (m.id.startsWith("temp-") && !m.serverId)
-            : m.id.startsWith("temp-") || m.senderId === "me";
-          if (isMine) mine++;
-          else theirs++;
-        }
-        sponsorReferralPromptEligible = mine >= 3 && theirs >= 3;
-      }
-    }
-
-    if (!conversation) {
-      // Conversations are still fetching — show a loading state so we don't flash
-      // a false "not found" message while the async fetch completes after a
-      // re-mount (e.g. navigating back from the public profile view).
-      if (conversationsLoading) {
-        return (
-          <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-          >
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: "#F4F4F5",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 12,
-              }}
-            >
-              <MessageCircle color="#BBB" size={28} strokeWidth={2} />
-            </View>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#AAA" }}>
-              Loading conversation…
-            </Text>
-          </View>
-        );
-      }
-
-      return (
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <Text style={{ fontSize: 16, color: "#666" }}>
-            Conversation not found
-          </Text>
-          <TouchableOpacity
-            onPress={() => handleConversationSelect(null)}
-            style={{
-              marginTop: 16,
-              padding: 12,
-              backgroundColor: "#000",
-              borderRadius: 12,
-            }}
-          >
-            <Text style={{ color: "#FFF", fontWeight: "700" }}>
-              Back to Messages
-            </Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
     return (
-      <View style={{ flex: 1 }}>
-        <Animated.View style={[styles.chatContainer, keyboardSpacerStyle]}>
-          <View style={styles.chatHeader}>
-            <TouchableOpacity
-              onPress={() => handleConversationSelect(null)}
-              style={styles.backButton}
-            >
-              <ArrowLeft color="#000" size={24} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerIdentity}
-              onPress={() => setShowProfileModal(true)}
-              activeOpacity={0.7}
-            >
-              {conversation.otherParticipant.profileImageUrl ? (
-                <Image
-                  source={{
-                    uri: conversation.otherParticipant.profileImageUrl,
-                  }}
-                  style={styles.headerImage}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.headerImage,
-                    {
-                      backgroundColor: "#000",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
-                  >
-                    {(conversation.otherParticipant.name ||
-                      "?")[0].toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerName} numberOfLines={1}>
-                  {conversation.otherParticipant.name}
-                </Text>
-                <Text style={styles.headerRole}>
-                  {conversation.otherParticipant.role &&
-                  conversation.otherParticipant.company
-                    ? `${conversation.otherParticipant.role} @ ${conversation.otherParticipant.company}`
-                    : conversation.otherParticipant.role ||
-                      conversation.otherParticipant.company ||
-                      ""}
-                </Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.headerActions}>
-              {/* Hide the Refer button and three-dots (unmatch) menu on
-                  closed threads — the action is moot (you can't refer
-                  someone you're no longer matched with, and you can't
-                  unmatch what's already unmatched). The profile-image and
-                  name tap target above stays live so the profile sheet
-                  still opens. */}
-              {conversation.status !== "CLOSED" && (
-                <>
-                  {userType === "sponsor" ? (
-                    (() => {
-                      const applicantId = conversation.otherParticipant?.id;
-                      const jobId = conversation.jobContext?.jobId;
-                      const alreadyReferred =
-                        !!(applicantId && jobId) &&
-                        referredSet.has(`${applicantId}:${jobId}`);
-                      return alreadyReferred ? (
-                        <View style={styles.headerReferBtn}>
-                          <CheckCircle
-                            color="#000"
-                            size={17}
-                            strokeWidth={2.5}
-                          />
-                          <Text
-                            style={[
-                              styles.headerReferText,
-                              styles.headerReferTextDone,
-                            ]}
-                          >
-                            Referred
-                          </Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.headerReferBtn}
-                          onPress={openReferral}
-                          activeOpacity={0.7}
-                        >
-                          <UserCheck color="#000" size={20} />
-                          <Text style={styles.headerReferText}>Refer</Text>
-                        </TouchableOpacity>
-                      );
-                    })()
-                  ) : null}
-                  <TouchableOpacity
-                    style={styles.headerMoreBtn}
-                    onPress={() => setShowUnmatchMenu(true)}
-                    activeOpacity={0.7}
-                  >
-                    <MoreHorizontal color="#000" size={20} />
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-          {/* Pins which role this thread is about — the header above only
-              says who you're talking to. Shown on closed threads too, since
-              context matters most when reviewing an old conversation. */}
-          <ThreadContextStrip
-            jobTitle={conversation.jobContext?.jobTitle}
-            company={conversation.jobContext?.company}
-            logoUrl={conversation.jobContext?.logoUrl}
-            onPress={() => setShowProfileModal(true)}
-          />
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesScroll}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => scrollToBottom(false)}
-          >
-            {messagesLoading ? (
-              <View style={{ padding: 40, alignItems: "center" }}>
-                <Text style={{ color: "#999", fontSize: 15 }}>
-                  Loading messages...
-                </Text>
-              </View>
-            ) : messagesError ? (
-              <View style={{ padding: 40, alignItems: "center" }}>
-                <Text
-                  style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}
-                >
-                  Failed to load messages
-                </Text>
-                <Text
-                  style={{ color: "#999", fontSize: 13, textAlign: "center" }}
-                >
-                  {messagesError}
-                </Text>
-              </View>
-            ) : messages.length === 0 ? (
-              <View style={{ padding: 28, alignItems: "center" }}>
-                <Text style={{ color: "#999", fontSize: 15 }}>
-                  No messages yet
-                </Text>
-                <Text
-                  style={{
-                    color: "#BBB",
-                    fontSize: 13,
-                    marginTop: 8,
-                    marginBottom: 20,
-                  }}
-                >
-                  Start the conversation!
-                </Text>
-                {/* Conversation starters — most matches die in silence
-                    because someone has to write the awkward first message.
-                    Tapping fills the composer rather than sending straight
-                    away, so the user still reviews/personalizes it. */}
-                <View style={styles.startersHeader}>
-                  <Sparkles size={13} color="#999" strokeWidth={2.2} />
-                  <Text style={styles.startersHeaderText}>BREAK THE ICE</Text>
-                </View>
-                <View style={styles.startersList}>
-                  {getConversationStarters(conversation, userType).map(
-                    (starter, i) => (
-                      <TouchableOpacity
-                        key={i}
-                        style={styles.starterChip}
-                        onPress={() => setMessageText(starter)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.starterChipText}>{starter}</Text>
-                      </TouchableOpacity>
-                    ),
-                  )}
-                </View>
-              </View>
-            ) : (
-              (() => {
-                // A message is mine if:
-                //  1. sender matches the resolved currentUserId
-                //  2. it is still an unreconciled optimistic temp (senderId may be "me" or real ID)
-                //  3. senderId is literally "me" (fallback before currentUserId loaded)
-                const isMine = (m: any) =>
-                  currentUserId
-                    ? m.senderId === currentUserId ||
-                      m.senderId === "me" ||
-                      (m.id.startsWith("temp-") && !m.serverId)
-                    : m.id.startsWith("temp-") || m.senderId === "me";
-                // Two messages cluster when the same sender sends them within
-                // a couple of minutes on the same day — clustered bubbles sit
-                // tight together with softened facing corners (the iMessage/
-                // WhatsApp convention) instead of every bubble floating with
-                // identical spacing.
-                const CLUSTER_WINDOW_MS = 2 * 60 * 1000;
-                const clustersWith = (a: any, b: any) =>
-                  !!a &&
-                  !!b &&
-                  isMine(a) === isMine(b) &&
-                  new Date(a.createdAt).toDateString() ===
-                    new Date(b.createdAt).toDateString() &&
-                  Math.abs(
-                    new Date(a.createdAt).getTime() -
-                      new Date(b.createdAt).getTime(),
-                  ) < CLUSTER_WINDOW_MS;
-
-                return messages.map((message, index) => {
-                  const isMyMessage = isMine(message);
-                  const prevMessage = index > 0 ? messages[index - 1] : null;
-                  const nextMessage =
-                    index < messages.length - 1 ? messages[index + 1] : null;
-                  const isFirstOfDay =
-                    !prevMessage ||
-                    new Date(message.createdAt).toDateString() !==
-                      new Date(prevMessage.createdAt).toDateString();
-                  const clusteredWithPrev =
-                    !isFirstOfDay && clustersWith(prevMessage, message);
-                  const clusteredWithNext = clustersWith(message, nextMessage);
-                  const isTapped = tappedMessageId === message.id;
-
-                  return (
-                    <React.Fragment key={message.id}>
-                      {isFirstOfDay && (
-                        <View style={styles.dayHeader}>
-                          <Text style={styles.dayHeaderText}>
-                            {formatDayHeader(message.createdAt)}
-                          </Text>
-                        </View>
-                      )}
-                      <Animated.View
-                        // Only messages that arrived after the thread was
-                        // opened (a new incoming message, or one just sent)
-                        // fade in — already-loaded history renders instantly.
-                        entering={
-                          index >= initialMessageCountRef.current
-                            ? FadeInUp.duration(220)
-                            : undefined
-                        }
-                        style={[
-                          styles.messageWrapper,
-                          isMyMessage ? styles.msgRight : styles.msgLeft,
-                          {
-                            marginTop: isFirstOfDay
-                              ? 0
-                              : clusteredWithPrev
-                                ? 3
-                                : 20,
-                          },
-                        ]}
-                      >
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          onPress={() =>
-                            setTappedMessageId(isTapped ? null : message.id)
-                          }
-                          style={[
-                            styles.bubble,
-                            isMyMessage ? styles.bubbleMe : styles.bubbleThem,
-                            clusteredWithPrev &&
-                              (isMyMessage
-                                ? styles.bubbleClusterTopMe
-                                : styles.bubbleClusterTopThem),
-                            clusteredWithNext &&
-                              (isMyMessage
-                                ? styles.bubbleClusterBottomMe
-                                : styles.bubbleClusterBottomThem),
-                          ]}
-                        >
-                          <Text
-                            style={isMyMessage ? styles.txtMe : styles.txtThem}
-                          >
-                            {message.content}
-                          </Text>
-                        </TouchableOpacity>
-                        {isTapped && (
-                          <Text style={styles.msgTime}>
-                            {new Date(message.createdAt).toLocaleTimeString(
-                              "en-US",
-                              {
-                                hour: "numeric",
-                                minute: "2-digit",
-                              },
-                            )}
-                          </Text>
-                        )}
-                      </Animated.View>
-                    </React.Fragment>
-                  );
-                });
-              })()
-            )}
-          </ScrollView>
-          {conversation.status === "CLOSED" ? (
-            // Closed-thread notice — replaces the input area entirely so
-            // the user can't even attempt to type. Matches the backend's
-            // behavior (it rejects sends with "conversation is closed");
-            // surfacing it pre-emptively avoids the "I typed it but it
-            // never sent" confusion.
-            <View style={styles.closedNotice}>
-              <Text style={styles.closedNoticeText}>
-                This conversation has been closed. You are no longer matched.
-              </Text>
-            </View>
-          ) : (
-            <View>
-              {/* In-thread referral nudge (sponsor only) — see
-                  sponsorReferralPromptEligible above. Disappears on its own
-                  once the sponsor actually refers (alreadyReferred flips),
-                  no dismiss needed. */}
-              {sponsorReferralPromptEligible && (
-                <TouchableOpacity
-                  style={styles.referralNudge}
-                  onPress={openReferral}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.referralNudgeIconCircle}>
-                    <UserCheck color="#FFF" size={16} strokeWidth={2.5} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.referralNudgeTitle}>
-                      Feeling good about{" "}
-                      {conversation.otherParticipant.name.split(" ")[0]}?
-                    </Text>
-                    <Text style={styles.referralNudgeSubtitle}>
-                      Tap to refer them for the role
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color="#999" />
-                </TouchableOpacity>
-              )}
-              {/* Only surface the counter as you approach the 2000-char cap so
-                  it doesn't clutter normal chatting. */}
-              {messageText.length >= 1800 && (
-                <CharCounter
-                  count={messageText.length}
-                  max={2000}
-                  style={{ marginRight: 16, marginBottom: 4, marginTop: 0 }}
-                />
-              )}
-              <View style={styles.inputArea}>
-              <TextInput
-                value={messageText}
-                onChangeText={setMessageText}
-                placeholder="Write a message..."
-                placeholderTextColor="#BBB"
-                style={styles.textInput}
-                multiline
-                maxLength={2000}
-                autoCapitalize="sentences"
-                onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
-              />
-              <TouchableOpacity
-                style={[
-                  styles.sendBtn,
-                  (!messageText.trim() || sendingMessage) && { opacity: 0.5 },
-                ]}
-                onPress={handleSendMessage}
-                disabled={!messageText.trim() || sendingMessage}
-              >
-                <Send color="#FFF" size={18} strokeWidth={2.5} />
-              </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </Animated.View>
-
-        {/* PROFILE SHEET — opened when the user taps the participant's
-            name or avatar at the top of the thread. Powered by the shared
-            ProfileDetailSheet so it matches the layout we use on
-            MatchesView and JobsView. Sponsor side gets two CTAs (View
-            Full Profile + Provide Referral); applicant side gets just
-            View Full Profile. */}
-        {conversation && (
-          <ProfileDetailSheet
-            visible={showProfileModal}
-            onDismiss={() => setShowProfileModal(false)}
-            userId={String(conversation.otherParticipant?.id || "")}
-            variant={userType === "sponsor" ? "applicant" : "sponsor"}
-            initial={{
-              name: conversation.otherParticipant?.name || "",
-              image: conversation.otherParticipant?.profileImageUrl ?? undefined,
-              role: conversation.otherParticipant?.role,
-              company: conversation.otherParticipant?.company,
-            }}
-            roleContext={
-              conversation.jobContext?.jobTitle
-                ? {
-                    label:
-                      userType === "sponsor" ? "INTERESTED IN" : "CONNECTED ON",
-                    title: conversation.jobContext.jobTitle,
-                    company: conversation.jobContext.company,
-                    logoUrl: conversation.jobContext.logoUrl,
-                  }
-                : undefined
-            }
-            primaryCta={
-              userType === "sponsor"
-                ? {
-                    label: "Provide Referral",
-                    icon: (
-                      <UserCheck color="#FFF" size={18} strokeWidth={2.5} />
-                    ),
-                    onPress: openReferral,
-                  }
-                : {
-                    label: "View Full Profile",
-                    icon: <User color="#FFF" size={18} strokeWidth={2.5} />,
-                    onPress: () => {
-                      setShowProfileModal(false);
-                      const otherUserId = conversation.otherParticipant?.id;
-                      if (otherUserId) {
-                        trackPublicProfileOpenedFromMessage({
-                          viewedUserId: String(otherUserId),
-                        });
-                      }
-                      if (onShowPublicProfile) {
-                        onShowPublicProfile(conversation);
-                      }
-                    },
-                  }
-            }
-            secondaryCta={
-              userType === "sponsor"
-                ? {
-                    label: "View Full Profile",
-                    icon: <User color="#000" size={18} strokeWidth={2.5} />,
-                    onPress: () => {
-                      setShowProfileModal(false);
-                      const otherUserId = conversation.otherParticipant?.id;
-                      if (otherUserId) {
-                        trackPublicProfileOpenedFromMessage({
-                          viewedUserId: String(otherUserId),
-                        });
-                      }
-                      if (onShowPublicProfile) {
-                        onShowPublicProfile(conversation);
-                      }
-                    },
-                  }
-                : undefined
-            }
-          />
-        )}
-
-        {/* Referral flow — extracted to
-            components/messages/ReferralFlowModal.tsx (self-contained: the
-            step, checkboxes, submit/error state, and lazily-fetched
-            candidate profile have zero readers outside this modal, per the
-            state-ownership audit). */}
-        <Modal visible={showReferralFlow} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => setShowReferralFlow(false)}
-            >
-              <BlurView
-                intensity={60}
-                style={StyleSheet.absoluteFill}
-                tint="dark"
-              />
-            </TouchableOpacity>
-            <ReferralFlowModal
-              visible={showReferralFlow}
-              conversation={conversation}
-              onClose={() => setShowReferralFlow(false)}
-              onSubmitted={(applicantUserId, jobId) => {
-                setReferredSet((prev) => {
-                  const next = new Set(prev);
-                  next.add(`${applicantUserId}:${jobId}`);
-                  return next;
-                });
-              }}
-            />
-          </View>
-        </Modal>
-
-        {/* THREAD MENU SHEET — extracted to
-            components/messages/ThreadMenuSheet.tsx (self-contained: its
-            step/reason/detail state has zero readers outside the sheet,
-            per the state-ownership audit). */}
-        <Modal visible={showUnmatchMenu} transparent animationType="none">
-          <ThreadMenuSheet
-            visible={showUnmatchMenu}
-            participantName={conversation.otherParticipant.name}
-            isUnmatching={isUnmatching}
-            isReporting={isReporting}
-            onUnmatch={handleUnmatch}
-            onReport={handleSubmitReport}
-            onClose={() => setShowUnmatchMenu(false)}
-          />
-        </Modal>
-      </View>
+      <ThreadScreen
+        conversations={conversations}
+        selectedConversation={selectedConversation}
+        userType={userType}
+        referredSet={referredSet}
+        setReferredSet={setReferredSet}
+        messages={messages}
+        currentUserId={currentUserId}
+        conversationsLoading={conversationsLoading}
+        handleConversationSelect={handleConversationSelect}
+        keyboardSpacerStyle={keyboardSpacerStyle}
+        showProfileModal={showProfileModal}
+        setShowProfileModal={setShowProfileModal}
+        scrollViewRef={scrollViewRef}
+        scrollToBottom={scrollToBottom}
+        messagesLoading={messagesLoading}
+        messagesError={messagesError}
+        messageText={messageText}
+        setMessageText={setMessageText}
+        tappedMessageId={tappedMessageId}
+        setTappedMessageId={setTappedMessageId}
+        initialMessageCountRef={initialMessageCountRef}
+        openReferral={openReferral}
+        sendingMessage={sendingMessage}
+        handleSendMessage={handleSendMessage}
+        showReferralFlow={showReferralFlow}
+        setShowReferralFlow={setShowReferralFlow}
+        showUnmatchMenu={showUnmatchMenu}
+        setShowUnmatchMenu={setShowUnmatchMenu}
+        isUnmatching={isUnmatching}
+        isReporting={isReporting}
+        handleUnmatch={handleUnmatch}
+        handleSubmitReport={handleSubmitReport}
+        onShowPublicProfile={onShowPublicProfile}
+      />
     );
   }
 
@@ -1887,37 +1223,6 @@ export function MessagesView({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
-  // Conversation-starter chips shown in a brand-new empty thread.
-  startersHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 12,
-  },
-  startersHeaderText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1,
-  },
-  startersList: {
-    width: "100%",
-    gap: 8,
-  },
-  starterChip: {
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  starterChipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    textAlign: "left",
-  },
   headerTitleContainer: { marginBottom: 32 },
   title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.2 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
@@ -1944,131 +1249,7 @@ const styles = StyleSheet.create({
   // Tag rendered in the timestamp slot of a Past Connections row so the
   // user knows why the conversation is muted (vs the "30+ days inactive"
   // hidden state).
-  // In-thread banner shown in place of the message input when the
-  // conversation has been unmatched/closed.
-  closedNotice: {
-    backgroundColor: "#F8F9FB",
-    borderTopWidth: 1,
-    borderTopColor: "#EEE",
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-  closedNoticeText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#999",
-    textAlign: "center",
-    lineHeight: 19,
-  },
-  referralNudge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  referralNudgeIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  referralNudgeTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-  },
-  referralNudgeSubtitle: {
-    fontSize: 11,
-    color: "#999",
-    marginTop: 1,
-  },
-  chatContainer: { flex: 1, backgroundColor: "#FFF" },
-  chatHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  backButton: { padding: 8, marginLeft: -8 },
-  headerIdentity: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginLeft: 8,
-  },
-  headerImage: { width: 40, height: 40, borderRadius: 20 },
-  headerInfo: { marginLeft: 12 },
-  headerName: { fontSize: 16, fontWeight: "700" },
-  headerRole: { fontSize: 12, color: "#666" },
-  headerReferBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
   headerReferBtnDone: {},
-  headerReferText: { fontSize: 13, fontWeight: "700" },
-  headerReferTextDone: { color: "#000" },
-  messagesScroll: { flex: 1, paddingHorizontal: 20 },
-  // Spacing between messages lives on each messageWrapper (via an inline
-  // marginTop) rather than a container gap, so clustered messages from the
-  // same sender can sit tight while cluster boundaries keep the full gap.
-  messagesContent: { paddingTop: 20, paddingBottom: 28 },
-  messageWrapper: { maxWidth: "85%" },
-  msgLeft: { alignSelf: "flex-start" },
-  msgRight: { alignSelf: "flex-end" },
-  bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
-  bubbleMe: { backgroundColor: "#000" },
-  bubbleThem: { backgroundColor: "#F2F2F2" },
-  // Within a cluster, the corners facing the adjacent bubble tighten so the
-  // run reads as one grouped exchange.
-  bubbleClusterTopMe: { borderTopRightRadius: 6 },
-  bubbleClusterTopThem: { borderTopLeftRadius: 6 },
-  bubbleClusterBottomMe: { borderBottomRightRadius: 6 },
-  bubbleClusterBottomThem: { borderBottomLeftRadius: 6 },
-  txtMe: { color: "#FFF", fontSize: 15 },
-  txtThem: { color: "#000", fontSize: 15 },
-  msgTime: {
-    fontSize: 10,
-    color: "#BBB",
-    marginTop: 6,
-    fontWeight: "600",
-    alignSelf: "flex-end",
-  },
-  dayHeader: {
-    alignItems: "center",
-    paddingVertical: 16,
-  },
-  dayHeaderText: {
-    fontSize: 12,
-    color: "#999",
-    fontWeight: "500",
-  },
-  inputArea: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 12 : 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
-    backgroundColor: "#FFF",
-  },
   iconBtn: {
     width: 40,
     height: 40,
@@ -2079,29 +1260,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     marginBottom: 2,
   },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 10,
-    minHeight: 44,
-    maxHeight: 110,
-    marginRight: 10,
-    color: "#000",
-  },
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
-  },
-  modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
@@ -2386,17 +1544,4 @@ const styles = StyleSheet.create({
   },
   summarySkills: { flexDirection: "row", flexWrap: "wrap" },
   summarySkillText: { fontSize: 13, color: "#666", fontWeight: "600" },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  headerMoreBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });
