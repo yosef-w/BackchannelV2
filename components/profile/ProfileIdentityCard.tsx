@@ -1,4 +1,4 @@
-import { Briefcase, Camera, Edit, Eye, MapPin } from "lucide-react-native";
+import { Briefcase, Camera, Edit, MapPin } from "lucide-react-native";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AvatarCompletionRing } from "./AvatarCompletionRing";
@@ -14,17 +14,15 @@ interface ProfileIdentityCardProps {
   personalMissingCount: number;
   onOpenImagePicker: () => void;
   onEditProfile: () => void;
-  onPreview: () => void;
-  previewLoading: boolean;
   photoMissing: boolean;
 }
 
 /**
  * The identity header for the Profile hub — avatar (with a completion ring
  * instead of a hidden percentage), name/role/location, a one-line bio
- * teaser, and the two entry actions. Everything below this card is now
- * management (Finish Your Profile / Profile / Settings groups) rather than
- * a second copy of the profile's content, which lives in Preview.
+ * teaser, and the Edit Profile entry action. Everything below this card is
+ * now management (Finish Your Profile / Profile / Settings groups) rather
+ * than a second copy of the profile's content.
  */
 export function ProfileIdentityCard({
   profileImage,
@@ -37,8 +35,6 @@ export function ProfileIdentityCard({
   personalMissingCount,
   onOpenImagePicker,
   onEditProfile,
-  onPreview,
-  previewLoading,
   photoMissing,
 }: ProfileIdentityCardProps) {
   return (
@@ -111,12 +107,6 @@ export function ProfileIdentityCard({
               <Text style={styles.buttonBadgeText}>{personalMissingCount}</Text>
             </View>
           )}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.whiteBtn} onPress={onPreview}>
-          <Eye color="#000" size={16} />
-          <Text style={styles.whiteBtnText}>
-            {previewLoading ? "Loading…" : "Preview"}
-          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -200,18 +190,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   blackBtnText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  whiteBtn: {
-    flexDirection: "row",
-    backgroundColor: "#FFF",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: "#000",
-  },
-  whiteBtnText: { color: "#000", fontSize: 14, fontWeight: "700" },
   buttonBadge: {
     minWidth: 18,
     height: 18,

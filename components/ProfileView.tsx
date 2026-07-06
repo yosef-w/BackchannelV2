@@ -30,7 +30,6 @@ import {
     Alert,
     Modal,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Switch,
@@ -57,7 +56,6 @@ import {
 import {
     classifyResume,
     deactivateAccount,
-    getBasicProfile,
     getExtractedResumeText,
     logout,
     unregisterDevice,
@@ -90,7 +88,6 @@ import {
   SPONSOR_PROMPT_CATEGORIES,
   SPONSOR_PROMPT_EXAMPLES,
 } from "../constants/prompts";
-import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { EditorScreen } from "./profile/EditorScreen";
 import { EditProfileScreen } from "./profile/EditProfileScreen";
 import { HubRow } from "./profile/HubRow";
@@ -99,7 +96,6 @@ import { NotificationsScreen } from "./profile/NotificationsScreen";
 import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
 import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
-import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 import { PromptsIntake } from "./ui/PromptsIntake";
 
 interface ProfileViewProps {
@@ -207,13 +203,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
-  // "Preview my profile" — reuses the same public-profile views sponsors and
-  // applicants see of EACH OTHER, pointed at your own USER_ID instead. Seeing
-  // your own card as others see it is the strongest nudge to fill in the
-  // weak spots (missing bio, thin insights, etc).
-  const [showPreviewCard, setShowPreviewCard] = useState(false);
-  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -1842,24 +1831,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
-  const handlePreviewCard = async () => {
-    if (previewUserId) {
-      setShowPreviewCard(true);
-      return;
-    }
-    setPreviewLoading(true);
-    try {
-      const basic = await getBasicProfile();
-      setPreviewUserId(String(basic.USER_ID));
-      setShowPreviewCard(true);
-    } catch (err) {
-      console.warn("[ProfileView] Failed to load own profile for preview:", err);
-      showToast("Couldn't load your profile preview. Please try again.", "error");
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
@@ -2486,8 +2457,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           trackProfileEditOpened({ section: "personal" });
           setShowEditProfile(true);
         }}
-        onPreview={handlePreviewCard}
-        previewLoading={previewLoading}
         photoMissing={isFieldMissing("profileImage")}
       />
 
@@ -2962,36 +2931,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         userType={userType}
       />
 
-      {/* Preview My Profile — full-screen, matches how MainApp presents a
-          match's public profile. Points the SAME view at your own USER_ID
-          so you see your card exactly as the other side would.
-          Note: MainApp renders this same component as a child of its own
-          top-level SafeAreaView, so it inherits safe-area insets for free
-          there. A bare <Modal> breaks out of the normal view hierarchy
-          entirely (it doesn't inherit anything from an ancestor
-          SafeAreaView), so this needs its own — without it, the back
-          button and content pushed up against the iPhone's notch/status
-          bar and the bottom content ran into the home-indicator area. */}
-      <Modal
-        visible={showPreviewCard}
-        animationType="slide"
-        onRequestClose={() => setShowPreviewCard(false)}
-      >
-        <SafeAreaView style={styles.previewSafeArea}>
-          {previewUserId &&
-            (userType === "applicant" ? (
-              <ApplicantPublicProfileView
-                userData={{ USER_ID: previewUserId }}
-                onClose={() => setShowPreviewCard(false)}
-              />
-            ) : (
-              <SponsorPublicProfileView
-                userData={{ USER_ID: previewUserId }}
-                onClose={() => setShowPreviewCard(false)}
-              />
-            ))}
-        </SafeAreaView>
-      </Modal>
     </ScrollView>
   );
 }
@@ -3158,7 +3097,6 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   insightsEditorSafe: { flex: 1, backgroundColor: "#FFF" },
-  previewSafeArea: { flex: 1, backgroundColor: "#FFF" },
   insightsEditorHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
