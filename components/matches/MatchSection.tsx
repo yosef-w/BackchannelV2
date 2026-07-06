@@ -13,6 +13,8 @@ interface MatchSectionProps {
   subtitle?: string;
   count: number;
   loading?: boolean;
+  /** Surfaces a query error inline instead of silently showing an empty group. */
+  error?: string | null;
   /** OpportunityRow elements. When there are more than `maxRows`, only the
    * first `maxRows` render and a "See all" row is appended. */
   children: React.ReactNode;
@@ -36,6 +38,7 @@ export function MatchSection({
   subtitle,
   count,
   loading,
+  error,
   children,
   maxRows,
   onSeeAll,
@@ -59,6 +62,7 @@ export function MatchSection({
         )}
       </View>
       {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      {!!error && <Text style={styles.error}>{error}</Text>}
 
       <View style={styles.group}>
         {loading ? (
@@ -118,6 +122,11 @@ const styles = StyleSheet.create({
     color: "#999",
     marginBottom: 10,
     lineHeight: 16,
+  },
+  error: {
+    fontSize: 12,
+    color: "#DC2626",
+    marginBottom: 10,
   },
   group: {
     backgroundColor: "#F9F9F9",

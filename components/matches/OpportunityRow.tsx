@@ -22,6 +22,14 @@ interface OpportunityRowProps {
    */
   right?: React.ReactNode;
   cta?: string;
+  /**
+   * When provided, the CTA pill becomes its own tap target (e.g. "Message")
+   * separate from the row's own onPress (e.g. "view profile") — the same
+   * two-action pattern the old match cards used (tap card vs. tap Message
+   * button). When omitted, the CTA is decorative and the whole row just
+   * calls `onPress`.
+   */
+  onPressCta?: () => void;
   disabled?: boolean;
   isLast?: boolean;
 }
@@ -36,6 +44,7 @@ export function OpportunityRow({
   detail,
   right,
   cta,
+  onPressCta,
   disabled,
   isLast,
 }: OpportunityRowProps) {
@@ -67,14 +76,34 @@ export function OpportunityRow({
       </View>
       <View style={styles.trailing}>
         {cta ? (
-          <View style={styles.ctaPill}>
-            <Text style={styles.ctaText}>{cta}</Text>
-          </View>
+          onPressCta ? (
+            <TouchableOpacity
+              style={styles.ctaPill}
+              onPress={onPressCta}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.ctaText}>{cta}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.ctaPill}>
+              <Text style={styles.ctaText}>{cta}</Text>
+            </View>
+          )
         ) : (
           (right ?? <ChevronRight size={18} color="#CCC" />)
         )}
       </View>
     </TouchableOpacity>
+  );
+}
+
+/** Convenience for the common "icon + small gray text" meta line (e.g. a relative timestamp). */
+export function MetaLine({ icon, text }: { icon?: React.ReactNode; text: string }) {
+  return (
+    <>
+      {icon}
+      <Text style={styles.metaText}>{text}</Text>
+    </>
   );
 }
 
@@ -109,4 +138,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   ctaText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  metaText: { fontSize: 11, color: "#999", fontWeight: "600" },
 });
