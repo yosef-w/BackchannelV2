@@ -10,12 +10,12 @@ import {
     CheckCircle2,
     ChevronRight,
     Edit,
-    Eye,
     FileText,
+    GraduationCap,
     ImageIcon,
     LogOut,
-    MapPin,
     RefreshCw,
+    Sparkles,
     Target,
     Trash2,
     Upload,
@@ -25,7 +25,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Image,
     Modal,
     Platform,
     SafeAreaView,
@@ -91,11 +90,13 @@ import {
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { EditorScreen } from "./profile/EditorScreen";
 import { EditProfileScreen } from "./profile/EditProfileScreen";
+import { HubRow } from "./profile/HubRow";
+import { HubSection } from "./profile/HubSection";
 import { NotificationsScreen } from "./profile/NotificationsScreen";
 import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
+import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
-import { ExpandableText } from "./ui/ExpandableText";
 import { PromptsIntake } from "./ui/PromptsIntake";
 
 interface ProfileViewProps {
@@ -2417,6 +2418,46 @@ export function ProfileView({ userType }: ProfileViewProps) {
     );
   };
 
+  // "Finish Your Profile" coaching rows — one per item profileCompletion
+  // flags as missing, each deep-linking to the exact screen that fixes it,
+  // plus a prompts nudge (not part of the official completion calculation,
+  // since PromptsIntake enforces its own 2-minimum, but still worth
+  // surfacing here). The ring on the identity card shows the official
+  // percentage; this list shows the "why".
+  const FINISH_PROFILE_ICON: Record<string, React.ReactNode> = {
+    profileImage: <Camera color="#000" size={16} strokeWidth={2} />,
+    skills: <Target color="#000" size={16} strokeWidth={2} />,
+    experiences: <Briefcase color="#000" size={16} strokeWidth={2} />,
+    entries: <GraduationCap color="#000" size={16} strokeWidth={2} />,
+  };
+  const FINISH_PROFILE_TARGET: Record<string, () => void> = {
+    profileImage: openImagePicker,
+    experiences: () => setShowEditResume(true),
+    entries: () => setShowEditResume(true),
+  };
+  const finishProfileRows = profileCompletion.missingFields.map((f) => ({
+    key: f.field,
+    icon: FINISH_PROFILE_ICON[f.field] || (
+      <Edit color="#000" size={16} strokeWidth={2} />
+    ),
+    label:
+      f.label === "Photo"
+        ? "Add a profile photo"
+        : `Add your ${f.label.toLowerCase()}`,
+    onPress: FINISH_PROFILE_TARGET[f.field] || (() => setShowEditProfile(true)),
+  }));
+  if (profileInsights.length < 2) {
+    finishProfileRows.push({
+      key: "prompts",
+      icon: <Sparkles color="#000" size={16} strokeWidth={2} />,
+      label:
+        profileInsights.length === 0
+          ? "Answer 2 profile prompts"
+          : "Answer 1 more profile prompt",
+      onPress: () => setShowEditInsights(true),
+    });
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -2424,162 +2465,43 @@ export function ProfileView({ userType }: ProfileViewProps) {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="always"
     >
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarWrapper}>
-          {/* The whole avatar is tappable — not just the small corner button —
-              so tapping the photo opens the picker too. (Previously only the
-              32px FAB had a handler, which testers often missed.) */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={openImagePicker}
-            accessibilityRole="button"
-            accessibilityLabel="Change profile photo"
-          >
-            {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatar}>
-                {getUserInitials() ? (
-                  <Text style={styles.avatarInitials}>{getUserInitials()}</Text>
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Camera color="#999" size={32} strokeWidth={1.5} />
-                    <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.editFab,
-              isFieldMissing("profileImage") && styles.editFabHighlight,
-            ]}
-            onPress={openImagePicker}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Edit color="#FFF" size={14} strokeWidth={2.5} />
-          </TouchableOpacity>
-        </View>
+      <ProfileIdentityCard
+        profileImage={profileImage}
+        initials={getUserInitials()}
+        name={profileData.name}
+        roleLine={
+          userType === "sponsor"
+            ? `${sponsorData.role} @ ${sponsorData.company}`
+            : applicantData.role
+        }
+        location={profileData.location}
+        bio={profileData.bio}
+        completionPercentage={profileCompletion.percentage}
+        personalMissingCount={personalMissingCount}
+        onOpenImagePicker={openImagePicker}
+        onEditProfile={() => {
+          trackProfileEditOpened({ section: "personal" });
+          setShowEditProfile(true);
+        }}
+        onPreview={handlePreviewCard}
+        previewLoading={previewLoading}
+        photoMissing={isFieldMissing("profileImage")}
+      />
 
-        <Text style={styles.name}>{profileData.name}</Text>
-
-        <View style={styles.infoRow}>
-          <Briefcase color="#000" size={14} strokeWidth={2} />
-          <Text style={styles.infoText}>
-            {userType === "sponsor"
-              ? `${sponsorData.role} @ ${sponsorData.company}`
-              : applicantData.role}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MapPin color="#BBB" size={14} strokeWidth={2} />
-          {profileData.location ? (
-            <Text style={styles.locationText}>{profileData.location}</Text>
-          ) : (
-            <Text style={styles.emptyHint}>No location added yet</Text>
-          )}
-        </View>
-
-        {profileData.bio ? (
-          <ExpandableText style={styles.bio} numberOfLines={5}>
-            {profileData.bio}
-          </ExpandableText>
-        ) : (
-          <Text style={styles.emptyHint}>Tap "Edit Profile" to add a bio</Text>
-        )}
-
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.blackBtn}
-            onPress={() => {
-              trackProfileEditOpened({ section: "personal" });
-              setShowEditProfile(true);
-            }}
-          >
-            <Edit color="#FFF" size={16} />
-            <Text style={styles.blackBtnText}>Edit Profile</Text>
-            {personalMissingCount > 0 && (
-              <View style={styles.buttonBadge}>
-                <Text style={styles.buttonBadgeText}>
-                  {personalMissingCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.whiteBtn}
-            onPress={handlePreviewCard}
-          >
-            <Eye color="#000" size={16} />
-            <Text style={styles.whiteBtnText}>
-              {previewLoading ? "Loading…" : "Preview"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Profile Content */}
-      <>
-        {/* Expertise Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
-          {profileData.expertise.length > 0 ? (
-            <View style={styles.tagCloud}>
-              {profileData.expertise.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyHint}>No skills added yet</Text>
-          )}
-        </View>
-
-        {/* Applicant-Specific Sections */}
-        {userType === "applicant" && (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Work Preferences</Text>
-              {applicantData.workPreferences.length > 0 ? (
-                <View style={styles.tagCloud}>
-                  {applicantData.workPreferences.map((pref) => (
-                    <View key={pref} style={styles.preferenceTag}>
-                      <Text style={styles.preferenceText}>{pref}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyHint}>
-                  No work preferences added yet
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Desired Roles</Text>
-              {applicantData.desiredRoles.length > 0 ? (
-                <View style={styles.tagCloud}>
-                  {applicantData.desiredRoles.map((role) => (
-                    <View key={role} style={styles.roleTag}>
-                      <Target size={14} color="#FFF" strokeWidth={2.5} />
-                      <Text style={styles.roleTagText}>{role}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyHint}>No desired roles added yet</Text>
-              )}
-            </View>
-          </>
-        )}
-
-        {/* Sponsor-Specific Sections */}
-        {userType === "sponsor" && <></>}
-      </>
+      <HubSection
+        title="Finish Your Profile"
+        count={finishProfileRows.length}
+        hidden={finishProfileRows.length === 0}
+      >
+        {finishProfileRows.map((row) => (
+          <HubRow
+            key={row.key}
+            icon={row.icon}
+            label={row.label}
+            onPress={row.onPress}
+          />
+        ))}
+      </HubSection>
 
       {/* Resume Upload Section — Applicant Only */}
       {userType === "applicant" && (
