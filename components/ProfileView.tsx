@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
     AlertCircle,
+    Bell,
     Briefcase,
     Camera,
     Check,
@@ -13,9 +14,11 @@ import {
     FileText,
     GraduationCap,
     ImageIcon,
+    Lock,
     LogOut,
     RefreshCw,
     Sparkles,
+    Star,
     Target,
     Trash2,
     Upload,
@@ -2698,55 +2701,63 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
       )}
 
-      {/* Settings List */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <View style={styles.settingsGroup}>
-          <SettingItem
-            label="Edit Profile Insights"
+      <HubSection title="Profile">
+        <HubRow
+          icon={<Sparkles color="#000" size={16} strokeWidth={2} />}
+          label="Profile Prompts"
+          value={`${profileInsights.length}/3`}
+          onPress={() => {
+            trackProfileEditOpened({ section: "insights" });
+            setShowEditInsights(true);
+          }}
+        />
+        {userType === "applicant" && (
+          <HubRow
+            icon={<FileText color="#000" size={16} strokeWidth={2} />}
+            label="Edit Resume Information"
+            badgeCount={professionalMissingCount}
             onPress={() => {
-              trackProfileEditOpened({ section: "insights" });
-              setShowEditInsights(true);
+              trackProfileEditOpened({ section: "resume" });
+              setShowEditResume(true);
             }}
           />
-          {userType === "applicant" && (
-            <SettingItem
-              label="Edit Resume Information"
-              badgeCount={professionalMissingCount}
-              onPress={() => {
-                trackProfileEditOpened({ section: "resume" });
-                setShowEditResume(true);
-              }}
-            />
-          )}
-          <SettingItem
-            label="Privacy & Security"
-            onPress={() => setShowPrivacySecurity(true)}
+        )}
+      </HubSection>
+
+      <HubSection title="Settings">
+        <HubRow
+          icon={<Bell color="#000" size={16} strokeWidth={2} />}
+          label="Notifications"
+          onPress={() => setShowNotifications(true)}
+        />
+        <HubRow
+          icon={<Lock color="#000" size={16} strokeWidth={2} />}
+          label="Privacy & Security"
+          onPress={() => setShowPrivacySecurity(true)}
+        />
+        {PREMIUM_ENABLED && (
+          <HubRow
+            icon={<Star color="#000" size={16} strokeWidth={2} />}
+            label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
+            onPress={async () => {
+              if (isPremium) {
+                await presentCustomerCenter();
+              } else {
+                await presentPaywall();
+              }
+            }}
           />
-          <SettingItem
-            label="Notifications"
-            onPress={() => setShowNotifications(true)}
-          />
-          {PREMIUM_ENABLED && (
-            <SettingItem
-              label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
-              onPress={async () => {
-                if (isPremium) {
-                  await presentCustomerCenter();
-                } else {
-                  await presentPaywall();
-                }
-              }}
-            />
-          )}
-          <SettingItem
-            label="Log Out"
-            color="#000"
-            isLast
-            onPress={handleLogout}
-          />
-        </View>
-      </View>
+        )}
+      </HubSection>
+
+      <TouchableOpacity
+        style={styles.logOutRow}
+        onPress={handleLogout}
+        activeOpacity={0.7}
+      >
+        <LogOut color="#DC2626" size={16} strokeWidth={2} />
+        <Text style={styles.logOutText}>Log Out</Text>
+      </TouchableOpacity>
 
       {/* IMAGE PICKER MODAL */}
       <Modal visible={showImagePickerModal} transparent animationType="fade">
@@ -2982,39 +2993,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </SafeAreaView>
       </Modal>
     </ScrollView>
-  );
-}
-
-function SettingItem({
-  label,
-  color = "#000",
-  isLast = false,
-  showNotificationDot = false,
-  badgeCount,
-  onPress,
-}: {
-  label: string;
-  color?: string;
-  isLast?: boolean;
-  showNotificationDot?: boolean;
-  badgeCount?: number;
-  onPress?: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.settingItem, isLast && { borderBottomWidth: 0 }]}
-      onPress={onPress}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Text style={[styles.settingLabel, { color }]}>{label}</Text>
-        {typeof badgeCount === "number" && badgeCount > 0 && (
-          <View style={styles.settingBadge}>
-            <Text style={styles.settingBadgeText}>{badgeCount}</Text>
-          </View>
-        )}
-      </View>
-      <ChevronRight color="#BBB" size={18} />
-    </TouchableOpacity>
   );
 }
 
@@ -3307,6 +3285,23 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
+  logOutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+    paddingVertical: 14,
+    marginBottom: 24,
+  },
+  logOutText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#DC2626",
+  },
   settingsSection: {
     marginTop: 8,
   },
