@@ -577,6 +577,16 @@ export function JobsView() {
 
   const [activeTab, setActiveTab] = useState<"browse" | "sponsored">("browse");
   const [displayLimit, setDisplayLimit] = useState(20);
+  // Browse search — client-side filter over the loaded (company-scoped)
+  // list. Filtering locally keeps the store's cached list intact (the
+  // did-you-mean company logic and isSponsored sync both key off it) and
+  // makes search instant.
+  const [searchQuery, setSearchQuery] = useState("");
+  // Jobs the sponsor already sponsors are pulled out of the main Browse
+  // list into a collapsed section at the bottom — they're not actionable
+  // while shopping, and the old treatment (dimmed cards mid-list) made
+  // the board read as half-disabled.
+  const [showSponsoredInBrowse, setShowSponsoredInBrowse] = useState(false);
 
   // Fetch browse jobs on mount. The store is in-memory and survives tab
   // switches, so on re-entry we serve the cached list instantly: the
@@ -1650,36 +1660,143 @@ export function JobsView() {
                     />
                   )
                 ) : (
-                  <>
-                    {jobs.slice(0, displayLimit).map((job, index) => (
-                      <Animated.View
-                        key={job.id}
-                        entering={FadeInUp.delay(100 + index * 40).duration(
-                          300,
-                        )}
-                      >
-                        <JobCard
-                          job={job}
-                          isSponsored={job.isSponsored}
-                          onSponsor={() => handleOpenModal(job)}
-                          onPress={() => setViewJobDetails(job)}
-                          onMenu={() => setMenuJob(job)}
-                          onApplicantPress={() => handleApplicantPress(job)}
-                        />
-                      </Animated.View>
-                    ))}
+                  (() => {
+                    const q = searchQuery.trim().toLowerCase();
+                    const matchesQuery = (job: JobPosting) =>
+                      !q ||
+                      job.title.toLowerCase().includes(q) ||
+                      (job.location || "").toLowerCase().includes(q);
+                    const availableJobs = jobs.filter(
+                      (j) => !j.isSponsored && matchesQuery(j),
+                    );
+                    const sponsoredInBrowse = jobs.filter(
+                      (j) => j.isSponsored && matchesQuery(j),
+                    );
+                    return (
+                      <>
+                        <View style={styles.searchWrap}>
+                          <Search size={16} color="#999" />
+                          <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search roles or locations"
+                            placeholderTextColor="#BBB"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            returnKeyType="search"
+                          />
+                          {searchQuery.length > 0 && (
+                            <TouchableOpacity
+                              onPress={() => setSearchQuery("")}
+                              hitSlop={{
+                                top: 8,
+                                bottom: 8,
+                                left: 8,
+                                right: 8,
+                              }}
+                            >
+                              <X size={16} color="#999" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
 
-                    {/* Load More Button */}
-                    {jobs.length > displayLimit && (
-                      <TouchableOpacity
-                        style={styles.loadMoreBtn}
-                        onPress={() => setDisplayLimit((prev) => prev + 20)}
-                      >
-                        <Text style={styles.loadMoreText}>Load More Jobs</Text>
-                        <ChevronRight size={16} color="#000" />
-                      </TouchableOpacity>
-                    )}
-                  </>
+                        {availableJobs.length === 0 &&
+                        sponsoredInBrowse.length === 0 ? (
+                          <View style={styles.noMatchesWrap}>
+                            <Text style={styles.noMatchesText}>
+                              No roles match your search
+                            </Text>
+                          </View>
+                        ) : (
+                          <>
+                            {availableJobs
+                              .slice(0, displayLimit)
+                              .map((job, index) => (
+                                <Animated.View
+                                  key={job.id}
+                                  entering={FadeInUp.delay(
+                                    100 + index * 40,
+                                  ).duration(300)}
+                                >
+                                  <JobCard
+                                    job={job}
+                                    isSponsored={false}
+                                    onSponsor={() => handleOpenModal(job)}
+                                    onPress={() => setViewJobDetails(job)}
+                                    onMenu={() => setMenuJob(job)}
+                                  />
+                                </Animated.View>
+                              ))}
+
+                            {/* Load More Button */}
+                            {availableJobs.length > displayLimit && (
+                              <TouchableOpacity
+                                style={styles.loadMoreBtn}
+                                onPress={() =>
+                                  setDisplayLimit((prev) => prev + 20)
+                                }
+                              >
+                                <Text style={styles.loadMoreText}>
+                                  Load More Jobs
+                                </Text>
+                                <ChevronRight size={16} color="#000" />
+                              </TouchableOpacity>
+                            )}
+
+                            {/* Jobs you already sponsor — collapsed out of
+                                the shopping list (same pattern as the
+                                inbox's Past Connections). */}
+                            {sponsoredInBrowse.length > 0 && (
+                              <>
+                                <TouchableOpacity
+                                  style={styles.sponsoredToggle}
+                                  onPress={() =>
+                                    setShowSponsoredInBrowse((s) => !s)
+                                  }
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.sponsoredToggleText}>
+                                    ALREADY SPONSORING
+                                  </Text>
+                                  <View style={styles.sponsoredTogglePill}>
+                                    <Text
+                                      style={styles.sponsoredTogglePillText}
+                                    >
+                                      {sponsoredInBrowse.length}
+                                    </Text>
+                                  </View>
+                                  <View style={{ flex: 1 }} />
+                                  <ChevronRight
+                                    size={16}
+                                    color="#BBB"
+                                    style={
+                                      showSponsoredInBrowse && {
+                                        transform: [{ rotate: "90deg" }],
+                                      }
+                                    }
+                                  />
+                                </TouchableOpacity>
+                                {showSponsoredInBrowse &&
+                                  sponsoredInBrowse.map((job) => (
+                                    <JobCard
+                                      key={job.id}
+                                      job={job}
+                                      isSponsored
+                                      onPress={() => setViewJobDetails(job)}
+                                      onMenu={() => setMenuJob(job)}
+                                      onApplicantPress={() =>
+                                        handleApplicantPress(job)
+                                      }
+                                    />
+                                  ))}
+                              </>
+                            )}
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
                 )}
               </>
             )}
@@ -3188,6 +3305,47 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   createActionText: { color: "#FFF", fontSize: 13, fontWeight: "700" },
+  // Browse search — client-side filter over the loaded, company-scoped list.
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingHorizontal: 12,
+    height: 42,
+    marginBottom: 16,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: "#000" },
+  noMatchesWrap: { paddingVertical: 32, alignItems: "center" },
+  noMatchesText: { fontSize: 14, color: "#999", fontWeight: "600" },
+  // Collapsed "Already Sponsoring" group at the bottom of Browse.
+  sponsoredToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 12,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  sponsoredToggleText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 0.8,
+  },
+  sponsoredTogglePill: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sponsoredTogglePillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
 
 
   cardCoverInfo: { display: "none" },
