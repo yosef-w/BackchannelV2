@@ -141,6 +141,17 @@ interface UserProfileStore {
    * by the app being killed is retried on next launch (see loadFromStorage).
    */
   dirtyFields: Set<SyncableField>;
+  /**
+   * Consecutive syncToBackend() failures with nothing cleared. Persisted
+   * (survives a killed/relaunched app) so a dirty field that keeps failing
+   * for a non-network reason — e.g. a payload the backend always rejects —
+   * doesn't stay "protected" from fetchFromBackend's merge forever. Past
+   * MAX_SYNC_FAILURES_BEFORE_ABANDONING, fetchFromBackend gives up on the
+   * pending local edit and lets the backend value win instead, so a stuck
+   * flag can't permanently mask real server data (see fetchFromBackend).
+   * Reset to 0 on every successful sync attempt, even a partial one.
+   */
+  syncFailureCount: number;
 
   updatePersonal: (data: Partial<AutofillData["personal"]>) => Promise<void>;
   updateProfessional: (
@@ -203,6 +214,17 @@ const PENDING_WORK_EMAIL_KEY = "pending_work_email";
  * being killed — the 2s debounce never fired, or fired but the request
  * hadn't completed — is retried on next launch instead of silently lost. */
 const DIRTY_FIELDS_KEY = "autofill_dirty_fields";
+/** Persists `syncFailureCount` so a run of failures survives a killed app
+ * instead of resetting to 0 on relaunch and never reaching the threshold. */
+const SYNC_FAILURE_COUNT_KEY = "autofill_sync_failure_count";
+/** After this many consecutive failed sync attempts, fetchFromBackend stops
+ * protecting the dirty local value and lets the backend win instead — see
+ * the `syncFailureCount` doc comment above for why this exists. Chosen to
+ * be well past what network flakiness alone would produce (every attempt
+ * is either a 2s-debounced edit, an app-foreground flush, or a launch
+ * retry — a handful of consecutive failures across those is a strong
+ * signal of a real, non-transient problem, not a bad connection). */
+const MAX_SYNC_FAILURES_BEFORE_ABANDONING = 5;
 
 const defaultData: AutofillData = {
   personal: {
@@ -287,6 +309,16 @@ async function persistDirtyFields(fields: Set<SyncableField>) {
   }
 }
 
+/** Persist the current sync-failure count so a run of failures survives a
+ * killed app instead of resetting to 0 on relaunch. */
+async function persistSyncFailureCount(count: number) {
+  try {
+    await AsyncStorage.setItem(SYNC_FAILURE_COUNT_KEY, String(count));
+  } catch (error) {
+    console.warn("Failed to persist sync failure count:", error);
+  }
+}
+
 export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   data: defaultData,
   isLoaded: false,
@@ -295,6 +327,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   syncError: null,
   needsSync: false,
   dirtyFields: new Set<SyncableField>(),
+  syncFailureCount: 0,
   workEmailVerified: false,
   setWorkEmailVerified: (verified) => set({ workEmailVerified: verified }),
 
@@ -705,8 +738,10 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         syncError: null,
         dirtyFields: remainingDirty,
         needsSync: remainingDirty.size > 0,
+        syncFailureCount: 0,
       });
       persistDirtyFields(remainingDirty);
+      persistSyncFailureCount(0);
     } catch (error: any) {
       console.warn("Failed to sync profile to backend:", error);
 
@@ -714,9 +749,19 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         error.message?.includes("network") ||
         error.message?.includes("offline")
       ) {
+        // A connectivity gap isn't evidence of a stuck/broken sync — leave
+        // syncFailureCount untouched so an extended period offline can't by
+        // itself trip the abandon-local-edits threshold below and risk
+        // discarding a real pending edit the moment the network returns.
         set({ syncError: "offline", needsSync: true });
       } else {
-        set({ syncError: error.message || "Sync failed" });
+        // A non-network failure (e.g. the backend rejecting the payload)
+        // means retrying won't help on its own — count it, so a run of
+        // these eventually trips fetchFromBackend's abandon-stuck-dirty-
+        // fields safety net instead of masking real backend data forever.
+        const syncFailureCount = get().syncFailureCount + 1;
+        set({ syncError: error.message || "Sync failed", syncFailureCount });
+        persistSyncFailureCount(syncFailureCount);
       }
       // dirtyFields is left untouched on failure — nothing was confirmed
       // synced, so the next debounced/flushed attempt retries all of it.
@@ -986,7 +1031,29 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // already prefers non-empty backend data, which is exactly backwards
       // for a field mid-deletion). Fields with no pending edit are left as
       // the normal backend-preferred merge computed above.
-      const dirtyFields = get().dirtyFields;
+      //
+      // Fail-safe: if syncToBackend has failed MAX_SYNC_FAILURES_BEFORE_-
+      // ABANDONING times in a row for a non-network reason, that "local
+      // wins" protection is abandoned instead — a dirty flag stuck because
+      // the backend keeps rejecting the payload (not just a bad
+      // connection) would otherwise mask real backend data (e.g. a
+      // correctly-set name) forever, since it never clears on its own.
+      // Past the threshold, this fetch is treated as the authority and the
+      // stuck flags are dropped so future edits aren't shadowed either.
+      const syncFailureCount = get().syncFailureCount;
+      const abandoningStuckEdits =
+        syncFailureCount >= MAX_SYNC_FAILURES_BEFORE_ABANDONING;
+      const dirtyFields = abandoningStuckEdits
+        ? new Set<SyncableField>()
+        : get().dirtyFields;
+      if (abandoningStuckEdits && get().dirtyFields.size > 0) {
+        console.warn(
+          `[useUserProfileStore] Sync has failed ${syncFailureCount} times in a row — abandoning ${get().dirtyFields.size} stuck dirty field(s) so the backend's data isn't masked forever.`,
+        );
+        set({ dirtyFields: new Set<SyncableField>(), syncFailureCount: 0 });
+        persistDirtyFields(new Set<SyncableField>());
+        persistSyncFailureCount(0);
+      }
       if (dirtyFields.has("personal")) autofillData.personal = existing.personal;
       if (dirtyFields.has("professional"))
         autofillData.professional = existing.professional;
@@ -1050,17 +1117,20 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
   loadFromStorage: async () => {
     try {
-      const [stored, storedPending, storedDirty] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEY),
-        AsyncStorage.getItem(PENDING_WORK_EMAIL_KEY),
-        AsyncStorage.getItem(DIRTY_FIELDS_KEY),
-      ]);
+      const [stored, storedPending, storedDirty, storedFailureCount] =
+        await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY),
+          AsyncStorage.getItem(PENDING_WORK_EMAIL_KEY),
+          AsyncStorage.getItem(DIRTY_FIELDS_KEY),
+          AsyncStorage.getItem(SYNC_FAILURE_COUNT_KEY),
+        ]);
       const patch: Partial<{
         data: AutofillData;
         isLoaded: boolean;
         pendingWorkEmail: string | null;
         dirtyFields: Set<SyncableField>;
         needsSync: boolean;
+        syncFailureCount: number;
       }> = {};
       if (stored) {
         patch.data = JSON.parse(stored);
@@ -1084,6 +1154,15 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           // Malformed — ignore, nothing to retry.
         }
       }
+      // Restored so a run of non-network sync failures across app restarts
+      // still reaches MAX_SYNC_FAILURES_BEFORE_ABANDONING instead of
+      // resetting to 0 on every relaunch and never tripping the safety net.
+      if (storedFailureCount) {
+        const count = Number(storedFailureCount);
+        if (Number.isFinite(count) && count > 0) {
+          patch.syncFailureCount = count;
+        }
+      }
       if (Object.keys(patch).length > 0) {
         set(patch);
       }
@@ -1098,6 +1177,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         AsyncStorage.removeItem(STORAGE_KEY),
         AsyncStorage.removeItem(PENDING_WORK_EMAIL_KEY),
         AsyncStorage.removeItem(DIRTY_FIELDS_KEY),
+        AsyncStorage.removeItem(SYNC_FAILURE_COUNT_KEY),
       ]);
     } catch (error) {
       console.warn("Failed to clear autofill data:", error);
@@ -1111,6 +1191,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       syncError: null,
       needsSync: false,
       dirtyFields: new Set<SyncableField>(),
+      syncFailureCount: 0,
       workEmailVerified: false,
       pendingWorkEmail: null,
     });
