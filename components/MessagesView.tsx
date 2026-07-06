@@ -21,10 +21,8 @@ import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
     ArrowLeft,
-    Check,
     CheckCircle,
     ChevronRight,
-    Flag,
     MessageCircle,
     MoreHorizontal,
     Send,
@@ -35,11 +33,9 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     Dimensions,
     Image,
     Keyboard,
-    KeyboardAvoidingView,
     Modal,
     Platform,
     Pressable,
@@ -61,8 +57,8 @@ import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
 import { ReferralFlowModal } from "./messages/ReferralFlowModal";
 import { ThreadContextStrip } from "./messages/ThreadContextStrip";
+import { ThreadMenuSheet } from "./messages/ThreadMenuSheet";
 import { CharCounter } from "./ui/CharCounter";
-import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -315,17 +311,10 @@ export function MessagesView({
   // the header button reflects the referral status without a separate lookup.
   const [referredSet, setReferredSet] = useState<Set<string>>(new Set());
 
-  // Unmatch / Report — one sheet, two steps. "actions" is the initial
-  // Report/Unmatch/Cancel picker; "report" is the reason-picker step shown
-  // after tapping Report. showUnmatchMenu still gates the sheet's overall
-  // visibility (kept the name to avoid an unrelated rename).
+  // Unmatch / Report sheet visibility + in-flight state. The step/reason/
+  // detail state now lives inside the extracted ThreadMenuSheet.
   const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
   const [isUnmatching, setIsUnmatching] = useState(false);
-  const [threadMenuStep, setThreadMenuStep] = useState<"actions" | "report">(
-    "actions",
-  );
-  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
-  const [reportDetail, setReportDetail] = useState("");
   const [isReporting, setIsReporting] = useState(false);
 
   // Refs mirror state for use inside the long-lived inbox WebSocket handler,
@@ -897,11 +886,11 @@ export function MessagesView({
             : c,
         ),
       );
-      closeThreadMenu();
+      setShowUnmatchMenu(false);
       handleConversationSelect(null);
     } catch (err) {
       console.warn("[MessagesView] Failed to unmatch:", err);
-      closeThreadMenu();
+      setShowUnmatchMenu(false);
       showToast(
         err instanceof Error
           ? err.message
@@ -913,21 +902,14 @@ export function MessagesView({
     }
   };
 
-  // Resets the sheet back to its default step whenever it's closed, so it
-  // doesn't reopen mid-report next time.
-  const closeThreadMenu = () => {
-    setShowUnmatchMenu(false);
-    setThreadMenuStep("actions");
-    setReportReason(null);
-    setReportDetail("");
-  };
-
   // Report a user, then close the conversation the same way Unmatch does.
   // The block/close effect always happens via the already-shipped unmatch
   // endpoint, regardless of whether the report itself was recorded — see
-  // reportUser()'s doc comment for why that's split this way.
-  const handleSubmitReport = async () => {
-    if (!selectedConversation || !reportReason) return;
+  // reportUser()'s doc comment for why that's split this way. Takes
+  // reason/detail as arguments (rather than reading them from state) since
+  // that state now lives inside the extracted ThreadMenuSheet.
+  const handleSubmitReport = async (reason: ReportReason, detail: string) => {
+    if (!selectedConversation) return;
     const reportedUserId = conversations.find(
       (c) => c.id === selectedConversation,
     )?.otherParticipant?.id;
@@ -936,8 +918,8 @@ export function MessagesView({
       if (reportedUserId) {
         await reportUser({
           reportedUserId: String(reportedUserId),
-          reason: reportReason,
-          detail: reportDetail.trim() || undefined,
+          reason,
+          detail: detail.trim() || undefined,
           conversationId: selectedConversation,
         });
       }
@@ -949,12 +931,12 @@ export function MessagesView({
             : c,
         ),
       );
-      closeThreadMenu();
+      setShowUnmatchMenu(false);
       handleConversationSelect(null);
       showToast("Reported. This conversation has been closed.", "success");
     } catch (err) {
       console.warn("[MessagesView] Failed to close reported conversation:", err);
-      closeThreadMenu();
+      setShowUnmatchMenu(false);
       showToast(
         err instanceof Error
           ? err.message
@@ -1753,169 +1735,20 @@ export function MessagesView({
           </View>
         </Modal>
 
-        {/* THREAD MENU SHEET — same visual + motion pattern as the profile
-            detail sheet: fade-in blur backdrop, swipe-down dismissible
-            bottom sheet, no native slide animation. Two steps: "actions"
-            (Report / Unmatch / Cancel) and "report" (reason picker), shown
-            in the same sheet so it reads as one flow rather than a modal
-            stack. */}
+        {/* THREAD MENU SHEET — extracted to
+            components/messages/ThreadMenuSheet.tsx (self-contained: its
+            step/reason/detail state has zero readers outside the sheet,
+            per the state-ownership audit). */}
         <Modal visible={showUnmatchMenu} transparent animationType="none">
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.modalOverlay}
-          >
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() =>
-                !isUnmatching && !isReporting && closeThreadMenu()
-              }
-            >
-              <BlurView
-                intensity={30}
-                style={StyleSheet.absoluteFill}
-                tint="dark"
-              />
-            </TouchableOpacity>
-
-            <DismissibleSheet
-              onDismiss={() =>
-                !isUnmatching && !isReporting && closeThreadMenu()
-              }
-              style={styles.unmatchSheet}
-            >
-              {threadMenuStep === "actions" ? (
-                <>
-                  <Text style={styles.unmatchSheetTitle}>
-                    {conversation.otherParticipant.name}
-                  </Text>
-                  <Text style={styles.unmatchSheetSubtitle}>
-                    Unmatching or reporting permanently ends your match and
-                    closes this conversation. It moves to Past Connections as
-                    read-only and can't be undone.
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.reportActionBtn}
-                    onPress={() => setThreadMenuStep("report")}
-                    activeOpacity={0.7}
-                  >
-                    <Flag size={18} color="#000" strokeWidth={2} />
-                    <Text style={styles.reportActionText}>
-                      Report {conversation.otherParticipant.name.split(" ")[0]}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.unmatchActionBtn,
-                      isUnmatching && { opacity: 0.6 },
-                    ]}
-                    onPress={handleUnmatch}
-                    disabled={isUnmatching}
-                    activeOpacity={0.7}
-                  >
-                    {isUnmatching ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <Text style={styles.unmatchActionText}>Unmatch</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.unmatchCancelBtn}
-                    onPress={closeThreadMenu}
-                    disabled={isUnmatching}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.unmatchCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.unmatchSheetTitle}>
-                    Report {conversation.otherParticipant.name}
-                  </Text>
-                  <Text style={styles.unmatchSheetSubtitle}>
-                    Reporting also ends this match and closes the
-                    conversation. What happened?
-                  </Text>
-
-                  <View style={styles.reportReasonList}>
-                    {(
-                      [
-                        ["harassment", "Harassment or bullying"],
-                        ["spam", "Spam or scam"],
-                        ["inappropriate", "Inappropriate content"],
-                        ["fake_profile", "Fake profile"],
-                        ["other", "Something else"],
-                      ] as [ReportReason, string][]
-                    ).map(([value, label]) => {
-                      const isSelected = reportReason === value;
-                      return (
-                        <TouchableOpacity
-                          key={value}
-                          style={[
-                            styles.reportReasonRow,
-                            isSelected && styles.reportReasonRowSelected,
-                          ]}
-                          onPress={() => setReportReason(value)}
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              styles.reportReasonText,
-                              isSelected && styles.reportReasonTextSelected,
-                            ]}
-                          >
-                            {label}
-                          </Text>
-                          {isSelected && (
-                            <Check size={16} color="#FFF" strokeWidth={3} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  <TextInput
-                    style={styles.reportDetailInput}
-                    placeholder="Add details (optional)"
-                    placeholderTextColor="#AAA"
-                    value={reportDetail}
-                    onChangeText={setReportDetail}
-                    multiline
-                    maxLength={500}
-                  />
-
-                  <TouchableOpacity
-                    style={[
-                      styles.unmatchActionBtn,
-                      (isReporting || !reportReason) && { opacity: 0.5 },
-                    ]}
-                    onPress={handleSubmitReport}
-                    disabled={isReporting || !reportReason}
-                    activeOpacity={0.7}
-                  >
-                    {isReporting ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <Text style={styles.unmatchActionText}>
-                        Submit Report
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.unmatchCancelBtn}
-                    onPress={() => setThreadMenuStep("actions")}
-                    disabled={isReporting}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.unmatchCancelText}>Back</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </DismissibleSheet>
-          </KeyboardAvoidingView>
+          <ThreadMenuSheet
+            visible={showUnmatchMenu}
+            participantName={conversation.otherParticipant.name}
+            isUnmatching={isUnmatching}
+            isReporting={isReporting}
+            onUnmatch={handleUnmatch}
+            onReport={handleSubmitReport}
+            onClose={() => setShowUnmatchMenu(false)}
+          />
         </Modal>
       </View>
     );
@@ -2565,117 +2398,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
-  },
-  unmatchSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 28,
-    paddingBottom: 52,
-  },
-  unmatchSheetTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  unmatchSheetSubtitle: {
-    fontSize: 14,
-    color: "#888",
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 28,
-  },
-  // Unmatch CTA — solid black to match the rest of the app's primary
-  // action pattern (Match button, Send button, etc.). The destructive
-  // context is communicated by the modal subtitle ("This cannot be
-  // undone."), not by the button color — keeps the brand palette
-  // consistent across surfaces.
-  unmatchActionBtn: {
-    paddingVertical: 17,
-    borderRadius: 18,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  unmatchActionText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFF",
-  },
-  unmatchCancelBtn: {
-    paddingVertical: 17,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  unmatchCancelText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-  },
-  // Report — outlined (not filled) to sit visually below Unmatch's solid
-  // black CTA without resorting to red; severity is communicated by copy
-  // and icon, matching the app's monochrome-only convention for
-  // destructive actions (see the comment on unmatchActionBtn above).
-  reportActionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: "#000",
-    marginBottom: 12,
-  },
-  reportActionText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-  },
-  reportReasonList: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  reportReasonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  reportReasonRowSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
-  },
-  reportReasonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
-  },
-  reportReasonTextSelected: {
-    color: "#FFF",
-  },
-  reportDetailInput: {
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#000",
-    minHeight: 70,
-    textAlignVertical: "top",
-    marginBottom: 20,
   },
 });
