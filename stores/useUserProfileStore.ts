@@ -154,6 +154,17 @@ interface UserProfileStore {
   syncFailureCount: number;
 
   updatePersonal: (data: Partial<AutofillData["personal"]>) => Promise<void>;
+  /**
+   * Set the signed-in account's email locally WITHOUT marking the personal
+   * group dirty or queueing a sync. Login only knows the email; seeding it
+   * through updatePersonal() marked `personal` dirty, and since the
+   * send-in-full sync change that pushed the store's (often still-default,
+   * i.e. empty) firstName/lastName/phone/address to the backend on every
+   * login — permanently erasing the user's real name server-side.
+   * fetchFromBackend(), which _layout.tsx fires right after login, fills in
+   * the rest of the profile.
+   */
+  seedSessionEmail: (email: string) => Promise<void>;
   updateProfessional: (
     data: Partial<AutofillData["professional"]>,
   ) => Promise<void>;
@@ -365,6 +376,20 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     }
 
     queueSync();
+  },
+
+  seedSessionEmail: async (email) => {
+    const newData = { ...get().data };
+    newData.personal = { ...newData.personal, email };
+    // Deliberately NOT marked dirty and no queueSync() — this is session
+    // bookkeeping, not a user edit; see the interface doc comment.
+    set({ data: newData });
+
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch (error) {
+      console.warn("Failed to save autofill data:", error);
+    }
   },
 
   updateProfessional: async (updates) => {

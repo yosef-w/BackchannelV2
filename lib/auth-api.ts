@@ -364,8 +364,19 @@ export const authApi = {
     // ── 1. Build the general-user-profile payload ─────────────────────────
     const basePayload: Record<string, any> = {};
     if (dirtyFields.has("personal")) {
-      basePayload.first_name = data.personal.firstName;
-      basePayload.last_name = data.personal.lastName;
+      // Names are the one exception to "send dirty groups in full": there is
+      // no clear-your-name flow, so an empty value here is never a deletion —
+      // it means the local store hasn't been populated yet (fresh install,
+      // pre-fetch race). Sending it would erase the user's real name
+      // server-side, which is exactly what happened when login seeded a
+      // blank personal group and the sync pushed it. Every other field in
+      // this group IS legitimately clearable and stays unconditional.
+      if (data.personal.firstName?.trim()) {
+        basePayload.first_name = data.personal.firstName;
+      }
+      if (data.personal.lastName?.trim()) {
+        basePayload.last_name = data.personal.lastName;
+      }
       basePayload.phone_number = data.personal.phone;
       basePayload.portfolio_url = data.personal.portfolio;
       basePayload.street = data.personal.address?.street ?? "";
