@@ -79,13 +79,13 @@ import { MatchesEmptyState } from "./matches/MatchesEmptyState";
 import { MatchListScreen } from "./matches/MatchListScreen";
 import { MatchSection } from "./matches/MatchSection";
 import { MetaLine, OpportunityRow } from "./matches/OpportunityRow";
-import { StatusChip } from "./matches/StatusChip";
 import { Avatar } from "./ui/Avatar";
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { PipelineStageTimeline } from "./ui/PipelineStageTimeline";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
+import { StatusChip } from "./ui/StatusChip";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
