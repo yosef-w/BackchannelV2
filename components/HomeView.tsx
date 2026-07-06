@@ -88,6 +88,7 @@ import { saveSponsorRequestOutcome } from "../utils/sponsorRequestCache";
 import { AlreadyLikedOverlay } from "./home/AlreadyLikedOverlay";
 import { DeckDoneCard } from "./home/DeckDoneCard";
 import { JobSwitcherSheet } from "./home/JobSwitcherSheet";
+import { YourMoveStrip } from "./home/YourMoveStrip";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -1831,6 +1832,18 @@ export function HomeView({
               <Info color="#999" size={16} strokeWidth={2.4} />
             </TouchableOpacity>
           </Animated.View>
+
+          {/* "Sponsors are interested in you" teaser — reads the same
+              React Query cache MatchesView populates; renders nothing for
+              sponsors or when nobody's interested. Shown on every deck
+              state (including deck-done) since it's actionable whenever
+              it's true. */}
+          <YourMoveStrip
+            userType={userType}
+            onPress={() =>
+              router.push(`/dashboard?mode=${userType}&tab=matches`)
+            }
+          />
 
           {isDeckFinished ? (
             <View style={styles.fullEmptyContainer}>
