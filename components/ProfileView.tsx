@@ -385,21 +385,29 @@ export function ProfileView({ userType }: ProfileViewProps) {
     setAchievements(userProfileData.achievements);
   }, [userProfileData, pendingWorkEmail]);
 
-  // Auto-save certifications when they change
+  // Auto-save certifications when they change. Guarded against the store's
+  // own value (not just emptiness) — updateCertifications() always writes a
+  // new `data` object regardless of content, and the mirror-the-store effect
+  // above calls setCertifications() on every `data` change (a new array
+  // reference even when unchanged). Without this comparison, that pair
+  // ping-pongs forever: store change -> setCertifications -> this effect
+  // fires -> updateCertifications -> new store object -> repeat, hitting
+  // React's "Maximum update depth exceeded" guard.
   useEffect(() => {
-    if (
-      certifications.length > 0 ||
-      (userProfileData.certifications?.length ?? 0) > 0
-    ) {
-      updateCertifications(certifications);
+    if (JSON.stringify(certifications) === JSON.stringify(userProfileData.certifications ?? [])) {
+      return;
     }
+    updateCertifications(certifications);
   }, [certifications]);
 
-  // Auto-save languages when they change
+  // Auto-save languages when they change — see the certifications effect
+  // above for why this needs to compare against the store's current value
+  // rather than just checking length.
   useEffect(() => {
-    if (languages.length > 0 || (userProfileData.languages?.length ?? 0) > 0) {
-      updateLanguages(languages);
+    if (JSON.stringify(languages) === JSON.stringify(userProfileData.languages ?? [])) {
+      return;
     }
+    updateLanguages(languages);
   }, [languages]);
 
   // Load existing resume status on mount (applicant only)
