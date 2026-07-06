@@ -71,8 +71,6 @@ import {
 } from "react-native";
 import Animated, {
     FadeIn,
-    FadeInRight,
-    FadeInUp,
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
@@ -1052,90 +1050,7 @@ export function MatchesView({
 
   // Render a section's matches as grouped cards. Single-match people render
   // exactly as before; multi-match people render one card with a roles pill.
-  const renderMatchCards = (
-    list: Match[],
-    opts: {
-      keyField: "sponsorUserId" | "applicantUserId";
-      showMatchedBadge: boolean;
-      getMessageUserId: (m: Match) => string | undefined;
-    },
-  ) =>
-    groupMatches(list, opts.keyField).map((group, index) => {
-      const match = group.latest;
-      const grouped = group.items.length > 1;
-      // Grouped cards can't resolve a single role, so both the card and the
-      // Message button open the role-picker. Single cards act directly.
-      const openPicker = () =>
-        setRoleGroup({ items: group.items, getMessageUserId: opts.getMessageUserId });
-      const onCardPress = grouped ? openPicker : () => openProfile(match, "view");
-      const onMessagePress = grouped
-        ? openPicker
-        : () => {
-            trackMatchMessageTapped({ jobId: match.jobId });
-            onNavigateToMessages?.(match.jobId ?? "", opts.getMessageUserId(match));
-          };
-      return (
-        <Animated.View
-          key={group.key}
-          entering={FadeInRight.delay(index * 100)}
-          style={styles.card}
-        >
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={onCardPress}
-            style={{ alignItems: "center" }}
-          >
-            {match.image ? (
-              <Image source={{ uri: match.image }} style={styles.profileImage} />
-            ) : (
-              <View
-                style={[
-                  styles.profileImage,
-                  {
-                    backgroundColor: "#000",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  },
-                ]}
-              >
-                <Text
-                  style={{ fontSize: 26, fontWeight: "800", color: "#FFF" }}
-                >
-                  {(match.name || "?")[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <Text style={styles.cardName} numberOfLines={1}>
-              {match.name}
-            </Text>
-            {grouped ? (
-              <View style={styles.cardRolesPill}>
-                <Briefcase size={11} color="#666" />
-                <Text style={styles.rolesPillText}>
-                  {group.items.length} roles
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.cardRole} numberOfLines={1}>
-                {match.role}
-              </Text>
-            )}
-          </TouchableOpacity>
-          {opts.showMatchedBadge && (
-            <View style={styles.matchBadgeCard}>
-              <CheckCircle size={14} color="#000" />
-              <Text style={styles.matchBadgeText}>Matched!</Text>
-            </View>
-          )}
-          <TouchableOpacity style={styles.messageBtn} onPress={onMessagePress}>
-            <MessageCircle color="#FFF" size={16} strokeWidth={2.5} />
-            <Text style={styles.messageBtnText}>Message</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      );
-    });
-
-  // Row equivalent of renderMatchCards, for the new "Matched" MatchSection.
+  // Row builder for the "Matched" MatchSection, used by both roles.
   // Same grouping (one row per counterpart, "N roles" when they matched on
   // multiple jobs) and the same role-picker vs. direct-message branching —
   // only the visual shape changes, from a horizontal card to a full-width row.
@@ -1563,435 +1478,191 @@ export function MatchesView({
         )}
 
         {userType === "sponsor" ? (
-          /* SPONSOR VIEW */
-          <>
-            {/* Sponsor Requests — applicants asking employees at the company
-                to sponsor a job for them. Top of funnel: incoming asks. */}
-            <View style={styles.sectionContainer}>
-              <Text style={styles.listSectionTitle}>
-                {sponsorRequestsLoading
-                  ? "Loading..."
-                  : `Sponsor Requests (${sponsorRequests.length})`}
-              </Text>
-              <Text style={[styles.sectionSubtitle, { marginBottom: 15 }]}>
-                Applicants asking you to sponsor a role at your company
-              </Text>
-              {sponsorRequestsError && (
-                <Text
-                  style={{
-                    color: "#DC2626",
-                    marginBottom: 12,
-                    paddingHorizontal: 20,
-                  }}
+          /* SPONSOR VIEW — mirrors the applicant layout: Your Move (incoming
+             asks needing a response) → Matched (ready to message) → In
+             Progress (your active referral pipeline). */
+          (() => {
+            const yourMoveCount =
+              sponsorRequests.length + interestedApplicants.length;
+            const yourMoveLoading =
+              sponsorRequestsLoading || interestedApplicantsLoading;
+            const inProgressCount = referrals.length;
+            const inProgressLoading = referralsLoading;
+            const nothingToShow =
+              !yourMoveLoading &&
+              !matchesLoading &&
+              !inProgressLoading &&
+              yourMoveCount === 0 &&
+              matches.length === 0 &&
+              inProgressCount === 0;
+
+            if (nothingToShow) {
+              return <MatchesEmptyState userType="sponsor" />;
+            }
+
+            return (
+              <>
+                <MatchSection
+                  title="Your Move"
+                  subtitle="Applicants asking you to sponsor a role, and applicants interested in your jobs"
+                  count={yourMoveCount}
+                  loading={yourMoveLoading}
+                  error={sponsorRequestsError || interestedApplicantsError}
+                  hidden={!yourMoveLoading && yourMoveCount === 0}
                 >
-                  {sponsorRequestsError}
-                </Text>
-              )}
-              {!sponsorRequestsLoading && sponsorRequests.length === 0 ? (
-                <View style={styles.emptyLikedSection}>
-                  <View style={styles.emptyIconContainer}>
-                    <BellRing size={32} color="#CCC" />
-                  </View>
-                  <Text style={styles.emptyLikedTitle}>No requests yet</Text>
-                  <Text style={styles.emptyLikedText}>
-                    When applicants ask for sponsorship on a job at your
-                    company, they'll show up here.
-                  </Text>
-                </View>
-              ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalScrollContent}
-                  style={styles.horizontalScroll}
-                >
-                  {sponsorRequests.map((req, index) => (
-                    <Animated.View
+                  {sponsorRequests.map((req) => (
+                    <OpportunityRow
                       key={req.requestId}
-                      entering={FadeInRight.delay(index * 100)}
-                      style={styles.card}
-                    >
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={() => setSelectedSponsorRequest(req)}
-                      >
-                        {req.applicantPhoto ? (
-                          <Image
-                            source={{ uri: req.applicantPhoto }}
-                            style={styles.profileImage}
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.profileImage,
-                              {
-                                backgroundColor: "#F2F2F2",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 24,
-                                fontWeight: "700",
-                                color: "#999",
-                              }}
-                            >
-                              {(req.applicantName || "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                        <Text style={styles.cardName}>{req.applicantName}</Text>
-                        <Text style={styles.cardRole} numberOfLines={2}>
-                          {req.jobTitle}
-                        </Text>
-                        {!!req.jobCompany && (
-                          <Text
-                            style={[
-                              styles.cardRole,
-                              { color: "#999", fontSize: 12 },
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {req.jobCompany}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    </Animated.View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-
-            {/* Interested in Your Jobs — applicants who swiped right but
-                sponsor hasn't connected back yet. Mirrors the applicant's
-                "Interested in You" section. */}
-            <View style={styles.listSection}>
-              <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.listSectionTitle}>
-                    {interestedApplicantsLoading
-                      ? "Loading..."
-                      : `Interested in Your Jobs (${interestedApplicants.length})`}
-                  </Text>
-                  <Text style={styles.sectionSubtitle}>
-                    Applicants who swiped right on your jobs — connect back to
-                    match
-                  </Text>
-                </View>
-              </View>
-
-              {interestedApplicantsError && (
-                <Text
-                  style={{
-                    color: "#DC2626",
-                    marginBottom: 12,
-                    fontSize: 13,
-                  }}
-                >
-                  {interestedApplicantsError}
-                </Text>
-              )}
-
-              {!interestedApplicantsLoading &&
-              interestedApplicants.length === 0 ? (
-                <View style={styles.emptySponsorsContainer}>
-                  <View style={styles.emptyIconContainer}>
-                    <Heart size={32} color="#CCC" />
-                  </View>
-                  <Text style={styles.emptyLikedTitle}>No Interest Yet</Text>
-                  <Text style={styles.emptyLikedText}>
-                    Applicants who swipe right on your jobs will appear here.
-                    Keep your jobs visible!
-                  </Text>
-                </View>
-              ) : (
-                interestedApplicants.map((applicant, index) => (
-                  <Animated.View
-                    key={applicant.applicantUserId}
-                    entering={FadeInUp.delay(index * 80)}
-                  >
-                    <TouchableOpacity
-                      style={styles.interestedSponsorCard}
-                      activeOpacity={0.85}
-                      onPress={() => setSelectedInterestedApplicant(applicant)}
-                    >
-                      {applicant.image ? (
-                        <Image
-                          source={{ uri: applicant.image }}
-                          style={styles.interestedSponsorAvatar}
+                      onPress={() => setSelectedSponsorRequest(req)}
+                      leading={
+                        <Avatar
+                          photoUrl={req.applicantPhoto}
+                          name={req.applicantName}
+                          size={48}
+                          borderRadius={16}
                         />
-                      ) : (
-                        <View style={styles.interestedSponsorInitial}>
-                          <Text style={styles.interestedSponsorInitialText}>
-                            {(applicant.name || "A")[0].toUpperCase()}
-                          </Text>
-                        </View>
-                      )}
+                      }
+                      title={req.applicantName}
+                      subtitle={
+                        req.jobCompany
+                          ? `${req.jobTitle} · ${req.jobCompany}`
+                          : req.jobTitle
+                      }
+                      cta="Review"
+                    />
+                  ))}
+                  {interestedApplicants.map((applicant) => (
+                    <OpportunityRow
+                      key={applicant.applicantUserId}
+                      onPress={() => setSelectedInterestedApplicant(applicant)}
+                      leading={
+                        <Avatar
+                          photoUrl={applicant.image}
+                          name={applicant.name}
+                          size={48}
+                          borderRadius={16}
+                        />
+                      }
+                      title={applicant.name}
+                      subtitle={
+                        applicant.jobTitle
+                          ? `Interested in ${applicant.jobTitle}${applicant.jobCompany ? ` · ${applicant.jobCompany}` : ""}`
+                          : [applicant.roleType, applicant.location]
+                              .filter(Boolean)
+                              .join(" · ")
+                      }
+                      meta={
+                        applicant.likedAt ? (
+                          <MetaLine
+                            icon={<Heart size={10} color="#DC2626" />}
+                            text={getRelativeTime(applicant.likedAt)}
+                          />
+                        ) : undefined
+                      }
+                      cta="View"
+                    />
+                  ))}
+                </MatchSection>
 
-                      <View style={styles.interestedSponsorInfo}>
-                        <Text style={styles.interestedSponsorName}>
-                          {applicant.name}
-                        </Text>
-                        {!!(applicant.roleType || applicant.location) && (
-                          <Text
-                            style={styles.interestedSponsorRole}
-                            numberOfLines={1}
-                          >
-                            {applicant.roleType}
-                            {applicant.roleType && applicant.location
-                              ? " · "
-                              : ""}
-                            {applicant.location}
-                          </Text>
-                        )}
-                        {!!applicant.jobTitle && (
-                          <Text
-                            style={styles.interestedSponsorJobContext}
-                            numberOfLines={1}
-                          >
-                            Interested in {applicant.jobTitle}
-                            {applicant.jobCompany
-                              ? ` · ${applicant.jobCompany}`
-                              : ""}
-                          </Text>
-                        )}
-                        {!!applicant.likedAt && (
-                          <View style={styles.interestedSponsorTimestamp}>
-                            <Heart size={10} color="#DC2626" />
-                            <Text style={styles.interestedSponsorTimestampText}>
-                              {getRelativeTime(applicant.likedAt)}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-
-                      <View style={styles.interestedSponsorCta}>
-                        <Text style={styles.interestedSponsorCtaText}>
-                          View
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))
-              )}
-            </View>
-
-            {/* Interested Applicants */}
-            <View style={styles.sectionContainer}>
-              <Text style={styles.listSectionTitle}>
-                {matchesLoading
-                  ? "Loading..."
-                  : `Interested Applicants (${matches.length})`}
-              </Text>
-              <Text style={[styles.sectionSubtitle, { marginBottom: 15 }]}>
-                Applicants you've matched with — message them to start a
-                conversation
-              </Text>
-              {matchesError && (
-                <Text
-                  style={{
-                    color: "#DC2626",
-                    marginBottom: 12,
-                    paddingHorizontal: 20,
-                  }}
+                <MatchSection
+                  title="Matched"
+                  subtitle="Applicants you've matched with — message them to start a conversation"
+                  count={matches.length}
+                  loading={matchesLoading}
+                  error={matchesError}
+                  hidden={!matchesLoading && matches.length === 0}
                 >
-                  {matchesError}
-                </Text>
-              )}
-              {!matchesLoading && matches.length === 0 ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text style={{ color: "#666", fontSize: 15 }}>
-                    No matches yet. Keep swiping!
-                  </Text>
-                </View>
-              ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalScrollContent}
-                  style={styles.horizontalScroll}
-                >
-                  {renderMatchCards(matches, {
+                  {renderMatchRows(matches, {
                     keyField: "applicantUserId",
-                    showMatchedBadge: false,
                     getMessageUserId: (m) => m.sponsorUserId,
                   })}
-                </ScrollView>
-              )}
-            </View>
+                </MatchSection>
 
-            {/* Active Pipeline — driven by real submitted referrals */}
-            <View style={styles.listSection}>
-              <Text style={styles.listSectionTitle}>
-                {referralsLoading
-                  ? "Loading Pipeline..."
-                  : `Active Pipeline (${referrals.filter((r) => r.status === "REFERRED").length})`}
-              </Text>
-              <Text style={[styles.sectionSubtitle, { marginBottom: 12 }]}>
-                Applicants you've formally referred — track their status here
-              </Text>
-              {referralsError && (
-                <Text
-                  style={{ color: "#DC2626", marginBottom: 12, fontSize: 13 }}
+                <MatchSection
+                  title="In Progress"
+                  subtitle="Applicants you've formally referred — track their status here"
+                  count={inProgressCount}
+                  loading={inProgressLoading}
+                  error={referralsError}
+                  hidden={!inProgressLoading && inProgressCount === 0}
                 >
-                  {referralsError}
-                </Text>
-              )}
-              {!referralsLoading && referrals.length === 0 ? (
-                <Animated.View
-                  entering={FadeInUp}
-                  style={styles.pipelineEmptyState}
-                >
-                  <View style={styles.pipelineEmptyIcon}>
-                    <Users size={28} color="#CCC" />
-                  </View>
-                  <Text style={styles.pipelineEmptyTitle}>
-                    No referrals yet
-                  </Text>
-                  <Text style={styles.pipelineEmptyText}>
-                    When you submit a referral from the Messages tab, it will
-                    appear here with live status tracking.
-                  </Text>
-                </Animated.View>
-              ) : (
-                referrals.map((referral, index) => {
-                  // Try to find the full match object so "View" opens the profile modal
-                  const matchForReferral = matches.find(
-                    (m) => m.applicantUserId === referral.applicantUserId,
-                  );
-                  const applicantName =
-                    [referral.applicantFirstName, referral.applicantLastName]
-                      .filter(Boolean)
-                      .join(" ") ||
-                    matchForReferral?.name ||
-                    "Applicant";
-                  const applicantImage =
-                    referral.applicantPhotoUrl || matchForReferral?.image || "";
-                  const isReferred = referral.status === "REFERRED";
-                  const isWithdrawing =
-                    withdrawingReferralId === referral.referralId;
+                  {referrals.map((referral, index) => {
+                    // Try to find the full match object so "View" opens the profile modal
+                    const matchForReferral = matches.find(
+                      (m) => m.applicantUserId === referral.applicantUserId,
+                    );
+                    const applicantName =
+                      [referral.applicantFirstName, referral.applicantLastName]
+                        .filter(Boolean)
+                        .join(" ") ||
+                      matchForReferral?.name ||
+                      "Applicant";
+                    const applicantImage =
+                      referral.applicantPhotoUrl ||
+                      matchForReferral?.image ||
+                      "";
+                    const isReferred = referral.status === "REFERRED";
+                    const isWithdrawing =
+                      withdrawingReferralId === referral.referralId;
 
-                  return (
-                    <Animated.View
-                      key={`referral-${referral.referralId || index}`}
-                      entering={FadeInUp.delay(index * 80)}
-                      style={[
-                        styles.listItem,
-                        !isReferred && styles.listItemWithdrawn,
-                      ]}
-                    >
-                      {applicantImage ? (
-                        <Image
-                          source={{ uri: applicantImage }}
-                          style={styles.listImage}
-                        />
-                      ) : (
-                        <View
-                          style={[
-                            styles.listImage,
-                            {
-                              backgroundColor: "#000",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 20,
-                              fontWeight: "800",
-                              color: "#FFF",
-                            }}
-                          >
-                            {(applicantName || "?")[0].toUpperCase()}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={styles.listInfo}>
-                        <Text
-                          style={[
-                            styles.listName,
-                            !isReferred && styles.listNameWithdrawn,
-                          ]}
-                        >
-                          {applicantName}
-                        </Text>
-                        <Text style={styles.pipelineRoleText}>
-                          {referral.jobTitle || matchForReferral?.appliedRole
+                    return (
+                      <OpportunityRow
+                        key={`referral-${referral.referralId || index}`}
+                        onPress={() =>
+                          matchForReferral &&
+                          openProfile(matchForReferral, "view")
+                        }
+                        disabled={!matchForReferral}
+                        muted={!isReferred}
+                        leading={
+                          <Avatar
+                            photoUrl={applicantImage}
+                            name={applicantName}
+                            size={48}
+                            borderRadius={16}
+                          />
+                        }
+                        title={applicantName}
+                        subtitle={
+                          referral.jobTitle || matchForReferral?.appliedRole
                             ? `Referred for ${referral.jobTitle || matchForReferral?.appliedRole}`
-                            : "Referred"}
-                        </Text>
-                        <View
-                          style={
-                            isReferred
-                              ? styles.referralBadgeReferred
-                              : styles.referralBadgeWithdrawn
-                          }
-                        >
-                          <View
-                            style={[
-                              styles.statusDot,
-                              isReferred
-                                ? styles.statusDotReferred
-                                : styles.statusDotWithdrawn,
-                            ]}
-                          />
-                          <Text
-                            style={
-                              isReferred
-                                ? styles.referralStatusTextReferred
-                                : styles.referralStatusTextWithdrawn
-                            }
-                          >
-                            {isReferred ? "Referred" : "Withdrawn"}
-                          </Text>
-                        </View>
-                        {isReferred && (
-                          <PipelineStageTimeline
-                            currentStage={referral.checkInStage}
-                          />
-                        )}
-                      </View>
-                      <View style={styles.pipelineActions}>
-                        {matchForReferral && (
-                          <TouchableOpacity
-                            style={styles.viewProfileBtn}
-                            onPress={() =>
-                              openProfile(matchForReferral, "view")
-                            }
-                          >
-                            <Text style={styles.viewProfileText}>View</Text>
-                          </TouchableOpacity>
-                        )}
-                        {isReferred && (
-                          <TouchableOpacity
-                            style={[
-                              styles.withdrawBtn,
-                              isWithdrawing && styles.withdrawBtnDisabled,
-                            ]}
-                            onPress={() =>
-                              setConfirmingWithdrawReferral(referral)
-                            }
-                            disabled={isWithdrawing}
-                          >
-                            {isWithdrawing ? (
+                            : "Referred"
+                        }
+                        right={
+                          isReferred ? (
+                            isWithdrawing ? (
                               <ActivityIndicator size="small" color="#DC2626" />
                             ) : (
-                              <Text style={styles.withdrawBtnText}>
-                                Withdraw
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </Animated.View>
-                  );
-                })
-              )}
-            </View>
-          </>
+                              <TouchableOpacity
+                                style={styles.withdrawBtn}
+                                onPress={() =>
+                                  setConfirmingWithdrawReferral(referral)
+                                }
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Text style={styles.withdrawBtnText}>
+                                  Withdraw
+                                </Text>
+                              </TouchableOpacity>
+                            )
+                          ) : (
+                            <StatusChip label="Withdrawn" tone="muted" />
+                          )
+                        }
+                        detail={
+                          isReferred ? (
+                            <PipelineStageTimeline
+                              currentStage={referral.checkInStage}
+                            />
+                          ) : undefined
+                        }
+                      />
+                    );
+                  })}
+                </MatchSection>
+              </>
+            );
+          })()
         ) : (
           /* APPLICANT VIEW — "one card per opportunity", grouped by whose
              move it is (Direction A). See docs from the Matches redesign
