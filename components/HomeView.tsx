@@ -50,7 +50,6 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -86,13 +85,15 @@ import { useSubscriptionStore } from "../stores/useSubscriptionStore";
 import { useUserProfileStore } from "../stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
 import { saveSponsorRequestOutcome } from "../utils/sponsorRequestCache";
+import { AlreadyLikedOverlay } from "./home/AlreadyLikedOverlay";
+import { DeckDoneCard } from "./home/DeckDoneCard";
+import { JobSwitcherSheet } from "./home/JobSwitcherSheet";
+import { YourMoveStrip } from "./home/YourMoveStrip";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ExpandableText } from "./ui/ExpandableText";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface HomeViewProps {
   userType: "applicant" | "sponsor";
@@ -1832,80 +1833,32 @@ export function HomeView({
             </TouchableOpacity>
           </Animated.View>
 
+          {/* "Sponsors are interested in you" teaser — reads the same
+              React Query cache MatchesView populates; renders nothing for
+              sponsors or when nobody's interested. Shown on every deck
+              state (including deck-done) since it's actionable whenever
+              it's true. */}
+          <YourMoveStrip
+            userType={userType}
+            onPress={() =>
+              router.push(`/dashboard?mode=${userType}&tab=matches`)
+            }
+          />
+
           {isDeckFinished ? (
             <View style={styles.fullEmptyContainer}>
-              <Animated.View entering={FadeInUp} style={styles.deckDoneCard}>
-                {/* Accomplishment badge */}
-                <View style={styles.deckDoneBadge}>
-                  <Check color="#FFF" size={30} strokeWidth={3} />
-                </View>
-
-                {/* Context pill — makes the daily-allotment limit explicit */}
-                <View style={styles.deckDonePill}>
-                  <Sparkles color="#000" size={12} strokeWidth={2.5} />
-                  <Text style={styles.deckDonePillText}>
-                    DAILY DECK COMPLETE · {DECK_SIZE}/{DECK_SIZE}
-                  </Text>
-                </View>
-
-                <Text style={styles.deckDoneTitle}>You're all caught up</Text>
-                <Text style={styles.deckDoneSub}>
-                  You've reviewed all {DECK_SIZE} cards in today's deck — that's
-                  your daily allotment. A fresh set unlocks tomorrow.
-                </Text>
-
-                {/* Session recap — turns the dead-end "you're done" screen
-                    into a moment that shows the deck actually did something,
-                    instead of just stopping. Counts live in useJobsStore so
-                    they survive a tab switch and back mid-deck. */}
-                <View style={styles.deckDoneRecap}>
-                  <View style={styles.deckDoneRecapCell}>
-                    <Text style={styles.deckDoneRecapValue}>
-                      {sessionLikes}
-                    </Text>
-                    <Text style={styles.deckDoneRecapLabel}>
-                      {userType === "applicant" ? "Interest sent" : "Connected"}
-                    </Text>
-                  </View>
-                  <View style={styles.deckDoneRecapDivider} />
-                  <View style={styles.deckDoneRecapCell}>
-                    <Text style={styles.deckDoneRecapValue}>
-                      {sessionMatches}
-                    </Text>
-                    <Text style={styles.deckDoneRecapLabel}>Matches</Text>
-                  </View>
-                </View>
-
-                {/* Primary CTA — unlock more cards via the paywall. Hidden for
-                    users who already hold premium. */}
-                {!isPremium && (
-                  <TouchableOpacity
-                    style={styles.deckDonePrimary}
-                    onPress={handleUnlockMoreCards}
-                    activeOpacity={0.85}
-                  >
-                    <Sparkles color="#FFF" size={18} strokeWidth={2.5} />
-                    <Text style={styles.deckDonePrimaryText}>
-                      Unlock more cards
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Secondary CTA — replay the same deck from the top */}
-                <TouchableOpacity
-                  style={[
-                    styles.deckDoneSecondary,
-                    isPremium && styles.deckDoneSecondaryAlone,
-                  ]}
-                  onPress={() => {
-                    resetNavigation();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
-                  <Text style={styles.deckDoneSecondaryText}>Review again</Text>
-                </TouchableOpacity>
-              </Animated.View>
+              <DeckDoneCard
+                userType={userType}
+                deckSize={DECK_SIZE}
+                sessionLikes={sessionLikes}
+                sessionMatches={sessionMatches}
+                isPremium={isPremium}
+                onUnlockMore={handleUnlockMoreCards}
+                onReviewAgain={resetNavigation}
+                onViewMatches={() =>
+                  router.push(`/dashboard?mode=${userType}&tab=matches`)
+                }
+              />
             </View>
           ) : userType === "sponsor" && sponsoredJobs.length === 0 ? (
             /* "Start Your Journey" — sponsor has no sponsored jobs yet.
@@ -3293,50 +3246,25 @@ export function HomeView({
                    way forward is a conscious tap on Continue — no
                    duplicate like call, no silent no-op that looks like a
                    bug. */
-                <View style={styles.alreadyLikedOverlay} pointerEvents="box-none">
-                  <Animated.View
-                    entering={FadeIn.duration(200)}
-                    style={styles.alreadyLikedCard}
-                  >
-                    <View style={styles.alreadyLikedIconCircle}>
-                      <Check color="#FFF" size={28} strokeWidth={3} />
-                    </View>
-                    <Text style={styles.alreadyLikedTitle}>
-                      {userType === "applicant"
-                        ? "Already Interested"
-                        : "Already Connected"}
-                    </Text>
-                    <Text style={styles.alreadyLikedSubtitle}>
-                      {userType === "applicant"
-                        ? `You showed interest in ${
-                            "title" in currentData && currentData.title
-                              ? currentData.title
-                              : "this role"
-                          }${
-                            "company" in currentData && currentData.company
-                              ? ` at ${currentData.company}`
-                              : ""
-                          } earlier.`
-                        : `You already connected with ${
-                            "name" in currentData && (currentData as any).name
-                              ? (currentData as any).name
-                              : "this applicant"
-                          }.`}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.alreadyLikedButton}
-                      onPress={() => nextProfile(true)}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityLabel="Continue to next card"
-                    >
-                      <Text style={styles.alreadyLikedButtonText}>
-                        Continue
-                      </Text>
-                      <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
-                    </TouchableOpacity>
-                  </Animated.View>
-                </View>
+                <AlreadyLikedOverlay
+                  userType={userType}
+                  jobTitle={
+                    "title" in currentData && currentData.title
+                      ? String(currentData.title)
+                      : undefined
+                  }
+                  company={
+                    "company" in currentData && currentData.company
+                      ? String(currentData.company)
+                      : undefined
+                  }
+                  name={
+                    "name" in currentData && (currentData as any).name
+                      ? String((currentData as any).name)
+                      : undefined
+                  }
+                  onContinue={() => nextProfile(true)}
+                />
               ) : (
                 /* Floating action buttons — Hinge-style. Two circular
                     buttons sit on top of the scroll content with no tray
@@ -3675,95 +3603,13 @@ export function HomeView({
           represents. Selection updates activeSponsoredJobId (re-fetches the
           profile pack relevant to that role) and resets the deck index so
           they start from card 1 of the new pack. */}
-      <Modal visible={showJobSwitcher} transparent animationType="none">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.jobSwitcherOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowJobSwitcher(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={() => setShowJobSwitcher(false)}
-            fullSheetGesture
-            style={styles.jobSwitcherSheet}
-          >
-            <Text style={styles.jobSwitcherSheetTitle}>Switch role</Text>
-            <Text style={styles.jobSwitcherSheetSubtitle}>
-              Pick which sponsored role to review applicants for. We'll match
-              them with that role when you swipe right.
-            </Text>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              style={{ marginTop: 8 }}
-            >
-              {sponsoredJobs.map((job) => {
-                const isActive = job.jobId === activeSponsoredJobId;
-                const count = job.likesCount ?? 0;
-                return (
-                  <TouchableOpacity
-                    key={job.jobId}
-                    style={[
-                      styles.jobSwitcherRow,
-                      isActive && styles.jobSwitcherRowActive,
-                    ]}
-                    onPress={() => handleSwitchRole(job.jobId)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={styles.jobSwitcherRowTitle}
-                        numberOfLines={1}
-                      >
-                        {job.title || "Untitled role"}
-                      </Text>
-                      {!!job.company && (
-                        <Text
-                          style={styles.jobSwitcherRowCompany}
-                          numberOfLines={1}
-                        >
-                          {job.company}
-                        </Text>
-                      )}
-                    </View>
-                    {/* Pending-applicant signal — same pill shape across
-                        every row so the eye can scan high/low counts
-                        easily. Active counts render as black-bg/white-fg
-                        ("12"); zero is the same shape but muted gray ("0").
-                        Visual rhythm beats descriptive copy here. */}
-                    <View
-                      style={[
-                        styles.jobSwitcherCountBadge,
-                        count === 0 && styles.jobSwitcherCountBadgeMuted,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.jobSwitcherCountBadgeText,
-                          count === 0 && styles.jobSwitcherCountBadgeTextMuted,
-                        ]}
-                      >
-                        {count}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
-      </Modal>
+      <JobSwitcherSheet
+        visible={showJobSwitcher}
+        jobs={sponsoredJobs}
+        activeJobId={activeSponsoredJobId}
+        onSwitch={handleSwitchRole}
+        onClose={() => setShowJobSwitcher(false)}
+      />
 
       {/* Email Verification Modal — sponsors must verify work email before
           swiping. Soft gate: closing the modal just blocks swiping; the user
@@ -4384,7 +4230,6 @@ export function HomeView({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   safeArea: { flex: 1 },
-  scrollContent: { paddingHorizontal: 36, paddingBottom: 100 },
   // 2026-05-26 Hinge-style redesign — layout primitives.
   // `pageContainer` is the flex-column that holds the sticky header,
   // the active profile scroll, and the sticky bottom action bar.
@@ -4412,66 +4257,6 @@ const styles = StyleSheet.create({
   profileScrollContent: { paddingBottom: 120, paddingTop: 4 },
 
   // ── "Already liked" overlay (Review-again replay guard) ────────────
-  alreadyLikedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 28,
-  },
-  alreadyLikedCard: {
-    width: "100%",
-    maxWidth: 360,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    paddingVertical: 32,
-    paddingHorizontal: 28,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 10,
-  },
-  alreadyLikedIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 18,
-  },
-  alreadyLikedTitle: {
-    fontSize: 21,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  alreadyLikedSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  alreadyLikedButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#000",
-    paddingVertical: 15,
-    borderRadius: 16,
-    width: "100%",
-  },
-  alreadyLikedButtonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-  },
 
   // ── Hero (applicant identity / job identity) ──────────────────────
   hingeHero: {
@@ -4537,9 +4322,9 @@ const styles = StyleSheet.create({
   },
   hingeSection: { paddingVertical: 18 },
   hingeSectionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     color: "#999",
     marginBottom: 10,
   },
@@ -4551,34 +4336,6 @@ const styles = StyleSheet.create({
   },
 
   // ── At-a-glance stats strip (sponsor view) ────────────────────────
-  hingeStatsRow: {
-    flexDirection: "row",
-    backgroundColor: "#F8F9FB",
-    borderRadius: 16,
-    paddingVertical: 14,
-    marginVertical: 8,
-  },
-  hingeStatCell: {
-    flex: 1,
-    alignItems: "center",
-    borderRightWidth: 1,
-    borderRightColor: "#E8E8E8",
-  },
-  hingeStatCellLast: { borderRightWidth: 0 },
-  hingeStatValue: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
-  hingeStatLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#888",
-    letterSpacing: 0.8,
-    marginTop: 4,
-    textTransform: "uppercase",
-  },
 
   // ── Insight Q&A cards — quote-style with vertical accent ──────────
   // White card with a soft drop shadow + thin hairline border for
@@ -4593,7 +4350,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: "#F0F0F0",
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -4650,7 +4407,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: "#F0F0F0",
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -4802,20 +4559,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8E8E8",
   },
-  sponsorZoneHeader: {
-    backgroundColor: "#000",
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  sponsorZoneHeaderText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 1.6,
-  },
   sponsorZoneBody: { padding: 16 },
   sponsorZoneDivider: {
     height: 1,
@@ -4824,26 +4567,19 @@ const styles = StyleSheet.create({
   },
   // "SPONSOR INSIGHTS" sub-label — light gray, personal voice
   sponsorZoneQALabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "800",
     color: "#999",
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     marginBottom: 10,
   },
   // "JOB INSIGHTS" sub-label — darker to signal role data vs personal
   sponsorZoneJobLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "800",
     color: "#444",
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     marginBottom: 10,
-  },
-  sponsorZoneQACard: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-    padding: 14,
   },
 
   // ── Meet your sponsor inline block ────────────────────────────────
@@ -5036,394 +4772,25 @@ const styles = StyleSheet.create({
   // Modal: bottom sheet, content-sized, listing all sponsored jobs.
   // Matches the matches-screen modal aesthetic (40px top radius, 28px
   // padding) for visual consistency with the other DismissibleSheets.
-  jobSwitcherOverlay: { flex: 1, justifyContent: "flex-end" },
-  jobSwitcherSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 28,
-    paddingBottom: 40,
-    // Absolute px (not "70%") because the sheet sits inside
-    // DismissibleSheet's GestureHandlerRootView wrapper, which is
-    // content-sized. A % maxHeight against it would resolve to 0 / clip
-    // content — same fix we applied to MatchesView's modalContent.
-    maxHeight: SCREEN_HEIGHT * 0.7,
-  },
-  jobSwitcherSheetTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
-    marginTop: 4,
-  },
-  jobSwitcherSheetSubtitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#666",
-    lineHeight: 20,
-    marginTop: 6,
-    marginBottom: 12,
-  },
-  jobSwitcherRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    backgroundColor: "#FFF",
-    marginBottom: 8,
-  },
   // Subtle active state — black border (no fill) so the row reads as
   // "currently selected" without competing with content underneath.
-  jobSwitcherRowActive: {
-    borderColor: "#000",
-    borderWidth: 2,
-  },
-  jobSwitcherRowTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
-  },
-  jobSwitcherRowCompany: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
-    marginTop: 2,
-  },
   // Count badge — pending applicants for a sponsored role. Same shape
   // regardless of count so the eye finds the high numbers fast; zero
   // counts use the muted variant below.
-  jobSwitcherCountBadge: {
-    backgroundColor: "#000",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    minWidth: 26,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  jobSwitcherCountBadgeMuted: {
-    backgroundColor: "#F0F0F0",
-  },
-  jobSwitcherCountBadgeText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-  },
-  jobSwitcherCountBadgeTextMuted: {
-    color: "#999",
-  },
 
   // Modal Styles
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
-  closeModalBtn: { padding: 4, backgroundColor: "#F5F5F5", borderRadius: 20 },
-  modalContent: { padding: 28, paddingBottom: 40 },
-  modalFooter: {
-    padding: 28,
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-    gap: 16,
-  },
-  applyBtn: {
-    backgroundColor: "#000",
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  applyBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  clearBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-  },
-  clearBtnText: { color: "#000", fontSize: 14, fontWeight: "600" },
-  title: {
-    fontSize: 34,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1.2,
-  },
-  cardContainer: { marginBottom: 24 },
-  cardOuter: {
-    borderRadius: 24,
-    backgroundColor: "#FFF",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.18,
-        shadowRadius: 30,
-      },
-      android: { elevation: 18 },
-    }),
-  },
-  cardOuterBack: { backgroundColor: "#FBFBFB" },
-  cardInner: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    overflow: "hidden",
-    height: 460,
-  },
-  cardInnerBack: { backgroundColor: "#FBFBFB" },
 
   // Waitlisted overlay
-  waitlistedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    zIndex: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  waitlistedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#000",
-    borderRadius: 100,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-  },
-  waitlistedBadgeText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  appliedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#000",
-    borderRadius: 100,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-  },
-  appliedBadgeText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
   // Layout: Image on Left + Details on Right
-  profileCardTop: {
-    flexDirection: "row",
-    padding: 20,
-    paddingBottom: 16,
-    gap: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  profileImageSquare: {
-    width: 110,
-    height: 110,
-    borderRadius: 16,
-    backgroundColor: "#F0F0F0",
-  },
-  companyImageSquare: {
-    width: 90,
-    height: 90,
-    borderRadius: 16,
-    backgroundColor: "#F0F0F0",
-  },
-  profileInfoColumn: {
-    flex: 1,
-    gap: 8,
-    paddingTop: 4,
-  },
 
   // Name Header - Full Width Below Image Section
-  profileNameHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  profileNameTop: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
-  sponsorTag: {
-    backgroundColor: "#000",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  sponsorTagText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: 0.3,
-  },
-  sponsorTagMuted: {
-    backgroundColor: "#F2F2F2",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  sponsorTagMutedText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#999",
-    letterSpacing: 0.3,
-  },
-  profileRoleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  profileRole: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
-    flex: 1,
-  },
-  profileMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  companyPill: {
-    backgroundColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  companyPillText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: 0.3,
-  },
-  profileLocation: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#999",
-  },
-  profileExperience: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#999",
-  },
 
   // Content Section
-  profileCardContent: {
-    padding: 20,
-    paddingBottom: 24,
-    gap: 16,
-  },
-  descriptionSection: {
-    gap: 8,
-  },
-  sectionLabelSmall: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#999",
-    letterSpacing: 1,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: "#333",
-    lineHeight: 21,
-    fontWeight: "500",
-  },
-  readMoreBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    marginTop: 8,
-    alignSelf: "flex-start",
-  },
-  readMoreBtnText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.2,
-  },
 
   // ── Centered-profile card front face (redesign) ──
   // Circular avatar + centered identity + centered fact pills, with a
   // left-aligned ABOUT block below. Shared by the sponsor view (applicant
   // profile cards) and the applicant view (job cards).
-  heroCentered: {
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 30,
-    paddingBottom: 22,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  heroAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#F0F0F0",
-  },
-  heroAvatarFallback: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroAvatarInitial: {
-    fontSize: 27,
-    fontWeight: "800",
-    color: "#FFF",
-  },
-  heroName: {
-    fontSize: 21,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-    textAlign: "center",
-    marginTop: 14,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    textAlign: "center",
-    marginTop: 3,
-  },
-  heroPillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 7,
-    marginTop: 14,
-  },
   heroPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -5508,933 +4875,77 @@ const styles = StyleSheet.create({
     color: "#999",
     letterSpacing: 0.2,
   },
-  heroAboutBlock: {
-    paddingHorizontal: 24,
-    paddingTop: 18,
-    paddingBottom: 24,
-    gap: 8,
-  },
   // "Meet your sponsor" back face — centered sponsor identity block.
-  sponsorMeetHero: {
-    alignItems: "center",
-    paddingTop: 4,
-    paddingBottom: 4,
-  },
   // The sponsor's own-words Q&A section beneath the trust strip.
-  sponsorWordsSection: {
-    marginTop: 16,
-    gap: 14,
-  },
-  skillsSection: {
-    gap: 10,
-  },
-  skillsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  skillChipSmall: {
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  skillChipSmallText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#000",
-  },
 
   // Back Card Insights
-  insightHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
   // Section header on the back of the card (JOB SPONSOR, INSIGHTS) —
   // matches the front card's "ABOUT" label (sectionLabelSmall) so the
   // two faces share one type system.
-  insightSectionLabel: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#999",
-    letterSpacing: 1,
-  },
 
   // Legacy styles (keep for backward compatibility)
-  imageWrapperRedesign: {
-    height: 180,
-    backgroundColor: "#F9F9F9",
-    position: "relative",
-  },
-  imageOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    paddingTop: 40,
-  },
-  nameTagCard: {
-    gap: 4,
-  },
-  nameTextCard: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: -0.5,
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  titleTextCard: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFF",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
 
   // Company & Location Badges
-  companyLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  companyBadge: {
-    backgroundColor: "#000",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  companyBadgeText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: 0.3,
-  },
-  locationBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  locationBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#666",
-  },
 
   // Summary Content
-  summaryLabel: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#999",
-    letterSpacing: 1.2,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  mentalityText: {
-    fontSize: 15,
-    color: "#000",
-    lineHeight: 22,
-    fontStyle: "italic",
-    fontWeight: "600",
-  },
 
   // Detail Sections (for back of card)
   // Flat block — no shadow. The expanded-details list reads as a clean
   // stack of bordered sections rather than a pile of floating cards.
-  detailSection: {
-    backgroundColor: "#FFF",
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    marginBottom: 12,
-  },
-  detailSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  detailSectionTitle: {
-    fontWeight: "800",
-    fontSize: 13,
-    textTransform: "uppercase",
-    color: "#000",
-    letterSpacing: 0.8,
-  },
-  detailHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  detailSectionLabel: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1,
-  },
-  detailSectionText: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 21,
-    fontWeight: "500",
-  },
 
   // Legacy styles (keep for backward compatibility)
-  cardHeader: {
-    flexDirection: "row",
-    padding: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-    gap: 14,
-    backgroundColor: "#FAFAFA",
-  },
-  profileImageCompact: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
-    backgroundColor: "#F0F0F0",
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  headerTextContainer: {
-    flex: 1,
-    justifyContent: "center",
-    gap: 3,
-  },
-  companyTextBold: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-  },
-  infoFloatingBtnCompact: {
-    alignSelf: "flex-start",
-    backgroundColor: "#FFF",
-    padding: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
 
-  cardContentExpanded: {
-    padding: 20,
-    gap: 18,
-    flex: 1,
-  },
-  sectionContainer: {
-    gap: 8,
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#999",
-    letterSpacing: 1,
-  },
-  bioTextExpanded: {
-    fontSize: 14,
-    color: "#333",
-    lineHeight: 20,
-    fontWeight: "500",
-  },
-  insightPreviewText: {
-    fontSize: 13,
-    color: "#555",
-    lineHeight: 19,
-    fontStyle: "italic",
-  },
-  promptPreviewText: {
-    fontSize: 13,
-    color: "#444",
-    lineHeight: 19,
-    fontStyle: "italic",
-  },
-  tapForMoreBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    marginTop: "auto",
-  },
-  tapForMoreText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#999",
-    letterSpacing: 0.5,
-  },
 
   // Legacy styles (keep for backward compatibility with other parts)
-  imageWrapper: { height: 220, backgroundColor: "#F9F9F9" },
-  profileImage: { width: "100%", height: "100%", resizeMode: "cover" },
-  infoFloatingBtn: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    padding: 6,
-    borderRadius: 8,
-  },
-  cardInfo: { padding: 24 },
   // Back-face content padding. Bottom is trimmed so the insights preview
   // (up to 4 subsections + the expand hint) fits the fixed card height.
-  cardInfoScrollable: { padding: 24, paddingBottom: 20 },
-  nameText: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 2,
-    letterSpacing: -0.3,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginBottom: 2,
-  },
-  metaText: { fontSize: 12, fontWeight: "600", color: "#333" },
-  locationText: { fontSize: 12, color: "#666", fontWeight: "500" },
-  divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 10 },
-  bioText: { fontSize: 15, color: "#444", lineHeight: 22 },
-  expandedDetails: { marginBottom: 32, gap: 14 },
 
   // New Experience Card Styles
-  experienceCard: {
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  experienceHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 4,
-    gap: 12,
-  },
-  experienceTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    flex: 1,
-    letterSpacing: -0.3,
-  },
-  experienceDates: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#666",
-    letterSpacing: 0.2,
-  },
-  experienceCompany: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 8,
-  },
-  experienceDescription: {
-    fontSize: 13,
-    color: "#555",
-    lineHeight: 19,
-  },
 
   // Education Card Styles
-  educationCard: {
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  educationDegree: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  educationSchool: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 6,
-  },
-  educationFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  educationYear: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#666",
-  },
-  educationGpa: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#666",
-  },
 
   // Certifications Grid
-  certificationsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  certificationBadge: {
-    backgroundColor: "#F4F4F5",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    minWidth: "48%",
-    flexGrow: 1,
-    maxWidth: "100%",
-  },
-  certificationName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 3,
-  },
-  certificationDetails: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: "#666",
-  },
 
   // Languages Grid
-  languagesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  languageBadge: {
-    backgroundColor: "#F4F4F5",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  languageName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-  },
-  languageProficiency: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#999",
-  },
 
   // Achievements Text
-  achievementsText: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 21,
-  },
 
   // Job Detail Card (for expanded job details)
-  jobDetailCard: {
-    backgroundColor: "#FAFAFA",
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  jobDetailText: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 21,
-  },
 
-  detailItem: {
-    backgroundColor: "#FFF",
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  detailTitle: {
-    fontWeight: "800",
-    fontSize: 12,
-    textTransform: "uppercase",
-    color: "#000",
-    letterSpacing: 0.5,
-  },
-  detailBody: { color: "#555", fontSize: 14, lineHeight: 20 },
-  bottomNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 20,
-  },
-  iconBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#EEE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconBtnActive: { backgroundColor: "#000", borderColor: "#000" },
   // Primary CTA — a gentle, diffuse lift rather than a hard drop shadow,
   // so it reads as "the main action" without clashing with the now-flat
   // detail sections.
-  primaryActionBtn: {
-    flex: 1,
-    height: 56,
-    backgroundColor: "#000",
-    borderRadius: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  primaryActionLabel: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
 
   // BACK OF CARD (INSIGHTS)
-  backHeader: { marginBottom: 24 },
-  backTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
 
   // Redesigned Prompt Cards
-  promptCard: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-  },
-  promptIconRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  promptIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F4F4F5",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  promptQuestion: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#666",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    lineHeight: 14,
-  },
-  promptAnswer: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-    lineHeight: 24,
-    letterSpacing: -0.2,
-  },
 
   // Redesigned applicant back-of-card
-  applicantBackScroll: { padding: 20, paddingBottom: 40 },
-  applicantBackIdentity: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingBottom: 16,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  applicantBackPhoto: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: "#EEE",
-  },
-  applicantBackIdentityText: { flex: 1, gap: 2 },
-  applicantBackName: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
-  },
-  applicantBackRole: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#444",
-  },
-  applicantBackLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 2,
-  },
-  applicantBackLocationText: {
-    fontSize: 12,
-    color: "#999",
-    fontWeight: "500",
-  },
 
-  applicantBackStatsRow: {
-    flexDirection: "row",
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingVertical: 14,
-    marginBottom: 24,
-  },
-  applicantBackStatCell: {
-    flex: 1,
-    alignItems: "center",
-    borderRightWidth: 1,
-    borderRightColor: "#F0F0F0",
-  },
-  applicantBackStatCellLast: {
-    borderRightWidth: 0,
-  },
-  applicantBackStatValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
-  },
-  applicantBackStatLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#999",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginTop: 2,
-  },
 
-  applicantBackSection: { marginBottom: 24 },
-  applicantBackSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 12,
-  },
-  applicantBackSectionLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 1.4,
-  },
 
-  applicantBackLoadingWrap: {
-    paddingVertical: 32,
-    alignItems: "center",
-    gap: 8,
-  },
-  applicantBackLoadingText: {
-    fontSize: 12,
-    color: "#999",
-    fontWeight: "500",
-  },
-  applicantBackEmptyWrap: {
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-    alignItems: "center",
-    gap: 8,
-  },
-  applicantBackEmptyTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
-    marginTop: 4,
-  },
-  applicantBackEmptyBody: {
-    fontSize: 12,
-    color: "#C0C0C0",
-    textAlign: "center",
-    lineHeight: 18,
-    marginTop: 4,
-    letterSpacing: 0.2,
-  },
 
   // Insight (prompt) cards — quote-bar style
-  insightQuoteCard: {
-    flexDirection: "row",
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  insightQuoteAccent: {
-    width: 3,
-    backgroundColor: "#000",
-  },
-  insightQuoteContent: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    gap: 6,
-  },
-  insightQuoteQuestion: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
-  insightQuoteAnswer: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    lineHeight: 20,
-    letterSpacing: -0.2,
-  },
 
   // Experience timeline
-  timelineItem: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  timelineDotWrap: {
-    width: 12,
-    alignItems: "center",
-    paddingTop: 4,
-  },
-  timelineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#000",
-  },
-  timelineLine: {
-    flex: 1,
-    width: 2,
-    backgroundColor: "#E5E5E5",
-    marginTop: 4,
-    marginBottom: -4,
-  },
-  timelineContent: {
-    flex: 1,
-    paddingBottom: 14,
-    gap: 2,
-  },
-  timelineRole: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -0.2,
-  },
-  timelineCompany: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#444",
-  },
-  timelineDates: {
-    fontSize: 11,
-    color: "#999",
-    fontWeight: "500",
-    marginTop: 2,
-  },
 
   // Education (back-of-card)
-  eduBackCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 8,
-    gap: 2,
-  },
-  eduBackSchool: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -0.2,
-  },
-  eduBackDegree: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#444",
-  },
-  eduBackYear: {
-    fontSize: 11,
-    color: "#999",
-    fontWeight: "500",
-    marginTop: 2,
-  },
 
   // Achievements (back-of-card)
-  achievementsBackCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-  },
-  achievementsBackText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#222",
-    lineHeight: 20,
-  },
 
   // Languages
-  languagePillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  languagePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  languagePillName: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
-  },
-  languagePillProf: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: "#999",
-  },
 
-  insightSection: { marginBottom: 24 },
   // Centered "chapter" header for the INSIGHTS block on the back of the
   // card — uppercase label flanked by hairline rules.
-  insightsHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  insightsHeaderLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#EEE",
-  },
-  insightsHeaderCentered: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1.6,
-  },
   // Expand affordance under the insights preview — mirrors the front
   // card's "Read more" so the down-chevron's purpose is discoverable.
-  insightsExpandHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    marginTop: 16,
-  },
-  insightsExpandHintText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.2,
-  },
   // Sub-label inside the INSIGHTS section (DAY-TO-DAY, TEAM CULTURE…) —
   // matches the app's small uppercase label convention.
-  insightLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#999",
-    marginBottom: 8,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
   // Body copy — aligned to the app's standard body text (descriptionText /
   // ProfileDetailSheet body): 14px / 500 / #333. Was 16/600/#000, which
   // ran heavier and larger than the rest of the app.
-  insightContent: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-    lineHeight: 21,
-  },
 
   // PROMPTS (Legacy)
-  promptWrapper: { marginBottom: 24, paddingLeft: 2 },
-  promptHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  promptContent: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#444",
-    fontStyle: "italic",
-    lineHeight: 24,
-  },
 
   overlayCenter: {
     flex: 1,
@@ -6493,139 +5004,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 30,
   },
-  returnBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 30,
-  },
-  returnBtnText: { color: "#FFF", fontWeight: "700" },
 
   // ── End-of-deck "You're all caught up" state ───────────────────────────────
-  deckDoneCard: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 28,
-    width: "100%",
-    maxWidth: 420,
-  },
-  deckDoneBadge: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 22,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  deckDonePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 16,
-  },
-  deckDonePillText: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 0.6,
-  },
-  deckDoneTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  deckDoneSub: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  deckDoneRecap: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingVertical: 18,
-    width: "100%",
-    marginBottom: 24,
-  },
-  deckDoneRecapCell: {
-    flex: 1,
-    alignItems: "center",
-  },
-  deckDoneRecapValue: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
-  deckDoneRecapLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#999",
-    marginTop: 4,
-  },
-  deckDoneRecapDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: "#E5E5E5",
-  },
-  deckDonePrimary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    borderRadius: 16,
-    width: "100%",
-  },
-  deckDonePrimaryText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-  },
-  deckDoneSecondary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    paddingVertical: 15,
-    borderRadius: 16,
-    width: "100%",
-    marginTop: 10,
-    borderWidth: 1.5,
-    borderColor: "#E6E6E6",
-    backgroundColor: "#FFF",
-  },
   // When premium hides the primary CTA, the "Review again" button is the only
   // action — drop the top margin that otherwise spaces it under the primary.
-  deckDoneSecondaryAlone: {
-    marginTop: 0,
-  },
-  deckDoneSecondaryText: {
-    color: "#000",
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
   primaryBtn: {
     backgroundColor: "#000",
     paddingVertical: 16,
@@ -6641,29 +5023,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "700",
     fontSize: 15,
-  },
-  secondaryBtn: {
-    backgroundColor: "#F5F5F5",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  secondaryBtnText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  emptyActionsRow: {
-    flexDirection: "row",
-    gap: 12,
-    width: "100%",
-    paddingHorizontal: 20,
   },
 
   // ── Sponsor empty states (modern redesign) ────────────────────────
@@ -6821,7 +5180,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: "#F0F0F0",
     marginBottom: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -6843,69 +5202,6 @@ const styles = StyleSheet.create({
   },
 
   // ── Referral Check-in Banner ───────────────────────────────────────────────
-  checkInBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  checkInBannerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#000",
-  },
-  checkInBannerText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#444",
-  },
-  sponsorHeader: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  sponsorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#F5F5F5",
-  },
-  sponsorName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 2,
-  },
-  sponsorRole: { fontSize: 13, color: "#666", marginBottom: 2 },
-  sponsorYears: { fontSize: 12, color: "#999", marginLeft: 4 },
-  canReferBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F0FFF4",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignSelf: "flex-start",
-    marginTop: 12,
-  },
-  canReferText: { fontSize: 12, fontWeight: "700", color: "#00CB54" },
-  sponsorNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 2,
-  },
   canReferTag: {
     flexDirection: "row",
     alignItems: "center",
@@ -6921,190 +5217,16 @@ const styles = StyleSheet.create({
     color: "#00CB54",
     letterSpacing: 0.2,
   },
-  insightBlock: {},
-  insightsEmpty: {
-    alignItems: "center",
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-  },
-  insightsEmptyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  insightsEmptyTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  insightsEmptySubtext: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#888",
-    textAlign: "center",
-    lineHeight: 18,
-    maxWidth: 260,
-  },
-  skillBadge: {
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
   benefitsList: { gap: 10, marginTop: 8 },
   benefitRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   benefitText: { fontSize: 14, color: "#555", flex: 1 },
 
   // JOB CARD SPECIFIC STYLES
-  jobCardContent: { padding: 24, paddingTop: 28 },
-  companyInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  companyLogo: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  companyDetails: { flex: 1 },
-  companyName: { fontSize: 16, fontWeight: "700", color: "#000" },
-  jobTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    lineHeight: 30,
-    marginBottom: 16,
-  },
-  jobMetaList: { gap: 8, marginBottom: 10 },
-  jobMetaLine: { flexDirection: "row", alignItems: "center", gap: 8 },
-  jobMetaLineText: { fontSize: 14, color: "#666", fontWeight: "500" },
-  infoFloatingBtnSmall: {
-    backgroundColor: "#F9F9F9",
-    padding: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  jobDescription: {
-    fontSize: 15,
-    color: "#444",
-    lineHeight: 22,
-    marginBottom: 18,
-  },
-  skillsPreviewSection: { marginTop: 4 },
-  skillsPreviewLabel: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#999",
-    marginBottom: 10,
-    letterSpacing: 1,
-  },
-  skillChip: {
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  skillChipMore: { backgroundColor: "#000", borderColor: "#000" },
-  skillChipText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  skillChipTextWhite: { color: "#FFF" },
 
   // Non-Sponsored Back Design
-  companyLogoLarge: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  companyDescriptionSection: { marginBottom: 20 },
-  companyDescriptionText: {
-    fontSize: 15,
-    color: "#444",
-    lineHeight: 24,
-    fontWeight: "500",
-  },
-  insightsHeader: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 16,
-    letterSpacing: 0.3,
-  },
-  insightContentSmall: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#555",
-    lineHeight: 20,
-  },
-  noSponsorBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  noSponsorText: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "500",
-    flex: 1,
-    lineHeight: 18,
-  },
-  emptyStateDivider: {
-    height: 1,
-    backgroundColor: "#EEE",
-    alignSelf: "stretch",
-    marginVertical: 24,
-  },
-  noSponsorEmptyState: {
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
   // Small centered kicker label at the top of the back faces.
-  backKicker: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#999",
-    letterSpacing: 1.4,
-    textAlign: "center",
-    marginBottom: 18,
-  },
   // Non-sponsored back — centered "no sponsor yet" status block.
-  noSponsorHero: {
-    alignItems: "center",
-    paddingTop: 14,
-    paddingBottom: 8,
-  },
   // About-the-company blurb beneath the no-sponsor status block.
-  noSponsorAboutBlock: {
-    marginTop: 24,
-    gap: 8,
-  },
   noSponsorIconCircle: {
     width: 56,
     height: 56,
@@ -7226,30 +5348,6 @@ const styles = StyleSheet.create({
   successActionBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
 
   // Relevance badge & requirements summary
-  relevancePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#000",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  relevancePillText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: 0.3,
-  },
-  requirementsSummaryBlock: {
-    marginTop: 12,
-    backgroundColor: "#F6F6F6",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-  },
   roleDetailChip: {
     flexDirection: "row" as const,
     alignItems: "center" as const,

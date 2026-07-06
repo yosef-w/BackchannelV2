@@ -128,6 +128,12 @@ export interface Job {
   requirements?: string; // Raw requirements text (displayed when no skills chips available)
   // Required for UI
   applicants: number;
+  /**
+   * Unactioned applicant interest (backend PENDING_LIKES_COUNT from
+   * /api/jobs/mine/, PR #56) — drives the "N new" pill on the sponsor's
+   * My Sponsored cards. Only populated for the sponsor's own jobs.
+   */
+  pendingApplicants?: number;
   image: string;
   currentSponsors: any[]; // Sponsor information
   // Optional fields for UI

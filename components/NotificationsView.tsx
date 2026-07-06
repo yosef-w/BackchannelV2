@@ -722,10 +722,11 @@ const styles = StyleSheet.create({
     marginTop: 26,
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
-    color: "#BBB",
-    letterSpacing: 1,
+    color: "#999",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -743,8 +744,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 18,
   },
+  // Unread lift — was #F5F6F8, a bluish gray that had become the only
+  // off-palette color left in the app; #F4F4F5 is the system neutral.
   rowUnread: {
-    backgroundColor: "#F5F6F8",
+    backgroundColor: "#F4F4F5",
   },
   rowRead: {
     backgroundColor: "transparent",

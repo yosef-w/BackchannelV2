@@ -73,6 +73,10 @@ import Animated, {
     useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { InboxList } from "./messages/InboxList";
+import { InboxSection } from "./messages/InboxSection";
+import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
+import { ThreadContextStrip } from "./messages/ThreadContextStrip";
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -1274,24 +1278,6 @@ export function MessagesView({
     }
   };
 
-  // Helper function to format time
-  const formatTime = (timestamp: string) => {
-    const date = new Date(normalizeToUtc(timestamp));
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    // Guard against clock skew / future timestamps.
-    if (diff < 0) return "just now";
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
   if (selectedConversation) {
     const conversation = conversations.find(
       (c) => c.id === selectedConversation,
@@ -1503,6 +1489,15 @@ export function MessagesView({
               )}
             </View>
           </View>
+          {/* Pins which role this thread is about — the header above only
+              says who you're talking to. Shown on closed threads too, since
+              context matters most when reviewing an old conversation. */}
+          <ThreadContextStrip
+            jobTitle={conversation.jobContext?.jobTitle}
+            company={conversation.jobContext?.company}
+            logoUrl={conversation.jobContext?.logoUrl}
+            onPress={() => setShowProfileModal(true)}
+          />
           <ScrollView
             ref={scrollViewRef}
             style={styles.messagesScroll}
@@ -1569,70 +1564,111 @@ export function MessagesView({
                 </View>
               </View>
             ) : (
-              messages.map((message, index) => {
+              (() => {
                 // A message is mine if:
                 //  1. sender matches the resolved currentUserId
                 //  2. it is still an unreconciled optimistic temp (senderId may be "me" or real ID)
                 //  3. senderId is literally "me" (fallback before currentUserId loaded)
-                const isMyMessage = currentUserId
-                  ? message.senderId === currentUserId ||
-                    message.senderId === "me" ||
-                    (message.id.startsWith("temp-") && !message.serverId)
-                  : message.id.startsWith("temp-") || message.senderId === "me";
-                const prevMessage = index > 0 ? messages[index - 1] : null;
-                const isFirstOfDay =
-                  !prevMessage ||
-                  new Date(message.createdAt).toDateString() !==
-                    new Date(prevMessage.createdAt).toDateString();
-                const isTapped = tappedMessageId === message.id;
+                const isMine = (m: any) =>
+                  currentUserId
+                    ? m.senderId === currentUserId ||
+                      m.senderId === "me" ||
+                      (m.id.startsWith("temp-") && !m.serverId)
+                    : m.id.startsWith("temp-") || m.senderId === "me";
+                // Two messages cluster when the same sender sends them within
+                // a couple of minutes on the same day — clustered bubbles sit
+                // tight together with softened facing corners (the iMessage/
+                // WhatsApp convention) instead of every bubble floating with
+                // identical spacing.
+                const CLUSTER_WINDOW_MS = 2 * 60 * 1000;
+                const clustersWith = (a: any, b: any) =>
+                  !!a &&
+                  !!b &&
+                  isMine(a) === isMine(b) &&
+                  new Date(a.createdAt).toDateString() ===
+                    new Date(b.createdAt).toDateString() &&
+                  Math.abs(
+                    new Date(a.createdAt).getTime() -
+                      new Date(b.createdAt).getTime(),
+                  ) < CLUSTER_WINDOW_MS;
 
-                return (
-                  <React.Fragment key={message.id}>
-                    {isFirstOfDay && (
-                      <View style={styles.dayHeader}>
-                        <Text style={styles.dayHeaderText}>
-                          {formatDayHeader(message.createdAt)}
-                        </Text>
-                      </View>
-                    )}
-                    <Animated.View
-                      entering={FadeInUp.delay(index * 50)}
-                      style={[
-                        styles.messageWrapper,
-                        isMyMessage ? styles.msgRight : styles.msgLeft,
-                      ]}
-                    >
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={() =>
-                          setTappedMessageId(isTapped ? null : message.id)
-                        }
+                return messages.map((message, index) => {
+                  const isMyMessage = isMine(message);
+                  const prevMessage = index > 0 ? messages[index - 1] : null;
+                  const nextMessage =
+                    index < messages.length - 1 ? messages[index + 1] : null;
+                  const isFirstOfDay =
+                    !prevMessage ||
+                    new Date(message.createdAt).toDateString() !==
+                      new Date(prevMessage.createdAt).toDateString();
+                  const clusteredWithPrev =
+                    !isFirstOfDay && clustersWith(prevMessage, message);
+                  const clusteredWithNext = clustersWith(message, nextMessage);
+                  const isTapped = tappedMessageId === message.id;
+
+                  return (
+                    <React.Fragment key={message.id}>
+                      {isFirstOfDay && (
+                        <View style={styles.dayHeader}>
+                          <Text style={styles.dayHeaderText}>
+                            {formatDayHeader(message.createdAt)}
+                          </Text>
+                        </View>
+                      )}
+                      <Animated.View
+                        entering={FadeInUp.delay(index * 50)}
                         style={[
-                          styles.bubble,
-                          isMyMessage ? styles.bubbleMe : styles.bubbleThem,
+                          styles.messageWrapper,
+                          isMyMessage ? styles.msgRight : styles.msgLeft,
+                          {
+                            marginTop: isFirstOfDay
+                              ? 0
+                              : clusteredWithPrev
+                                ? 3
+                                : 20,
+                          },
                         ]}
                       >
-                        <Text
-                          style={isMyMessage ? styles.txtMe : styles.txtThem}
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          onPress={() =>
+                            setTappedMessageId(isTapped ? null : message.id)
+                          }
+                          style={[
+                            styles.bubble,
+                            isMyMessage ? styles.bubbleMe : styles.bubbleThem,
+                            clusteredWithPrev &&
+                              (isMyMessage
+                                ? styles.bubbleClusterTopMe
+                                : styles.bubbleClusterTopThem),
+                            clusteredWithNext &&
+                              (isMyMessage
+                                ? styles.bubbleClusterBottomMe
+                                : styles.bubbleClusterBottomThem),
+                          ]}
                         >
-                          {message.content}
-                        </Text>
-                      </TouchableOpacity>
-                      {isTapped && (
-                        <Text style={styles.msgTime}>
-                          {new Date(message.createdAt).toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </Text>
-                      )}
-                    </Animated.View>
-                  </React.Fragment>
-                );
-              })
+                          <Text
+                            style={isMyMessage ? styles.txtMe : styles.txtThem}
+                          >
+                            {message.content}
+                          </Text>
+                        </TouchableOpacity>
+                        {isTapped && (
+                          <Text style={styles.msgTime}>
+                            {new Date(message.createdAt).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "numeric",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </Text>
+                        )}
+                      </Animated.View>
+                    </React.Fragment>
+                  );
+                });
+              })()
             )}
           </ScrollView>
           {conversation.status === "CLOSED" ? (
@@ -2736,269 +2772,6 @@ export function MessagesView({
     setExpandedGroups((prev) => (prev.has(key) ? new Set() : new Set([key])));
   };
 
-  const convTimeMs = (conv: any) => {
-    const t = conv?.lastMessage?.createdAt;
-    if (!t) return 0;
-    const ms = new Date(t).getTime();
-    return Number.isNaN(ms) ? 0 : ms;
-  };
-
-  const groupByParticipant = (list: any[]) => {
-    const map = new Map<string, any[]>();
-    list.forEach((c) => {
-      const key = c.otherParticipant?.id || c.id;
-      const arr = map.get(key);
-      if (arr) arr.push(c);
-      else map.set(key, [c]);
-    });
-    const groups = Array.from(map.entries()).map(([key, items]) => {
-      const sorted = [...items].sort((a, b) => convTimeMs(b) - convTimeMs(a));
-      return {
-        key,
-        items: sorted,
-        latest: sorted[0],
-        latestAt: convTimeMs(sorted[0]),
-        // Count of threads with unread, used for the aggregated dot.
-        unreadCount: items.reduce(
-          (n, c) => n + (c.unreadCount > 0 ? 1 : 0),
-          0,
-        ),
-      };
-    });
-    groups.sort((a, b) => b.latestAt - a.latestAt);
-    return groups;
-  };
-
-  const renderConvAvatar = (
-    name: string,
-    imageUrl: string | undefined,
-    opts: { hidden?: boolean; unread?: boolean },
-  ) => (
-    <View style={styles.imgWrapper}>
-      {imageUrl ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={
-            opts.hidden ? [styles.convImg, styles.convImgHidden] : styles.convImg
-          }
-        />
-      ) : (
-        <View
-          style={[
-            styles.convImg,
-            opts.hidden && styles.convImgHidden,
-            {
-              backgroundColor: "#000",
-              alignItems: "center",
-              justifyContent: "center",
-            },
-          ]}
-        >
-          <Text style={{ fontSize: 22, fontWeight: "800", color: "#FFF" }}>
-            {(name || "?")[0].toUpperCase()}
-          </Text>
-        </View>
-      )}
-      {opts.unread && <View style={styles.dotIndicator} />}
-    </View>
-  );
-
-  // A single thread shown as a full inbox row (person primary). Faithfully
-  // reproduces the three section looks (active / past / hidden).
-  const renderLeafRow = (conv: any, variant: "active" | "past" | "hidden") => {
-    const hidden = variant !== "active";
-    const nameStyle =
-      variant === "active"
-        ? styles.convName
-        : [styles.convName, styles.convNameHidden];
-    const msgStyle =
-      variant === "active"
-        ? styles.convMsg
-        : [styles.convMsg, styles.convMsgHidden];
-    return (
-      <TouchableOpacity
-        onPress={() => handleConversationSelect(conv.id)}
-        style={
-          variant === "active"
-            ? styles.convItem
-            : [styles.convItem, styles.convItemHidden]
-        }
-        activeOpacity={0.7}
-      >
-        {renderConvAvatar(
-          conv.otherParticipant.name,
-          conv.otherParticipant.profileImageUrl,
-          { hidden, unread: variant === "active" && conv.unreadCount > 0 },
-        )}
-        <View style={styles.convMain}>
-          <View style={styles.convHeader}>
-            <Text style={nameStyle} numberOfLines={1}>
-              {conv.otherParticipant.name}
-            </Text>
-            {variant === "past" ? (
-              <Text style={styles.unmatchedTag}>UNMATCHED</Text>
-            ) : (
-              <Text style={styles.convTime}>
-                {conv.lastMessage
-                  ? formatTime(conv.lastMessage.createdAt).toUpperCase()
-                  : variant === "hidden"
-                    ? "OLD"
-                    : "NEW"}
-              </Text>
-            )}
-          </View>
-          <Text style={msgStyle} numberOfLines={1}>
-            {conv.lastMessage?.content ||
-              (variant === "active" ? "Start a conversation..." : "No messages")}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // A per-role thread shown inside an expanded group. Role/job is primary,
-  // since the person is already named on the group header above.
-  const renderSubRow = (conv: any, variant: "active" | "past" | "hidden") => {
-    const roleLabel = conv.jobContext?.jobTitle || conv.role || "Role";
-    const unread = variant === "active" && conv.unreadCount > 0;
-    return (
-      <TouchableOpacity
-        key={conv.id}
-        onPress={() => handleConversationSelect(conv.id)}
-        style={styles.subRow}
-        activeOpacity={0.7}
-      >
-        <View style={unread ? styles.subRowUnreadDot : styles.subRowDotSpacer} />
-        <View style={styles.subRowMain}>
-          <View style={styles.subRowHeader}>
-            <Text
-              style={
-                variant === "active"
-                  ? styles.subRowRole
-                  : [styles.subRowRole, styles.subRowRoleHidden]
-              }
-              numberOfLines={1}
-            >
-              {roleLabel}
-            </Text>
-            {variant === "past" ? (
-              <Text style={styles.unmatchedTag}>UNMATCHED</Text>
-            ) : (
-              <Text style={styles.subRowTime}>
-                {conv.lastMessage
-                  ? formatTime(conv.lastMessage.createdAt).toUpperCase()
-                  : variant === "hidden"
-                    ? "OLD"
-                    : "NEW"}
-              </Text>
-            )}
-          </View>
-          <Text
-            style={[
-              styles.subRowMsg,
-              variant !== "active" && styles.convMsgHidden,
-            ]}
-            numberOfLines={1}
-          >
-            {conv.lastMessage?.content ||
-              (variant === "active" ? "Start a conversation..." : "No messages")}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // A person with multiple role-threads: one collapsible row.
-  const renderGroup = (
-    group: any,
-    variant: "active" | "past" | "hidden",
-  ) => {
-    const conv = group.latest;
-    const expanded = expandedGroups.has(group.key);
-    const hidden = variant !== "active";
-    const nameStyle =
-      variant === "active"
-        ? styles.convName
-        : [styles.convName, styles.convNameHidden];
-    const msgStyle =
-      variant === "active"
-        ? styles.convMsg
-        : [styles.convMsg, styles.convMsgHidden];
-    return (
-      <>
-        <TouchableOpacity
-          onPress={() => toggleGroup(group.key)}
-          style={
-            variant === "active"
-              ? styles.convItem
-              : [styles.convItem, styles.convItemHidden]
-          }
-          activeOpacity={0.7}
-        >
-          {renderConvAvatar(
-            conv.otherParticipant.name,
-            conv.otherParticipant.profileImageUrl,
-            { hidden, unread: variant === "active" && group.unreadCount > 0 },
-          )}
-          <View style={styles.convMain}>
-            <View style={styles.convHeader}>
-              <Text style={nameStyle} numberOfLines={1}>
-                {conv.otherParticipant.name}
-              </Text>
-              {variant === "past" ? (
-                <Text style={styles.unmatchedTag}>UNMATCHED</Text>
-              ) : (
-                <Text style={styles.convTime}>
-                  {conv.lastMessage
-                    ? formatTime(conv.lastMessage.createdAt).toUpperCase()
-                    : ""}
-                </Text>
-              )}
-            </View>
-            <View style={styles.convPreviewRow}>
-              <Text style={[msgStyle, { flex: 1 }]} numberOfLines={1}>
-                {conv.lastMessage?.content ||
-                  `${group.items.length} conversations`}
-              </Text>
-              <View style={styles.rolesPill}>
-                <Briefcase size={11} color="#666" />
-                <Text style={styles.rolesPillText}>
-                  {group.items.length} roles
-                </Text>
-              </View>
-            </View>
-          </View>
-          <ChevronRight
-            size={18}
-            color="#BBB"
-            style={[
-              styles.groupChevron,
-              expanded && { transform: [{ rotate: "90deg" }] },
-            ]}
-          />
-        </TouchableOpacity>
-        {expanded && (
-          <View style={styles.convSubList}>
-            {group.items.map((c: any) => renderSubRow(c, variant))}
-          </View>
-        )}
-      </>
-    );
-  };
-
-  // Group a section's conversations, then render each group as either a
-  // single leaf row or a collapsible person-group.
-  const renderGroupedList = (
-    list: any[],
-    variant: "active" | "past" | "hidden",
-  ) =>
-    groupByParticipant(list).map((group, index) => (
-      <Animated.View key={group.key} entering={FadeInDown.delay(index * 50)}>
-        {group.items.length === 1
-          ? renderLeafRow(group.items[0], variant)
-          : renderGroup(group, variant)}
-      </Animated.View>
-    ));
 
   const activeConversations = conversations.filter(
     (conv) => conv.status !== "CLOSED" && !conv.isHidden,
@@ -3030,77 +2803,60 @@ export function MessagesView({
         </View>
 
       {conversationsLoading ? (
-        <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: "#999", fontSize: 15 }}>
-            Loading conversations...
-          </Text>
-        </View>
+        <InboxLoading />
       ) : conversationsError ? (
-        <View style={{ padding: 40, alignItems: "center" }}>
-          <Text style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}>
-            Failed to load conversations
-          </Text>
-          <Text style={{ color: "#999", fontSize: 13, textAlign: "center" }}>
-            {conversationsError}
-          </Text>
-        </View>
+        <InboxError message={conversationsError} />
       ) : conversations.length === 0 ? (
-        <View style={{ padding: 40, alignItems: "center" }}>
-          <MessageCircle size={48} color="#DDD" style={{ marginBottom: 16 }} />
-          <Text
-            style={{
-              color: "#999",
-              fontSize: 17,
-              fontWeight: "600",
-              marginBottom: 8,
-            }}
-          >
-            No conversations yet
-          </Text>
-          <Text style={{ color: "#BBB", fontSize: 14, textAlign: "center" }}>
-            Start matching with people to begin conversations!
-          </Text>
-        </View>
+        <InboxEmpty />
       ) : (
         <>
-          {/* Active Messages */}
-          {activeConversations.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                ACTIVE MESSAGES ({activeConversations.length})
-              </Text>
-              <View style={styles.list}>
-                {renderGroupedList(activeConversations, "active")}
-              </View>
-            </View>
-          )}
+          <InboxSection
+            title="Active"
+            count={activeConversations.length}
+            hidden={activeConversations.length === 0}
+          >
+            <InboxList
+              conversations={activeConversations}
+              variant="active"
+              expandedGroups={expandedGroups}
+              onToggleGroup={toggleGroup}
+              onSelect={handleConversationSelect}
+            />
+          </InboxSection>
 
           {/* Past Connections — unmatched conversations (status === 'CLOSED').
-              Visually muted with the same convItemHidden styles so they
-              read as "archived". Still tappable so users can review the
-              prior thread, but the send-message input below is disabled. */}
-          {pastConversations.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                PAST CONNECTIONS ({pastConversations.length})
-              </Text>
-              <View style={styles.list}>
-                {renderGroupedList(pastConversations, "past")}
-              </View>
-            </View>
-          )}
+              Visually muted so they read as "archived". Still tappable so
+              users can review the prior thread, but the send-message input
+              below is disabled. */}
+          <InboxSection
+            title="Past Connections"
+            count={pastConversations.length}
+            hidden={pastConversations.length === 0}
+            collapsible
+          >
+            <InboxList
+              conversations={pastConversations}
+              variant="past"
+              expandedGroups={expandedGroups}
+              onToggleGroup={toggleGroup}
+              onSelect={handleConversationSelect}
+            />
+          </InboxSection>
 
-          {/* Hidden Messages */}
-          {hiddenConversations.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                HIDDEN (30+ DAYS INACTIVE) ({hiddenConversations.length})
-              </Text>
-              <View style={styles.list}>
-                {renderGroupedList(hiddenConversations, "hidden")}
-              </View>
-            </View>
-          )}
+          <InboxSection
+            title="Hidden (30+ days inactive)"
+            count={hiddenConversations.length}
+            hidden={hiddenConversations.length === 0}
+            collapsible
+          >
+            <InboxList
+              conversations={hiddenConversations}
+              variant="hidden"
+              expandedGroups={expandedGroups}
+              onToggleGroup={toggleGroup}
+              onSelect={handleConversationSelect}
+            />
+          </InboxSection>
 
           {/* Load More */}
           {conversations.length < conversationsTotalCount && (
@@ -3111,7 +2867,9 @@ export function MessagesView({
               activeOpacity={0.7}
             >
               <Text style={styles.loadMoreText}>
-                {isLoadingMore ? "Loading..." : "Load More Conversations"}
+                {isLoadingMore
+                  ? "Loading..."
+                  : `Load more (${conversationsTotalCount - conversations.length})`}
               </Text>
             </TouchableOpacity>
           )}
@@ -3159,16 +2917,6 @@ const styles = StyleSheet.create({
   headerTitleContainer: { marginBottom: 32 },
   title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.2 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
-  section: { marginBottom: 40 },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#BBB",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    marginBottom: 16,
-  },
-  list: { gap: 4 },
   loadMoreBtn: {
     marginVertical: 16,
     paddingVertical: 14,
@@ -3182,111 +2930,16 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
     color: "#374151",
   },
-  convItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  convItemHidden: { opacity: 0.6 },
-  imgWrapper: { position: "relative" },
-  convImg: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#F9F9F9",
-  },
-  convImgHidden: { opacity: 0.5 },
-  dotIndicator: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#000",
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  convMain: { flex: 1, marginLeft: 16 },
-  convHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  convName: { fontSize: 17, fontWeight: "700" },
-  convNameHidden: { color: "#999" },
-  convTime: { fontSize: 10, fontWeight: "800", color: "#BBB" },
-  convMsg: { fontSize: 14, color: "#666" },
-  convMsgHidden: { color: "#AAA" },
   // ── Grouped inbox rows (same person, multiple role-threads) ──────────
   // Second line of a group header: latest-message preview + a "N roles"
   // pill so the user sees at a glance this person spans several roles.
-  convPreviewRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  rolesPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  rolesPillText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#666",
-    letterSpacing: 0.3,
-  },
   // Chevron at the row's trailing edge; rotated 90° when the group is open.
-  groupChevron: { marginLeft: 8 },
   // Expanded per-role sub-threads, indented under the person row with a
   // hairline rail aligned to the avatar's right edge (avatar 56 + 16 gap).
-  convSubList: {
-    marginLeft: 72,
-    paddingLeft: 14,
-    borderLeftWidth: 1,
-    borderLeftColor: "#EFEFEF",
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  subRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
-  subRowUnreadDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: "#000",
-    marginRight: 11,
-  },
   // Keeps role text aligned whether or not the unread dot is present.
-  subRowDotSpacer: { width: 7, marginRight: 11 },
-  subRowMain: { flex: 1 },
-  subRowHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 3,
-  },
-  subRowRole: { fontSize: 14, fontWeight: "700", color: "#000" },
-  subRowRoleHidden: { color: "#999" },
-  subRowTime: { fontSize: 10, fontWeight: "800", color: "#BBB" },
-  subRowMsg: { fontSize: 13, color: "#999" },
   // Tag rendered in the timestamp slot of a Past Connections row so the
   // user knows why the conversation is muted (vs the "30+ days inactive"
   // hidden state).
-  unmatchedTag: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#999",
-    letterSpacing: 0.8,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    overflow: "hidden",
-  },
   // In-thread banner shown in place of the message input when the
   // conversation has been unmatched/closed.
   closedNotice: {
@@ -3393,13 +3046,22 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: { fontSize: 11, fontWeight: "700" },
   messagesScroll: { flex: 1, paddingHorizontal: 20 },
-  messagesContent: { paddingTop: 20, paddingBottom: 28, gap: 20 },
+  // Spacing between messages lives on each messageWrapper (via an inline
+  // marginTop) rather than a container gap, so clustered messages from the
+  // same sender can sit tight while cluster boundaries keep the full gap.
+  messagesContent: { paddingTop: 20, paddingBottom: 28 },
   messageWrapper: { maxWidth: "85%" },
   msgLeft: { alignSelf: "flex-start" },
   msgRight: { alignSelf: "flex-end" },
   bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
   bubbleMe: { backgroundColor: "#000" },
   bubbleThem: { backgroundColor: "#F2F2F2" },
+  // Within a cluster, the corners facing the adjacent bubble tighten so the
+  // run reads as one grouped exchange.
+  bubbleClusterTopMe: { borderTopRightRadius: 6 },
+  bubbleClusterTopThem: { borderTopLeftRadius: 6 },
+  bubbleClusterBottomMe: { borderBottomRightRadius: 6 },
+  bubbleClusterBottomThem: { borderBottomLeftRadius: 6 },
   txtMe: { color: "#FFF", fontSize: 15 },
   txtThem: { color: "#000", fontSize: 15 },
   msgTime: {

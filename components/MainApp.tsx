@@ -46,6 +46,11 @@ import {
     scheduleDailyDeckReminder,
     scheduleUnfinishedDeckReminder,
 } from "../lib/localNotifications";
+import { cancelCheckInNudges, scheduleCheckInNudges } from "../lib/checkInNudges";
+import {
+  getLocalCheckInStages,
+  getLocalCheckInTimes,
+} from "../utils/checkInStageCache";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useJobsStore } from "../stores/useJobsStore";
 import {
@@ -368,6 +373,65 @@ export function MainApp({ userType }: MainAppProps) {
     fetchReferralsForCheckIn();
   };
 
+  // Eager referral fetch at mount so the header's check-in icon can be
+  // contextual (hidden with no active referrals, badged with the stale
+  // count). Opening the sheet still refetches fresh, so this only needs to
+  // be roughly right, not live.
+  useEffect(() => {
+    fetchReferralsForCheckIn();
+    // Refetch when the role flips — the referral list is role-scoped.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userType]);
+
+  // Last locally-submitted check-in per referral — a referral the user just
+  // checked in on shouldn't keep the header badge lit for 7 more days.
+  // Reloaded whenever a check-in sheet closes (which covers submits).
+  const [checkInTimes, setCheckInTimes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    getLocalCheckInTimes().then(setCheckInTimes);
+  }, [showApplicantCheckIn, showSponsorCheckIn]);
+
+  // Recompute + reschedule this role's single check-in nudge notification
+  // any time the referral list or local check-in times change (new referral
+  // fetched, or a check-in just submitted). scheduleCheckInNudges cancels
+  // any previously-pending nudge before scheduling the next one, so this is
+  // safe to call repeatedly. If there's nothing left to nudge about (no
+  // active referrals), fall through to a plain cancel.
+  useEffect(() => {
+    if (!referrals.length) {
+      cancelCheckInNudges(userType);
+      return;
+    }
+    getLocalCheckInStages().then((stages) => {
+      scheduleCheckInNudges(
+        userType,
+        referrals as unknown as {
+          referralId: string;
+          status: string;
+          createdAt: string;
+          jobCompany?: string | null;
+        }[],
+        checkInTimes,
+        stages,
+      );
+    });
+  }, [referrals, checkInTimes, userType]);
+
+  // Active = still-live referrals the check-in sheet can act on; stale =
+  // created 7+ days ago (same threshold as MatchesView's nudge banner) AND
+  // no check-in submitted from this device within the last 7 days.
+  const STALE_MS = 7 * 24 * 60 * 60 * 1000;
+  const activeReferralCount = referrals.filter(
+    (r) => (r.status || "").toUpperCase() === "REFERRED",
+  ).length;
+  const staleReferralCount = referrals.filter((r) => {
+    if ((r.status || "").toUpperCase() !== "REFERRED") return false;
+    const created = Date.parse(r.createdAt || "");
+    if (isNaN(created) || created > Date.now() - STALE_MS) return false;
+    const lastCheckIn = Date.parse(checkInTimes[r.referralId] || "");
+    return isNaN(lastCheckIn) || lastCheckIn <= Date.now() - STALE_MS;
+  }).length;
+
   useEffect(() => {
     if (!DEV_SHOW_CHECKIN_MODAL) return;
     const t = setTimeout(() => {
@@ -571,6 +635,15 @@ export function MainApp({ userType }: MainAppProps) {
       // deck itself, not the in-app notifications list (they're on-device
       // schedules, not backend notification records that would show up there).
       setActiveView("home");
+    } else if (type === "checkin_nudge") {
+      // Local check-in cadence (see lib/checkInNudges.ts). Opens the sheet
+      // for whichever role the notification was scheduled for — not a
+      // specific referral — since the sheet already triages everything that
+      // needs attention (stale-first sort, needs-update section).
+      const role = data.role as "applicant" | "sponsor" | undefined;
+      fetchReferralsForCheckIn();
+      if (role === "sponsor") setShowSponsorCheckIn(true);
+      else setShowApplicantCheckIn(true);
     } else {
       // Generic fallback — open notifications list so the user can act on it
       setActiveView("notifications");
@@ -695,17 +768,36 @@ export function MainApp({ userType }: MainAppProps) {
         <View style={styles.topBar}>
           <Text style={styles.appTitle}>BackChannel</Text>
           <View style={styles.topBarButtons}>
-            <TouchableOpacity
-              onPress={handleOpenCheckIn}
-              activeOpacity={0.7}
-              style={styles.headerIconButton}
-              accessibilityRole="button"
-              accessibilityLabel="Referral check-in"
-              accessibilityHint="Review and update the status of your referrals"
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
-            </TouchableOpacity>
+            {/* Contextual — only rendered when there are live referrals to
+                check in on. A brand-new user tapping this got a full-screen
+                sheet saying "no active referrals"; better it simply isn't
+                there until it has a job to do. The badge counts referrals
+                with no update in 7+ days (same threshold as the Matches
+                nudge banner), so the icon reads "N things need you". */}
+            {activeReferralCount > 0 && (
+              <TouchableOpacity
+                onPress={handleOpenCheckIn}
+                activeOpacity={0.7}
+                style={styles.headerIconButton}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  staleReferralCount > 0
+                    ? `Referral check-in, ${staleReferralCount} needing updates`
+                    : "Referral check-in"
+                }
+                accessibilityHint="Review and update the status of your referrals"
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
+                {staleReferralCount > 0 && (
+                  <View style={styles.headerCountPill}>
+                    <Text style={styles.headerCountPillText}>
+                      {staleReferralCount > 9 ? "9+" : staleReferralCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -726,7 +818,13 @@ export function MainApp({ userType }: MainAppProps) {
             >
               <Bell color="#000" size={22} strokeWidth={1.5} />
               {unreadNotificationCount > 0 && (
-                <View style={styles.notificationDot} />
+                <View style={styles.headerCountPill}>
+                  <Text style={styles.headerCountPillText}>
+                    {unreadNotificationCount > 9
+                      ? "9+"
+                      : unreadNotificationCount}
+                  </Text>
+                </View>
               )}
             </TouchableOpacity>
           </View>
@@ -903,16 +1001,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F0F0F0",
   },
-  notificationDot: {
+  // Count pill on a header icon — says HOW MUCH is waiting, not just that
+  // something is (the old 6px dot). Same black count-pill language as the
+  // section headers across every tab.
+  headerCountPill: {
     position: "absolute",
-    top: 12,
-    right: 12,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    top: 4,
+    right: 4,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 4,
+    borderRadius: 9,
     backgroundColor: "#000",
-    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
     borderColor: "#FFF",
+  },
+  headerCountPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFF",
   },
   mainContent: {
     flex: 1,
