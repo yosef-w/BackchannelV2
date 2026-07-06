@@ -8,7 +8,7 @@
  * Not dismissible by tapping outside; only exits via Submit / Close.
  */
 
-import { Check } from "lucide-react-native";
+import { Check, ChevronRight } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -18,7 +18,6 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     trackCheckInFailed,
     trackSponsorBatchCheckInSubmitted,
@@ -110,7 +109,6 @@ export function SponsorCheckInModal({
   onSubmitted,
 }: Props) {
   const showToast = useToastStore((s) => s.showToast);
-  const insets = useSafeAreaInsets();
 
   // Last locally-submitted check-in per referral — drives stale-first
   // sorting and the "needs update" marker below.
@@ -152,6 +150,9 @@ export function SponsorCheckInModal({
   >({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // "Up to date" section starts collapsed so a long pipeline reads as just
+  // the referrals that need attention.
+  const [showUpToDate, setShowUpToDate] = useState(false);
 
   // (Re-)initialise the stage map whenever the modal opens or referrals change.
   useEffect(() => {
@@ -162,6 +163,7 @@ export function SponsorCheckInModal({
     }
     setStageById(next);
     setSubmitted(false);
+    setShowUpToDate(false);
   }, [visible, activeReferrals]);
 
   /**
@@ -244,6 +246,80 @@ export function SponsorCheckInModal({
         ? ("empty" as const)
         : ("content" as const);
 
+  const renderCard = (referral: SponsorCheckInReferral) => {
+    const currentStage =
+      stageById[referral.referralId] ?? initialStageFor(referral);
+    const days = daysSince(referral.createdAt);
+    const stale = needsUpdate(referral);
+    return (
+      <View key={referral.referralId} style={styles.referralCard}>
+        {/* Card header row */}
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.candidateName}>{applicantName(referral)}</Text>
+            <Text style={styles.candidateRole}>
+              {referral.jobTitle || "Role"}
+              {referral.jobCompany ? ` at ${referral.jobCompany}` : ""}
+            </Text>
+          </View>
+          <View style={styles.cardHeaderRight}>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusBadgeText}>{currentStage}</Text>
+            </View>
+            {days !== null && (
+              <Text
+                style={[styles.lastUpdated, stale && styles.lastUpdatedStale]}
+              >
+                {stale
+                  ? `needs update · ${days}d`
+                  : days === 0
+                    ? "today"
+                    : `${days}d ago`}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Stage chips — one horizontally-scrollable line instead of a
+            2-3 line wrap, so a long list of referrals stays scannable. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+        >
+          {STATUS_STAGES.map((stage) => {
+            const isSelected = currentStage === stage;
+            return (
+              <TouchableOpacity
+                key={stage}
+                style={[
+                  styles.statusChip,
+                  isSelected && styles.statusChipSelected,
+                ]}
+                onPress={() => handleSetStatus(referral.referralId, stage)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.statusChipText,
+                    isSelected && styles.statusChipTextSelected,
+                  ]}
+                >
+                  {stage}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Triage split — the actionable referrals lead; up-to-date ones collapse
+  // behind their header so a long pipeline stays a short list.
+  const staleList = activeReferrals.filter(needsUpdate);
+  const freshList = activeReferrals.filter((r) => !needsUpdate(r));
+
   return (
     <CheckInSheetShell
       visible={visible}
@@ -258,7 +334,14 @@ export function SponsorCheckInModal({
     >
       {/* Sheet header */}
       <View style={styles.sheetHeader}>
-        <Text style={styles.sheetTitle}>Referral Pipeline</Text>
+        <View style={styles.sheetTitleRow}>
+          <Text style={styles.sheetTitle}>Referral Pipeline</Text>
+          <View style={styles.sheetCountPill}>
+            <Text style={styles.sheetCountPillText}>
+              {activeReferrals.length}
+            </Text>
+          </View>
+        </View>
         <Text style={styles.sheetSubtitle}>
           Update the status on your active referrals
         </Text>
@@ -268,123 +351,83 @@ export function SponsorCheckInModal({
         style={styles.mainScroll}
         showsVerticalScrollIndicator={false}
         bounces={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: Math.max(40, insets.bottom + 24) },
-        ]}
+        contentContainerStyle={styles.scrollContent}
       >
-                  {/* ── Referral cards ───────────────────────────────────── */}
-                  {activeReferrals.map((referral) => {
-                    const currentStage =
-                      stageById[referral.referralId] ??
-                      initialStageFor(referral);
-                    const days = daysSince(referral.createdAt);
-                    const stale = needsUpdate(referral);
-                    return (
-                      <View
-                        key={referral.referralId}
-                        style={styles.referralCard}
-                      >
-                        {/* Card header row */}
-                        <View style={styles.cardHeader}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.candidateName}>
-                              {applicantName(referral)}
-                            </Text>
-                            <Text style={styles.candidateRole}>
-                              {referral.jobTitle || "Role"}
-                              {referral.jobCompany
-                                ? ` at ${referral.jobCompany}`
-                                : ""}
-                            </Text>
-                          </View>
-                          <View style={styles.cardHeaderRight}>
-                            <View style={styles.statusBadge}>
-                              <Text style={styles.statusBadgeText}>
-                                {currentStage}
-                              </Text>
-                            </View>
-                            {days !== null && (
-                              <Text
-                                style={[
-                                  styles.lastUpdated,
-                                  stale && styles.lastUpdatedStale,
-                                ]}
-                              >
-                                {stale
-                                  ? `needs update · ${days}d`
-                                  : days === 0
-                                    ? "today"
-                                    : `${days}d ago`}
-                              </Text>
-                            )}
-                          </View>
-                        </View>
+        {staleList.length > 0 ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>NEEDS UPDATE</Text>
+              <View style={styles.sectionCountPill}>
+                <Text style={styles.sectionCountPillText}>
+                  {staleList.length}
+                </Text>
+              </View>
+            </View>
+            {staleList.map(renderCard)}
+          </>
+        ) : (
+          <Text style={styles.allCaughtUpText}>
+            Nothing needs an update right now.
+          </Text>
+        )}
 
-                        {/* Inline status chips */}
-                        <View style={styles.chipsRow}>
-                          {STATUS_STAGES.map((stage) => {
-                            const isSelected = currentStage === stage;
-                            return (
-                              <TouchableOpacity
-                                key={stage}
-                                style={[
-                                  styles.statusChip,
-                                  isSelected && styles.statusChipSelected,
-                                ]}
-                                onPress={() =>
-                                  handleSetStatus(referral.referralId, stage)
-                                }
-                                activeOpacity={0.7}
-                              >
-                                <Text
-                                  style={[
-                                    styles.statusChipText,
-                                    isSelected && styles.statusChipTextSelected,
-                                  ]}
-                                >
-                                  {stage}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    );
-                  })}
-
-                  {/* ── Submit button ─────────────────────────────────────── */}
-                  <TouchableOpacity
-                    style={[
-                      styles.submitBtn,
-                      !hasChanges && styles.submitBtnNoChanges,
-                      submitting && styles.submitBtnNoChanges,
-                    ]}
-                    onPress={handleSubmit}
-                    disabled={submitting}
-                    activeOpacity={0.8}
-                  >
-                    {submitting ? (
-                      <ActivityIndicator color="#000" />
-                    ) : (
-                      <>
-                        <Text
-                          style={[
-                            styles.submitBtnText,
-                            !hasChanges && styles.submitBtnTextNoChanges,
-                          ]}
-                        >
-                          {hasChanges
-                            ? `Submit ${changedUpdates.length} Update${changedUpdates.length === 1 ? "" : "s"}`
-                            : "No Changes — Close"}
-                        </Text>
-                        {hasChanges && (
-                          <Check color="#FFF" size={18} strokeWidth={2.5} />
-                        )}
-                      </>
-                    )}
-                  </TouchableOpacity>
+        {freshList.length > 0 && (
+          <>
+            <TouchableOpacity
+              style={styles.sectionHeader}
+              onPress={() => setShowUpToDate((s) => !s)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionLabel}>UP TO DATE</Text>
+              <View style={styles.sectionCountPill}>
+                <Text style={styles.sectionCountPillText}>
+                  {freshList.length}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }} />
+              <ChevronRight
+                size={16}
+                color="#BBB"
+                style={showUpToDate && { transform: [{ rotate: "90deg" }] }}
+              />
+            </TouchableOpacity>
+            {showUpToDate && freshList.map(renderCard)}
+          </>
+        )}
       </ScrollView>
+
+      {/* Sticky submit — pinned below the list so a sponsor with a long
+          pipeline never scrolls to find the commit action. */}
+      <View style={styles.stickyFooter}>
+        <TouchableOpacity
+          style={[
+            styles.submitBtn,
+            !hasChanges && styles.submitBtnNoChanges,
+            submitting && styles.submitBtnNoChanges,
+          ]}
+          onPress={handleSubmit}
+          disabled={submitting}
+          activeOpacity={0.8}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <>
+              <Text
+                style={[
+                  styles.submitBtnText,
+                  !hasChanges && styles.submitBtnTextNoChanges,
+                ]}
+              >
+                {hasChanges
+                  ? `Submit ${changedUpdates.length} Update${changedUpdates.length === 1 ? "" : "s"}`
+                  : "No Changes — Close"}
+              </Text>
+              {hasChanges && <Check color="#FFF" size={18} strokeWidth={2.5} />}
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </CheckInSheetShell>
   );
 }
@@ -396,17 +439,69 @@ const styles = StyleSheet.create({
   sheetHeader: {
     marginBottom: 20,
   },
+  sheetTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
   sheetTitle: {
     fontSize: 24,
     fontWeight: "800",
     color: "#000",
     letterSpacing: -0.5,
-    marginBottom: 4,
   },
+  sheetCountPill: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetCountPillText: { fontSize: 12, fontWeight: "800", color: "#FFF" },
   sheetSubtitle: {
     fontSize: 13,
     color: "#999",
     fontWeight: "500",
+  },
+
+  // ── Section headers (NEEDS UPDATE / UP TO DATE) ────────────────────────────
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 0.8,
+  },
+  sectionCountPill: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionCountPillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
+  allCaughtUpText: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "600",
+    paddingVertical: 8,
+  },
+
+  // ── Sticky submit footer ────────────────────────────────────────────────────
+  stickyFooter: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
   },
 
   // ── Scroll content ──────────────────────────────────────────────────────────
@@ -471,10 +566,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // ── Status chips ────────────────────────────────────────────────────────────
+  // ── Status chips — single horizontal line inside a ScrollView ──────────────
   chipsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 6,
   },
   statusChip: {

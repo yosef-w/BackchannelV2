@@ -164,6 +164,18 @@ export function ApplicantCheckInModal({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Guided run-through session state: which referrals got an update since
+  // the sheet opened, and how many were sent (for the final success frame).
+  const [updatedIds, setUpdatedIds] = useState<Set<string>>(new Set());
+  const [sessionSentCount, setSessionSentCount] = useState(0);
+
+  // Fresh session each time the sheet opens.
+  useEffect(() => {
+    if (visible) {
+      setUpdatedIds(new Set());
+      setSessionSentCount(0);
+    }
+  }, [visible]);
 
   const fallbackReferral = activeReferrals[0] ?? null;
 
@@ -267,12 +279,33 @@ export function ApplicantCheckInModal({
       // necessary until the backend returns stages on GET /api/referrals/.
       saveLocalCheckInStage(currentReferral.referralId, opt.stage);
       onSubmitted?.();
-      setSubmitted(true);
-      // Auto-dismiss after the success animation plays
-      setTimeout(() => {
-        setSubmitted(false);
-        onDismiss();
-      }, 1600);
+
+      // Guided run-through: with more referrals still un-updated this
+      // session, advance to the next one instead of closing — an applicant
+      // with 4 referrals previously had to reopen the sheet 4 times. The
+      // sheet only closes (via the success frame) after the last one.
+      const nextUpdated = new Set(updatedIds).add(currentReferral.referralId);
+      setUpdatedIds(nextUpdated);
+      const nextReferral = activeReferrals.find(
+        (r) => !nextUpdated.has(r.referralId),
+      );
+      if (nextReferral) {
+        showToast(
+          `Update sent · ${activeReferrals.length - nextUpdated.size} more to go`,
+          "success",
+        );
+        // The reset-on-referral-change effect clears status/note for the
+        // next one.
+        setActiveReferralId(nextReferral.referralId);
+      } else {
+        setSessionSentCount(nextUpdated.size);
+        setSubmitted(true);
+        // Auto-dismiss after the success animation plays
+        setTimeout(() => {
+          setSubmitted(false);
+          onDismiss();
+        }, 1600);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       trackCheckInFailed({ role: "applicant", reason: msg || "unknown" });
@@ -299,11 +332,13 @@ export function ApplicantCheckInModal({
       loadingText="Loading your referrals…"
       emptyTitle="No active referrals"
       emptyText="You don't have any active referrals to update right now. Once a sponsor refers you, your pipeline will show up here."
-      successTitle="Update Sent!"
+      successTitle={sessionSentCount > 1 ? "All caught up!" : "Update Sent!"}
       successSubtitle={
-        currentReferral
-          ? `${sponsorName(currentReferral)} will be notified of your progress.`
-          : "Your sponsor will be notified."
+        sessionSentCount > 1
+          ? `${sessionSentCount} updates sent — your sponsors will be notified.`
+          : currentReferral
+            ? `${sponsorName(currentReferral)} will be notified of your progress.`
+            : "Your sponsor will be notified."
       }
     >
       <ScrollView
@@ -316,38 +351,55 @@ export function ApplicantCheckInModal({
               ]}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Referral picker (only shown when 2+ active referrals) */}
+              {/* Guided-session progress + referral picker (2+ referrals).
+                  Pills tick off as updates are sent this session; still
+                  tappable to jump around. */}
               {activeReferrals.length > 1 && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.pickerRow}
-                >
-                  {activeReferrals.map((r) => {
-                    const isActive = r.referralId === activeReferralId;
-                    return (
-                      <TouchableOpacity
-                        key={r.referralId}
-                        style={[
-                          styles.pickerPill,
-                          isActive && styles.pickerPillActive,
-                        ]}
-                        onPress={() => setActiveReferralId(r.referralId)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
+                <>
+                  <Text style={styles.progressText}>
+                    Updating{" "}
+                    {Math.min(updatedIds.size + 1, activeReferrals.length)} of{" "}
+                    {activeReferrals.length}
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.pickerRow}
+                  >
+                    {activeReferrals.map((r) => {
+                      const isActive = r.referralId === activeReferralId;
+                      const isDone = updatedIds.has(r.referralId);
+                      return (
+                        <TouchableOpacity
+                          key={r.referralId}
                           style={[
-                            styles.pickerPillText,
-                            isActive && styles.pickerPillTextActive,
+                            styles.pickerPill,
+                            isActive && styles.pickerPillActive,
                           ]}
-                          numberOfLines={1}
+                          onPress={() => setActiveReferralId(r.referralId)}
+                          activeOpacity={0.7}
                         >
-                          {r.jobCompany || "Referral"}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+                          {isDone && (
+                            <Check
+                              color={isActive ? "#FFF" : "#000"}
+                              size={12}
+                              strokeWidth={3}
+                            />
+                          )}
+                          <Text
+                            style={[
+                              styles.pickerPillText,
+                              isActive && styles.pickerPillTextActive,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {r.jobCompany || "Referral"}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </>
               )}
 
               {/* Referral header */}
@@ -512,17 +564,29 @@ const styles = StyleSheet.create({
   },
 
   // ── Picker (multi-referral) ────────────────────────────────────────────────
+  // "Updating 2 of 4" — the guided session's position indicator.
+  progressText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
   pickerRow: {
     gap: 8,
     paddingBottom: 16,
   },
   pickerPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    backgroundColor: "#FAFAFA",
+    borderColor: "#F0F0F0",
+    backgroundColor: "#F9F9F9",
     maxWidth: 180,
   },
   pickerPillActive: {
