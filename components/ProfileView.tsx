@@ -2755,7 +2755,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         onPress={handleLogout}
         activeOpacity={0.7}
       >
-        <LogOut color="#DC2626" size={16} strokeWidth={2} />
+        <LogOut color="#000" size={16} strokeWidth={2} />
         <Text style={styles.logOutText}>Log Out</Text>
       </TouchableOpacity>
 
@@ -3121,17 +3121,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "#FFF",
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderWidth: 1.5,
+    borderColor: "#000",
     paddingVertical: 14,
     marginBottom: 24,
   },
   logOutText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#DC2626",
+    color: "#000",
   },
 
   // Modal Styles
