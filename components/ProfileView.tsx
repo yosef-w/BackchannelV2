@@ -3044,106 +3044,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 140,
   },
-  profileHeader: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  avatarWrapper: {
-    marginBottom: 20,
-    position: "relative",
-  },
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "#F9F9F9",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#E5E5E5",
-  },
-  avatarInitials: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 1,
-  },
-  avatarPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  avatarPlaceholderText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#999",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  editFab: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#000",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  editFabHighlight: {
-    backgroundColor: "#000",
-  },
-  profileImageIndicator: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#F9F9F9",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  name: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 6,
-  },
-  infoText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
-  },
-  locationText: {
-    fontSize: 14,
-    color: "#BBB",
-    fontWeight: "500",
-  },
-  bio: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginTop: 16,
-    paddingHorizontal: 10,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
-  },
   blackBtn: {
     flexDirection: "row",
     backgroundColor: "#000",
@@ -3198,77 +3098,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
     letterSpacing: 1,
   },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#BBB",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginBottom: 16,
-  },
-  tagCloud: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#EEE",
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-  },
 
   // Applicant-Specific Styles
-  preferenceTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
-  },
-  preferenceText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  roleTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: "#000",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  roleTagText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFF",
-  },
 
   // Sponsor-Specific Styles
   companyTag: {
@@ -3301,34 +3132,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#DC2626",
-  },
-  settingsSection: {
-    marginTop: 8,
-  },
-  settingsGroup: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  notificationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#DC2626",
   },
 
   // Modal Styles
@@ -3409,39 +3212,6 @@ const styles = StyleSheet.create({
   },
 
   // Badge Styles
-  buttonBadge: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#000",
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  buttonBadgeText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  settingBadge: {
-    backgroundColor: "#000",
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-  },
-  settingBadgeText: {
-    color: "#FFF",
-    fontSize: 11,
-    fontWeight: "800",
-  },
 
   // Edit Profile Styles
   editField: {
@@ -4328,12 +4098,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-  emptyHint: {
-    fontSize: 13,
-    color: "#BBB",
-    fontStyle: "italic",
-    marginTop: 4,
-  },
   emptyStateCard: {
     backgroundColor: "#F9F9F9",
     padding: 24,
@@ -4407,20 +4171,15 @@ const styles = StyleSheet.create({
 
   // ── Resume Upload Section ─────────────────────────────────────────────────
   resumeSection: {
-    marginHorizontal: 20,
-    marginBottom: 8,
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    marginBottom: 24,
   },
   // ── Résumé — document card (Route A) ─────────────────────────────────────
   resumeSectionLabel: {
     fontSize: 12,
     fontWeight: "800",
     color: "#999",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
     marginBottom: 14,
   },
   docCard: {
