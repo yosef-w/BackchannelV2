@@ -38,6 +38,7 @@ import {
     submitSponsorBatchCheckIn,
 } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
+import { saveLocalCheckInStages } from "../utils/checkInStageCache";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface SponsorCheckInReferral {
@@ -57,6 +58,13 @@ interface Props {
   referrals: SponsorCheckInReferral[];
   /** Optional: surface the loading state while parent is fetching referrals. */
   loading?: boolean;
+  /**
+   * Fired right after a batch check-in successfully submits. This modal is
+   * opened from a global header icon, decoupled from the Matches screen's
+   * own data — without this, submitting while sitting on Matches wouldn't
+   * refresh its (React Query-cached) pipeline list to show the new stages.
+   */
+  onSubmitted?: () => void;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -103,6 +111,7 @@ export function SponsorCheckInModal({
   onDismiss,
   referrals,
   loading = false,
+  onSubmitted,
 }: Props) {
   const showToast = useToastStore((s) => s.showToast);
   const insets = useSafeAreaInsets();
@@ -178,6 +187,13 @@ export function SponsorCheckInModal({
       setSubmitting(true);
       await submitSponsorBatchCheckIn(toSubmit);
       trackSponsorBatchCheckInSubmitted({ updateCount: toSubmit.length });
+      // Mirror locally so the Matches screen's pipeline timeline reflects
+      // these updates immediately — see checkInStageCache.ts for why this is
+      // necessary until the backend returns stages on GET /api/referrals/.
+      saveLocalCheckInStages(
+        toSubmit.map((u) => ({ referralId: u.referral_id, stage: u.stage })),
+      );
+      onSubmitted?.();
       if (dropped > 0) {
         showToast(
           `Updated ${toSubmit.length} referrals; ${dropped} more will need a second pass.`,

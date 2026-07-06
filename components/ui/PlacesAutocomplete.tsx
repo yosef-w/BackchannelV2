@@ -129,8 +129,18 @@ export function PlacesAutocomplete({
   const sessionTokenRef = useRef<string>(newSessionToken());
   const requestIdRef = useRef(0);
   const justSelectedRef = useRef(false);
+  // Editing an existing value (e.g. Edit Profile prefilling the user's saved
+  // city) sets `query` to a non-empty `initialValue` on mount. Without this
+  // guard that non-empty value alone would trigger the suggestions fetch
+  // below and pop the dropdown open over the rest of the form before the
+  // user has touched anything.
+  const skipNextFetchRef = useRef(true);
 
   useEffect(() => {
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false;
+      return;
+    }
     if (justSelectedRef.current) {
       // Skip the fetch triggered by our own setQuery() after a selection.
       justSelectedRef.current = false;

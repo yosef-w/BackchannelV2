@@ -1,10 +1,12 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-01
+**Last updated:** 2026-07-05
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
 > **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§J** — self-like not rejected server-side (sponsor sees themselves in "Interested in Your Jobs", medium priority); **§K** — unsponsor doesn't invalidate the affected applicants' caches (phantom match for ~15s on the applicant's Matches screen, medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (portfolio, DOB, LinkedIn, unused address/phone — cleanup + PII minimization, low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
+>
+> **New feature requests (see the "🆕 New Features" section near the end):** **§N1** — report/block a user (App Store requirement, top priority, UX plan Phase 4); **§N2** — `/api/referrals/` doesn't return the current pipeline check-in stage, blocking real cross-party pipeline visibility (medium priority, UX plan Phase 5).
 >
 > Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
 
@@ -383,3 +385,100 @@ for uid in affected:
 - No endpoint contract changes are required for the frontend — `updateGeneralProfile` simply stops sending `portfolio_url` (and, once the UI is removed, `street`/`zip`/`country`). The fields remaining in the PATCH schema are harmless if unused.
 
 **Frontend status:** Phase 4 removed the Portfolio field UI. The address street/ZIP/country fields and the (unused) phone field are documented here for a follow-up pass — deliberately deferred rather than ripped out of the tightly-coupled address editor before the onboarding branch has been run on-device.
+
+---
+
+# 🆕 New Features — Backend Support Needed
+
+> This section is separate from the bug-fix tickets above (§B–§L). Those track things the backend already contracts for but doesn't do correctly; **this section tracks backend work for entirely new product features** proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). Entries are numbered **§N1, §N2, …** — independent of the §B–§L lettering above — and appended here as each phase is actually built, not speculatively written in advance.
+>
+> Note: "Phase 4" here refers to the UX improvement plan's **Phase 4 — Safety & Instant Relief**, unrelated to the onboarding-rework "Phase 4" referenced in §L above. Sorry for the overloaded term — two different efforts used the same phase-numbering habit.
+
+## §N1 — Report a user / block a user (UX Plan Phase 4) 🔴 App Store requirement
+
+**Why:** The app has messaging and user-generated content (bios, prompts, messages) but currently only offers **Unmatch** — no way to report abusive behavior or block a user from re-matching. Apple App Store Review Guideline 1.2 requires apps with user-generated content and person-to-person communication to provide (a) a mechanism to report objectionable content/users and (b) the ability to block abusive users. This is expected to gate submission review.
+
+**Frontend status (shipped 2026-07-04):** The thread "..." menu (`components/MessagesView.tsx`) is now a two-step sheet — Report / Unmatch / Cancel, then a reason picker (harassment, spam, inappropriate, fake profile, other) with an optional detail field. Reporting always closes the conversation via the already-shipped `unmatchConversation` endpoint regardless of whether `/api/reports/` exists yet, so the user-visible safety outcome works today; the report call itself (`reportUser()` in `lib/api.ts`) is best-effort and logs a warning on failure rather than blocking the close. **Not yet built:** a report affordance on the public profile view (pre-match) — scoped out for now since reporting typically applies to people you've actually matched/communicated with.
+
+### Requested backend support
+
+```
+POST /api/reports/                      (auth required)
+  body: {
+    reported_user_id: string,
+    reason: string,            // enum: "harassment" | "spam" | "inappropriate" | "fake_profile" | "other"
+    detail?: string,           // free text, optional
+    conversation_id?: string,  // context, if reported from a thread
+  }
+→ 200 { message: string }
+```
+
+- Insert an audit row (new table, e.g. `moderation.reports`) capturing reporter, reported user, reason, detail, timestamp, and conversation context if present. No automated action required initially — manual review is acceptable for a closed beta.
+- **Blocking**: reporting a user should also insert/flip a block relationship (or reuse/extend the existing unmatch mechanism) so:
+  - Existing conversations between the two users close (mirroring what `unmatchConversation` already does).
+  - Neither user can be shown to the other in future decks/matches (extend the like/match query exclusions the same way self-likes are excluded in §J).
+- A **separate, lighter "Block" action** (no report reason required) may also be wanted so a user can silently block without filing a report — same backend relationship, just skip the reason/detail fields. Product call on whether both actions ship together or Report implies Block only.
+
+### Acceptance test
+
+User A reports/blocks User B from a conversation. B disappears from A's Matches/deck immediately (and vice versa), any open conversation between them closes, and the report row is queryable for manual review.
+
+---
+
+## §N2 — `GET /api/referrals/` doesn't return the current pipeline stage (UX Plan Phase 5) 🟡 Medium priority
+
+**Why:** Referral check-ins are write-only today. `POST /api/referrals/<id>/checkin/` (applicant) and `POST /api/referrals/checkin/batch/` (sponsor) record a stage update (per `SponsorCheckInModal.tsx`'s own comment: *"Backend stores referrals in REFERRED/WITHDRAWN at row level; per-stage state lives in `matching.referral_checkins`"*), but `GET /api/referrals/` never reads that table back — it only ever returns the row-level `REFERRED`/`WITHDRAWN` status. So there is currently no way for a sponsor to see what stage an applicant self-reported, or vice versa.
+
+This blocked building real "Your Pipeline" visibility, one of the highest-value items from the UX audit (referral status was found to be the app's most differentiated data and its most buried UI — previously visible only inside the check-in modals, never inline).
+
+**Frontend status (shipped 2026-07-04, partial):** Added a visual pipeline stage timeline (`components/ui/PipelineStageTimeline.tsx`) inline on both the sponsor's "Active Pipeline" and the applicant's "Referrals Received" cards in `MatchesView.tsx`. Since the backend doesn't return the real stage, it's currently backed by a **client-side local mirror** (`utils/checkInStageCache.ts`) that remembers what stage *this device* most recently submitted, written by both check-in modals on successful submit. **This only reflects the submitting user's own last update — it does NOT show the other party's reported stage**, which is the actual point of a shared pipeline view. The Referral type's new `checkInStage` field already prefers a backend value (`CHECKIN_STAGE`/`checkin_stage`) over the local cache, so real data lights this up automatically the moment it ships — no frontend change needed.
+
+### Requested backend change
+
+Have `GET /api/referrals/` join the latest row from `matching.referral_checkins` per referral (ordered by created_at desc, limit 1) and include it in the response, e.g.:
+
+```
+{
+  ...existing referral fields,
+  "CHECKIN_STAGE": "Recruiter Screen",   // latest stage from referral_checkins, or null if none yet
+  "CHECKIN_UPDATED_AT": "2026-07-03T18:22:00Z"
+}
+```
+
+### Acceptance test
+
+Applicant submits a check-in moving a referral to "HM Interview". Sponsor (on a different device/account) refreshes their Matches screen — the pipeline timeline for that referral now shows "HM Interview" as the current stage, without the sponsor having submitted anything themselves.
+
+---
+
+## UX Plan Phase 6 — Retention: no backend work needed
+
+The original 5-phase plan assumed Phase 6 (daily-deck reminder, referral check-in nudges, unfinished-deck reminder) would need backend-scheduled push (cron + push payloads). On implementation, all three turned out to be fully solvable **client-side**, so there's no backend ticket here:
+
+- **Daily deck reminder** — scheduled as an on-device **local** notification (`expo-notifications`' `DAILY` trigger type, not a server push) for 9am local time, right after push permission is confirmed granted. See `lib/localNotifications.ts`. The app already caches the applicant/sponsor deck per calendar day (`HomeView.tsx`'s `isSameDay` check), so a fixed local time is a safe bet that a fresh deck exists by then — no server round-trip needed to know that.
+- **Unfinished-deck reminder** — a one-time local notification scheduled when the app backgrounds with cards still left in today's deck (`MainApp.tsx`'s `AppState` listener), canceled the moment the app returns to the foreground.
+- **Referral check-in nudge** — an in-app banner on the Matches screen (not a push at all) surfacing referrals stuck at "Referred" for 7+ days, computed entirely from the already-fetched referrals list. See the `staleReferrals` memo in `MatchesView.tsx`.
+
+Worth revisiting if a *server-triggered* push turns out to be wanted later (e.g. to reach users who've disabled the app's local-notification permission specifically but still have push enabled some other way — an edge case, since both share the same OS permission today).
+
+---
+
+## UX Plan Phase 7 — Match-to-referral funnel: no backend work needed (one design constraint discovered)
+
+All three Phase 7 items (conversation starters, in-thread referral prompt, sponsor cold-start fix) shipped client-only. One real constraint surfaced while building the cold-start fix, worth recording:
+
+- **Conversation starters** and **in-thread referral prompt** are pure client logic — templated openers built from data already on the conversation object (`MessagesView.tsx`'s `getConversationStarters`), and a message-count-based nudge toward the existing Refer button (`sponsorReferralPromptEligible`). No new endpoints.
+- **Sponsor cold-start fix** — originally planned to show "We found N open roles at {company}" **during** the company question, mid-questionnaire. That's not possible with the current auth model: `GET /api/jobs/browse/` and `GET /api/ats/organizations/` (§G) both require auth, and a sponsor isn't registered until the *last* question of the questionnaire — there's no token yet, and no saved `sponsor_profiles.COMPANY` for the browse endpoint's server-side filter to key off of. Moved the role-picker to run **immediately after registration** instead (`SponsorQuestionnaire.tsx`, right after `setAuthTokens`), which is the earliest point it's actually possible — the practical outcome (exit onboarding with a live deck) is unchanged.
+- The role-picker's `sponsorJob()` call uses a simplified insights payload (`insiderInsights` only, one optional text field) rather than the full 4-field wizard (`dayToDay`/`teamCulture`/`idealCandidate`/`insiderInsights`) the Jobs tab's sponsor flow collects. This is a **known quality tradeoff**, not a backend gap — sponsors can enrich the role's insights later from the Jobs tab. Flagging in case product wants the onboarding version to collect the same depth (would mean porting more of `JobsView.tsx`'s sponsor-flow UI into onboarding).
+
+---
+
+## UX Plan Phase 8 — Agency & growth (8.3 only — see note)
+
+Phase 8's applicant job browse (8.1) and its §N3 backend question moved to its own `applicant-jobs-browse` branch (pending backend confirmation before merging). The share-a-job item (8.2) was descoped by product. This branch carries 8.3 only:
+
+- **8.3 — Sponsor-request follow-through** — the "N employees notified" message a sponsor-request returns is never persisted server-side, so (same shape as §N2's check-in-stage gap) it's mirrored client-side (`utils/sponsorRequestCache.ts`) and shown later on the Waitlisted-job detail in `MatchesView.tsx`, plus a "Nudge again" button that re-sends the request once a waitlisted job has gone 5+ days without being picked up. This is a client-only local mirror with the same limitation as §N2 — it only reflects what THIS device requested, not a durable record. No backend ticket filed for this one since the existing `request-sponsor` endpoint already supports being called again (re-notifying), which is all "nudge again" needs.
+
+---
+
+*(Further entries for later UX-plan phases — agency/growth — will be appended here as those phases are implemented.)*

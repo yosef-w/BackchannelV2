@@ -17,10 +17,16 @@ import {
     likeBackSponsor,
     likeProfile,
     listReferrals,
+    requestSponsorForJob,
     sponsorJob,
     withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
+import { getLocalCheckInStages } from "@/utils/checkInStageCache";
+import {
+    getSponsorRequestOutcomes,
+    saveSponsorRequestOutcome,
+} from "@/utils/sponsorRequestCache";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
@@ -44,7 +50,7 @@ import {
     X,
     Zap,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -73,6 +79,7 @@ import Animated, {
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
+import { PipelineStageTimeline } from "./ui/PipelineStageTimeline";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -159,6 +166,15 @@ interface Referral {
    * card will light up automatically once the backend joins it in.
    */
   jobLogoUrl?: string | null;
+  /**
+   * Latest pipeline stage (e.g. "Recruiter Screen"). /api/referrals/ doesn't
+   * return this yet (see docs/BACKEND_CHANGES_NEEDED.md §N2) — it's merged
+   * in client-side from checkInStageCache.ts, which only reflects what the
+   * CURRENT user last submitted from THIS device. Optional so the field
+   * lights up for real, cross-party data automatically once the backend
+   * ships it.
+   */
+  checkInStage?: string | null;
 }
 
 interface JobOpportunity {
@@ -276,6 +292,14 @@ interface WaitlistedJob {
    * organization initial when absent.
    */
   organization_logo?: string | null;
+  /**
+   * The context-aware message the backend returned at request time (e.g.
+   * "5 employees notified at Stripe"). Not persisted server-side — merged
+   * in client-side from sponsorRequestCache.ts, so this only reflects a
+   * request made from THIS device. Undefined when no cached outcome exists
+   * (e.g. the job was waitlisted without ever calling request-sponsor).
+   */
+  outcomeMessage?: string;
 }
 
 const QUICK_REPLIES = [
@@ -332,6 +356,7 @@ const getRelativeTime = (dateStr: string): string => {
 export function MatchesView({
   userType = "sponsor",
   onNavigateToMessages,
+  onOpenCheckIn,
 }: {
   userType?: "applicant" | "sponsor";
   // Second arg is the counterpart user id (the OTHER participant in the
@@ -341,6 +366,13 @@ export function MatchesView({
   // shares the same jobId. Optional for legacy call sites where there can
   // only ever be one conversation per job (applicant→sponsor direction).
   onNavigateToMessages?: (jobId: string, userId?: string) => void;
+  /**
+   * Opens the global referral check-in modal (owned by MainApp, triggered
+   * normally via the header clipboard icon). Wired to the stale-referral
+   * nudge banner below so "Check in now" doesn't need its own duplicate
+   * modal — it just opens the same one, pre-loaded with the same data.
+   */
+  onOpenCheckIn?: () => void;
 }) {
   const [selectedProfile, setSelectedProfile] = useState<Match | null>(null);
   // Role-picker for grouped match cards: when a person is matched on several
@@ -411,6 +443,8 @@ export function MatchesView({
   // cached via useQuery below; only the selection/spinner UI state stays local.
   const [selectedWaitlistedJob, setSelectedWaitlistedJob] =
     useState<WaitlistedJob | null>(null);
+  const [isNudgingSponsorRequest, setIsNudgingSponsorRequest] =
+    useState(false);
 
   const [withdrawingReferralId, setWithdrawingReferralId] = useState<
     string | null
@@ -552,6 +586,27 @@ export function MatchesView({
   // refetch in the background and stay in sync.
   const refreshMatchSections = () => {
     queryClient.invalidateQueries({ queryKey: matchesScreenKeys.root });
+  };
+
+  // Re-send a sponsor request for a waitlisted job that's gone quiet. Closes
+  // the "request → silence" loop the original request-sponsor flow left
+  // open — previously the only way to nudge again was to find the job in
+  // the deck a second time (if it even reappeared).
+  const handleNudgeSponsorRequest = async (job: WaitlistedJob) => {
+    setIsNudgingSponsorRequest(true);
+    try {
+      const res = await requestSponsorForJob(job.job_id);
+      if (res.message) {
+        await saveSponsorRequestOutcome(job.job_id, res.message);
+      }
+      refreshMatchSections();
+      showToast(res.message || "Request sent again.", "success");
+    } catch (err) {
+      console.warn("[MatchesView] Failed to nudge sponsor request:", err);
+      showToast("Couldn't send that right now. Please try again.", "error");
+    } finally {
+      setIsNudgingSponsorRequest(false);
+    }
   };
 
   // Pull-to-refresh. Nothing else live-updates this screen (no socket, and a
@@ -874,8 +929,14 @@ export function MatchesView({
     queryKey: matchesScreenKeys.waitlistedJobs(userType),
     enabled: userType === "applicant",
     queryFn: async (): Promise<WaitlistedJob[]> => {
-      const response = await getWaitlistedJobs();
-      return response.jobs;
+      const [response, outcomes] = await Promise.all([
+        getWaitlistedJobs(),
+        getSponsorRequestOutcomes(),
+      ]);
+      return response.jobs.map((j) => ({
+        ...j,
+        outcomeMessage: outcomes[j.job_id]?.message,
+      }));
     },
   });
   const waitlistedJobsError =
@@ -893,33 +954,49 @@ export function MatchesView({
     queryKey: matchesScreenKeys.referrals(userType),
     queryFn: async (): Promise<Referral[]> => {
       try {
-        const response = await listReferrals({ limit: 50, offset: 0 });
+        const [response, localStages] = await Promise.all([
+          listReferrals({ limit: 50, offset: 0 }),
+          getLocalCheckInStages(),
+        ]);
 
         return (response.referrals || []).map(
-          (r: any) => ({
-            referralId: r.REFERRAL_ID || r.referral_id || "",
-            jobId: r.JOB_ID || r.job_id || "",
-            applicantUserId: r.APPLICANT_USER_ID || r.applicant_user_id || "",
-            sponsorUserId: r.SPONSOR_USER_ID || r.sponsor_user_id || "",
-            status: r.STATUS || r.status || "REFERRED",
-            referralNote: r.REFERRAL_NOTE || r.referral_note || null,
-            createdAt: r.CREATED_AT || r.created_at || "",
-            applicantFirstName:
-              r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
-            applicantLastName:
-              r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
-            applicantPhotoUrl:
-              r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
-            sponsorFirstName:
-              r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
-            sponsorLastName: r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
-            sponsorPhotoUrl: r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
-            jobTitle: r.JOB_TITLE || r.job_title || null,
-            jobCompany: r.JOB_COMPANY || r.job_company || null,
-            // Forward-compat — backend doesn't ship logos on /api/referrals/
-            // yet; component falls back to initial when this is null.
-            jobLogoUrl: r.LOGO_URL || r.logo_url || r.ORGANIZATION_LOGO || null,
-          }),
+          (r: any) => {
+            const referralId = r.REFERRAL_ID || r.referral_id || "";
+            return {
+              referralId,
+              jobId: r.JOB_ID || r.job_id || "",
+              applicantUserId: r.APPLICANT_USER_ID || r.applicant_user_id || "",
+              sponsorUserId: r.SPONSOR_USER_ID || r.sponsor_user_id || "",
+              status: r.STATUS || r.status || "REFERRED",
+              referralNote: r.REFERRAL_NOTE || r.referral_note || null,
+              createdAt: r.CREATED_AT || r.created_at || "",
+              applicantFirstName:
+                r.APPLICANT_FIRST_NAME || r.applicant_first_name || null,
+              applicantLastName:
+                r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
+              applicantPhotoUrl:
+                r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
+              sponsorFirstName:
+                r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
+              sponsorLastName:
+                r.SPONSOR_LAST_NAME || r.sponsor_last_name || null,
+              sponsorPhotoUrl:
+                r.SPONSOR_PHOTO_URL || r.sponsor_photo_url || null,
+              jobTitle: r.JOB_TITLE || r.job_title || null,
+              jobCompany: r.JOB_COMPANY || r.job_company || null,
+              // Forward-compat — backend doesn't ship logos on /api/referrals/
+              // yet; component falls back to initial when this is null.
+              jobLogoUrl:
+                r.LOGO_URL || r.logo_url || r.ORGANIZATION_LOGO || null,
+              // Backend field, when it ships (§N2), takes priority over the
+              // local mirror automatically since it'll be non-null here.
+              checkInStage:
+                r.CHECKIN_STAGE ||
+                r.checkin_stage ||
+                localStages[referralId] ||
+                null,
+            };
+          },
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -932,6 +1009,23 @@ export function MatchesView({
   });
   const referralsError =
     referralsErrorObj instanceof Error ? referralsErrorObj.message : null;
+
+  // Stale-referral nudge — a referral that's been sitting at "Referred"
+  // (no progress reported) for a week or more is exactly the kind of thing
+  // that otherwise silently rots: the applicant forgets to update, the
+  // sponsor never finds out either way. Surfaced as a banner rather than a
+  // push, since it needs no backend support at all — just today's already-
+  // fetched referrals list.
+  const STALE_REFERRAL_DAYS = 7;
+  const staleReferrals = useMemo(() => {
+    const cutoff = Date.now() - STALE_REFERRAL_DAYS * 24 * 60 * 60 * 1000;
+    return referrals.filter((r) => {
+      if (r.status !== "REFERRED") return false;
+      if (r.checkInStage && r.checkInStage !== "Referred") return false;
+      const created = Date.parse(r.createdAt);
+      return !isNaN(created) && created <= cutoff;
+    });
+  }, [referrals]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
@@ -1424,6 +1518,33 @@ export function MatchesView({
           </Text>
         </View>
 
+        {/* Stale-referral nudge — see the staleReferrals memo above for
+            exactly what counts. Only rendered when there's something to
+            act on, and only when the parent actually wired up a way to
+            open the check-in modal. */}
+        {staleReferrals.length > 0 && onOpenCheckIn && (
+          <TouchableOpacity
+            style={styles.staleReferralBanner}
+            onPress={onOpenCheckIn}
+            activeOpacity={0.85}
+          >
+            <View style={styles.staleReferralIconCircle}>
+              <Clock size={18} color="#000" strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.staleReferralTitle}>
+                {staleReferrals.length === 1
+                  ? "A referral needs a status update"
+                  : `${staleReferrals.length} referrals need a status update`}
+              </Text>
+              <Text style={styles.staleReferralSubtitle}>
+                No update in over a week — check in now
+              </Text>
+            </View>
+            <ChevronRight size={18} color="#999" />
+          </TouchableOpacity>
+        )}
+
         {userType === "sponsor" ? (
           /* SPONSOR VIEW */
           <>
@@ -1810,6 +1931,11 @@ export function MatchesView({
                             {isReferred ? "Referred" : "Withdrawn"}
                           </Text>
                         </View>
+                        {isReferred && (
+                          <PipelineStageTimeline
+                            currentStage={referral.checkInStage}
+                          />
+                        )}
                       </View>
                       <View style={styles.pipelineActions}>
                         {matchForReferral && (
@@ -2356,6 +2482,12 @@ export function MatchesView({
                             </Text>
                           </View>
                         </View>
+
+                        {isReferred && (
+                          <PipelineStageTimeline
+                            currentStage={referral.checkInStage}
+                          />
+                        )}
                       </TouchableOpacity>
                     </Animated.View>
                   );
@@ -3220,6 +3352,20 @@ export function MatchesView({
                         We’ll notify you as soon as someone sponsors this role.
                         Keep an eye on your notifications.
                       </Text>
+                      {!!selectedWaitlistedJob.outcomeMessage && (
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: "#888",
+                            lineHeight: 17,
+                            fontWeight: "500",
+                            marginTop: 10,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {selectedWaitlistedJob.outcomeMessage}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 )}
@@ -3231,12 +3377,50 @@ export function MatchesView({
                     fontWeight: "600",
                     color: "#BBB",
                     textAlign: "center",
-                    marginBottom: 28,
+                    marginBottom: 16,
                   }}
                 >
                   Waitlisted{" "}
                   {getRelativeTime(selectedWaitlistedJob.waitlisted_at)}
                 </Text>
+
+                {/* Nudge again — only once the request has gone quiet for a
+                    while; re-sending immediately would just be noise. */}
+                {!selectedWaitlistedJob.is_now_sponsored &&
+                  Date.now() -
+                    new Date(selectedWaitlistedJob.waitlisted_at).getTime() >=
+                    5 * 24 * 60 * 60 * 1000 && (
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: "#000",
+                        borderRadius: 16,
+                        paddingVertical: 16,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 12,
+                        opacity: isNudgingSponsorRequest ? 0.6 : 1,
+                      }}
+                      onPress={() =>
+                        handleNudgeSponsorRequest(selectedWaitlistedJob)
+                      }
+                      disabled={isNudgingSponsorRequest}
+                      activeOpacity={0.85}
+                    >
+                      {isNudgingSponsorRequest ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <Text
+                          style={{
+                            color: "#FFF",
+                            fontSize: 14,
+                            fontWeight: "700",
+                          }}
+                        >
+                          Nudge again
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
               </ScrollView>
             )}
           </DismissibleSheet>
@@ -4052,6 +4236,37 @@ const styles = StyleSheet.create({
   header: { marginBottom: 30 },
   title: { fontSize: 32, fontWeight: "800", letterSpacing: -1 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 4 },
+  staleReferralBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 30,
+  },
+  staleReferralIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  staleReferralTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  staleReferralSubtitle: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
   sectionContainer: { marginBottom: 40 },
   listSectionTitle: {
     fontSize: 12,

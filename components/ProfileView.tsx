@@ -10,13 +10,11 @@ import {
     CheckCircle2,
     ChevronRight,
     Edit,
+    Eye,
     FileText,
-    GraduationCap,
     ImageIcon,
-    Lock,
     LogOut,
     MapPin,
-    Plus,
     RefreshCw,
     Target,
     Trash2,
@@ -28,8 +26,6 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    KeyboardAvoidingView,
-    Linking,
     Modal,
     Platform,
     SafeAreaView,
@@ -46,25 +42,20 @@ import Animated, {
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
-import { GOOGLE_PLACES_API_KEY, PREMIUM_ENABLED } from "../constants/config";
-import { CITY_NAMES_ONLY, COUNTRIES, US_STATES } from "../constants/locations";
-import { ALL_SKILLS } from "../constants/skills";
+import { PREMIUM_ENABLED } from "../constants/config";
 import {
     resetUser,
     trackAccountDeleted,
     trackLogout,
-    trackPrivacyPolicyTapped,
     trackProfileEditOpened,
     trackProfileFieldUpdated,
     trackProfilePhotoUploaded,
     trackResumeReuploaded,
-    trackTermsTapped,
 } from "../lib/analytics/mixpanel";
 import {
-    changeEmail,
-    changePassword,
     classifyResume,
     deactivateAccount,
+    getBasicProfile,
     getExtractedResumeText,
     logout,
     unregisterDevice,
@@ -84,6 +75,10 @@ import {
     ProfessionalExperience,
     useUserProfileStore,
 } from "../stores/useUserProfileStore";
+import {
+    cancelDailyDeckReminder,
+    cancelUnfinishedDeckReminder,
+} from "../lib/localNotifications";
 import { logBreadcrumb, Sentry } from "../lib/sentry";
 import { validateProfileField } from "../lib/validation";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
@@ -93,10 +88,14 @@ import {
   SPONSOR_PROMPT_CATEGORIES,
   SPONSOR_PROMPT_EXAMPLES,
 } from "../constants/prompts";
-import { AutocompleteInput } from "./ui/AutocompleteInput";
-import { CharCounter } from "./ui/CharCounter";
+import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
+import { EditorScreen } from "./profile/EditorScreen";
+import { EditProfileScreen } from "./profile/EditProfileScreen";
+import { NotificationsScreen } from "./profile/NotificationsScreen";
+import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
+import { ResumeScreen } from "./profile/ResumeScreen";
+import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 import { ExpandableText } from "./ui/ExpandableText";
-import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
 import { PromptsIntake } from "./ui/PromptsIntake";
 
 interface ProfileViewProps {
@@ -142,11 +141,6 @@ interface ProfileInsight {
   question: string;
   answer: string;
 }
-
-// Public legal pages (hosted). Settings links open these in the browser so the
-// in-app text and the App Store-listed policy URLs never drift apart.
-const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
-const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 
 export function ProfileView({ userType }: ProfileViewProps) {
   const router = useRouter();
@@ -209,11 +203,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
+  // "Preview my profile" — reuses the same public-profile views sponsors and
+  // applicants see of EACH OTHER, pointed at your own USER_ID instead. Seeing
+  // your own card as others see it is the strongest nudge to fill in the
+  // weak spots (missing bio, thin insights, etc).
+  const [showPreviewCard, setShowPreviewCard] = useState(false);
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [showEmailChange, setShowEmailChange] = useState(false);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
 
@@ -231,18 +230,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [resumeElapsedSecs, setResumeElapsedSecs] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Password change state
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-
-  // Email change modal state
-  const [newEmail, setNewEmail] = useState("");
-  const [emailPassword, setEmailPassword] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [emailChanging, setEmailChanging] = useState(false);
 
   // Editable profile state
   const [name, setName] = useState("");
@@ -305,12 +292,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [willingToRelocate, setWillingToRelocate] = useState("");
   const [requiresSponsorship, setRequiresSponsorship] = useState("");
 
-  // Personal information fields (for edit profile modal)
-  const [street, setStreet] = useState("");
+  // Personal information fields (for edit profile modal). Only city/state
+  // feed the "location" the app actually reads — see handleSaveLocation.
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
-  const [country, setCountry] = useState("");
 
   // Editable tags state
   const [expertise, setExpertise] = useState<string[]>([]);
@@ -323,39 +308,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
   // Temp states for editing
   const [tempValue, setTempValue] = useState("");
   const [newTag, setNewTag] = useState("");
-  const [newRoleTag, setNewRoleTag] = useState("");
 
-  // Notification settings — sourced from the store, persisted via
-  // PATCH /api/profile/update/ { notification_preferences }.
-  // Backend gate lives in services/notifications.py:create_notification —
-  // missing keys default to enabled, so `undefined` reads as `true`.
-  const notificationPreferences = userProfileData.notificationPreferences || {};
-  const updateNotificationPreferences = useUserProfileStore(
-    (state) => state.updateNotificationPreferences,
-  );
-  const [notifSaving, setNotifSaving] = useState<string | null>(null);
   const showToast = useToastStore((state) => state.showToast);
-
-  const isNotifEnabled = (
-    key: "match" | "message" | "referral" | "waitlist" | "job_like" | "sponsor_request",
-  ) => notificationPreferences[key] !== false;
-
-  const handleNotifToggle = async (
-    key: "match" | "message" | "referral" | "waitlist" | "job_like" | "sponsor_request",
-    next: boolean,
-  ) => {
-    setNotifSaving(key);
-    try {
-      await updateNotificationPreferences({ [key]: next });
-    } catch {
-      showToast(
-        "Notification setting could not be saved. Please try again.",
-        "error",
-      );
-    } finally {
-      setNotifSaving(null);
-    }
-  };
 
   // Profile completeness check - recalculate when userProfileData changes
   const profileCompletion = useMemo(() => {
@@ -391,11 +345,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
       );
       setPhone(userProfileData.personal.phone);
       setProfileImage(userProfileData.personal.profileImage || null);
-      setStreet(userProfileData.personal.address.street);
       setCity(userProfileData.personal.address.city);
       setState(userProfileData.personal.address.state);
-      setZip(userProfileData.personal.address.zip);
-      setCountry(userProfileData.personal.address.country);
       setLocation(
         `${userProfileData.personal.address.city}${userProfileData.personal.address.state ? ", " + userProfileData.personal.address.state : ""}`,
       );
@@ -639,13 +590,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
     setTempValue(currentValue);
   };
 
-  const handleSaveField = async (field: string) => {
+  // `valueOverride` lets autosave-on-blur screens (e.g. EditProfileScreen)
+  // pass the field's current text directly, since they don't go through the
+  // tap-to-edit `editingField`/`tempValue` flow the older modals used.
+  const handleSaveField = async (field: string, valueOverride?: string) => {
     trackProfileFieldUpdated({ field });
+    const rawValue = valueOverride !== undefined ? valueOverride : tempValue;
     // Validate + clean before persisting. Rejects clearly-bad input (a phone
     // that isn't a phone, a malformed link, an impossible year/GPA) with a
     // toast, and trims/collapses/caps everything else so a single field can't
     // break the UI or the DB. `valueToSave` replaces the raw tempValue below.
-    const { ok, cleaned, error } = validateProfileField(field, tempValue);
+    const { ok, cleaned, error } = validateProfileField(field, rawValue);
     if (!ok) {
       showToast(error || "Please check this field and try again.", "error");
       return;
@@ -779,44 +734,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
             await updateApplicantProfile({ requires_sponsorship: valueToSave });
           }
           break;
-        case "street":
-          setStreet(valueToSave);
-          await updatePersonal({
-            address: { ...userProfileData.personal.address, street: valueToSave },
-          });
-          await updateGeneralProfile({ street: valueToSave });
-          break;
-        case "city":
-          setCity(valueToSave);
-          await updatePersonal({
-            address: { ...userProfileData.personal.address, city: valueToSave },
-          });
-          await updateGeneralProfile({ city: valueToSave });
-          break;
-        case "state":
-          setState(valueToSave);
-          await updatePersonal({
-            address: { ...userProfileData.personal.address, state: valueToSave },
-          });
-          await updateGeneralProfile({ state: valueToSave });
-          break;
-        case "zip":
-          setZip(valueToSave);
-          await updatePersonal({
-            address: { ...userProfileData.personal.address, zip: valueToSave },
-          });
-          await updateGeneralProfile({ zip: valueToSave });
-          break;
-        case "country":
-          setCountry(valueToSave);
-          await updatePersonal({
-            address: {
-              ...userProfileData.personal.address,
-              country: valueToSave,
-            },
-          });
-          await updateGeneralProfile({ country: valueToSave });
-          break;
+        // city/state are saved as a combined "location" string —
+        // see handleSaveLocation, used by EditProfileScreen's Location field.
         case "workEmail":
           // workEmail is now read-only in the editor — managed via onboarding.
           break;
@@ -830,34 +749,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
-  // Batch-save all 5 address fields after a Google Places selection.
-  // updateGeneralProfile already accepts the full set in one PATCH, and
-  // updatePersonal takes the merged address object — one network call each.
-  const handleSaveAddress = async (parsed: {
-    street: string;
-    city: string;
-    state: string;
-    zip: string;
-    country: string;
-  }) => {
+  // Location is a single "City, State" string, matching onboarding
+  // (ApplicantQuestionnaire) exactly — the product only ever reads city for
+  // matching/display (see utils/profileCompletion.ts), so there's no
+  // separate street/zip/country to save here.
+  const handleSaveLocation = async (value: string) => {
+    const trimmed = value.trim();
+    const [cityPart, statePart] = trimmed.split(",").map((s) => s.trim());
     try {
-      setStreet(parsed.street);
-      setCity(parsed.city);
-      setState(parsed.state);
-      setZip(parsed.zip);
-      setCountry(parsed.country);
-
-      await updatePersonal({
-        address: { ...userProfileData.personal.address, ...parsed },
-      });
-      await updateGeneralProfile(parsed);
-
-      setEditingField(null);
-      setTempValue("");
-      showToast("Address updated.", "success");
+      setCity(cityPart || "");
+      setState(statePart || "");
+      setLocation(trimmed);
+      await updateGeneralProfile({ location: trimmed });
+      showToast("Profile updated.", "success");
     } catch (error) {
-      console.warn("Failed to save address:", error);
-      showToast("Failed to save address. Please try again.", "error");
+      console.warn("Failed to save location:", error);
+      showToast("Failed to save changes. Please try again.", "error");
     }
   };
 
@@ -907,13 +814,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
         if (desiredRoles.includes(valueToAdd)) {
           showToast("That role has already been added.", "info");
           setNewTag("");
-          setNewRoleTag("");
           return;
         }
         const newDesiredRoles = [...desiredRoles, valueToAdd];
         setDesiredRoles(newDesiredRoles);
         await updateDesiredRolesStore(newDesiredRoles);
-        setNewRoleTag("");
         if (userType === "applicant") {
           await updateApplicantProfile({ desired_roles: newDesiredRoles });
         }
@@ -1527,76 +1432,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     );
   };
 
-  const handleEmailChange = async () => {
-    setEmailError("");
-    if (!newEmail || !emailPassword) {
-      setEmailError("New email and current password are required");
-      return;
-    }
-    // Basic email format check
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
-      setEmailError("Please enter a valid email address");
-      return;
-    }
-    setEmailChanging(true);
-    try {
-      await changeEmail(newEmail.trim(), emailPassword);
-      setEmail(newEmail.trim());
-      await updatePersonal({ email: newEmail.trim() });
-      setNewEmail("");
-      setEmailPassword("");
-      setShowEmailChange(false);
-      showToast("Email updated successfully.", "success");
-    } catch (err: any) {
-      const msg = err?.message || "";
-      if (
-        msg.includes("501") ||
-        msg.toLowerCase().includes("not yet implemented")
-      ) {
-        setEmailError(
-          "Email changes aren't available yet. Please contact support.",
-        );
-      } else {
-        setEmailError(msg || "Failed to update email. Please try again.");
-      }
-    } finally {
-      setEmailChanging(false);
-    }
-  };
-
-  const handlePasswordChange = async () => {
-    setPasswordError("");
-
-    // Validation
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError("All fields are required");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords don't match");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters");
-      return;
-    }
-
-    try {
-      await changePassword(currentPassword, newPassword);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setShowPasswordChange(false);
-      showToast("Password changed successfully.", "success");
-    } catch (err: any) {
-      setPasswordError(
-        err?.message || "Failed to change password. Please try again.",
-      );
-    }
-  };
-
   // Image picker functions
   const requestPermissions = async (type: "camera" | "gallery") => {
     if (type === "camera") {
@@ -1631,8 +1466,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     const otherModalOpen =
       showEditProfile ||
       showEditResume ||
-      showEmailChange ||
-      showPasswordChange ||
       showLogoutModal ||
       showEditInsights ||
       showPrivacySecurity ||
@@ -2005,6 +1838,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
+  const handlePreviewCard = async () => {
+    if (previewUserId) {
+      setShowPreviewCard(true);
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const basic = await getBasicProfile();
+      setPreviewUserId(String(basic.USER_ID));
+      setShowPreviewCard(true);
+    } catch (err) {
+      console.warn("[ProfileView] Failed to load own profile for preview:", err);
+      showToast("Couldn't load your profile preview. Please try again.", "error");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
@@ -2027,6 +1878,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
         // Non-fatal — proceed with logout regardless.
       }
     }
+    // Cancel the locally-scheduled "your deck is ready" / unfinished-deck
+    // reminders too — those are on-device schedules, not backend push, so
+    // unregistering the device token alone wouldn't stop them.
+    cancelDailyDeckReminder();
+    cancelUnfinishedDeckReminder();
     try {
       // Call backend logout to invalidate session
       await logout();
@@ -2653,6 +2509,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
               </View>
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.whiteBtn}
+            onPress={handlePreviewCard}
+          >
+            <Eye color="#000" size={16} />
+            <Text style={styles.whiteBtnText}>
+              {previewLoading ? "Loading…" : "Preview"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -3079,743 +2944,37 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
       </Modal>
 
-      {/* EDIT PROFILE MODAL */}
-      <Modal visible={showEditProfile} transparent animationType="fade">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowEditProfile(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
-            pointerEvents="auto"
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
-              <TouchableOpacity onPress={() => setShowEditProfile(false)}>
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-            {personalMissingCount > 0 && (
-              <View style={styles.modalProgressContainer}>
-                <Text style={styles.modalProgressText}>
-                  {personalMissingCount} field
-                  {personalMissingCount !== 1 ? "s" : ""} remaining:{" "}
-                  {profileCompletion.missingFields
-                    .filter((f) => f.category === "Personal Information")
-                    .map((f) => f.label)
-                    .join(", ")}
-                </Text>
-                <View style={styles.modalProgressBar}>
-                  <View
-                    style={[
-                      styles.modalProgressFill,
-                      {
-                        width: `${Math.max(0, 100 - (personalMissingCount / 15) * 100)}%`,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            )}
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={styles.modalScroll}
-              keyboardShouldPersistTaps="always"
-            >
-              {/* Basic Information Section */}
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>BASIC INFORMATION</Text>
-                <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {/* First Name */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>FIRST NAME</Text>
-                  {isFieldMissing("firstName") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "firstName" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      autoCapitalize="words"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("firstName")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("firstName", firstName)}
-                  >
-                    <Text style={styles.fieldText}>
-                      {firstName || "Not set"}
-                    </Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Last Name */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>LAST NAME</Text>
-                  {isFieldMissing("lastName") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "lastName" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      autoCapitalize="words"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("lastName")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("lastName", lastName)}
-                  >
-                    <Text style={styles.fieldText}>
-                      {lastName || "Not set"}
-                    </Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Role */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>ROLE</Text>
-                  {isFieldMissing("role") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "role" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      autoCapitalize="words"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("role")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("role", role)}
-                  >
-                    <Text style={styles.fieldText}>{role}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Company (Sponsors only) */}
-              {userType === "sponsor" && (
-                <View style={styles.editField}>
-                  <View style={styles.fieldLabelRow}>
-                    <Text style={styles.fieldLabel}>COMPANY</Text>
-                    {!company && !workEmailVerified && (
-                      <Text style={styles.requiredStar}>*</Text>
-                    )}
-                  </View>
-                  {workEmailVerified ? (
-                    // Locked — the verified work email vouches for this company,
-                    // so it can't be changed without re-verifying.
-                    <>
-                      <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
-                        <Text style={styles.fieldText}>{company}</Text>
-                        <Lock color="#999" size={16} />
-                      </View>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          color: "#999",
-                          marginTop: 4,
-                          fontStyle: "italic",
-                        }}
-                      >
-                        Locked to your verified work email. Contact support to
-                        change your company.
-                      </Text>
-                    </>
-                  ) : editingField === "company" ? (
-                    <View style={styles.editRow}>
-                      <TextInput
-                        style={styles.fieldInput}
-                        value={tempValue}
-                        onChangeText={setTempValue}
-                        autoCapitalize="words"
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.saveBtn}
-                        onPress={() => handleSaveField("company")}
-                      >
-                        <Check color="#FFF" size={18} />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.fieldDisplay}
-                      onPress={() => handleEditField("company", company)}
-                    >
-                      <Text style={styles.fieldText}>{company}</Text>
-                      <Edit color="#666" size={16} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-
-              {/* Login email — read-only. The backend change-email endpoint
-                  still returns 501 (not implemented), so we don't expose the
-                  always-failing change modal. The modal + handlers below stay
-                  dormant and can be re-enabled the moment the backend ships
-                  the verification flow. Mirrors the work-email field's
-                  read-only treatment. */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>EMAIL</Text>
-                </View>
-                <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
-                  <Text style={styles.fieldText}>{email}</Text>
-                  <Lock color="#999" size={16} />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: "#999",
-                    marginTop: 4,
-                    fontStyle: "italic",
-                  }}
-                >
-                  The email you log in with. Can&apos;t be changed here yet —
-                  contact support to update it.
-                </Text>
-              </View>
-
-              {/* Work Email — sponsor only, read-only (set via questionnaire / onboarding) */}
-              {userType === "sponsor" && (
-                <View style={styles.editField}>
-                  <View style={styles.fieldLabelRow}>
-                    <Text style={styles.fieldLabel}>WORK EMAIL</Text>
-                  </View>
-                  <View style={[styles.fieldDisplay, { opacity: 0.6 }]}>
-                    <Text
-                      style={[
-                        styles.fieldText,
-                        !workEmail && { color: "#999", fontStyle: "italic" },
-                      ]}
-                    >
-                      {workEmail || "Not set"}
-                    </Text>
-                    <Lock color="#999" size={16} />
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: "#999",
-                      marginTop: 4,
-                      fontStyle: "italic",
-                    }}
-                  >
-                    Your corporate email — helps verify your employer. Cannot be
-                    changed here. Contact support to update it.
-                  </Text>
-                </View>
-              )}
-
-              {/* Phone */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>PHONE</Text>
-                  {isFieldMissing("phone") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "phone" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      keyboardType="phone-pad"
-                      autoCapitalize="none"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("phone")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("phone", phone)}
-                  >
-                    <Text style={styles.fieldText}>{phone}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Bio */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>BIO</Text>
-                  {isFieldMissing("bio") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "bio" ? (
-                  <View style={styles.editColumn}>
-                    <TextInput
-                      style={[styles.fieldInput, styles.bioInput]}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      multiline
-                      numberOfLines={4}
-                      maxLength={1000}
-                      autoCapitalize="sentences"
-                      autoFocus
-                    />
-                    <CharCounter count={tempValue.length} max={1000} />
-                    <TouchableOpacity
-                      style={[
-                        styles.saveBtn,
-                        { alignSelf: "flex-end", marginTop: 8 },
-                      ]}
-                      onPress={() => handleSaveField("bio")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("bio", bio)}
-                  >
-                    <Text style={styles.fieldText}>{bio}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Contact & Links Section */}
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>CONTACT & LINKS</Text>
-                <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {/* Address Section */}
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>ADDRESS</Text>
-                <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {/* Street */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>STREET ADDRESS</Text>
-                  {isFieldMissing("street") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "street" ? (
-                  GOOGLE_PLACES_API_KEY ? (
-                    // Places API (New) autocomplete. On selection we batch-save
-                    // all 5 address fields. Users can also tap "Or enter manually"
-                    // to fall back to free text — useful when Google misparses
-                    // unit numbers, or for addresses Google doesn't know about.
-                    <PlacesAutocomplete
-                      autoFocus
-                      inputStyle={styles.fieldInput}
-                      onSelect={handleSaveAddress}
-                      onError={(message) => showToast(message, "error")}
-                      onSwitchToManual={() => {
-                        setTempValue(street);
-                        setEditingField("street_manual");
-                      }}
-                    />
-                  ) : (
-                    <View style={styles.editRow}>
-                      <TextInput
-                        style={styles.fieldInput}
-                        value={tempValue}
-                        onChangeText={setTempValue}
-                        autoCapitalize="words"
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.saveBtn}
-                        onPress={() => handleSaveField("street")}
-                      >
-                        <Check color="#FFF" size={18} />
-                      </TouchableOpacity>
-                    </View>
-                  )
-                ) : editingField === "street_manual" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      autoCapitalize="words"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("street")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("street", street)}
-                  >
-                    <Text style={styles.fieldText}>{street || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* City */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>CITY</Text>
-                  {isFieldMissing("city") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "city" ? (
-                  <View style={styles.editRow}>
-                    <AutocompleteInput
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      onSelect={(selectedCity) => {
-                        setTempValue(selectedCity);
-                      }}
-                      suggestions={CITY_NAMES_ONLY}
-                      placeholder="e.g., San Francisco"
-                      autoFocus
-                      style={styles.fieldInput}
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("city")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("city", city)}
-                  >
-                    <Text style={styles.fieldText}>{city || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* State */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>STATE</Text>
-                  {isFieldMissing("state") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "state" ? (
-                  <View style={styles.editRow}>
-                    <AutocompleteInput
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      onSelect={(selectedState) => {
-                        setTempValue(selectedState);
-                      }}
-                      suggestions={US_STATES}
-                      placeholder="e.g., California"
-                      autoFocus
-                      style={styles.fieldInput}
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("state")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("state", state)}
-                  >
-                    <Text style={styles.fieldText}>{state || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Zip */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>ZIP CODE</Text>
-                  {isFieldMissing("zip") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "zip" ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      style={styles.fieldInput}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      keyboardType="numeric"
-                      autoCapitalize="none"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("zip")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("zip", zip)}
-                  >
-                    <Text style={styles.fieldText}>{zip || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Country */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>COUNTRY</Text>
-                  {isFieldMissing("country") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                {editingField === "country" ? (
-                  <View style={styles.editRow}>
-                    <AutocompleteInput
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      onSelect={(selectedCountry) => {
-                        setTempValue(selectedCountry);
-                      }}
-                      suggestions={COUNTRIES}
-                      placeholder="e.g., United States"
-                      autoFocus
-                      style={styles.fieldInput}
-                    />
-                    <TouchableOpacity
-                      style={styles.saveBtn}
-                      onPress={() => handleSaveField("country")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() => handleEditField("country", country)}
-                  >
-                    <Text style={styles.fieldText}>{country || "Not set"}</Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Expertise Tags */}
-              <View style={styles.editField}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>
-                    {userType === "applicant"
-                      ? "SKILLS & INTERESTS (Max 5)"
-                      : "I CAN HELP WITH (Max 5)"}
-                  </Text>
-                  {isFieldMissing("skills") && (
-                    <Text style={styles.requiredStar}>*</Text>
-                  )}
-                </View>
-                <View style={styles.tagsContainer}>
-                  {expertise.map((tag, index) => (
-                    <View key={index} style={styles.editableTag}>
-                      <Text style={styles.editableTagText}>{tag}</Text>
-                      <TouchableOpacity
-                        onPress={() => handleRemoveTag("expertise", index)}
-                      >
-                        <X color="#000" size={14} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-                {expertise.length < 5 && (
-                  <View style={styles.addTagRow}>
-                    <AutocompleteInput
-                      value={newTag}
-                      onChangeText={setNewTag}
-                      onSelect={(selectedSkill) => {
-                        handleAddTag("expertise", selectedSkill);
-                      }}
-                      suggestions={ALL_SKILLS}
-                      placeholder="Add new..."
-                      style={styles.tagInput}
-                    />
-                    <TouchableOpacity
-                      style={styles.addTagBtn}
-                      onPress={() => handleAddTag("expertise")}
-                    >
-                      <Plus color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-
-              {/* Applicant-specific fields */}
-              {userType === "applicant" && (
-                <>
-                  <View style={styles.editField}>
-                    <Text style={styles.fieldLabel}>WORK PREFERENCES</Text>
-                    <View style={styles.workPreferenceOptions}>
-                      {["Remote", "Hybrid", "On-site"].map((preference) => (
-                        <TouchableOpacity
-                          key={preference}
-                          style={[
-                            styles.workPreferenceOption,
-                            workPreferences.includes(preference) &&
-                              styles.workPreferenceOptionSelected,
-                          ]}
-                          onPress={() => handleToggleWorkPreference(preference)}
-                        >
-                          <View
-                            style={[
-                              styles.workPreferenceCheckbox,
-                              workPreferences.includes(preference) &&
-                                styles.workPreferenceCheckboxSelected,
-                            ]}
-                          >
-                            {workPreferences.includes(preference) && (
-                              <Check color="#FFF" size={16} strokeWidth={3} />
-                            )}
-                          </View>
-                          <Text
-                            style={[
-                              styles.workPreferenceText,
-                              workPreferences.includes(preference) &&
-                                styles.workPreferenceTextSelected,
-                            ]}
-                          >
-                            {preference}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  <View style={styles.editField}>
-                    <Text style={styles.fieldLabel}>DESIRED ROLES (Max 3)</Text>
-                    <View style={styles.tagsContainer}>
-                      {desiredRoles.map((tag, index) => (
-                        <View key={index} style={styles.editableTag}>
-                          <Text style={styles.editableTagText}>{tag}</Text>
-                          <TouchableOpacity
-                            onPress={() =>
-                              handleRemoveTag("desiredRoles", index)
-                            }
-                          >
-                            <X color="#000" size={14} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                    {desiredRoles.length < 3 && (
-                      <View style={styles.addTagRow}>
-                        <TextInput
-                          style={styles.tagInput}
-                          placeholder="Add role..."
-                          value={newRoleTag}
-                          autoCapitalize="words"
-                          onChangeText={setNewRoleTag}
-                          onSubmitEditing={() =>
-                            handleAddTag("desiredRoles", newRoleTag)
-                          }
-                        />
-                        <TouchableOpacity
-                          style={styles.addTagBtn}
-                          onPress={() =>
-                            handleAddTag("desiredRoles", newRoleTag)
-                          }
-                        >
-                          <Plus color="#FFF" size={18} />
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                </>
-              )}
-
-              {/* Sponsor-specific fields */}
-              {userType === "sponsor" && <View />}
-            </ScrollView>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* EDIT PROFILE SCREEN */}
+      <EditProfileScreen
+        visible={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+        userType={userType}
+        isFieldMissing={isFieldMissing}
+        personalMissingCount={personalMissingCount}
+        missingFieldLabels={
+          profileCompletion.missingFields
+            .filter((f) => f.category === "Personal Information")
+            .map((f) => f.label)
+        }
+        firstName={firstName}
+        lastName={lastName}
+        role={role}
+        company={company}
+        workEmailVerified={workEmailVerified}
+        email={email}
+        workEmail={workEmail}
+        phone={phone}
+        bio={bio}
+        location={location}
+        expertise={expertise}
+        workPreferences={workPreferences}
+        desiredRoles={desiredRoles}
+        onSaveField={handleSaveField}
+        onSaveLocation={handleSaveLocation}
+        onAddTag={handleAddTag}
+        onRemoveTag={handleRemoveTag}
+        onToggleWorkPreference={handleToggleWorkPreference}
+      />
 
       {/* EDIT INSIGHTS MODAL */}
       <EditInsightsModal
@@ -3826,616 +2985,80 @@ export function ProfileView({ userType }: ProfileViewProps) {
         userType={userType}
       />
 
-      {/* EDIT RESUME MODAL */}
-      <Modal visible={showEditResume} transparent animationType="fade">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalOverlay}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowEditResume(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
+      {/* EDIT RESUME SCREEN */}
+      <ResumeScreen
+        visible={showEditResume}
+        onClose={() => setShowEditResume(false)}
+        professionalMissingCount={professionalMissingCount}
+        missingFieldLabels={
+          profileCompletion.missingFields
+            .filter((f) => f.category !== "Personal Information")
+            .map((f) => f.label)
+        }
+        professionalExperiences={professionalExperiences}
+        educationEntries={educationEntries}
+        certifications={certifications}
+        languages={languages}
+        achievements={achievements}
+        editingField={editingField}
+        tempValue={tempValue}
+        setTempValue={setTempValue}
+        handleEditField={handleEditField}
+        handleSaveField={handleSaveField}
+        renderExperienceCard={renderExperienceCard}
+        renderEducationCard={renderEducationCard}
+        renderCertificationCard={renderCertificationCard}
+        renderLanguageCard={renderLanguageCard}
+        handleAddExperience={handleAddExperience}
+        handleAddEducation={handleAddEducation}
+        handleAddCertification={handleAddCertification}
+        handleAddLanguage={handleAddLanguage}
+      />
 
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
-            pointerEvents="auto"
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Resume Information</Text>
-              <TouchableOpacity onPress={() => setShowEditResume(false)}>
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-            {professionalMissingCount > 0 && (
-              <View style={styles.modalProgressContainer}>
-                <Text style={styles.modalProgressText}>
-                  {professionalMissingCount} field
-                  {professionalMissingCount !== 1 ? "s" : ""} remaining:{" "}
-                  {profileCompletion.missingFields
-                    .filter((f) => f.category !== "Personal Information")
-                    .map((f) => f.label)
-                    .join(", ")}
-                </Text>
-                <View style={styles.modalProgressBar}>
-                  <View
-                    style={[
-                      styles.modalProgressFill,
-                      {
-                        width: `${Math.max(0, 100 - (professionalMissingCount / 9) * 100)}%`,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            )}
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={styles.modalScroll}
-              keyboardShouldPersistTaps="always"
-              keyboardDismissMode="on-drag"
-              contentContainerStyle={{ paddingBottom: 100 }}
-            >
-              {/* Professional Experience Section */}
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>
-                  PROFESSIONAL EXPERIENCE
-                </Text>
-                <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {professionalExperiences.length === 0 && (
-                <View style={styles.emptyStateCard}>
-                  <Briefcase size={32} color="#999" />
-                  <Text style={styles.emptyStateText}>
-                    No work experience added yet.{"\n"}
-                    Add your professional experience here.
-                  </Text>
-                </View>
-              )}
-
-              {professionalExperiences.map((exp, idx) => {
-                const card = renderExperienceCard(exp);
-                if (!card) return null;
-                return React.cloneElement(card, {
-                  key: exp.id || `exp-${idx}`,
-                });
-              })}
-
-              <TouchableOpacity
-                style={styles.addItemBtn}
-                onPress={handleAddExperience}
-              >
-                <Plus color="#000" size={18} />
-                <Text style={styles.addItemText}>Add Work Experience</Text>
-              </TouchableOpacity>
-
-              {/* Education Section */}
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>EDUCATION</Text>
-                <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {educationEntries.length === 0 && (
-                <View style={styles.emptyStateCard}>
-                  <GraduationCap size={32} color="#999" />
-                  <Text style={styles.emptyStateText}>
-                    No education added yet.{"\n"}
-                    Add your degrees and schools here.
-                  </Text>
-                </View>
-              )}
-
-              {educationEntries.map((entry, idx) => {
-                const card = renderEducationCard(entry);
-                if (!card) return null;
-                return React.cloneElement(card, {
-                  key: entry.id || `edu-${idx}`,
-                });
-              })}
-
-              <TouchableOpacity
-                style={styles.addItemBtn}
-                onPress={handleAddEducation}
-              >
-                <Plus color="#000" size={18} />
-                <Text style={styles.addItemText}>Add Education</Text>
-              </TouchableOpacity>
-
-              {/* Additional Details Section */}
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLine} />
-                <Text style={styles.sectionHeaderText}>ADDITIONAL DETAILS</Text>
-                <View style={styles.sectionHeaderLine} />
-              </View>
-
-              {/* Certifications & Licenses */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>CERTIFICATIONS & LICENSES</Text>
-                {certifications.map((cert, index) =>
-                  renderCertificationCard(cert, index),
-                )}
-                <TouchableOpacity
-                  style={styles.addItemBtn}
-                  onPress={handleAddCertification}
-                >
-                  <Plus color="#000" size={18} />
-                  <Text style={styles.addItemText}>Add Certification</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Languages */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>LANGUAGES</Text>
-                {languages.map((lang, index) =>
-                  renderLanguageCard(lang, index),
-                )}
-                <TouchableOpacity
-                  style={styles.addItemBtn}
-                  onPress={handleAddLanguage}
-                >
-                  <Plus color="#000" size={18} />
-                  <Text style={styles.addItemText}>Add Language</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Achievements */}
-              <View style={styles.editField}>
-                <Text style={styles.fieldLabel}>ACHIEVEMENTS & AWARDS</Text>
-                {editingField === "achievements" ? (
-                  <View style={styles.editColumn}>
-                    <TextInput
-                      style={[styles.fieldInput, styles.bioInput]}
-                      value={tempValue}
-                      onChangeText={setTempValue}
-                      placeholder="Notable achievements, awards, publications, speaking engagements..."
-                      multiline
-                      maxLength={1000}
-                      autoCapitalize="sentences"
-                      autoFocus
-                    />
-                    <CharCounter count={tempValue.length} max={1000} />
-                    <TouchableOpacity
-                      style={[
-                        styles.saveBtn,
-                        { alignSelf: "flex-end", marginTop: 8 },
-                      ]}
-                      onPress={() => handleSaveField("achievements")}
-                    >
-                      <Check color="#FFF" size={18} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fieldDisplay}
-                    onPress={() =>
-                      handleEditField("achievements", achievements)
-                    }
-                  >
-                    <Text style={styles.fieldText}>
-                      {achievements || "Not set"}
-                    </Text>
-                    <Edit color="#666" size={16} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </ScrollView>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* PRIVACY & SECURITY MODAL */}
-      <SimpleModal
+      {/* PRIVACY & SECURITY SCREEN */}
+      <PrivacySecurityScreen
         visible={showPrivacySecurity}
         onClose={() => setShowPrivacySecurity(false)}
-        title="Privacy & Security"
-      >
-        {/* Profile Visibility */}
-        <View style={styles.privacySection}>
-          <View style={styles.privacyRow}>
-            <View style={styles.privacyContent}>
-              <Text style={styles.privacyLabel}>Profile Visibility</Text>
-              <Text style={styles.privacyDescription}>
-                Who can see your profile
-              </Text>
-            </View>
-            <Text style={styles.privacyValue}>Public</Text>
-          </View>
-        </View>
+        onDeleteAccount={handleDeleteAccount}
+      />
 
-        {/* Change Password */}
-        <TouchableOpacity
-          style={styles.privacyActionCard}
-          onPress={() => {
-            setShowPrivacySecurity(false);
-            setTimeout(() => setShowPasswordChange(true), 300);
-          }}
-        >
-          <View style={styles.privacyIconContainer}>
-            <Lock color="#000" size={18} />
-          </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.privacyActionTitle}>Change Password</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              Update your password
-            </Text>
-          </View>
-          <ChevronRight color="#BBB" size={20} />
-        </TouchableOpacity>
-
-        {/* Terms & Conditions — opens the hosted page in the browser */}
-        <TouchableOpacity
-          style={styles.privacyActionCard}
-          onPress={() => {
-            trackTermsTapped();
-            Linking.openURL(TERMS_URL).catch(() => {});
-          }}
-        >
-          <View style={styles.privacyIconContainer}>
-            <Briefcase color="#000" size={18} />
-          </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.privacyActionTitle}>Terms of Service</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              Read our terms of service
-            </Text>
-          </View>
-          <ChevronRight color="#BBB" size={20} />
-        </TouchableOpacity>
-
-        {/* Privacy Policy — opens the hosted page in the browser */}
-        <TouchableOpacity
-          style={styles.privacyActionCard}
-          onPress={() => {
-            trackPrivacyPolicyTapped();
-            Linking.openURL(PRIVACY_POLICY_URL).catch(() => {});
-          }}
-        >
-          <View style={styles.privacyIconContainer}>
-            <Lock color="#000" size={18} />
-          </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.privacyActionTitle}>Privacy Policy</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              How we handle your data
-            </Text>
-          </View>
-          <ChevronRight color="#BBB" size={20} />
-        </TouchableOpacity>
-
-        {/* Delete Account */}
-        <TouchableOpacity
-          style={styles.deleteActionCard}
-          onPress={handleDeleteAccount}
-        >
-          <View style={styles.privacyIconContainer}>
-            <Trash2 color="#000" size={18} />
-          </View>
-          <View style={styles.privacyActionContent}>
-            <Text style={styles.deleteActionTitle}>Delete Account</Text>
-            <Text style={styles.privacyActionSubtitle}>
-              Remove your account permanently
-            </Text>
-          </View>
-          <ChevronRight color="#BBB" size={20} />
-        </TouchableOpacity>
-      </SimpleModal>
-
-      {/* PASSWORD CHANGE MODAL */}
-      <Modal visible={showEmailChange} transparent animationType="fade">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowEmailChange(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
-            pointerEvents="auto"
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Change Email</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowEmailChange(false);
-                  setEmailError("");
-                  setNewEmail("");
-                  setEmailPassword("");
-                }}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Enter your new email address and current password to confirm.
-            </Text>
-
-            <View style={{ gap: 20 }}>
-              {/* New Email */}
-              <View>
-                <Text style={styles.fieldLabel}>NEW EMAIL</Text>
-                <View style={styles.passwordInputWrapper}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Enter new email address"
-                    placeholderTextColor="#BBB"
-                    value={newEmail}
-                    onChangeText={setNewEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-              </View>
-
-              {/* Current Password */}
-              <View>
-                <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
-                <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Enter current password"
-                    placeholderTextColor="#BBB"
-                    value={emailPassword}
-                    onChangeText={setEmailPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                  />
-                </View>
-              </View>
-
-              {/* Error */}
-              {emailError ? (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{emailError}</Text>
-                </View>
-              ) : null}
-
-              {/* Submit */}
-              <TouchableOpacity
-                style={[
-                  styles.blackBtn,
-                  {
-                    width: "100%",
-                    justifyContent: "center",
-                    borderWidth: 0,
-                    marginTop: 8,
-                    opacity: emailChanging ? 0.6 : 1,
-                  },
-                ]}
-                onPress={handleEmailChange}
-                disabled={emailChanging}
-              >
-                <Text style={styles.blackBtnText}>
-                  {emailChanging ? "Updating..." : "Update Email"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <Modal visible={showPasswordChange} transparent animationType="fade">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowPasswordChange(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
-            pointerEvents="auto"
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Change Password</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowPasswordChange(false);
-                  setPasswordError("");
-                  setCurrentPassword("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                }}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Choose a strong password with at least 8 characters
-            </Text>
-
-            <View style={{ gap: 20 }}>
-              {/* Current Password */}
-              <View>
-                <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
-                <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Enter current password"
-                    placeholderTextColor="#BBB"
-                    value={currentPassword}
-                    onChangeText={setCurrentPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                  />
-                </View>
-              </View>
-
-              {/* New Password */}
-              <View>
-                <Text style={styles.fieldLabel}>NEW PASSWORD</Text>
-                <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Enter new password"
-                    placeholderTextColor="#BBB"
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                  />
-                </View>
-              </View>
-
-              {/* Confirm Password */}
-              <View>
-                <Text style={styles.fieldLabel}>CONFIRM NEW PASSWORD</Text>
-                <View style={styles.passwordInputWrapper}>
-                  <Lock color="#AAA" size={18} />
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Re-enter new password"
-                    placeholderTextColor="#BBB"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                  />
-                </View>
-              </View>
-
-              {/* Error Message */}
-              {passwordError ? (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{passwordError}</Text>
-                </View>
-              ) : null}
-
-              {/* Update Password Button */}
-              <TouchableOpacity
-                style={[
-                  styles.blackBtn,
-                  {
-                    width: "100%",
-                    justifyContent: "center",
-                    borderWidth: 0,
-                    marginTop: 8,
-                  },
-                ]}
-                onPress={handlePasswordChange}
-              >
-                <Text style={styles.blackBtnText}>Update Password</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* NOTIFICATIONS MODAL */}
-      <SimpleModal
+      {/* NOTIFICATIONS SCREEN */}
+      <NotificationsScreen
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
-        title="Notifications"
+        userType={userType}
+      />
+
+      {/* Preview My Profile — full-screen, matches how MainApp presents a
+          match's public profile. Points the SAME view at your own USER_ID
+          so you see your card exactly as the other side would.
+          Note: MainApp renders this same component as a child of its own
+          top-level SafeAreaView, so it inherits safe-area insets for free
+          there. A bare <Modal> breaks out of the normal view hierarchy
+          entirely (it doesn't inherit anything from an ancestor
+          SafeAreaView), so this needs its own — without it, the back
+          button and content pushed up against the iPhone's notch/status
+          bar and the bottom content ran into the home-indicator area. */}
+      <Modal
+        visible={showPreviewCard}
+        animationType="slide"
+        onRequestClose={() => setShowPreviewCard(false)}
       >
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>New Matches</Text>
-          <Switch
-            value={isNotifEnabled("match")}
-            onValueChange={(v) => handleNotifToggle("match", v)}
-            disabled={notifSaving === "match"}
-            {...SWITCH_COLORS}
-          />
-        </View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>New Messages</Text>
-          <Switch
-            value={isNotifEnabled("message")}
-            onValueChange={(v) => handleNotifToggle("message", v)}
-            disabled={notifSaving === "message"}
-            {...SWITCH_COLORS}
-          />
-        </View>
-        {userType === "applicant" && (
-          <>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Referral Updates</Text>
-              <Switch
-                value={isNotifEnabled("referral")}
-                onValueChange={(v) => handleNotifToggle("referral", v)}
-                disabled={notifSaving === "referral"}
-                {...SWITCH_COLORS}
+        <SafeAreaView style={styles.previewSafeArea}>
+          {previewUserId &&
+            (userType === "applicant" ? (
+              <ApplicantPublicProfileView
+                userData={{ USER_ID: previewUserId }}
+                onClose={() => setShowPreviewCard(false)}
               />
-            </View>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Saved Job Got Sponsored</Text>
-              <Switch
-                value={isNotifEnabled("waitlist")}
-                onValueChange={(v) => handleNotifToggle("waitlist", v)}
-                disabled={notifSaving === "waitlist"}
-                {...SWITCH_COLORS}
+            ) : (
+              <SponsorPublicProfileView
+                userData={{ USER_ID: previewUserId }}
+                onClose={() => setShowPreviewCard(false)}
               />
-            </View>
-          </>
-        )}
-        {userType === "sponsor" && (
-          <>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>
-                Someone Applied to Your Job
-              </Text>
-              <Switch
-                value={isNotifEnabled("job_like")}
-                onValueChange={(v) => handleNotifToggle("job_like", v)}
-                disabled={notifSaving === "job_like"}
-                {...SWITCH_COLORS}
-              />
-            </View>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>
-                Someone Requested Your Sponsorship
-              </Text>
-              <Switch
-                value={isNotifEnabled("sponsor_request")}
-                onValueChange={(v) => handleNotifToggle("sponsor_request", v)}
-                disabled={notifSaving === "sponsor_request"}
-                {...SWITCH_COLORS}
-              />
-            </View>
-          </>
-        )}
-      </SimpleModal>
+            ))}
+        </SafeAreaView>
+      </Modal>
     </ScrollView>
   );
 }
@@ -4497,87 +3120,17 @@ function EditInsightsModal({
       : SPONSOR_PROMPT_EXAMPLES;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.insightsEditorSafe}>
-        <View style={styles.insightsEditorHeader}>
-          <Text style={styles.modalTitle}>Profile Prompts</Text>
-          <TouchableOpacity
-            onPress={onClose}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <X color="#000" size={24} />
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          contentContainerStyle={styles.insightsEditorScroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <PromptsIntake
-            value={insights}
-            onChange={onChange}
-            categories={categories}
-            examples={examples}
-            min={2}
-            max={3}
-            subtitle="Pick prompts that show your personality — edit or swap anytime."
-          />
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
-  );
-}
-
-// Simple Modal Component
-function SimpleModal({
-  visible,
-  onClose,
-  title,
-  children,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={onClose}
-        >
-          <BlurView
-            intensity={60}
-            style={StyleSheet.absoluteFill}
-            tint="dark"
-          />
-        </TouchableOpacity>
-
-        <Animated.View
-          entering={SlideInDown}
-          exiting={SlideOutDown}
-          style={styles.modalContent}
-          pointerEvents="auto"
-        >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X color="#000" size={24} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={styles.modalScroll}
-            keyboardShouldPersistTaps="always"
-          >
-            {children}
-          </ScrollView>
-        </Animated.View>
-      </View>
-    </Modal>
+    <EditorScreen visible={visible} onClose={onClose} title="Profile Prompts">
+      <PromptsIntake
+        value={insights}
+        onChange={onChange}
+        categories={categories}
+        examples={examples}
+        min={2}
+        max={3}
+        subtitle="Pick prompts that show your personality — edit or swap anytime."
+      />
+    </EditorScreen>
   );
 }
 
@@ -4885,6 +3438,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   insightsEditorSafe: { flex: 1, backgroundColor: "#FFF" },
+  previewSafeArea: { flex: 1, backgroundColor: "#FFF" },
   insightsEditorHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

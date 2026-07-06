@@ -35,6 +35,14 @@ interface JobsState {
   currentIndex: number;
   progress: number;
 
+  // Session recap counters — power the end-of-deck "Today's recap" card so
+  // the deck-complete screen isn't a dead end. Live here (not HomeView local
+  // state) so they survive a tab switch and back, the same reason
+  // currentIndex/progress do. Reset alongside them in resetNavigation() so a
+  // fresh deck starts a fresh recap.
+  sessionLikes: number;
+  sessionMatches: number;
+
   // Actions
   setJobs: (jobs: Job[]) => void;
   setLoading: (isLoading: boolean) => void;
@@ -59,6 +67,8 @@ interface JobsState {
   setCurrentIndex: (index: number) => void;
   setProgress: (progress: number) => void;
   resetNavigation: () => void;
+  incrementSessionLikes: () => void;
+  incrementSessionMatches: () => void;
 
   // Reset all state (called on logout)
   reset: () => void;
@@ -79,6 +89,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   isMyJobsLoading: false,
   currentIndex: 0,
   progress: 1,
+  sessionLikes: 0,
+  sessionMatches: 0,
 
   // Actions
   setJobs: (jobs) =>
@@ -152,7 +164,13 @@ export const useJobsStore = create<JobsState>((set, get) => ({
 
   setProgress: (progress) => set({ progress }),
 
-  resetNavigation: () => set({ currentIndex: 0, progress: 1 }),
+  resetNavigation: () =>
+    set({ currentIndex: 0, progress: 1, sessionLikes: 0, sessionMatches: 0 }),
+
+  incrementSessionLikes: () =>
+    set((state) => ({ sessionLikes: state.sessionLikes + 1 })),
+  incrementSessionMatches: () =>
+    set((state) => ({ sessionMatches: state.sessionMatches + 1 })),
 
   reset: () =>
     set({
@@ -166,6 +184,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       isMyJobsLoading: false,
       currentIndex: 0,
       progress: 1,
+      sessionLikes: 0,
+      sessionMatches: 0,
     }),
 
   getJobById: (id) => {

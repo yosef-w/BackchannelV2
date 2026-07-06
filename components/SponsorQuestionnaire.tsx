@@ -5,7 +5,12 @@ import {
   trackSignUpSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
-import { updateGeneralProfile, uploadProfileImage } from "@/lib/api";
+import {
+  browseJobs,
+  sponsorJob,
+  updateGeneralProfile,
+  uploadProfileImage,
+} from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -20,8 +25,10 @@ import * as ImagePicker from "expo-image-picker";
 import {
   ArrowLeft,
   ArrowRight,
+  Briefcase,
   Camera,
   Check,
+  ChevronRight,
   Mail,
   UserCheck,
 } from "lucide-react-native";
@@ -164,6 +171,23 @@ export function SponsorQuestionnaire({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // ── Sponsor cold-start fix ────────────────────────────────────────────────
+  // A brand-new sponsor otherwise exits onboarding onto an empty "Build your
+  // deck" quest with zero applicants until they separately go find and
+  // sponsor a role in the Jobs tab. This can only happen AFTER registration
+  // (not earlier in the flow, e.g. right after the company question) because
+  // /api/jobs/browse/ requires auth and filters server-side by the sponsor's
+  // now-saved COMPANY profile field — neither exists yet mid-questionnaire.
+  const [showRolePicker, setShowRolePicker] = useState(false);
+  const [rolePickerStep, setRolePickerStep] = useState<"pick" | "details">(
+    "pick",
+  );
+  const [roleOptions, setRoleOptions] = useState<any[]>([]);
+  const [selectedRole, setSelectedRole] = useState<any | null>(null);
+  const [roleCanRefer, setRoleCanRefer] = useState<boolean | null>(null);
+  const [roleInsiderNote, setRoleInsiderNote] = useState("");
+  const [isSponsoringRole, setIsSponsoringRole] = useState(false);
+
   // Insights state (prompts). The prompt library + editor live in PromptsIntake.
   const [selectedInsights, setSelectedInsights] = useState<
     Array<{ question: string; answer: string }>
@@ -291,9 +315,73 @@ export function SponsorQuestionnaire({
       hydratedRef.current = false;
       AsyncStorage.removeItem(SPONSOR_DRAFT_KEY).catch(() => {});
 
-      // Show success modal
-      setShowSuccess(true);
+      // Sponsor cold-start fix — now that registration + auth are done, the
+      // company-scoped browse endpoint actually works. If there are open
+      // roles, offer to sponsor one right now instead of dropping the
+      // sponsor onto an empty "Build your deck" quest. finishOnboarding()
+      // (the rest of the pre-existing success flow) runs once this either
+      // completes or is skipped, from the role-picker overlay's handlers.
+      try {
+        const response = await browseJobs({ limit: 10 });
+        const jobs = response.jobs || [];
+        if (jobs.length > 0) {
+          setRoleOptions(jobs);
+          setRolePickerStep("pick");
+          setShowRolePicker(true);
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (err) {
+        console.warn(
+          "[SponsorQuestionnaire] Failed to fetch roles for cold-start picker:",
+          err,
+        );
+      }
 
+      finishOnboarding();
+    },
+    onError: (error: Error) => {
+      console.warn("[SponsorQuestionnaire] Registration failed:", error);
+      setIsSubmitting(false);
+      trackSignUpFailed("sponsor", error.message || "unknown");
+
+      // Handle specific error cases
+      const errorMessage = error.message.toLowerCase();
+
+      if (
+        errorMessage.includes("email already in use") ||
+        errorMessage.includes("already exists")
+      ) {
+        showToast(
+          "This email is already registered — taking you to Sign In.",
+          "error",
+        );
+        // Sponsor registration happens on the LAST question, so without this
+        // the user would be stranded on a finished 10-question flow with
+        // nothing but a toast and no way forward.
+        onEmailAlreadyRegistered();
+      } else if (errorMessage.includes("password")) {
+        showToast(`Password requirements not met. ${error.message}`, "error");
+      } else {
+        showToast(`Registration failed: ${error.message}`, "error");
+      }
+    },
+  });
+
+  const handleFinalSubmit = () => {
+    Keyboard.dismiss();
+    setIsSubmitting(true);
+    createProfileMutation.mutate();
+  };
+
+  // The success animation + best-effort photo/bio save + work-email
+  // verification send + delayed navigation. Previously ran unconditionally
+  // right after registration; now called either immediately (no open roles
+  // to offer) or after the role-picker overlay finishes/is skipped.
+  const finishOnboarding = () => {
+    setShowSuccess(true);
+
+    (async () => {
       // Apply the photo + bio captured during onboarding so the sponsor's
       // applicant-facing card isn't bare. Photo upload needs auth, so it runs
       // here after registration. Best-effort and bounded — a failure/timeout
@@ -351,39 +439,50 @@ export function SponsorQuestionnaire({
           );
         }, 500);
       }, 2200);
-    },
-    onError: (error: Error) => {
-      console.warn("[SponsorQuestionnaire] Registration failed:", error);
-      setIsSubmitting(false);
-      trackSignUpFailed("sponsor", error.message || "unknown");
+    })();
+  };
 
-      // Handle specific error cases
-      const errorMessage = error.message.toLowerCase();
+  // ── Sponsor cold-start role picker handlers ─────────────────────────────
+  const handleSkipRolePicker = () => {
+    setShowRolePicker(false);
+    finishOnboarding();
+  };
 
-      if (
-        errorMessage.includes("email already in use") ||
-        errorMessage.includes("already exists")
-      ) {
-        showToast(
-          "This email is already registered — taking you to Sign In.",
-          "error",
-        );
-        // Sponsor registration happens on the LAST question, so without this
-        // the user would be stranded on a finished 10-question flow with
-        // nothing but a toast and no way forward.
-        onEmailAlreadyRegistered();
-      } else if (errorMessage.includes("password")) {
-        showToast(`Password requirements not met. ${error.message}`, "error");
-      } else {
-        showToast(`Registration failed: ${error.message}`, "error");
-      }
-    },
-  });
+  const handleSelectRole = (role: any) => {
+    setSelectedRole(role);
+    setRoleCanRefer(null);
+    setRoleInsiderNote("");
+    setRolePickerStep("details");
+  };
 
-  const handleFinalSubmit = () => {
-    Keyboard.dismiss();
-    setIsSubmitting(true);
-    createProfileMutation.mutate();
+  const handleSponsorSelectedRole = async () => {
+    if (!selectedRole) return;
+    setIsSponsoringRole(true);
+    try {
+      await sponsorJob(selectedRole.JOB_ID, {
+        relationship: "Employee",
+        canRefer: roleCanRefer ?? true,
+        insights: roleInsiderNote.trim()
+          ? { insiderInsights: roleInsiderNote.trim() }
+          : undefined,
+      });
+      showToast(
+        `You're sponsoring ${selectedRole.TITLE || "this role"} — your deck will have applicants waiting.`,
+        "success",
+      );
+    } catch (err) {
+      // Never trap onboarding on this — it's a bonus, not a requirement.
+      // They can sponsor a role from the Jobs tab any time.
+      console.warn("[SponsorQuestionnaire] Failed to sponsor role:", err);
+      showToast(
+        "Couldn't sponsor that role right now — you can do it from the Jobs tab.",
+        "info",
+      );
+    } finally {
+      setIsSponsoringRole(false);
+      setShowRolePicker(false);
+      finishOnboarding();
+    }
   };
 
   // Compose a first-draft bio from what the sponsor already told us, so the
@@ -728,6 +827,170 @@ export function SponsorQuestionnaire({
         </KeyboardAvoidingView>
       </SafeAreaView>
 
+      {/* Sponsor cold-start role picker — see the state block + handlers
+          above for why this can only run after registration. */}
+      {showRolePicker && (
+        <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
+          <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill}>
+            <SafeAreaView style={styles.rolePickerSafeArea}>
+              {rolePickerStep === "pick" ? (
+                <>
+                  <View style={styles.rolePickerHeader}>
+                    <View style={styles.rolePickerBadge}>
+                      <Briefcase color="#000" size={22} />
+                    </View>
+                    <Text style={styles.rolePickerTitle}>
+                      We found {roleOptions.length} open role
+                      {roleOptions.length === 1 ? "" : "s"} at {answers[0]}
+                    </Text>
+                    <Text style={styles.rolePickerSub}>
+                      Sponsor one now and land on a live deck of matched
+                      applicants instead of an empty one.
+                    </Text>
+                  </View>
+
+                  <ScrollView
+                    contentContainerStyle={styles.rolePickerScroll}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {roleOptions.map((role) => (
+                      <TouchableOpacity
+                        key={role.JOB_ID}
+                        style={styles.rolePickerRow}
+                        onPress={() => handleSelectRole(role)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={styles.rolePickerRowTitle}
+                            numberOfLines={1}
+                          >
+                            {role.TITLE || "Open role"}
+                          </Text>
+                          {!!role.FULL_LOCATION && (
+                            <Text
+                              style={styles.rolePickerRowSub}
+                              numberOfLines={1}
+                            >
+                              {role.FULL_LOCATION}
+                            </Text>
+                          )}
+                        </View>
+                        <ChevronRight size={18} color="#CCC" />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  <View style={styles.rolePickerFooter}>
+                    <TouchableOpacity
+                      onPress={handleSkipRolePicker}
+                      style={styles.rolePickerSkipBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rolePickerSkipText}>
+                        Skip for now
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.rolePickerHeader}>
+                    <Text style={styles.rolePickerTitle}>
+                      {selectedRole?.TITLE || "This role"}
+                    </Text>
+                    <Text style={styles.rolePickerSub}>
+                      Two quick questions, then it is set.
+                    </Text>
+                  </View>
+
+                  <ScrollView
+                    contentContainerStyle={styles.rolePickerScroll}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <Text style={styles.rolePickerQuestionLabel}>
+                      Can you refer people into this role?
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      {[true, false].map((val) => (
+                        <TouchableOpacity
+                          key={String(val)}
+                          style={[
+                            styles.rolePickerChoiceBtn,
+                            roleCanRefer === val &&
+                              styles.rolePickerChoiceBtnSelected,
+                          ]}
+                          onPress={() => setRoleCanRefer(val)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.rolePickerChoiceText,
+                              roleCanRefer === val &&
+                                styles.rolePickerChoiceTextSelected,
+                            ]}
+                          >
+                            {val ? "Yes" : "Not directly"}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text
+                      style={[
+                        styles.rolePickerQuestionLabel,
+                        { marginTop: 24 },
+                      ]}
+                    >
+                      Anything applicants should know? (optional)
+                    </Text>
+                    <TextInput
+                      style={styles.rolePickerNoteInput}
+                      placeholder="e.g. what the team is like, what we look for..."
+                      placeholderTextColor="#BBB"
+                      value={roleInsiderNote}
+                      onChangeText={setRoleInsiderNote}
+                      multiline
+                      maxLength={500}
+                    />
+                  </ScrollView>
+
+                  <View style={styles.rolePickerFooter}>
+                    <TouchableOpacity
+                      onPress={() => setRolePickerStep("pick")}
+                      style={styles.rolePickerBackBtn}
+                      activeOpacity={0.7}
+                      disabled={isSponsoringRole}
+                    >
+                      <Text style={styles.rolePickerBackText}>Back</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleSponsorSelectedRole}
+                      style={[
+                        styles.rolePickerSponsorBtn,
+                        (isSponsoringRole || roleCanRefer === null) && {
+                          opacity: 0.5,
+                        },
+                      ]}
+                      activeOpacity={0.8}
+                      disabled={isSponsoringRole || roleCanRefer === null}
+                    >
+                      {isSponsoringRole ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <Text style={styles.rolePickerSponsorText}>
+                          Sponsor this role
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </SafeAreaView>
+          </BlurView>
+        </Animated.View>
+      )}
+
       {showSuccess && (
         <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
@@ -901,6 +1164,140 @@ const styles = StyleSheet.create({
     color: "#000",
     fontWeight: "500",
     minHeight: 120,
+    textAlignVertical: "top",
+  },
+
+  // ── Sponsor cold-start role picker ──────────────────────────────────────
+  rolePickerSafeArea: { flex: 1 },
+  rolePickerHeader: { paddingHorizontal: 28, paddingTop: 16 },
+  rolePickerBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F4F4F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  rolePickerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.5,
+    lineHeight: 30,
+  },
+  rolePickerSub: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  rolePickerScroll: {
+    paddingHorizontal: 28,
+    paddingTop: 20,
+    paddingBottom: 24,
+  },
+  rolePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#EEE",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
+  },
+  rolePickerRowTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+  },
+  rolePickerRowSub: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 2,
+  },
+  rolePickerFooter: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 28,
+    paddingBottom: 24,
+    paddingTop: 8,
+  },
+  rolePickerSkipBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+  },
+  rolePickerSkipText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#999",
+  },
+  rolePickerBackBtn: {
+    paddingVertical: 17,
+    paddingHorizontal: 20,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rolePickerBackText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+  },
+  rolePickerSponsorBtn: {
+    flex: 1,
+    paddingVertical: 17,
+    borderRadius: 18,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rolePickerSponsorText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  rolePickerQuestionLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 10,
+  },
+  rolePickerChoiceBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    alignItems: "center",
+  },
+  rolePickerChoiceBtnSelected: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  rolePickerChoiceText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  rolePickerChoiceTextSelected: {
+    color: "#FFF",
+  },
+  rolePickerNoteInput: {
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: "#000",
+    minHeight: 90,
     textAlignVertical: "top",
   },
 });

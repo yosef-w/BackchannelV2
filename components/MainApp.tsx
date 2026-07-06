@@ -14,6 +14,7 @@ import {
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+    AppState,
     Dimensions,
     Platform,
     SafeAreaView,
@@ -40,13 +41,19 @@ import {
     listReferrals,
     registerDevice,
 } from "../lib/api";
+import {
+    cancelUnfinishedDeckReminder,
+    scheduleDailyDeckReminder,
+    scheduleUnfinishedDeckReminder,
+} from "../lib/localNotifications";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useJobsStore } from "../stores/useJobsStore";
 import {
     ApplicantCheckInModal,
     type CheckInReferral,
 } from "./ApplicantCheckInModal";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
-import { HomeView } from "./HomeView";
+import { DECK_SIZE, HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
 import { MatchesView } from "./MatchesView";
 import { MessagesView } from "./MessagesView";
@@ -483,6 +490,12 @@ export function MainApp({ userType }: MainAppProps) {
         await registerDevice(token, platform);
         setDeviceToken(token);
         console.log("[MainApp] Push token registered:", token);
+
+        // Permission is confirmed granted at this point (registration only
+        // gets here past the earlier granted-check) — schedule the daily
+        // "your deck is ready" local reminder. Idempotent: re-running this
+        // on every app open just re-confirms the same schedule.
+        scheduleDailyDeckReminder(userType);
       } catch (err) {
         // Non-fatal — the app works without push notifications.
         console.warn("[MainApp] Failed to register push token:", err);
@@ -493,7 +506,37 @@ export function MainApp({ userType }: MainAppProps) {
     return () => {
       active = false;
     };
-  }, [isAuthenticated, setDeviceToken, pushPromptTrigger]);
+  }, [isAuthenticated, setDeviceToken, pushPromptTrigger, userType]);
+
+  // ── Unfinished-deck local reminder ────────────────────────────────────────
+  // When the app backgrounds with cards still left in today's deck,
+  // schedule a one-time local nudge for later. Cancel it the moment the app
+  // comes back to the foreground — if cards are still left next time it
+  // backgrounds, a fresh reminder gets scheduled with the current count;
+  // if the deck got finished in the meantime, nothing gets rescheduled.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const onAppStateChange = (state: string) => {
+      if (state === "background" || state === "inactive") {
+        const jobsState = useJobsStore.getState();
+        const hasDeck =
+          userType === "sponsor"
+            ? jobsState.sponsoredJobs.length > 0
+            : jobsState.jobs.length > 0;
+        if (!hasDeck) return;
+        const remaining = DECK_SIZE - jobsState.progress + 1;
+        if (remaining > 0) {
+          scheduleUnfinishedDeckReminder(remaining, userType);
+        }
+      } else if (state === "active") {
+        cancelUnfinishedDeckReminder();
+      }
+    };
+
+    const sub = AppState.addEventListener("change", onAppStateChange);
+    return () => sub.remove();
+  }, [isAuthenticated, userType]);
 
   // ── Handle push notification taps (deep-link to the right screen) ────────
   // Shared routing for a tapped push, used by BOTH the live listener (below)
@@ -523,6 +566,11 @@ export function MainApp({ userType }: MainAppProps) {
       const convId = data.related_conversation_id;
       if (convId) setPendingMessageConversationId(convId);
       setActiveView("messages");
+    } else if (type === "daily_deck_ready" || type === "unfinished_deck") {
+      // Local reminders (see lib/localNotifications.ts) — straight to the
+      // deck itself, not the in-app notifications list (they're on-device
+      // schedules, not backend notification records that would show up there).
+      setActiveView("home");
     } else {
       // Generic fallback — open notifications list so the user can act on it
       setActiveView("notifications");
@@ -700,6 +748,7 @@ export function MainApp({ userType }: MainAppProps) {
             <MatchesView
               userType={userType}
               onNavigateToMessages={handleNavigateToMessages}
+              onOpenCheckIn={handleOpenCheckIn}
             />
           )}
           {/* Keep MessagesView mounted when messages OR publicProfile is active.
@@ -802,12 +851,18 @@ export function MainApp({ userType }: MainAppProps) {
         onDismiss={() => setShowApplicantCheckIn(false)}
         referrals={referrals as CheckInReferral[]}
         loading={referralsLoading}
+        onSubmitted={() =>
+          queryClient.invalidateQueries({ queryKey: ["matchesScreen"] })
+        }
       />
       <SponsorCheckInModal
         visible={showSponsorCheckIn}
         onDismiss={() => setShowSponsorCheckIn(false)}
         referrals={referrals as SponsorCheckInReferral[]}
         loading={referralsLoading}
+        onSubmitted={() =>
+          queryClient.invalidateQueries({ queryKey: ["matchesScreen"] })
+        }
       />
     </View>
   );

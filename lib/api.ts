@@ -831,6 +831,51 @@ export async function unmatchConversation(conversationId: string): Promise<{
   });
 }
 
+export type ReportReason =
+  | "harassment"
+  | "spam"
+  | "inappropriate"
+  | "fake_profile"
+  | "other";
+
+/**
+ * 🚩 Report a user
+ *
+ * Backend contract (see docs/BACKEND_CHANGES_NEEDED.md §N1):
+ *   POST /api/reports/
+ *   body: { reported_user_id, reason, detail?, conversation_id? }
+ *   → { message }
+ *
+ * The endpoint doesn't exist yet. This is deliberately best-effort and never
+ * throws — the caller (MessagesView) always closes the conversation via the
+ * already-shipped `unmatchConversation` regardless of whether the report
+ * itself was recorded, so the user-visible safety outcome ("I'll never hear
+ * from this person again") works today. Returns true if the report was
+ * actually recorded server-side, false if it couldn't be (missing endpoint,
+ * network failure, etc.) — logged, not surfaced, so a backend gap doesn't
+ * read as a frontend bug to the user.
+ */
+export async function reportUser(params: {
+  reportedUserId: string;
+  reason: ReportReason;
+  detail?: string;
+  conversationId?: string;
+}): Promise<boolean> {
+  try {
+    await api.post("/api/reports/", {
+      reported_user_id: params.reportedUserId,
+      reason: params.reason,
+      detail: params.detail || undefined,
+      conversation_id: params.conversationId || undefined,
+    });
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[api] reportUser failed (endpoint may not be deployed yet):", msg);
+    return false;
+  }
+}
+
 // ============================================================
 // 👤 PROFILE MANAGEMENT ENDPOINTS
 // ============================================================

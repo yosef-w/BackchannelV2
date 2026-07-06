@@ -11,10 +11,12 @@ import {
     getConversations,
     getPublicProfile,
     listReferrals,
+    reportUser,
     sendMessage,
     submitReferral,
     unmatchConversation,
     WS_BASE_URL,
+    type ReportReason,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -22,10 +24,12 @@ import { BlurView } from "expo-blur";
 import {
     ArrowLeft,
     Briefcase,
+    Check,
     CheckCircle,
     ChevronRight,
     ClipboardCheck,
     Clock,
+    Flag,
     FileText,
     Globe,
     GraduationCap,
@@ -77,6 +81,50 @@ import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
+
+/**
+ * Conversation starters for a brand-new (empty) thread. Most matches die in
+ * silence because someone has to write the awkward first message — these
+ * give a one-tap way past that, built entirely from data already on the
+ * conversation object (job title/company, skills) so they don't need an
+ * extra profile fetch just to populate an empty state.
+ */
+function getConversationStarters(
+  conversation: any,
+  userType: "applicant" | "sponsor",
+): string[] {
+  const jobTitle: string | undefined = conversation?.jobContext?.jobTitle;
+  const company: string | undefined =
+    conversation?.jobContext?.company || conversation?.company;
+  const skill: string | undefined =
+    Array.isArray(conversation?.skills) && conversation.skills.length > 0
+      ? conversation.skills[0]
+      : undefined;
+
+  if (userType === "applicant") {
+    return [
+      company
+        ? `What's the team culture like at ${company}?`
+        : "What's the team culture like there?",
+      jobTitle
+        ? `What's the interview process like for the ${jobTitle} role?`
+        : "What's the interview process like?",
+      company
+        ? `What made you want to work at ${company}?`
+        : "What made you want to work there?",
+    ];
+  }
+
+  return [
+    jobTitle
+      ? `What interests you about the ${jobTitle} role?`
+      : "What are you looking for in your next role?",
+    skill
+      ? `I noticed you know ${skill} — how have you used that day to day?`
+      : "Tell me a bit about your background.",
+    "What's most important to you in your next role?",
+  ];
+}
 
 interface MessagesViewProps {
   onThreadActiveChange?: (isThreadActive: boolean) => void;
@@ -223,9 +271,18 @@ export function MessagesView({
   // the header button reflects the referral status without a separate lookup.
   const [referredSet, setReferredSet] = useState<Set<string>>(new Set());
 
-  // Unmatch
+  // Unmatch / Report — one sheet, two steps. "actions" is the initial
+  // Report/Unmatch/Cancel picker; "report" is the reason-picker step shown
+  // after tapping Report. showUnmatchMenu still gates the sheet's overall
+  // visibility (kept the name to avoid an unrelated rename).
   const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
   const [isUnmatching, setIsUnmatching] = useState(false);
+  const [threadMenuStep, setThreadMenuStep] = useState<"actions" | "report">(
+    "actions",
+  );
+  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
+  const [reportDetail, setReportDetail] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
 
   // Refs mirror state for use inside the long-lived inbox WebSocket handler,
   // which is created once and must read the *current* values without the
@@ -748,11 +805,11 @@ export function MessagesView({
             : c,
         ),
       );
-      setShowUnmatchMenu(false);
+      closeThreadMenu();
       handleConversationSelect(null);
     } catch (err) {
       console.warn("[MessagesView] Failed to unmatch:", err);
-      setShowUnmatchMenu(false);
+      closeThreadMenu();
       showToast(
         err instanceof Error
           ? err.message
@@ -761,6 +818,59 @@ export function MessagesView({
       );
     } finally {
       setIsUnmatching(false);
+    }
+  };
+
+  // Resets the sheet back to its default step whenever it's closed, so it
+  // doesn't reopen mid-report next time.
+  const closeThreadMenu = () => {
+    setShowUnmatchMenu(false);
+    setThreadMenuStep("actions");
+    setReportReason(null);
+    setReportDetail("");
+  };
+
+  // Report a user, then close the conversation the same way Unmatch does.
+  // The block/close effect always happens via the already-shipped unmatch
+  // endpoint, regardless of whether the report itself was recorded — see
+  // reportUser()'s doc comment for why that's split this way.
+  const handleSubmitReport = async () => {
+    if (!selectedConversation || !reportReason) return;
+    const reportedUserId = conversations.find(
+      (c) => c.id === selectedConversation,
+    )?.otherParticipant?.id;
+    setIsReporting(true);
+    try {
+      if (reportedUserId) {
+        await reportUser({
+          reportedUserId: String(reportedUserId),
+          reason: reportReason,
+          detail: reportDetail.trim() || undefined,
+          conversationId: selectedConversation,
+        });
+      }
+      await unmatchConversation(selectedConversation);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedConversation
+            ? { ...c, status: "CLOSED" as const }
+            : c,
+        ),
+      );
+      closeThreadMenu();
+      handleConversationSelect(null);
+      showToast("Reported. This conversation has been closed.", "success");
+    } catch (err) {
+      console.warn("[MessagesView] Failed to close reported conversation:", err);
+      closeThreadMenu();
+      showToast(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+        "error",
+      );
+    } finally {
+      setIsReporting(false);
     }
   };
 
@@ -1187,6 +1297,36 @@ export function MessagesView({
       (c) => c.id === selectedConversation,
     );
 
+    // In-thread referral prompt eligibility (sponsor only) — after a real
+    // back-and-forth (3+ messages each way), nudge the sponsor toward the
+    // Refer flow instead of relying on them remembering the header button
+    // exists. Plain computation, not useMemo/hook — this whole block is
+    // inside a conditional branch of the component, so a hook here would
+    // violate the Rules of Hooks. Message lists are small enough that
+    // recomputing this every render is cheap.
+    let sponsorReferralPromptEligible = false;
+    if (userType === "sponsor" && conversation?.otherParticipant?.id) {
+      const applicantId = conversation.otherParticipant.id;
+      const jobId = conversation.jobContext?.jobId;
+      const alreadyReferred =
+        !!(applicantId && jobId) &&
+        referredSet.has(`${applicantId}:${jobId}`);
+      if (!alreadyReferred) {
+        let mine = 0;
+        let theirs = 0;
+        for (const m of messages) {
+          const isMine = currentUserId
+            ? m.senderId === currentUserId ||
+              m.senderId === "me" ||
+              (m.id.startsWith("temp-") && !m.serverId)
+            : m.id.startsWith("temp-") || m.senderId === "me";
+          if (isMine) mine++;
+          else theirs++;
+        }
+        sponsorReferralPromptEligible = mine >= 3 && theirs >= 3;
+      }
+    }
+
     if (!conversation) {
       // Conversations are still fetching — show a loading state so we don't flash
       // a false "not found" message while the async fetch completes after a
@@ -1391,13 +1531,42 @@ export function MessagesView({
                 </Text>
               </View>
             ) : messages.length === 0 ? (
-              <View style={{ padding: 40, alignItems: "center" }}>
+              <View style={{ padding: 28, alignItems: "center" }}>
                 <Text style={{ color: "#999", fontSize: 15 }}>
                   No messages yet
                 </Text>
-                <Text style={{ color: "#BBB", fontSize: 13, marginTop: 8 }}>
+                <Text
+                  style={{
+                    color: "#BBB",
+                    fontSize: 13,
+                    marginTop: 8,
+                    marginBottom: 20,
+                  }}
+                >
                   Start the conversation!
                 </Text>
+                {/* Conversation starters — most matches die in silence
+                    because someone has to write the awkward first message.
+                    Tapping fills the composer rather than sending straight
+                    away, so the user still reviews/personalizes it. */}
+                <View style={styles.startersHeader}>
+                  <Sparkles size={13} color="#999" strokeWidth={2.2} />
+                  <Text style={styles.startersHeaderText}>BREAK THE ICE</Text>
+                </View>
+                <View style={styles.startersList}>
+                  {getConversationStarters(conversation, userType).map(
+                    (starter, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={styles.starterChip}
+                        onPress={() => setMessageText(starter)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.starterChipText}>{starter}</Text>
+                      </TouchableOpacity>
+                    ),
+                  )}
+                </View>
               </View>
             ) : (
               messages.map((message, index) => {
@@ -1479,6 +1648,31 @@ export function MessagesView({
             </View>
           ) : (
             <View>
+              {/* In-thread referral nudge (sponsor only) — see
+                  sponsorReferralPromptEligible above. Disappears on its own
+                  once the sponsor actually refers (alreadyReferred flips),
+                  no dismiss needed. */}
+              {sponsorReferralPromptEligible && (
+                <TouchableOpacity
+                  style={styles.referralNudge}
+                  onPress={openReferral}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.referralNudgeIconCircle}>
+                    <UserCheck color="#FFF" size={16} strokeWidth={2.5} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.referralNudgeTitle}>
+                      Feeling good about{" "}
+                      {conversation.otherParticipant.name.split(" ")[0]}?
+                    </Text>
+                    <Text style={styles.referralNudgeSubtitle}>
+                      Tap to refer them for the role
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color="#999" />
+                </TouchableOpacity>
+              )}
               {/* Only surface the counter as you approach the 2000-char cap so
                   it doesn't clutter normal chatting. */}
               {messageText.length >= 1800 && (
@@ -2352,10 +2546,12 @@ export function MessagesView({
             );
           })()}
 
-        {/* UNMATCH ACTION SHEET — same visual + motion pattern as the
-            profile detail sheet: fade-in blur backdrop, swipe-down
-            dismissible bottom sheet, no native slide animation. Keeps the
-            modal language consistent across the message thread. */}
+        {/* THREAD MENU SHEET — same visual + motion pattern as the profile
+            detail sheet: fade-in blur backdrop, swipe-down dismissible
+            bottom sheet, no native slide animation. Two steps: "actions"
+            (Report / Unmatch / Cancel) and "report" (reason picker), shown
+            in the same sheet so it reads as one flow rather than a modal
+            stack. */}
         <Modal visible={showUnmatchMenu} transparent animationType="none">
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -2364,7 +2560,9 @@ export function MessagesView({
             <TouchableOpacity
               style={StyleSheet.absoluteFill}
               activeOpacity={1}
-              onPress={() => !isUnmatching && setShowUnmatchMenu(false)}
+              onPress={() =>
+                !isUnmatching && !isReporting && closeThreadMenu()
+              }
             >
               <BlurView
                 intensity={30}
@@ -2374,40 +2572,141 @@ export function MessagesView({
             </TouchableOpacity>
 
             <DismissibleSheet
-              onDismiss={() => !isUnmatching && setShowUnmatchMenu(false)}
+              onDismiss={() =>
+                !isUnmatching && !isReporting && closeThreadMenu()
+              }
               style={styles.unmatchSheet}
             >
-              <Text style={styles.unmatchSheetTitle}>
-                {conversation.otherParticipant.name}
-              </Text>
-              <Text style={styles.unmatchSheetSubtitle}>
-                Unmatching permanently ends your match and closes this
-                conversation. It moves to Past Connections as read-only and
-                can't be undone.
-              </Text>
-              <TouchableOpacity
-                style={[
-                  styles.unmatchActionBtn,
-                  isUnmatching && { opacity: 0.6 },
-                ]}
-                onPress={handleUnmatch}
-                disabled={isUnmatching}
-                activeOpacity={0.7}
-              >
-                {isUnmatching ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.unmatchActionText}>Unmatch</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.unmatchCancelBtn}
-                onPress={() => setShowUnmatchMenu(false)}
-                disabled={isUnmatching}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.unmatchCancelText}>Cancel</Text>
-              </TouchableOpacity>
+              {threadMenuStep === "actions" ? (
+                <>
+                  <Text style={styles.unmatchSheetTitle}>
+                    {conversation.otherParticipant.name}
+                  </Text>
+                  <Text style={styles.unmatchSheetSubtitle}>
+                    Unmatching or reporting permanently ends your match and
+                    closes this conversation. It moves to Past Connections as
+                    read-only and can't be undone.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.reportActionBtn}
+                    onPress={() => setThreadMenuStep("report")}
+                    activeOpacity={0.7}
+                  >
+                    <Flag size={18} color="#000" strokeWidth={2} />
+                    <Text style={styles.reportActionText}>
+                      Report {conversation.otherParticipant.name.split(" ")[0]}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.unmatchActionBtn,
+                      isUnmatching && { opacity: 0.6 },
+                    ]}
+                    onPress={handleUnmatch}
+                    disabled={isUnmatching}
+                    activeOpacity={0.7}
+                  >
+                    {isUnmatching ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <Text style={styles.unmatchActionText}>Unmatch</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.unmatchCancelBtn}
+                    onPress={closeThreadMenu}
+                    disabled={isUnmatching}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.unmatchCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.unmatchSheetTitle}>
+                    Report {conversation.otherParticipant.name}
+                  </Text>
+                  <Text style={styles.unmatchSheetSubtitle}>
+                    Reporting also ends this match and closes the
+                    conversation. What happened?
+                  </Text>
+
+                  <View style={styles.reportReasonList}>
+                    {(
+                      [
+                        ["harassment", "Harassment or bullying"],
+                        ["spam", "Spam or scam"],
+                        ["inappropriate", "Inappropriate content"],
+                        ["fake_profile", "Fake profile"],
+                        ["other", "Something else"],
+                      ] as [ReportReason, string][]
+                    ).map(([value, label]) => {
+                      const isSelected = reportReason === value;
+                      return (
+                        <TouchableOpacity
+                          key={value}
+                          style={[
+                            styles.reportReasonRow,
+                            isSelected && styles.reportReasonRowSelected,
+                          ]}
+                          onPress={() => setReportReason(value)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.reportReasonText,
+                              isSelected && styles.reportReasonTextSelected,
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                          {isSelected && (
+                            <Check size={16} color="#FFF" strokeWidth={3} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <TextInput
+                    style={styles.reportDetailInput}
+                    placeholder="Add details (optional)"
+                    placeholderTextColor="#AAA"
+                    value={reportDetail}
+                    onChangeText={setReportDetail}
+                    multiline
+                    maxLength={500}
+                  />
+
+                  <TouchableOpacity
+                    style={[
+                      styles.unmatchActionBtn,
+                      (isReporting || !reportReason) && { opacity: 0.5 },
+                    ]}
+                    onPress={handleSubmitReport}
+                    disabled={isReporting || !reportReason}
+                    activeOpacity={0.7}
+                  >
+                    {isReporting ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <Text style={styles.unmatchActionText}>
+                        Submit Report
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.unmatchCancelBtn}
+                    onPress={() => setThreadMenuStep("actions")}
+                    disabled={isReporting}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.unmatchCancelText}>Back</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </DismissibleSheet>
           </KeyboardAvoidingView>
         </Modal>
@@ -2826,6 +3125,37 @@ export function MessagesView({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
+  // Conversation-starter chips shown in a brand-new empty thread.
+  startersHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  startersHeaderText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1,
+  },
+  startersList: {
+    width: "100%",
+    gap: 8,
+  },
+  starterChip: {
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  starterChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "left",
+  },
   headerTitleContainer: { marginBottom: 32 },
   title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.2 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
@@ -2973,6 +3303,37 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     lineHeight: 19,
+  },
+  referralNudge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  referralNudgeIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  referralNudgeTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+  },
+  referralNudgeSubtitle: {
+    fontSize: 11,
+    color: "#999",
+    marginTop: 1,
   },
   chatContainer: { flex: 1, backgroundColor: "#FFF" },
   chatHeader: {
@@ -3904,5 +4265,65 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#000",
+  },
+  // Report — outlined (not filled) to sit visually below Unmatch's solid
+  // black CTA without resorting to red; severity is communicated by copy
+  // and icon, matching the app's monochrome-only convention for
+  // destructive actions (see the comment on unmatchActionBtn above).
+  reportActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "#000",
+    marginBottom: 12,
+  },
+  reportActionText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
+  },
+  reportReasonList: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  reportReasonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  reportReasonRowSelected: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  reportReasonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#000",
+  },
+  reportReasonTextSelected: {
+    color: "#FFF",
+  },
+  reportDetailInput: {
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: "#000",
+    minHeight: 70,
+    textAlignVertical: "top",
+    marginBottom: 20,
   },
 });
