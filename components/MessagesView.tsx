@@ -76,6 +76,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { InboxList } from "./messages/InboxList";
 import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
+import { ThreadContextStrip } from "./messages/ThreadContextStrip";
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -1488,6 +1489,15 @@ export function MessagesView({
               )}
             </View>
           </View>
+          {/* Pins which role this thread is about — the header above only
+              says who you're talking to. Shown on closed threads too, since
+              context matters most when reviewing an old conversation. */}
+          <ThreadContextStrip
+            jobTitle={conversation.jobContext?.jobTitle}
+            company={conversation.jobContext?.company}
+            logoUrl={conversation.jobContext?.logoUrl}
+            onPress={() => setShowProfileModal(true)}
+          />
           <ScrollView
             ref={scrollViewRef}
             style={styles.messagesScroll}

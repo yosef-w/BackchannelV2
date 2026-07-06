@@ -182,6 +182,12 @@ function LeafRow({
   onSelect: (id: string) => void;
 }) {
   const unread = variant === "active" && (conv.unreadCount ?? 0) > 0;
+  // Threads exist per job in this product, but a leaf row previously never
+  // said which one — the role only surfaced on grouped sub-rows. Show it
+  // here too so every row answers "about what?" at a glance.
+  const contextLine = [conv.jobContext?.jobTitle, conv.jobContext?.company]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <TouchableOpacity
       onPress={() => onSelect(conv.id)}
@@ -204,6 +210,11 @@ function LeafRow({
           </Text>
           <RowTrailing conv={conv} variant={variant} />
         </View>
+        {!!contextLine && (
+          <Text style={styles.contextLine} numberOfLines={1}>
+            {contextLine}
+          </Text>
+        )}
         <PreviewText conv={conv} variant={variant} unread={unread} />
       </View>
     </TouchableOpacity>
@@ -391,6 +402,12 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 15, fontWeight: "700", color: "#000", flexShrink: 1 },
   nameHidden: { color: "#999" },
+  contextLine: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#666",
+    marginBottom: 2,
+  },
   time: { fontSize: 10, fontWeight: "800", color: "#BBB" },
   preview: { fontSize: 13, color: "#888" },
   previewHidden: { color: "#AAA" },
