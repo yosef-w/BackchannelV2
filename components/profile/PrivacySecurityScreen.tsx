@@ -219,7 +219,7 @@ export function PrivacySecurityScreen({
         title="Delete Account"
       >
         <View style={styles.deleteIconCircle}>
-          <Trash2 color="#DC2626" size={26} strokeWidth={2.2} />
+          <Trash2 color="#000" size={26} strokeWidth={2.2} />
         </View>
 
         <Text style={styles.deleteHeadline}>This is permanent</Text>
@@ -360,14 +360,14 @@ export function PrivacySecurityScreen({
         style={styles.deleteRow}
         onPress={() => setStep("delete")}
       >
-        <Trash2 color="#DC2626" size={18} />
+        <Trash2 color="#000" size={18} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.deleteTitle}>Delete Account</Text>
           <Text style={styles.rowDescription}>
             Remove your account permanently
           </Text>
         </View>
-        <ChevronRight color="#DC2626" size={20} />
+        <ChevronRight color="#BBB" size={20} />
       </TouchableOpacity>
     </EditorScreen>
   );
@@ -410,15 +410,15 @@ const styles = StyleSheet.create({
   deleteRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "#F9F9F9",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderColor: "#F0F0F0",
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
   },
-  deleteTitle: { fontSize: 15, fontWeight: "700", color: "#DC2626" },
+  deleteTitle: { fontSize: 15, fontWeight: "700", color: "#000" },
   subtitle: { fontSize: 13, color: "#999", marginBottom: 20, lineHeight: 18 },
   fieldLabel: {
     fontSize: 11,
@@ -456,13 +456,14 @@ const styles = StyleSheet.create({
   },
   updateBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
   // ── Delete-account confirmation step ────────────────────────────────
-  // Red is reserved app-wide for irreversible destruction (see
-  // WithdrawReferralModal) — this is the other place that earns it.
+  // Monochrome like the rest of the app's primary/destructive actions
+  // (Unmatch, Send, etc.) — severity is carried by the copy, the warning
+  // list, and the required password, not by color.
   deleteIconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "#F5F5F5",
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -487,10 +488,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   deleteWarningCard: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "#F9F9F9",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderColor: "#F0F0F0",
     padding: 16,
     marginBottom: 24,
     gap: 10,
@@ -504,18 +505,18 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#DC2626",
+    backgroundColor: "#000",
     marginTop: 7,
   },
   deleteWarningText: {
     flex: 1,
     fontSize: 13,
-    color: "#DC2626",
+    color: "#444",
     lineHeight: 19,
     fontWeight: "600",
   },
   deleteConfirmBtn: {
-    backgroundColor: "#DC2626",
+    backgroundColor: "#000",
     borderRadius: 14,
     height: 52,
     alignItems: "center",
