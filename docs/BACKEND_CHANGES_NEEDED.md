@@ -1,12 +1,12 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-04
+**Last updated:** 2026-07-05
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
 > **Open items:** **§E** — 500 crash on `POST /api/profiles/like/` (sponsor "like back" / connect — blocks matching for some accounts, high priority); **§H** — password-reset email not arriving (likely SMTP env + case-sensitive email lookup, high priority); **§G** — ATS organizations search endpoint (powers company autocomplete + "did you mean", medium priority); **§I** — reject sponsor company changes after work-email verification (server-side trust lock, medium priority); **§C** — account deletion must erase user data (App Store blocker, top priority); **§J** — self-like not rejected server-side (sponsor sees themselves in "Interested in Your Jobs", medium priority); **§K** — unsponsor doesn't invalidate the affected applicants' caches (phantom match for ~15s on the applicant's Matches screen, medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (portfolio, DOB, LinkedIn, unused address/phone — cleanup + PII minimization, low priority); the **email deployment checklist** at the bottom (env config, not code — incl. **#4 deliverability / emails landing in spam**, needs SPF/DKIM/DMARC); and **`change_email`** (still returns 501 — the app hides the change-email UI until it ships; re-enable on the app side then).
 >
-> **New feature requests (see the "🆕 New Features" section near the end):** **§N1** — report/block a user (App Store requirement, top priority, UX plan Phase 4); **§N2** — `/api/referrals/` doesn't return the current pipeline check-in stage, blocking real cross-party pipeline visibility (medium priority, UX plan Phase 5).
+> **New feature requests (see the "🆕 New Features" section near the end):** **§N1** — report/block a user (App Store requirement, top priority, UX plan Phase 4); **§N2** — `/api/referrals/` doesn't return the current pipeline check-in stage, blocking real cross-party pipeline visibility (medium priority, UX plan Phase 5); **§N3** — confirm/fix `/api/jobs/browse/` behavior for applicant (non-sponsor) callers, now that applicants can browse jobs (medium priority, UX plan Phase 8).
 >
 > Shipped items have been removed to keep this lean — the verify-email / reset-password web pages (PR #67, shipped as server-rendered web pages) and §1–§11 + push (PRs #54–#61). See the backend's [`BACKEND_CHANGES_SHIPPED.md`](../../Backchannel-backend/BackChannel-backend/docs/BACKEND_CHANGES_SHIPPED.md) for the record.
 
@@ -470,6 +470,35 @@ All three Phase 7 items (conversation starters, in-thread referral prompt, spons
 - **Conversation starters** and **in-thread referral prompt** are pure client logic — templated openers built from data already on the conversation object (`MessagesView.tsx`'s `getConversationStarters`), and a message-count-based nudge toward the existing Refer button (`sponsorReferralPromptEligible`). No new endpoints.
 - **Sponsor cold-start fix** — originally planned to show "We found N open roles at {company}" **during** the company question, mid-questionnaire. That's not possible with the current auth model: `GET /api/jobs/browse/` and `GET /api/ats/organizations/` (§G) both require auth, and a sponsor isn't registered until the *last* question of the questionnaire — there's no token yet, and no saved `sponsor_profiles.COMPANY` for the browse endpoint's server-side filter to key off of. Moved the role-picker to run **immediately after registration** instead (`SponsorQuestionnaire.tsx`, right after `setAuthTokens`), which is the earliest point it's actually possible — the practical outcome (exit onboarding with a live deck) is unchanged.
 - The role-picker's `sponsorJob()` call uses a simplified insights payload (`insiderInsights` only, one optional text field) rather than the full 4-field wizard (`dayToDay`/`teamCulture`/`idealCandidate`/`insiderInsights`) the Jobs tab's sponsor flow collects. This is a **known quality tradeoff**, not a backend gap — sponsors can enrich the role's insights later from the Jobs tab. Flagging in case product wants the onboarding version to collect the same depth (would mean porting more of `JobsView.tsx`'s sponsor-flow UI into onboarding).
+
+---
+
+## UX Plan Phase 8 — Agency & growth (8.1 only — see note)
+
+Phase 8 shipped read-only job browse for applicants (8.1); the share-a-job item (8.2) was descoped by product. Sponsor-request follow-through (8.3) shipped alongside 8.1 originally but was split onto its own branch — see that branch for its doc entry.
+
+- **8.1 — Applicant job browse** (`components/ApplicantJobsBrowseView.tsx`) — new read-only search screen, reachable from the Jobs tab (no longer sponsor-only). See §N3 for the one thing that needs backend confirmation.
+
+---
+
+## §N3 — `GET /api/jobs/browse/` needs to support applicant (cross-company) callers 🟡 Medium priority — needs confirmation, not just code
+
+**Why:** Phase 8 opened the Jobs tab to applicants as a read-only search (`components/ApplicantJobsBrowseView.tsx`) so a motivated applicant isn't limited to whatever the daily 10-card deck deals them. It calls the existing `GET /api/jobs/browse/` endpoint — but that endpoint was built for **sponsors** browsing their **own company's** ATS listings, server-side filtered by the caller's `sponsor_profiles.COMPANY` (per §G's description of how the sponsor board is scoped). An applicant account has no `sponsor_profiles` row at all.
+
+**What's actually unknown (needs a backend read, not a guess):** what does `/api/jobs/browse/` currently do when called by a user with `ROLE_TYPE = 'Applicant'`? Three possibilities, each needing a different fix:
+1. **It 403s / errors** on non-sponsor callers → needs to allow applicant callers.
+2. **It silently returns zero rows** (the company-filter join finds nothing since there's no sponsor profile) → same fix, needs an applicant path that doesn't filter by company.
+3. **It already returns all jobs unfiltered** for a caller with no company on file → then it already works today, no change needed, just confirm and close this ticket.
+
+**Frontend status:** Shipped defensively — `ApplicantJobsBrowseView.tsx` treats any failure or empty result as "no jobs found" (no error screen), so the feature never looks broken regardless of which case above turns out to be true. It just won't show real cross-company results until whichever fix is needed lands.
+
+### Requested backend change (pending the read above)
+
+If (1) or (2): add an applicant-facing code path in the browse-jobs service that returns jobs across **all** organizations (optionally still applying the existing `title`/`location`/`remote` filters, which the endpoint already accepts), rather than scoping to a single company. Sponsors keep their existing company-scoped behavior unchanged.
+
+### Acceptance test
+
+An applicant account (no sponsor profile) calls `GET /api/jobs/browse/?title=engineer&limit=20` and gets back matching jobs across multiple companies, not an empty list or an error.
 
 ---
 

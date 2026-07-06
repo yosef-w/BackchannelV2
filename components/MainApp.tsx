@@ -52,6 +52,7 @@ import {
     ApplicantCheckInModal,
     type CheckInReferral,
 } from "./ApplicantCheckInModal";
+import { ApplicantJobsBrowseView } from "./ApplicantJobsBrowseView";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { DECK_SIZE, HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
@@ -97,10 +98,13 @@ type ViewType =
   | "notifications"
   | "publicProfile";
 
+// "Jobs" is no longer sponsor-only — applicants get a read-only browse/search
+// view (ApplicantJobsBrowseView) so a motivated applicant who wants a
+// specific company isn't limited to hoping the daily 10-card deck deals it.
 const navItems = [
   { id: "home", icon: Home, label: "Feed" },
   { id: "matches", icon: Star, label: "Matches" },
-  { id: "jobs", icon: Briefcase, label: "Jobs", sponsorOnly: true },
+  { id: "jobs", icon: Briefcase, label: "Jobs" },
   { id: "messages", icon: MessageCircle, label: "Inbox" },
   { id: "profile", icon: User, label: "Account" },
 ];
@@ -683,9 +687,9 @@ export function MainApp({ userType }: MainAppProps) {
     trackScreenViewed(newView);
   };
 
-  const visibleNavItems = navItems.filter((item) => {
-    return !item.sponsorOnly || userType === "sponsor";
-  });
+  // All nav items are visible to both roles now — Jobs used to be
+  // sponsor-only, but applicants have their own read-only browse view.
+  const visibleNavItems = navItems;
 
   return (
     <View style={styles.container}>
@@ -780,7 +784,12 @@ export function MainApp({ userType }: MainAppProps) {
               />
             </View>
           )}
-          {activeView === "jobs" && userType === "sponsor" && <JobsView />}
+          {activeView === "jobs" &&
+            (userType === "sponsor" ? (
+              <JobsView />
+            ) : (
+              <ApplicantJobsBrowseView />
+            ))}
           {activeView === "profile" && <ProfileView userType={userType} />}
           {activeView === "notifications" && (
             <NotificationsView
