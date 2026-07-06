@@ -224,7 +224,7 @@ export function PrivacySecurityScreen({
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.groupLabel}>DANGER ZONE</Text>
+      <Text style={styles.groupLabel}>ACCOUNT REMOVAL</Text>
       <TouchableOpacity style={styles.deleteRow} onPress={onDeleteAccount}>
         <Trash2 color="#DC2626" size={18} />
         <View style={{ flex: 1, marginLeft: 12 }}>
