@@ -42,7 +42,6 @@ import {
   Info,
   Lock,
   MapPin,
-  MoreHorizontal,
   Plus,
   Search,
   Sparkles,
@@ -74,13 +73,14 @@ import {
 } from "react-native";
 import Animated, {
   FadeIn,
-  FadeInDown,
   FadeInUp,
   FadeOut,
   SlideInDown,
   SlideOutDown,
 } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
+import { JobCard } from "./jobs/JobCard";
+import { JobsEmptyState } from "./jobs/JobsEmptyState";
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -96,39 +96,6 @@ interface SponsorInfo {
   image: string;
   canRefer: boolean;
 }
-
-// Empty State Component
-const EmptyState = ({
-  icon,
-  title,
-  description,
-  actionText,
-  onAction,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  actionText?: string;
-  onAction?: () => void;
-}) => (
-  <Animated.View
-    entering={FadeIn.duration(400)}
-    style={styles.emptyStateContainer}
-  >
-    <View style={styles.emptyStateIconContainer}>{icon}</View>
-    <Text style={styles.emptyStateTitle}>{title}</Text>
-    <Text style={styles.emptyStateDescription}>{description}</Text>
-    {actionText && onAction && (
-      <TouchableOpacity
-        style={styles.emptyStateButton}
-        onPress={onAction}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.emptyStateButtonText}>{actionText}</Text>
-      </TouchableOpacity>
-    )}
-  </Animated.View>
-);
 
 interface Applicant {
   id: string;
@@ -1424,43 +1391,39 @@ export function JobsView() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Job Board</Text>
+          <View style={styles.headerRow}>
+            {/* "Jobs" matches the bottom-nav label — the screen and the tab
+                that opens it should say the same thing. Create Listing is a
+                compact header action now: sponsoring existing ATS listings
+                is the primary path, creating is the fallback (it keeps its
+                full-size button inside the empty states, where it IS the
+                primary action). */}
+            <Text style={styles.title}>Jobs</Text>
+            <TouchableOpacity
+              style={styles.createAction}
+              activeOpacity={0.85}
+              onPress={openCreateModal}
+            >
+              <Plus color="#FFF" size={15} strokeWidth={3} />
+              <Text style={styles.createActionText}>Create</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.subtitle}>
             Manage your listings and find the right talent
           </Text>
         </View>
-
-        <Animated.View entering={FadeInDown.duration(300)}>
-          <TouchableOpacity
-            style={styles.createButton}
-            activeOpacity={0.9}
-            onPress={openCreateModal}
-          >
-            <Plus color="#FFF" size={20} strokeWidth={3} />
-            <Text style={styles.createButtonText}>Create Listing</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View
-          entering={FadeInDown.delay(50).duration(300)}
-          style={styles.sectionTitleRow}
-        >
-          <Text style={styles.listSectionTitle}>Available Jobs</Text>
-        </Animated.View>
 
         {isLoading && jobs.length === 0 ? (
           <Animated.View
             entering={FadeIn.duration(300)}
             style={styles.loadingContainer}
           >
-            <View style={styles.loadingSpinner}>
-              <Sparkles size={32} color="#000" />
-            </View>
+            <ActivityIndicator size="small" color="#999" />
             <Text style={styles.loadingText}>Finding opportunities...</Text>
           </Animated.View>
         ) : error ? (
-          <EmptyState
-            icon={<Zap size={40} color="#000" strokeWidth={2.5} />}
+          <JobsEmptyState
+            icon={<Zap size={28} color="#000" strokeWidth={2} />}
             title="Something went wrong"
             description="We couldn't load jobs right now. Please try again in a moment."
             actionText="Retry"
@@ -1676,9 +1639,9 @@ export function JobsView() {
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    <EmptyState
+                    <JobsEmptyState
                       icon={
-                        <Briefcase size={40} color="#000" strokeWidth={2.5} />
+                        <Briefcase size={28} color="#000" strokeWidth={2} />
                       }
                       title="No available jobs"
                       description="Check back soon for new opportunities, or create your own listing."
@@ -1727,31 +1690,21 @@ export function JobsView() {
                 {isMyJobsLoading && myJobs.length === 0 ? (
                   <Animated.View
                     entering={FadeIn.duration(300)}
-                    style={styles.simpleEmptyState}
+                    style={styles.loadingContainer}
                   >
-                    <Sparkles size={24} color="#999" strokeWidth={2.5} />
-                    <View style={styles.simpleEmptyTextContainer}>
-                      <Text style={styles.simpleEmptyText}>
-                        Loading your sponsored jobs...
-                      </Text>
-                    </View>
+                    <ActivityIndicator size="small" color="#999" />
+                    <Text style={styles.loadingText}>
+                      Loading your sponsored jobs...
+                    </Text>
                   </Animated.View>
                 ) : myJobs.length === 0 ? (
-                  <Animated.View
-                    entering={FadeIn.duration(400)}
-                    style={styles.simpleEmptyState}
-                  >
-                    <Sparkles size={24} color="#999" strokeWidth={2.5} />
-                    <View style={styles.simpleEmptyTextContainer}>
-                      <Text style={styles.simpleEmptyText}>
-                        You haven't sponsored any jobs yet
-                      </Text>
-                      <Text style={styles.simpleEmptySubtext}>
-                        Sponsor a listing to unlock applicant profiles and get
-                        featured
-                      </Text>
-                    </View>
-                  </Animated.View>
+                  <JobsEmptyState
+                    icon={<Sparkles size={28} color="#000" strokeWidth={2} />}
+                    title="Nothing sponsored yet"
+                    description="Sponsor a listing to unlock applicant profiles and get featured."
+                    actionText="Browse Jobs"
+                    onAction={() => setActiveTab("browse")}
+                  />
                 ) : (
                   myJobs.map((job, index) => (
                     <Animated.View
@@ -3214,310 +3167,34 @@ export function JobsView() {
   );
 }
 
-function JobCard({
-  job,
-  isSponsored,
-  onSponsor,
-  onPress,
-  onMenu,
-  onApplicantPress,
-}: {
-  job: JobPosting;
-  isSponsored?: boolean;
-  onSponsor?: () => void;
-  onPress?: () => void;
-  onMenu?: () => void;
-  onApplicantPress?: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        styles.cardShadow,
-        isSponsored && styles.sponsoredCardBorder,
-        isSponsored && onSponsor !== undefined && { opacity: 0.78 },
-      ]}
-      activeOpacity={0.9}
-      onPress={onPress}
-    >
-      {/* Already-sponsoring banner — only shown in browse tab for sponsored jobs */}
-      {isSponsored && onSponsor !== undefined && (
-        <View style={styles.sponsoredBanner} pointerEvents="none">
-          <Check color="#000" size={12} strokeWidth={3} />
-          <Text style={styles.sponsoredBannerText}>Already Sponsoring</Text>
-        </View>
-      )}
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <CompanyLogo
-            logoUrl={job.image}
-            name={job.company}
-            size={60}
-            borderRadius={14}
-          />
-          <View style={styles.headerInfo}>
-            <Text style={styles.companyName} numberOfLines={1}>
-              {job.company}
-            </Text>
-            <Text style={styles.jobTitleText} numberOfLines={1}>
-              {job.title}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.moreBtn}
-            onPress={(e) => {
-              e.stopPropagation();
-              onMenu && onMenu();
-            }}
-            activeOpacity={0.7}
-          >
-            <MoreHorizontal color="#999" size={20} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.tagsRow}>
-          <View style={styles.tag}>
-            <MapPin size={10} color="#666" />
-            <Text style={styles.tagText}>{job.location}</Text>
-          </View>
-          <View style={styles.tag}>
-            <DollarSign size={10} color="#666" />
-            <Text style={styles.tagText}>{job.salary}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.cardDescription} numberOfLines={2}>
-          {job.description}
-        </Text>
-
-        <View style={styles.cardFooter}>
-          <View style={styles.applicantInfo}>
-            <TouchableOpacity
-              onPress={onApplicantPress}
-              activeOpacity={0.7}
-              style={styles.applicantBadge}
-            >
-              <Users color="#000" size={12} />
-              <Text style={styles.applicantText}>
-                {job.applicants} Applicants
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onSponsor && onSponsor();
-            }}
-            disabled={isSponsored}
-            style={[
-              styles.cardSponsorBtn,
-              isSponsored
-                ? styles.cardSponsorBtnActive
-                : styles.cardSponsorBtnDefault,
-            ]}
-          >
-            {isSponsored && (
-              <Zap
-                size={14}
-                color="#FFF"
-                fill="#FFF"
-                style={{ marginRight: 4 }}
-              />
-            )}
-            <Text
-              style={[
-                styles.cardSponsorBtnText,
-                isSponsored ? styles.textWhite : styles.textBlack,
-              ]}
-            >
-              {isSponsored ? "Sponsoring" : "Sponsor"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 20 },
   header: { marginBottom: 24, paddingHorizontal: 4 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   title: { fontSize: 32, fontWeight: "800", color: "#000", letterSpacing: -1 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 6, fontWeight: "500" },
-
-  createButton: {
+  createAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     backgroundColor: "#000",
-    flexDirection: "row",
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 32,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  createButtonText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  listSectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    paddingLeft: 4,
-  },
-  sectionTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  sponsoredHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 32,
-    marginBottom: 16,
-    paddingLeft: 4,
-  },
-
-  card: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-  },
-  sponsoredCardBorder: { borderColor: "#000", borderWidth: 1.5 },
-  sponsoredBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 24,
+    paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: "#F4F4F5",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    borderRadius: 18,
   },
-  sponsoredBannerText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: "#000",
-    letterSpacing: -0.2,
-  },
-  cardShadow: {
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.18,
-        shadowRadius: 30,
-      },
-      android: { elevation: 18 },
-    }),
-  },
+  createActionText: { color: "#FFF", fontSize: 13, fontWeight: "700" },
+
 
   cardCoverInfo: { display: "none" },
-  cardContent: { padding: 24, paddingTop: 26 },
 
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 16,
-  },
-  companyLogo: {
-    width: 60,
-    height: 60,
-    borderRadius: 14,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  headerInfo: { flex: 1 },
-  companyName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#666",
-    marginBottom: 2,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  jobTitleText: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
-  moreBtn: { padding: 12, margin: -8, alignSelf: "flex-start" },
 
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F8F9FA",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  tagText: { fontSize: 12, fontWeight: "600", color: "#444" },
-  cardDescription: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 20,
-    marginBottom: 16,
-  },
 
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
-  },
-  applicantInfo: { flexDirection: "row", alignItems: "center" },
-  applicantBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  applicantText: { fontSize: 12, fontWeight: "700", color: "#000" },
 
-  cardSponsorBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    minWidth: 100,
-  },
-  cardSponsorBtnDefault: {
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#000",
-  },
-  cardSponsorBtnActive: {
-    backgroundColor: "#000",
-    borderWidth: 1.5,
-    borderColor: "#000",
-  },
-  cardSponsorBtnText: { fontSize: 13, fontWeight: "700" },
-  textBlack: { color: "#000" },
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
     backgroundColor: "#FFF",
@@ -3588,7 +3265,6 @@ const styles = StyleSheet.create({
   },
   confirmBtnDisabled: { backgroundColor: "#E5E5E5" },
   confirmBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  textWhite: { color: "#FFF" },
   successStep: { alignItems: "center", paddingVertical: 20, width: "100%" },
   successIconCircle: {
     width: 80,
@@ -4907,67 +4583,6 @@ const styles = StyleSheet.create({
   gateBtnSecondaryText: { color: "#666", fontSize: 15, fontWeight: "600" },
 
   // Empty State Styles
-  emptyStateContainer: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 40,
-    marginHorizontal: 4,
-    marginVertical: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-  emptyStateIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F8F9FA",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 12,
-    textAlign: "center",
-    letterSpacing: -0.3,
-  },
-  emptyStateDescription: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 24,
-    paddingHorizontal: 20,
-    fontWeight: "500",
-  },
-  emptyStateButton: {
-    backgroundColor: "#000",
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
-    minWidth: 160,
-    alignItems: "center",
-  },
-  emptyStateButtonText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
 
   // ── "Did you mean…" empty-board correction ────────────────────────────────
   didYouMeanCard: {
@@ -5050,61 +4665,18 @@ const styles = StyleSheet.create({
 
   // Loading State Styles
   loadingContainer: {
-    padding: 60,
+    paddingVertical: 48,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    marginHorizontal: 4,
-    marginVertical: 20,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  loadingSpinner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#F8F9FA",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+    gap: 12,
   },
   loadingText: {
-    fontSize: 16,
-    color: "#000",
-    fontWeight: "700",
-    letterSpacing: -0.2,
+    fontSize: 14,
+    color: "#999",
+    fontWeight: "600",
   },
 
   // Simple Empty State for Sponsored Section
-  simpleEmptyState: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "#FAFAFA",
-    padding: 20,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  simpleEmptyTextContainer: {
-    flex: 1,
-  },
-  simpleEmptyText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  simpleEmptySubtext: {
-    fontSize: 13,
-    color: "#666",
-    lineHeight: 18,
-    fontWeight: "500",
-  },
 
   // Action bar — holds the segmented tab control on the left and the
   // ghost-style company filter on the right, all in one row.
