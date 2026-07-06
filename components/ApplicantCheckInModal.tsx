@@ -7,14 +7,10 @@
  * Not dismissible by tapping outside; only exits via Submit / Close.
  */
 
-import { BlurView } from "expo-blur";
-import { Check, X } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
-    Dimensions,
-    Modal,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -22,11 +18,6 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, {
-    SlideInDown,
-    SlideOutDown,
-    ZoomIn,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     trackApplicantCheckInSubmitted,
@@ -34,7 +25,11 @@ import {
 } from "../lib/analytics/mixpanel";
 import { ApplicantCheckInStage, submitApplicantCheckIn } from "../lib/api";
 import { useToastStore } from "../stores/useToastStore";
-import { saveLocalCheckInStage } from "../utils/checkInStageCache";
+import {
+    getLocalCheckInTimes,
+    saveLocalCheckInStage,
+} from "../utils/checkInStageCache";
+import { CheckInSheetShell } from "./checkin/CheckInSheetShell";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface CheckInReferral {
@@ -101,7 +96,8 @@ const STATUS_OPTIONS: StatusOption[] = [
 ];
 
 const NOTE_MAX = 500;
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+/** Same "needs an update" window as the header badge / Matches nudge. */
+const STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function daysSince(iso: string): number | null {
@@ -129,11 +125,38 @@ export function ApplicantCheckInModal({
   const showToast = useToastStore((s) => s.showToast);
   const insets = useSafeAreaInsets();
 
+  // Last locally-submitted check-in per referral — drives stale-first
+  // ordering so the referral most in need of an update is the default
+  // selection when the sheet opens.
+  const [checkInTimes, setCheckInTimes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (visible) getLocalCheckInTimes().then(setCheckInTimes);
+  }, [visible]);
+
+  const needsUpdate = (r: CheckInReferral) => {
+    const created = Date.parse(r.createdAt || "");
+    if (isNaN(created) || created > Date.now() - STALE_MS) return false;
+    const lastCheckIn = Date.parse(checkInTimes[r.referralId] || "");
+    return isNaN(lastCheckIn) || lastCheckIn <= Date.now() - STALE_MS;
+  };
+
   // Active = not withdrawn. Backend rejects check-ins on withdrawn referrals.
+  // Stale-first: the first (default-selected) referral is the one most in
+  // need of an update, oldest first within that.
   const activeReferrals = useMemo(
     () =>
-      referrals.filter((r) => (r.status || "").toUpperCase() !== "WITHDRAWN"),
-    [referrals],
+      referrals
+        .filter((r) => (r.status || "").toUpperCase() !== "WITHDRAWN")
+        .sort((a, b) => {
+          const staleDiff = Number(needsUpdate(b)) - Number(needsUpdate(a));
+          if (staleDiff !== 0) return staleDiff;
+          return (
+            (Date.parse(a.createdAt || "") || 0) -
+            (Date.parse(b.createdAt || "") || 0)
+          );
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [referrals, checkInTimes],
   );
 
   const [activeReferralId, setActiveReferralId] = useState<string | null>(null);
@@ -259,86 +282,31 @@ export function ApplicantCheckInModal({
     }
   };
 
+  const sheetState = submitted
+    ? ("success" as const)
+    : loading
+      ? ("loading" as const)
+      : activeReferrals.length === 0
+        ? ("empty" as const)
+        : ("content" as const);
+
   return (
-    <Modal
+    <CheckInSheetShell
       visible={visible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
+      onClose={handleClose}
+      closeDisabled={submitting}
+      state={sheetState}
+      loadingText="Loading your referrals…"
+      emptyTitle="No active referrals"
+      emptyText="You don't have any active referrals to update right now. Once a sponsor refers you, your pipeline will show up here."
+      successTitle="Update Sent!"
+      successSubtitle={
+        currentReferral
+          ? `${sponsorName(currentReferral)} will be notified of your progress.`
+          : "Your sponsor will be notified."
+      }
     >
-      {/* Non-dismissible blur backdrop */}
-      <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-
-      <View style={styles.sheetWrapper}>
-        <Animated.View
-          entering={SlideInDown}
-          exiting={SlideOutDown}
-          style={[
-            styles.sheet,
-            {
-              paddingBottom: Math.max(24, insets.bottom + 16),
-              height:
-                Platform.OS === "ios"
-                  ? SCREEN_HEIGHT * 0.94
-                  : SCREEN_HEIGHT * 0.92,
-            },
-          ]}
-        >
-          {/* Drag handle */}
-          <View style={styles.handle} />
-
-          {/* Close button (always visible — modal is otherwise non-dismissible) */}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={handleClose}
-            disabled={submitting}
-            activeOpacity={0.7}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <X color="#666" size={20} strokeWidth={2} />
-          </TouchableOpacity>
-
-          {submitted ? (
-            /* ── Success state ───────────────────────────────────────────── */
-            <Animated.View
-              entering={ZoomIn.duration(320)}
-              style={styles.successContainer}
-            >
-              <View style={styles.successCircle}>
-                <Check color="#FFF" size={34} strokeWidth={3} />
-              </View>
-              <Text style={styles.successTitle}>Update Sent!</Text>
-              <Text style={styles.successSubtitle}>
-                {currentReferral
-                  ? `${sponsorName(currentReferral)} will be notified of your progress.`
-                  : "Your sponsor will be notified."}
-              </Text>
-            </Animated.View>
-          ) : loading ? (
-            /* ── Loading ─────────────────────────────────────────────────── */
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#000" />
-              <Text style={styles.emptyText}>Loading your referrals…</Text>
-            </View>
-          ) : activeReferrals.length === 0 ? (
-            /* ── Empty state ─────────────────────────────────────────────── */
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No active referrals</Text>
-              <Text style={styles.emptyText}>
-                You don&apos;t have any active referrals to update right now.
-                Once a sponsor refers you, your pipeline will show up here.
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyDismissBtn}
-                onPress={handleClose}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.emptyDismissBtnText}>Got it</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            /* ── Main content ────────────────────────────────────────────── */
-            <ScrollView
+      <ScrollView
               style={styles.mainScroll}
               showsVerticalScrollIndicator={false}
               bounces={false}
@@ -528,56 +496,13 @@ export function ApplicantCheckInModal({
                   </>
                 )}
               </TouchableOpacity>
-            </ScrollView>
-          )}
-        </Animated.View>
-      </View>
-    </Modal>
+      </ScrollView>
+    </CheckInSheetShell>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  sheetWrapper: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    paddingTop: 12,
-    paddingHorizontal: 28,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-      },
-      android: { elevation: 20 },
-    }),
-  },
-  handle: {
-    width: 40,
-    height: 5,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 3,
-    alignSelf: "center",
-    marginBottom: 24,
-  },
-  closeButton: {
-    position: "absolute",
-    top: 16,
-    right: 18,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F4F4F4",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
-  },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 8,
@@ -809,64 +734,4 @@ const styles = StyleSheet.create({
   },
 
   // ── Success / Loading / Empty states ────────────────────────────────────────
-  successContainer: {
-    alignItems: "center",
-    paddingVertical: 52,
-    paddingHorizontal: 20,
-  },
-  successCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 10,
-  },
-  successSubtitle: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  loadingContainer: {
-    alignItems: "center",
-    paddingVertical: 60,
-    gap: 14,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-    paddingHorizontal: 12,
-    gap: 14,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  emptyDismissBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 24,
-    backgroundColor: "#000",
-  },
-  emptyDismissBtnText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
 });
