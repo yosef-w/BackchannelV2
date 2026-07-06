@@ -89,7 +89,6 @@ import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
-const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
 interface SponsorInfo {
   name: string;
@@ -1720,6 +1719,19 @@ export function JobsView() {
                           </View>
                         ) : (
                           <>
+                            {/* Nothing left to sponsor (everything matching
+                                is already sponsored) — say so, or the list
+                                above the collapsed toggle just looks
+                                mysteriously empty. */}
+                            {availableJobs.length === 0 && (
+                              <View style={styles.noMatchesWrap}>
+                                <Text style={styles.noMatchesText}>
+                                  {q
+                                    ? "Only roles you already sponsor match — see below"
+                                    : "You're sponsoring every open role at your company"}
+                                </Text>
+                              </View>
+                            )}
                             {availableJobs
                               .slice(0, displayLimit)
                               .map((job, index) => (
@@ -3357,7 +3369,6 @@ const styles = StyleSheet.create({
   sponsoredTogglePillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
 
 
-  cardCoverInfo: { display: "none" },
 
 
 
@@ -3609,26 +3620,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginTop: 4,
   },
-  stepIndicator: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 24,
-  },
   stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#E5E5E5" },
   stepDotActive: { backgroundColor: "#000", width: 24 },
   createScrollView: { maxHeight: 420 },
-  textInput: {
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: "#000",
-  },
-  skillsInput: { minHeight: 50 },
-  multilineInput: { minHeight: 100, textAlignVertical: "top", paddingTop: 16 },
 
   // ── Sponsor insight prompt cards ──────────────────────────────────────
   siWrap: { marginTop: 6, marginBottom: 8, gap: 12 },
@@ -3763,145 +3757,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   siDoneBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
-  skillsPreview: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
-  },
-  previewSkillBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#000",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  previewSkillText: { fontSize: 13, fontWeight: "700", color: "#FFF" },
-  skillsTagContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  skillTag: {
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  skillTagActive: { backgroundColor: "#000", borderColor: "#000" },
-  skillTagText: { fontSize: 13, fontWeight: "600", color: "#666" },
-  skillTagTextActive: { color: "#FFF" },
-  backchannelCallout: {
-    backgroundColor: "#F0F0F0",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: "#000",
-  },
-  backchannelTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 8,
-  },
-  backchannelText: { fontSize: 14, color: "#555", lineHeight: 22 },
-  reviewCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  reviewSection: { marginBottom: 20 },
-  reviewLabel: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#999",
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  reviewValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 2,
-  },
-  reviewSubValue: { fontSize: 14, color: "#666" },
-  reviewSkills: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 8,
-  },
-  reviewSkillBadge: {
-    backgroundColor: "#FFF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  reviewSkillText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  navigationButtons: { flexDirection: "row", gap: 12, marginTop: 20 },
-  backNavBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 18,
-  },
-  backNavText: { fontSize: 16, fontWeight: "700", color: "#000" },
-  nextBtn: {
-    flex: 1,
-    backgroundColor: "#000",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 18,
-  },
-  infoCallout: {
-    backgroundColor: "#F0F0F0",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: "#000",
-  },
-  infoCalloutTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 8,
-  },
-  infoCalloutText: { fontSize: 14, color: "#555", lineHeight: 22 },
-  fieldHint: { fontSize: 13, color: "#999", marginBottom: 12, lineHeight: 18 },
-  radioOptionWithDesc: {
-    backgroundColor: "#F9F9F9",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    marginBottom: 12,
-  },
-  radioDescription: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  supportOptions: {
-    backgroundColor: "#F9F9F9",
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-  },
-  supportItem: { flexDirection: "row", alignItems: "center", gap: 10 },
-  supportText: { fontSize: 14, color: "#666", fontWeight: "600", flex: 1 },
 
   // Menu Modal
   menuOptionCard: {
@@ -4030,20 +3885,6 @@ const styles = StyleSheet.create({
   jobModalHero: {
     alignItems: "center",
     marginBottom: 24,
-  },
-  jobModalHeroInitial: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  jobModalHeroInitialText: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#FFF",
   },
   jobModalHeroTitle: {
     fontSize: 22,
@@ -4186,12 +4027,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   jobSectionText: { fontSize: 14, color: "#555", lineHeight: 22 },
-  jobSectionEmpty: {
-    fontSize: 13,
-    color: "#AAA",
-    fontStyle: "italic",
-    fontWeight: "500" as const,
-  },
   benefitRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -4268,11 +4103,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800" as const,
   },
-  unsponsorBtnSubtext: {
-    fontSize: 12,
-    color: "#999",
-    fontWeight: "500" as const,
-  },
   unsponsorActiveBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -4336,356 +4166,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  matchScoreBadge: {
-    backgroundColor: "#F4F4F5",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  matchScoreText: { color: "#000", fontWeight: "800", fontSize: 12 },
 
   // Swipeable Card Modal Styles (from MatchesView)
-  jobRefTag: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    padding: 12,
-    borderRadius: 15,
-    marginBottom: 20,
-  },
-  jobRefLabel: { fontSize: 10, fontWeight: "900", color: "#999" },
-  jobRefBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#FFF",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  jobRefText: { fontSize: 12, fontWeight: "700" },
-  swipableContainer: { width: CARD_WIDTH, alignSelf: "center" },
-  infoCard: {
-    height: 280,
-    borderRadius: 24,
-    padding: 20,
-    backgroundColor: "#F8F9FB",
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 15,
-  },
-  dot: { height: 6, borderRadius: 3 },
-  dotActive: { width: 22, backgroundColor: "#000" },
-  dotInactive: { width: 6, backgroundColor: "#DDD" },
-  infoCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 15,
-  },
-  modalAvatar: { width: 55, height: 55, borderRadius: 27 },
-  modalName: { fontSize: 20, fontWeight: "800" },
-  locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
-  bioText: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 15 },
-  skillsContainer: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 15,
-    flexWrap: "wrap",
-  },
-  skillChip: {
-    backgroundColor: "#FFF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  skillText: { fontSize: 11, fontWeight: "700", color: "#666" },
-  statsRow: { flexDirection: "row", gap: 8 },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  statLabel: { fontSize: 11, fontWeight: "800" },
-  resumeBtn: {
-    flex: 1,
-    backgroundColor: "#000",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: 12,
-  },
-  resumeBtnText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
-  insightsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
-  },
-  insightsTitle: { color: "#000", fontSize: 18, fontWeight: "800" },
-  insightSection: { marginBottom: 20 },
-  insightLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#AAA",
-    marginBottom: 6,
-    letterSpacing: 1.2,
-  },
-  insightContent: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    lineHeight: 20,
-  },
-  promptWrapper: { marginBottom: 20 },
-  promptHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  promptContent: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#444",
-    fontStyle: "italic",
-    lineHeight: 20,
-  },
 
   // Message Modal
-  messageModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    marginBottom: 8,
-  },
-  messageModalAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#EEE",
-  },
-  messageModalName: { fontSize: 18, fontWeight: "800", color: "#000" },
-  messageModalRole: { fontSize: 14, color: "#666", marginTop: 2 },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#BBB",
-    textTransform: "uppercase",
-    marginBottom: 10,
-  },
-  replyScroll: {
-    marginBottom: 15,
-    marginHorizontal: -28,
-    paddingHorizontal: 28,
-  },
-  replyChip: {
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#000",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  replyChipText: { fontWeight: "700", fontSize: 13 },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 20,
-    padding: 8,
-  },
-  messageInput: { flex: 1, padding: 10, fontSize: 15, maxHeight: 80 },
-  sendBtn: {
-    backgroundColor: "#000",
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   // Match CTA — replaces the in-modal messaging UI. Matches the visual
   // weight of HomeView's "Sponsor & Connect" so the action feels equally
   // committal (it kicks off the same notification + conversation flow).
-  matchHintText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
-    lineHeight: 19,
-    marginBottom: 14,
-  },
-  matchBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  matchBtnText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-  },
   // Applicant-profile modal styles (ap*) — these are 1:1 copies of
   // MatchesView's `sm*` styles. Keep them in sync if the MatchesView
   // sponsor-detail modal styles change.
-  apHeroRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 20,
-  },
-  apAvatar: { width: 68, height: 68, borderRadius: 34 },
-  apName: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
-  },
-  apMeta: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  apInterestedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    marginTop: 8,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  apInterestedText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 0.2,
-  },
-  apJobBlock: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-    padding: 16,
-    marginBottom: 16,
-  },
-  apSectionLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#BBB",
-    letterSpacing: 1.2,
-    marginBottom: 6,
-  },
-  apJobTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 2,
-  },
-  apBodyText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#444",
-    lineHeight: 22,
-  },
-  apLoadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 20,
-  },
-  apLoadingText: { fontSize: 13, color: "#AAA", fontWeight: "500" },
-  apCapRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 16,
-  },
-  apCapPill: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "#E8E8E8",
-  },
-  apCapPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
-  apBlock: { marginBottom: 20 },
-  apChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  apDarkChip: {
-    backgroundColor: "#000",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  apDarkChipText: { fontSize: 12, fontWeight: "700", color: "#FFF" },
-  apInsightItem: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-    padding: 14,
-    marginBottom: 10,
-  },
-  apInsightQ: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#AAA",
-    letterSpacing: 0.8,
-    marginBottom: 6,
-    textTransform: "uppercase",
-  },
-  apInsightA: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#222",
-    lineHeight: 20,
-  },
-  apFallbackNote: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-    padding: 14,
-    marginBottom: 16,
-  },
-  apFallbackNoteText: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "500",
-    lineHeight: 19,
-  },
 
   // Gate Modal
   gateModalOverlay: {
@@ -4909,21 +4399,6 @@ const styles = StyleSheet.create({
   // showing which company is scoping the Browse tab. Renders a chevron
   // only when there's more than one company to choose from (otherwise it's
   // an informational label, not an interactive picker).
-  ghostFilter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    maxWidth: 130,
-  },
-  ghostFilterText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -0.2,
-    flexShrink: 1,
-  },
 
   // Load More Button
   loadMoreBtn: {
