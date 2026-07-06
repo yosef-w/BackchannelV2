@@ -21,7 +21,10 @@ import {
     withdrawReferral,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
-import { getLocalCheckInStages } from "@/utils/checkInStageCache";
+import {
+    getLocalCheckInStages,
+    getLocalCheckInTimes,
+} from "@/utils/checkInStageCache";
 import {
     getSponsorRequestOutcomes,
     saveSponsorRequestOutcome,
@@ -166,6 +169,9 @@ interface Referral {
    * ships it.
    */
   checkInStage?: string | null;
+  /** ISO time of the last check-in submitted from THIS device (see
+   * checkInStageCache.ts) — null when never checked in locally. */
+  lastLocalCheckInAt?: string | null;
 }
 
 interface JobOpportunity {
@@ -874,9 +880,10 @@ export function MatchesView({
     queryKey: matchesScreenKeys.referrals(userType),
     queryFn: async (): Promise<Referral[]> => {
       try {
-        const [response, localStages] = await Promise.all([
+        const [response, localStages, localTimes] = await Promise.all([
           listReferrals({ limit: 50, offset: 0 }),
           getLocalCheckInStages(),
+          getLocalCheckInTimes(),
         ]);
 
         return (response.referrals || []).map(
@@ -915,6 +922,9 @@ export function MatchesView({
                 r.checkin_stage ||
                 localStages[referralId] ||
                 null,
+              // Device-local "when did I last check in" — keeps the stale
+              // nudge from nagging right after the user just submitted.
+              lastLocalCheckInAt: localTimes[referralId] || null,
             };
           },
         );
@@ -942,6 +952,11 @@ export function MatchesView({
     return referrals.filter((r) => {
       if (r.status !== "REFERRED") return false;
       if (r.checkInStage && r.checkInStage !== "Referred") return false;
+      // A check-in submitted from this device within the window counts as
+      // an update even when the stage stayed "Referred" — confirming "no
+      // movement yet" is still checking in, so stop nagging for a week.
+      const lastCheckIn = Date.parse(r.lastLocalCheckInAt || "");
+      if (!isNaN(lastCheckIn) && lastCheckIn > cutoff) return false;
       const created = Date.parse(r.createdAt);
       return !isNaN(created) && created <= cutoff;
     });
