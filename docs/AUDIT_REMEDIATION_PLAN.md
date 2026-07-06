@@ -112,32 +112,92 @@ pre-existing errors untouched).
       rather than done here, per this plan's own note that it could be
       split out.
 
-## Phase 3 — Perceived performance & real-time polish
+## Phase 3 — Perceived performance & real-time polish ✅ MOSTLY DONE
 
-- [ ] **3.1 expo-image adoption.** Swap RN `Image` → `expo-image` for
-      repeated imagery (inbox/matches/notifications avatars, company logos):
-      `cachePolicy="memory-disk"`, ~150ms `transition`, placeholder. (Or
-      drop the dependency — decision: adopt.)
-- [ ] **3.2 FlatList conversions** (priority order):
-      1. Browse jobs (50 cards, staggered animations — cap delay at
-         `min(index, 8) * 40`)
-      2. Notifications (swipeable rows)
-      3. Inbox
-      4. Message thread → **inverted** FlatList; delete the three
-         `setTimeout(scrollToBottom)` hacks
-- [ ] **3.3 Animate only new messages.** Track message count at thread open;
-      `entering` only for `index >= initialCount`, no per-index delay on
-      history.
-- [ ] **3.4 Chat socket reconnect.** Per-conversation WS has no retry (inbox
-      WS does): apply the same exponential-backoff pattern, refetch history
-      on reconnect.
-- [ ] **3.5 Hydrate deck action state from backend.** Seed
-      `waitlistedJobIds` / `likedIds` / `requestedSponsorJobIds` from
-      `GET /api/jobs/waitlist/mine/` + `/api/likes/jobs/` on deck load so
-      banners survive restarts and re-swipes don't re-prompt.
-- [ ] **3.6 React Query persistence (optional but cheap).**
-      `persistQueryClient` + AsyncStorage persister on
-      matches/conversations/notifications keys → instant warm-open paint.
+Full `tsc --noEmit` + `eslint .` clean — 154 problems, identical to the
+Phase 2 baseline (zero net-new). No dependency changes (verified via
+`git status` on package.json/package-lock.json).
+
+- [x] **3.4 Chat socket reconnect.** Rewrote the per-conversation WS effect
+      with the same cancelled/attempt/exponential-backoff pattern the inbox
+      socket already used. On a reconnect (not the first connect) it now
+      pulls the latest history and merges it in via a new shared
+      `mergeIncomingMessage()` helper (extracted from the live
+      `chat.message` handler, which now uses it too) rather than a
+      destructive full replace — protects an optimistic send still in
+      flight from being wiped if the catch-up fetch lands in that window.
+- [x] **3.5 Hydrate deck action state from backend.** Added an
+      applicant-only mount effect in HomeView seeding `waitlistedJobIds`,
+      `requestedSponsorJobIds` (both from `getWaitlistedJobs()` — the
+      backend doesn't distinguish the two, and `handleGetSponsor` always
+      sets them together anyway) and `likedIds`/`appliedJobIds` (from
+      `getLikedJobs()`, which only ever contains sponsored jobs the
+      applicant already liked, since unsponsored jobs are intercepted into
+      the Get-a-Sponsor flow before reaching `likeJob`). Banners and
+      re-swipe guards now survive a restart.
+- [x] **3.1 expo-image adoption.** Converted the shared `Avatar` and
+      `CompanyLogo` components (used broadly by Inbox, Matches, Jobs,
+      ProfileDetailSheet) plus NotificationsView's row avatar to
+      `expo-image` with `cachePolicy="memory-disk"` + 150ms `transition`.
+      Scoped to shared/repeated-list components rather than every one-off
+      raw `<Image>` in the app (profile-photo pickers, full-bleed hero
+      photos, etc. have a different caching profile and much lower
+      list-reuse benefit — touching all ~12 files with raw `Image` usage
+      wasn't worth the added review surface for this pass).
+- [x] **3.3 Animate only new messages.** Added `initialMessageCountRef`,
+      reset on every conversation switch and set once history loads;
+      `entering` is now `undefined` (no animation) for any message with
+      `index < initialCount`, and a plain `FadeInUp.duration(220)` — no
+      per-index delay — for anything at or past it. A 100-message history
+      now appears instantly instead of cascading in over ~5 seconds.
+- [x] **3.2 FlatList conversions — partial**, prioritized by risk/value
+      given every list beyond Notifications turned out to be embedded in a
+      more complex multi-section/multi-tab container than expected:
+      - **Notifications**: full conversion to `SectionList` (real
+        virtualization) — it was already a clean, isolated list with a
+        genuine header/empty/error/loading split, so the swap was
+        low-risk. Sections reshaped to `{title, data}` directly; loading/
+        error/empty states moved into `ListHeaderComponent`/an emptied
+        `sections` prop.
+      - **Browse jobs & Inbox**: capped the stagger delay
+        (`Math.min(index, 8) * 40/50`) instead of the full ScrollView→
+        FlatList swap. Both turned out to be one list embedded inside a
+        larger single-ScrollView screen (JobsView's two tabs share one
+        scroll container with a search bar, did-you-mean card, and
+        load-more pagination all interleaved; Inbox has three sections
+        plus a tap-outside-to-collapse overlay) — restructuring the outer
+        container to introduce `FlatList`/`SectionList` there is a
+        meaningfully bigger, riskier change than Notifications was, and
+        one I can't visually verify without a device. The capped delay
+        fixes the actual complained-about symptom (a multi-second
+        cascading fade for a full page of cards) without that risk. Full
+        virtualization of these two is a reasonable follow-up.
+      - **Message thread → inverted FlatList**: evaluated and **deferred**.
+        This is the highest blast-radius item in the phase — it touches
+        keyboard-avoidance, scroll-anchoring, day-header/clustering logic
+        (which key off chronological prev/next and would need re-deriving
+        against a reversed array), and the just-added 3.3 animation-index
+        logic, all at once, in the app's core real-time messaging surface.
+        3.3 already fixes the worst perceptible symptom (the cascading
+        fade for long history) without touching any of that. The
+        mechanical inverted-list rewrite itself — deleting the
+        `setTimeout(scrollToBottom)` calls, reversing data order — is real
+        follow-up work, but doing it blind (no simulator/device access
+        here) risks breaking the core chat experience in ways that
+        wouldn't surface until a human tester hits them.
+- [ ] **3.6 React Query persistence — deferred, real blocker found.**
+      `@tanstack/react-query-persist-client` (and its
+      `query-async-storage-persister` companion) has a peer-dependency
+      requirement of `@tanstack/react-query@^5.101.2`; the app has
+      `^5.90.18` pinned. Installing it as-is would force npm to resolve a
+      core react-query upgrade as a side effect — an app-wide dependency
+      bump touching every `useQuery`/`useMutation` call site (JobsView,
+      MatchesView, MessagesView, NotificationsView) that I have no way to
+      verify without running the app. This turned out not to be the
+      "cheap, optional" add-on it looked like on paper. To pick this up:
+      bump `@tanstack/react-query` to `^5.101.2`+ deliberately first (its
+      own changeset, tested independently), then add persistence as a
+      second, isolated step.
 
 ## Phase 4 — Structure & type safety (enables everything after)
 

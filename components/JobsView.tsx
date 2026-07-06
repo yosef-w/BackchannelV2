@@ -1670,8 +1670,11 @@ export function JobsView() {
                               .map((job, index) => (
                                 <Animated.View
                                   key={job.id}
+                                  // Cap the stagger — a full 20-card page
+                                  // shouldn't take a second to finish
+                                  // animating in past the first screenful.
                                   entering={FadeInUp.delay(
-                                    100 + index * 40,
+                                    100 + Math.min(index, 8) * 40,
                                   ).duration(300)}
                                 >
                                   <JobCard
@@ -1781,7 +1784,9 @@ export function JobsView() {
                   myJobs.map((job, index) => (
                     <Animated.View
                       key={job.id}
-                      entering={FadeInUp.delay(250 + index * 40).duration(300)}
+                      entering={FadeInUp.delay(
+                        250 + Math.min(index, 8) * 40,
+                      ).duration(300)}
                     >
                       <SponsoredJobCard
                         job={job}

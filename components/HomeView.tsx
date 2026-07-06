@@ -16,8 +16,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   fetchJobsPack,
   fetchProfilesPack,
+  getLikedJobs,
   getMyJobs,
   getPublicProfile,
+  getWaitlistedJobs,
   joinWaitlist,
   likeJob,
   likeProfile,
@@ -778,6 +780,41 @@ export function HomeView({
     trackHomeIntroShown("replay");
     setShowIntro(true);
   };
+
+  // Hydrate deck-action state (waitlisted / applied / sponsor-requested)
+  // from the backend on mount — previously these Sets only ever grew from
+  // in-session swipes, so a restart lost the "Waitlisted" / "Applied"
+  // banner on every already-actioned card, and a re-swipe on one could
+  // re-open the Get-a-Sponsor modal for a job the applicant already
+  // requested. `getWaitlistedJobs` seeds both waitlistedJobIds and
+  // requestedSponsorJobIds — the backend doesn't distinguish "waitlisted
+  // only" from "waitlisted + requested a sponsor" (handleGetSponsor always
+  // does both together), so both banners resolve to the same signal here;
+  // that matches how the two are actually always set in tandem.
+  useEffect(() => {
+    if (userType !== "applicant") return;
+    (async () => {
+      try {
+        const [waitlistRes, likedRes] = await Promise.allSettled([
+          getWaitlistedJobs(),
+          getLikedJobs(),
+        ]);
+        if (waitlistRes.status === "fulfilled") {
+          const ids = waitlistRes.value.jobs.map((j) => String(j.job_id));
+          setWaitlistedJobIds((prev) => new Set([...prev, ...ids]));
+          setRequestedSponsorJobIds((prev) => new Set([...prev, ...ids]));
+        }
+        if (likedRes.status === "fulfilled") {
+          const ids = likedRes.value.map((j) => String(j.JOB_ID));
+          setAppliedJobIds((prev) => new Set([...prev, ...ids]));
+          setLikedIds((prev) => new Set([...prev, ...ids]));
+        }
+      } catch {
+        // Non-fatal — banners just won't reflect prior sessions until the
+        // next successful fetch; the deck itself still works.
+      }
+    })();
+  }, [userType]);
 
   // Bootstrap sponsor state on mount — ensures activeSponsoredJobId is set
   // even when the user lands on the dashboard before visiting the jobs tab.

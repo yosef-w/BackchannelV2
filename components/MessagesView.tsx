@@ -127,6 +127,42 @@ function getConversationStarters(
   ];
 }
 
+/**
+ * Merge one server message into the current thread state, reconciling any
+ * matching optimistic temp message in place — the same dedup logic the live
+ * chat socket's `chat.message` handler already used inline. Extracted so the
+ * socket-reconnect catch-up fetch (see the chat WebSocket effect) can apply
+ * it per-message too, instead of doing a destructive full replace that would
+ * drop an optimistic send still in flight when the reconnect fetch runs.
+ */
+function mergeIncomingMessage(prev: any[], incoming: any): any[] {
+  // Already have this message by serverId or id — nothing to do.
+  if (prev.some((msg) => msg.serverId === incoming.id || msg.id === incoming.id)) {
+    return prev;
+  }
+
+  // An optimistic temp message from the same sender/content — replace it
+  // in place rather than appending a duplicate.
+  const tempIndex = prev.findIndex(
+    (msg) =>
+      msg.id.startsWith("temp-") &&
+      msg.senderId === incoming.senderId &&
+      msg.content === incoming.content,
+  );
+  if (tempIndex >= 0) {
+    const updated = [...prev];
+    updated[tempIndex] = {
+      ...updated[tempIndex],
+      serverId: incoming.id,
+      createdAt: incoming.createdAt,
+      isRead: true,
+    };
+    return updated;
+  }
+
+  return [...prev, incoming];
+}
+
 interface MessagesViewProps {
   onThreadActiveChange?: (isThreadActive: boolean) => void;
   userType?: "applicant" | "sponsor";
@@ -289,6 +325,12 @@ export function MessagesView({
   const selectedConversationRef = useRef<string | null>(selectedConversation);
   const conversationsRef = useRef<any[]>(conversations);
   const prevSelectedRef = useRef<string | null>(selectedConversation);
+  // How many messages were already in the thread the moment it was opened —
+  // only messages at or past this index get the entering fade (see the
+  // render below). Without this, opening a 100-message history staggered
+  // every bubble in at `index * 50`ms, so the user watched ~5 seconds of
+  // messages they'd already read fade in one by one.
+  const initialMessageCountRef = useRef(0);
   useEffect(() => {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
@@ -435,15 +477,54 @@ export function MessagesView({
       setIsLoadingMore(false);
     }
   };
+  // Per-conversation chat WebSocket, with the same exponential-backoff
+  // reconnect the inbox socket below already used — previously a dropped
+  // connection mid-thread just went quiet with no retry until the user
+  // manually backed out and reopened the conversation. On a successful
+  // reconnect (not the first connect), we also pull the latest history and
+  // merge it in via mergeIncomingMessage() rather than replacing the whole
+  // array — a destructive full-replace here could wipe out an optimistic
+  // message still in flight (its REST POST not yet resolved) if the catch-up
+  // fetch happens to land in that window.
   useEffect(() => {
     if (!selectedConversation) {
       return;
     }
 
     let ws: WebSocket | null = null;
-    const accessToken = useAuthStore.getState().accessToken;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    let attempt = 0;
+    let hasConnectedOnce = false;
 
-    if (accessToken) {
+    const catchUpHistory = async () => {
+      try {
+        const response = await getConversationMessages(selectedConversation, {
+          limit: 100,
+        });
+        if (cancelled) return;
+        setMessages((prev) =>
+          response.messages.reduce(
+            (acc, msg) =>
+              mergeIncomingMessage(acc, {
+                id: msg.MESSAGE_ID,
+                senderId: msg.SENDER_USER_ID,
+                content: msg.BODY,
+                createdAt: msg.CREATED_AT,
+              }),
+            prev,
+          ),
+        );
+      } catch (err) {
+        console.warn("[MessagesView] Reconnect catch-up fetch failed:", err);
+      }
+    };
+
+    const connect = () => {
+      if (cancelled) return;
+      const accessToken = useAuthStore.getState().accessToken;
+      if (!accessToken) return;
+
       try {
         // Connect to WebSocket for real-time messages. Built from the same
         // env-configured API host as every REST call (see WS_BASE_URL) so
@@ -451,125 +532,106 @@ export function MessagesView({
         const wsUrl = `${WS_BASE_URL}/ws/chat/${selectedConversation}/?token=${accessToken}`;
         // Never log the full URL — it carries the access token in the query
         // string, and this line was previously leaking it into device logs.
-        console.log(
-          "[MessagesView] Connecting to WebSocket for conversation:",
-          selectedConversation,
-        );
-
         ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          console.log("[MessagesView] WebSocket connected");
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log("[MessagesView] WebSocket message received:", data);
-
-            if (data.type === "chat.message") {
-              // Add new message to the list in real-time, reconciling any optimistic temp message
-              const newMessage = {
-                id: data.message_id,
-                serverId: data.message_id,
-                senderId: data.sender_user_id,
-                content: data.body,
-                messageType: "text" as const,
-                isRead: true,
-                createdAt: data.created_at,
-              };
-
-              setMessages((prev) => {
-                // If already have this message by serverId or id, keep as-is
-                if (
-                  prev.some(
-                    (msg) =>
-                      msg.serverId === newMessage.id ||
-                      msg.id === newMessage.id,
-                  )
-                ) {
-                  return prev;
-                }
-
-                // If we have an optimistic temp message from same sender/content, replace it in-place
-                const tempIndex = prev.findIndex(
-                  (msg) =>
-                    msg.id.startsWith("temp-") &&
-                    msg.senderId === newMessage.senderId &&
-                    msg.content === newMessage.content,
-                );
-                if (tempIndex >= 0) {
-                  const updated = [...prev];
-                  updated[tempIndex] = {
-                    ...updated[tempIndex],
-                    serverId: newMessage.id,
-                    createdAt: newMessage.createdAt,
-                    isRead: true,
-                  };
-                  return updated;
-                }
-
-                return [...prev, newMessage];
-              });
-
-              // Keep the inbox list's last-message preview in sync so the
-              // conversation row updates live instead of going stale until
-              // the list is refetched (e.g. on a tab switch).
-              setConversations((prev) =>
-                prev.map((c) =>
-                  c.id === selectedConversation
-                    ? {
-                        ...c,
-                        lastMessage: {
-                          content: newMessage.content,
-                          senderId: newMessage.senderId,
-                          createdAt: newMessage.createdAt,
-                          isRead: true,
-                        },
-                      }
-                    : c,
-                ),
-              );
-
-              // Scroll to bottom when new message arrives
-              setTimeout(() => scrollToBottom(true), 100);
-            } else if (data.type === "error") {
-              console.warn("[MessagesView] WebSocket error:", data.message);
-            }
-          } catch (err) {
-            console.warn(
-              "[MessagesView] Failed to parse WebSocket message:",
-              err,
-            );
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.warn("[MessagesView] WebSocket error:", error);
-        };
-
-        ws.onclose = (event) => {
-          console.log(
-            "[MessagesView] WebSocket closed:",
-            event.code,
-            event.reason,
-          );
-          if (event.code === 4001) {
-            console.warn(
-              "[MessagesView] WebSocket auth failed - invalid token",
-            );
-          } else if (event.code === 4003) {
-            console.warn(
-              "[MessagesView] WebSocket rejected - not a participant",
-            );
-          }
-        };
       } catch (err) {
         console.warn("[MessagesView] Failed to connect to WebSocket:", err);
+        scheduleReconnect();
+        return;
       }
-    }
+
+      ws.onopen = () => {
+        attempt = 0;
+        console.log("[MessagesView] WebSocket connected");
+        if (hasConnectedOnce) catchUpHistory();
+        hasConnectedOnce = true;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("[MessagesView] WebSocket message received:", data);
+
+          if (data.type === "chat.message") {
+            const newMessage = {
+              id: data.message_id,
+              serverId: data.message_id,
+              senderId: data.sender_user_id,
+              content: data.body,
+              messageType: "text" as const,
+              isRead: true,
+              createdAt: data.created_at,
+            };
+
+            setMessages((prev) => mergeIncomingMessage(prev, newMessage));
+
+            // Keep the inbox list's last-message preview in sync so the
+            // conversation row updates live instead of going stale until
+            // the list is refetched (e.g. on a tab switch).
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === selectedConversation
+                  ? {
+                      ...c,
+                      lastMessage: {
+                        content: newMessage.content,
+                        senderId: newMessage.senderId,
+                        createdAt: newMessage.createdAt,
+                        isRead: true,
+                      },
+                    }
+                  : c,
+              ),
+            );
+
+            // Scroll to bottom when new message arrives
+            setTimeout(() => scrollToBottom(true), 100);
+          } else if (data.type === "error") {
+            console.warn("[MessagesView] WebSocket error:", data.message);
+          }
+        } catch (err) {
+          console.warn(
+            "[MessagesView] Failed to parse WebSocket message:",
+            err,
+          );
+        }
+      };
+
+      ws.onerror = () => {
+        // `onclose` fires right after and handles reconnect.
+      };
+
+      ws.onclose = (event) => {
+        console.log(
+          "[MessagesView] WebSocket closed:",
+          event.code,
+          event.reason,
+        );
+        if (cancelled) return;
+        // 4001 = bad token, 4003 = forbidden — don't hammer reconnect on an
+        // auth failure that won't fix itself.
+        if (event.code === 4001 || event.code === 4003) {
+          console.warn(
+            `[MessagesView] WebSocket rejected: ${event.code}`,
+          );
+          return;
+        }
+        scheduleReconnect();
+      };
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      attempt += 1;
+      // Exponential backoff, capped at 30s.
+      const delay = Math.min(30000, 1000 * 2 ** attempt);
+      reconnectTimer = setTimeout(connect, delay);
+    };
+
+    connect();
 
     return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) {
         console.log("[MessagesView] Closing WebSocket connection");
         ws.close();
@@ -699,6 +761,11 @@ export function MessagesView({
 
   // Fetch messages when conversation is selected
   useEffect(() => {
+    // Reset immediately on every conversation change (including to null) so
+    // a stale count from the previous thread can't briefly apply while the
+    // new one's history is still loading.
+    initialMessageCountRef.current = 0;
+
     const fetchMessages = async () => {
       if (!selectedConversation) {
         setMessages([]);
@@ -730,6 +797,7 @@ export function MessagesView({
         }));
 
         setMessages(transformedMessages);
+        initialMessageCountRef.current = transformedMessages.length;
 
         // Infer current user ID from messages
         if (response.messages && response.messages.length > 0) {
@@ -1443,7 +1511,14 @@ export function MessagesView({
                         </View>
                       )}
                       <Animated.View
-                        entering={FadeInUp.delay(index * 50)}
+                        // Only messages that arrived after the thread was
+                        // opened (a new incoming message, or one just sent)
+                        // fade in — already-loaded history renders instantly.
+                        entering={
+                          index >= initialMessageCountRef.current
+                            ? FadeInUp.duration(220)
+                            : undefined
+                        }
                         style={[
                           styles.messageWrapper,
                           isMyMessage ? styles.msgRight : styles.msgLeft,

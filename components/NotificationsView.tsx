@@ -12,11 +12,11 @@ import {
     Trash2,
     UserPlus,
 } from "lucide-react-native";
+import { Image } from "expo-image";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Image,
     RefreshControl,
-    ScrollView,
+    SectionList,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -375,7 +375,11 @@ export function NotificationsView({
   const hasUnread = notifications.some((n) => !n.IS_READ);
   const hasRead = notifications.some((n) => n.IS_READ);
 
-  /** Group rows into time buckets, preserving newest-first ordering. */
+  /**
+   * Group rows into time buckets, preserving newest-first ordering. Shaped
+   * for SectionList directly (`title`/`data`) rather than the app's usual
+   * `label`/`rows` naming, since that's the prop contract SectionList reads.
+   */
   const sections = useMemo(() => {
     const buckets: Record<SectionKey, BackendNotification[]> = {
       today: [],
@@ -388,24 +392,17 @@ export function NotificationsView({
     }
     return (Object.keys(SECTION_LABELS) as SectionKey[])
       .filter((k) => buckets[k].length > 0)
-      .map((k) => ({ key: k, label: SECTION_LABELS[k], rows: buckets[k] }));
+      .map((k) => ({
+        key: k,
+        title: SECTION_LABELS[k],
+        data: buckets[k],
+      }));
   }, [notifications]);
 
   const unreadCount = notifications.filter((n) => !n.IS_READ).length;
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={handlePullToRefresh}
-          tintColor="#000"
-        />
-      }
-    >
+  const listHeader = (
+    <>
       {/* ── Header — flat, no card. Plain back arrow, large title, an
           unread-count subtitle, and one understated action pill. ── */}
       <View style={styles.header}>
@@ -493,125 +490,6 @@ export function NotificationsView({
         </View>
       )}
 
-      {/* Notifications list, grouped by recency */}
-      {!isLoading && !error && notifications.length > 0 && (
-        <View>
-          {sections.map((section, sectionIdx) => (
-            <View
-              key={section.key}
-              style={sectionIdx === 0 ? undefined : styles.sectionSpacer}
-            >
-              <Text style={styles.sectionLabel}>{section.label}</Text>
-              <View style={styles.notificationsList}>
-                {section.rows.map((notification, rowIdx) => {
-                  const Icon =
-                    NOTIFICATION_ICON[notification.TYPE] ?? DEFAULT_ICON;
-                  const isUnread = !notification.IS_READ;
-
-                  // Backend (PR #43) supplies denormalized RELATED_* metadata
-                  // when present. Prefer the related user's avatar over the
-                  // generic type-icon; the icon falls back when no photo.
-                  const hasAvatar = !!notification.RELATED_USER_PHOTO_URL;
-                  const jobContext =
-                    notification.RELATED_JOB_TITLE &&
-                    notification.RELATED_JOB_COMPANY
-                      ? `${notification.RELATED_JOB_TITLE} · ${notification.RELATED_JOB_COMPANY}`
-                      : notification.RELATED_JOB_TITLE ||
-                        notification.RELATED_JOB_COMPANY ||
-                        null;
-
-                  const row = (
-                    <TouchableOpacity
-                      activeOpacity={0.6}
-                      onPress={() => handleNotificationPress(notification)}
-                      style={[
-                        styles.row,
-                        isUnread ? styles.rowUnread : styles.rowRead,
-                      ]}
-                    >
-                      {/* Leading avatar or monochrome icon */}
-                      {hasAvatar ? (
-                        <Image
-                          source={{
-                            uri:
-                              notification.RELATED_USER_PHOTO_URL ?? undefined,
-                          }}
-                          style={styles.avatar}
-                        />
-                      ) : (
-                        <View style={styles.iconCircle}>
-                          <Icon color="#1A1A1A" size={20} strokeWidth={2.3} />
-                        </View>
-                      )}
-
-                      {/* Text column */}
-                      <View style={styles.rowText}>
-                        <Text
-                          style={[
-                            styles.rowTitle,
-                            !isUnread && styles.rowTitleRead,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {notification.TITLE}
-                        </Text>
-                        <Text style={styles.rowBody} numberOfLines={2}>
-                          {notification.BODY}
-                        </Text>
-                        <View style={styles.rowMeta}>
-                          <Text style={styles.rowTime}>
-                            {formatRelativeTime(notification.CREATED_AT)}
-                          </Text>
-                          {!!jobContext && (
-                            <>
-                              <View style={styles.metaDot} />
-                              <Text style={styles.rowContext} numberOfLines={1}>
-                                {jobContext}
-                              </Text>
-                            </>
-                          )}
-                        </View>
-                      </View>
-
-                      {/* Single unread signal — a small filled dot. */}
-                      {isUnread && <View style={styles.unreadDot} />}
-                    </TouchableOpacity>
-                  );
-
-                  return (
-                    <Animated.View
-                      key={notification.NOTIFICATION_ID}
-                      entering={FadeInUp.delay(rowIdx * 40).duration(320)}
-                    >
-                      <ReanimatedSwipeable
-                        friction={2}
-                        rightThreshold={48}
-                        overshootRight={false}
-                        renderRightActions={() => (
-                          <View style={styles.swipeActionContainer}>
-                            <View style={styles.swipeActionDelete}>
-                              <Trash2
-                                color="#FFF"
-                                size={18}
-                                strokeWidth={2.5}
-                              />
-                              <Text style={styles.swipeActionText}>Delete</Text>
-                            </View>
-                          </View>
-                        )}
-                        onSwipeableOpen={() => handleSwipeCommit(notification)}
-                      >
-                        {row}
-                      </ReanimatedSwipeable>
-                    </Animated.View>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
       {/* Empty state — user has no notifications at all */}
       {!isLoading && !error && notifications.length === 0 && (
         <View style={styles.emptyState}>
@@ -624,7 +502,132 @@ export function NotificationsView({
           </Text>
         </View>
       )}
-    </ScrollView>
+    </>
+  );
+
+  return (
+    <SectionList
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      // Loading/error/empty already render their own state inside the
+      // header; suppress the section rows entirely while any of those
+      // apply so nothing double-renders.
+      sections={isLoading || error || notifications.length === 0 ? [] : sections}
+      keyExtractor={(item) => item.NOTIFICATION_ID}
+      stickySectionHeadersEnabled={false}
+      ListHeaderComponent={listHeader}
+      renderSectionHeader={({ section }) => (
+        <Text
+          style={[
+            styles.sectionLabel,
+            sections[0]?.key !== section.key && styles.sectionSpacer,
+          ]}
+        >
+          {section.title}
+        </Text>
+      )}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handlePullToRefresh}
+          tintColor="#000"
+        />
+      }
+      renderItem={({ item: notification, index: rowIdx }) => {
+        const Icon = NOTIFICATION_ICON[notification.TYPE] ?? DEFAULT_ICON;
+        const isUnread = !notification.IS_READ;
+
+        // Backend (PR #43) supplies denormalized RELATED_* metadata when
+        // present. Prefer the related user's avatar over the generic
+        // type-icon; the icon falls back when no photo.
+        const hasAvatar = !!notification.RELATED_USER_PHOTO_URL;
+        const jobContext =
+          notification.RELATED_JOB_TITLE && notification.RELATED_JOB_COMPANY
+            ? `${notification.RELATED_JOB_TITLE} · ${notification.RELATED_JOB_COMPANY}`
+            : notification.RELATED_JOB_TITLE ||
+              notification.RELATED_JOB_COMPANY ||
+              null;
+
+        const row = (
+          <TouchableOpacity
+            activeOpacity={0.6}
+            onPress={() => handleNotificationPress(notification)}
+            style={[styles.row, isUnread ? styles.rowUnread : styles.rowRead]}
+          >
+            {/* Leading avatar or monochrome icon */}
+            {hasAvatar ? (
+              <Image
+                source={{
+                  uri: notification.RELATED_USER_PHOTO_URL ?? undefined,
+                }}
+                style={styles.avatar}
+                cachePolicy="memory-disk"
+                transition={150}
+              />
+            ) : (
+              <View style={styles.iconCircle}>
+                <Icon color="#1A1A1A" size={20} strokeWidth={2.3} />
+              </View>
+            )}
+
+            {/* Text column */}
+            <View style={styles.rowText}>
+              <Text
+                style={[styles.rowTitle, !isUnread && styles.rowTitleRead]}
+                numberOfLines={1}
+              >
+                {notification.TITLE}
+              </Text>
+              <Text style={styles.rowBody} numberOfLines={2}>
+                {notification.BODY}
+              </Text>
+              <View style={styles.rowMeta}>
+                <Text style={styles.rowTime}>
+                  {formatRelativeTime(notification.CREATED_AT)}
+                </Text>
+                {!!jobContext && (
+                  <>
+                    <View style={styles.metaDot} />
+                    <Text style={styles.rowContext} numberOfLines={1}>
+                      {jobContext}
+                    </Text>
+                  </>
+                )}
+              </View>
+            </View>
+
+            {/* Single unread signal — a small filled dot. */}
+            {isUnread && <View style={styles.unreadDot} />}
+          </TouchableOpacity>
+        );
+
+        return (
+          <View style={styles.notificationsList}>
+            <Animated.View
+              entering={FadeInUp.delay(rowIdx * 40).duration(320)}
+            >
+              <ReanimatedSwipeable
+                friction={2}
+                rightThreshold={48}
+                overshootRight={false}
+                renderRightActions={() => (
+                  <View style={styles.swipeActionContainer}>
+                    <View style={styles.swipeActionDelete}>
+                      <Trash2 color="#FFF" size={18} strokeWidth={2.5} />
+                      <Text style={styles.swipeActionText}>Delete</Text>
+                    </View>
+                  </View>
+                )}
+                onSwipeableOpen={() => handleSwipeCommit(notification)}
+              >
+                {row}
+              </ReanimatedSwipeable>
+            </Animated.View>
+          </View>
+        );
+      }}
+    />
   );
 }
 
@@ -730,8 +733,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
+  // Per-row wrapper — used to be `gap: 4` on a container of all of a
+  // section's rows; SectionList renders each row in isolation (no shared
+  // sibling container to apply flex `gap` to), so the same 4px breathing
+  // room between rows is now a per-row marginBottom instead.
   notificationsList: {
-    gap: 4,
+    marginBottom: 4,
   },
 
   // ── Notification row — flat, no shadow. Unread rows lift via a subtle

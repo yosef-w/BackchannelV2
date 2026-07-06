@@ -1,5 +1,6 @@
+import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
 
 /**
  * Renders a person's avatar photo, falling back to a black tile with their
@@ -62,7 +63,9 @@ export function Avatar({
         <Image
           source={{ uri: usableUrl }}
           style={{ width: size, height: size }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
           onError={() => setImgFailed(true)}
         />
       ) : (
