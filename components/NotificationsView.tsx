@@ -3,6 +3,7 @@ import {
     ArrowLeft,
     Award,
     Bell,
+    BellRing,
     Briefcase,
     CheckCircle,
     Heart,
@@ -64,6 +65,7 @@ type BackendNotification = {
     | "referral"
     | "job_like"
     | "waitlist"
+    | "sponsor_request"
     | "connection"
     | "profile_update"
     | string;
@@ -93,6 +95,7 @@ const NOTIFICATION_ICON: Record<string, React.ComponentType<any>> = {
   referral: Award,
   job_like: Star,
   waitlist: Briefcase,
+  sponsor_request: BellRing,
   connection: UserPlus,
   profile_update: CheckCircle,
 };
@@ -343,7 +346,11 @@ export function NotificationsView({
         return;
       }
       case "match":
-      case "referral": {
+      case "referral":
+      case "sponsor_request": {
+        // Sponsor requests surface in Matches' "Your Move" section (see
+        // getSponsorRequests() in MatchesView) — same deep link as
+        // match/referral.
         onOpenTab("matches");
         return;
       }

@@ -16,6 +16,7 @@ import {
     submitReferral,
     unmatchConversation,
     WS_BASE_URL,
+    type ConversationRow,
     type ReportReason,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -125,6 +126,42 @@ function getConversationStarters(
       : "Tell me a bit about your background.",
     "What's most important to you in your next role?",
   ];
+}
+
+/** UI-shaped conversation, as transformConversation() produces from a raw
+ * ConversationRow — the type every inbox/thread render site consumes. */
+export interface Conversation {
+  id: string;
+  status: "ACTIVE" | "CLOSED";
+  name: string;
+  role: string;
+  company: string;
+  profileImageUrl: string | null;
+  skills: string[];
+  experience: string;
+  otherParticipant: {
+    id: string;
+    name: string;
+    profileImageUrl: string | null;
+    role?: string;
+    company?: string;
+  };
+  lastMessage?: {
+    content: string;
+    senderId: string;
+    createdAt: string;
+    isRead: boolean;
+  };
+  unreadCount: number;
+  jobContext: {
+    jobId: string;
+    jobTitle: string;
+    company: string;
+    logoUrl?: string;
+  };
+  /** True when ACTIVE but no activity in 30+ days — buckets into the
+   * "Hidden (30+ days inactive)" section instead of Active. */
+  isHidden: boolean;
 }
 
 /**
@@ -244,15 +281,13 @@ export function MessagesView({
     enabled: !!currentUserId,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
-    queryFn: async (): Promise<any[]> => {
+    queryFn: async (): Promise<Conversation[]> => {
       try {
         const response = await getConversations({ limit: 20, offset: 0 });
         setConversationsTotalCount(
           response.total_count ?? response.conversations.length,
         );
-        return response.conversations.map((conv) =>
-          transformConversation(conv as any),
-        );
+        return response.conversations.map(transformConversation);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to fetch conversations";
@@ -274,12 +309,12 @@ export function MessagesView({
   // every existing setConversations(...) call site works unchanged while the
   // list actually lives in the React Query cache.
   const setConversations = useCallback(
-    (next: any[] | ((prev: any[]) => any[])) => {
-      queryClient.setQueryData<any[]>(
+    (next: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
+      queryClient.setQueryData<Conversation[]>(
         ["conversations", "list", currentUserId],
         (prev) =>
           typeof next === "function"
-            ? (next as (p: any[]) => any[])(prev ?? [])
+            ? (next as (p: Conversation[]) => Conversation[])(prev ?? [])
             : next,
       );
     },
@@ -323,7 +358,7 @@ export function MessagesView({
   // which is created once and must read the *current* values without the
   // socket reconnecting every time selection or the list changes.
   const selectedConversationRef = useRef<string | null>(selectedConversation);
-  const conversationsRef = useRef<any[]>(conversations);
+  const conversationsRef = useRef<Conversation[]>(conversations);
   const prevSelectedRef = useRef<string | null>(selectedConversation);
   // How many messages were already in the thread the moment it was opened —
   // only messages at or past this index get the entering fade (see the
@@ -372,7 +407,7 @@ export function MessagesView({
   // automatically once `currentUserId` is set — no manual effect needed.)
 
   // Build a transformed conversation object from raw API response (shared by initial fetch + load more)
-  const transformConversation = (c: any) => {
+  const transformConversation = (c: ConversationRow): Conversation => {
     const isCurrentUserApplicant = c.APPLICANT_USER_ID === currentUserId;
     const otherPersonFirstName = isCurrentUserApplicant
       ? c.SPONSOR_FIRST_NAME
@@ -409,8 +444,13 @@ export function MessagesView({
       role: otherPersonRole || "Unknown Role",
       company: otherPersonCompany || c.COMPANY || "Unknown Company",
       profileImageUrl: otherPersonPhoto,
-      skills: c.SKILLS ? (Array.isArray(c.SKILLS) ? c.SKILLS : [c.SKILLS]) : [],
-      experience: c.YEARS_EXPERIENCE ? `${c.YEARS_EXPERIENCE} years` : "N/A",
+      // GET /api/messages/conversations/ doesn't return SKILLS or
+      // YEARS_EXPERIENCE — this was reading fields that don't exist on the
+      // response, always silently falling through to these defaults.
+      // getConversationStarters() and the referral flow's Key Skills
+      // section both already degrade gracefully to an empty list.
+      skills: [],
+      experience: "N/A",
       otherParticipant: {
         id: otherPersonId,
         name:
@@ -441,9 +481,20 @@ export function MessagesView({
         // join LOGO_URL onto the row. Pull whichever naming surfaces if
         // backend adds it later; otherwise stays undefined and downstream
         // CompanyLogo components fall back to the company initial.
-        logoUrl: c.LOGO_URL || c.logo_url || c.ORGANIZATION_LOGO || undefined,
+        logoUrl: (c as any).LOGO_URL || (c as any).logo_url || undefined,
       },
-      createdAt: new Date().toISOString(),
+      // "Hidden (30+ days inactive)" — a thread with no activity in 30+
+      // days buckets out of Active. Previously this field was declared as
+      // a filter target (see activeConversations/hiddenConversations below)
+      // but never actually set here, so the Hidden section was permanently
+      // empty; typing this transform's output surfaced the gap.
+      isHidden: (() => {
+        if (!c.LAST_AT) return false;
+        const lastActivityMs = new Date(c.LAST_AT).getTime();
+        if (Number.isNaN(lastActivityMs)) return false;
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        return Date.now() - lastActivityMs > THIRTY_DAYS_MS;
+      })(),
     };
   };
 
@@ -1661,7 +1712,7 @@ export function MessagesView({
             variant={userType === "sponsor" ? "applicant" : "sponsor"}
             initial={{
               name: conversation.otherParticipant?.name || "",
-              image: conversation.otherParticipant?.profileImageUrl,
+              image: conversation.otherParticipant?.profileImageUrl ?? undefined,
               role: conversation.otherParticipant?.role,
               company: conversation.otherParticipant?.company,
             }}

@@ -86,6 +86,7 @@ import { MatchesEmptyState } from "./matches/MatchesEmptyState";
 import { MatchListScreen } from "./matches/MatchListScreen";
 import { MatchSection } from "./matches/MatchSection";
 import { MetaLine, OpportunityRow } from "./matches/OpportunityRow";
+import { WithdrawReferralModal } from "./matches/WithdrawReferralModal";
 import { Avatar } from "./ui/Avatar";
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
@@ -136,7 +137,7 @@ interface Match {
   }[];
 }
 
-interface Referral {
+export interface Referral {
   referralId: string;
   jobId: string;
   applicantUserId: string;
@@ -3499,122 +3500,40 @@ export function MatchesView({
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Withdraw Referral Confirmation Modal */}
+      {/* Withdraw Referral Confirmation Modal — extracted to
+          components/matches/WithdrawReferralModal.tsx (self-contained: no
+          shared animation/lazy-fetch state, same pattern as
+          ApplicantCheckInModal/ProfileCompletionModal). */}
       <Modal
         visible={!!confirmingWithdrawReferral}
         transparent
         animationType="none"
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setConfirmingWithdrawReferral(null)}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={() => setConfirmingWithdrawReferral(null)}
-            style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.6 }]}
-          >
-            {confirmingWithdrawReferral &&
-              (() => {
-                const matchForReferral = matches.find(
+        <WithdrawReferralModal
+          referral={confirmingWithdrawReferral}
+          applicantName={
+            confirmingWithdrawReferral
+              ? [
+                  confirmingWithdrawReferral.applicantFirstName,
+                  confirmingWithdrawReferral.applicantLastName,
+                ]
+                  .filter(Boolean)
+                  .join(" ") ||
+                matches.find(
                   (m) =>
                     m.applicantUserId ===
                     confirmingWithdrawReferral.applicantUserId,
-                );
-                const applicantName =
-                  [
-                    confirmingWithdrawReferral.applicantFirstName,
-                    confirmingWithdrawReferral.applicantLastName,
-                  ]
-                    .filter(Boolean)
-                    .join(" ") ||
-                  matchForReferral?.name ||
-                  "this applicant";
-                const isProcessing =
-                  withdrawingReferralId ===
-                  confirmingWithdrawReferral.referralId;
-
-                return (
-                  <View>
-                    <View style={styles.withdrawIconCircle}>
-                      <AlertTriangle
-                        size={28}
-                        color="#DC2626"
-                        strokeWidth={2.5}
-                      />
-                    </View>
-
-                    <Text style={styles.withdrawModalTitle}>
-                      Withdraw referral?
-                    </Text>
-                    <Text style={styles.withdrawModalSubtitle}>
-                      You're about to withdraw{" "}
-                      <Text style={styles.withdrawModalEmphasis}>
-                        {applicantName}
-                      </Text>
-                      {confirmingWithdrawReferral.jobTitle
-                        ? `'s referral for ${confirmingWithdrawReferral.jobTitle}.`
-                        : "'s referral."}
-                    </Text>
-
-                    <View style={styles.withdrawWarningCard}>
-                      <View style={styles.withdrawWarningRow}>
-                        <View style={styles.withdrawWarningDot} />
-                        <Text style={styles.withdrawWarningText}>
-                          You'll have a few seconds to undo this.
-                        </Text>
-                      </View>
-                      <View style={styles.withdrawWarningRow}>
-                        <View style={styles.withdrawWarningDot} />
-                        <Text style={styles.withdrawWarningText}>
-                          The applicant will be notified of the withdrawal.
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.withdrawModalActions}>
-                      <TouchableOpacity
-                        style={styles.withdrawCancelBtn}
-                        onPress={() => setConfirmingWithdrawReferral(null)}
-                        disabled={isProcessing}
-                      >
-                        <Text style={styles.withdrawCancelBtnText}>
-                          Keep referral
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.withdrawConfirmBtn,
-                          isProcessing && styles.withdrawBtnDisabled,
-                        ]}
-                        onPress={() =>
-                          handleConfirmWithdrawWithUndo(
-                            confirmingWithdrawReferral,
-                          )
-                        }
-                        disabled={isProcessing}
-                      >
-                        {isProcessing ? (
-                          <ActivityIndicator size="small" color="#FFF" />
-                        ) : (
-                          <Text style={styles.withdrawConfirmBtnText}>
-                            Yes, withdraw
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })()}
-          </DismissibleSheet>
-        </View>
+                )?.name ||
+                "this applicant"
+              : ""
+          }
+          isProcessing={
+            !!confirmingWithdrawReferral &&
+            withdrawingReferralId === confirmingWithdrawReferral.referralId
+          }
+          onCancel={() => setConfirmingWithdrawReferral(null)}
+          onConfirm={handleConfirmWithdrawWithUndo}
+        />
       </Modal>
 
       {/* Undo toast — shown after confirming withdrawal, before API commit */}
@@ -4719,97 +4638,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 74,
   },
-  withdrawBtnDisabled: {
-    opacity: 0.5,
-  },
   withdrawBtnText: {
     fontSize: 12,
     fontWeight: "700" as const,
     color: "#DC2626",
-  },
-  withdrawIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FEF2F2",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 18,
-  },
-  withdrawModalTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-    letterSpacing: -0.5,
-    marginBottom: 10,
-  },
-  withdrawModalSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 21,
-    fontWeight: "500",
-    marginBottom: 22,
-    paddingHorizontal: 4,
-  },
-  withdrawModalEmphasis: {
-    fontWeight: "800",
-    color: "#000",
-  },
-  withdrawWarningCard: {
-    backgroundColor: "#FEF2F2",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#FEF2F2",
-    padding: 16,
-    marginBottom: 24,
-    gap: 10,
-  },
-  withdrawWarningRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  withdrawWarningDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#DC2626",
-    marginTop: 7,
-  },
-  withdrawWarningText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#DC2626",
-    lineHeight: 19,
-    fontWeight: "600",
-  },
-  withdrawModalActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  withdrawCancelBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  withdrawCancelBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
-  },
-  withdrawConfirmBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#DC2626",
-    alignItems: "center",
-    justifyContent: "center",
   },
   undoToast: {
     position: "absolute",
@@ -4848,11 +4680,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,
-  },
-  withdrawConfirmBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFF",
   },
   referralDateText: {
     fontSize: 11,

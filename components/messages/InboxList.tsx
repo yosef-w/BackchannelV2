@@ -25,7 +25,7 @@ export interface InboxConversation {
   otherParticipant?: {
     id?: string;
     name?: string;
-    profileImageUrl?: string;
+    profileImageUrl?: string | null;
   };
   lastMessage?: { content?: string; createdAt?: string } | null;
   unreadCount?: number;
@@ -109,7 +109,7 @@ function ConvAvatar({
   unread,
 }: {
   name?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   hidden?: boolean;
   unread?: boolean;
 }) {

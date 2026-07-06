@@ -199,24 +199,85 @@ Phase 2 baseline (zero net-new). No dependency changes (verified via
       own changeset, tested independently), then add persistence as a
       second, isolated step.
 
-## Phase 4 — Structure & type safety (enables everything after)
+## Phase 4 — Structure & type safety ✅ MOSTLY DONE
 
-- [ ] **4.1 Type the API seam.** The transforms from 1.1 take the existing
-      api.ts response interfaces as input and return declared types
-      (`Job`, `Match`, `Conversation`, …); views consume typed outputs and
-      shed their `any`s. Incremental — do it entity by entity.
-- [ ] **4.2 Carve the megafiles at natural seams** (no rewrite):
-      - MessagesView → `ThreadScreen` + inbox (split already exists at the
-        `if (selectedConversation)` branch ~:1281)
-      - HomeView → applicant deck card + sponsor deck card components
-      - MatchesView → extract the self-contained `<Modal>` blocks
-- [ ] **4.3 Unify data fetching on React Query.** Migrate HomeView/JobsView
-      manual fetch + race-guard + TTL code (deck cache Map, requestId refs,
-      `fetchingForJobId` snapshots) to `useQuery` with `staleTime`; deletes
-      ~150 lines of the trickiest concurrency logic.
-- [ ] **4.4 `sponsor_request` notification type.** Add icon + deep link
-      (route to Matches) in NotificationsView; currently falls to default
-      bell with a dead tap.
+Full `tsc --noEmit` + `eslint .` clean — 152 problems (down from the 154
+Phase-2/3 baseline; zero net-new).
+
+- [x] **4.4 `sponsor_request` notification type.** Added `BellRing` to
+      `NOTIFICATION_ICON` and a `sponsor_request` case (routes to Matches,
+      same as match/referral — that's where `getSponsorRequests()` rows
+      surface) in `handleNotificationPress`'s switch.
+- [x] **4.1 Type the API seam — incremental, two entities done.**
+      - Extracted `MyJobRow` (named interface) from `getMyJobs()`'s inline
+        return type in `lib/api.ts`; `transformMyJobRow` in JobsView now
+        takes it instead of `any`.
+      - Extracted `ConversationRow` from `getConversations()`'s inline
+        return type; added a properly-typed `Conversation` output interface
+        in MessagesView; `transformConversation` now takes `ConversationRow`
+        and returns `Conversation`, and the `conversations` state/query/ref
+        were widened from `any[]` to `Conversation[]` throughout the file
+        (the full seam, not just the transform).
+      - **Typing this surfaced two real, previously-invisible bugs:**
+        `isHidden` was read (to bucket the "Hidden (30+ days inactive)"
+        inbox section) but never actually *set* by `transformConversation`
+        — that section was permanently empty. Now computed from `LAST_AT`
+        against a 30-day threshold. Separately, the transform was reading
+        `c.SKILLS`/`c.YEARS_EXPERIENCE` — fields `GET /api/messages/
+        conversations/` never returns — always silently falling through to
+        empty defaults; removed the dead reads.
+      - (`Job`/`transformJobApiResponse` and `transformBrowseResponse`/
+        `transformProfilePackRow` were already properly typed from earlier
+        phases.) Further incremental target: MatchesView's `Match`/
+        `Referral` transforms still lean on `any` casts + UPPERCASE/
+        lowercase fallback chains for the dual applicant/sponsor API
+        shapes — more effort per the "incremental" framing, left for a
+        follow-up pass.
+- [x] **4.2 Carve the megafiles at natural seams — partial.**
+      - Extracted `WithdrawReferralModal` from MatchesView into
+        `components/matches/WithdrawReferralModal.tsx` — genuinely
+        self-contained (referral/name/processing-state/two callbacks in,
+        no shared animation or lazy-fetch state), the same shape as the
+        already-separate `ApplicantCheckInModal`/`ProfileCompletionModal`.
+        Verified via `matches.find(...)` name resolution moved to the
+        caller so the modal doesn't need the whole `matches` array.
+      - **MessagesView → ThreadScreen/Inbox split, and HomeView →
+        applicant/sponsor deck card split: evaluated and deferred.**
+        Checked how entangled the "natural seam" actually is before
+        attempting either: MessagesView has 29 top-level `useState` hooks,
+        HomeView has 31 — in both files the vast majority of that state
+        (plus refs, animated shared values, and handlers) is read on
+        *both* sides of the seam (e.g. MessagesView's `conversations`/
+        `setConversations`/`currentUserId`/the per-conversation WebSocket
+        effect are all needed inside the thread-view branch too; HomeView's
+        `swipeOpacity`/`matchRingScale`/scroll-handler shared values and
+        `fullProfileCache`/`sponsorProfileCache` lazy-fetch state span both
+        the applicant and sponsor card renders). A real split means
+        prop-drilling 15-25+ pieces of state/handlers per file — mechanical,
+        but with a large enough surface that a wiring mistake (a stale
+        closure, a missed setter) could silently break the core swipe/chat
+        experience in a way I can't catch without a device. Same risk
+        category as the inverted-FlatList item already deferred in Phase 3
+        — for the same file, in fact. The `WithdrawReferralModal` extraction
+        above demonstrates the pattern works cleanly where the seam is
+        actually self-contained; the other two aren't, yet.
+- [x] **4.3 Unify data fetching on React Query — evaluated, deferred.**
+      Read through HomeView's manual fetch/cache code before deciding: the
+      per-role deck cache (`Map<jobId, {profiles, index, progress,
+      fetchedAt}>`) plus `requestId`/`fetchingForJobId` race-guards exist
+      specifically to let a sponsor switch roles and land back on the exact
+      card they left, without a re-fetch or a progress-bar reset — a
+      behavior `useQuery`'s `staleTime`/cache model doesn't map onto 1:1
+      (it caches *responses*, not *scroll position within a response*).
+      Migrating this without reintroducing the exact "switching roles
+      resets my progress" bug the current code was written to fix requires
+      either a custom `queryFn` that also restores position (defeating the
+      simplification) or accepting a behavior regression — not a safe
+      trade to make blind. Deferred alongside the same file's other
+      deferred items (3.2d, 4.2's HomeView split) for the same reason: high
+      value, but the current manual code is *correct* today, and this is
+      the kind of migration that wants a human clicking through role
+      switches on a device before merging.
 
 ## Phase 5 — Backend-dependent (frontend is already wired; coordinate)
 

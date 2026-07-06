@@ -388,34 +388,37 @@ export async function sponsorJob(
  * Return all jobs owned by the authenticated sponsor (active and inactive)
  * Uses GET /api/jobs/mine/
  */
+/** A single row from GET /api/jobs/mine/ — a job the authenticated sponsor owns. */
+export interface MyJobRow {
+  JOB_ID: string;
+  SPONSOR_ID: string;
+  TITLE: string;
+  COMPANY: string;
+  LOCATION: string;
+  DESCRIPTION: string;
+  SALARY_MIN: number | null;
+  SALARY_MAX: number | null;
+  SALARY_CURRENCY: string | null;
+  REQUIREMENTS: string;
+  EXPERIENCE_LEVEL: string | null;
+  EMPLOYMENT_TYPE: string | null;
+  REMOTE_OPTION: boolean;
+  CREATED_AT: string;
+  EXPIRES_AT: string;
+  IS_ACTIVE: boolean;
+  RELATIONSHIP: string | null;
+  CAN_REFER: boolean;
+  LOGO_URL: string | null;
+  LIKES_COUNT: number; // applicants who have liked this job (ACTIVE | MATCHED)
+  // PR #56 — pending-only "needs your attention" count. Use this (not the
+  // broader LIKES_COUNT) for the HomeView role-switcher badge so the
+  // number reflects unactioned interest, not lifetime activity.
+  PENDING_LIKES_COUNT: number;
+  REFERENCE_JOB_ID?: string | null;
+}
+
 export async function getMyJobs(): Promise<{
-  jobs: Array<{
-    JOB_ID: string;
-    SPONSOR_ID: string;
-    TITLE: string;
-    COMPANY: string;
-    LOCATION: string;
-    DESCRIPTION: string;
-    SALARY_MIN: number | null;
-    SALARY_MAX: number | null;
-    SALARY_CURRENCY: string | null;
-    REQUIREMENTS: string;
-    EXPERIENCE_LEVEL: string | null;
-    EMPLOYMENT_TYPE: string | null;
-    REMOTE_OPTION: boolean;
-    CREATED_AT: string;
-    EXPIRES_AT: string;
-    IS_ACTIVE: boolean;
-    RELATIONSHIP: string | null;
-    CAN_REFER: boolean;
-    LOGO_URL: string | null;
-    LIKES_COUNT: number; // applicants who have liked this job (ACTIVE | MATCHED)
-    // PR #56 — pending-only "needs your attention" count. Use this (not the
-    // broader LIKES_COUNT) for the HomeView role-switcher badge so the
-    // number reflects unactioned interest, not lifetime activity.
-    PENDING_LIKES_COUNT: number;
-    REFERENCE_JOB_ID?: string | null;
-  }>;
+  jobs: MyJobRow[];
   total_count: number;
 }> {
   return api.get("/api/jobs/mine/");
@@ -696,33 +699,36 @@ export async function getSponsorMatches(): Promise<{
  * Backend returns UPPERCASE field names (PostgreSQL, PR #25).
  * Supports pagination (PR #22): limit (default 20) and offset (default 0).
  */
+/** A single row from GET /api/messages/conversations/. */
+export interface ConversationRow {
+  CONVERSATION_ID: string;
+  JOB_ID: string;
+  APPLICANT_USER_ID: string;
+  SPONSOR_USER_ID: string;
+  STATUS: string;
+  APPLICANT_HAS_UNREAD: boolean;
+  SPONSOR_HAS_UNREAD: boolean;
+  APPLICANT_FIRST_NAME: string;
+  APPLICANT_LAST_NAME: string;
+  SPONSOR_FIRST_NAME: string;
+  SPONSOR_LAST_NAME: string;
+  TITLE: string;
+  // Enriched fields from server-side JOIN (last message + participant details)
+  LAST_BODY: string | null;
+  LAST_AT: string | null;
+  SPONSOR_PHOTO_URL: string | null;
+  APPLICANT_PHOTO_URL: string | null;
+  SPONSOR_JOB_TITLE: string | null;
+  SPONSOR_COMPANY: string | null;
+  COMPANY: string | null;
+  APPLICANT_POSITIONS: string | null; // JSON-encoded string array
+}
+
 export async function getConversations(params?: {
   limit?: number;
   offset?: number;
 }): Promise<{
-  conversations: Array<{
-    CONVERSATION_ID: string;
-    JOB_ID: string;
-    APPLICANT_USER_ID: string;
-    SPONSOR_USER_ID: string;
-    STATUS: string;
-    APPLICANT_HAS_UNREAD: boolean;
-    SPONSOR_HAS_UNREAD: boolean;
-    APPLICANT_FIRST_NAME: string;
-    APPLICANT_LAST_NAME: string;
-    SPONSOR_FIRST_NAME: string;
-    SPONSOR_LAST_NAME: string;
-    TITLE: string;
-    // Enriched fields from server-side JOIN (last message + participant details)
-    LAST_BODY: string | null;
-    LAST_AT: string | null;
-    SPONSOR_PHOTO_URL: string | null;
-    APPLICANT_PHOTO_URL: string | null;
-    SPONSOR_JOB_TITLE: string | null;
-    SPONSOR_COMPANY: string | null;
-    COMPANY: string | null;
-    APPLICANT_POSITIONS: string | null; // JSON-encoded string array
-  }>;
+  conversations: ConversationRow[];
   total_count: number;
   limit?: number;
   offset?: number;

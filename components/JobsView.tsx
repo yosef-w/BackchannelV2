@@ -9,6 +9,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import {
   type AtsOrganization,
+  type MyJobRow,
   browseJobs,
   createJobFromUrl,
   getJobApplicantsLikes,
@@ -247,7 +248,7 @@ function transformBrowseResponse(
 // had already drifted (initMyJobs was missing pendingApplicants, so the "N
 // new" badge on freshly-mounted SponsoredJobCards read wrong until the tab
 // was manually opened and refreshMyJobs re-ran).
-function transformMyJobRow(j: any): Job {
+function transformMyJobRow(j: MyJobRow): Job {
   return {
     id: j.JOB_ID,
     title: j.TITLE,
