@@ -100,7 +100,8 @@ function RootLayout() {
     <QueryClientProvider client={queryClientRef.current}>
       {/* Every screen in this app hardcodes a white background and
           dark-content status bar — there's no dark-mode styling anywhere
-          (the scaffold's ThemedText/ThemedView/useColorScheme are unused).
+          (the scaffold's ThemedText/ThemedView/useColorScheme were removed
+          as dead code — see docs/AUDIT_REMEDIATION_PLAN.md Phase 1).
           Following the system color scheme here previously left dark-mode
           users with mismatched nav chrome and, via StatusBar style="auto",
           a light status bar rendered on a white background. Pin to light

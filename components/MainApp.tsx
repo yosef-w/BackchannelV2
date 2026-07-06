@@ -802,9 +802,12 @@ export function MainApp({ userType }: MainAppProps) {
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleViewChange("notifications");
-                // Optimistically clear badge when the user opens the screen;
-                // the NotificationsView will mark-all-read on its own.
-                setUnreadNotificationCount(0);
+                // Don't optimistically zero the badge here — NotificationsView
+                // does NOT auto-mark-all-read (that's a manual "Mark all read"
+                // button), so zeroing on tap understated the count until the
+                // next 60s poll caught up. The real count is refetched when
+                // the user leaves the screen (see onBack below), by which
+                // point any read actions taken inside it have landed.
               }}
               activeOpacity={0.7}
               style={styles.headerIconButton}
@@ -883,7 +886,12 @@ export function MainApp({ userType }: MainAppProps) {
           {activeView === "notifications" && (
             <NotificationsView
               userType={userType}
-              onBack={() => setActiveView(previousView)}
+              onBack={() => {
+                setActiveView(previousView);
+                // Refresh the real unread count now that the user has seen
+                // (and possibly acted on) whatever was in the list.
+                fetchUnreadCount();
+              }}
               onOpenConversation={(conversationId) => {
                 setSelectedConversationId(conversationId);
                 setPreviousView("messages");

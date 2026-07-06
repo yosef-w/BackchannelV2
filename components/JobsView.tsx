@@ -241,6 +241,48 @@ function transformBrowseResponse(
   });
 }
 
+// Transform a GET /api/jobs/mine/ row into the UI Job shape. Shared by
+// refreshMyJobs (My Sponsored tab) and initMyJobs (mount pre-populate) so
+// both produce identical cards — previously they were separate copies that
+// had already drifted (initMyJobs was missing pendingApplicants, so the "N
+// new" badge on freshly-mounted SponsoredJobCards read wrong until the tab
+// was manually opened and refreshMyJobs re-ran).
+function transformMyJobRow(j: any): Job {
+  return {
+    id: j.JOB_ID,
+    title: j.TITLE,
+    company: j.COMPANY,
+    location: j.LOCATION,
+    locations: [j.LOCATION],
+    type: parseEmploymentType(j.EMPLOYMENT_TYPE),
+    salary:
+      j.SALARY_MIN && j.SALARY_MAX
+        ? formatSalary(j.SALARY_MIN, j.SALARY_MAX, j.SALARY_CURRENCY || "USD")
+        : "Competitive",
+    salaryMin: j.SALARY_MIN ?? null,
+    salaryMax: j.SALARY_MAX ?? null,
+    salaryCurrency: j.SALARY_CURRENCY || "USD",
+    postedAt: j.CREATED_AT ? new Date(j.CREATED_AT).toLocaleDateString() : "",
+    description: cleanJobText(j.DESCRIPTION),
+    summary: cleanJobText(j.DESCRIPTION).substring(0, 150),
+    skills: parseSkillsField(cleanJobText(j.REQUIREMENTS)),
+    requirements: cleanJobText(j.REQUIREMENTS),
+    highlights: [],
+    experienceLevel: formatExperienceLevel(j.EXPERIENCE_LEVEL),
+    workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
+    isRemote: j.REMOTE_OPTION,
+    url: "",
+    applicants: j.LIKES_COUNT ?? 0,
+    pendingApplicants: Number(j.PENDING_LIKES_COUNT ?? 0) || 0,
+    image:
+      j.LOGO_URL ||
+      "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+    currentSponsors: [],
+    benefits: [],
+    isSponsored: true,
+  } as Job;
+}
+
 // Extend Job type with UI-specific fields (JobPosting is now just an alias)
 type JobPosting = Job;
 
@@ -706,46 +748,7 @@ export function JobsView() {
     try {
       if (showLoadingSpinner) setMyJobsLoading(true);
       const response = await getMyJobs();
-      const transformed: Job[] = response.jobs.map((j: any) => ({
-        id: j.JOB_ID,
-        title: j.TITLE,
-        company: j.COMPANY,
-        location: j.LOCATION,
-        locations: [j.LOCATION],
-        type: parseEmploymentType(j.EMPLOYMENT_TYPE),
-        salary:
-          j.SALARY_MIN && j.SALARY_MAX
-            ? formatSalary(
-                j.SALARY_MIN,
-                j.SALARY_MAX,
-                j.SALARY_CURRENCY || "USD",
-              )
-            : "Competitive",
-        salaryMin: j.SALARY_MIN ?? null,
-        salaryMax: j.SALARY_MAX ?? null,
-        salaryCurrency: j.SALARY_CURRENCY || "USD",
-        postedAt: j.CREATED_AT
-          ? new Date(j.CREATED_AT).toLocaleDateString()
-          : "",
-        description: cleanJobText(j.DESCRIPTION),
-        summary: cleanJobText(j.DESCRIPTION).substring(0, 150),
-        skills: parseSkillsField(cleanJobText(j.REQUIREMENTS)),
-        requirements: cleanJobText(j.REQUIREMENTS),
-        highlights: [],
-        experienceLevel: formatExperienceLevel(j.EXPERIENCE_LEVEL),
-        workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
-        isRemote: j.REMOTE_OPTION,
-        url: "",
-        applicants: j.LIKES_COUNT ?? 0,
-        pendingApplicants: Number(j.PENDING_LIKES_COUNT ?? 0) || 0,
-        image:
-          j.LOGO_URL ||
-          "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
-        currentSponsors: [],
-        benefits: [],
-        isSponsored: true,
-      }));
-      setMyJobs(transformed);
+      setMyJobs(response.jobs.map(transformMyJobRow));
     } catch (err) {
       console.warn("[JobsView] Failed to fetch my jobs:", err);
     } finally {
@@ -870,45 +873,7 @@ export function JobsView() {
           });
         });
         // Also transform and store as myJobs so the badge count is correct immediately
-        const transformed: Job[] = response.jobs.map((j: any) => ({
-          id: j.JOB_ID,
-          title: j.TITLE,
-          company: j.COMPANY,
-          location: j.LOCATION,
-          locations: [j.LOCATION],
-          type: parseEmploymentType(j.EMPLOYMENT_TYPE),
-          salary:
-            j.SALARY_MIN && j.SALARY_MAX
-              ? formatSalary(
-                  j.SALARY_MIN,
-                  j.SALARY_MAX,
-                  j.SALARY_CURRENCY || "USD",
-                )
-              : "Competitive",
-          salaryMin: j.SALARY_MIN ?? null,
-          salaryMax: j.SALARY_MAX ?? null,
-          salaryCurrency: j.SALARY_CURRENCY || "USD",
-          postedAt: j.CREATED_AT
-            ? new Date(j.CREATED_AT).toLocaleDateString()
-            : "",
-          description: cleanJobText(j.DESCRIPTION),
-          summary: cleanJobText(j.DESCRIPTION).substring(0, 150),
-          skills: parseSkillsField(cleanJobText(j.REQUIREMENTS)),
-          requirements: cleanJobText(j.REQUIREMENTS),
-          highlights: [],
-          experienceLevel: formatExperienceLevel(j.EXPERIENCE_LEVEL),
-          workArrangement: j.REMOTE_OPTION ? "Remote" : "On-site",
-          isRemote: j.REMOTE_OPTION,
-          url: "",
-          applicants: j.LIKES_COUNT ?? 0,
-          image:
-            j.LOGO_URL ||
-            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
-          currentSponsors: [],
-          benefits: [],
-          isSponsored: true,
-        }));
-        setMyJobs(transformed);
+        setMyJobs(response.jobs.map(transformMyJobRow));
       } catch {
         // silent fail — will be corrected when user opens the tab
       }
@@ -1451,44 +1416,12 @@ export function JobsView() {
                 try {
                   setLoading(true);
                   const response = await browseJobs({ limit: 50 });
-                  const transformedJobs: Job[] = response.jobs.map(
-                    (job: BrowseJobResponse) => ({
-                      id: job.JOB_ID,
-                      title: job.TITLE,
-                      company: job.ORGANIZATION,
-                      location: job.FULL_LOCATION,
-                      locations: [job.FULL_LOCATION],
-                      type: job.EMPLOYMENT_TYPES || "Full-time",
-                      salary:
-                        job.SALARY_ANNUAL_MIN && job.SALARY_ANNUAL_MAX
-                          ? `$${Math.round(job.SALARY_ANNUAL_MIN / 1000)}k - $${Math.round(job.SALARY_ANNUAL_MAX / 1000)}k`
-                          : "Competitive",
-                      salaryMin: job.SALARY_ANNUAL_MIN,
-                      salaryMax: job.SALARY_ANNUAL_MAX,
-                      salaryCurrency: job.SALARY_CURRENCY || "USD",
-                      postedAt: new Date(job.DATE_POSTED).toLocaleDateString(),
-                      description: job.DESCRIPTION_TEXT,
-                      summary: job.DESCRIPTION_TEXT.substring(0, 150) + "...",
-                      requirements: "",
-                      experienceLevel: job.EXPERIENCE_LEVEL || "Not specified",
-                      skills: job.SKILLS
-                        ? job.SKILLS.split(",").map((s) => s.trim())
-                        : [],
-                      highlights: [],
-                      benefits: [],
-                      applicationUrl: "",
-                      companyLogo: "",
-                      isRemote: job.IS_REMOTE || false,
-                      workArrangement: job.IS_REMOTE ? "Remote" : "On-site",
-                      department: "",
-                      url: "",
-                      applicants: 0,
-                      image: job.ORGANIZATION_LOGO || "",
-                      currentSponsors: [],
-                      isSponsored: false,
-                    }),
+                  setJobs(
+                    transformBrowseResponse(
+                      response.jobs as BrowseJobResponse[],
+                      sponsoredJobs,
+                    ),
                   );
-                  setJobs(transformedJobs);
                 } catch (err) {
                   console.warn("Failed to fetch jobs:", err);
                   setError(

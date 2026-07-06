@@ -27,6 +27,7 @@ import {
 } from "@/lib/api";
 import { authApi } from "@/lib/auth-api";
 import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
+import { transformProfilePackRows } from "@/types/profiles";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
@@ -698,15 +699,6 @@ export function HomeView({
     profilesJobId === activeSponsoredJobId &&
     !profilesError;
 
-  console.log("[HomeView] Using data:", {
-    userType,
-    apiJobsCount: jobs.length,
-    apiProfilesCount: profiles.length,
-    usingApiJobs: jobs.length > 0,
-    usingApiProfiles: profiles.length > 0,
-    currentIndex: currentProfileIndex,
-  });
-
   const currentData =
     userType === "sponsor"
       ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
@@ -949,56 +941,21 @@ export function HomeView({
             return;
           }
           console.log(
-            "[HomeView] Profile pack response:",
-            JSON.stringify(response, null, 2),
-          );
-          console.log(
             "[HomeView] Fetched",
             response.profiles.length,
             "profiles from API",
           );
           console.log("[HomeView] First profile sample:", response.profiles[0]);
 
-          // Transform API response to match UI expectations
-          const transformedProfiles = response.profiles.map((profile: any) => {
-            // Parse JSON strings
-            const skills = profile.SKILLS ? JSON.parse(profile.SKILLS) : [];
-            const positions = profile.POSITIONS
-              ? JSON.parse(profile.POSITIONS)
-              : [];
-
-            // PR #39 (Opt C, 2026-05-05): the pack endpoint now includes
-            // ap.INSIGHTS and up.BIO directly, so the back-of-card prompts +
-            // the richer "About" text render on first paint. The lazy
-            // `fetchFullProfileFor` call below still runs for the deeper
-            // sections (experiences / education / certifications / languages
-            // / achievements) which the pack does NOT include.
-            const bio: string =
-              profile.BIO || profile.REASON || "Looking for new opportunities";
-            let prompts: any[] = [];
-            if (profile.INSIGHTS) {
-              try {
-                const parsed = JSON.parse(profile.INSIGHTS);
-                if (Array.isArray(parsed)) prompts = parsed;
-              } catch {
-                // Malformed JSON — fall through with empty prompts; the
-                // lazy fetch will fill them in if it succeeds.
-              }
-            }
-
-            return {
-              ...profile, // Keep all original fields
-              id: profile.USER_ID,
-              name: `${profile.FIRST_NAME} ${profile.LAST_NAME}`.trim(),
-              location: profile.LOCATION || "",
-              skills: skills,
-              desiredRole: positions[0] || "Open to opportunities",
-              bio,
-              prompts,
-              image: profile.PHOTO_URL || "",
-              company: "", // Applicants don't have company
-            };
-          });
+          // PR #39 (Opt C, 2026-05-05): the pack endpoint now includes
+          // ap.INSIGHTS and up.BIO directly, so the back-of-card prompts +
+          // the richer "About" text render on first paint. The lazy
+          // `fetchFullProfileFor` call below still runs for the deeper
+          // sections (experiences / education / certifications / languages
+          // / achievements) which the pack does NOT include.
+          const transformedProfiles = transformProfilePackRows(
+            response.profiles,
+          );
 
           console.log(
             "[HomeView] Transformed first profile:",
@@ -1535,13 +1492,17 @@ export function HomeView({
     const jobId = String(pendingJob.id);
     setIsRequestingSponsor(true);
     setSponsorRequestMessage(null);
-    const [requestRes] = await Promise.allSettled([
+    const [requestRes, waitlistRes] = await Promise.allSettled([
       requestSponsorForJob(jobId),
       joinWaitlist(jobId),
     ]);
-    trackSponsorRequested({ jobId });
-    trackJobWaitlistJoined({ jobId });
+    // Only track + flip local pending state for the half of the pair that
+    // actually succeeded — previously both fired unconditionally, so a
+    // fully-failed request (e.g. offline) still recorded
+    // trackSponsorRequested/trackJobWaitlistJoined and showed "Request
+    // sent!" with a badge, overcounting the funnel and lying to the user.
     if (requestRes.status === "fulfilled") {
+      trackSponsorRequested({ jobId });
       // Backend's context-aware copy: count of sponsors, "already has a
       // sponsor", "no sponsors at this company yet", duplicate request, etc.
       setSponsorRequestMessage(requestRes.value.message ?? null);
@@ -1552,15 +1513,24 @@ export function HomeView({
       if (requestRes.value.message) {
         saveSponsorRequestOutcome(jobId, requestRes.value.message);
       }
+      setRequestedSponsorJobIds((prev) => new Set([...prev, jobId]));
     } else {
       console.warn("[HomeView] request-sponsor failed:", requestRes.reason);
     }
+    if (waitlistRes.status === "fulfilled") {
+      trackJobWaitlistJoined({ jobId });
+      setWaitlistedJobIds((prev) => new Set([...prev, jobId]));
+    } else {
+      console.warn("[HomeView] join-waitlist failed:", waitlistRes.reason);
+    }
     setIsRequestingSponsor(false);
-    setApplyStep("requested");
-    // Track both client-side sets so the card overlay reflects either kind
-    // of pending state — waitlisted badge OR sponsor-requested badge.
-    setRequestedSponsorJobIds((prev) => new Set([...prev, jobId]));
-    setWaitlistedJobIds((prev) => new Set([...prev, jobId]));
+    // Only show the "Request sent!" success step if at least one half
+    // actually succeeded; otherwise let the user retry from the select step.
+    if (requestRes.status === "fulfilled" || waitlistRes.status === "fulfilled") {
+      setApplyStep("requested");
+    } else {
+      showToast("Couldn't send that right now. Please try again.", "error");
+    }
   };
 
   const handleApplyModalDone = () => {
@@ -1974,7 +1944,9 @@ export function HomeView({
                             setProfilesLoading(true);
                             const response =
                               await fetchProfilesPack(fetchingForJobId);
-                            setProfiles(response.profiles);
+                            setProfiles(
+                              transformProfilePackRows(response.profiles),
+                            );
                             setProfilesJobId(fetchingForJobId);
                           } catch (err) {
                             console.warn(
@@ -2044,40 +2016,9 @@ export function HomeView({
                         try {
                           setProfilesLoading(true);
                           const response = await fetchProfilesPack(id);
-                          const transformed = (response.profiles || []).map(
-                            (profile: any) => {
-                              const skills = profile.SKILLS
-                                ? JSON.parse(profile.SKILLS)
-                                : [];
-                              const positions = profile.POSITIONS
-                                ? JSON.parse(profile.POSITIONS)
-                                : [];
-                              let prompts: any[] = [];
-                              if (profile.INSIGHTS) {
-                                try {
-                                  const parsed = JSON.parse(profile.INSIGHTS);
-                                  if (Array.isArray(parsed)) prompts = parsed;
-                                } catch {}
-                              }
-                              return {
-                                ...profile,
-                                id: profile.USER_ID,
-                                name: `${profile.FIRST_NAME} ${profile.LAST_NAME}`.trim(),
-                                location: profile.LOCATION || "",
-                                skills,
-                                desiredRole:
-                                  positions[0] || "Open to opportunities",
-                                bio:
-                                  profile.BIO ||
-                                  profile.REASON ||
-                                  "Looking for new opportunities",
-                                prompts,
-                                image: profile.PHOTO_URL || "",
-                                company: "",
-                              };
-                            },
+                          setProfiles(
+                            transformProfilePackRows(response.profiles),
                           );
-                          setProfiles(transformed);
                           setProfilesJobId(id);
                         } catch (err) {
                           setProfilesError(

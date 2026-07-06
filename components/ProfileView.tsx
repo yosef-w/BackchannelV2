@@ -79,6 +79,7 @@ import {
     cancelDailyDeckReminder,
     cancelUnfinishedDeckReminder,
 } from "../lib/localNotifications";
+import { cancelCheckInNudges } from "../lib/checkInNudges";
 import { logBreadcrumb, Sentry } from "../lib/sentry";
 import { validateProfileField } from "../lib/validation";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
@@ -134,7 +135,6 @@ interface SponsorProfile {
   bio: string;
   expertiseLabel: string;
   expertise: string[];
-  successStories: { name: string; result: string }[];
 }
 
 interface ProfileInsight {
@@ -480,58 +480,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
       });
   }, [userType]);
 
-  const getStatusLabel = (status: string) => {
-    const labels = {
-      applied: "Applied",
-      reviewing: "Under Review",
-      interview_scheduled: "Interview",
-      offer: "Offer",
-      rejected: "Closed",
-    };
-    return labels[status as keyof typeof labels] || status;
-  };
-
-  const getStatusDotColor = (status: string) => {
-    const colors = {
-      applied: { backgroundColor: "#666" },
-      reviewing: { backgroundColor: "#666" },
-      interview_scheduled: { backgroundColor: "#000" },
-      offer: { backgroundColor: "#000" },
-      rejected: { backgroundColor: "#DC2626" },
-    };
-    return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
-  };
-
-  const getStatusBadgeStyle = (status: string) => {
-    const styles = {
-      applied: { backgroundColor: "#F9F9F9", borderColor: "#E5E5E5" },
-      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      interview_scheduled: {
-        backgroundColor: "#F4F4F5",
-        borderColor: "#E5E5E5",
-      },
-      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
-    };
-    return (
-      styles[status as keyof typeof styles] || {
-        backgroundColor: "#F5F5F5",
-        borderColor: "#E5E5E5",
-      }
-    );
-  };
-
-  const getStatusTextColor = (status: string) => {
-    const colors = {
-      applied: { color: "#000" },
-      reviewing: { color: "#666" },
-      interview_scheduled: { color: "#000" },
-      offer: { color: "#000" },
-      rejected: { color: "#DC2626" },
-    };
-    return colors[status as keyof typeof colors] || { color: "#666" };
-  };
-
   const applicantData: ApplicantProfile = {
     name,
     role,
@@ -552,11 +500,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     bio,
     expertiseLabel: "I Can Help With",
     expertise,
-    successStories: [
-      { name: "Sarah M.", result: "Landed PM role at Meta" },
-      { name: "David K.", result: "Senior Engineer at Google" },
-      { name: "Lisa P.", result: "Design Lead at Airbnb" },
-    ],
   };
 
   const profileData = userType === "applicant" ? applicantData : sponsorData;
@@ -1855,9 +1798,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
     // Cancel the locally-scheduled "your deck is ready" / unfinished-deck
     // reminders too — those are on-device schedules, not backend push, so
-    // unregistering the device token alone wouldn't stop them.
+    // unregistering the device token alone wouldn't stop them. Same for the
+    // referral check-in nudge — without this, a logged-out device (or the
+    // next user who logs into it) could still get "check in on your
+    // referral" notifications scheduled under the previous session.
     cancelDailyDeckReminder();
     cancelUnfinishedDeckReminder();
+    cancelCheckInNudges(userType);
     try {
       // Call backend logout to invalidate session
       await logout();
@@ -1898,6 +1845,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 );
               }
             }
+            // Cancel every on-device schedule the same way logout does —
+            // without this, re-registering on this device inherits the
+            // deleted account's deck reminders and check-in nudges.
+            cancelDailyDeckReminder();
+            cancelUnfinishedDeckReminder();
+            cancelCheckInNudges(userType);
             try {
               await deactivateAccount();
               trackAccountDeleted();
@@ -1912,6 +1865,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
             }
             await clearAuth();
             await clearUserProfileData();
+            // Parity with logout — reset jobs store + onboarding data so a
+            // re-registration on this device doesn't inherit deck state
+            // (card index, session likes/matches) from the deleted account.
+            resetJobsStore();
+            clearOnboarding();
             router.replace("/splash");
           },
         },
