@@ -81,6 +81,7 @@ import Animated, {
 import { WebView } from "react-native-webview";
 import { JobCard } from "./jobs/JobCard";
 import { JobsEmptyState } from "./jobs/JobsEmptyState";
+import { SponsoredJobCard } from "./jobs/SponsoredJobCard";
 import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -575,7 +576,15 @@ export function JobsView() {
   const [message, setMessage] = useState("");
   const [activeSlide, setActiveSlide] = useState(0);
 
-  const [activeTab, setActiveTab] = useState<"browse" | "sponsored">("browse");
+  // Active sponsors land on My Sponsored (their working set — applicants
+  // live there); sponsors with nothing sponsored yet land on Browse to go
+  // shopping. Decided once at mount from the in-memory store (populated by
+  // MainApp's initMyJobs), not re-evaluated on later changes — yanking the
+  // tab out from under the user mid-session would be worse than a stale
+  // default.
+  const [activeTab, setActiveTab] = useState<"browse" | "sponsored">(() =>
+    useJobsStore.getState().sponsoredJobs.length > 0 ? "sponsored" : "browse",
+  );
   const [displayLimit, setDisplayLimit] = useState(20);
   // Browse search — client-side filter over the loaded (company-scoped)
   // list. Filtering locally keeps the store's cached list intact (the
@@ -729,6 +738,7 @@ export function JobsView() {
         isRemote: j.REMOTE_OPTION,
         url: "",
         applicants: j.LIKES_COUNT ?? 0,
+        pendingApplicants: Number(j.PENDING_LIKES_COUNT ?? 0) || 0,
         image:
           j.LOGO_URL ||
           "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
@@ -1828,9 +1838,8 @@ export function JobsView() {
                       key={job.id}
                       entering={FadeInUp.delay(250 + index * 40).duration(300)}
                     >
-                      <JobCard
+                      <SponsoredJobCard
                         job={job}
-                        isSponsored
                         onPress={() => setViewJobDetails(job)}
                         onMenu={() => setMenuJob(job)}
                         onApplicantPress={() => handleApplicantPress(job)}
