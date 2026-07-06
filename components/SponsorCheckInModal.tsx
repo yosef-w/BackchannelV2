@@ -324,7 +324,6 @@ export function SponsorCheckInModal({
     <CheckInSheetShell
       visible={visible}
       onClose={handleClose}
-      closeDisabled={submitting}
       state={sheetState}
       loadingText="Loading referrals…"
       emptyTitle="No active referrals"

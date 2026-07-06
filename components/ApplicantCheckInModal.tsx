@@ -327,7 +327,6 @@ export function ApplicantCheckInModal({
     <CheckInSheetShell
       visible={visible}
       onClose={handleClose}
-      closeDisabled={submitting}
       state={sheetState}
       loadingText="Loading your referrals…"
       emptyTitle="No active referrals"

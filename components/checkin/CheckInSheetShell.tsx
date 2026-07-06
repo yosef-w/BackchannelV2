@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { Check, X } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import React from "react";
 import {
   ActivityIndicator,
@@ -18,9 +18,12 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface CheckInSheetShellProps {
   visible: boolean;
+  /**
+   * Only reachable from the "empty" frame's "Got it" button — there's
+   * nothing to act on there, so that's the one path that has to let the
+   * user leave. Every other state requires answering and submitting.
+   */
   onClose: () => void;
-  /** Block closing mid-submit. */
-  closeDisabled?: boolean;
   /** Which frame to show. "content" renders children. */
   state: "loading" | "empty" | "success" | "content";
   loadingText: string;
@@ -33,21 +36,23 @@ interface CheckInSheetShellProps {
 
 /**
  * Shared shell for the referral check-in sheets — the full-height modal,
- * blur backdrop, drag handle, close button, and the loading/empty/success
- * frames were duplicated nearly line-for-line across ApplicantCheckInModal
- * and SponsorCheckInModal; this owns them once so the two roles' sheets
- * can't drift apart visually. The flows inside stay separate on purpose:
- * the applicant sheet is a single-referral report (timeline + note), the
+ * blur backdrop, drag handle, and the loading/empty/success frames were
+ * duplicated nearly line-for-line across ApplicantCheckInModal and
+ * SponsorCheckInModal; this owns them once so the two roles' sheets can't
+ * drift apart visually. The flows inside stay separate on purpose: the
+ * applicant sheet is a single-referral report (timeline + note), the
  * sponsor sheet is a batch triage — different interaction models, not
  * duplicated code.
  *
- * Deliberately NOT dismissible by tapping the backdrop — exits only via
- * the close button or a submit.
+ * Intentionally has no close/X affordance and isn't dismissible by tapping
+ * the backdrop. This sheet exists to nudge a check-in the user might
+ * otherwise put off indefinitely, so the only way out of the "content"
+ * frame is submitting an update — the "empty" frame is the sole exception,
+ * since there's genuinely nothing to check in on there.
  */
 export function CheckInSheetShell({
   visible,
   onClose,
-  closeDisabled,
   state,
   loadingText,
   emptyTitle,
@@ -78,19 +83,9 @@ export function CheckInSheetShell({
             },
           ]}
         >
-          {/* Drag handle */}
+          {/* Drag handle — decorative only; the sheet doesn't actually
+              dismiss on swipe (no dismiss gesture wired to this handle). */}
           <View style={styles.handle} />
-
-          {/* Close button (always visible — sheet is otherwise non-dismissible) */}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-            disabled={closeDisabled}
-            activeOpacity={0.7}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <X color="#666" size={20} strokeWidth={2} />
-          </TouchableOpacity>
 
           {state === "success" ? (
             <Animated.View
@@ -157,18 +152,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
-  },
-  closeButton: {
-    position: "absolute",
-    top: 16,
-    right: 18,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F4F4F5",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
   },
   successContainer: {
     alignItems: "center",
