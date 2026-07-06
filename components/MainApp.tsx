@@ -46,7 +46,11 @@ import {
     scheduleDailyDeckReminder,
     scheduleUnfinishedDeckReminder,
 } from "../lib/localNotifications";
-import { getLocalCheckInTimes } from "../utils/checkInStageCache";
+import { cancelCheckInNudges, scheduleCheckInNudges } from "../lib/checkInNudges";
+import {
+  getLocalCheckInStages,
+  getLocalCheckInTimes,
+} from "../utils/checkInStageCache";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useJobsStore } from "../stores/useJobsStore";
 import {
@@ -387,6 +391,32 @@ export function MainApp({ userType }: MainAppProps) {
     getLocalCheckInTimes().then(setCheckInTimes);
   }, [showApplicantCheckIn, showSponsorCheckIn]);
 
+  // Recompute + reschedule this role's single check-in nudge notification
+  // any time the referral list or local check-in times change (new referral
+  // fetched, or a check-in just submitted). scheduleCheckInNudges cancels
+  // any previously-pending nudge before scheduling the next one, so this is
+  // safe to call repeatedly. If there's nothing left to nudge about (no
+  // active referrals), fall through to a plain cancel.
+  useEffect(() => {
+    if (!referrals.length) {
+      cancelCheckInNudges(userType);
+      return;
+    }
+    getLocalCheckInStages().then((stages) => {
+      scheduleCheckInNudges(
+        userType,
+        referrals as unknown as {
+          referralId: string;
+          status: string;
+          createdAt: string;
+          jobCompany?: string | null;
+        }[],
+        checkInTimes,
+        stages,
+      );
+    });
+  }, [referrals, checkInTimes, userType]);
+
   // Active = still-live referrals the check-in sheet can act on; stale =
   // created 7+ days ago (same threshold as MatchesView's nudge banner) AND
   // no check-in submitted from this device within the last 7 days.
@@ -605,6 +635,15 @@ export function MainApp({ userType }: MainAppProps) {
       // deck itself, not the in-app notifications list (they're on-device
       // schedules, not backend notification records that would show up there).
       setActiveView("home");
+    } else if (type === "checkin_nudge") {
+      // Local check-in cadence (see lib/checkInNudges.ts). Opens the sheet
+      // for whichever role the notification was scheduled for — not a
+      // specific referral — since the sheet already triages everything that
+      // needs attention (stale-first sort, needs-update section).
+      const role = data.role as "applicant" | "sponsor" | undefined;
+      fetchReferralsForCheckIn();
+      if (role === "sponsor") setShowSponsorCheckIn(true);
+      else setShowApplicantCheckIn(true);
     } else {
       // Generic fallback — open notifications list so the user can act on it
       setActiveView("notifications");
