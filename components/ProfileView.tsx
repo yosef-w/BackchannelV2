@@ -318,118 +318,72 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const hasIncompleteProfile = !profileCompletion.isComplete;
 
   useEffect(() => {
-    // Update profile display when user profile data changes
-    if (
-      userProfileData.personal.email ||
-      userProfileData.personal.firstName ||
-      userProfileData.personal.fullName
-    ) {
-      setFirstName(userProfileData.personal.firstName);
-      setLastName(userProfileData.personal.lastName);
-      setName(
-        userProfileData.personal.fullName ||
-          `${userProfileData.personal.firstName} ${userProfileData.personal.lastName}`.trim(),
-      );
-      setEmail(userProfileData.personal.email);
-      // Prefer pendingWorkEmail (set when sponsor edits in the verification
-      // modal) so the display stays current even before backend confirmation.
-      setWorkEmail(
-        userProfileData.personal.workEmail || pendingWorkEmail || "",
-      );
-      setPhone(userProfileData.personal.phone);
-      setProfileImage(userProfileData.personal.profileImage || null);
-      setCity(userProfileData.personal.address.city);
-      setState(userProfileData.personal.address.state);
-      setLocation(
-        `${userProfileData.personal.address.city}${userProfileData.personal.address.state ? ", " + userProfileData.personal.address.state : ""}`,
-      );
-    }
-    if (userProfileData.professional.title) {
-      setRole(userProfileData.professional.title);
-      setJobTitle(userProfileData.professional.title);
-    }
-    if (userProfileData.professional.company) {
-      setCompany(userProfileData.professional.company);
-    }
-    if (userProfileData.professional.summary) {
-      setBio(userProfileData.professional.summary);
-      setSummary(userProfileData.professional.summary);
-    }
-    if (userProfileData.professional.yearsExperience) {
-      setYearsExperience(userProfileData.professional.yearsExperience);
-    }
-    if (
-      userProfileData.professional.experiences &&
-      userProfileData.professional.experiences.length > 0
-    ) {
-      setProfessionalExperiences(userProfileData.professional.experiences);
-    }
-    if (userProfileData.education.degree) {
-      setDegree(userProfileData.education.degree);
-    }
-    if (userProfileData.education.major) {
-      setMajor(userProfileData.education.major);
-    }
-    if (userProfileData.education.university) {
-      setUniversity(userProfileData.education.university);
-    }
-    if (userProfileData.education.graduationYear) {
-      setGraduationYear(userProfileData.education.graduationYear);
-    }
-    if (userProfileData.education.gpa) {
-      setGpa(userProfileData.education.gpa);
-    }
-    if (
-      userProfileData.education.entries &&
-      userProfileData.education.entries.length > 0
-    ) {
-      setEducationEntries(userProfileData.education.entries);
-    }
-    if (userProfileData.preferences.workAuthorization) {
-      setWorkAuthorization(userProfileData.preferences.workAuthorization);
-    }
-    if (userProfileData.preferences.willingToRelocate) {
-      setWillingToRelocate(userProfileData.preferences.willingToRelocate);
-    }
-    if (userProfileData.preferences.requiresSponsorship) {
-      setRequiresSponsorship(userProfileData.preferences.requiresSponsorship);
-    }
-    if (userProfileData.skills.length > 0) {
-      setExpertise(userProfileData.skills);
-    }
-    if (userProfileData.insights.length > 0) {
-      setProfileInsights(userProfileData.insights);
-    }
-    // Load work preferences from store
-    if (
-      userProfileData.workPreferences &&
-      userProfileData.workPreferences.length > 0
-    ) {
-      setWorkPreferences(userProfileData.workPreferences);
-    }
-    // Load desired roles from store — prefer explicit desiredRoles, fall back to seekingPosition
-    if (
-      userProfileData.desiredRoles &&
-      userProfileData.desiredRoles.length > 0
-    ) {
-      setDesiredRoles(userProfileData.desiredRoles);
-    } else if (userProfileData.professional.seekingPosition) {
-      setDesiredRoles([userProfileData.professional.seekingPosition]);
-    }
-    // Load additional details if they exist in the store
-    if (
-      userProfileData.certifications &&
-      userProfileData.certifications.length > 0
-    ) {
-      setCertifications(userProfileData.certifications);
-    }
-    if (userProfileData.languages && userProfileData.languages.length > 0) {
-      setLanguages(userProfileData.languages);
-    }
-    if (userProfileData.achievements) {
-      setAchievements(userProfileData.achievements);
-    }
-  }, [userProfileData]);
+    // Mirror the store faithfully on every change — no truthy guards. The
+    // previous version only called a setter when the store's value was
+    // non-empty, which meant a field the user had just cleared (via
+    // handleSaveField elsewhere, or a background sync catching up) could
+    // never actually display as cleared: the local state just kept
+    // whatever it last held. Store-side data integrity (deletions
+    // reaching the backend, and a pending local edit not being clobbered
+    // by an in-flight fetch) is handled in useUserProfileStore's dirty-
+    // field tracking — this effect's only job is to reflect the store,
+    // not to second-guess it.
+    setFirstName(userProfileData.personal.firstName);
+    setLastName(userProfileData.personal.lastName);
+    setName(
+      userProfileData.personal.fullName ||
+        `${userProfileData.personal.firstName} ${userProfileData.personal.lastName}`.trim(),
+    );
+    setEmail(userProfileData.personal.email);
+    // Prefer pendingWorkEmail (set when sponsor edits in the verification
+    // modal) so the display stays current even before backend confirmation.
+    setWorkEmail(userProfileData.personal.workEmail || pendingWorkEmail || "");
+    setPhone(userProfileData.personal.phone);
+    setProfileImage(userProfileData.personal.profileImage || null);
+    setCity(userProfileData.personal.address.city);
+    setState(userProfileData.personal.address.state);
+    setLocation(
+      `${userProfileData.personal.address.city}${userProfileData.personal.address.state ? ", " + userProfileData.personal.address.state : ""}`,
+    );
+
+    setRole(userProfileData.professional.title);
+    setJobTitle(userProfileData.professional.title);
+    setCompany(userProfileData.professional.company);
+    setBio(userProfileData.professional.summary);
+    setSummary(userProfileData.professional.summary);
+    setYearsExperience(userProfileData.professional.yearsExperience);
+    setProfessionalExperiences(userProfileData.professional.experiences || []);
+
+    setDegree(userProfileData.education.degree);
+    setMajor(userProfileData.education.major);
+    setUniversity(userProfileData.education.university);
+    setGraduationYear(userProfileData.education.graduationYear);
+    setGpa(userProfileData.education.gpa);
+    setEducationEntries(userProfileData.education.entries || []);
+
+    setWorkAuthorization(userProfileData.preferences.workAuthorization);
+    setWillingToRelocate(userProfileData.preferences.willingToRelocate);
+    setRequiresSponsorship(userProfileData.preferences.requiresSponsorship);
+
+    setExpertise(userProfileData.skills);
+    setProfileInsights(userProfileData.insights);
+    setWorkPreferences(userProfileData.workPreferences || []);
+
+    // desiredRoles falls back to seekingPosition only when genuinely
+    // empty — a derivation between two backend-sourced values, not a
+    // "prefer local over backend" guard, so it's kept as-is.
+    setDesiredRoles(
+      userProfileData.desiredRoles && userProfileData.desiredRoles.length > 0
+        ? userProfileData.desiredRoles
+        : userProfileData.professional.seekingPosition
+          ? [userProfileData.professional.seekingPosition]
+          : [],
+    );
+
+    setCertifications(userProfileData.certifications || []);
+    setLanguages(userProfileData.languages || []);
+    setAchievements(userProfileData.achievements);
+  }, [userProfileData, pendingWorkEmail]);
 
   // Auto-save certifications when they change
   useEffect(() => {

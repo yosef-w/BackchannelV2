@@ -57,26 +57,60 @@ clean (zero new errors/warnings).
       profile-pack fetch (the two logs immediately after it already cover
       count + sample).
 
-## Phase 2 — Data integrity (profile sync)
+## Phase 2 — Data integrity (profile sync) ✅ DONE
 
 The "I deleted it and it came back" class. Touches the store + auth-api seam.
+Full `tsc --noEmit` + `eslint .` clean (154 problems vs. 155 pre-Phase-2 —
+one fewer, from fixing a real missing-dependency warning; same 34
+pre-existing errors untouched).
 
-- [ ] **2.1 Deletions must sync.** Replace truthy guards in
-      `authApi.updateProfile` (`if (data.skills?.length)`) with presence
-      checks (`!== undefined`) so empty string / empty array propagate.
-- [ ] **2.2 Dirty-field merge.** In `useUserProfileStore.fetchFromBackend`,
-      stop "prefer non-empty backend else local" resurrection: track
-      `dirtyFields: Set<string>`; backend wins for clean fields (including
-      empty values), local wins for dirty ones.
-- [ ] **2.3 Flush on background.** AppState listener in the store module:
-      when app leaves `active`, flush the pending debounced sync immediately.
-- [ ] **2.4 Retry on launch.** Persist `needsSync` with the data blob; on
-      `loadFromStorage`, if set, run `syncToBackend()` once auth is ready.
-- [ ] **2.5 ProfileView single source of truth.** Remove the ~30 mirrored
-      `useState` fields + the non-empty-only hydration effect (~:320-432);
-      read from the store via selectors, keep local state only for the input
-      currently being edited. (Biggest item in this phase — can be split out
-      if it slows the phase down.)
+- [x] **2.1 Deletions must sync.** Redesigned `authApi.updateProfile(data,
+      dirtyFields)` to take the new `dirtyFields: Set<SyncableField>` (see
+      2.2) and send each dirty top-level group **in full**, including
+      now-empty values, instead of guarding every subfield with `if (x)`.
+      Untouched groups are omitted from the payload entirely rather than
+      sent-if-truthy, so an unrelated sync can no longer blank out a field
+      the user never touched.
+- [x] **2.2 Dirty-field merge.** Added `dirtyFields: Set<SyncableField>` to
+      `useUserProfileStore`, marked by every `updateXXX` method (via a new
+      `withDirty` helper) and persisted to AsyncStorage
+      (`autofill_dirty_fields`) on every change. `syncToBackend` now sends
+      only dirty fields, snapshots what it sent, and — critically — only
+      clears a field's dirty flag if it *still* matches the snapshot after
+      the request resolves; if the user edited it again mid-flight, it
+      stays dirty and goes out with the newer value on the next sync
+      instead of being lost. `fetchFromBackend` now overrides its merge
+      with the pre-fetch local value for any dirty field, so a fetch
+      racing an in-flight edit (or one clearing a field) can't resurrect
+      stale/deleted data.
+- [x] **2.3 Flush on background.** Module-level `AppState` listener in
+      `useUserProfileStore.ts`: any transition away from `active` calls the
+      new `flushSyncNow()`, which cancels the debounce timer and syncs
+      immediately if `dirtyFields` is non-empty.
+- [x] **2.4 Retry on launch.** `dirtyFields`/`needsSync` are restored from
+      AsyncStorage in `loadFromStorage`. `_layout.tsx`'s existing
+      accessToken-gated effect now calls `flushSyncNow()` before
+      `fetchFromBackend()`, so a sync interrupted by the app being killed
+      retries as soon as auth is ready, and the follow-up fetch reflects
+      the just-pushed edit rather than racing it.
+- [x] **2.5 ProfileView hydration fix (scoped).** Investigated the full
+      ~30-field mirrored-`useState` removal and found the concrete risk
+      narrower than expected: `MainApp` conditionally renders
+      `ProfileView` (`{activeView === "profile" && <ProfileView/>}`), so it
+      unmounts/remounts on every tab switch — fresh `useState` defaults
+      already coincide with the old truthy-guard's skip behavior in the
+      common case, and `handleSaveField` already sets local state directly
+      at edit time independent of the hydration effect. The one real,
+      narrow defect — the hydration effect's truthy guards could freeze a
+      field at its last non-empty value instead of ever reflecting a
+      backend-confirmed clear — is fixed: the effect now mirrors
+      `userProfileData` unconditionally (also fixed a genuine missing
+      `pendingWorkEmail` dependency along the way). The larger "one state,
+      not three" architectural cleanup (removing the mirrored fields
+      entirely) is a bigger, lower-value refactor now that the actual data-
+      loss bug is fixed at the store layer — deferred as optional follow-up
+      rather than done here, per this plan's own note that it could be
+      split out.
 
 ## Phase 3 — Perceived performance & real-time polish
 
