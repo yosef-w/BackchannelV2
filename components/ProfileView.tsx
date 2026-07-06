@@ -326,9 +326,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (!userProfileData || !userProfileData.personal) {
       return { isComplete: false, percentage: 0, missingFields: [] };
     }
-    const result = checkProfileCompleteness(userProfileData);
+    const result = checkProfileCompleteness(userProfileData, userType);
     return result;
-  }, [userProfileData]);
+  }, [userProfileData, userType]);
 
   // Mirror the swipe gate: incomplete = any required field still missing
   // (not a percentage threshold), so the banner/prompts and the gate agree.

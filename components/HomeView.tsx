@@ -285,7 +285,7 @@ export function HomeView({
   const [showEmailVerificationModal, setShowEmailVerificationModal] =
     useState(false);
   const profileCompletion = profileData
-    ? checkProfileCompleteness(profileData)
+    ? checkProfileCompleteness(profileData, userType)
     : { isComplete: false, percentage: 0, missingFields: [] };
 
   // Apply Modal State (for non-sponsored jobs)
