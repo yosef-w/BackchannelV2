@@ -18,6 +18,7 @@ interface AutocompleteInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onSelect: (item: string) => void;
+  onBlur?: () => void;
   suggestions: string[];
   placeholder?: string;
   autoFocus?: boolean;
@@ -29,6 +30,7 @@ export function AutocompleteInput({
   value,
   onChangeText,
   onSelect,
+  onBlur,
   suggestions,
   placeholder,
   autoFocus,
@@ -122,6 +124,7 @@ export function AutocompleteInput({
         style={[styles.input, style]}
         value={value}
         onChangeText={handleChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor="#999"
         autoFocus={autoFocus}
