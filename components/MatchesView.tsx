@@ -3654,49 +3654,9 @@ const styles = StyleSheet.create({
     color: "#999",
     marginTop: 2,
   },
-  sectionContainer: { marginBottom: 40 },
-  listSectionTitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#BBB",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    marginBottom: 15,
-  },
-  horizontalScroll: { marginHorizontal: -28 },
-  horizontalScrollContent: { paddingHorizontal: 28, gap: 16 },
-  card: {
-    width: 190,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 24,
-    padding: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  profileImage: { width: 70, height: 70, borderRadius: 35, marginBottom: 12 },
-  cardName: { fontSize: 16, fontWeight: "700" },
-  cardRole: { fontSize: 13, color: "#666", marginBottom: 15 },
   // Roles pill shown in place of the single-role line on a grouped match
   // card (same person matched on multiple roles). marginBottom mirrors
   // cardRole so grouped and single cards keep a consistent height.
-  cardRolesPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: 2,
-    marginBottom: 15,
-  },
-  rolesPillText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#666",
-    letterSpacing: 0.3,
-  },
   // ── Role picker sheet (grouped match → choose a role) ───────────────
   rolePickerHeader: {
     flexDirection: "row",
@@ -3734,16 +3694,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginLeft: 12,
   },
-  messageBtn: {
-    backgroundColor: "#000",
-    width: "100%",
-    padding: 10,
-    borderRadius: 15,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-  },
-  messageBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
 
   // Job Cards for Applicants
   jobCard: {
@@ -3755,20 +3705,6 @@ const styles = StyleSheet.create({
     borderColor: "#EEE",
   },
   jobImage: { width: "100%", height: 100, backgroundColor: "#E5E5E5" },
-  jobCardInfo: { padding: 16 },
-  jobCardCompany: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
-  },
-  jobCardTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 12,
-    lineHeight: 20,
-  },
   applyBtn: {
     backgroundColor: "#000",
     width: "100%",
@@ -3780,82 +3716,9 @@ const styles = StyleSheet.create({
   },
   applyBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
 
-  listSection: { gap: 12 },
-  listItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "#FAFAFA",
-    borderRadius: 20,
-  },
-  listImage: { width: 50, height: 50, borderRadius: 15 },
-  listInfo: { flex: 1, marginLeft: 15 },
-  listName: { fontSize: 16, fontWeight: "700" },
-  listStatus: { fontSize: 11, color: "#999", fontWeight: "700", marginTop: 2 },
   // ─── Interested Sponsors Section ─────────────────────────────────────────
-  emptySponsorsContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  interestedSponsorCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FAFAFA",
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#EEEEEE",
-    gap: 12,
-  },
-  interestedSponsorAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-  },
-  interestedSponsorInitial: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  interestedSponsorInitialText: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#FFF",
-  },
-  interestedSponsorInfo: { flex: 1, gap: 2 },
-  interestedSponsorName: { fontSize: 15, fontWeight: "700", color: "#000" },
-  interestedSponsorRole: { fontSize: 12, color: "#888", fontWeight: "500" },
   // "Wants you for X · Y" — tighter than the sponsor identity line, slight
   // top spacing to separate it as its own piece of info.
-  interestedSponsorJobContext: {
-    fontSize: 11,
-    color: "#666",
-    fontWeight: "600",
-    marginTop: 4,
-  },
-  interestedSponsorTimestamp: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  interestedSponsorTimestampText: {
-    fontSize: 11,
-    color: "#888",
-    fontWeight: "600",
-  },
-  interestedSponsorCta: {
-    backgroundColor: "#000",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  interestedSponsorCtaText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
 
   // ─── Interested Sponsor Modal ─────────────────────────────────────────────
   interestedModalTag: {
@@ -4583,12 +4446,6 @@ const styles = StyleSheet.create({
   },
 
   // Active Pipeline Styles
-  pipelineRoleText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
-    marginBottom: 6,
-  },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -4601,52 +4458,9 @@ const styles = StyleSheet.create({
     borderColor: "#EEE",
     backgroundColor: "#F5F5F5",
   },
-  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#000" },
   statusText: { fontSize: 11, fontWeight: "700", color: "#000" },
-  viewProfileBtn: {
-    backgroundColor: "#000",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  viewProfileText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
 
   // Liked Jobs Section
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: "#999",
-    marginTop: 2,
-  },
-  pendingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  pendingText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#666",
-  },
-  likedJobCard: {
-    width: 180,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 24,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
   likedJobInitial: {
     width: 44,
     height: 44,
@@ -4661,75 +4475,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFF",
   },
-  likedJobLocation: {
-    fontSize: 11,
-    color: "#999",
-    marginBottom: 10,
-    marginTop: -6,
-  },
-  waitingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    alignSelf: "flex-start",
-  },
   pulsingDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: "#999",
-  },
-  waitingText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#666",
-  },
-  emptyLikedSection: {
-    alignItems: "center",
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F5F5F5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  emptyLikedTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 8,
-  },
-  emptyLikedText: {
-    fontSize: 14,
-    color: "#999",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  matchBadgeCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F4F4F5",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  matchBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#000",
   },
   jobModalTopRow: {
     flexDirection: "row",
@@ -4891,53 +4641,9 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   // Waitlisted Jobs
-  waitlistedJobCardSponsored: {
-    borderColor: "#E5E5E5",
-    backgroundColor: "#F4F4F5",
-  },
-  waitingBadgeWaitlist: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#E5E5E5",
-  },
-  waitingBadgeSponsored: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#E5E5E5",
-  },
 
   // Pipeline empty state
-  pipelineEmptyState: {
-    alignItems: "center",
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-  },
-  pipelineEmptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#F5F5F5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  pipelineEmptyTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 6,
-  },
-  pipelineEmptyText: {
-    fontSize: 13,
-    color: "#999",
-    textAlign: "center",
-    lineHeight: 18,
-  },
   // ─── Referral pipeline styles ───────────────────────────────────────────────
-  listItemWithdrawn: {
-    opacity: 0.55,
-  },
-  listNameWithdrawn: {
-    color: "#AAA",
-  },
   listImagePlaceholder: {
     width: 52,
     height: 52,
@@ -4947,67 +4653,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  referralBadgeReferred: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignSelf: "flex-start",
-    marginTop: 5,
-    backgroundColor: "#F4F4F5",
-    borderColor: "#E5E5E5",
-  },
-  referralBadgeWithdrawn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignSelf: "flex-start",
-    marginTop: 5,
-    backgroundColor: "#F5F5F5",
-    borderColor: "#E0E0E0",
-  },
-  statusDotReferred: {
-    backgroundColor: "#000",
-  },
-  statusDotWithdrawn: {
-    backgroundColor: "#BBB",
-  },
-  referralStatusTextReferred: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: "#000",
-  },
-  referralStatusTextWithdrawn: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: "#999",
-  },
   // ─── Referrals Received — applicant card ───
-  referralCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    padding: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-  referralCardWithdrawn: { opacity: 0.55 },
-  referralCardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   referralCardInitial: {
     width: 48,
     height: 48,
@@ -5017,44 +4663,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   referralCardInitialText: { fontSize: 19, fontWeight: "800", color: "#FFF" },
-  referralCardJobTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
-  referralCardCompany: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
-    marginTop: 2,
-  },
-  referralCardDivider: {
-    height: 1,
-    backgroundColor: "#F0F0F0",
-    marginVertical: 12,
-  },
-  referralCardBottom: { flexDirection: "row", alignItems: "center", gap: 8 },
-  referralCardSponsorAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#EEE",
-  },
-  referralCardSponsorInitial: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  referralCardSponsorInitialText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
-  },
-  referralCardSponsorText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#888",
-  },
   // Monochrome status pill — Referred = black, Withdrawn = grey.
   refPill: {
     flexDirection: "row",
@@ -5073,11 +4681,6 @@ const styles = StyleSheet.create({
   refPillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
   refPillTextReferred: { color: "#000" },
   refPillTextWithdrawn: { color: "#999" },
-  pipelineActions: {
-    alignItems: "flex-end",
-    justifyContent: "center",
-    gap: 6,
-  },
   withdrawBtn: {
     paddingHorizontal: 11,
     paddingVertical: 6,
