@@ -244,6 +244,26 @@ export const authApi = {
   },
 
   /**
+   * Permanently delete the current account and ALL its data (Apple 5.1.1(v)).
+   * Distinct from POST /api/profile/deactivate/ (reversible hide) — this runs
+   * the backend's full per-table purge and removes uploaded files from CDN
+   * storage. Requires the user's current password; the backend returns 401
+   * "Password is incorrect" on a mismatch (note: the API client's
+   * refresh-on-401 interceptor will burn one token refresh + retry before
+   * that error surfaces — harmless, and the retry returns the same message).
+   * Passing the refresh token lets the backend blacklist it.
+   */
+  deleteAccount: async (
+    password: string,
+    refreshToken?: string | null,
+  ): Promise<{ message: string }> => {
+    return api.post<{ message: string }>("/api/account/delete/", {
+      password,
+      ...(refreshToken ? { refresh_token: refreshToken } : {}),
+    });
+  },
+
+  /**
    * Request password reset
    */
   forgotPassword: async (email: string): Promise<{ message: string }> => {

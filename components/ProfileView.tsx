@@ -55,7 +55,6 @@ import {
 } from "../lib/analytics/mixpanel";
 import {
     classifyResume,
-    deactivateAccount,
     getExtractedResumeText,
     logout,
     unregisterDevice,
@@ -161,6 +160,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.presentCustomerCenter,
   );
   const userProfileData = useUserProfileStore((state) => state.data);
+  // TEMP DEBUG — remove once the blank-name investigation is resolved.
+  // Logs on mount (i.e. every time the Profile tab is opened) and again
+  // whenever the store's data changes underneath it (e.g. fetchFromBackend
+  // resolving after the tab was already open), so we can see exactly what
+  // the store has for personal info, and whether dirtyFields/
+  // syncFailureCount indicate a stuck local edit is still masking the real
+  // backend value.
+  useEffect(() => {
+    console.log("[ProfileView] Profile tab opened — personal:", {
+      firstName: userProfileData.personal.firstName,
+      lastName: userProfileData.personal.lastName,
+      fullName: userProfileData.personal.fullName,
+      email: userProfileData.personal.email,
+      dirtyFields: Array.from(useUserProfileStore.getState().dirtyFields),
+      syncFailureCount: useUserProfileStore.getState().syncFailureCount,
+      isLoaded: useUserProfileStore.getState().isLoaded,
+    });
+  }, [userProfileData]);
   // Once a sponsor's work email is verified, their Company is locked — they've
   // vouched for that employer, so they can't silently swap it while keeping
   // verified status (mirrors the work-email lock).
@@ -1785,58 +1802,32 @@ export function ProfileView({ userType }: ProfileViewProps) {
     router.replace("/splash");
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Delete Account",
-      "This will permanently delete your account and all your data. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setShowPrivacySecurity(false);
-            // Deactivate push token so no further notifications reach this device
-            if (deviceToken) {
-              try {
-                await unregisterDevice(deviceToken);
-              } catch (err) {
-                console.warn(
-                  "[ProfileView] Failed to unregister device token before delete:",
-                  err,
-                );
-              }
-            }
-            // Cancel every on-device schedule the same way logout does —
-            // without this, re-registering on this device inherits the
-            // deleted account's deck reminders and check-in nudges.
-            cancelDailyDeckReminder();
-            cancelUnfinishedDeckReminder();
-            cancelCheckInNudges(userType);
-            try {
-              await deactivateAccount();
-              trackAccountDeleted();
-              resetUser();
-              rcReset();
-            } catch (err) {
-              console.warn(
-                "[ProfileView] Deactivate account call failed:",
-                err,
-              );
-              // Non-fatal — clear local state regardless
-            }
-            await clearAuth();
-            await clearUserProfileData();
-            // Parity with logout — reset jobs store + onboarding data so a
-            // re-registration on this device doesn't inherit deck state
-            // (card index, session likes/matches) from the deleted account.
-            resetJobsStore();
-            clearOnboarding();
-            router.replace("/splash");
-          },
-        },
-      ],
-    );
+  // Runs AFTER PrivacySecurityScreen's delete step has confirmed the
+  // password and the backend has permanently purged the account (POST
+  // /api/account/delete/ — the real deletion Apple 5.1.1(v) requires, not
+  // the old reversible deactivate). Everything here is local teardown; the
+  // server side — including the device-token rows and CDN files — is
+  // already gone, so no unregisterDevice call is needed (and it would fail
+  // against a purged account anyway).
+  const handleAccountDeleted = async () => {
+    setShowPrivacySecurity(false);
+    // Cancel every on-device schedule the same way logout does — without
+    // this, re-registering on this device inherits the deleted account's
+    // deck reminders and check-in nudges.
+    cancelDailyDeckReminder();
+    cancelUnfinishedDeckReminder();
+    cancelCheckInNudges(userType);
+    trackAccountDeleted();
+    resetUser();
+    rcReset();
+    await clearAuth();
+    await clearUserProfileData();
+    // Parity with logout — reset jobs store + onboarding data so a
+    // re-registration on this device doesn't inherit deck state
+    // (card index, session likes/matches) from the deleted account.
+    resetJobsStore();
+    clearOnboarding();
+    router.replace("/splash");
   };
 
   // Helper to count missing fields by category
@@ -2841,7 +2832,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <PrivacySecurityScreen
         visible={showPrivacySecurity}
         onClose={() => setShowPrivacySecurity(false)}
-        onDeleteAccount={handleDeleteAccount}
+        onAccountDeleted={handleAccountDeleted}
       />
 
       {/* NOTIFICATIONS SCREEN */}
@@ -3345,8 +3336,8 @@ const styles = StyleSheet.create({
   },
   // Delete-account card — same shape as the sibling privacy cards but a
   // tick darker on the background so it visually pulls forward from the
-  // row above. The native Alert confirmation in handleDeleteAccount is
-  // still the actual safety net.
+  // row above. (The confirmation safety net now lives in
+  // PrivacySecurityScreen's password-confirmed delete step.)
   deleteActionCard: {
     flexDirection: "row",
     alignItems: "center",

@@ -10,6 +10,7 @@
 import { ChevronRight, Lock, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Linking,
   StyleSheet,
   Text,
@@ -22,24 +23,30 @@ import {
   trackTermsTapped,
 } from "../../lib/analytics/mixpanel";
 import { changePassword } from "../../lib/api";
+import { authApi } from "../../lib/auth-api";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { useToastStore } from "../../stores/useToastStore";
 import { EditorScreen } from "./EditorScreen";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
 
-type Step = "main" | "password";
+type Step = "main" | "password" | "delete";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onDeleteAccount: () => void;
+  /** Called AFTER the backend confirms permanent deletion — the parent runs
+   * its local teardown (analytics, notification schedules, stores, auth) and
+   * navigates away. The API call itself lives here so a wrong password stays
+   * an inline field error instead of tearing anything down. */
+  onAccountDeleted: () => void | Promise<void>;
 }
 
 export function PrivacySecurityScreen({
   visible,
   onClose,
-  onDeleteAccount,
+  onAccountDeleted,
 }: Props) {
   const [step, setStep] = useState<Step>("main");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -47,6 +54,10 @@ export function PrivacySecurityScreen({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
   const showToast = useToastStore((s) => s.showToast);
 
   const resetPasswordFields = () => {
@@ -56,10 +67,38 @@ export function PrivacySecurityScreen({
     setPasswordError("");
   };
 
+  const resetDeleteFields = () => {
+    setDeletePassword("");
+    setDeleteError("");
+  };
+
   const handleClose = () => {
     resetPasswordFields();
+    resetDeleteFields();
     setStep("main");
     onClose();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletePassword || deleting) return;
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await authApi.deleteAccount(deletePassword, refreshToken);
+      // Deletion is done server-side; hand off to the parent for local
+      // teardown + navigation. Don't reset `deleting` on this path — the
+      // button stays in its spinner state for the beat until we route away,
+      // instead of flashing back to a tappable "Delete" on a dead account.
+      await onAccountDeleted();
+    } catch (err: any) {
+      const msg: string = err?.message || "";
+      setDeleteError(
+        msg.toLowerCase().includes("password")
+          ? "That password is incorrect. Please try again."
+          : msg || "Couldn't delete your account. Please try again.",
+      );
+      setDeleting(false);
+    }
   };
 
   const handlePasswordChange = async () => {
@@ -167,6 +206,98 @@ export function PrivacySecurityScreen({
     );
   }
 
+  if (step === "delete") {
+    return (
+      <EditorScreen
+        visible={visible}
+        onClose={handleClose}
+        onBack={() => {
+          if (deleting) return;
+          resetDeleteFields();
+          setStep("main");
+        }}
+        title="Delete Account"
+      >
+        <View style={styles.deleteIconCircle}>
+          <Trash2 color="#DC2626" size={26} strokeWidth={2.2} />
+        </View>
+
+        <Text style={styles.deleteHeadline}>This is permanent</Text>
+        <Text style={styles.deleteSubtitle}>
+          Deleting your account erases everything, right away. There is no
+          grace period and no way to undo it.
+        </Text>
+
+        <View style={styles.deleteWarningCard}>
+          {[
+            "Your profile, photo, and resume are permanently erased",
+            "All matches and conversations are deleted for good",
+            "Your likes, referrals, and check-in history are removed",
+          ].map((line) => (
+            <View key={line} style={styles.deleteWarningRow}>
+              <View style={styles.deleteWarningDot} />
+              <Text style={styles.deleteWarningText}>{line}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.fieldLabel}>CONFIRM YOUR PASSWORD</Text>
+        <View style={styles.inputWrapper}>
+          <Lock color="#AAA" size={18} />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password to continue"
+            placeholderTextColor="#BBB"
+            value={deletePassword}
+            onChangeText={(t) => {
+              setDeletePassword(t);
+              if (deleteError) setDeleteError("");
+            }}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!deleting}
+          />
+        </View>
+
+        {deleteError ? (
+          <Text style={styles.errorText}>{deleteError}</Text>
+        ) : null}
+
+        <TouchableOpacity
+          style={[
+            styles.deleteConfirmBtn,
+            (!deletePassword || deleting) && styles.deleteConfirmBtnDisabled,
+          ]}
+          onPress={handleConfirmDelete}
+          disabled={!deletePassword || deleting}
+          activeOpacity={0.8}
+        >
+          {deleting ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.deleteConfirmBtnText}>
+              Permanently Delete My Account
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteCancelBtn}
+          onPress={() => {
+            if (deleting) return;
+            resetDeleteFields();
+            setStep("main");
+          }}
+          disabled={deleting}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.deleteCancelBtnText}>Keep My Account</Text>
+        </TouchableOpacity>
+      </EditorScreen>
+    );
+  }
+
   return (
     <EditorScreen visible={visible} onClose={handleClose} title="Privacy & Security">
       <Text style={styles.groupLabel}>PROFILE</Text>
@@ -225,7 +356,10 @@ export function PrivacySecurityScreen({
       </View>
 
       <Text style={styles.groupLabel}>ACCOUNT REMOVAL</Text>
-      <TouchableOpacity style={styles.deleteRow} onPress={onDeleteAccount}>
+      <TouchableOpacity
+        style={styles.deleteRow}
+        onPress={() => setStep("delete")}
+      >
         <Trash2 color="#DC2626" size={18} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.deleteTitle}>Delete Account</Text>
@@ -233,6 +367,7 @@ export function PrivacySecurityScreen({
             Remove your account permanently
           </Text>
         </View>
+        <ChevronRight color="#DC2626" size={20} />
       </TouchableOpacity>
     </EditorScreen>
   );
@@ -320,4 +455,84 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   updateBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
+  // ── Delete-account confirmation step ────────────────────────────────
+  // Red is reserved app-wide for irreversible destruction (see
+  // WithdrawReferralModal) — this is the other place that earns it.
+  deleteIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginTop: 8,
+    marginBottom: 18,
+  },
+  deleteHeadline: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+    letterSpacing: -0.5,
+    marginBottom: 10,
+  },
+  deleteSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 21,
+    fontWeight: "500",
+    marginBottom: 22,
+    paddingHorizontal: 4,
+  },
+  deleteWarningCard: {
+    backgroundColor: "#FEF2F2",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+    padding: 16,
+    marginBottom: 24,
+    gap: 10,
+  },
+  deleteWarningRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  deleteWarningDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#DC2626",
+    marginTop: 7,
+  },
+  deleteWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#DC2626",
+    lineHeight: 19,
+    fontWeight: "600",
+  },
+  deleteConfirmBtn: {
+    backgroundColor: "#DC2626",
+    borderRadius: 14,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  deleteConfirmBtnDisabled: {
+    opacity: 0.4,
+  },
+  deleteConfirmBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
+  deleteCancelBtn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  deleteCancelBtnText: { color: "#000", fontSize: 15, fontWeight: "700" },
 });
