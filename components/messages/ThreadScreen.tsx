@@ -1,5 +1,13 @@
-import { trackPublicProfileOpenedFromMessage } from "@/lib/analytics/mixpanel";
-import type { ReportReason } from "@/lib/api";
+import {
+  trackPublicProfileOpenedFromMessage,
+  trackUnmatchConfirmed,
+} from "@/lib/analytics/mixpanel";
+import {
+  reportUser,
+  unmatchConversation,
+  type ReportReason,
+} from "@/lib/api";
+import { useToastStore } from "@/stores/useToastStore";
 import { BlurView } from "expo-blur";
 import {
   ArrowLeft,
@@ -12,7 +20,7 @@ import {
   User,
   UserCheck,
 } from "lucide-react-native";
-import React from "react";
+import React, { useState } from "react";
 import {
   Image,
   Modal,
@@ -77,6 +85,9 @@ function normalizeToUtc(s: string): string {
 
 interface ThreadScreenProps {
   conversations: Conversation[];
+  setConversations: (
+    next: Conversation[] | ((prev: Conversation[]) => Conversation[]),
+  ) => void;
   selectedConversation: string;
   userType: "applicant" | "sponsor";
   referredSet: Set<string>;
@@ -86,43 +97,45 @@ interface ThreadScreenProps {
   conversationsLoading: boolean;
   handleConversationSelect: (conversationId: string | null) => void;
   keyboardSpacerStyle: any;
-  showProfileModal: boolean;
-  setShowProfileModal: React.Dispatch<React.SetStateAction<boolean>>;
   scrollViewRef: React.RefObject<ScrollView | null>;
   scrollToBottom: (animated?: boolean) => void;
   messagesLoading: boolean;
   messagesError: string | null;
-  messageText: string;
-  setMessageText: React.Dispatch<React.SetStateAction<string>>;
-  tappedMessageId: string | null;
-  setTappedMessageId: React.Dispatch<React.SetStateAction<string | null>>;
   initialMessageCountRef: React.MutableRefObject<number>;
-  openReferral: () => void;
   sendingMessage: boolean;
-  handleSendMessage: () => void;
-  showReferralFlow: boolean;
-  setShowReferralFlow: React.Dispatch<React.SetStateAction<boolean>>;
-  showUnmatchMenu: boolean;
-  setShowUnmatchMenu: React.Dispatch<React.SetStateAction<boolean>>;
-  isUnmatching: boolean;
-  isReporting: boolean;
-  handleUnmatch: () => void;
-  handleSubmitReport: (reason: ReportReason, detail: string) => void;
+  /** Takes the composer text as a parameter (rather than reading parent
+   * closure state) and reports success/failure so this component can
+   * restore the draft on a failed send — see the call site below. */
+  handleSendMessage: (text: string) => Promise<boolean>;
   onShowPublicProfile?: (userData: any) => void;
 }
 
 /**
  * The open-thread view: header, message list, composer, and the
- * referral-flow/thread-menu modal instances. Extracted from MessagesView
- * as a render-only split (Stage 3a of the ThreadScreen work) — every piece
- * of state referenced here still lives in and is owned by MessagesView,
- * passed down as props, so behavior is identical by construction. Moving
- * this state INTO ThreadScreen (so it unmounts/remounts cleanly on
- * navigation, fixing the draft-text-leak / stale-referral-flow /
- * timestamp-reveal-reset bugs) is Stage 3b, a separate change.
+ * referral-flow/thread-menu modal instances.
+ *
+ * Stage 3b of the ThreadScreen work: messageText, tappedMessageId,
+ * showProfileModal, showReferralFlow, showUnmatchMenu, isUnmatching, and
+ * isReporting are all local state now (a state-ownership audit found no
+ * other readers in MessagesView), so they start fresh every time this
+ * component mounts — i.e. every time a conversation is opened, either by
+ * going back to the list first (already unmounted this view) or directly
+ * via the `key={selectedConversation}` on the call site in MessagesView
+ * (deep-link thread-to-thread navigation). This is what fixes the three
+ * previously-signed-off bugs: stale draft text leaking into the next
+ * conversation, the referral flow reappearing after backing out mid-flow,
+ * and the tapped-timestamp reveal not resetting.
+ *
+ * messages/messagesLoading/messagesError/sendingMessage and their
+ * WebSocket/fetch effects stay in MessagesView — that state is already
+ * correctly reset by its own effect (keyed on selectedConversation)
+ * regardless of where it lives, so moving it wouldn't fix anything and
+ * would add real risk (reconnect/reconciliation logic) for no behavior
+ * change.
  */
 export function ThreadScreen({
   conversations,
+  setConversations,
   selectedConversation,
   userType,
   referredSet,
@@ -132,30 +145,114 @@ export function ThreadScreen({
   conversationsLoading,
   handleConversationSelect,
   keyboardSpacerStyle,
-  showProfileModal,
-  setShowProfileModal,
   scrollViewRef,
   scrollToBottom,
   messagesLoading,
   messagesError,
-  messageText,
-  setMessageText,
-  tappedMessageId,
-  setTappedMessageId,
   initialMessageCountRef,
-  openReferral,
   sendingMessage,
   handleSendMessage,
-  showReferralFlow,
-  setShowReferralFlow,
-  showUnmatchMenu,
-  setShowUnmatchMenu,
-  isUnmatching,
-  isReporting,
-  handleUnmatch,
-  handleSubmitReport,
   onShowPublicProfile,
 }: ThreadScreenProps) {
+  const showToast = useToastStore((state) => state.showToast);
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showReferralFlow, setShowReferralFlow] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
+  const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
+  const [isUnmatching, setIsUnmatching] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+
+  const openReferral = () => {
+    setShowProfileModal(false);
+    setShowReferralFlow(true);
+  };
+
+  const onSend = async () => {
+    const trimmed = messageText.trim();
+    if (!trimmed || sendingMessage) return;
+    setMessageText("");
+    const ok = await handleSendMessage(trimmed);
+    if (!ok) setMessageText(trimmed);
+  };
+
+  const handleUnmatch = async () => {
+    try {
+      setIsUnmatching(true);
+      trackUnmatchConfirmed({ conversationId: selectedConversation });
+      await unmatchConversation(selectedConversation);
+      // Mark the conversation CLOSED rather than dropping it. This moves it
+      // into the "Past Connections" section (instead of making it vanish),
+      // and keeps `selectedConversation` pointing at a row that still
+      // exists — so the thread can't flash a "Conversation not found"
+      // screen in the render between this update and navigating away.
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedConversation
+            ? { ...c, status: "CLOSED" as const }
+            : c,
+        ),
+      );
+      setShowUnmatchMenu(false);
+      handleConversationSelect(null);
+    } catch (err) {
+      console.warn("[ThreadScreen] Failed to unmatch:", err);
+      setShowUnmatchMenu(false);
+      showToast(
+        err instanceof Error
+          ? err.message
+          : "Failed to unmatch. Please try again.",
+        "error",
+      );
+    } finally {
+      setIsUnmatching(false);
+    }
+  };
+
+  // Report a user, then close the conversation the same way Unmatch does.
+  // The block/close effect always happens via the already-shipped unmatch
+  // endpoint, regardless of whether the report itself was recorded — see
+  // reportUser()'s doc comment for why that's split this way.
+  const handleSubmitReport = async (reason: ReportReason, detail: string) => {
+    const reportedUserId = conversations.find(
+      (c) => c.id === selectedConversation,
+    )?.otherParticipant?.id;
+    setIsReporting(true);
+    try {
+      if (reportedUserId) {
+        await reportUser({
+          reportedUserId: String(reportedUserId),
+          reason,
+          detail: detail.trim() || undefined,
+          conversationId: selectedConversation,
+        });
+      }
+      await unmatchConversation(selectedConversation);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedConversation
+            ? { ...c, status: "CLOSED" as const }
+            : c,
+        ),
+      );
+      setShowUnmatchMenu(false);
+      handleConversationSelect(null);
+      showToast("Reported. This conversation has been closed.", "success");
+    } catch (err) {
+      console.warn("[ThreadScreen] Failed to close reported conversation:", err);
+      setShowUnmatchMenu(false);
+      showToast(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+        "error",
+      );
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   const formatDayHeader = (timestamp: string) => {
     const date = new Date(normalizeToUtc(timestamp));
     const now = new Date();
@@ -647,7 +744,7 @@ return (
               styles.sendBtn,
               (!messageText.trim() || sendingMessage) && { opacity: 0.5 },
             ]}
-            onPress={handleSendMessage}
+            onPress={onSend}
             disabled={!messageText.trim() || sendingMessage}
           >
             <Send color="#FFF" size={18} strokeWidth={2.5} />

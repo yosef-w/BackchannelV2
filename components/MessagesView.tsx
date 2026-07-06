@@ -1,19 +1,15 @@
 import {
     trackConversationOpened,
     trackMessageSent,
-    trackUnmatchConfirmed,
 } from "@/lib/analytics/mixpanel";
 import {
     getBasicProfile,
     getConversationMessages,
     getConversations,
     listReferrals,
-    reportUser,
     sendMessage,
-    unmatchConversation,
     WS_BASE_URL,
     type ConversationRow,
-    type ReportReason,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -161,9 +157,6 @@ export function MessagesView({
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
   >(externalSelectedConversationId ?? null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showReferralFlow, setShowReferralFlow] = useState(false);
-  const [messageText, setMessageText] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard();
@@ -239,17 +232,10 @@ export function MessagesView({
   const [messagesError, setMessagesError] = useState<string | null>(null);
 
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
 
   // Tracks which (applicantUserId:jobId) pairs have already been referred so
   // the header button reflects the referral status without a separate lookup.
   const [referredSet, setReferredSet] = useState<Set<string>>(new Set());
-
-  // Unmatch / Report sheet visibility + in-flight state. The step/reason/
-  // detail state now lives inside the extracted ThreadMenuSheet.
-  const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
-  const [isUnmatching, setIsUnmatching] = useState(false);
-  const [isReporting, setIsReporting] = useState(false);
 
   // Refs mirror state for use inside the long-lived inbox WebSocket handler,
   // which is created once and must read the *current* values without the
@@ -802,86 +788,6 @@ export function MessagesView({
     }
   };
 
-  const handleUnmatch = async () => {
-    if (!selectedConversation) return;
-    try {
-      setIsUnmatching(true);
-      trackUnmatchConfirmed({ conversationId: selectedConversation });
-      await unmatchConversation(selectedConversation);
-      // Mark the conversation CLOSED rather than dropping it. This moves it
-      // into the "Past Connections" section (instead of making it vanish),
-      // and keeps `selectedConversation` pointing at a row that still
-      // exists — so the thread can't flash a "Conversation not found"
-      // screen in the render between this update and navigating away.
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedConversation
-            ? { ...c, status: "CLOSED" as const }
-            : c,
-        ),
-      );
-      setShowUnmatchMenu(false);
-      handleConversationSelect(null);
-    } catch (err) {
-      console.warn("[MessagesView] Failed to unmatch:", err);
-      setShowUnmatchMenu(false);
-      showToast(
-        err instanceof Error
-          ? err.message
-          : "Failed to unmatch. Please try again.",
-        "error",
-      );
-    } finally {
-      setIsUnmatching(false);
-    }
-  };
-
-  // Report a user, then close the conversation the same way Unmatch does.
-  // The block/close effect always happens via the already-shipped unmatch
-  // endpoint, regardless of whether the report itself was recorded — see
-  // reportUser()'s doc comment for why that's split this way. Takes
-  // reason/detail as arguments (rather than reading them from state) since
-  // that state now lives inside the extracted ThreadMenuSheet.
-  const handleSubmitReport = async (reason: ReportReason, detail: string) => {
-    if (!selectedConversation) return;
-    const reportedUserId = conversations.find(
-      (c) => c.id === selectedConversation,
-    )?.otherParticipant?.id;
-    setIsReporting(true);
-    try {
-      if (reportedUserId) {
-        await reportUser({
-          reportedUserId: String(reportedUserId),
-          reason,
-          detail: detail.trim() || undefined,
-          conversationId: selectedConversation,
-        });
-      }
-      await unmatchConversation(selectedConversation);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedConversation
-            ? { ...c, status: "CLOSED" as const }
-            : c,
-        ),
-      );
-      setShowUnmatchMenu(false);
-      handleConversationSelect(null);
-      showToast("Reported. This conversation has been closed.", "success");
-    } catch (err) {
-      console.warn("[MessagesView] Failed to close reported conversation:", err);
-      setShowUnmatchMenu(false);
-      showToast(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.",
-        "error",
-      );
-    } finally {
-      setIsReporting(false);
-    }
-  };
-
   // Auto-navigate to a conversation thread when coming from Matches tab via
   // pendingJobId. When `pendingUserId` is also supplied (matches list cards
   // pass it now), match on BOTH jobId AND counterpart user id — necessary
@@ -918,13 +824,20 @@ export function MessagesView({
     }
   }, [pendingConversationId, conversations]);
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedConversation || sendingMessage) return;
+  // Takes the composer text as a parameter rather than reading it from
+  // closure state, since messageText now lives inside ThreadScreen (Stage
+  // 3b). Returns whether the send succeeded so the caller can restore the
+  // draft text on failure — the same optimistic-then-restore behavior as
+  // before, just with ThreadScreen owning the text itself.
+  const handleSendMessage = async (text: string): Promise<boolean> => {
+    const messageToSend = text.trim();
+    if (!messageToSend || !selectedConversation || sendingMessage)
+      return false;
 
     const tempMessage = {
       id: `temp-${Date.now()}`,
       senderId: currentUserId || "me",
-      content: messageText.trim(),
+      content: messageToSend,
       messageType: "text" as const,
       isRead: false,
       createdAt: new Date().toISOString(),
@@ -949,8 +862,6 @@ export function MessagesView({
           : c,
       ),
     );
-    const messageToSend = messageText.trim();
-    setMessageText("");
 
     try {
       setSendingMessage(true);
@@ -991,12 +902,13 @@ export function MessagesView({
 
       // Scroll to bottom after sending
       setTimeout(() => scrollToBottom(true), 100);
+      return true;
     } catch (err) {
       console.warn("[MessagesView] Failed to send message:", err);
       // Remove optimistic message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
-      setMessageText(messageToSend); // Restore message text
       showToast("Failed to send message. Please try again.", "error");
+      return false;
     } finally {
       setSendingMessage(false);
     }
@@ -1041,19 +953,19 @@ export function MessagesView({
     return () => showSub.remove();
   }, []);
 
-  // The referral flow's own step/checkbox/submit/profile-fetch state now
-  // lives entirely inside ReferralFlowModal (extracted — see its own
-  // reset-on-hide effect for the equivalent of what resetReferralFlow()
-  // used to do here).
-  const openReferral = () => {
-    setShowProfileModal(false);
-    setShowReferralFlow(true);
-  };
-
   if (selectedConversation) {
     return (
       <ThreadScreen
+        // Keying on the conversation id forces a clean unmount/remount when
+        // switching directly between two threads (e.g. a push-notification
+        // deep link while another thread is already open) — the same reset
+        // that already happens naturally when going back to the list first.
+        // This is what makes ThreadScreen's own local state (draft text,
+        // tapped-timestamp reveal, referral-flow visibility) start fresh
+        // per conversation instead of leaking from the previous one.
+        key={selectedConversation}
         conversations={conversations}
+        setConversations={setConversations}
         selectedConversation={selectedConversation}
         userType={userType}
         referredSet={referredSet}
@@ -1063,28 +975,13 @@ export function MessagesView({
         conversationsLoading={conversationsLoading}
         handleConversationSelect={handleConversationSelect}
         keyboardSpacerStyle={keyboardSpacerStyle}
-        showProfileModal={showProfileModal}
-        setShowProfileModal={setShowProfileModal}
         scrollViewRef={scrollViewRef}
         scrollToBottom={scrollToBottom}
         messagesLoading={messagesLoading}
         messagesError={messagesError}
-        messageText={messageText}
-        setMessageText={setMessageText}
-        tappedMessageId={tappedMessageId}
-        setTappedMessageId={setTappedMessageId}
         initialMessageCountRef={initialMessageCountRef}
-        openReferral={openReferral}
         sendingMessage={sendingMessage}
         handleSendMessage={handleSendMessage}
-        showReferralFlow={showReferralFlow}
-        setShowReferralFlow={setShowReferralFlow}
-        showUnmatchMenu={showUnmatchMenu}
-        setShowUnmatchMenu={setShowUnmatchMenu}
-        isUnmatching={isUnmatching}
-        isReporting={isReporting}
-        handleUnmatch={handleUnmatch}
-        handleSubmitReport={handleSubmitReport}
         onShowPublicProfile={onShowPublicProfile}
       />
     );
