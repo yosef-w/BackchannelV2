@@ -201,8 +201,9 @@ Phase 2 baseline (zero net-new). No dependency changes (verified via
 
 ## Phase 4 — Structure & type safety ✅ MOSTLY DONE
 
-Full `tsc --noEmit` + `eslint .` clean — 152 problems (down from the 154
-Phase-2/3 baseline; zero net-new).
+Full `tsc --noEmit` + `eslint .` clean — 150 problems (down from the 154
+Phase-2/3 baseline; zero net-new, with a few incidental reductions from
+dependency-array fixes made along the way in 4.2's follow-up split).
 
 - [x] **4.4 `sponsor_request` notification type.** Added `BellRing` to
       `NOTIFICATION_ICON` and a `sponsor_request` case (routes to Matches,
@@ -233,7 +234,7 @@ Phase-2/3 baseline; zero net-new).
         lowercase fallback chains for the dual applicant/sponsor API
         shapes — more effort per the "incremental" framing, left for a
         follow-up pass.
-- [x] **4.2 Carve the megafiles at natural seams — partial.**
+- [x] **4.2 Carve the megafiles at natural seams — done.**
       - Extracted `WithdrawReferralModal` from MatchesView into
         `components/matches/WithdrawReferralModal.tsx` — genuinely
         self-contained (referral/name/processing-state/two callbacks in,
@@ -241,26 +242,52 @@ Phase-2/3 baseline; zero net-new).
         already-separate `ApplicantCheckInModal`/`ProfileCompletionModal`.
         Verified via `matches.find(...)` name resolution moved to the
         caller so the modal doesn't need the whole `matches` array.
-      - **MessagesView → ThreadScreen/Inbox split, and HomeView →
-        applicant/sponsor deck card split: evaluated and deferred.**
-        Checked how entangled the "natural seam" actually is before
-        attempting either: MessagesView has 29 top-level `useState` hooks,
-        HomeView has 31 — in both files the vast majority of that state
-        (plus refs, animated shared values, and handlers) is read on
-        *both* sides of the seam (e.g. MessagesView's `conversations`/
-        `setConversations`/`currentUserId`/the per-conversation WebSocket
-        effect are all needed inside the thread-view branch too; HomeView's
-        `swipeOpacity`/`matchRingScale`/scroll-handler shared values and
-        `fullProfileCache`/`sponsorProfileCache` lazy-fetch state span both
-        the applicant and sponsor card renders). A real split means
-        prop-drilling 15-25+ pieces of state/handlers per file — mechanical,
-        but with a large enough surface that a wiring mistake (a stale
-        closure, a missed setter) could silently break the core swipe/chat
-        experience in a way I can't catch without a device. Same risk
-        category as the inverted-FlatList item already deferred in Phase 3
-        — for the same file, in fact. The `WithdrawReferralModal` extraction
-        above demonstrates the pattern works cleanly where the seam is
-        actually self-contained; the other two aren't, yet.
+      - **MessagesView and HomeView splits — originally deferred above,
+        subsequently completed in a follow-up pass.** The entanglement
+        was real (as described below), so this was done as five
+        sequenced, individually-verified phases rather than one big
+        diff, each gated on a state-ownership audit (grep every
+        reader/writer before deciding whether a piece of state could
+        move) and a whitespace-normalized diff against the original JSX
+        to catch incidental changes:
+        - **Phase A (MessagesView):** extracted `ReferralFlowModal` and
+          `ThreadMenuSheet` — both fully self-contained modals.
+        - **Phase B (HomeView):** extracted `WorkEmailVerificationModal`,
+          `MatchCelebrationModal`, `GetSponsorModal` (render-only —
+          `handleGetSponsor` stayed in the parent), and
+          `JobDescriptionModal`/`FullBioModal`/`SkeletonCard`.
+        - **Phase C (HomeView):** extracted the shared card-rendering
+          style cluster into `cardStyles.ts` plus `ApplicantProfileCard`
+          and `JobCardContent` — both were pure functions of
+          `currentData` and a couple of read-only caches, with zero
+          event handlers, so this was lower-risk than it looked.
+        - **Phase D (MessagesView):** extracted `ThreadScreen` as a
+          render-only split (Stage 3a) — every piece of state it uses
+          still lived in and was owned by MessagesView, passed down as
+          ~20 props, so behavior was identical by construction.
+        - **Phase E (MessagesView):** moved thread-local state
+          (`messageText`, `tappedMessageId`, `showProfileModal`,
+          `showReferralFlow`, `showUnmatchMenu`, `isUnmatching`,
+          `isReporting`) into `ThreadScreen` itself (Stage 3b), plus
+          `key={selectedConversation}` on the call site. This is the one
+          commit in the whole effort with an actual behavior change —
+          and it's the fix for three real bugs the split surfaced: stale
+          draft text leaking into the next conversation, the referral
+          flow reappearing after backing out mid-flow, and the
+          tapped-timestamp reveal not resetting between threads. All
+          three were confirmed on-device after this commit.
+          `messages`/`messagesLoading`/`messagesError`/`sendingMessage`
+          and their WebSocket/fetch effects deliberately stayed in
+          MessagesView — that state was already correctly reset by an
+          effect keyed on `selectedConversation`, so moving it would
+          have added real risk (reconnect/reconciliation logic) for zero
+          behavior change.
+        - Net result: `MessagesView.tsx` ~2,970 → ~1,440 lines,
+          `HomeView.tsx` ~4,300 → ~2,640 lines, across 13 new files under
+          `components/messages/` and `components/home/`. Every phase
+          verified via `tsc --noEmit` + `eslint` (zero net-new problems
+          vs. the running baseline at each step) before moving to the
+          next.
 - [x] **4.3 Unify data fetching on React Query — evaluated, deferred.**
       Read through HomeView's manual fetch/cache code before deciding: the
       per-role deck cache (`Map<jobId, {profiles, index, progress,
@@ -274,9 +301,9 @@ Phase-2/3 baseline; zero net-new).
       either a custom `queryFn` that also restores position (defeating the
       simplification) or accepting a behavior regression — not a safe
       trade to make blind. Deferred alongside the same file's other
-      deferred items (3.2d, 4.2's HomeView split) for the same reason: high
-      value, but the current manual code is *correct* today, and this is
-      the kind of migration that wants a human clicking through role
+      deferred item (3.2d) for the same reason: high value, but the
+      current manual code is *correct* today, and this is the kind of
+      migration that wants a human clicking through role
       switches on a device before merging.
 
 ## Phase 5 — Backend-dependent (frontend is already wired; coordinate)
