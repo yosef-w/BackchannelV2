@@ -4,18 +4,21 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
     AlertCircle,
+    Bell,
     Briefcase,
     Camera,
     Check,
     CheckCircle2,
     ChevronRight,
     Edit,
-    Eye,
     FileText,
+    GraduationCap,
     ImageIcon,
+    Lock,
     LogOut,
-    MapPin,
     RefreshCw,
+    Sparkles,
+    Star,
     Target,
     Trash2,
     Upload,
@@ -25,10 +28,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Image,
     Modal,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Switch,
@@ -55,7 +56,6 @@ import {
 import {
     classifyResume,
     deactivateAccount,
-    getBasicProfile,
     getExtractedResumeText,
     logout,
     unregisterDevice,
@@ -88,14 +88,14 @@ import {
   SPONSOR_PROMPT_CATEGORIES,
   SPONSOR_PROMPT_EXAMPLES,
 } from "../constants/prompts";
-import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { EditorScreen } from "./profile/EditorScreen";
 import { EditProfileScreen } from "./profile/EditProfileScreen";
+import { HubRow } from "./profile/HubRow";
+import { HubSection } from "./profile/HubSection";
 import { NotificationsScreen } from "./profile/NotificationsScreen";
 import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
+import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
-import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
-import { ExpandableText } from "./ui/ExpandableText";
 import { PromptsIntake } from "./ui/PromptsIntake";
 
 interface ProfileViewProps {
@@ -203,13 +203,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
-  // "Preview my profile" — reuses the same public-profile views sponsors and
-  // applicants see of EACH OTHER, pointed at your own USER_ID instead. Seeing
-  // your own card as others see it is the strongest nudge to fill in the
-  // weak spots (missing bio, thin insights, etc).
-  const [showPreviewCard, setShowPreviewCard] = useState(false);
-  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [showPrivacySecurity, setShowPrivacySecurity] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -1838,24 +1831,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
-  const handlePreviewCard = async () => {
-    if (previewUserId) {
-      setShowPreviewCard(true);
-      return;
-    }
-    setPreviewLoading(true);
-    try {
-      const basic = await getBasicProfile();
-      setPreviewUserId(String(basic.USER_ID));
-      setShowPreviewCard(true);
-    } catch (err) {
-      console.warn("[ProfileView] Failed to load own profile for preview:", err);
-      showToast("Couldn't load your profile preview. Please try again.", "error");
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
@@ -2417,6 +2392,46 @@ export function ProfileView({ userType }: ProfileViewProps) {
     );
   };
 
+  // "Finish Your Profile" coaching rows — one per item profileCompletion
+  // flags as missing, each deep-linking to the exact screen that fixes it,
+  // plus a prompts nudge (not part of the official completion calculation,
+  // since PromptsIntake enforces its own 2-minimum, but still worth
+  // surfacing here). The ring on the identity card shows the official
+  // percentage; this list shows the "why".
+  const FINISH_PROFILE_ICON: Record<string, React.ReactNode> = {
+    profileImage: <Camera color="#000" size={16} strokeWidth={2} />,
+    skills: <Target color="#000" size={16} strokeWidth={2} />,
+    experiences: <Briefcase color="#000" size={16} strokeWidth={2} />,
+    entries: <GraduationCap color="#000" size={16} strokeWidth={2} />,
+  };
+  const FINISH_PROFILE_TARGET: Record<string, () => void> = {
+    profileImage: openImagePicker,
+    experiences: () => setShowEditResume(true),
+    entries: () => setShowEditResume(true),
+  };
+  const finishProfileRows = profileCompletion.missingFields.map((f) => ({
+    key: f.field,
+    icon: FINISH_PROFILE_ICON[f.field] || (
+      <Edit color="#000" size={16} strokeWidth={2} />
+    ),
+    label:
+      f.label === "Photo"
+        ? "Add a profile photo"
+        : `Add your ${f.label.toLowerCase()}`,
+    onPress: FINISH_PROFILE_TARGET[f.field] || (() => setShowEditProfile(true)),
+  }));
+  if (profileInsights.length < 2) {
+    finishProfileRows.push({
+      key: "prompts",
+      icon: <Sparkles color="#000" size={16} strokeWidth={2} />,
+      label:
+        profileInsights.length === 0
+          ? "Answer 2 profile prompts"
+          : "Answer 1 more profile prompt",
+      onPress: () => setShowEditInsights(true),
+    });
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -2424,162 +2439,41 @@ export function ProfileView({ userType }: ProfileViewProps) {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="always"
     >
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarWrapper}>
-          {/* The whole avatar is tappable — not just the small corner button —
-              so tapping the photo opens the picker too. (Previously only the
-              32px FAB had a handler, which testers often missed.) */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={openImagePicker}
-            accessibilityRole="button"
-            accessibilityLabel="Change profile photo"
-          >
-            {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatar}>
-                {getUserInitials() ? (
-                  <Text style={styles.avatarInitials}>{getUserInitials()}</Text>
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Camera color="#999" size={32} strokeWidth={1.5} />
-                    <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.editFab,
-              isFieldMissing("profileImage") && styles.editFabHighlight,
-            ]}
-            onPress={openImagePicker}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Edit color="#FFF" size={14} strokeWidth={2.5} />
-          </TouchableOpacity>
-        </View>
+      <ProfileIdentityCard
+        profileImage={profileImage}
+        initials={getUserInitials()}
+        name={profileData.name}
+        roleLine={
+          userType === "sponsor"
+            ? `${sponsorData.role} @ ${sponsorData.company}`
+            : applicantData.role
+        }
+        location={profileData.location}
+        bio={profileData.bio}
+        completionPercentage={profileCompletion.percentage}
+        personalMissingCount={personalMissingCount}
+        onOpenImagePicker={openImagePicker}
+        onEditProfile={() => {
+          trackProfileEditOpened({ section: "personal" });
+          setShowEditProfile(true);
+        }}
+        photoMissing={isFieldMissing("profileImage")}
+      />
 
-        <Text style={styles.name}>{profileData.name}</Text>
-
-        <View style={styles.infoRow}>
-          <Briefcase color="#000" size={14} strokeWidth={2} />
-          <Text style={styles.infoText}>
-            {userType === "sponsor"
-              ? `${sponsorData.role} @ ${sponsorData.company}`
-              : applicantData.role}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MapPin color="#BBB" size={14} strokeWidth={2} />
-          {profileData.location ? (
-            <Text style={styles.locationText}>{profileData.location}</Text>
-          ) : (
-            <Text style={styles.emptyHint}>No location added yet</Text>
-          )}
-        </View>
-
-        {profileData.bio ? (
-          <ExpandableText style={styles.bio} numberOfLines={5}>
-            {profileData.bio}
-          </ExpandableText>
-        ) : (
-          <Text style={styles.emptyHint}>Tap "Edit Profile" to add a bio</Text>
-        )}
-
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.blackBtn}
-            onPress={() => {
-              trackProfileEditOpened({ section: "personal" });
-              setShowEditProfile(true);
-            }}
-          >
-            <Edit color="#FFF" size={16} />
-            <Text style={styles.blackBtnText}>Edit Profile</Text>
-            {personalMissingCount > 0 && (
-              <View style={styles.buttonBadge}>
-                <Text style={styles.buttonBadgeText}>
-                  {personalMissingCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.whiteBtn}
-            onPress={handlePreviewCard}
-          >
-            <Eye color="#000" size={16} />
-            <Text style={styles.whiteBtnText}>
-              {previewLoading ? "Loading…" : "Preview"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Profile Content */}
-      <>
-        {/* Expertise Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{profileData.expertiseLabel}</Text>
-          {profileData.expertise.length > 0 ? (
-            <View style={styles.tagCloud}>
-              {profileData.expertise.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyHint}>No skills added yet</Text>
-          )}
-        </View>
-
-        {/* Applicant-Specific Sections */}
-        {userType === "applicant" && (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Work Preferences</Text>
-              {applicantData.workPreferences.length > 0 ? (
-                <View style={styles.tagCloud}>
-                  {applicantData.workPreferences.map((pref) => (
-                    <View key={pref} style={styles.preferenceTag}>
-                      <Text style={styles.preferenceText}>{pref}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyHint}>
-                  No work preferences added yet
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Desired Roles</Text>
-              {applicantData.desiredRoles.length > 0 ? (
-                <View style={styles.tagCloud}>
-                  {applicantData.desiredRoles.map((role) => (
-                    <View key={role} style={styles.roleTag}>
-                      <Target size={14} color="#FFF" strokeWidth={2.5} />
-                      <Text style={styles.roleTagText}>{role}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyHint}>No desired roles added yet</Text>
-              )}
-            </View>
-          </>
-        )}
-
-        {/* Sponsor-Specific Sections */}
-        {userType === "sponsor" && <></>}
-      </>
+      <HubSection
+        title="Finish Your Profile"
+        count={finishProfileRows.length}
+        hidden={finishProfileRows.length === 0}
+      >
+        {finishProfileRows.map((row) => (
+          <HubRow
+            key={row.key}
+            icon={row.icon}
+            label={row.label}
+            onPress={row.onPress}
+          />
+        ))}
+      </HubSection>
 
       {/* Resume Upload Section — Applicant Only */}
       {userType === "applicant" && (
@@ -2776,55 +2670,63 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
       )}
 
-      {/* Settings List */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <View style={styles.settingsGroup}>
-          <SettingItem
-            label="Edit Profile Insights"
+      <HubSection title="Profile">
+        <HubRow
+          icon={<Sparkles color="#000" size={16} strokeWidth={2} />}
+          label="Profile Prompts"
+          value={`${profileInsights.length}/3`}
+          onPress={() => {
+            trackProfileEditOpened({ section: "insights" });
+            setShowEditInsights(true);
+          }}
+        />
+        {userType === "applicant" && (
+          <HubRow
+            icon={<FileText color="#000" size={16} strokeWidth={2} />}
+            label="Edit Resume Information"
+            badgeCount={professionalMissingCount}
             onPress={() => {
-              trackProfileEditOpened({ section: "insights" });
-              setShowEditInsights(true);
+              trackProfileEditOpened({ section: "resume" });
+              setShowEditResume(true);
             }}
           />
-          {userType === "applicant" && (
-            <SettingItem
-              label="Edit Resume Information"
-              badgeCount={professionalMissingCount}
-              onPress={() => {
-                trackProfileEditOpened({ section: "resume" });
-                setShowEditResume(true);
-              }}
-            />
-          )}
-          <SettingItem
-            label="Privacy & Security"
-            onPress={() => setShowPrivacySecurity(true)}
+        )}
+      </HubSection>
+
+      <HubSection title="Settings">
+        <HubRow
+          icon={<Bell color="#000" size={16} strokeWidth={2} />}
+          label="Notifications"
+          onPress={() => setShowNotifications(true)}
+        />
+        <HubRow
+          icon={<Lock color="#000" size={16} strokeWidth={2} />}
+          label="Privacy & Security"
+          onPress={() => setShowPrivacySecurity(true)}
+        />
+        {PREMIUM_ENABLED && (
+          <HubRow
+            icon={<Star color="#000" size={16} strokeWidth={2} />}
+            label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
+            onPress={async () => {
+              if (isPremium) {
+                await presentCustomerCenter();
+              } else {
+                await presentPaywall();
+              }
+            }}
           />
-          <SettingItem
-            label="Notifications"
-            onPress={() => setShowNotifications(true)}
-          />
-          {PREMIUM_ENABLED && (
-            <SettingItem
-              label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
-              onPress={async () => {
-                if (isPremium) {
-                  await presentCustomerCenter();
-                } else {
-                  await presentPaywall();
-                }
-              }}
-            />
-          )}
-          <SettingItem
-            label="Log Out"
-            color="#000"
-            isLast
-            onPress={handleLogout}
-          />
-        </View>
-      </View>
+        )}
+      </HubSection>
+
+      <TouchableOpacity
+        style={styles.logOutRow}
+        onPress={handleLogout}
+        activeOpacity={0.7}
+      >
+        <LogOut color="#000" size={16} strokeWidth={2} />
+        <Text style={styles.logOutText}>Log Out</Text>
+      </TouchableOpacity>
 
       {/* IMAGE PICKER MODAL */}
       <Modal visible={showImagePickerModal} transparent animationType="fade">
@@ -3029,70 +2931,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         userType={userType}
       />
 
-      {/* Preview My Profile — full-screen, matches how MainApp presents a
-          match's public profile. Points the SAME view at your own USER_ID
-          so you see your card exactly as the other side would.
-          Note: MainApp renders this same component as a child of its own
-          top-level SafeAreaView, so it inherits safe-area insets for free
-          there. A bare <Modal> breaks out of the normal view hierarchy
-          entirely (it doesn't inherit anything from an ancestor
-          SafeAreaView), so this needs its own — without it, the back
-          button and content pushed up against the iPhone's notch/status
-          bar and the bottom content ran into the home-indicator area. */}
-      <Modal
-        visible={showPreviewCard}
-        animationType="slide"
-        onRequestClose={() => setShowPreviewCard(false)}
-      >
-        <SafeAreaView style={styles.previewSafeArea}>
-          {previewUserId &&
-            (userType === "applicant" ? (
-              <ApplicantPublicProfileView
-                userData={{ USER_ID: previewUserId }}
-                onClose={() => setShowPreviewCard(false)}
-              />
-            ) : (
-              <SponsorPublicProfileView
-                userData={{ USER_ID: previewUserId }}
-                onClose={() => setShowPreviewCard(false)}
-              />
-            ))}
-        </SafeAreaView>
-      </Modal>
     </ScrollView>
-  );
-}
-
-function SettingItem({
-  label,
-  color = "#000",
-  isLast = false,
-  showNotificationDot = false,
-  badgeCount,
-  onPress,
-}: {
-  label: string;
-  color?: string;
-  isLast?: boolean;
-  showNotificationDot?: boolean;
-  badgeCount?: number;
-  onPress?: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.settingItem, isLast && { borderBottomWidth: 0 }]}
-      onPress={onPress}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Text style={[styles.settingLabel, { color }]}>{label}</Text>
-        {typeof badgeCount === "number" && badgeCount > 0 && (
-          <View style={styles.settingBadge}>
-            <Text style={styles.settingBadgeText}>{badgeCount}</Text>
-          </View>
-        )}
-      </View>
-      <ChevronRight color="#BBB" size={18} />
-    </TouchableOpacity>
   );
 }
 
@@ -3143,106 +2982,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 140,
-  },
-  profileHeader: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  avatarWrapper: {
-    marginBottom: 20,
-    position: "relative",
-  },
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "#F9F9F9",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#E5E5E5",
-  },
-  avatarInitials: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: 1,
-  },
-  avatarPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  avatarPlaceholderText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#999",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  editFab: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#000",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  editFabHighlight: {
-    backgroundColor: "#000",
-  },
-  profileImageIndicator: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#F9F9F9",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  name: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 6,
-  },
-  infoText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
-  },
-  locationText: {
-    fontSize: 14,
-    color: "#BBB",
-    fontWeight: "500",
-  },
-  bio: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginTop: 16,
-    paddingHorizontal: 10,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
   },
   blackBtn: {
     flexDirection: "row",
@@ -3298,77 +3037,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
     letterSpacing: 1,
   },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#BBB",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginBottom: 16,
-  },
-  tagCloud: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#EEE",
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-  },
 
   // Applicant-Specific Styles
-  preferenceTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
-  },
-  preferenceText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  roleTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: "#000",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  roleTagText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFF",
-  },
 
   // Sponsor-Specific Styles
   companyTag: {
@@ -3385,33 +3055,22 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
-  settingsSection: {
-    marginTop: 8,
-  },
-  settingsGroup: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  settingItem: {
+  logOutRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#000",
+    paddingVertical: 14,
+    marginBottom: 24,
   },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  notificationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#DC2626",
+  logOutText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
   },
 
   // Modal Styles
@@ -3438,7 +3097,6 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   insightsEditorSafe: { flex: 1, backgroundColor: "#FFF" },
-  previewSafeArea: { flex: 1, backgroundColor: "#FFF" },
   insightsEditorHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -3492,39 +3150,6 @@ const styles = StyleSheet.create({
   },
 
   // Badge Styles
-  buttonBadge: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#000",
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  buttonBadgeText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  settingBadge: {
-    backgroundColor: "#000",
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-  },
-  settingBadgeText: {
-    color: "#FFF",
-    fontSize: 11,
-    fontWeight: "800",
-  },
 
   // Edit Profile Styles
   editField: {
@@ -4411,12 +4036,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-  emptyHint: {
-    fontSize: 13,
-    color: "#BBB",
-    fontStyle: "italic",
-    marginTop: 4,
-  },
   emptyStateCard: {
     backgroundColor: "#F9F9F9",
     padding: 24,
@@ -4490,20 +4109,15 @@ const styles = StyleSheet.create({
 
   // ── Resume Upload Section ─────────────────────────────────────────────────
   resumeSection: {
-    marginHorizontal: 20,
-    marginBottom: 8,
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    marginBottom: 24,
   },
   // ── Résumé — document card (Route A) ─────────────────────────────────────
   resumeSectionLabel: {
     fontSize: 12,
     fontWeight: "800",
     color: "#999",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
     marginBottom: 14,
   },
   docCard: {
