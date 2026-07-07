@@ -1,4 +1,5 @@
-import { getPublicProfile } from "@/lib/api";
+import { getPublicProfile, type PublicProfileResponse } from "@/lib/api";
+import type { PublicProfileUserData } from "@/types/profiles";
 import {
     Award,
     Briefcase,
@@ -25,11 +26,12 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
 
 interface ApplicantPublicProfileViewProps {
-  userData: any;
+  userData: PublicProfileUserData;
   onClose: () => void;
 }
 
-const parseVariant = (v: any): any[] => {
+/** Parse a field that may be a JSON-encoded string, a real array, or absent. */
+function parseVariant<T>(v: string | T[] | null | undefined): T[] {
   if (!v) return [];
   if (typeof v === "string") {
     try {
@@ -39,13 +41,15 @@ const parseVariant = (v: any): any[] => {
     }
   }
   return Array.isArray(v) ? v : [];
-};
+}
 
 export function ApplicantPublicProfileView({
   userData,
   onClose,
 }: ApplicantPublicProfileViewProps) {
-  const [fullProfile, setFullProfile] = useState<any>(null);
+  const [fullProfile, setFullProfile] = useState<PublicProfileResponse | null>(
+    null,
+  );
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   // Fetch full profile on mount using the other participant's ID
@@ -67,7 +71,8 @@ export function ApplicantPublicProfileView({
   }, [userData?.otherParticipant?.id, userData?.USER_ID, userData?.userId]);
 
   // Parsed resume sections from full profile
-  const ap = (fullProfile as any)?.applicant_profile || {};
+  const ap: Partial<NonNullable<PublicProfileResponse["applicant_profile"]>> =
+    fullProfile?.applicant_profile || {};
   const experiences = parseVariant(ap.PROFESSIONAL_EXPERIENCES);
   const educationEntries = parseVariant(ap.EDUCATION_ENTRIES);
   const certifications = parseVariant(ap.CERTIFICATIONS);
@@ -95,7 +100,7 @@ export function ApplicantPublicProfileView({
     ap.CURRENT_ROLE || userData?.otherParticipant?.role || userData?.role || "";
 
   const currentCompany =
-    (experiences[0] as any)?.company ||
+    experiences[0]?.company ||
     userData?.otherParticipant?.company ||
     userData?.company ||
     "";
@@ -109,9 +114,13 @@ export function ApplicantPublicProfileView({
   // Desired roles from applicant_profile positions
   const desiredRoles: string[] = parseVariant(ap.POSITIONS);
 
-  // Insights / questionnaire answers
-  const insights: Array<{ question: string; answer: string }> =
-    ap.INSIGHTS || [];
+  // Insights / questionnaire answers. Same runtime as the untyped version
+  // (`ap.INSIGHTS || []`, no parse) — the cast asserts the array form the
+  // backend sends on this endpoint.
+  const insights = (ap.INSIGHTS || []) as Array<{
+    question: string;
+    answer: string;
+  }>;
 
   // Context from the conversation (the job this match is based on)
   const matchedJobTitle =
@@ -265,7 +274,7 @@ export function ApplicantPublicProfileView({
                 PROFESSIONAL EXPERIENCE
               </Text>
             </View>
-            {experiences.map((exp: any, idx: number) => (
+            {experiences.map((exp, idx) => (
               <View key={idx} style={styles.resumeCard}>
                 <View style={styles.resumeCardRow}>
                   <Text style={styles.resumeCardTitle}>{exp.jobTitle}</Text>
@@ -296,7 +305,7 @@ export function ApplicantPublicProfileView({
                 EDUCATION
               </Text>
             </View>
-            {educationEntries.map((edu: any, idx: number) => (
+            {educationEntries.map((edu, idx) => (
               <View key={idx} style={styles.resumeCard}>
                 <Text style={styles.resumeCardTitle}>
                   {edu.degree}
@@ -328,7 +337,7 @@ export function ApplicantPublicProfileView({
               </Text>
             </View>
             <View style={styles.tagCloud}>
-              {certifications.map((cert: any, idx: number) => (
+              {certifications.map((cert, idx) => (
                 <View key={idx} style={styles.certBadge}>
                   <Text style={styles.certName}>{cert.name}</Text>
                   {cert.organization || cert.year ? (
@@ -373,7 +382,7 @@ export function ApplicantPublicProfileView({
               </Text>
             </View>
             <View style={styles.tagCloud}>
-              {languages.map((lang: any, idx: number) => (
+              {languages.map((lang, idx) => (
                 <View key={idx} style={styles.langBadge}>
                   <Text style={styles.langName}>{lang.language}</Text>
                   {lang.proficiency ? (

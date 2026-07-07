@@ -25,7 +25,7 @@ import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { isValidUrl, normalizeUrl } from "@/lib/validation";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
-import type { BrowseJobResponse, Job } from "@/types/jobs";
+import type { Job } from "@/types/jobs";
 import { CheckCircle, Plus, Zap } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -203,7 +203,7 @@ export function JobsView() {
         trackBrowseJobsViewed();
         const response = await browseJobs({ limit: 50 });
         const transformedJobs = transformBrowseResponse(
-          response.jobs as BrowseJobResponse[],
+          response.jobs,
           sponsoredJobs,
         );
         setJobs(transformedJobs);
@@ -283,7 +283,7 @@ export function JobsView() {
       const response = await browseJobs({ limit: 50 });
       setJobs(
         transformBrowseResponse(
-          response.jobs as BrowseJobResponse[],
+          response.jobs,
           sponsoredJobs,
         ),
       );
@@ -414,7 +414,7 @@ export function JobsView() {
         // are added — manually-created ones (no REFERENCE_JOB_ID) get an
         // empty atsJobId, which is fine for the dropdown and harmless for
         // the green-border logic (empty atsJobId won't match any browse row).
-        response.jobs.forEach((j: any) => {
+        response.jobs.forEach((j) => {
           addSponsoredJob({
             jobId: String(j.JOB_ID),
             atsJobId: j.REFERENCE_JOB_ID ? String(j.REFERENCE_JOB_ID) : "",
@@ -970,7 +970,7 @@ export function JobsView() {
                   const response = await browseJobs({ limit: 50 });
                   setJobs(
                     transformBrowseResponse(
-                      response.jobs as BrowseJobResponse[],
+                      response.jobs,
                       sponsoredJobs,
                     ),
                   );

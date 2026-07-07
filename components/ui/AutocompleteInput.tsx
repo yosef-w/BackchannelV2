@@ -9,6 +9,8 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    type StyleProp,
+    type TextStyle,
 } from "react-native";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -22,7 +24,7 @@ interface AutocompleteInputProps {
   suggestions: string[];
   placeholder?: string;
   autoFocus?: boolean;
-  style?: any;
+  style?: StyleProp<TextStyle>;
   maxSuggestions?: number;
 }
 

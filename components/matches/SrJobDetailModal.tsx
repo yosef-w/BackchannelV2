@@ -23,10 +23,7 @@ import { DismissibleSheet } from "../ui/DismissibleSheet";
 import { parseSkillsField } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
-/** Raw /api/jobs/silver/<id>/ shape — column names as the backend returns
- * them (uppercase, Postgres adapter). Kept loose since this modal only
- * reads a handful of fields defensively. */
-type SilverJobDetail = Record<string, any>;
+import type { SilverJobDetail } from "@/lib/api";
 
 interface SrJobDetailModalProps {
   visible: boolean;
@@ -161,7 +158,7 @@ export function SrJobDetailModal({
                   <View
                     style={[
                       modalStyles.jobModalCompCell,
-                      detail.SALARY_ANNUAL_MIN &&
+                      !!detail.SALARY_ANNUAL_MIN &&
                         modalStyles.jobModalCompCellBorder,
                     ]}
                   >

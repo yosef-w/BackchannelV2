@@ -106,8 +106,8 @@ export function PrivacySecurityScreen({
       // button stays in its spinner state for the beat until we route away,
       // instead of flashing back to a tappable "Delete" on a dead account.
       await onAccountDeleted();
-    } catch (err: any) {
-      const msg: string = err?.message || "";
+    } catch (err) {
+      const msg: string = err instanceof Error ? err.message : "";
       const wrongPassword = msg.toLowerCase().includes("password");
       // A failed DELETION (not a mistyped password) is a legal/App-Store
       // promise breaking — worth a Sentry issue, not just a toast.
@@ -146,9 +146,10 @@ export function PrivacySecurityScreen({
       resetPasswordFields();
       setStep("main");
       showToast("Password changed successfully.", "success");
-    } catch (err: any) {
+    } catch (err) {
       setPasswordError(
-        err?.message || "Failed to change password. Please try again.",
+        (err instanceof Error && err.message) ||
+          "Failed to change password. Please try again.",
       );
     } finally {
       setUpdating(false);
@@ -172,8 +173,8 @@ export function PrivacySecurityScreen({
       await changeEmail(newEmail.trim(), emailPassword);
       trackChangeEmailRequested();
       setEmailRequestSent(true);
-    } catch (err: any) {
-      const msg: string = err?.message || "";
+    } catch (err) {
+      const msg: string = err instanceof Error ? err.message : "";
       setEmailError(
         msg.toLowerCase().includes("password")
           ? "That password is incorrect. Please try again."

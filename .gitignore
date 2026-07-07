@@ -43,3 +43,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# husky's generated hook shims (recreated by npm install via the prepare script)
+.husky/_/

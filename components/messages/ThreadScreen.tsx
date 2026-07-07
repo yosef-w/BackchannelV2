@@ -1,3 +1,4 @@
+import type { PublicProfileUserData } from "@/types/profiles";
 import {
   trackPublicProfileOpenedFromMessage,
   trackUnmatchConfirmed,
@@ -31,9 +32,13 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
-import type { Conversation } from "../MessagesView";
+import Animated, {
+  FadeInUp,
+  type AnimatedStyle,
+} from "react-native-reanimated";
+import type { Conversation, ThreadMessage } from "../MessagesView";
 import { CharCounter } from "../ui/CharCounter";
 import { ProfileDetailSheet } from "../ui/ProfileDetailSheet";
 import { ReferralFlowModal } from "./ReferralFlowModal";
@@ -42,7 +47,7 @@ import { ThreadMenuSheet } from "./ThreadMenuSheet";
 import { threadScreenStyles as styles } from "./threadScreenStyles";
 
 function getConversationStarters(
-  conversation: any,
+  conversation: Conversation | null | undefined,
   userType: "applicant" | "sponsor",
 ): string[] {
   const jobTitle: string | undefined = conversation?.jobContext?.jobTitle;
@@ -93,11 +98,12 @@ interface ThreadScreenProps {
   userType: "applicant" | "sponsor";
   referredSet: Set<string>;
   setReferredSet: React.Dispatch<React.SetStateAction<Set<string>>>;
-  messages: any[];
+  messages: ThreadMessage[];
   currentUserId: string | null;
   conversationsLoading: boolean;
   handleConversationSelect: (conversationId: string | null) => void;
-  keyboardSpacerStyle: any;
+  /** Animated height spacer from MessagesView's useAnimatedStyle. */
+  keyboardSpacerStyle: AnimatedStyle<ViewStyle>;
   scrollViewRef: React.RefObject<ScrollView | null>;
   scrollToBottom: (animated?: boolean) => void;
   messagesLoading: boolean;
@@ -108,7 +114,7 @@ interface ThreadScreenProps {
    * closure state) and reports success/failure so this component can
    * restore the draft on a failed send — see the call site below. */
   handleSendMessage: (text: string) => Promise<boolean>;
-  onShowPublicProfile?: (userData: any) => void;
+  onShowPublicProfile?: (userData: PublicProfileUserData) => void;
 }
 
 /**
@@ -573,7 +579,7 @@ return (
             //  1. sender matches the resolved currentUserId
             //  2. it is still an unreconciled optimistic temp (senderId may be "me" or real ID)
             //  3. senderId is literally "me" (fallback before currentUserId loaded)
-            const isMine = (m: any) =>
+            const isMine = (m: ThreadMessage) =>
               currentUserId
                 ? m.senderId === currentUserId ||
                   m.senderId === "me" ||
@@ -585,7 +591,10 @@ return (
             // WhatsApp convention) instead of every bubble floating with
             // identical spacing.
             const CLUSTER_WINDOW_MS = 2 * 60 * 1000;
-            const clustersWith = (a: any, b: any) =>
+            const clustersWith = (
+              a: ThreadMessage | null,
+              b: ThreadMessage | null,
+            ) =>
               !!a &&
               !!b &&
               isMine(a) === isMine(b) &&
@@ -806,7 +815,7 @@ return (
                     });
                   }
                   if (onShowPublicProfile) {
-                    onShowPublicProfile(conversation);
+                    onShowPublicProfile({ ...conversation });
                   }
                 },
               }
@@ -825,7 +834,7 @@ return (
                     });
                   }
                   if (onShowPublicProfile) {
-                    onShowPublicProfile(conversation);
+                    onShowPublicProfile({ ...conversation });
                   }
                 },
               }

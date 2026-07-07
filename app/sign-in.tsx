@@ -19,13 +19,13 @@ export default function SignInScreen() {
   return (
     <AuthScreen
       initialIsLogin
-      onBack={() => router.replace("/splash" as any)}
-      onLoginComplete={() => router.replace("/dashboard" as any)}
+      onBack={() => router.replace("/splash")}
+      onLoginComplete={() => router.replace("/dashboard")}
       // Defensive fallback only — onRequestSignUp intercepts every "Sign up"
       // tap while isLogin is true, so the signup submit path below should
       // never actually run from this screen.
-      onComplete={() => router.replace("/choose-role" as any)}
-      onRequestSignUp={() => router.replace("/choose-role" as any)}
+      onComplete={() => router.replace("/choose-role")}
+      onRequestSignUp={() => router.replace("/choose-role")}
     />
   );
 }

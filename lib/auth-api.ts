@@ -1,5 +1,8 @@
 import { api } from "./api";
-import type { SyncableField } from "../stores/useUserProfileStore";
+import type {
+  AutofillData,
+  SyncableField,
+} from "../stores/useUserProfileStore";
 
 /**
  * 🔐 Authentication API Response Types
@@ -28,7 +31,9 @@ export interface CreateProfileRequest {
   lastName: string;
   email: string;
   password: string;
-  profileData: any;
+  /** Role-specific questionnaire blob — echoed back by the register
+   * endpoints; shape varies by role and questionnaire version. */
+  profileData: Record<string, unknown>;
 }
 
 export interface UpdateProfileRequest {
@@ -80,24 +85,92 @@ export interface UpdateProfileRequest {
   resumeUrl?: string | null;
 }
 
+/**
+ * A raw resume entry as the backend stores it. App-saved entries carry the
+ * camelCase fields directly; AI-classified entries use the legacy
+ * title/school/year/dates variants — loadFromProfile's mappers normalize
+ * both.
+ */
+export interface RawExperienceRow {
+  id?: string;
+  jobTitle?: string;
+  /** Legacy AI-classified variant of jobTitle. */
+  title?: string;
+  company?: string;
+  startDate?: string;
+  endDate?: string;
+  current?: boolean;
+  /** Legacy combined range, e.g. "2022 – Present". */
+  dates?: string;
+  description?: string;
+}
+
+export interface RawEducationRow {
+  id?: string;
+  degree?: string;
+  major?: string;
+  university?: string;
+  /** Legacy AI-classified variant of university. */
+  school?: string;
+  graduationYear?: string;
+  /** Legacy AI-classified variant of graduationYear. */
+  year?: string;
+  gpa?: string;
+}
+
+/**
+ * GET /api/profile/ as the backend ACTUALLY returns it — UPPERCASE columns
+ * from the Postgres adapter plus role-specific sub-objects whose JSONB
+ * fields may arrive as JSON-encoded strings (pg_utils casts JSONB → TEXT,
+ * PR #25); consumers parse them tolerantly. This replaced an aspirational
+ * camelCase interface that never matched the wire format (every consumer
+ * was reading through `as any`).
+ */
 export interface ProfileResponse {
-  id: string;
-  userType: "applicant" | "sponsor";
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  portfolio?: string;
-  address?: any;
-  professional?: any;
-  education?: any;
-  preferences?: any;
-  demographics?: any;
-  skills?: string[];
-  insights?: Array<{ question: string; answer: string }>;
-  resumeUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  IS_SPONSOR?: boolean;
+  FIRST_NAME?: string | null;
+  LAST_NAME?: string | null;
+  EMAIL?: string | null;
+  PHONE_NUMBER?: string | null;
+  PHOTO_URL?: string | null;
+  PORTFOLIO_URL?: string | null;
+  BIO?: string | null;
+  STREET?: string | null;
+  /** Combined "City, ST" string. */
+  LOCATION?: string | null;
+  ZIP?: string | null;
+  COUNTRY?: string | null;
+  ACHIEVEMENTS?: string | null;
+  NOTIFICATION_PREFERENCES?: string | Record<string, boolean> | null;
+  applicant_profile?: {
+    INDUSTRY?: string | null;
+    CURRENT_ROLE?: string | null;
+    YEARS_EXPERIENCE?: string | null;
+    SKILLS?: string | string[] | null;
+    DESIRED_ROLES?: string | string[] | null;
+    WORK_PREFERENCES?: string | string[] | null;
+    PROFESSIONAL_EXPERIENCES?: string | RawExperienceRow[] | null;
+    EDUCATION_ENTRIES?: string | RawEducationRow[] | null;
+    CERTIFICATIONS?:
+      | string
+      | { name: string; organization: string; year: string }[]
+      | null;
+    LANGUAGES?:
+      | string
+      | { language: string; proficiency: string }[]
+      | null;
+    INSIGHTS?: string | { question?: string; answer?: string }[] | null;
+    ACHIEVEMENTS?: string | null;
+  };
+  sponsor_profile?: {
+    COMPANY?: string | null;
+    JOB_TITLE?: string | null;
+    WORK_EMAIL?: string | null;
+    WORK_EMAIL_VERIFIED?: boolean;
+    SKILLS?: string | string[] | null;
+    COMPANIES_CAN_REFER_TO?: string | string[] | null;
+    INSIGHTS?: string | { question?: string; answer?: string }[] | null;
+  };
 }
 
 /**
@@ -378,11 +451,11 @@ export const authApi = {
    * so it can't be accidentally blanked out by an unrelated sync.
    */
   updateProfile: async (
-    data: any,
+    data: AutofillData,
     dirtyFields: Set<SyncableField>,
   ): Promise<{ message: string }> => {
     // ── 1. Build the general-user-profile payload ─────────────────────────
-    const basePayload: Record<string, any> = {};
+    const basePayload: Record<string, unknown> = {};
     if (dirtyFields.has("personal")) {
       // Names are the one exception to "send dirty groups in full": there is
       // no clear-your-name flow, so an empty value here is never a deletion —
@@ -454,7 +527,7 @@ export const authApi = {
     }
 
     // ── 4. Fire the PATCH requests in parallel ────────────────────────────
-    const calls: Promise<any>[] = [];
+    const calls: Promise<unknown>[] = [];
     if (Object.keys(basePayload).length > 0) {
       calls.push(api.patch("/api/profile/update/", basePayload));
     }

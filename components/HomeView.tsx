@@ -27,8 +27,18 @@ import {
   recordProfileFeedAction,
   requestSponsorForJob,
 } from "@/lib/api";
-import { transformJobApiResponse, type JobApiResponse } from "@/types/jobs";
-import { transformProfilePackRows } from "@/types/profiles";
+import {
+    transformJobApiResponse,
+    type Job,
+    type JobApiResponse,
+} from "@/types/jobs";
+import {
+    transformProfilePackRows,
+    type EnrichedApplicantProfile,
+    type EnrichedSponsorProfile,
+    type ProfileDeckCard,
+} from "@/types/profiles";
+import type { PublicProfileResponse } from "@/lib/api";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
@@ -86,6 +96,19 @@ import { YourMoveStrip } from "./home/YourMoveStrip";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
+
+/** Parse a field that may be a JSON-encoded string, a real array, or absent. */
+function parseVariant<T>(v: string | T[] | null | undefined): T[] {
+  if (!v) return [];
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v) || [];
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(v) ? v : [];
+}
 
 interface HomeViewProps {
   userType: "applicant" | "sponsor";
@@ -176,7 +199,7 @@ export function HomeView({
   );
 
   // Profiles state (for sponsors)
-  const [profiles, setProfiles] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<ProfileDeckCard[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profilesError, setProfilesError] = useState<string | null>(null);
   // Which sponsored-job id the current `profiles` list belongs to.
@@ -195,13 +218,18 @@ export function HomeView({
   const deckCacheRef = useRef<
     Map<
       string,
-      { profiles: any[]; index: number; progress: number; fetchedAt: number }
+      {
+        profiles: ProfileDeckCard[];
+        index: number;
+        progress: number;
+        fetchedAt: number;
+      }
     >
   >(new Map());
   // Cache of lazily-fetched full profiles keyed by USER_ID
-  const [fullProfileCache, setFullProfileCache] = useState<Record<string, any>>(
-    {},
-  );
+  const [fullProfileCache, setFullProfileCache] = useState<
+    Record<string, EnrichedApplicantProfile>
+  >({});
   const [fullProfileLoading, setFullProfileLoading] = useState(false);
   // Cache of sponsor public profiles, keyed by sponsor user id. Powers the
   // "Meet your sponsor" back face on applicant job cards — the job payload
@@ -209,15 +237,7 @@ export function HomeView({
   // sponsor's Q&A insights, referral network, verified status) once per
   // sponsor and reuse it.
   const [sponsorProfileCache, setSponsorProfileCache] = useState<
-    Record<
-      string,
-      {
-        bio: string;
-        insights: { question: string; answer: string }[];
-        companiesCanReferTo: string[];
-        verified: boolean;
-      }
-    >
+    Record<string, EnrichedSponsorProfile>
   >({});
 
   // Navigation state from store
@@ -291,7 +311,7 @@ export function HomeView({
   // Apply Modal State (for non-sponsored jobs)
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applyStep, setApplyStep] = useState<"select" | "requested">("select");
-  const [pendingJob, setPendingJob] = useState<any>(null);
+  const [pendingJob, setPendingJob] = useState<Job | null>(null);
   const [isRequestingSponsor, setIsRequestingSponsor] = useState(false);
   // Server-rendered message for the "requested" success step. The backend
   // returns context-aware copy (count of sponsors notified, "already has a
@@ -390,8 +410,9 @@ export function HomeView({
   // before the new card swaps in.
   const currentItemId = currentData
     ? userType === "applicant"
-      ? (currentData as any)?.id
-      : (currentData as any)?.USER_ID || (currentData as any)?.id
+      ? (currentData as Job)?.id
+      : (currentData as ProfileDeckCard)?.USER_ID ||
+        (currentData as ProfileDeckCard)?.id
     : null;
   const isAlreadyLiked =
     !!currentItemId &&
@@ -503,7 +524,7 @@ export function HomeView({
       try {
         const response = await getMyJobs();
         if (!response.jobs?.length) return;
-        response.jobs.forEach((j: any) => {
+        response.jobs.forEach((j) => {
           addSponsoredJob({
             jobId: String(j.JOB_ID),
             // Empty string for manually-created jobs that have no ATS source.
@@ -518,10 +539,10 @@ export function HomeView({
         // (older backend, defensive). Reduce-with-strict-greater-than gives
         // "ties go to first seen" → first in the response (most recent)
         // wins ties, including the all-zero case.
-        const pending = (j: any) =>
+        const pending = (j: (typeof response.jobs)[number]) =>
           Number(j.PENDING_LIKES_COUNT ?? j.LIKES_COUNT ?? 0);
         const winner = response.jobs.reduce(
-          (best: any, j: any) => (pending(j) > pending(best) ? j : best),
+          (best, j) => (pending(j) > pending(best) ? j : best),
           response.jobs[0],
         );
         if (winner) {
@@ -730,28 +751,19 @@ export function HomeView({
       setFullProfileLoading(true);
       try {
         const pub = await getPublicProfile(String(userId));
-        const ap = (pub as any).applicant_profile || {};
-        const parseV = (v: any): any[] => {
-          if (!v) return [];
-          if (typeof v === "string") {
-            try {
-              return JSON.parse(v) || [];
-            } catch {
-              return [];
-            }
-          }
-          return Array.isArray(v) ? v : [];
-        };
+        const ap: Partial<
+          NonNullable<PublicProfileResponse["applicant_profile"]>
+        > = pub.applicant_profile || {};
         setFullProfileCache((prev) => ({
           ...prev,
           [userId]: {
-            experiences: parseV(ap.PROFESSIONAL_EXPERIENCES),
-            education: parseV(ap.EDUCATION_ENTRIES),
-            certifications: parseV(ap.CERTIFICATIONS),
-            languages: parseV(ap.LANGUAGES),
+            experiences: parseVariant(ap.PROFESSIONAL_EXPERIENCES),
+            education: parseVariant(ap.EDUCATION_ENTRIES),
+            certifications: parseVariant(ap.CERTIFICATIONS),
+            languages: parseVariant(ap.LANGUAGES),
             achievements: ap.ACHIEVEMENTS || "",
-            prompts: parseV(ap.INSIGHTS),
-            bio: (pub as any).BIO || "",
+            prompts: parseVariant(ap.INSIGHTS),
+            bio: pub.BIO || "",
           },
         }));
       } catch {
@@ -768,7 +780,7 @@ export function HomeView({
   // ready before the user flips.
   useEffect(() => {
     if (userType !== "sponsor") return;
-    const userId = (currentData as any)?.USER_ID;
+    const userId = (currentData as ProfileDeckCard)?.USER_ID;
     if (userId) fetchFullProfileFor(String(userId));
   }, [userType, currentData, fetchFullProfileFor]);
 
@@ -781,30 +793,21 @@ export function HomeView({
       if (!userId || sponsorProfileCache[userId]) return;
       try {
         const pub = await getPublicProfile(String(userId));
-        const sp = (pub as any).sponsor_profile || {};
-        const parseV = (v: any): any[] => {
-          if (!v) return [];
-          if (typeof v === "string") {
-            try {
-              return JSON.parse(v) || [];
-            } catch {
-              return [];
-            }
-          }
-          return Array.isArray(v) ? v : [];
-        };
+        const sp: Partial<
+          NonNullable<PublicProfileResponse["sponsor_profile"]>
+        > = pub.sponsor_profile || {};
         setSponsorProfileCache((prev) => ({
           ...prev,
           [userId]: {
-            bio: (pub as any).BIO || "",
-            insights: parseV(sp.INSIGHTS),
-            companiesCanReferTo: parseV(sp.COMPANIES_CAN_REFER_TO),
+            bio: pub.BIO || "",
+            insights: parseVariant(sp.INSIGHTS),
+            companiesCanReferTo: parseVariant(sp.COMPANIES_CAN_REFER_TO),
             // WORK_EMAIL_VERIFIED isn't on the public-profile payload yet —
             // see BACKEND_CHANGES_NEEDED.md §9. The badge stays hidden until
             // the backend exposes it; reading both casings defensively.
             verified:
-              (pub as any).WORK_EMAIL_VERIFIED === true ||
-              (pub as any).sponsor_profile?.WORK_EMAIL_VERIFIED === true,
+              pub.WORK_EMAIL_VERIFIED === true ||
+              sp.WORK_EMAIL_VERIFIED === true,
           },
         }));
       } catch {
@@ -818,7 +821,7 @@ export function HomeView({
   // sponsored job card, so the back face is ready before they flip.
   useEffect(() => {
     if (userType === "sponsor") return;
-    const sponsorId = (currentData as any)?.sponsorInfo?.userId;
+    const sponsorId = (currentData as Job)?.sponsorInfo?.userId;
     if (sponsorId) fetchSponsorProfileFor(String(sponsorId));
   }, [userType, currentData, fetchSponsorProfileFor]);
 
@@ -837,7 +840,8 @@ export function HomeView({
         trackJobCardViewed({ jobId: String(jobId), isSponsored });
       }
     } else {
-      const applicantUserId = (currentData as any)?.USER_ID || currentData?.id;
+      const card = currentData as ProfileDeckCard;
+      const applicantUserId = card?.USER_ID || card?.id;
       if (applicantUserId && activeSponsoredJobId) {
         recordProfileFeedAction(
           activeSponsoredJobId,
@@ -856,14 +860,15 @@ export function HomeView({
   // deep-profile fetch (experiences/education/certs/languages) eagerly
   // since they're inline in the scroll now instead of behind a Show More
   // toggle. Idempotent on the cache side so this is a no-op once loaded.
+  const currentUserId =
+    currentData && "USER_ID" in currentData ? currentData.USER_ID : undefined;
   useEffect(() => {
     if (userType !== "sponsor") return;
-    const userId = currentData?.USER_ID;
-    if (userId) fetchFullProfileFor(String(userId));
+    if (currentUserId) fetchFullProfileFor(String(currentUserId));
     // fetchFullProfileFor is stable enough for our use; we re-fire only on
     // profile change, not when the function identity churns.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentData?.USER_ID, userType]);
+  }, [currentUserId, userType]);
 
   const handleSwipe = async (isAccept: boolean) => {
     // Check profile completeness for applicants before any swipe action (unless they're a tester).
@@ -894,7 +899,8 @@ export function HomeView({
         nextProfile(true);
         return;
       }
-      setPendingJob(currentData);
+      // Applicant branch — currentData is a Job here (deck invariant).
+      setPendingJob(currentData as Job);
       setApplyStep("select");
       setShowApplyModal(true);
       return;
@@ -916,8 +922,10 @@ export function HomeView({
       let apiError = false;
       try {
         if (userType === "applicant") {
-          // Applicant liking a job
-          const jobId = currentData?.id;
+          // Applicant liking a job — currentData is a Job here (deck
+          // invariant: applicant deck holds jobs).
+          const job = currentData as Job;
+          const jobId = job?.id;
           if (jobId) {
             console.log("[HomeView] Applicant liking job:", jobId);
             const response = await likeJob(jobId);
@@ -931,10 +939,7 @@ export function HomeView({
             // Record "liked" in the feed history (fire-and-forget)
             recordJobFeedAction(String(jobId), "liked").catch(() => {});
 
-            const isSponsoredJob =
-              "isSponsored" in currentData
-                ? Boolean(currentData.isSponsored)
-                : false;
+            const isSponsoredJob = Boolean(job.isSponsored);
             trackJobLiked({
               jobId: String(jobId),
               isSponsored: isSponsoredJob,
@@ -948,30 +953,16 @@ export function HomeView({
               onMatchCreated?.();
               incrementSessionMatches();
               const matchName =
-                "sponsorInfo" in currentData && currentData.sponsorInfo?.name
-                  ? (currentData.sponsorInfo.name as string)
-                  : "company" in currentData
-                    ? (currentData.company as string) || "Your Sponsor"
-                    : "Your Sponsor";
+                job.sponsorInfo?.name || job.company || "Your Sponsor";
               setMatchedUser({
                 name: matchName,
-                image:
-                  "sponsorInfo" in currentData
-                    ? (currentData.sponsorInfo?.image as string) || ""
-                    : "",
-                role:
-                  "sponsorInfo" in currentData
-                    ? (currentData.sponsorInfo?.role as string) || ""
-                    : "",
-                jobTitle:
-                  "title" in currentData
-                    ? (currentData.title as string)
-                    : undefined,
+                image: job.sponsorInfo?.image || "",
+                role: job.sponsorInfo?.role || "",
+                jobTitle: job.title,
                 jobId: String(jobId),
-                userId:
-                  "sponsorInfo" in currentData && currentData.sponsorInfo?.userId
-                    ? String(currentData.sponsorInfo.userId)
-                    : undefined,
+                userId: job.sponsorInfo?.userId
+                  ? String(job.sponsorInfo.userId)
+                  : undefined,
               });
               trackMatchCreated({
                 matchedWithName: matchName,
@@ -983,8 +974,10 @@ export function HomeView({
             console.warn("[HomeView] No job ID found for current data");
           }
         } else {
-          // Sponsor liking a profile
-          const applicantUserId = currentData?.USER_ID || currentData?.id;
+          // Sponsor liking a profile — currentData is a ProfileDeckCard here
+          // (deck invariant: sponsor deck holds transformed pack rows).
+          const card = currentData as ProfileDeckCard;
+          const applicantUserId = card?.USER_ID || card?.id;
           if (applicantUserId) {
             console.log("[HomeView] Sponsor liking profile:", applicantUserId);
             console.log(
@@ -1021,19 +1014,13 @@ export function HomeView({
               onMatchCreated?.();
               incrementSessionMatches();
               const matchName =
-                (currentData.name as string) ||
-                `${(currentData.FIRST_NAME as string) || ""} ${(currentData.LAST_NAME as string) || ""}`.trim() ||
+                card.name ||
+                `${(card.FIRST_NAME as string) || ""} ${(card.LAST_NAME as string) || ""}`.trim() ||
                 "Applicant";
               setMatchedUser({
                 name: matchName,
-                image:
-                  (currentData.image as string) ||
-                  (currentData.PHOTO_URL as string) ||
-                  "",
-                role:
-                  (currentData.desiredRole as string) ||
-                  (currentData.role as string) ||
-                  "",
+                image: card.image || (card.PHOTO_URL as string) || "",
+                role: card.desiredRole || (card.role as string) || "",
                 jobId: activeSponsoredJobId || undefined,
                 userId: String(applicantUserId),
               });
@@ -1097,7 +1084,9 @@ export function HomeView({
           recordJobFeedAction(String(skippedJobId), "passed").catch(() => {});
         }
       } else {
-        const skippedApplicantId = currentData?.USER_ID || currentData?.id;
+        // Sponsor skipping — currentData is a ProfileDeckCard (deck invariant).
+        const card = currentData as ProfileDeckCard;
+        const skippedApplicantId = card?.USER_ID || card?.id;
         if (skippedApplicantId) {
           trackProfileSkipped({
             applicantUserId: String(skippedApplicantId),
@@ -1888,13 +1877,13 @@ export function HomeView({
                 >
                   {userType === "sponsor" ? (
                     <ApplicantProfileCard
-                      currentData={currentData}
+                      currentData={currentData as ProfileDeckCard}
                       fullProfileCache={fullProfileCache}
                       fullProfileLoading={fullProfileLoading}
                     />
                   ) : (
                     <JobCardContent
-                      currentData={currentData}
+                      currentData={currentData as Job}
                       waitlistedJobIds={waitlistedJobIds}
                       requestedSponsorJobIds={requestedSponsorJobIds}
                       appliedJobIds={appliedJobIds}
@@ -1927,8 +1916,8 @@ export function HomeView({
                       : undefined
                   }
                   name={
-                    "name" in currentData && (currentData as any).name
-                      ? String((currentData as any).name)
+                    "name" in currentData && currentData.name
+                      ? String(currentData.name)
                       : undefined
                   }
                   onContinue={() => nextProfile(true)}
@@ -2083,17 +2072,30 @@ export function HomeView({
       <JobDescriptionModal
         visible={showDescriptionModal}
         onClose={() => setShowDescriptionModal(false)}
-        company={currentData && "company" in currentData ? currentData.company : ""}
-        description={currentData && "description" in currentData ? currentData.description : ""}
+        company={
+          currentData && "company" in currentData
+            ? String(currentData.company ?? "")
+            : ""
+        }
+        description={
+          currentData && "description" in currentData
+            ? String(currentData.description ?? "")
+            : ""
+        }
       />
 
       <FullBioModal
         visible={showFullBio}
         onClose={() => setShowFullBio(false)}
-        name={currentData && "name" in currentData ? (currentData as any).name : ""}
+        name={
+          currentData && "name" in currentData
+            ? String(currentData.name ?? "")
+            : ""
+        }
         bio={(() => {
           if (!currentData) return "";
-          const uid = (currentData as any)?.USER_ID;
+          const uid =
+            "USER_ID" in currentData ? currentData.USER_ID : undefined;
           const cachedBio = uid && fullProfileCache[String(uid)]?.bio;
           if (cachedBio) return cachedBio;
           return "bio" in currentData ? currentData.bio : "";

@@ -110,7 +110,7 @@ export default function VerifyEmailRoute() {
   };
 
   const handleContinue = () => {
-    router.replace("/dashboard" as any);
+    router.replace("/dashboard");
   };
 
   return (

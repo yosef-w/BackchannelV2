@@ -14,7 +14,7 @@
 // already know (name, image, current role/company) for immediate render
 // while the richer fields arrive.
 
-import { getPublicProfile } from "@/lib/api";
+import { getPublicProfile, type PublicProfileResponse } from "@/lib/api";
 import { CheckCircle } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
@@ -137,7 +137,7 @@ export interface ProfileDetailSheetProps {
 // Helpers — parse JSON-encoded TEXT columns coming back from the Postgres
 // adapter (it uppercases keys; values arrive as strings for variant
 // columns like SKILLS, INSIGHTS, PROFESSIONAL_EXPERIENCES).
-const parseJsonArray = (v: unknown): any[] => {
+const parseJsonArray = <T,>(v: unknown): T[] => {
   if (!v) return [];
   if (typeof v === "string") {
     try {
@@ -161,7 +161,9 @@ export function ProfileDetailSheet({
   primaryCta,
   secondaryCta,
 }: ProfileDetailSheetProps) {
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<PublicProfileResponse | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
 
   // Re-fetch on every open so stale data doesn't linger across separate
@@ -193,8 +195,10 @@ export function ProfileDetailSheet({
   // Derive the rich fields with sane fallbacks. The applicant_profile
   // shape comes from /api/profiles/<userId>/public/ and has the same
   // contract documented in lib/api.ts → getPublicProfile.
-  const ap: any = profile?.applicant_profile || {};
-  const sp: any = profile?.sponsor_profile || {};
+  const ap: Partial<NonNullable<PublicProfileResponse["applicant_profile"]>> =
+    profile?.applicant_profile || {};
+  const sp: Partial<NonNullable<PublicProfileResponse["sponsor_profile"]>> =
+    profile?.sponsor_profile || {};
   const bio: string = profile?.BIO || "";
   const location: string = profile?.LOCATION || "";
   const skills: string[] = parseJsonArray(ap.SKILLS);

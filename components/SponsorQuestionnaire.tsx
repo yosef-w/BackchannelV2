@@ -13,6 +13,7 @@ import {
   uploadProfileImage,
 } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
+import type { BrowseJobResponse } from "@/types/jobs";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
@@ -183,8 +184,10 @@ export function SponsorQuestionnaire({
   const [rolePickerStep, setRolePickerStep] = useState<"pick" | "details">(
     "pick",
   );
-  const [roleOptions, setRoleOptions] = useState<any[]>([]);
-  const [selectedRole, setSelectedRole] = useState<any | null>(null);
+  const [roleOptions, setRoleOptions] = useState<BrowseJobResponse[]>([]);
+  const [selectedRole, setSelectedRole] = useState<BrowseJobResponse | null>(
+    null,
+  );
   const [roleCanRefer, setRoleCanRefer] = useState<boolean | null>(null);
   const [roleInsiderNote, setRoleInsiderNote] = useState("");
   const [isSponsoringRole, setIsSponsoringRole] = useState(false);
@@ -396,6 +399,8 @@ export function SponsorQuestionnaire({
                 uri: selectedPhotoUri,
                 name: "photo.jpg",
                 type: "image/jpeg",
+                // RN FormData file descriptor — the web-typed lib.dom
+                // signature doesn't know this shape; cast required.
               } as any);
               const { cdn_url } = await uploadProfileImage(photoForm);
               if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
@@ -449,7 +454,7 @@ export function SponsorQuestionnaire({
     finishOnboarding();
   };
 
-  const handleSelectRole = (role: any) => {
+  const handleSelectRole = (role: BrowseJobResponse) => {
     setSelectedRole(role);
     setRoleCanRefer(null);
     setRoleInsiderNote("");

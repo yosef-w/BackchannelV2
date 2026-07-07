@@ -1,0 +1,7 @@
+# Pre-push gate: nothing leaves this machine that fails the typecheck or
+# the test suite. Deliberately pre-PUSH (not pre-commit) so frequent small
+# commits stay instant — see docs in the CI workflow for the remote gate.
+# Bypass in an emergency with: git push --no-verify
+echo "pre-push: running typecheck + tests..."
+npx tsc --noEmit
+npm test

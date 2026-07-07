@@ -315,6 +315,8 @@ export const matchesQuery = (userType: string) => ({
 
       // Transform API response to Match interface
       return rawMatches.map((m) => {
+        // Deliberate: drift-tolerant row reads (uppercase adapter columns
+        // with lowercase fallbacks) — the fallback chains ARE the contract.
         const match = m as any;
         const sponsorName = match.sponsor?.name
           ? match.sponsor.name
@@ -422,7 +424,7 @@ export const likedJobsQuery = (userType: string) => ({
       : (response as any).liked_jobs || [];
 
     // Backend can send arrays as either real arrays or JSONB-cast strings.
-    const parseArray = (v: any): string[] => {
+    const parseArray = (v: unknown): string[] => {
       if (!v) return [];
       if (Array.isArray(v)) return v.filter((x) => typeof x === "string");
       if (typeof v === "string") {

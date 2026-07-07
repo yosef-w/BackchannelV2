@@ -1,6 +1,8 @@
 import { trackApiError } from "@/lib/analytics/mixpanel";
 import { captureApiServerError, logBreadcrumb } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
+import type { BrowseJobResponse, JobApiResponse } from "@/types/jobs";
+import type { ProfilePackRow } from "@/types/profiles";
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ??
@@ -183,7 +185,9 @@ class ApiClient {
 
     if (!response.ok) {
       const rawText = await response.text().catch(() => "");
-      let errorData: any = {};
+      // Parsed error body — shape varies by endpoint, so type just the
+      // three message fields we actually read.
+      let errorData: { error?: string; detail?: string; message?: string } = {};
       try {
         errorData = JSON.parse(rawText);
       } catch {}
@@ -225,7 +229,9 @@ class ApiClient {
     const retryResponse = await fetch(url, retryConfig);
     if (!retryResponse.ok) {
       const rawText = await retryResponse.text().catch(() => "");
-      let errorData: any = {};
+      // Parsed error body — shape varies by endpoint, so type just the
+      // three message fields we actually read.
+      let errorData: { error?: string; detail?: string; message?: string } = {};
       try {
         errorData = JSON.parse(rawText);
       } catch {}
@@ -323,10 +329,11 @@ export const api = new ApiClient(API_BASE_URL);
  * 💼 Fetch Jobs Pack
  * Retrieves a curated pack of job listings
  */
-export async function fetchJobsPack(): Promise<any[]> {
-  const response = await api.get<{ jobs: any[]; total_count: number }>(
-    "/api/jobs/pack/",
-  );
+export async function fetchJobsPack(): Promise<JobApiResponse[]> {
+  const response = await api.get<{
+    jobs: JobApiResponse[];
+    total_count: number;
+  }>("/api/jobs/pack/");
   // Jobs are ranked by relevance_score (skills 40%, experience 20%, role 20%, location 10%, recency 10%)
   // New fields: relevance_score (float 0-1), REQUIREMENTS_SUMMARY (string|null), CORE_RESPONSIBILITIES (string|null)
   return response.jobs;
@@ -349,7 +356,7 @@ export async function browseJobs(filters?: {
   location?: string;
   remote?: boolean;
   limit?: number;
-}): Promise<{ jobs: any[]; total_count: number }> {
+}): Promise<{ jobs: BrowseJobResponse[]; total_count: number }> {
   const params = new URLSearchParams();
   if (filters?.title) params.append("title", filters.title);
   if (filters?.location) params.append("location", filters.location);
@@ -362,7 +369,7 @@ export async function browseJobs(filters?: {
     ? `/api/jobs/browse/?${queryString}`
     : "/api/jobs/browse/";
 
-  return api.get<{ jobs: any[]; total_count: number }>(endpoint);
+  return api.get<{ jobs: BrowseJobResponse[]; total_count: number }>(endpoint);
 }
 
 /**
@@ -372,8 +379,26 @@ export async function browseJobs(filters?: {
  * before agreeing to sponsor.
  * Uses GET /api/jobs/silver/<job_id>/
  */
-export async function getJobDetail(jobId: string): Promise<any> {
-  return api.get<any>(`/api/jobs/silver/${jobId}/`);
+export interface SilverJobDetail {
+  JOB_ID?: string;
+  TITLE?: string;
+  ORGANIZATION?: string;
+  /** PR #62 — server-resolved company logo; either casing may surface. */
+  organization_logo?: string | null;
+  ORGANIZATION_LOGO?: string | null;
+  FULL_LOCATION?: string | null;
+  IS_REMOTE?: boolean;
+  SALARY_ANNUAL_MIN?: number | null;
+  SALARY_ANNUAL_MAX?: number | null;
+  SALARY_CURRENCY?: string | null;
+  EXPERIENCE_LEVEL?: string | null;
+  EMPLOYMENT_TYPES?: string | null;
+  SKILLS?: string | null;
+  DESCRIPTION_TEXT?: string | null;
+}
+
+export async function getJobDetail(jobId: string): Promise<SilverJobDetail> {
+  return api.get<SilverJobDetail>(`/api/jobs/silver/${jobId}/`);
 }
 
 export interface AtsOrganization {
@@ -559,13 +584,13 @@ export async function getWaitlistedJobs(): Promise<{
  * Required: job_id query parameter
  */
 export async function fetchProfilesPack(jobId?: string): Promise<{
-  profiles: any[];
+  profiles: ProfilePackRow[];
   total_count: number;
 }> {
   const url = jobId
     ? `/api/profiles/pack/?job_id=${jobId}`
     : `/api/profiles/pack/`;
-  return api.get<{ profiles: any[]; total_count: number }>(url);
+  return api.get<{ profiles: ProfilePackRow[]; total_count: number }>(url);
 }
 
 /**
@@ -775,6 +800,10 @@ export async function getSponsorMatches(): Promise<{
 /** A single row from GET /api/messages/conversations/. */
 export interface ConversationRow {
   CONVERSATION_ID: string;
+  /** Forward-compat — not currently joined onto the row; either naming may
+   * surface if the backend adds the company logo later. */
+  LOGO_URL?: string | null;
+  logo_url?: string | null;
   JOB_ID: string;
   APPLICANT_USER_ID: string;
   SPONSOR_USER_ID: string;
@@ -982,7 +1011,8 @@ export async function getProfile(): Promise<{
     REASON: string;
     POSITIONS: string[];
     SKILLS: string[];
-    RESUME_DATA: any;
+    // Freeform classifier JSON blob — narrow before use.
+    RESUME_DATA: unknown;
   };
   sponsor_profile?: {
     COMPANY: string;
@@ -1094,7 +1124,7 @@ export async function updateApplicantProfile(updates: {
   reason?: string;
   positions?: string[];
   skills?: string[];
-  resume_data?: any;
+  resume_data?: unknown;
   current_role?: string;
   years_experience?: string;
   work_authorization?: string;
@@ -1187,7 +1217,40 @@ export async function updateSponsorProfile(updates: {
  *
  * @param userId - The user ID to fetch profile for
  */
-export async function getPublicProfile(userId: string): Promise<{
+/**
+ * GET /api/profiles/<id>/public/ response. Named (rather than inline on
+ * getPublicProfile) so every consumer of a public profile — the deck cards,
+ * the public-profile overlays, ProfileDetailSheet — shares one contract
+ * instead of re-declaring fragments of it with `any`.
+ *
+ * Array-ish sub-fields (experiences, education, insights, …) can arrive
+ * either as real arrays or as JSON-encoded strings depending on the
+ * backend path — consumers run them through a tolerant parser, so they're
+ * typed as `string | T[]`.
+ */
+export interface PublicProfileExperience {
+  jobTitle: string;
+  company: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+  description: string;
+}
+
+export interface PublicProfileEducation {
+  degree: string;
+  major?: string;
+  university: string;
+  graduationYear?: string;
+  gpa?: string;
+}
+
+export interface PublicProfileInsight {
+  question: string;
+  answer: string;
+}
+
+export interface PublicProfileResponse {
   USER_ID: string;
   FIRST_NAME: string;
   LAST_NAME: string;
@@ -1199,57 +1262,52 @@ export async function getPublicProfile(userId: string): Promise<{
   STATE: string | null;
   COUNTRY: string | null;
   PORTFOLIO_URL: string | null;
+  /** Present on sponsor rows once work-email verification shipped. */
+  WORK_EMAIL_VERIFIED?: boolean;
   applicant_profile?: {
     INDUSTRY: string;
     CURRENT_ROLE: string;
     YEARS_EXPERIENCE: string;
-    SKILLS: string[];
-    POSITIONS: string[];
-    PROFESSIONAL_EXPERIENCES: Array<{
-      jobTitle: string;
-      company: string;
-      startDate: string;
-      endDate?: string;
-      current: boolean;
-      description: string;
-    }>;
-    EDUCATION_ENTRIES: Array<{
-      degree: string;
-      major?: string;
-      university: string;
-      graduationYear?: string;
-      gpa?: string;
-    }>;
-    CERTIFICATIONS: Array<{
-      name: string;
-      organization: string;
-      year: string;
-    }>;
-    LANGUAGES: Array<{
-      language: string;
-      proficiency: string;
-    }>;
-    INSIGHTS: Array<{
-      question: string;
-      answer: string;
-    }>;
+    SKILLS: string | string[];
+    POSITIONS: string | string[];
+    PROFESSIONAL_EXPERIENCES: string | PublicProfileExperience[];
+    EDUCATION_ENTRIES: string | PublicProfileEducation[];
+    CERTIFICATIONS:
+      | string
+      | Array<{
+          name: string;
+          organization: string;
+          year: string;
+        }>;
+    LANGUAGES:
+      | string
+      | Array<{
+          language: string;
+          proficiency: string;
+        }>;
+    INSIGHTS: string | PublicProfileInsight[];
+    /** Freeform achievements text — not in every row. */
+    ACHIEVEMENTS?: string | null;
   };
   sponsor_profile?: {
     COMPANY: string;
     JOB_TITLE: string;
     WORK_EMAIL: string;
+    WORK_EMAIL_VERIFIED?: boolean;
     DURATION: string;
     FINANCIAL_REWARD: boolean;
     REFERRAL_ELIGIBLE: boolean;
     REFERRAL_EXPERIENCE: boolean;
     OPEN_TO_REFERRALS: boolean;
     COMPANIES_CAN_REFER_TO: string[];
-    INSIGHTS: Array<{
-      question: string;
-      answer: string;
-    }>;
+    SKILLS?: string | string[];
+    INSIGHTS: string | PublicProfileInsight[];
   };
-}> {
+}
+
+export async function getPublicProfile(
+  userId: string,
+): Promise<PublicProfileResponse> {
   return api.get(`/api/profiles/${userId}/public/`);
 }
 
@@ -1406,7 +1464,7 @@ export async function addResume(resumeData: object): Promise<{
 export async function updateResumeField(data: object): Promise<{
   message: string;
   updated_fields: string[];
-  resume_data: any;
+  resume_data: unknown;
 }> {
   return api.patch("/api/resume/update/", data);
 }
@@ -1433,7 +1491,7 @@ export async function getExtractedResumeText(): Promise<{
  * Call this after uploadAndParseResume so extracted text is already stored.
  */
 export async function classifyResume(signal?: AbortSignal): Promise<{
-  classified_data: any;
+  classified_data: unknown;
   applicant_fields_updated: string[];
   user_fields_updated: string[];
   message: string;

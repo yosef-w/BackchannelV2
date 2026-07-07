@@ -531,6 +531,7 @@ export function ApplicantQuestionnaire({
           uri: selectedFileAsset.uri,
           name: selectedFileAsset.name,
           type: selectedFileAsset.mimeType,
+          // RN FormData file descriptor — cast required (web-typed lib.dom).
         } as any);
         trackResumeUploaded({
           source: "questionnaire",
