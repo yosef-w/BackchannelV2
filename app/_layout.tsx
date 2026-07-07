@@ -162,12 +162,15 @@ function RootLayout() {
             {/* Direct sign-in entry for returning users — skips role
                 selection and the onboarding slides. */}
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+            {/* Legacy alias — redirects into the (tabs) shell, preserving
+                ?tab= / ?mode= params from older navigation call sites. */}
+            <Stack.Screen name="dashboard" options={{ headerShown: false }} />
             <Stack.Screen
-              name="dashboard"
+              name="(tabs)"
               options={{
                 headerShown: false,
-                // Prevent iOS swipe-back from ever leaving the dashboard.
-                // All in-app navigation is handled by MainApp's own view state.
+                // Prevent iOS swipe-back from ever leaving the authenticated
+                // shell — tab switching happens inside the Tabs navigator.
                 gestureEnabled: false,
               }}
             />

@@ -1503,7 +1503,7 @@ export function HomeView({
           <YourMoveStrip
             userType={userType}
             onPress={() =>
-              router.push(`/dashboard?mode=${userType}&tab=matches`)
+              router.navigate("/(tabs)/matches")
             }
           />
 
@@ -1518,7 +1518,7 @@ export function HomeView({
                 onUnlockMore={handleUnlockMoreCards}
                 onReviewAgain={resetNavigation}
                 onViewMatches={() =>
-                  router.push(`/dashboard?mode=${userType}&tab=matches`)
+                  router.navigate("/(tabs)/matches")
                 }
               />
             </View>
@@ -1556,7 +1556,7 @@ export function HomeView({
                 <TouchableOpacity
                   style={styles.sponsorEmptyPrimary}
                   onPress={() => {
-                    router.push("/dashboard?mode=sponsor&tab=jobs");
+                    router.navigate("/(tabs)/jobs");
                   }}
                   activeOpacity={0.85}
                 >
@@ -1667,7 +1667,7 @@ export function HomeView({
                   <TouchableOpacity
                     style={styles.sponsorEmptyPrimary}
                     onPress={() => {
-                      router.push("/dashboard?mode=sponsor&tab=jobs");
+                      router.navigate("/(tabs)/jobs");
                     }}
                     activeOpacity={0.85}
                   >
