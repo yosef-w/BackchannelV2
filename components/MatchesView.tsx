@@ -18,9 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
     AlertTriangle,
-    BellRing,
     Briefcase,
-    Check,
     ChevronLeft,
     ChevronRight,
     Clock,
@@ -31,15 +29,12 @@ import {
     MessageCircle,
     Sparkles,
     TrendingUp,
-    X,
     Zap,
 } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
-    Image,
-    Keyboard,
     KeyboardAvoidingView,
     Modal,
     NativeScrollEvent,
@@ -49,12 +44,10 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
 import Animated, {
-    FadeIn,
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
@@ -84,10 +77,10 @@ import { MetaLine, OpportunityRow } from "./matches/OpportunityRow";
 import { JobDetailModal } from "./matches/JobDetailModal";
 import { ReferralDetailModal } from "./matches/ReferralDetailModal";
 import { RolePickerModal } from "./matches/RolePickerModal";
+import { SponsorRequestModal } from "./matches/SponsorRequestModal";
 import { WaitlistedJobModal } from "./matches/WaitlistedJobModal";
 import { WithdrawReferralModal } from "./matches/WithdrawReferralModal";
 import { Avatar } from "./ui/Avatar";
-import { CharCounter } from "./ui/CharCounter";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { PipelineStageTimeline } from "./ui/PipelineStageTimeline";
@@ -1551,446 +1544,32 @@ export function MatchesView({
         transparent
         animationType="none"
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeAllModals}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={closeAllModals}
-            style={styles.modalContent}
-          >
-            {selectedSponsorRequest && (
-              <>
-                {/* ── Step indicator (steps 2 & 3 only) ───────────────── */}
-                {srStep === 2 && (
-                  <View style={styles.srStepRow}>
-                    <TouchableOpacity
-                      onPress={() => setSrStep(1)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <X size={20} color="#999" />
-                    </TouchableOpacity>
-                    <View style={styles.srStepDots}>
-                      <View style={[styles.srDot, styles.srDotActive]} />
-                      <View style={styles.srDot} />
-                    </View>
-                    <Text style={styles.srStepLabel}>Step 1 of 2</Text>
-                  </View>
-                )}
-                {srStep === 3 && (
-                  <View style={styles.srStepRow}>
-                    <TouchableOpacity
-                      onPress={() => setSrStep(2)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <X size={20} color="#999" />
-                    </TouchableOpacity>
-                    <View style={styles.srStepDots}>
-                      <View style={[styles.srDot, styles.srDotActive]} />
-                      <View style={[styles.srDot, styles.srDotActive]} />
-                    </View>
-                    <Text style={styles.srStepLabel}>Step 2 of 2</Text>
-                  </View>
-                )}
-
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  bounces={false}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={{ paddingBottom: 8 }}
-                >
-                  {/* ── STEP 1: Overview ─────────────────────────────── */}
-                  {srStep === 1 && (
-                    <>
-                      {/* Header tag */}
-                      <View style={styles.interestedModalTag}>
-                        <BellRing size={12} color="#000" />
-                        <Text style={styles.interestedModalTagText}>
-                          Asked for sponsorship
-                          {selectedSponsorRequest.createdAt
-                            ? ` · ${getRelativeTime(selectedSponsorRequest.createdAt)}`
-                            : ""}
-                        </Text>
-                      </View>
-
-                      {/* Applicant hero */}
-                      <View style={styles.sponsorRequestHero}>
-                        {selectedSponsorRequest.applicantPhoto ? (
-                          <Image
-                            source={{
-                              uri: selectedSponsorRequest.applicantPhoto,
-                            }}
-                            style={styles.sponsorRequestAvatar}
-                          />
-                        ) : (
-                          <View style={styles.sponsorRequestInitial}>
-                            <Text style={styles.sponsorRequestInitialText}>
-                              {(selectedSponsorRequest.applicantName ||
-                                "?")[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                        <Text style={styles.sponsorRequestName}>
-                          {selectedSponsorRequest.applicantName}
-                        </Text>
-                        <Text style={styles.srOverviewSub}>
-                          is requesting your sponsorship for this role
-                        </Text>
-                      </View>
-
-                      {/* Job context card — tappable to review the full role.
-                          Hero logo from the silver-detail fetch where possible
-                          (the same job the chevron opens); /api/jobs/sponsor-requests/
-                          doesn't currently include a logo, so the CompanyLogo
-                          component falls back to the company initial. */}
-                      <TouchableOpacity
-                        style={styles.sponsorRequestJobCard}
-                        onPress={openSrJobDetail}
-                        activeOpacity={0.75}
-                      >
-                        <CompanyLogo
-                          logoUrl={
-                            srJobDetail?.organization_logo ||
-                            srJobDetail?.ORGANIZATION_LOGO
-                          }
-                          name={selectedSponsorRequest.jobCompany}
-                          size={40}
-                          borderRadius={20}
-                          initialFontSize={17}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.sponsorRequestJobLabel}>
-                            WANTS SPONSORSHIP FOR
-                          </Text>
-                          <Text
-                            style={styles.sponsorRequestJobTitle}
-                            numberOfLines={2}
-                          >
-                            {selectedSponsorRequest.jobTitle}
-                          </Text>
-                          {!!selectedSponsorRequest.jobCompany && (
-                            <Text style={styles.sponsorRequestJobCompany}>
-                              {selectedSponsorRequest.jobCompany}
-                            </Text>
-                          )}
-                          <Text style={styles.srJobCardTapHint}>
-                            Tap to review this role
-                          </Text>
-                        </View>
-                        <ChevronRight color="#CCC" size={18} />
-                      </TouchableOpacity>
-
-                      {/* What happens callout */}
-                      <View style={[styles.srCallout, { marginTop: 20 }]}>
-                        <Text style={styles.srCalloutTitle}>
-                          How This Works
-                        </Text>
-                        <Text style={styles.srCalloutText}>
-                          By sponsoring this role, you're putting your
-                          professional backing behind{" "}
-                          {selectedSponsorRequest.applicantName.split(" ")[0]}
-                          's application. Once you do,{" "}
-                          {
-                            selectedSponsorRequest.applicantName.split(" ")[0]
-                          }{" "}
-                          will be able to connect with you directly — opening
-                          the door to communicate and provide a referral.
-                        </Text>
-                      </View>
-
-                      {/* Primary CTA → step 2 */}
-                      <TouchableOpacity
-                        style={styles.applyBtnLarge}
-                        onPress={() => setSrStep(2)}
-                      >
-                        <Briefcase color="#FFF" size={20} strokeWidth={2.5} />
-                        <Text style={styles.applyBtnLargeText}>
-                          Sponsor & Connect
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.srDismissBtn}
-                        onPress={closeAllModals}
-                      >
-                        <Text style={styles.srDismissBtnText}>
-                          Not right now
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-
-                  {/* ── STEP 2: Relationship + Can Refer ─────────────── */}
-                  {srStep === 2 && (
-                    <>
-                      <Text style={styles.srStepTitle}>
-                        Confirm Sponsorship
-                      </Text>
-                      <Text style={styles.srStepSub}>
-                        Help us understand your role and referral capability
-                      </Text>
-
-                      <View style={styles.srFormSection}>
-                        <Text style={styles.srFieldLabel}>
-                          Your relationship to this role
-                        </Text>
-                        {["Hiring Manager", "Team Member", "Other"].map(
-                          (item) => (
-                            <TouchableOpacity
-                              key={item}
-                              style={styles.srRadioOption}
-                              onPress={() => setSrRelationship(item)}
-                              activeOpacity={0.7}
-                            >
-                              <View style={styles.srRadioLeft}>
-                                <View
-                                  style={[
-                                    styles.srRadioCircle,
-                                    srRelationship === item &&
-                                      styles.srRadioCircleActive,
-                                  ]}
-                                />
-                                <Text
-                                  style={[
-                                    styles.srRadioText,
-                                    srRelationship === item &&
-                                      styles.srRadioTextActive,
-                                  ]}
-                                >
-                                  {item}
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          ),
-                        )}
-                      </View>
-
-                      <View style={styles.srFormSection}>
-                        <Text style={styles.srFieldLabel}>
-                          Can you provide a referral?
-                        </Text>
-                        <View style={styles.srSideBySide}>
-                          {[
-                            { label: "Yes", value: true },
-                            { label: "No", value: false },
-                          ].map(({ label, value }) => (
-                            <TouchableOpacity
-                              key={label}
-                              style={styles.srHalfOption}
-                              onPress={() => setSrCanRefer(value)}
-                              activeOpacity={0.7}
-                            >
-                              <View
-                                style={[
-                                  styles.srRadioCircle,
-                                  srCanRefer === value &&
-                                    styles.srRadioCircleActive,
-                                ]}
-                              />
-                              <Text
-                                style={[
-                                  styles.srRadioText,
-                                  srCanRefer === value &&
-                                    styles.srRadioTextActive,
-                                ]}
-                              >
-                                {label}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.applyBtnLarge,
-                          (!srRelationship || srCanRefer === null) && {
-                            opacity: 0.35,
-                          },
-                        ]}
-                        disabled={!srRelationship || srCanRefer === null}
-                        onPress={() => setSrStep(3)}
-                      >
-                        <Text style={styles.applyBtnLargeText}>Continue</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-
-                  {/* ── STEP 3: Insider Insights ──────────────────────── */}
-                  {srStep === 3 && (
-                    <>
-                      <Text style={styles.srStepTitle}>
-                        Add Insider Insights
-                      </Text>
-                      <Text style={styles.srStepSub}>
-                        Share the inside story candidates won't find anywhere
-                        else. All fields are optional.
-                      </Text>
-
-                      <View style={styles.srCallout}>
-                        <Text style={styles.srCalloutTitle}>
-                          💡 Why This Matters
-                        </Text>
-                        <Text style={styles.srCalloutText}>
-                          Unlike traditional job boards, BackChannel gives
-                          candidates real insider knowledge — which means better
-                          applicants and fewer surprises on both sides.
-                        </Text>
-                      </View>
-
-                      {[
-                        {
-                          label: "The Real Day-to-Day",
-                          hint: "What does this role actually look like beyond the job description?",
-                          placeholder:
-                            "Be honest about daily work — meetings, focus time, pace, autonomy...",
-                          value: srDayToDay,
-                          setter: setSrDayToDay,
-                        },
-                        {
-                          label: "Team Culture & Dynamics",
-                          hint: "Give candidates a real sense of who they'll be working with.",
-                          placeholder:
-                            "Team size, seniority mix, remote vs. in-office norms, collaboration style...",
-                          value: srTeamCulture,
-                          setter: setSrTeamCulture,
-                        },
-                        {
-                          label: "Who Actually Thrives Here",
-                          hint: "What matters more than what's on the resume?",
-                          placeholder:
-                            "Mindset, soft skills, working style, previous backgrounds that tend to succeed...",
-                          value: srIdealCandidate,
-                          setter: setSrIdealCandidate,
-                        },
-                        {
-                          label: "Everything Else Worth Knowing",
-                          hint: "Interview process, growth path, comp notes, anything candidates should know.",
-                          placeholder:
-                            "Interview format, timeline, promotion path, equity situation...",
-                          value: srInsiderInsights,
-                          setter: setSrInsiderInsights,
-                        },
-                      ].map(({ label, hint, placeholder, value, setter }) => (
-                        <View key={label} style={styles.srFormSection}>
-                          <Text style={styles.srFieldLabel}>{label}</Text>
-                          <Text style={styles.srFieldHint}>{hint}</Text>
-                          <TextInput
-                            style={styles.srTextInput}
-                            placeholder={placeholder}
-                            placeholderTextColor="#999"
-                            value={value}
-                            onChangeText={setter}
-                            multiline
-                            numberOfLines={4}
-                            maxLength={500}
-                            autoCapitalize="sentences"
-                            onSubmitEditing={() => Keyboard.dismiss()}
-                          />
-                          <CharCounter count={value.length} max={500} />
-                        </View>
-                      ))}
-
-                      <TouchableOpacity
-                        style={[
-                          styles.applyBtnLarge,
-                          srSponsoring && { opacity: 0.6 },
-                        ]}
-                        disabled={srSponsoring}
-                        onPress={() =>
-                          handleSponsorAndConnect(selectedSponsorRequest)
-                        }
-                      >
-                        {srSponsoring ? (
-                          <ActivityIndicator color="#FFF" size="small" />
-                        ) : (
-                          <>
-                            <Check color="#FFF" size={20} strokeWidth={2.5} />
-                            <Text style={styles.applyBtnLargeText}>
-                              Confirm Sponsorship
-                            </Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    </>
-                  )}
-
-                  {/* ── STEP 4: Success ───────────────────────────────── */}
-                  {srStep === 4 && (
-                    <Animated.View
-                      entering={FadeIn}
-                      style={styles.srSuccessContainer}
-                    >
-                      <View style={styles.srSuccessIconCircle}>
-                        <Check color="#FFF" size={36} strokeWidth={3} />
-                      </View>
-                      <Text style={styles.srSuccessTitle}>
-                        Sponsorship Confirmed!
-                      </Text>
-                      <Text style={styles.srSuccessDesc}>
-                        You're now sponsoring{" "}
-                        <Text style={{ fontWeight: "800" }}>
-                          {selectedSponsorRequest.jobTitle}
-                        </Text>
-                        .{"\n\n"}
-                        {
-                          selectedSponsorRequest.applicantName.split(" ")[0]
-                        }{" "}
-                        will see you under "Wants to Connect With You" and can
-                        message you directly once they connect back.
-                      </Text>
-
-                      {/* Message now — only available if we already have a\n                          matched jobId back from the sponsorJob call */}
-                      {srNewJobId && onNavigateToMessages && (
-                        <TouchableOpacity
-                          style={[styles.applyBtnLarge, { marginBottom: 12 }]}
-                          onPress={() => {
-                            const jid = srNewJobId;
-                            closeAllModals();
-                            onNavigateToMessages(
-                              jid,
-                              selectedSponsorRequest?.applicantUserId,
-                            );
-                          }}
-                        >
-                          <MessageCircle
-                            color="#FFF"
-                            size={20}
-                            strokeWidth={2.5}
-                          />
-                          <Text style={styles.applyBtnLargeText}>
-                            Message Now
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      <TouchableOpacity
-                        style={styles.srDismissBtn}
-                        onPress={closeAllModals}
-                      >
-                        <Text style={styles.srDismissBtnText}>
-                          Back to Matches
-                        </Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  )}
-                </ScrollView>
-              </>
-            )}
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
+        <SponsorRequestModal
+          request={selectedSponsorRequest}
+          jobDetailPreview={srJobDetail}
+          flow={{
+            step: srStep,
+            relationship: srRelationship,
+            canRefer: srCanRefer,
+            dayToDay: srDayToDay,
+            teamCulture: srTeamCulture,
+            idealCandidate: srIdealCandidate,
+            insiderInsights: srInsiderInsights,
+            sponsoring: srSponsoring,
+            newJobId: srNewJobId,
+          }}
+          onClose={closeAllModals}
+          onOpenJobDetail={openSrJobDetail}
+          onSetStep={setSrStep}
+          onSetRelationship={setSrRelationship}
+          onSetCanRefer={setSrCanRefer}
+          onSetDayToDay={setSrDayToDay}
+          onSetTeamCulture={setSrTeamCulture}
+          onSetIdealCandidate={setSrIdealCandidate}
+          onSetInsiderInsights={setSrInsiderInsights}
+          onSponsorAndConnect={handleSponsorAndConnect}
+          onNavigateToMessages={onNavigateToMessages}
+        />
       </Modal>
 
       {/* Sponsor-Request Job Detail Modal — full role data before committing to sponsor */}
