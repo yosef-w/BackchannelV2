@@ -4,7 +4,7 @@
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side). **§F** (larger deck for premium) is documented but deprioritized — not a current focus.
+> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -67,20 +67,6 @@ Shipped and live behind a graceful fallback: `lib/api.ts → searchAtsOrganizati
 ### Optional follow-up (stronger guarantee)
 
 Consider normalizing/validating `sponsor_profiles.COMPANY` against this canonical list on write (or storing a chosen org id), so the browse filter can match on an exact key rather than `ILIKE`.
-
----
-
-## §F — Larger daily deck (card allotment) for premium users ⚪ Deprioritized (monetization, not a current focus)
-
-**Context:** The Home feed serves a fixed daily deck of **`DECK_SIZE = 10`** cards (`components/HomeView.tsx`), cached per day and rolling over at midnight. The new end-of-deck screen ("You're all caught up") now shows an **"Unlock more cards"** button that opens the existing RevenueCat paywall (`useSubscriptionStore.presentPaywall`, same one ProfileView uses for "Upgrade to Pro").
-
-**What's missing (backend):** there is currently **no larger/unlimited allotment** for users who purchase premium — the deck endpoint caps everyone at the same daily set. So today, after a successful purchase, the app can only `resetNavigation()` (replay the same 10), which isn't real added value.
-
-**Required change (when monetization is turned on):**
-- Have the deck/feed endpoint return a larger (or unlimited) daily set for entitled/premium users — i.e. read the user's entitlement and raise the cap server-side.
-- Expose the per-user cap (or "has more") so the app can fetch the next batch after purchase instead of replaying.
-
-**Frontend status:** the paywall button is wired and the upsell only shows to non-premium users (`!isPremium`). Once the backend serves more cards to premium accounts, swap the post-purchase `resetNavigation()` for a real "fetch next batch". Gated behind `PREMIUM_ENABLED` (`constants/config.ts`), which is **false** today, so the button is inert until premium is switched on.
 
 ---
 
