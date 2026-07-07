@@ -206,7 +206,7 @@ export function EditProfileScreen({
       <LockedField
         label="EMAIL"
         value={email}
-        note="The email you log in with. Can't be changed here yet — contact support to update it."
+        note="The email you log in with. Change it from Privacy & Security."
       />
 
       {userType === "sponsor" && (
