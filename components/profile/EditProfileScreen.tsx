@@ -25,8 +25,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { GOOGLE_PLACES_API_KEY } from "../../constants/config";
-import { ALL_SKILLS } from "../../constants/skills";
+import { GOOGLE_PLACES_API_KEY } from "@/constants/config";
+import { ALL_SKILLS } from "@/constants/skills";
 import { AutocompleteInput } from "../ui/AutocompleteInput";
 import { CharCounter } from "../ui/CharCounter";
 import { PlacesAutocomplete } from "../ui/PlacesAutocomplete";

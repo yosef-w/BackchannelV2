@@ -2,7 +2,7 @@ import { CheckCircle, Info, XCircle } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
-import { useToastStore } from "../../stores/useToastStore";
+import { useToastStore } from "@/stores/useToastStore";
 
 const ICON_SIZE = 18;
 

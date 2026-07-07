@@ -9,7 +9,7 @@ import {
     UserCheck
 } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
-import { trackScreenViewed } from "../lib/analytics/mixpanel";
+import { trackScreenViewed } from "@/lib/analytics/mixpanel";
 import {
     Dimensions,
     SafeAreaView,

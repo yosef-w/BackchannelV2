@@ -14,14 +14,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
-jest.mock("../../lib/sentry", () => ({
+jest.mock("@/lib/sentry", () => ({
   Sentry: { captureException: jest.fn() },
 }));
-jest.mock("../../lib/auth-api", () => ({
+jest.mock("@/lib/auth-api", () => ({
   authApi: { updateProfile: jest.fn() },
 }));
 
-import { authApi } from "../../lib/auth-api";
+import { authApi } from "@/lib/auth-api";
 import { useUserProfileStore } from "../useUserProfileStore";
 
 const mockUpdateProfile = authApi.updateProfile as jest.Mock;

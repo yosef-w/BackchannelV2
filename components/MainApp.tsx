@@ -35,29 +35,29 @@ import {
     trackCheckInModalOpened,
     trackPushNotificationTapped,
     trackScreenViewed,
-} from "../lib/analytics/mixpanel";
+} from "@/lib/analytics/mixpanel";
 import {
     getUnreadNotificationCount,
     listReferrals,
     registerDevice,
-} from "../lib/api";
+} from "@/lib/api";
 import {
     cancelUnfinishedDeckReminder,
     scheduleDailyDeckReminder,
     scheduleUnfinishedDeckReminder,
-} from "../lib/localNotifications";
-import { cancelCheckInNudges, scheduleCheckInNudges } from "../lib/checkInNudges";
+} from "@/lib/localNotifications";
+import { cancelCheckInNudges, scheduleCheckInNudges } from "@/lib/checkInNudges";
 import {
   getLocalCheckInStages,
   getLocalCheckInTimes,
-} from "../utils/checkInStageCache";
-import { useAuthStore } from "../stores/useAuthStore";
-import { useJobsStore } from "../stores/useJobsStore";
-import type { PublicProfileUserData } from "../types/profiles";
+} from "@/utils/checkInStageCache";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useJobsStore } from "@/stores/useJobsStore";
+import type { PublicProfileUserData } from "@/types/profiles";
 import {
     ApplicantCheckInModal,
     type CheckInReferral,
-} from "./ApplicantCheckInModal";
+} from "./checkin/ApplicantCheckInModal";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { DECK_SIZE, HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
@@ -68,7 +68,7 @@ import { ProfileView } from "./ProfileView";
 import {
     SponsorCheckInModal,
     type SponsorCheckInReferral,
-} from "./SponsorCheckInModal";
+} from "./checkin/SponsorCheckInModal";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");

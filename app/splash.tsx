@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import React, { useEffect } from "react";
 import { SplashScreen } from "../components/SplashScreen";
-import { useAuthStore } from "../stores/useAuthStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function SplashRoute() {
   // Tokens are loaded (and silently refreshed if stale) by RootLayout on

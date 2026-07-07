@@ -21,18 +21,18 @@ import {
 import {
     trackCheckInFailed,
     trackSponsorBatchCheckInSubmitted,
-} from "../lib/analytics/mixpanel";
+} from "@/lib/analytics/mixpanel";
 import {
     SPONSOR_CHECKIN_STAGES,
     SponsorCheckInStage,
     submitSponsorBatchCheckIn,
-} from "../lib/api";
-import { useToastStore } from "../stores/useToastStore";
+} from "@/lib/api";
+import { useToastStore } from "@/stores/useToastStore";
 import {
     getLocalCheckInTimes,
     saveLocalCheckInStages,
-} from "../utils/checkInStageCache";
-import { CheckInSheetShell } from "./checkin/CheckInSheetShell";
+} from "@/utils/checkInStageCache";
+import { CheckInSheetShell } from "./CheckInSheetShell";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface SponsorCheckInReferral {

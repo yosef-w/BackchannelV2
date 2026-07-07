@@ -75,12 +75,12 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
-import { useJobsStore } from "../stores/useJobsStore";
-import { useToastStore } from "../stores/useToastStore";
-import { useSubscriptionStore } from "../stores/useSubscriptionStore";
-import { useUserProfileStore } from "../stores/useUserProfileStore";
-import { checkProfileCompleteness } from "../utils/profileCompletion";
-import { saveSponsorRequestOutcome } from "../utils/sponsorRequestCache";
+import { useJobsStore } from "@/stores/useJobsStore";
+import { useToastStore } from "@/stores/useToastStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { checkProfileCompleteness } from "@/utils/profileCompletion";
+import { saveSponsorRequestOutcome } from "@/utils/sponsorRequestCache";
 import { AlreadyLikedOverlay } from "./home/AlreadyLikedOverlay";
 import { ApplicantProfileCard } from "./home/ApplicantProfileCard";
 import { DeckDoneCard } from "./home/DeckDoneCard";

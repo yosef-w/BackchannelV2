@@ -1,4 +1,4 @@
-import { AutofillData } from "../stores/useUserProfileStore";
+import { AutofillData } from "@/stores/useUserProfileStore";
 
 export interface ProfileCompletenessResult {
   isComplete: boolean;

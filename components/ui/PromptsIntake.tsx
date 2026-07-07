@@ -23,7 +23,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
-import type { PromptCategory } from "../../constants/prompts";
+import type { PromptCategory } from "@/constants/prompts";
 
 export interface PromptAnswer {
   question: string;

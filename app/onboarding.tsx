@@ -4,7 +4,7 @@ import { ApplicantQuestionnaire } from "../components/ApplicantQuestionnaire";
 import { AuthScreen } from "../components/AuthScreen";
 import { Onboarding } from "../components/Onboarding";
 import { SponsorQuestionnaire } from "../components/SponsorQuestionnaire";
-import { useOnboardingStore } from "../stores/useOnboardingStore";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
 
 type UserType = "applicant" | "sponsor";
 type Step = "onboarding" | "auth" | "questionnaire";

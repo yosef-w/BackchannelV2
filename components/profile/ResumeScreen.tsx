@@ -19,7 +19,7 @@ import type {
   AutofillData,
   EducationEntry,
   ProfessionalExperience,
-} from "../../stores/useUserProfileStore";
+} from "@/stores/useUserProfileStore";
 import { CharCounter } from "../ui/CharCounter";
 import { EditorScreen } from "./EditorScreen";
 

@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
 import { create } from "zustand";
-import { Sentry } from "../lib/sentry";
-import type { RawEducationRow, RawExperienceRow } from "../lib/auth-api";
+import { Sentry } from "@/lib/sentry";
+import type { RawEducationRow, RawExperienceRow } from "@/lib/auth-api";
 
 // NOTE: Profile cache is stored in AsyncStorage (not SecureStore) because
 // SecureStore has a 2 KB per-value limit, which a full resume-classified

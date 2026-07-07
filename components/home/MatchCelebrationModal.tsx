@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
-import { useUserProfileStore } from "../../stores/useUserProfileStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 
 export interface MatchedUser {
   name: string;
