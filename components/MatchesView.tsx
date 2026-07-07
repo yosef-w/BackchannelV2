@@ -107,19 +107,40 @@ export function MatchesView({
    */
   onOpenCheckIn?: () => void;
 }) {
-  const [selectedProfile, setSelectedProfile] = useState<Match | null>(null);
+  // Every "which detail modal is open" question on this screen is mutually
+  // exclusive (opening one always meant closing the others via
+  // closeAllModals below) — a single discriminated union replaces what used
+  // to be 8 separate useState<T | null> selections. Individual `selectedX`
+  // consts below are derived so the rest of this file (and the render body)
+  // reads exactly as it did before this consolidation.
+  type ActiveModal =
+    | { kind: "profile"; profile: Match }
+    | {
+        kind: "roleGroup";
+        group: {
+          items: Match[];
+          getMessageUserId: (m: Match) => string | undefined;
+        };
+      }
+    | { kind: "job"; job: JobOpportunity }
+    | { kind: "referral"; referral: Referral }
+    | { kind: "interestedApplicant"; applicant: InterestedApplicant }
+    | { kind: "interestedSponsor"; sponsor: InterestedSponsor }
+    | { kind: "sponsorRequest"; request: SponsorRequest }
+    | { kind: "waitlistedJob"; job: WaitlistedJob };
+
+  const [activeModal, setActiveModal] = useState<ActiveModal | null>(null);
+  const selectedProfile =
+    activeModal?.kind === "profile" ? activeModal.profile : null;
   // Role-picker for grouped match cards: when a person is matched on several
   // roles, tapping the card (or its Message button) opens this sheet so the
   // user explicitly chooses which role to view or message — instead of the
   // card silently picking the most-recent one.
-  const [roleGroup, setRoleGroup] = useState<{
-    items: Match[];
-    getMessageUserId: (m: Match) => string | undefined;
-  } | null>(null);
-  const [selectedJob, setSelectedJob] = useState<JobOpportunity | null>(null);
-  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
-    null,
-  );
+  const roleGroup =
+    activeModal?.kind === "roleGroup" ? activeModal.group : null;
+  const selectedJob = activeModal?.kind === "job" ? activeModal.job : null;
+  const selectedReferral =
+    activeModal?.kind === "referral" ? activeModal.referral : null;
   const [modalMode, setModalMode] = useState<"view" | "message">("view");
   const [activeSlide, setActiveSlide] = useState(0);
   const [message, setMessage] = useState("");
@@ -133,26 +154,26 @@ export function MatchesView({
   // the shared ProfileDetailSheet component — no longer needed here.
 
   // Interested applicants (applicants who liked a sponsored job, sponsor
-  // hasn't liked back). UI-only selection/spinner state stays local; the list
-  // itself is cached via useQuery further below.
-  const [selectedInterestedApplicant, setSelectedInterestedApplicant] =
-    useState<InterestedApplicant | null>(null);
+  // hasn't liked back). Spinner state stays local; the list itself is
+  // cached via useQuery further below.
+  const selectedInterestedApplicant =
+    activeModal?.kind === "interestedApplicant" ? activeModal.applicant : null;
   const [likingApplicantId, setLikingApplicantId] = useState<string | null>(
     null,
   );
 
   // Interested sponsors (sponsors who liked the applicant, no match yet).
-  const [selectedInterestedSponsor, setSelectedInterestedSponsor] =
-    useState<InterestedSponsor | null>(null);
+  const selectedInterestedSponsor =
+    activeModal?.kind === "interestedSponsor" ? activeModal.sponsor : null;
   // likeId of the sponsor we're currently "liking back" (shows a spinner)
   const [likingBackSponsorId, setLikingBackSponsorId] = useState<string | null>(
     null,
   );
 
   // Sponsor-requests — applicants asking sponsors at the company to sponsor a
-  // specific job. List cached via useQuery below; selection state stays local.
-  const [selectedSponsorRequest, setSelectedSponsorRequest] =
-    useState<SponsorRequest | null>(null);
+  // specific job. List cached via useQuery below.
+  const selectedSponsorRequest =
+    activeModal?.kind === "sponsorRequest" ? activeModal.request : null;
   const [isConnectingToApplicant, setIsConnectingToApplicant] = useState(false);
 
   // ── Sponsor-request job detail (full role data fetched on tap) ────────
@@ -179,9 +200,9 @@ export function MatchesView({
   // below preserve the exact shapes the JSX already consumes.
 
   // Liked / waitlisted jobs (applicants) and referrals (both roles) — all
-  // cached via useQuery below; only the selection/spinner UI state stays local.
-  const [selectedWaitlistedJob, setSelectedWaitlistedJob] =
-    useState<WaitlistedJob | null>(null);
+  // cached via useQuery below; only the spinner UI state stays local.
+  const selectedWaitlistedJob =
+    activeModal?.kind === "waitlistedJob" ? activeModal.job : null;
   const [isNudgingSponsorRequest, setIsNudgingSponsorRequest] =
     useState(false);
 
@@ -393,7 +414,7 @@ export function MatchesView({
     // which owns its own public-profile fetch. We just need to flag
     // which profile is selected; the sheet handles the rest.
     setModalMode(mode);
-    setSelectedProfile(profile);
+    setActiveModal({ kind: "profile", profile });
     setActiveSlide(0);
   };
 
@@ -401,7 +422,10 @@ export function MatchesView({
   // one row per counterpart, opening the role picker when they matched on
   // multiple jobs, otherwise viewing/messaging that single match directly.
   const matchRowCallbacks = {
-    onOpenRoleGroup: setRoleGroup,
+    onOpenRoleGroup: (group: {
+      items: Match[];
+      getMessageUserId: (m: Match) => string | undefined;
+    }) => setActiveModal({ kind: "roleGroup", group }),
     onOpenProfile: openProfile,
     onMessageTapped: (match: Match, userId: string | undefined) => {
       trackMatchMessageTapped({ jobId: match.jobId });
@@ -410,14 +434,14 @@ export function MatchesView({
   };
 
   const openJob = (job: JobOpportunity) => {
-    setSelectedJob(job);
+    setActiveModal({ kind: "job", job });
     setActiveSlide(0);
   };
 
   const openInterestedSponsor = (sponsor: InterestedSponsor) => {
     // The shared ProfileDetailSheet fetches the public profile itself from
     // `userId`, so this just flags which sponsor is selected.
-    setSelectedInterestedSponsor(sponsor);
+    setActiveModal({ kind: "interestedSponsor", sponsor });
   };
 
   /** Fetch full role detail for the currently selected sponsor request. */
@@ -465,14 +489,7 @@ export function MatchesView({
   }, [selectedSponsorRequest?.jobId]);
 
   const closeAllModals = () => {
-    setSelectedProfile(null);
-    setRoleGroup(null);
-    setSelectedJob(null);
-    setSelectedReferral(null);
-    setSelectedInterestedSponsor(null);
-    setSelectedInterestedApplicant(null);
-    setSelectedWaitlistedJob(null);
-    setSelectedSponsorRequest(null);
+    setActiveModal(null);
     setSrJobDetailVisible(false);
     setSrJobDetail(null);
     setSrJobDetailError(null);
@@ -815,8 +832,12 @@ export function MatchesView({
             withdrawingReferralId={withdrawingReferralId}
             expandedGroup={expandedGroup}
             onSetExpandedGroup={setExpandedGroup}
-            onSelectSponsorRequest={setSelectedSponsorRequest}
-            onSelectInterestedApplicant={setSelectedInterestedApplicant}
+            onSelectSponsorRequest={(request) =>
+              setActiveModal({ kind: "sponsorRequest", request })
+            }
+            onSelectInterestedApplicant={(applicant) =>
+              setActiveModal({ kind: "interestedApplicant", applicant })
+            }
             onOpenProfile={openProfile}
             onConfirmWithdrawReferral={setConfirmingWithdrawReferral}
             matchRowCallbacks={matchRowCallbacks}
@@ -841,9 +862,13 @@ export function MatchesView({
             expandedGroup={expandedGroup}
             onSetExpandedGroup={setExpandedGroup}
             onSelectInterestedSponsor={openInterestedSponsor}
-            onSelectWaitlistedJob={setSelectedWaitlistedJob}
+            onSelectWaitlistedJob={(job) =>
+              setActiveModal({ kind: "waitlistedJob", job })
+            }
             onSelectJob={openJob}
-            onSelectReferral={setSelectedReferral}
+            onSelectReferral={(referral) =>
+              setActiveModal({ kind: "referral", referral })
+            }
             matchRowCallbacks={matchRowCallbacks}
           />
         )}
@@ -902,7 +927,7 @@ export function MatchesView({
       {selectedInterestedApplicant && (
         <ProfileDetailSheet
           visible={!!selectedInterestedApplicant}
-          onDismiss={() => setSelectedInterestedApplicant(null)}
+          onDismiss={() => setActiveModal(null)}
           userId={selectedInterestedApplicant.applicantUserId}
           variant="applicant"
           initial={{
@@ -942,16 +967,16 @@ export function MatchesView({
       <Modal visible={!!roleGroup} transparent animationType="none">
         <RolePickerModal
           roleGroup={roleGroup}
-          onClose={() => setRoleGroup(null)}
+          onClose={() => setActiveModal(null)}
           onSelectRole={(m) => {
-            setRoleGroup(null);
+            setActiveModal(null);
             openProfile(m, "view");
           }}
           onMessageRole={(m) => {
             if (!roleGroup) return;
             trackMatchMessageTapped({ jobId: m.jobId });
             const getMessageUserId = roleGroup.getMessageUserId;
-            setRoleGroup(null);
+            setActiveModal(null);
             onNavigateToMessages?.(m.jobId ?? "", getMessageUserId(m));
           }}
         />
