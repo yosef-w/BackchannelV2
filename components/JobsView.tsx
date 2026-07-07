@@ -26,23 +26,15 @@ import { useToastStore } from "@/stores/useToastStore";
 import { isValidUrl, normalizeUrl } from "@/lib/validation";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
-import { formatSalary } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import {
   Briefcase,
-  Check,
   CheckCircle,
   ChevronRight,
-  DollarSign,
-  Info,
   Lock,
-  MapPin,
   Plus,
   Search,
   Sparkles,
-  Trash2,
-  TrendingUp,
-  Users,
   X,
   Zap,
 } from "@/components/ui/icons";
@@ -78,14 +70,14 @@ import {
   transformMyJobRow,
 } from "./jobs/jobTransforms";
 import { CreateJobFlow } from "./jobs/CreateJobFlow";
+import { JobDetailsModal } from "./jobs/JobDetailsModal";
 import { JobMenuModal } from "./jobs/JobMenuModal";
 import { SponsorJobModal } from "./jobs/SponsorJobModal";
 import { SponsoredJobCard } from "./jobs/SponsoredJobCard";
 import { CompanyLogo } from "./ui/CompanyLogo";
-import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 
 interface SponsorInfo {
@@ -1502,350 +1494,43 @@ export function JobsView() {
 
       {/* Job Details Modal */}
       <Modal visible={!!viewJobDetails} transparent animationType="none">
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setViewJobDetails(null)}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={() => setViewJobDetails(null)}
-            style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.88 }]}
-          >
-            {viewJobDetails && (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                contentContainerStyle={{ paddingBottom: 8 }}
-              >
-                {/* Hero: Company Logo (initial fallback) + Title + Company + Location */}
-                <View style={styles.jobModalHero}>
-                  <CompanyLogo
-                    logoUrl={viewJobDetails.image}
-                    name={viewJobDetails.company}
-                    size={72}
-                    borderRadius={22}
-                    initialFontSize={32}
-                    style={{ marginBottom: 16 }}
-                  />
-                  <Text style={styles.jobModalHeroTitle}>
-                    {viewJobDetails.title}
-                  </Text>
-                  <Text style={styles.jobModalHeroCompany}>
-                    {viewJobDetails.company}
-                  </Text>
-                  {!!viewJobDetails.location && (
-                    <View style={styles.jobModalLocationRow}>
-                      <MapPin size={13} color="#999" />
-                      <Text style={styles.jobModalLocationText}>
-                        {viewJobDetails.location}
-                      </Text>
-                      {viewJobDetails.isRemote && (
-                        <View style={styles.jobRemoteBadge}>
-                          <Text style={styles.jobRemoteText}>Remote</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-
-                {/* Compensation Strip */}
-                <View style={styles.jobModalCompStrip}>
-                  <View style={styles.jobModalCompCell}>
-                    <DollarSign size={14} color="#555" />
-                    <View style={{ flex: 1, flexShrink: 1 }}>
-                      <Text style={styles.jobModalCompLabel}>SALARY</Text>
-                      <Text style={styles.jobModalCompValue}>
-                        {viewJobDetails.salaryMin && viewJobDetails.salaryMax
-                          ? formatSalary(
-                              viewJobDetails.salaryMin,
-                              viewJobDetails.salaryMax,
-                              viewJobDetails.salaryCurrency,
-                            )
-                          : viewJobDetails.salary || "Not specified"}
-                      </Text>
-                    </View>
-                  </View>
-                  {!!viewJobDetails.experienceLevel && (
-                    <View
-                      style={[
-                        styles.jobModalCompCell,
-                        styles.jobModalCompCellBorder,
-                      ]}
-                    >
-                      <Briefcase size={14} color="#555" />
-                      <View style={{ flex: 1, flexShrink: 1 }}>
-                        <Text style={styles.jobModalCompLabel}>EXPERIENCE</Text>
-                        <Text style={styles.jobModalCompValue}>
-                          {viewJobDetails.experienceLevel}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-
-                {/* Role Details — work arrangement + employment type chips */}
-                {(!!viewJobDetails.workArrangement ||
-                  !!viewJobDetails.type) && (
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailSectionHeader}>
-                      <Info size={16} color="#000" />
-                      <Text style={styles.detailSectionTitle}>
-                        Role Details
-                      </Text>
-                    </View>
-                    <View style={styles.skillsRow}>
-                      {!!viewJobDetails.workArrangement && (
-                        <View style={styles.roleDetailChip}>
-                          <MapPin size={13} color="#000" />
-                          <Text style={styles.roleDetailChipText}>
-                            {viewJobDetails.workArrangement}
-                          </Text>
-                        </View>
-                      )}
-                      {!!viewJobDetails.type && (
-                        <View style={styles.roleDetailChip}>
-                          <Briefcase size={13} color="#000" />
-                          <Text style={styles.roleDetailChipText}>
-                            {viewJobDetails.type}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                )}
-
-                {/* Core Responsibilities */}
-                {!!viewJobDetails.coreResponsibilities && (
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailSectionHeader}>
-                      <Briefcase size={16} color="#000" />
-                      <Text style={styles.detailSectionTitle}>
-                        Core Responsibilities
-                      </Text>
-                    </View>
-                    <View style={styles.jobDetailCard}>
-                      <Text style={styles.jobDetailText}>
-                        {viewJobDetails.coreResponsibilities}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                {/* Required Skills */}
-                {(viewJobDetails.skills || []).length > 0 && (
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailSectionHeader}>
-                      <TrendingUp size={16} color="#000" />
-                      <Text style={styles.detailSectionTitle}>
-                        Required Skills
-                      </Text>
-                    </View>
-                    <View style={styles.skillsRow}>
-                      {viewJobDetails.skills.map((skill, i) => (
-                        <View key={i} style={styles.skillBadge}>
-                          <Text style={styles.skillBadgeText}>{skill}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Requirements text fallback when no structured skills */}
-                {(viewJobDetails.skills || []).length === 0 &&
-                  !!viewJobDetails.requirements && (
-                    <View style={styles.detailSection}>
-                      <View style={styles.detailSectionHeader}>
-                        <TrendingUp size={16} color="#000" />
-                        <Text style={styles.detailSectionTitle}>
-                          Requirements
-                        </Text>
-                      </View>
-                      <View style={styles.jobDetailCard}>
-                        <Text style={styles.jobDetailText}>
-                          {viewJobDetails.requirements}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                {/* Benefits / Highlights */}
-                {(viewJobDetails.benefits || []).length > 0 && (
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailSectionHeader}>
-                      <Sparkles size={16} color="#000" />
-                      <Text style={styles.detailSectionTitle}>Highlights</Text>
-                    </View>
-                    {viewJobDetails.benefits.map((benefit, i) => (
-                      <View key={i} style={styles.benefitRow}>
-                        <Check size={14} color="#000" />
-                        <Text style={styles.benefitText}>{benefit}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* About the Role — full description last (longest free-form text) */}
-                {!!viewJobDetails.description && (
-                  <View style={styles.jobSection}>
-                    <Text style={styles.jobSectionTitle}>About the Role</Text>
-                    <Text style={styles.jobSectionText}>
-                      {viewJobDetails.description}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Job Sponsors */}
-                {(viewJobDetails.currentSponsors || []).length > 0 && (
-                  <View style={styles.sponsorInfoCard}>
-                    <View style={styles.sponsorCardHeader}>
-                      <Users size={16} color="#000" />
-                      <Text style={styles.sponsorCardTitle}>Job Sponsors</Text>
-                    </View>
-                    <View style={{ gap: 12 }}>
-                      {viewJobDetails.currentSponsors.map((sponsor, i) => (
-                        <View key={i} style={styles.sponsorCardContent}>
-                          {sponsor.image ? (
-                            <Image
-                              source={{ uri: sponsor.image }}
-                              style={styles.sponsorCardAvatar}
-                            />
-                          ) : (
-                            <View
-                              style={[
-                                styles.sponsorCardAvatar,
-                                {
-                                  backgroundColor: "#000",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                },
-                              ]}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 16,
-                                  fontWeight: "800",
-                                  color: "#FFF",
-                                }}
-                              >
-                                {(sponsor.name || "?")[0].toUpperCase()}
-                              </Text>
-                            </View>
-                          )}
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.sponsorCardName}>
-                              {sponsor.name}
-                            </Text>
-                            {!!sponsor.role && (
-                              <Text style={styles.sponsorCardRole}>
-                                {sponsor.role}
-                              </Text>
-                            )}
-                          </View>
-                          {sponsor.canRefer && (
-                            <View style={styles.canReferBadge}>
-                              <CheckCircle size={12} color="#000" />
-                            </View>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Action Button */}
-                {viewJobDetails.isSponsored ? (
-                  (() => {
-                    const sponsoredEntry = sponsoredJobs.find(
-                      (sj) =>
-                        sj.atsJobId === viewJobDetails.id ||
-                        sj.jobId === viewJobDetails.id,
-                    );
-                    const jobPostingsId =
-                      sponsoredEntry?.jobId ?? viewJobDetails.id;
-                    const isBusy = isUnsponsoringId === jobPostingsId;
-                    return (
-                      <View style={styles.unsponsorBtnContainer}>
-                        <View style={styles.unsponsorBtn}>
-                          <Check color="#000" size={18} strokeWidth={3} />
-                          <Text style={styles.unsponsorBtnText}>
-                            Already Sponsoring
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          style={[
-                            styles.unsponsorActiveBtn,
-                            (!jobPostingsId || isBusy) && { opacity: 0.4 },
-                          ]}
-                          activeOpacity={0.7}
-                          disabled={!jobPostingsId || isBusy}
-                          onPress={() => {
-                            if (!jobPostingsId || isBusy) return;
-                            setIsUnsponsoringId(jobPostingsId);
-                            removeMyJob(jobPostingsId);
-                            setJobs(
-                              jobs.map((j) =>
-                                j.id === viewJobDetails.id
-                                  ? { ...j, isSponsored: false }
-                                  : j,
-                              ),
-                            );
-                            setViewJobDetails(null);
-                            unsponsorJob(jobPostingsId)
-                              .catch((err) => {
-                                console.warn(
-                                  "[JobsView] Failed to unsponsor:",
-                                  err,
-                                );
-                                refreshMyJobs(false);
-                                showToast(
-                                  "Failed to remove sponsorship. Please try again.",
-                                  "error",
-                                );
-                              })
-                              .finally(() => setIsUnsponsoringId(null));
-                          }}
-                        >
-                          {isBusy ? (
-                            <ActivityIndicator size="small" color="#FFF" />
-                          ) : (
-                            <>
-                              <Trash2 size={15} color="#FFF" />
-                              <Text style={styles.unsponsorActiveBtnText}>
-                                Remove Sponsorship
-                              </Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    );
-                  })()
-                ) : (
-                  <TouchableOpacity
-                    style={styles.applyBtnLarge}
-                    onPress={() => {
-                      const jobToSponsor = viewJobDetails;
-                      setViewJobDetails(null);
-                      setTimeout(() => {
-                        if (jobToSponsor) handleOpenModal(jobToSponsor);
-                      }, 50);
-                    }}
-                  >
-                    <Zap color="#FFF" size={20} fill="#FFF" />
-                    <Text style={styles.applyBtnLargeText}>Sponsor</Text>
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
-            )}
-          </DismissibleSheet>
-        </View>
+        <JobDetailsModal
+          job={viewJobDetails}
+          isUnsponsoringId={isUnsponsoringId}
+          resolveJobPostingsId={(job) => {
+            const sponsoredEntry = sponsoredJobs.find(
+              (sj) => sj.atsJobId === job.id || sj.jobId === job.id,
+            );
+            return sponsoredEntry?.jobId ?? job.id;
+          }}
+          onRemoveSponsorship={(jobPostingsId, job) => {
+            setIsUnsponsoringId(jobPostingsId);
+            removeMyJob(jobPostingsId);
+            setJobs(
+              jobs.map((j) =>
+                j.id === job.id ? { ...j, isSponsored: false } : j,
+              ),
+            );
+            setViewJobDetails(null);
+            unsponsorJob(jobPostingsId)
+              .catch((err) => {
+                console.warn("[JobsView] Failed to unsponsor:", err);
+                refreshMyJobs(false);
+                showToast(
+                  "Failed to remove sponsorship. Please try again.",
+                  "error",
+                );
+              })
+              .finally(() => setIsUnsponsoringId(null));
+          }}
+          onSponsor={(job) => {
+            setViewJobDetails(null);
+            setTimeout(() => {
+              handleOpenModal(job);
+            }, 50);
+          }}
+          onClose={() => setViewJobDetails(null)}
+        />
       </Modal>
 
       <Modal
