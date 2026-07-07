@@ -6,6 +6,33 @@ import type { MyJobRow } from "@/lib/api";
 // state, no I/O — everything here is a plain function of its inputs, which
 // also makes this the first natural home for unit tests in the repo.
 
+export interface Applicant {
+  id: string;
+  name: string;
+  role: string;
+  company: string;
+  image: string;
+  matchScore: number;
+  experience: string;
+  skills: string[];
+  appliedRole: string;
+  // Like status from getJobApplicantsLikes — "MATCHED" means the sponsor has
+  // already matched with this applicant, so the detail sheet shows an inert
+  // "Matched" status instead of a "Match with…" CTA.
+  status?: "ACTIVE" | "MATCHED";
+  // Enriched fields populated from `getPublicProfile` when the sponsor taps
+  // the message icon. The lightweight list endpoint doesn't include these.
+  bio?: string;
+  location?: string;
+  insights?: {
+    funFact: string;
+  };
+  prompts?: {
+    question: string;
+    answer: string;
+  }[];
+}
+
 // Reasons a sponsor can pick when unsponsoring a job. `value` is sent to the
 // backend (see §12 in docs/BACKEND_CHANGES_NEEDED.md) — "posting_expired" and
 // "role_filled" in particular let the backend prune stale ATS listings.

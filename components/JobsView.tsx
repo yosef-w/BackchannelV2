@@ -26,12 +26,10 @@ import { useToastStore } from "@/stores/useToastStore";
 import { isValidUrl, normalizeUrl } from "@/lib/validation";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { BrowseJobResponse, Job } from "@/types/jobs";
-import { BlurView } from "expo-blur";
 import {
   Briefcase,
   CheckCircle,
   ChevronRight,
-  Lock,
   Plus,
   Search,
   Sparkles,
@@ -42,7 +40,6 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -53,17 +50,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeInUp,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
 import { JobCard } from "./jobs/JobCard";
 import { JobsEmptyState } from "./jobs/JobsEmptyState";
 import {
+  type Applicant,
   cleanJobText,
   parseSkillsField,
   transformBrowseResponse,
@@ -72,8 +64,10 @@ import {
 import { CreateJobFlow } from "./jobs/CreateJobFlow";
 import { JobDetailsModal } from "./jobs/JobDetailsModal";
 import { JobMenuModal } from "./jobs/JobMenuModal";
+import { SponsorGateModal } from "./jobs/SponsorGateModal";
 import { SponsorJobModal } from "./jobs/SponsorJobModal";
 import { SponsoredJobCard } from "./jobs/SponsoredJobCard";
+import { TopApplicantsModal } from "./jobs/TopApplicantsModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 
@@ -87,32 +81,8 @@ interface SponsorInfo {
   canRefer: boolean;
 }
 
-interface Applicant {
-  id: string;
-  name: string;
-  role: string;
-  company: string;
-  image: string;
-  matchScore: number;
-  experience: string;
-  skills: string[];
-  appliedRole: string;
-  // Like status from getJobApplicantsLikes — "MATCHED" means the sponsor has
-  // already matched with this applicant, so the detail sheet shows an inert
-  // "Matched" status instead of a "Match with…" CTA.
-  status?: "ACTIVE" | "MATCHED";
-  // Enriched fields populated from `getPublicProfile` when the sponsor taps
-  // the message icon. The lightweight list endpoint doesn't include these.
-  bio?: string;
-  location?: string;
-  insights?: {
-    funFact: string;
-  };
-  prompts?: {
-    question: string;
-    answer: string;
-  }[];
-}
+// The Applicant shape lives in components/jobs/jobTransforms.ts (shared
+// with TopApplicantsModal).
 
 // Extend Job type with UI-specific fields (JobPosting is now just an alias)
 type JobPosting = Job;
@@ -1543,156 +1513,22 @@ export function JobsView() {
           setApplicantsError(null);
         }}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => {
-              setSelectedApplicantJob(null);
-              setJobApplicants([]);
-              setApplicantsError(null);
-            }}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={[styles.modalContent, { maxHeight: "60%" }]}
-          >
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalMainTitle}>Top Applicants</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedApplicantJob(null);
-                  setJobApplicants([]);
-                  setApplicantsError(null);
-                }}
-                style={styles.closeButton}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              contentContainerStyle={{ paddingBottom: 20 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {isLoadingApplicants ? (
-                <View style={{ padding: 40, alignItems: "center" }}>
-                  <ActivityIndicator size="small" color="#000" />
-                  <Text
-                    style={{
-                      marginTop: 12,
-                      color: "#999",
-                      fontSize: 13,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Loading applicants…
-                  </Text>
-                </View>
-              ) : applicantsError ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text
-                    style={{
-                      textAlign: "center",
-                      color: "#DC2626",
-                      fontSize: 14,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {applicantsError}
-                  </Text>
-                </View>
-              ) : jobApplicants.length === 0 ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text
-                    style={{ textAlign: "center", color: "#999", fontSize: 16 }}
-                  >
-                    No applicants yet.
-                  </Text>
-                </View>
-              ) : (
-                jobApplicants.map((applicant, i) => (
-                  // Entire row is the tap target — opens the applicant
-                  // profile detail modal. Larger hit area than just the
-                  // chevron, and matches MatchesView's "tap the card"
-                  // affordance for consistency.
-                  <TouchableOpacity
-                    key={applicant.id || i}
-                    style={styles.applicantRow}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setSelectedApplicantJob(null);
-                      setTimeout(() => {
-                        openMessagingModal(applicant);
-                      }, 100);
-                    }}
-                  >
-                    {applicant.image ? (
-                      <Image
-                        source={{ uri: applicant.image }}
-                        style={styles.applicantAvatar}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.applicantAvatar,
-                          {
-                            backgroundColor: "#000",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 18,
-                            fontWeight: "800",
-                            color: "#FFF",
-                          }}
-                        >
-                          {(applicant.name || "?")[0].toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.applicantName}>{applicant.name}</Text>
-                      <Text style={styles.applicantRole}>
-                        {applicant.company
-                          ? `${applicant.role} · ${applicant.company}`
-                          : applicant.role}
-                      </Text>
-                    </View>
-                    {/* "Matched" status tag — a sibling of the info column
-                        so the row's alignItems:"center" keeps it vertically
-                        centered against the avatar, not pinned to the name. */}
-                    {applicant.status === "MATCHED" && (
-                      <View style={styles.applicantMatchedTag}>
-                        <CheckCircle size={11} color="#000" />
-                        <Text style={styles.applicantMatchedTagText}>
-                          Matched
-                        </Text>
-                      </View>
-                    )}
-                    {/* Chevron now a visual affordance only — the entire
-                        row above handles the tap. */}
-                    <View style={styles.messageApplicantBtn}>
-                      <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </Animated.View>
-        </View>
+        <TopApplicantsModal
+          applicants={jobApplicants}
+          isLoading={isLoadingApplicants}
+          error={applicantsError}
+          onSelectApplicant={(applicant) => {
+            setSelectedApplicantJob(null);
+            setTimeout(() => {
+              openMessagingModal(applicant);
+            }, 100);
+          }}
+          onClose={() => {
+            setSelectedApplicantJob(null);
+            setJobApplicants([]);
+            setApplicantsError(null);
+          }}
+        />
       </Modal>
 
       <Modal
@@ -1701,60 +1537,14 @@ export function JobsView() {
         visible={!!showSponsorGate}
         onRequestClose={() => setShowSponsorGate(null)}
       >
-        <View style={styles.gateModalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowSponsorGate(null)}
-          >
-            <BlurView
-              intensity={40}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(150)}
-            style={styles.gateModalContent}
-          >
-            <TouchableOpacity
-              style={styles.gateCloseBtn}
-              onPress={() => setShowSponsorGate(null)}
-            >
-              <X color="#666" size={20} />
-            </TouchableOpacity>
-
-            <View style={styles.gateIconContainer}>
-              <Lock size={32} color="#000" />
-            </View>
-            <Text style={styles.gateTitle}>Sponsor to View</Text>
-            <Text style={styles.gateDesc}>
-              You must be a sponsor of this job listing to view the full
-              applicant list.
-            </Text>
-
-            <View style={styles.gateActions}>
-              <TouchableOpacity
-                style={styles.gateBtnPrimary}
-                onPress={() => {
-                  const job = showSponsorGate;
-                  setShowSponsorGate(null);
-                  if (job) handleOpenModal(job);
-                }}
-              >
-                <Text style={styles.gateBtnPrimaryText}>Sponsor Now</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.gateBtnSecondary}
-                onPress={() => setShowSponsorGate(null)}
-              >
-                <Text style={styles.gateBtnSecondaryText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
+        <SponsorGateModal
+          onSponsorNow={() => {
+            const job = showSponsorGate;
+            setShowSponsorGate(null);
+            if (job) handleOpenModal(job);
+          }}
+          onClose={() => setShowSponsorGate(null)}
+        />
       </Modal>
 
       {/* Top Applicants → Applicant Detail Sheet — sponsor reviews an
