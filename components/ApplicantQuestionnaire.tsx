@@ -10,10 +10,10 @@ import {
   Camera,
   Check,
   ChevronRight,
+  Eye,
   FileText,
   MapPin,
   Search,
-  Sparkles,
   Upload,
   UserCheck,
   X,
@@ -1194,7 +1194,7 @@ export function ApplicantQuestionnaire({
             <SafeAreaView style={styles.reviewSafeArea}>
               <View style={styles.reviewHeader}>
                 <View style={styles.reviewBadge}>
-                  <Sparkles color="#000" size={22} />
+                  <Eye color="#000" size={22} />
                 </View>
                 <Text style={styles.reviewTitle}>Here&apos;s what we found</Text>
                 <Text style={styles.reviewSub}>

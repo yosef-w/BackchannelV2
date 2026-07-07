@@ -5,7 +5,6 @@ import {
     DollarSign,
     Info,
     MapPin,
-    Sparkles,
     Trash2,
     TrendingUp,
     Users,
@@ -222,7 +221,6 @@ export function JobDetailsModal({
             {(job.benefits || []).length > 0 && (
               <View style={styles.detailSection}>
                 <View style={styles.detailSectionHeader}>
-                  <Sparkles size={16} color="#000" />
                   <Text style={styles.detailSectionTitle}>Highlights</Text>
                 </View>
                 {job.benefits.map((benefit, i) => (

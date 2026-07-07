@@ -4,7 +4,7 @@ import {
     Coffee,
     Info,
     Plus,
-    Sparkles,
+    Target,
     Users,
 } from "@/components/ui/icons";
 import React, { useState } from "react";
@@ -63,7 +63,7 @@ const SPONSOR_INSIGHT_FIELDS: {
   },
   {
     key: "idealCandidate",
-    Icon: Sparkles,
+    Icon: Target,
     title: "Who actually thrives here",
     subtitle: "What matters more than what's on the resume?",
     placeholder:

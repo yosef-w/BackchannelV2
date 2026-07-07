@@ -1,4 +1,4 @@
-import { Heart, Sparkles } from "@/components/ui/icons";
+import { Award, Heart } from "@/components/ui/icons";
 import { getRelativeTime } from "@/utils/relativeTime";
 import React from "react";
 import { CompanyLogo } from "../ui/CompanyLogo";
@@ -153,7 +153,7 @@ export function ApplicantMatchesSections({
         }
         meta={
           <MetaLine
-            icon={<Sparkles size={10} color="#000" />}
+            icon={<Award size={10} color="#000" />}
             text="Now sponsored"
           />
         }

@@ -2,7 +2,7 @@ import {
   Check,
   ChevronRight,
   RefreshCcw,
-  Sparkles,
+  Zap,
 } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -46,7 +46,6 @@ export function DeckDoneCard({
 
       {/* Context pill — makes the daily-allotment limit explicit */}
       <View style={styles.pill}>
-        <Sparkles color="#000" size={12} strokeWidth={2.5} />
         <Text style={styles.pillText}>
           DAILY DECK COMPLETE · {deckSize}/{deckSize}
         </Text>
@@ -107,7 +106,7 @@ export function DeckDoneCard({
             onPress={onUnlockMore}
             activeOpacity={0.85}
           >
-            <Sparkles color="#FFF" size={18} strokeWidth={2.5} />
+            <Zap color="#FFF" size={18} strokeWidth={2.5} />
             <Text style={styles.primaryText}>Unlock more cards</Text>
           </TouchableOpacity>
         )
@@ -120,7 +119,7 @@ export function DeckDoneCard({
           onPress={onUnlockMore}
           activeOpacity={0.7}
         >
-          <Sparkles color="#000" size={16} strokeWidth={2.2} />
+          <Zap color="#000" size={16} strokeWidth={2.2} />
           <Text style={styles.secondaryText}>Unlock more cards</Text>
         </TouchableOpacity>
       )}

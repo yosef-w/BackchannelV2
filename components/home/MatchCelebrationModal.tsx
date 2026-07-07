@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { MessageCircle, Sparkles } from "@/components/ui/icons";
+import { Heart, MessageCircle } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
@@ -121,9 +121,9 @@ export function MatchCelebrationModal({
                 )}
               </View>
 
-              {/* Spark connector */}
+              {/* Connector between the two avatars */}
               <View style={styles.matchSparkWrapper}>
-                <Sparkles size={18} color="#000" />
+                <Heart size={18} color="#000" strokeWidth={2.2} />
               </View>
 
               {/* Matched user's avatar */}

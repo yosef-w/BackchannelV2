@@ -7,7 +7,6 @@ import {
     Globe,
     GraduationCap,
     MapPin,
-    Sparkles,
     Target,
 } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
@@ -356,7 +355,6 @@ export function ApplicantPublicProfileView({
         {insights.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Sparkles size={15} color="#000" strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 KEY INSIGHTS
               </Text>
@@ -398,7 +396,6 @@ export function ApplicantPublicProfileView({
         {achievements ? (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Sparkles size={15} color="#000" strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 ACHIEVEMENTS & AWARDS
               </Text>

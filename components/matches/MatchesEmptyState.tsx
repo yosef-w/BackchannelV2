@@ -1,4 +1,4 @@
-import { Sparkles } from "@/components/ui/icons";
+import { Heart } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -22,7 +22,7 @@ export function MatchesEmptyState({
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Sparkles size={28} color="#000" strokeWidth={1.75} />
+        <Heart size={28} color="#000" strokeWidth={1.75} />
       </View>
       <Text style={styles.title}>Nothing here yet</Text>
       <Text style={styles.subtitle}>

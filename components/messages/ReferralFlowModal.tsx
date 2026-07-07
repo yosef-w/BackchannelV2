@@ -9,7 +9,6 @@ import {
   GraduationCap,
   MapPin,
   ShieldCheck,
-  Sparkles,
   User,
   X,
 } from "@/components/ui/icons";
@@ -457,7 +456,6 @@ export function ReferralFlowModal({
                     {skills.length > 0 && (
                       <View style={styles.refSection}>
                         <View style={styles.refSectionHeader}>
-                          <Sparkles size={16} color="#000" />
                           <Text style={styles.refSectionTitle}>Key Skills</Text>
                         </View>
                         <View style={styles.skillsRow}>

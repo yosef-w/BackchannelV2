@@ -7,7 +7,6 @@ import {
     ChevronLeft,
     MapPin,
     ShieldCheck,
-    Sparkles,
 } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
@@ -211,7 +210,6 @@ export function SponsorPublicProfileView({
         {!loadingProfile ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Sparkles size={15} color="#000" strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 KEY INSIGHTS
               </Text>

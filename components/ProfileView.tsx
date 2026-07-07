@@ -14,8 +14,8 @@ import {
     ImageIcon,
     Lock,
     LogOut,
+    MessageSquareQuote,
     RefreshCw,
-    Sparkles,
     Star,
     Target,
     Trash2,
@@ -1981,7 +1981,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   if (profileInsights.length < 2) {
     finishProfileRows.push({
       key: "prompts",
-      icon: <Sparkles color="#000" size={16} strokeWidth={2} />,
+      icon: <MessageSquareQuote color="#000" size={16} strokeWidth={2} />,
       label:
         profileInsights.length === 0
           ? "Answer 2 profile prompts"
@@ -2230,7 +2230,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       <HubSection title="Profile">
         <HubRow
-          icon={<Sparkles color="#000" size={16} strokeWidth={2} />}
+          icon={<MessageSquareQuote color="#000" size={16} strokeWidth={2} />}
           label="Profile Prompts"
           value={`${profileInsights.length}/3`}
           onPress={() => {

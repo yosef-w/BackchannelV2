@@ -7,7 +7,6 @@ import {
     Info,
     MapPin,
     MessageCircle,
-    Sparkles,
     TrendingUp,
     Users,
 } from "@/components/ui/icons";
@@ -220,7 +219,6 @@ export function JobDetailModal({
             {job.benefits.length > 0 && (
               <View style={modalStyles.detailSection}>
                 <View style={modalStyles.detailSectionHeader}>
-                  <Sparkles size={16} color="#000" />
                   <Text style={modalStyles.detailSectionTitle}>
                     Highlights
                   </Text>

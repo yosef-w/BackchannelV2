@@ -1,4 +1,4 @@
-import { Sparkles } from "@/components/ui/icons";
+import { Award } from "@/components/ui/icons";
 import type { Job } from "@/types/jobs";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text } from "react-native";
@@ -41,7 +41,7 @@ export function SponsoredJobsTab({
   if (myJobs.length === 0) {
     return (
       <JobsEmptyState
-        icon={<Sparkles size={28} color="#000" strokeWidth={2} />}
+        icon={<Award size={28} color="#000" strokeWidth={2} />}
         title="Nothing sponsored yet"
         description="Sponsor a listing to unlock applicant profiles and get featured."
         actionText="Browse Jobs"

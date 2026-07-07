@@ -66,7 +66,6 @@ export { default as Rocket } from "lucide-react-native/dist/esm/icons/rocket.js"
 export { default as Search } from "lucide-react-native/dist/esm/icons/search.js";
 export { default as Send } from "lucide-react-native/dist/esm/icons/send.js";
 export { default as ShieldCheck } from "lucide-react-native/dist/esm/icons/shield-check.js";
-export { default as Sparkles } from "lucide-react-native/dist/esm/icons/sparkles.js";
 export { default as Star } from "lucide-react-native/dist/esm/icons/star.js";
 export { default as Target } from "lucide-react-native/dist/esm/icons/target.js";
 export { default as ThumbsDown } from "lucide-react-native/dist/esm/icons/thumbs-down.js";

@@ -18,7 +18,6 @@ import {
   MessageCircle,
   MoreHorizontal,
   Send,
-  Sparkles,
   User,
   UserCheck,
 } from "@/components/ui/icons";
@@ -555,7 +554,6 @@ return (
                 Tapping fills the composer rather than sending straight
                 away, so the user still reviews/personalizes it. */}
             <View style={styles.startersHeader}>
-              <Sparkles size={13} color="#999" strokeWidth={2.2} />
               <Text style={styles.startersHeaderText}>BREAK THE ICE</Text>
             </View>
             <View style={styles.startersList}>
