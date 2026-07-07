@@ -63,7 +63,9 @@ const JOB_SCRAPING_SCRIPT = `
                 company: (item.hiringOrganization && item.hiringOrganization.name) || null,
                 location: locStr,
                 description: item.description || null,
-                employmentType: item.employmentType || null,
+                employmentType: Array.isArray(item.employmentType)
+                  ? (item.employmentType[0] || null)
+                  : (item.employmentType || null),
                 salary: salaryStr,
                 datePosted: item.datePosted || null,
               };
@@ -119,9 +121,15 @@ const JOB_SCRAPING_SCRIPT = `
 // to put JSON-LD in the DOM; ~12s of patience total before giving up.
 const SCRAPE_DELAYS_MS = [900, 1500, 2200, 3000, 4200];
 
-/** Rough employment-type label from JSON-LD's SCREAMING_SNAKE_CASE enum. */
-function formatEmploymentType(raw: string | null): string {
-  if (!raw) return "";
+/**
+ * Rough employment-type label from JSON-LD's SCREAMING_SNAKE_CASE enum.
+ * Guards against non-string input on top of the array normalization in
+ * JOB_SCRAPING_SCRIPT above — schema.org's employmentType is scraped from
+ * arbitrary third-party job boards, so its shape can't be fully trusted even
+ * with that normalization in place.
+ */
+function formatEmploymentType(raw: unknown): string {
+  if (!raw || typeof raw !== "string") return "";
   return raw
     .replace(/_/g, " ")
     .toLowerCase()

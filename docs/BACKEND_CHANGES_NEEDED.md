@@ -4,7 +4,7 @@
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§F** — larger daily deck for premium users (low priority, monetization); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); and the **email deployment checklist** at the bottom (deliverability — SPF/DKIM/DMARC).
+> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); and the **email deployment checklist** at the bottom (deliverability — SPF/DKIM/DMARC). **§F** (larger deck for premium) is documented but deprioritized — not a current focus.
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -18,10 +18,7 @@
 
 ## ✅ Resolved (2026-07-06 first backend drop — was §C, §E, §H, §I, §J, §K)
 
-§C (real account deletion — **frontend cutover shipped too**: password-confirmed delete step in `PrivacySecurityScreen` → `POST /api/account/delete/`), §H (email case normalization + `EMAIL_HOST` prod hard-fail), §I (server-side company lock, 409), §J (self-like, `like_type` discriminator), §K (unsponsor cache invalidation). Details in the backend's `KNOWN_ISSUES.md` "Recently fixed".
-
-**Still carrying one follow-up:**
-1. **§E re-verification** — the `POST /api/profiles/like/` 500 is almost certainly fixed by the matching rework (migration 019's index/arbiter mismatch was exactly our hypothesis, plus the 022–025 per-job rebuild), but it hasn't been re-tested with the originally-failing TestFlight account. Verify, then this line can go.
+§C (real account deletion — **frontend cutover shipped too**: password-confirmed delete step in `PrivacySecurityScreen` → `POST /api/account/delete/`), §E (`POST /api/profiles/like/` 500 — confirmed fixed by the matching rework, re-verified against the originally-failing account), §H (email case normalization + `EMAIL_HOST` prod hard-fail), §I (server-side company lock, 409), §J (self-like, `like_type` discriminator), §K (unsponsor cache invalidation). Details in the backend's `KNOWN_ISSUES.md` "Recently fixed".
 
 Match-state cutover (reading `/api/matches/*` instead of the derived like `STATUS`, per `FRONTEND_MATCH_CUTOVER.md`) is still a pending frontend release — not urgent, no backend action needed.
 
@@ -73,7 +70,7 @@ Consider normalizing/validating `sponsor_profiles.COMPANY` against this canonica
 
 ---
 
-## §F — Larger daily deck (card allotment) for premium users 🟡 (monetization)
+## §F — Larger daily deck (card allotment) for premium users ⚪ Deprioritized (monetization, not a current focus)
 
 **Context:** The Home feed serves a fixed daily deck of **`DECK_SIZE = 10`** cards (`components/HomeView.tsx`), cached per day and rolling over at midnight. The new end-of-deck screen ("You're all caught up") now shows an **"Unlock more cards"** button that opens the existing RevenueCat paywall (`useSubscriptionStore.presentPaywall`, same one ProfileView uses for "Upgrade to Pro").
 
