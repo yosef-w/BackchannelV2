@@ -32,10 +32,8 @@ import {
   Briefcase,
   Check,
   CheckCircle,
-  ChevronLeft,
   ChevronRight,
   DollarSign,
-  Globe,
   Image as ImageIcon,
   Info,
   Lock,
@@ -55,12 +53,9 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  KeyboardAvoidingView,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -85,7 +80,7 @@ import {
   transformBrowseResponse,
   transformMyJobRow,
 } from "./jobs/jobTransforms";
-import { SponsorInsightCards } from "./jobs/SponsorInsightCards";
+import { CreateJobFlow } from "./jobs/CreateJobFlow";
 import { SponsorJobModal } from "./jobs/SponsorJobModal";
 import { SponsoredJobCard } from "./jobs/SponsoredJobCard";
 import { CompanyLogo } from "./ui/CompanyLogo";
@@ -1442,320 +1437,37 @@ export function JobsView() {
         />
       </Modal>
 
-      {/* Step 1: URL Entry Modal */}
-      <Modal
-        visible={showCreateModal && createFlowStep === "url"}
-        transparent
-        animationType="fade"
-        onRequestClose={closeCreateModal}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={0}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeCreateModal}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.createModalContent}
-          >
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalMainTitle}>Add a Job</Text>
-              <TouchableOpacity
-                onPress={closeCreateModal}
-                style={styles.closeButton}
-              >
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubTitle}>
-              Paste the URL of the job posting you want to add to BackChannel.
-            </Text>
-
-            {/* URL Input */}
-            <View style={styles.urlInputContainer}>
-              <Globe color="#999" size={18} />
-              <TextInput
-                style={styles.urlTextInput}
-                placeholder="https://jobs.company.com/role"
-                placeholderTextColor="#999"
-                value={jobUrlInput}
-                onChangeText={setJobUrlInput}
-                keyboardType="url"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onSubmitEditing={
-                  jobUrlInput.trim() ? handlePreviewJob : undefined
-                }
-                returnKeyType="go"
-              />
-              {jobUrlInput.trim().length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setJobUrlInput("")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <X color="#999" size={16} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <Text style={styles.urlHintText}>
-              Works with Greenhouse, Lever, Workday, and most job boards.
-            </Text>
-
-            {/* Preview Button */}
-            <TouchableOpacity
-              style={[
-                styles.confirmBtn,
-                {
-                  marginTop: 24,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                },
-                !jobUrlInput.trim() && styles.confirmBtnDisabled,
-              ]}
-              disabled={!jobUrlInput.trim()}
-              onPress={handlePreviewJob}
-              activeOpacity={0.85}
-            >
-              <Globe color={!jobUrlInput.trim() ? "#999" : "#FFF"} size={18} />
-              <Text
-                style={[
-                  styles.confirmBtnText,
-                  !jobUrlInput.trim() && { color: "#999" },
-                ]}
-              >
-                Preview Job
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Step 2: Full-Screen WebView Job Preview */}
-      <Modal
-        visible={showCreateModal && createFlowStep === "webview"}
-        animationType="slide"
-        onRequestClose={() => setCreateFlowStep("url")}
-      >
-        <SafeAreaView style={styles.webviewModalContainer}>
-          {/* Header */}
-          <View style={styles.createWebViewHeader}>
-            <TouchableOpacity
-              onPress={() => setCreateFlowStep("url")}
-              style={styles.createWebViewNavBtn}
-              activeOpacity={0.7}
-            >
-              <X color="#000" size={22} />
-            </TouchableOpacity>
-
-            <View style={styles.createWebViewUrlWrap}>
-              <Globe color="#999" size={13} />
-              <Text style={styles.createWebViewUrl} numberOfLines={1}>
-                {previewUrl}
-              </Text>
-            </View>
-
-            <View style={styles.createWebViewNavGroup}>
-              <TouchableOpacity
-                onPress={() => previewWebViewRef.current?.goBack()}
-                disabled={!webviewCanGoBack}
-                style={styles.createWebViewNavBtn}
-                activeOpacity={0.7}
-              >
-                <ChevronLeft
-                  color={webviewCanGoBack ? "#000" : "#CCC"}
-                  size={22}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => previewWebViewRef.current?.goForward()}
-                disabled={!webviewCanGoForward}
-                style={styles.createWebViewNavBtn}
-                activeOpacity={0.7}
-              >
-                <ChevronRight
-                  color={webviewCanGoForward ? "#000" : "#CCC"}
-                  size={22}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* WebView */}
-          <WebView
-            ref={previewWebViewRef}
-            source={{ uri: previewUrl }}
-            style={{ flex: 1 }}
-            onLoadStart={() => setWebviewLoading(true)}
-            onLoadEnd={() => setWebviewLoading(false)}
-            onNavigationStateChange={(nav) => {
-              setWebviewCanGoBack(nav.canGoBack);
-              setWebviewCanGoForward(nav.canGoForward);
-            }}
-            onMessage={handleWebViewMessage}
-            javaScriptEnabled
-            domStorageEnabled
-            thirdPartyCookiesEnabled
-            allowsBackForwardNavigationGestures={Platform.OS === "ios"}
-          />
-
-          {/* Loading overlay */}
-          {webviewLoading && (
-            <View style={styles.webviewLoadingOverlay} pointerEvents="none">
-              <ActivityIndicator size="large" color="#000" />
-            </View>
-          )}
-
-          {/* Confirm bar */}
-          <View style={styles.confirmJobBar}>
-            <View style={styles.confirmJobBarInner}>
-              <View style={styles.confirmJobStepPill}>
-                <Sparkles color="#FFF" size={11} />
-                <Text style={styles.confirmJobStepText}>Step 1 of 2</Text>
-              </View>
-              <Text style={styles.confirmJobBarLabel}>
-                Is this the right job?
-              </Text>
-              <TouchableOpacity
-                style={[styles.confirmJobBtn, isScraping && { opacity: 0.6 }]}
-                onPress={handleConfirmJob}
-                disabled={isScraping}
-                activeOpacity={0.85}
-              >
-                {isScraping ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <>
-                    <Check color="#FFF" size={17} strokeWidth={2.5} />
-                    <Text style={styles.confirmJobBtnText}>Confirm Job</Text>
-                    <ChevronRight color="#FFF" size={17} />
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Step 3: BackChannel Insights Modal */}
-      <Modal
-        visible={showCreateModal && createFlowStep === "insights"}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setCreateFlowStep("webview")}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={0}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeCreateModal}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.createModalContent}
-          >
-            {/* Header */}
-            <View style={[styles.modalHeader, { gap: 8 }]}>
-              <TouchableOpacity
-                onPress={() => setCreateFlowStep("webview")}
-                style={[styles.closeButton, { marginRight: 4 }]}
-              >
-                <ChevronLeft color="#000" size={24} />
-              </TouchableOpacity>
-              <Text style={[styles.modalMainTitle, { flex: 1 }]}>
-                BackChannel Insights
-              </Text>
-              <TouchableOpacity
-                onPress={closeCreateModal}
-                style={styles.closeButton}
-              >
-                <X color="#000" size={22} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Step indicator */}
-            <View style={styles.insightsStepRow}>
-              <View
-                style={[styles.stepDot, styles.stepDotActive, { width: 8 }]}
-              />
-              <View style={[styles.stepDot, styles.stepDotActive]} />
-              <Text style={styles.insightsStepLabel}>Step 2 of 2</Text>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              style={styles.createScrollView}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingBottom: 8 }}
-            >
-              <Text style={styles.modalSubTitle}>
-                Share the inside story candidates can't find anywhere else.
-                Every question is optional.
-              </Text>
-
-              <SponsorInsightCards
-                values={{
-                  dayToDay,
-                  teamCulture,
-                  idealCandidate,
-                  insiderInsights,
-                }}
-                onChange={(key, text) => {
-                  if (key === "dayToDay") setDayToDay(text);
-                  else if (key === "teamCulture") setTeamCulture(text);
-                  else if (key === "idealCandidate") setIdealCandidate(text);
-                  else setInsiderInsights(text);
-                }}
-              />
-            </ScrollView>
-
-            {/* Create Job Button */}
-            <TouchableOpacity
-              style={[styles.createJobBtn, isCreatingJob && { opacity: 0.6 }]}
-              onPress={handleCreateJob}
-              disabled={isCreatingJob}
-              activeOpacity={0.85}
-            >
-              {isCreatingJob ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <>
-                  <Sparkles color="#FFF" size={18} />
-                  <Text style={styles.confirmBtnText}>Create Job</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* Create-from-URL flow (URL entry -> WebView preview -> insights) —
+          extracted to components/jobs/CreateJobFlow.tsx. The webview ref and
+          scrape handlers stay here because handleConfirmJob injects the
+          scraping script into the same ref. */}
+      <CreateJobFlow
+        visible={showCreateModal}
+        step={createFlowStep}
+        onSetStep={setCreateFlowStep}
+        onClose={closeCreateModal}
+        jobUrlInput={jobUrlInput}
+        onSetJobUrlInput={setJobUrlInput}
+        onPreviewJob={handlePreviewJob}
+        webviewRef={previewWebViewRef}
+        previewUrl={previewUrl}
+        webviewLoading={webviewLoading}
+        onSetWebviewLoading={setWebviewLoading}
+        webviewCanGoBack={webviewCanGoBack}
+        webviewCanGoForward={webviewCanGoForward}
+        onSetWebviewCanGoBack={setWebviewCanGoBack}
+        onSetWebviewCanGoForward={setWebviewCanGoForward}
+        onWebViewMessage={handleWebViewMessage}
+        isScraping={isScraping}
+        onConfirmJob={handleConfirmJob}
+        insights={{ dayToDay, teamCulture, idealCandidate, insiderInsights }}
+        onSetDayToDay={setDayToDay}
+        onSetTeamCulture={setTeamCulture}
+        onSetIdealCandidate={setIdealCandidate}
+        onSetInsiderInsights={setInsiderInsights}
+        isCreatingJob={isCreatingJob}
+        onCreateJob={handleCreateJob}
+      />
 
       {/* Menu Modal */}
       <Modal
