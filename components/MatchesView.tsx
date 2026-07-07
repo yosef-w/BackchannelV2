@@ -63,6 +63,7 @@ import {
 import { MatchesEmptyState } from "./matches/MatchesEmptyState";
 import { MatchListScreen } from "./matches/MatchListScreen";
 import { MatchSection } from "./matches/MatchSection";
+import { renderMatchRows } from "./matches/matchRowBuilders";
 import { MetaLine, OpportunityRow } from "./matches/OpportunityRow";
 import { JobDetailModal } from "./matches/JobDetailModal";
 import { ReferralDetailModal } from "./matches/ReferralDetailModal";
@@ -406,75 +407,17 @@ export function MatchesView({
     setActiveSlide(0);
   };
 
-  // ── Match grouping ────────────────────────────────────────────────
-  // A match exists per JOB_ID, so matching the same person on multiple roles
-  // produces multiple cards with an identical name (and, on the applicant
-  // side, an identical sponsor-title subtitle — literally indistinguishable).
-  // Collapse them into one card per counterpart, keyed by the other person's
-  // user id. The matched JOB rows stay separate underneath; only the card
-  // collapses, and a "N roles" pill signals the multi-role relationship.
-  const matchGroupKey = (m: Match, keyField: "sponsorUserId" | "applicantUserId") =>
-    (m[keyField] as string) || m.id;
-
-  const groupMatches = (
-    list: Match[],
-    keyField: "sponsorUserId" | "applicantUserId",
-  ) => {
-    const map = new Map<string, Match[]>();
-    list.forEach((m) => {
-      const key = matchGroupKey(m, keyField);
-      const arr = map.get(key);
-      if (arr) arr.push(m);
-      else map.set(key, [m]);
-    });
-    // Preserve API order (matched_at DESC) for both groups and members; the
-    // first member is the most-recent match and represents the group.
-    return Array.from(map.values()).map((items) => ({
-      key: matchGroupKey(items[0], keyField),
-      items,
-      latest: items[0],
-    }));
-  };
-
-  // Render a section's matches as grouped cards. Single-match people render
-  // exactly as before; multi-match people render one card with a roles pill.
-  // Row builder for the "Matched" MatchSection, used by both roles.
-  // Same grouping (one row per counterpart, "N roles" when they matched on
-  // multiple jobs) and the same role-picker vs. direct-message branching —
-  // only the visual shape changes, from a horizontal card to a full-width row.
-  const renderMatchRows = (
-    list: Match[],
-    opts: {
-      keyField: "sponsorUserId" | "applicantUserId";
-      getMessageUserId: (m: Match) => string | undefined;
+  // Row-grouping callbacks for renderMatchRows (components/matches/matchRowBuilders.tsx):
+  // one row per counterpart, opening the role picker when they matched on
+  // multiple jobs, otherwise viewing/messaging that single match directly.
+  const matchRowCallbacks = {
+    onOpenRoleGroup: setRoleGroup,
+    onOpenProfile: openProfile,
+    onMessageTapped: (match: Match, userId: string | undefined) => {
+      trackMatchMessageTapped({ jobId: match.jobId });
+      onNavigateToMessages?.(match.jobId ?? "", userId);
     },
-  ) =>
-    groupMatches(list, opts.keyField).map((group) => {
-      const match = group.latest;
-      const grouped = group.items.length > 1;
-      const openPicker = () =>
-        setRoleGroup({ items: group.items, getMessageUserId: opts.getMessageUserId });
-      const onRowPress = grouped ? openPicker : () => openProfile(match, "view");
-      const onMessagePress = () => {
-        if (grouped) {
-          openPicker();
-          return;
-        }
-        trackMatchMessageTapped({ jobId: match.jobId });
-        onNavigateToMessages?.(match.jobId ?? "", opts.getMessageUserId(match));
-      };
-      return (
-        <OpportunityRow
-          key={group.key}
-          onPress={onRowPress}
-          leading={<Avatar photoUrl={match.image} name={match.name} size={48} borderRadius={16} />}
-          title={match.name}
-          subtitle={grouped ? `${group.items.length} roles` : match.role}
-          cta="Message"
-          onPressCta={onMessagePress}
-        />
-      );
-    });
+  };
 
   const openJob = (job: JobOpportunity) => {
     setSelectedJob(job);
@@ -943,10 +886,14 @@ export function MatchesView({
               )),
             ];
 
-            const sponsorMatchedRows = renderMatchRows(matches, {
-              keyField: "applicantUserId",
-              getMessageUserId: (m) => m.sponsorUserId,
-            });
+            const sponsorMatchedRows = renderMatchRows(
+              matches,
+              {
+                keyField: "applicantUserId",
+                getMessageUserId: (m) => m.sponsorUserId,
+              },
+              matchRowCallbacks,
+            );
 
             const sponsorInProgressRows = referrals.map((referral, index) => {
               // Try to find the full match object so "View" opens the profile modal
@@ -1176,10 +1123,14 @@ export function MatchesView({
               )),
             ];
 
-            const applicantMatchedRows = renderMatchRows(matches, {
-              keyField: "sponsorUserId",
-              getMessageUserId: (m) => m.applicantUserId,
-            });
+            const applicantMatchedRows = renderMatchRows(
+              matches,
+              {
+                keyField: "sponsorUserId",
+                getMessageUserId: (m) => m.applicantUserId,
+              },
+              matchRowCallbacks,
+            );
 
             const applicantInProgressRows = [
               ...likedJobs.map((job) => (
