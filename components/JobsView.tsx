@@ -86,6 +86,7 @@ import {
   transformMyJobRow,
 } from "./jobs/jobTransforms";
 import { SponsorInsightCards } from "./jobs/SponsorInsightCards";
+import { SponsorJobModal } from "./jobs/SponsorJobModal";
 import { SponsoredJobCard } from "./jobs/SponsoredJobCard";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { DismissibleSheet } from "./ui/DismissibleSheet";
@@ -698,8 +699,6 @@ export function JobsView() {
       true;
     })();
   `;
-
-  const isFormComplete = relationship !== null && canRefer !== null;
 
   const handleOpenModal = (job: JobPosting) => {
     setSelectedJob(job);
@@ -1419,221 +1418,28 @@ export function JobsView() {
         animationType="fade"
         onRequestClose={closeModal}
       >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={0}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeModal}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={styles.modalContent}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalMainTitle}>
-                {sponsorshipStep === 1
-                  ? "Confirm Sponsorship"
-                  : sponsorshipStep === 2
-                    ? "Add Insider Insights"
-                    : "Sponsorship Active!"}
-              </Text>
-              <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-            {sponsorshipStep === 1 ? (
-              <>
-                <View style={styles.insightsStepRow}>
-                  <View
-                    style={[styles.stepDot, styles.stepDotActive, { width: 8 }]}
-                  />
-                  <View style={styles.stepDot} />
-                  <Text style={styles.insightsStepLabel}>Step 1 of 2</Text>
-                </View>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  bounces={false}
-                >
-                  <Text style={styles.modalSubTitle}>
-                    Help us understand your role and referral capability
-                  </Text>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>
-                      Your relationship to this role
-                    </Text>
-                    {["Hiring Manager", "Team Member", "Other"].map((item) => (
-                      <TouchableOpacity
-                        key={item}
-                        style={styles.radioOption}
-                        onPress={() => setRelationship(item)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.radioLeft}>
-                          <View
-                            style={[
-                              styles.radioCircle,
-                              relationship === item && styles.radioCircleActive,
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.radioText,
-                              relationship === item && styles.radioTextActive,
-                            ]}
-                          >
-                            {item}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={styles.formSection}>
-                    <Text style={styles.fieldLabel}>
-                      Can you provide a referral?
-                    </Text>
-                    <View style={styles.sideBySide}>
-                      <TouchableOpacity
-                        style={styles.halfOption}
-                        onPress={() => setCanRefer(true)}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={[
-                            styles.radioCircle,
-                            canRefer === true && styles.radioCircleActive,
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.radioText,
-                            canRefer === true && styles.radioTextActive,
-                          ]}
-                        >
-                          Yes
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.halfOption}
-                        onPress={() => setCanRefer(false)}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={[
-                            styles.radioCircle,
-                            canRefer === false && styles.radioCircleActive,
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.radioText,
-                            canRefer === false && styles.radioTextActive,
-                          ]}
-                        >
-                          No
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </ScrollView>
-                <TouchableOpacity
-                  style={[
-                    styles.confirmBtn,
-                    !isFormComplete && styles.confirmBtnDisabled,
-                  ]}
-                  disabled={!isFormComplete}
-                  onPress={() => setSponsorshipStep(2)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.confirmBtnText}>Continue</Text>
-                </TouchableOpacity>
-              </>
-            ) : sponsorshipStep === 2 ? (
-              <>
-                <View style={styles.insightsStepRow}>
-                  <View
-                    style={[styles.stepDot, styles.stepDotActive, { width: 8 }]}
-                  />
-                  <View style={[styles.stepDot, styles.stepDotActive]} />
-                  <Text style={styles.insightsStepLabel}>Step 2 of 2</Text>
-                </View>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  bounces={false}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={{ paddingBottom: 16 }}
-                >
-                  <Text style={styles.modalSubTitle}>
-                    Share the inside story candidates can't find anywhere else.
-                    Every question is optional.
-                  </Text>
-
-                  <SponsorInsightCards
-                    values={{
-                      dayToDay: sponsorDayToDay,
-                      teamCulture: sponsorTeamCulture,
-                      idealCandidate: sponsorIdealCandidate,
-                      insiderInsights: sponsorInsiderInsights,
-                    }}
-                    onChange={(key, text) => {
-                      if (key === "dayToDay") setSponsorDayToDay(text);
-                      else if (key === "teamCulture") setSponsorTeamCulture(text);
-                      else if (key === "idealCandidate")
-                        setSponsorIdealCandidate(text);
-                      else setSponsorInsiderInsights(text);
-                    }}
-                  />
-
-                  {/* Button sits at the end of the scroll content (not pinned)
-                      so the sheet doesn't feel crowded — the sponsor scrolls
-                      down to confirm once they're done. */}
-                  <TouchableOpacity
-                    style={[
-                      styles.confirmBtn,
-                      { marginTop: 24 },
-                      isSponsoring && styles.confirmBtnDisabled,
-                    ]}
-                    disabled={isSponsoring}
-                    onPress={handleConfirmSponsorship}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.confirmBtnText}>
-                      {isSponsoring ? "Sponsoring..." : "Confirm Sponsorship"}
-                    </Text>
-                  </TouchableOpacity>
-                </ScrollView>
-              </>
-            ) : (
-              <Animated.View entering={FadeIn} style={styles.successStep}>
-                <View style={styles.successIconCircle}>
-                  <Check color="#FFF" size={32} strokeWidth={3} />
-                </View>
-                <Text style={styles.successTitle}>Sponsorship Confirmed!</Text>
-                <Text style={styles.successDesc}>
-                  You are now sponsoring {selectedJob?.title}. Applicants will
-                  be able to see your sponsorship.
-                </Text>
-                <TouchableOpacity
-                  style={styles.confirmBtn}
-                  onPress={closeModal}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.confirmBtnText}>Back to Job Board</Text>
-                </TouchableOpacity>
-              </Animated.View>
-            )}
-          </Animated.View>
-        </KeyboardAvoidingView>
+        <SponsorJobModal
+          job={selectedJob}
+          flow={{
+            step: sponsorshipStep,
+            relationship,
+            canRefer,
+            isSponsoring,
+            dayToDay: sponsorDayToDay,
+            teamCulture: sponsorTeamCulture,
+            idealCandidate: sponsorIdealCandidate,
+            insiderInsights: sponsorInsiderInsights,
+          }}
+          onClose={closeModal}
+          onSetStep={setSponsorshipStep}
+          onSetRelationship={setRelationship}
+          onSetCanRefer={setCanRefer}
+          onSetDayToDay={setSponsorDayToDay}
+          onSetTeamCulture={setSponsorTeamCulture}
+          onSetIdealCandidate={setSponsorIdealCandidate}
+          onSetInsiderInsights={setSponsorInsiderInsights}
+          onConfirm={handleConfirmSponsorship}
+        />
       </Modal>
 
       {/* Step 1: URL Entry Modal */}
