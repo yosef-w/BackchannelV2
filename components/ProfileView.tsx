@@ -160,24 +160,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.presentCustomerCenter,
   );
   const userProfileData = useUserProfileStore((state) => state.data);
-  // TEMP DEBUG — remove once the blank-name investigation is resolved.
-  // Logs on mount (i.e. every time the Profile tab is opened) and again
-  // whenever the store's data changes underneath it (e.g. fetchFromBackend
-  // resolving after the tab was already open), so we can see exactly what
-  // the store has for personal info, and whether dirtyFields/
-  // syncFailureCount indicate a stuck local edit is still masking the real
-  // backend value.
-  useEffect(() => {
-    console.log("[ProfileView] Profile tab opened — personal:", {
-      firstName: userProfileData.personal.firstName,
-      lastName: userProfileData.personal.lastName,
-      fullName: userProfileData.personal.fullName,
-      email: userProfileData.personal.email,
-      dirtyFields: Array.from(useUserProfileStore.getState().dirtyFields),
-      syncFailureCount: useUserProfileStore.getState().syncFailureCount,
-      isLoaded: useUserProfileStore.getState().isLoaded,
-    });
-  }, [userProfileData]);
   // Once a sponsor's work email is verified, their Company is locked — they've
   // vouched for that employer, so they can't silently swap it while keeping
   // verified status (mirrors the work-email lock).
