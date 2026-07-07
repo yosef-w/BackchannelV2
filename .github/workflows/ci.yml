@@ -1,0 +1,43 @@
+# CI gate — runs on every push to main and every PR. The remote counterpart
+# to the local .husky/pre-push hook (which can be bypassed with --no-verify
+# and only exists on machines that ran npm install): typecheck, lint, test.
+#
+# Deliberately does NOT run `expo export` — the bundle build needs EAS env
+# vars and adds minutes per run; tsc + jest catch nearly everything it
+# would. Full builds stay on EAS (see eas.json).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint (informational)
+        # The repo carries a known baseline of 34 pre-existing eslint errors
+        # (react/no-unescaped-entities apostrophes) plus intentional
+        # no-explicit-any keeper warnings. Until that baseline is burned
+        # down, lint output is informational — the build gates on typecheck
+        # and tests. Flip continue-on-error to false once errors hit zero.
+        run: npx eslint .
+        continue-on-error: true
+
+      - name: Test
+        run: npm test -- --ci
