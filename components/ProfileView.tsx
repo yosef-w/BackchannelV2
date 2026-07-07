@@ -1,4 +1,3 @@
-import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -28,8 +27,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Modal,
-    Platform,
     ScrollView,
     StyleSheet,
     Switch,
@@ -38,11 +35,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, {
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
-} from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { PREMIUM_ENABLED } from "../constants/config";
 import {
     resetUser,
@@ -89,6 +82,7 @@ import {
   SPONSOR_PROMPT_EXAMPLES,
 } from "../constants/prompts";
 import { EditorScreen } from "./profile/EditorScreen";
+import { ProfileActionSheet } from "./profile/ProfileActionSheet";
 import { EditProfileScreen } from "./profile/EditProfileScreen";
 import { HubRow } from "./profile/HubRow";
 import { HubSection } from "./profile/HubSection";
@@ -2623,122 +2617,31 @@ export function ProfileView({ userType }: ProfileViewProps) {
       </TouchableOpacity>
 
       {/* IMAGE PICKER MODAL */}
-      <Modal visible={showImagePickerModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowImagePickerModal(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={[styles.modalContent, { paddingBottom: 50 }]}
-            pointerEvents="auto"
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Profile Photo</Text>
-              <TouchableOpacity onPress={() => setShowImagePickerModal(false)}>
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Choose how you'd like to add your profile photo
-            </Text>
-
-            <View style={{ gap: 12, marginTop: 12 }}>
-              <TouchableOpacity
-                style={[
-                  styles.blackBtn,
-                  { width: "100%", justifyContent: "center", borderWidth: 0 },
-                ]}
-                onPress={takePhoto}
-              >
-                <Camera color="#FFF" size={18} />
-                <Text style={styles.blackBtnText}>Take Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.whiteBtn,
-                  { width: "100%", justifyContent: "center" },
-                ]}
-                onPress={pickImage}
-              >
-                <ImageIcon color="#000" size={18} />
-                <Text style={styles.whiteBtnText}>Choose from Gallery</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+      <ProfileActionSheet
+        visible={showImagePickerModal}
+        title="Profile Photo"
+        subtitle="Choose how you'd like to add your profile photo"
+        primaryLabel="Take Photo"
+        primaryIcon={<Camera color="#FFF" size={18} />}
+        onPrimary={takePhoto}
+        secondaryLabel="Choose from Gallery"
+        secondaryIcon={<ImageIcon color="#000" size={18} />}
+        onSecondary={pickImage}
+        onClose={() => setShowImagePickerModal(false)}
+      />
 
       {/* LOGOUT CONFIRMATION MODAL */}
-      <Modal visible={showLogoutModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowLogoutModal(false)}
-          >
-            <BlurView
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <Animated.View
-            entering={SlideInDown}
-            exiting={SlideOutDown}
-            style={[styles.modalContent, { paddingBottom: 50 }]}
-            pointerEvents="auto"
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Log Out</Text>
-              <TouchableOpacity onPress={() => setShowLogoutModal(false)}>
-                <X color="#000" size={24} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Are you sure you want to log out? You'll need to sign in again to
-              access your account.
-            </Text>
-
-            <View style={{ gap: 12, marginTop: 12 }}>
-              <TouchableOpacity
-                style={[
-                  styles.blackBtn,
-                  { width: "100%", justifyContent: "center", borderWidth: 0 },
-                ]}
-                onPress={confirmLogout}
-              >
-                <LogOut color="#FFF" size={18} />
-                <Text style={styles.blackBtnText}>Log Out</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.whiteBtn,
-                  { width: "100%", justifyContent: "center" },
-                ]}
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.whiteBtnText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+      <ProfileActionSheet
+        visible={showLogoutModal}
+        title="Log Out"
+        subtitle="Are you sure you want to log out? You'll need to sign in again to access your account."
+        primaryLabel="Log Out"
+        primaryIcon={<LogOut color="#FFF" size={18} />}
+        onPrimary={confirmLogout}
+        secondaryLabel="Cancel"
+        onSecondary={() => setShowLogoutModal(false)}
+        onClose={() => setShowLogoutModal(false)}
+      />
 
       {/* EDIT PROFILE SCREEN */}
       <EditProfileScreen
@@ -2891,22 +2794,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 14,
   },
-  whiteBtn: {
-    flexDirection: "row",
-    backgroundColor: "#FFF",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: "#EEE",
-  },
-  whiteBtnText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 14,
-  },
   logOutRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2923,34 +2810,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#000",
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 32,
-    maxHeight: "90%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 24,
-    lineHeight: 20,
   },
   entryCard: {
     backgroundColor: "#F9F9F9",
