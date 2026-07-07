@@ -41,6 +41,8 @@ interface PromptsIntakeProps {
   max?: number;
   maxAnswerLength?: number;
   subtitle?: string;
+  /** Label on the dashed empty slot. Default "Answer a prompt". */
+  emptySlotLabel?: string;
 }
 
 export function PromptsIntake({
@@ -52,6 +54,7 @@ export function PromptsIntake({
   max = 3,
   maxAnswerLength = 200,
   subtitle,
+  emptySlotLabel = "Answer a prompt",
 }: PromptsIntakeProps) {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -66,9 +69,15 @@ export function PromptsIntake({
   );
 
   // Empty slots to render beneath the answered ones (up to `min`), plus an
-  // optional "add another" once the minimum is met.
-  const emptySlots = Math.max(0, min - value.length);
-  const canAddMore = value.length >= min && value.length < max;
+  // optional "add another" once the minimum is met. Even with min=0 (fully
+  // optional, e.g. job insights) an empty list still shows one dashed
+  // invitation slot — a bare "add another" link reads like an afterthought.
+  const emptySlots = Math.max(
+    value.length === 0 && max > 0 ? 1 : 0,
+    min - value.length,
+  );
+  const canAddMore =
+    value.length >= Math.max(min, 1) && value.length < max;
 
   const openLibraryForNew = () => {
     if (value.length >= max) return;
@@ -182,7 +191,7 @@ export function PromptsIntake({
           <View style={styles.emptyPlus}>
             <Plus size={18} color="#000" />
           </View>
-          <Text style={styles.emptyText}>Answer a prompt</Text>
+          <Text style={styles.emptyText}>{emptySlotLabel}</Text>
           <ChevronRight size={18} color="#CCC" />
         </TouchableOpacity>
       ))}
@@ -199,9 +208,15 @@ export function PromptsIntake({
         </TouchableOpacity>
       ) : null}
 
-      <Text style={styles.progress}>
-        {value.length} of {min} answered
-      </Text>
+      {min > 0 ? (
+        <Text style={styles.progress}>
+          {value.length} of {min} answered
+        </Text>
+      ) : value.length > 0 ? (
+        <Text style={styles.progress}>
+          {value.length} {value.length === 1 ? "prompt" : "prompts"} answered
+        </Text>
+      ) : null}
 
       {/* ── Library sheet ─────────────────────────────────────────────────── */}
       <Modal

@@ -1,5 +1,12 @@
 import { Check, MessageSquareQuote, Sparkles } from "@/components/ui/icons";
-import { SponsorInsightCards } from "@/components/jobs/SponsorInsightCards";
+import {
+    PromptsIntake,
+    type PromptAnswer,
+} from "@/components/ui/PromptsIntake";
+import {
+    JOB_PROMPT_CATEGORIES,
+    JOB_PROMPT_EXAMPLES,
+} from "@/constants/prompts";
 import React from "react";
 import {
     ActivityIndicator,
@@ -13,37 +20,36 @@ import {
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 
-interface InsightsValues {
-  dayToDay: string;
-  teamCulture: string;
-  idealCandidate: string;
-  insiderInsights: string;
-}
-
 interface CreateJobInsightsScreenProps {
   visible: boolean;
   jobTitle: string;
-  values: InsightsValues;
-  onChange: (key: keyof InsightsValues, text: string) => void;
+  answers: PromptAnswer[];
+  onChangeAnswers: (next: PromptAnswer[]) => void;
   isPublishing: boolean;
   onPublish: () => void;
   onBack: () => void;
   onClose: () => void;
 }
 
+// A sponsor realistically writes 2-4 great insights; 6 leaves headroom
+// without inviting a wall of text on the applicant's card.
+const MAX_JOB_PROMPTS = 6;
+const MAX_JOB_ANSWER_LENGTH = 500;
+
 /**
- * Step 4 — insider insights, reframed as the payoff rather than a chore.
- * Every other field on this listing could have come from the scraper; this
- * is the one thing only the sponsor can write, and it's what makes a
- * BackChannel listing worth more than the original posting. Skippable —
- * insights can always be added later from My Sponsored — because a
- * skippable step gets finished more often than one that feels mandatory.
+ * Step 4 — insider insights as Hinge-style prompts: the same PromptsIntake
+ * system applicants use at signup, fed with job-flavored prompts ("YOU'LL
+ * STRUGGLE HERE IF…"). Picking and answering happen in PromptsIntake's own
+ * full-screen library/editor, so the keyboard never fights this screen for
+ * space. Fully skippable — insights can always be added later from My
+ * Sponsored — because a skippable step gets finished more often than one
+ * that feels mandatory.
  */
 export function CreateJobInsightsScreen({
   visible,
   jobTitle,
-  values,
-  onChange,
+  answers,
+  onChangeAnswers,
   isPublishing,
   onPublish,
   onBack,
@@ -51,7 +57,7 @@ export function CreateJobInsightsScreen({
 }: CreateJobInsightsScreenProps) {
   if (!visible) return null;
 
-  const hasAnyInsight = Object.values(values).some((v) => v.trim().length > 0);
+  const hasAnyInsight = answers.some((a) => a.answer.trim().length > 0);
 
   return (
     <View style={styles.screen}>
@@ -79,13 +85,22 @@ export function CreateJobInsightsScreen({
               <Text style={styles.payoffTitle}>The part only you can write</Text>
               <Text style={styles.payoffSubtitle}>
                 Every other field on {jobTitle || "this listing"} could come
-                from the job posting. This is what candidates can&apos;t find
-                anywhere else — and it&apos;s what makes them apply.
+                from the job posting. Answer a prompt or two about what it&apos;s
+                really like — that&apos;s what makes candidates apply.
               </Text>
             </View>
           </View>
 
-          <SponsorInsightCards values={values} onChange={onChange} />
+          <PromptsIntake
+            value={answers}
+            onChange={onChangeAnswers}
+            categories={JOB_PROMPT_CATEGORIES}
+            examples={JOB_PROMPT_EXAMPLES}
+            min={0}
+            max={MAX_JOB_PROMPTS}
+            maxAnswerLength={MAX_JOB_ANSWER_LENGTH}
+            emptySlotLabel="Add an insider insight"
+          />
         </ScrollView>
 
         <View style={styles.footer}>

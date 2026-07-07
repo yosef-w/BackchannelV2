@@ -120,3 +120,99 @@ export const SPONSOR_PROMPT_EXAMPLES: Record<string, string> = {
   "WHAT I'M LEARNING RIGHT NOW": "e.g., How to give feedback that actually lands",
   "MY LEADERSHIP PHILOSOPHY": "e.g., Set the bar, then clear the obstacles",
 };
+
+// ── Job insights (create-a-job flow) ───────────────────────────────────────
+// Same Hinge-style prompt system, but the answers describe a job, not a
+// person. Each category maps 1:1 onto a field of the backend's fixed
+// insights object ({ dayToDay, teamCulture, idealCandidate, insiderInsights })
+// — the create flow serializes answers under their category's insightKey, so
+// the API payload shape never changes. Prompt strings are baked into the
+// stored answer text ("PROMPT — answer"), so keep them stable.
+
+export type JobInsightKey =
+  | "dayToDay"
+  | "teamCulture"
+  | "idealCandidate"
+  | "insiderInsights";
+
+export interface JobPromptCategory extends PromptCategory {
+  insightKey: JobInsightKey;
+}
+
+export const JOB_PROMPT_CATEGORIES: JobPromptCategory[] = [
+  {
+    title: "The real day-to-day",
+    insightKey: "dayToDay",
+    prompts: [
+      "A TYPICAL WEEK HERE",
+      "THE MEETING LOAD, HONESTLY",
+      "THE PACE OF THIS TEAM",
+      "WHERE THE TIME ACTUALLY GOES",
+    ],
+  },
+  {
+    title: "Team & culture",
+    insightKey: "teamCulture",
+    prompts: [
+      "THE TEAM YOU'D JOIN",
+      "REMOTE VS. IN-OFFICE REALITY",
+      "THE MANAGER'S STYLE",
+      "HOW DECISIONS GET MADE",
+    ],
+  },
+  {
+    title: "Who actually thrives",
+    insightKey: "idealCandidate",
+    prompts: [
+      "YOU'LL LOVE THIS ROLE IF",
+      "YOU'LL STRUGGLE HERE IF",
+      "PEOPLE WHO SUCCEED HERE",
+      "WHAT MATTERS MORE THAN THE RESUME",
+    ],
+  },
+  {
+    title: "The inside track",
+    insightKey: "insiderInsights",
+    prompts: [
+      "THE INTERVIEW PROCESS, FOR REAL",
+      "GROWTH FROM THIS ROLE",
+      "THE COMP CONVERSATION",
+      "WHAT NOBODY TELLS YOU",
+    ],
+  },
+];
+
+export const JOB_PROMPT_EXAMPLES: Record<string, string> = {
+  "A TYPICAL WEEK HERE":
+    "e.g., Two feature sprints, one demo Friday, real focus time in between",
+  "THE MEETING LOAD, HONESTLY":
+    "e.g., Standup daily, everything else is async — calendars stay light",
+  "THE PACE OF THIS TEAM":
+    "e.g., Fast but sane — we ship weekly without weekend fire drills",
+  "WHERE THE TIME ACTUALLY GOES":
+    "e.g., 60% building, 20% reviews and pairing, 20% planning",
+  "THE TEAM YOU'D JOIN":
+    "e.g., Eight engineers, mostly senior, low ego, high trust",
+  "REMOTE VS. IN-OFFICE REALITY":
+    "e.g., Officially hybrid; in practice most people come in Tuesdays",
+  "THE MANAGER'S STYLE":
+    "e.g., Hands-off on the how, very clear on the what and why",
+  "HOW DECISIONS GET MADE":
+    "e.g., Written proposals, quick debate, then one owner decides",
+  "YOU'LL LOVE THIS ROLE IF":
+    "e.g., You like owning something end-to-end without a playbook",
+  "YOU'LL STRUGGLE HERE IF":
+    "e.g., You need lots of structure and a fully groomed backlog",
+  "PEOPLE WHO SUCCEED HERE":
+    "e.g., Self-starters who over-communicate and ask for help early",
+  "WHAT MATTERS MORE THAN THE RESUME":
+    "e.g., Curiosity and shipped side projects beat brand-name experience",
+  "THE INTERVIEW PROCESS, FOR REAL":
+    "e.g., Recruiter chat, one take-home, a half-day loop — about two weeks",
+  "GROWTH FROM THIS ROLE":
+    "e.g., Last two people in this seat are now leading their own teams",
+  "THE COMP CONVERSATION":
+    "e.g., Bands are public internally; equity refreshes actually happen",
+  "WHAT NOBODY TELLS YOU":
+    "e.g., The CEO reads every product feedback ticket — visibility is real",
+};

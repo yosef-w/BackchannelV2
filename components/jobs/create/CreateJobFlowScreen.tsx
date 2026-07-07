@@ -1,3 +1,4 @@
+import type { PromptAnswer } from "@/components/ui/PromptsIntake";
 import { normalizeUrl } from "@/lib/validation";
 import React, { useEffect, useState } from "react";
 import { Modal, SafeAreaView, StyleSheet } from "react-native";
@@ -5,6 +6,7 @@ import {
     CreateJobInsightsScreen,
     CreateJobSuccessScreen,
 } from "./CreateJobInsightsScreen";
+import { promptAnswersToInsights } from "./jobPromptInsights";
 import { CreateJobFetchingScreen, type ScrapedJobData } from "./CreateJobFetchingScreen";
 import { CreateJobReviewScreen, type EditableJobFields } from "./CreateJobReviewScreen";
 import { CreateJobUrlScreen } from "./CreateJobUrlScreen";
@@ -44,12 +46,6 @@ const EMPTY_FIELDS: EditableJobFields = {
   description: "",
 };
 
-const EMPTY_INSIGHTS = {
-  dayToDay: "",
-  teamCulture: "",
-  idealCandidate: "",
-  insiderInsights: "",
-};
 
 /**
  * Create-a-job-from-URL, reimagined as a pushed full-screen flow (matching
@@ -79,7 +75,7 @@ export function CreateJobFlowScreen({
   const [normalizedUrl, setNormalizedUrl] = useState("");
   const [scraped, setScraped] = useState<ScrapedJobData | null>(null);
   const [fields, setFields] = useState<EditableJobFields>(EMPTY_FIELDS);
-  const [insights, setInsights] = useState(EMPTY_INSIGHTS);
+  const [insightAnswers, setInsightAnswers] = useState<PromptAnswer[]>([]);
 
   // Reset to a clean slate every time the flow is (re)opened.
   useEffect(() => {
@@ -89,7 +85,7 @@ export function CreateJobFlowScreen({
       setNormalizedUrl("");
       setScraped(null);
       setFields(EMPTY_FIELDS);
-      setInsights(EMPTY_INSIGHTS);
+      setInsightAnswers([]);
     }
   }, [visible]);
 
@@ -131,7 +127,7 @@ export function CreateJobFlowScreen({
         datePosted: scraped?.structured?.datePosted ?? null,
       },
       rawText: scraped?.rawText ?? "",
-      insights,
+      insights: promptAnswersToInsights(insightAnswers),
     });
   };
 
@@ -171,10 +167,8 @@ export function CreateJobFlowScreen({
             <CreateJobInsightsScreen
               visible={step === "insights"}
               jobTitle={fields.title}
-              values={insights}
-              onChange={(key, text) =>
-                setInsights((prev) => ({ ...prev, [key]: text }))
-              }
+              answers={insightAnswers}
+              onChangeAnswers={setInsightAnswers}
               isPublishing={isPublishing}
               onPublish={handlePublish}
               onBack={() => setStep("review")}

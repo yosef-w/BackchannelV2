@@ -1,6 +1,6 @@
 import { Globe, Link2, X } from "@/components/ui/icons";
 import { isValidUrl } from "@/lib/validation";
-import * as Clipboard from "expo-clipboard";
+import { requireOptionalNativeModule } from "expo-modules-core";
 import React, { useEffect, useState } from "react";
 import {
     KeyboardAvoidingView,
@@ -41,7 +41,17 @@ export function CreateJobUrlScreen({
       return;
     }
     let cancelled = false;
-    Clipboard.getUrlAsync()
+    // The ExpoClipboard native module is resolved optionally: dev clients
+    // built before the expo-clipboard dependency don't include it, and the
+    // clipboard suggestion is a nice-to-have — degrade to manual paste.
+    // getUrlAsync is iOS-only, hence the extra typeof guard.
+    const NativeClipboard = requireOptionalNativeModule<{
+      getUrlAsync?: () => Promise<string | null>;
+    }>("ExpoClipboard");
+    if (!NativeClipboard || typeof NativeClipboard.getUrlAsync !== "function") {
+      return;
+    }
+    NativeClipboard.getUrlAsync()
       .then((clipped) => {
         if (!cancelled && clipped && isValidUrl(clipped)) {
           setClipboardUrl(clipped);
