@@ -12,6 +12,7 @@ import {
     type ConversationRow,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { Sentry } from "@/lib/sentry";
 import { useToastStore } from "@/stores/useToastStore";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -905,6 +906,10 @@ export function MessagesView({
       return true;
     } catch (err) {
       console.warn("[MessagesView] Failed to send message:", err);
+      // A failed send is the app's most user-visible failure — worth a
+      // Sentry issue (the API-client hook reports the HTTP layer; this
+      // captures reconciliation/JS failures the status code can't see).
+      Sentry.captureException(err, { tags: { flow: "send_message" } });
       // Remove optimistic message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
       showToast("Failed to send message. Please try again.", "error");

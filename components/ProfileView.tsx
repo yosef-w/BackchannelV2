@@ -1722,6 +1722,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
         err?.message,
         err,
       );
+      // The résumé pipeline (upload → parse → AI classify → refetch) is the
+      // applicant onboarding centerpiece and has the most moving parts —
+      // failures here should page the dashboard, not just show a toast.
+      Sentry.captureException(err, { tags: { flow: "resume_upload" } });
       setResumeUploadStep("error");
       setResumeUploadError(err?.message || "Upload failed. Please try again.");
     }

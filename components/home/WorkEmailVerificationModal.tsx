@@ -13,7 +13,12 @@ import {
   View,
 } from "react-native";
 import { authApi } from "@/lib/auth-api";
-import { trackTesterModeEnabled } from "@/lib/analytics/mixpanel";
+import {
+  trackTesterModeEnabled,
+  trackWorkEmailResendRequested,
+  trackWorkEmailUpdated,
+  trackWorkEmailVerifyChecked,
+} from "@/lib/analytics/mixpanel";
 import { useUserProfileStore } from "../../stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 
@@ -156,6 +161,7 @@ export function WorkEmailVerificationModal({
                       authApi.sendWorkEmailVerification(trimmed),
                     ]);
                     await setPendingWorkEmail(trimmed);
+                    trackWorkEmailUpdated();
                     // Mirror to data.personal.workEmail so ProfileView
                     // reflects the new address immediately without
                     // waiting for a full profile refetch.
@@ -247,6 +253,7 @@ export function WorkEmailVerificationModal({
               await fetchFromBackend();
               const isNowVerified =
                 useUserProfileStore.getState().workEmailVerified;
+              trackWorkEmailVerifyChecked({ verified: isNowVerified });
               if (isNowVerified) {
                 onClose();
               } else {
@@ -293,6 +300,7 @@ export function WorkEmailVerificationModal({
             setEmailVerifyError("");
             try {
               await authApi.sendWorkEmailVerification(workEmail);
+              trackWorkEmailResendRequested();
               setEmailVerifyError("Sent! Check your inbox and spam folder.");
             } catch (err) {
               const msg = err instanceof Error ? err.message : "Couldn't resend.";

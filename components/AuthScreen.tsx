@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "@/components/ui/icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -19,6 +19,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import {
     identifyUser,
     trackForgotPasswordRequested,
+    trackScreenViewed,
     trackLoginFailed,
     trackLoginSubmitted,
     trackLoginSucceeded,
@@ -84,6 +85,13 @@ export function AuthScreen({
       : savedApplicantData;
 
   const [isLogin, setIsLogin] = useState(initialIsLogin);
+
+  // Top of the funnel — without this, sessions are invisible in Mixpanel
+  // until the user reaches the dashboard. Re-fires on the login<->signup
+  // toggle so the two modes chart separately.
+  useEffect(() => {
+    trackScreenViewed(isLogin ? "auth_login" : "auth_signup");
+  }, [isLogin]);
   const [firstName, setFirstName] = useState(savedData?.firstName ?? "");
   const [lastName, setLastName] = useState(savedData?.lastName ?? "");
   const [email, setEmail] = useState(savedData?.email ?? "");

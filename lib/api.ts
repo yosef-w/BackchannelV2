@@ -1,3 +1,5 @@
+import { trackApiError } from "@/lib/analytics/mixpanel";
+import { captureApiServerError, logBreadcrumb } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 export const API_BASE_URL =
@@ -32,6 +34,48 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Observability for FINAL request failures (a 401 that gets retried after
+   * a token refresh is not final and isn't reported). One choke point for
+   * every REST call in the app:
+   *  - breadcrumb → shows on the timeline of any later Sentry crash
+   *  - Mixpanel "API Error" → failure-rate charts per endpoint
+   *  - Sentry event for 5xx only → server bugs page the dashboard; 4xx are
+   *    expected client outcomes (validation, wrong password) and stay out
+   * The endpoint is scrubbed of query strings before leaving the device —
+   * some carry tokens (e.g. WebSocket-style ?token=) and none are needed
+   * for grouping.
+   */
+  private reportRequestFailure(
+    method: string,
+    endpoint: string,
+    statusOrReason: number | string,
+    serverMessage?: string,
+  ) {
+    try {
+      const cleanEndpoint = endpoint.split("?")[0];
+      logBreadcrumb(
+        `API ${statusOrReason}: ${method} ${cleanEndpoint}`,
+        { status: String(statusOrReason) },
+        "api",
+      );
+      trackApiError({
+        endpoint: cleanEndpoint,
+        statusOrReason: String(statusOrReason),
+      });
+      if (typeof statusOrReason === "number" && statusOrReason >= 500) {
+        captureApiServerError(
+          method,
+          cleanEndpoint,
+          statusOrReason,
+          serverMessage,
+        );
+      }
+    } catch {
+      // Observability must never break the request path.
+    }
   }
 
   private getAuthHeaders(): HeadersInit {
@@ -87,7 +131,22 @@ class ApiClient {
       },
     };
 
-    const response = await fetch(url, config);
+    let response: Response;
+    try {
+      response = await fetch(url, config);
+    } catch (err) {
+      // Network-level failure (offline, DNS, TLS) — never reached the
+      // server. Recorded as "network" (breadcrumb + Mixpanel), not a Sentry
+      // event: offline is a normal mobile condition and would flood.
+      this.reportRequestFailure(
+        options.method ?? "GET",
+        endpoint,
+        err instanceof Error && err.name === "AbortError"
+          ? "aborted"
+          : "network",
+      );
+      throw err;
+    }
 
     // ── 401 Unauthorized ─────────────────────────────────────────────────────
     if (
@@ -137,6 +196,12 @@ class ApiClient {
         errorData?.detail ||
         errorData?.message ||
         `API Error: ${response.status}`;
+      this.reportRequestFailure(
+        options.method ?? "GET",
+        endpoint,
+        response.status,
+        errorMessage,
+      );
       throw new Error(errorMessage);
     }
 
@@ -173,6 +238,14 @@ class ApiClient {
         errorData?.detail ||
         errorData?.message ||
         `API Error: ${retryResponse.status}`;
+      // This is the post-refresh retry, so the failure is final. Strip the
+      // base URL so grouping matches the primary path's endpoint format.
+      this.reportRequestFailure(
+        options.method ?? "GET",
+        url.replace(this.baseUrl, ""),
+        retryResponse.status,
+        errorMessage,
+      );
       throw new Error(errorMessage);
     }
     return retryResponse.json();

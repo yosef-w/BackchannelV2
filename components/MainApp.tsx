@@ -753,10 +753,19 @@ export function MainApp({ userType }: MainAppProps) {
       setPreviousView(activeView);
     }
     setActiveView(newView);
-    // Fire screen-view event on every tab switch. The screen names mirror
-    // ViewType ("home", "matches", etc.) so they map 1:1 to user-facing tabs.
-    trackScreenViewed(newView);
   };
+
+  // Fire the screen-view event on EVERY activeView change — including the
+  // initial screen on mount and the several paths that set activeView
+  // without going through handleViewChange (public-profile overlay, push
+  // deep links, ?tab= URL params, notification routing). Previously this
+  // lived inside handleViewChange, so only literal tab taps were counted
+  // and the first screen of every session was invisible in Mixpanel. The
+  // screen names mirror ViewType ("home", "matches", …) so they map 1:1 to
+  // user-facing tabs.
+  useEffect(() => {
+    trackScreenViewed(activeView);
+  }, [activeView]);
 
   const visibleNavItems = navItems.filter((item) => {
     return !item.sponsorOnly || userType === "sponsor";

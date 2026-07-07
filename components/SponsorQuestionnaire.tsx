@@ -1,6 +1,7 @@
 import {
   identifyUser,
   trackOnboardingCompleted,
+  trackOnboardingStepViewed,
   trackSignUpFailed,
   trackSignUpSucceeded,
 } from "@/lib/analytics/mixpanel";
@@ -511,6 +512,21 @@ export function SponsorQuestionnaire({
     if (question.type === "bio" && !bioText.trim()) {
       setBioText(buildDraftBio());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion]);
+
+  // Onboarding funnel — one event per step the sponsor actually SEES (the
+  // applicant questionnaire mirrors this), named by the question's `type`
+  // plus the index since sponsor questions carry no key ("3_select" is the
+  // tenure picker, "8_email" the work-email step, etc. — the id→meaning
+  // table lives in the `questions` array above). Step completion is implied
+  // by the next step's view + trackOnboardingCompleted at the end.
+  useEffect(() => {
+    trackOnboardingStepViewed({
+      role: "sponsor",
+      stepIndex: currentQuestion,
+      stepName: `${question.id}_${question.type}`,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestion]);
 
