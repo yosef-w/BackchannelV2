@@ -21,7 +21,6 @@ import {
     BellRing,
     Briefcase,
     Check,
-    CheckCircle,
     ChevronLeft,
     ChevronRight,
     Clock,
@@ -85,6 +84,7 @@ import { MetaLine, OpportunityRow } from "./matches/OpportunityRow";
 import { JobDetailModal } from "./matches/JobDetailModal";
 import { ReferralDetailModal } from "./matches/ReferralDetailModal";
 import { RolePickerModal } from "./matches/RolePickerModal";
+import { WaitlistedJobModal } from "./matches/WaitlistedJobModal";
 import { WithdrawReferralModal } from "./matches/WithdrawReferralModal";
 import { Avatar } from "./ui/Avatar";
 import { CharCounter } from "./ui/CharCounter";
@@ -1534,211 +1534,12 @@ export function MatchesView({
 
       {/* Waitlisted Job Detail Modal */}
       <Modal visible={!!selectedWaitlistedJob} transparent animationType="none">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setSelectedWaitlistedJob(null)}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={closeAllModals}
-            style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.65 }]}
-          >
-            {selectedWaitlistedJob && (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                contentContainerStyle={{ paddingBottom: 8 }}
-              >
-                {/* Hero */}
-                <View style={styles.jobModalHero}>
-                  <View style={styles.jobModalHeroInitial}>
-                    <Text style={styles.jobModalHeroInitialText}>
-                      {(selectedWaitlistedJob.organization ||
-                        "?")[0].toUpperCase()}
-                    </Text>
-                  </View>
-                  <Text style={styles.jobModalHeroTitle}>
-                    {selectedWaitlistedJob.title}
-                  </Text>
-                  <Text style={styles.jobModalHeroCompany}>
-                    {selectedWaitlistedJob.organization}
-                  </Text>
-                  {!!selectedWaitlistedJob.location && (
-                    <View style={styles.jobModalLocationRow}>
-                      <MapPin size={13} color="#999" />
-                      <Text style={styles.jobModalLocationText}>
-                        {selectedWaitlistedJob.location}
-                      </Text>
-                      {selectedWaitlistedJob.is_remote && (
-                        <View style={styles.jobRemoteBadge}>
-                          <Text style={styles.jobRemoteText}>Remote</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-
-                {/* Status banner */}
-                {selectedWaitlistedJob.is_now_sponsored ? (
-                  <View
-                    style={{
-                      backgroundColor: "#F4F4F5",
-                      borderWidth: 1,
-                      borderColor: "#E5E5E5",
-                      borderRadius: 18,
-                      padding: 18,
-                      marginBottom: 20,
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      gap: 14,
-                    }}
-                  >
-                    <CheckCircle size={22} color="#000" />
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: "800",
-                          color: "#000",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Now Sponsored!
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          color: "#555",
-                          lineHeight: 19,
-                          fontWeight: "500",
-                        }}
-                      >
-                        A sponsor has picked up this role. Head back to your
-                        feed to connect with them directly.
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View
-                    style={{
-                      backgroundColor: "#F4F4F5",
-                      borderWidth: 1,
-                      borderColor: "#E5E5E5",
-                      borderRadius: 18,
-                      padding: 18,
-                      marginBottom: 20,
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      gap: 14,
-                    }}
-                  >
-                    <Clock size={22} color="#666" />
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: "800",
-                          color: "#666",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Waiting for a Sponsor
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          color: "#555",
-                          lineHeight: 19,
-                          fontWeight: "500",
-                        }}
-                      >
-                        We’ll notify you as soon as someone sponsors this role.
-                        Keep an eye on your notifications.
-                      </Text>
-                      {!!selectedWaitlistedJob.outcomeMessage && (
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            color: "#888",
-                            lineHeight: 17,
-                            fontWeight: "500",
-                            marginTop: 10,
-                            fontStyle: "italic",
-                          }}
-                        >
-                          {selectedWaitlistedJob.outcomeMessage}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                )}
-
-                {/* Waitlist date */}
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "600",
-                    color: "#BBB",
-                    textAlign: "center",
-                    marginBottom: 16,
-                  }}
-                >
-                  Waitlisted{" "}
-                  {getRelativeTime(selectedWaitlistedJob.waitlisted_at)}
-                </Text>
-
-                {/* Nudge again — only once the request has gone quiet for a
-                    while; re-sending immediately would just be noise. */}
-                {!selectedWaitlistedJob.is_now_sponsored &&
-                  Date.now() -
-                    new Date(selectedWaitlistedJob.waitlisted_at).getTime() >=
-                    5 * 24 * 60 * 60 * 1000 && (
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: "#000",
-                        borderRadius: 16,
-                        paddingVertical: 16,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginBottom: 12,
-                        opacity: isNudgingSponsorRequest ? 0.6 : 1,
-                      }}
-                      onPress={() =>
-                        handleNudgeSponsorRequest(selectedWaitlistedJob)
-                      }
-                      disabled={isNudgingSponsorRequest}
-                      activeOpacity={0.85}
-                    >
-                      {isNudgingSponsorRequest ? (
-                        <ActivityIndicator size="small" color="#FFF" />
-                      ) : (
-                        <Text
-                          style={{
-                            color: "#FFF",
-                            fontSize: 14,
-                            fontWeight: "700",
-                          }}
-                        >
-                          Nudge again
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-              </ScrollView>
-            )}
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
+        <WaitlistedJobModal
+          job={selectedWaitlistedJob}
+          onClose={closeAllModals}
+          isNudging={isNudgingSponsorRequest}
+          onNudge={handleNudgeSponsorRequest}
+        />
       </Modal>
 
       {/* Sponsor-Request Modal — sponsor's view of an incoming request from
