@@ -1,20 +1,29 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-06 (after the `1c39109..3aa52f8` backend drop — 83 commits)
+**Last updated:** 2026-07-06 (after the `3aa52f8..2856d62` backend drop — moderation/report-block, referral check-in stage, profile-like notification, unsponsor-reason actions, change-email)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§N1** — report/block a user (App Store requirement, top priority — `reportUser` still POSTs to a nonexistent `/api/reports/`); **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§N2** — `/api/referrals/` doesn't return the current pipeline check-in stage (medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); the **email deployment checklist** at the bottom (deliverability — SPF/DKIM/DMARC); and **`change_email`** (still a 501 stub per backend `KNOWN_ISSUES.md` §7 — the app hides the change-email UI until it ships).
+> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **change_email frontend UI** (backend is done — see below — but there's no app screen wired to it yet); **§F** — larger daily deck for premium users (low priority, monetization); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); and the **email deployment checklist** at the bottom (deliverability — SPF/DKIM/DMARC).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
-## ✅ Resolved (2026-07-06 backend drop — was §C, §E, §H, §I, §J, §K)
+## ✅ Resolved (2026-07-06 second backend drop — was §N1, §N2, §D, §B, change_email)
+
+- **§N1 — report/block a user**: `POST /api/reports/` shipped exactly to our spec (`reported_user_id`/`reason`/`detail`/`conversation_id`, same reason enum), and reporting now implies a full bidirectional block (unmatch, close conversations, withdraw likes, hidden from each other's decks/matches going forward) — no separate "Block" action needed. **Zero frontend changes required** — `reportUser()` already called this exact contract.
+- **§N2 — referral check-in stage**: `GET /api/referrals/` (list + detail) now returns `CHECKIN_STAGE`/`CHECKIN_UPDATED_AT` via a join on the latest `referral_checkins` row. **Zero frontend changes required** — `MatchesView.tsx` already preferred `r.CHECKIN_STAGE` over the local mirror; this just lit up automatically.
+- **§D — notify applicant on profile like**: backend sends `notif_type='profile_like'` on the non-match path, mirroring `notify_sponsor_of_like`. **Frontend wiring shipped** (commit `8308418`): `MainApp.tsx` now invalidates the Matches cache on this push type, and `NotificationsView.tsx` got an icon + tap-routing to the Matches tab (previously would've silently no-opped).
+- **§B — act on unsponsor reason**: `posting_expired`/`role_filled` now skip the waitlist revert, and `posting_expired` additionally deactivates the shared `ats.silver_jobs` row so the dead listing stops surfacing for everyone. **Zero frontend changes required** — the reason was already being sent.
+- **`change_email`**: no longer a 501 stub — `POST /api/auth/change-email/` verifies the password, mints a single-use 24h token, and emails a confirmation link to the **new** address (change isn't live until that link is clicked). **Frontend action still needed**: there's no app UI wired to this at all (removed when the endpoint was a stub) — needs a new confirmation screen (new email + password, then "check your new email" messaging) before this is reachable from the app. `lib/api.ts`'s `changeEmail()` helper already has the right request shape.
+
+## ✅ Resolved (2026-07-06 first backend drop — was §C, §E, §H, §I, §J, §K)
 
 §C (real account deletion — **frontend cutover shipped too**: password-confirmed delete step in `PrivacySecurityScreen` → `POST /api/account/delete/`), §H (email case normalization + `EMAIL_HOST` prod hard-fail), §I (server-side company lock, 409), §J (self-like, `like_type` discriminator), §K (unsponsor cache invalidation). Details in the backend's `KNOWN_ISSUES.md` "Recently fixed".
 
-**Still carrying two follow-ups:**
+**Still carrying one follow-up:**
 1. **§E re-verification** — the `POST /api/profiles/like/` 500 is almost certainly fixed by the matching rework (migration 019's index/arbiter mismatch was exactly our hypothesis, plus the 022–025 per-job rebuild), but it hasn't been re-tested with the originally-failing TestFlight account. Verify, then this line can go.
-2. **Match-state cutover (frontend release)** — per backend `docs/FRONTEND_MATCH_CUTOVER.md`: read match state from `GET /api/matches/*` instead of the **derived** `STATUS === "MATCHED"` on like-list rows (`MatchesView.tsx` canRefer + job-card branches, `JobsView.tsx` Message-vs-Match CTA), and drop the redundant self-filter (`MatchesView.tsx:801-803`). The derived field is a compatibility shim kept alive only for the currently-shipped app; the backend retires it after this release ships.
+
+Match-state cutover (reading `/api/matches/*` instead of the derived like `STATUS`, per `FRONTEND_MATCH_CUTOVER.md`) is still a pending frontend release — not urgent, no backend action needed.
 
 ---
 
@@ -27,33 +36,6 @@
 ### Acceptance test
 
 `PATCH /api/profile/update/` with `{"first_name": "", "last_name": ""}` leaves the stored names unchanged (or returns 400); a normal non-empty name update still works.
-
----
-
-## §D — Notify the applicant when a sponsor likes their profile 🟡 (UX freshness)
-
-**Backend files:**
-- `bc_microservices/services/matching.py` → `like_applicant_profile()` ([line 158](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/matching.py#L158)) and the existing `notify_sponsor_of_like()` ([line 90](../../Backchannel-backend/BackChannel-backend/bc_microservices/services/matching.py#L90)) as the mirror template.
-
-### What's missing
-
-When a sponsor likes an applicant's profile, the applicant should appear under the applicant's **"Interested in You"** section (`/api/likes/profiles/received/`). Today `like_applicant_profile` only sends a notification when the like results in a **mutual match** (`notify_match`). A **one-sided** profile like sends the applicant **no notification and no push at all** — so nothing tells their app to refresh, and the new admirer doesn't appear until the app is re-foregrounded or the user pulls to refresh.
-
-This is the inverse of the already-shipped `notify_sponsor_of_like` (applicant likes a job → sponsor is notified with `notif_type='job_like'`). The applicant-facing direction was never wired.
-
-### Required change
-
-Add a best-effort `notify_applicant_of_like(applicant_user_id, sponsor_id, job_id)` (mirroring `notify_sponsor_of_like`) and call it from `like_applicant_profile` on the **non-match** path — i.e. after `create_profile_like`, when `matched` is false. Suggested `notif_type='profile_like'`, title e.g. "Someone's interested in you", body naming the sponsor's company/role if available. Must never raise (wrap like the existing notifiers).
-
-### Frontend impact
-
-The app is already prepared for this:
-- The bell badge and the "Interested in You" list will pick it up on the next fetch.
-- `components/MainApp.tsx` already invalidates the Matches screen's cached lists on incoming `match` / `referral` / `job_like` / `waitlist` pushes — **add `'profile_like'` to that list** once the backend ships it, so the new like appears live without a manual refresh. (Until then, focus-refetch + pull-to-refresh cover it.)
-
-### Acceptance test
-
-From device A (sponsor), like an applicant's profile for a job the applicant has **not** liked (so no match). On device B (that applicant), with the app already foregrounded on another tab: a push/notification arrives, the bell badge increments, and the sponsor appears under "Interested in You" without manually refreshing.
 
 ---
 
@@ -105,77 +87,6 @@ Consider normalizing/validating `sponsor_profiles.COMPANY` against this canonica
 
 ---
 
-## §B — Act on the captured unsponsor reason to prune stale ATS listings 🟡 (formerly §12, capture half shipped in #58)
-
-> **Status (verified 2026-05-28):** the *capture* half shipped — `unsponsor_job` accepts a `reason` in the request body and writes an audit row via `insert_unsponsor_audit`. The frontend merges its optional free-text detail into the reason string client-side (`"other: <detail>"`), so no separate `reason_detail` handling is needed. What has **not** shipped is acting on the signal:
-
-**Backend files:**
-- `bc_microservices/services/jobs.py` → `unsponsor_job` (the `revert_waitlist_to_active` call, ~line 897)
-- `bc_microservices/queries/jobs.py` → new `deactivate_silver_job` helper
-
-### What's missing
-
-`posting_expired` and `role_filled` are **job-health signals** — they mean the underlying ATS listing is dead and should stop being surfaced to *everyone*. Today the service ignores the reason after persisting it:
-
-1. **`revert_waitlist_to_active(ref_id)` runs unconditionally.** When the reason says the job is dead, reactivating its waitlist re-surfaces a stale listing to other sponsors. Guard it:
-
-   ```python
-   job_is_dead = reason in ('posting_expired', 'role_filled')
-   if ref_id and not job_is_dead:
-       jobs_q.revert_waitlist_to_active(ref_id)
-   ```
-
-2. **No `deactivate_silver_job(ref_id)`.** For `posting_expired`, also pull the listing from Browse for everyone:
-
-   ```python
-   if ref_id and reason == 'posting_expired':
-       jobs_q.deactivate_silver_job(ref_id)
-   # UPDATE ats.silver_jobs SET is_active = FALSE WHERE JOB_ID = %s
-   ```
-
-### Notes / decisions for the backend
-
-- The hard prune is scoped to `posting_expired` only — "filled" is a strong signal but slightly less certain than "the posting is gone." Both skip the waitlist revert. Extending the prune to `role_filled` is a one-line change; backend team's call.
-- **One sponsor's word vs. the shared feed** — a single sponsor saying "expired" deactivates the listing for everyone. For a closed beta that's fine and desirable (fast cleanup). At scale, consider a threshold (N reports, or trusted sponsors only) before pruning.
-- Unknown/missing `reason` must keep being tolerated — unsponsoring must never fail because of a bad reason string.
-
-### Frontend impact
-
-None — the reason step and the `unsponsorJob(jobId, reason, reasonDetail)` call already ship the data. This is purely a backend behavior change.
-
----
-
-# ⚠️ Verify — Deployment environment checklist (email + links)
-
-> **These are deployment / environment checks, not code changes.** The code paths are complete; whether the flows work in production depends on env configuration that can't be confirmed from source.
-
-1. **`FRONTEND_URL`** is set on the backend host to the service's **own public origin** (the backend serves the verify-email / reset-password web pages). Default is `http://localhost:3000`, which silently produces dead links in every verification and reset email.
-2. **SMTP env vars are set** on the backend host: `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`. If `EMAIL_HOST` is unset, `settings.py` silently falls back to the **console email backend** — every "sent" email is merely printed to the server log; `send_mail` still reports success. This affects *all* transactional email (welcome, verification, work-email verification, password reset). Resend values, per `.env.example`:
-   ```
-   EMAIL_HOST=smtp.resend.com
-   EMAIL_HOST_USER=resend
-   EMAIL_HOST_PASSWORD=re_YourApiKeyHere
-   ```
-3. **The sending domain is verified in Resend.** `DEFAULT_FROM_EMAIL` defaults to `noreply@backchannel.app` — Resend rejects mail from an unverified domain.
-4. **Email deliverability — emails landing in spam (observed 2026-06-24).** 🔴
-
-   **Context / the issue we're solving:** Testers report the **work-email verification** email (and likely the others) arriving in the **spam/junk folder** rather than the inbox. This is a *deliverability* problem, separate from "no email at all" (§H): the mail is being sent and accepted, but receiving providers (Gmail, Outlook, etc.) are scoring it as untrusted and filing it as spam. Sponsors who don't think to check spam never verify, which **soft-blocks them from swiping** (the work-email gate in `HomeView`), so this directly costs activated sponsors.
-
-   **Frontend mitigation already shipped (band-aid, not a fix):** the verification modal and the onboarding/resend confirmations now tell users to "check your spam or junk folder." This reduces drop-off but does **not** fix the root cause.
-
-   **Root cause is almost always missing/incorrect domain authentication.** Mailbox providers spam-file mail whose sending domain isn't authenticated. To fix, on the **sending domain used in `DEFAULT_FROM_EMAIL`**:
-   - **SPF** — publish a TXT record authorizing Resend to send for the domain.
-   - **DKIM** — add the CNAME/TXT keys Resend provides so messages are cryptographically signed.
-   - **DMARC** — publish a `_dmarc` TXT policy (start `p=none` for monitoring, tighten later).
-   - Resend's domain dashboard lists the exact records and shows green once they propagate. Don't send from a free-mailbox domain (e.g. `@gmail.com`) or an unverified domain — both tank deliverability.
-   - Secondary factors worth checking: a real, branded **From** name/address (not `noreply@` on an unknown domain if avoidable), a working **reply-to**, and avoiding spammy subject lines. Warm-up/volume matters less at current scale.
-
-   **How to verify:** after DNS is set, use Resend's domain status (all green) and a tool like **mail-tester.com** — send a verification email to its address and aim for ~10/10. Re-test in a real Gmail and Outlook account to confirm it lands in the inbox.
-
-5. **End-to-end smoke test** against the deployed backend: register → verification email arrives → link opens the backend's web verify page and confirms; then forgot-password → email → reset on the web reset page → sign in with the new password. `services/email.py` logs `Email sent to <addr>` vs `Failed to send email to <addr>` to tell SMTP outcomes apart.
-
----
-
 ## §L — Unused profile fields — collected/stored but never read (onboarding rework, Phase 4) 🟢 Low priority (cleanup + PII minimization)
 
 **Context (2026-07-01):** The onboarding/profile rework audited every field the applicant profile collects against the two things that actually consume profile data — the matching algorithm (`services/scoring.py`: skills, role, experience, location) and the sponsor-facing card (name, photo, title, bio, city/state, experience, education, certifications, languages, achievements, skills, insights, industry). Several collected fields feed neither.
@@ -203,66 +114,7 @@ None — the reason step and the `unsponsorJob(jobId, reason, reasonDetail)` cal
 
 # 🆕 New Features — Backend Support Needed
 
-> This section is separate from the bug-fix tickets above (§B–§L). Those track things the backend already contracts for but doesn't do correctly; **this section tracks backend work for entirely new product features** proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). Entries are numbered **§N1, §N2, …** — independent of the §B–§L lettering above — and appended here as each phase is actually built, not speculatively written in advance.
->
-> Note: "Phase 4" here refers to the UX improvement plan's **Phase 4 — Safety & Instant Relief**, unrelated to the onboarding-rework "Phase 4" referenced in §L above. Sorry for the overloaded term — two different efforts used the same phase-numbering habit.
-
-## §N1 — Report a user / block a user (UX Plan Phase 4) 🔴 App Store requirement
-
-**Why:** The app has messaging and user-generated content (bios, prompts, messages) but currently only offers **Unmatch** — no way to report abusive behavior or block a user from re-matching. Apple App Store Review Guideline 1.2 requires apps with user-generated content and person-to-person communication to provide (a) a mechanism to report objectionable content/users and (b) the ability to block abusive users. This is expected to gate submission review.
-
-**Frontend status (shipped 2026-07-04):** The thread "..." menu (`components/MessagesView.tsx`) is now a two-step sheet — Report / Unmatch / Cancel, then a reason picker (harassment, spam, inappropriate, fake profile, other) with an optional detail field. Reporting always closes the conversation via the already-shipped `unmatchConversation` endpoint regardless of whether `/api/reports/` exists yet, so the user-visible safety outcome works today; the report call itself (`reportUser()` in `lib/api.ts`) is best-effort and logs a warning on failure rather than blocking the close. **Not yet built:** a report affordance on the public profile view (pre-match) — scoped out for now since reporting typically applies to people you've actually matched/communicated with.
-
-### Requested backend support
-
-```
-POST /api/reports/                      (auth required)
-  body: {
-    reported_user_id: string,
-    reason: string,            // enum: "harassment" | "spam" | "inappropriate" | "fake_profile" | "other"
-    detail?: string,           // free text, optional
-    conversation_id?: string,  // context, if reported from a thread
-  }
-→ 200 { message: string }
-```
-
-- Insert an audit row (new table, e.g. `moderation.reports`) capturing reporter, reported user, reason, detail, timestamp, and conversation context if present. No automated action required initially — manual review is acceptable for a closed beta.
-- **Blocking**: reporting a user should also insert/flip a block relationship (or reuse/extend the existing unmatch mechanism) so:
-  - Existing conversations between the two users close (mirroring what `unmatchConversation` already does).
-  - Neither user can be shown to the other in future decks/matches (extend the like/match query exclusions the same way self-likes are excluded in §J).
-- A **separate, lighter "Block" action** (no report reason required) may also be wanted so a user can silently block without filing a report — same backend relationship, just skip the reason/detail fields. Product call on whether both actions ship together or Report implies Block only.
-
-### Acceptance test
-
-User A reports/blocks User B from a conversation. B disappears from A's Matches/deck immediately (and vice versa), any open conversation between them closes, and the report row is queryable for manual review.
-
----
-
-## §N2 — `GET /api/referrals/` doesn't return the current pipeline stage (UX Plan Phase 5) 🟡 Medium priority
-
-**Why:** Referral check-ins are write-only today. `POST /api/referrals/<id>/checkin/` (applicant) and `POST /api/referrals/checkin/batch/` (sponsor) record a stage update (per `SponsorCheckInModal.tsx`'s own comment: *"Backend stores referrals in REFERRED/WITHDRAWN at row level; per-stage state lives in `matching.referral_checkins`"*), but `GET /api/referrals/` never reads that table back — it only ever returns the row-level `REFERRED`/`WITHDRAWN` status. So there is currently no way for a sponsor to see what stage an applicant self-reported, or vice versa.
-
-This blocked building real "Your Pipeline" visibility, one of the highest-value items from the UX audit (referral status was found to be the app's most differentiated data and its most buried UI — previously visible only inside the check-in modals, never inline).
-
-**Frontend status (shipped 2026-07-04, partial):** Added a visual pipeline stage timeline (`components/ui/PipelineStageTimeline.tsx`) inline on both the sponsor's "Active Pipeline" and the applicant's "Referrals Received" cards in `MatchesView.tsx`. Since the backend doesn't return the real stage, it's currently backed by a **client-side local mirror** (`utils/checkInStageCache.ts`) that remembers what stage *this device* most recently submitted, written by both check-in modals on successful submit. **This only reflects the submitting user's own last update — it does NOT show the other party's reported stage**, which is the actual point of a shared pipeline view. The Referral type's new `checkInStage` field already prefers a backend value (`CHECKIN_STAGE`/`checkin_stage`) over the local cache, so real data lights this up automatically the moment it ships — no frontend change needed.
-
-### Requested backend change
-
-Have `GET /api/referrals/` join the latest row from `matching.referral_checkins` per referral (ordered by created_at desc, limit 1) and include it in the response, e.g.:
-
-```
-{
-  ...existing referral fields,
-  "CHECKIN_STAGE": "Recruiter Screen",   // latest stage from referral_checkins, or null if none yet
-  "CHECKIN_UPDATED_AT": "2026-07-03T18:22:00Z"
-}
-```
-
-### Acceptance test
-
-Applicant submits a check-in moving a referral to "HM Interview". Sponsor (on a different device/account) refreshes their Matches screen — the pipeline timeline for that referral now shows "HM Interview" as the current stage, without the sponsor having submitted anything themselves.
-
----
+> This section tracks backend work for entirely new product features proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). **§N1** (report/block, Phase 4) and **§N2** (referral check-in stage, Phase 5) both shipped — see the "✅ Resolved" block near the top. Remaining entries below are the phases that needed no backend work at all.
 
 ## UX Plan Phase 6 — Retention: no backend work needed
 
