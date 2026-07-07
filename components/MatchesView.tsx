@@ -20,12 +20,10 @@ import {
     Clock,
     Heart,
     MessageCircle,
-    Sparkles,
     Zap,
 } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     Dimensions,
     Modal,
     NativeScrollEvent,
@@ -60,23 +58,16 @@ import {
     sponsorRequestsQuery,
     waitlistedJobsQuery,
 } from "./matches/matchesQueries";
-import { MatchesEmptyState } from "./matches/MatchesEmptyState";
-import { MatchListScreen } from "./matches/MatchListScreen";
-import { MatchSection } from "./matches/MatchSection";
-import { renderMatchRows } from "./matches/matchRowBuilders";
-import { MetaLine, OpportunityRow } from "./matches/OpportunityRow";
 import { JobDetailModal } from "./matches/JobDetailModal";
 import { ReferralDetailModal } from "./matches/ReferralDetailModal";
 import { RolePickerModal } from "./matches/RolePickerModal";
+import { SponsorMatchesSections } from "./matches/SponsorMatchesSections";
+import { ApplicantMatchesSections } from "./matches/ApplicantMatchesSections";
 import { SponsorRequestModal } from "./matches/SponsorRequestModal";
 import { SrJobDetailModal } from "./matches/SrJobDetailModal";
 import { WaitlistedJobModal } from "./matches/WaitlistedJobModal";
 import { WithdrawReferralModal } from "./matches/WithdrawReferralModal";
-import { Avatar } from "./ui/Avatar";
-import { CompanyLogo } from "./ui/CompanyLogo";
-import { PipelineStageTimeline } from "./ui/PipelineStageTimeline";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
-import { StatusChip } from "./ui/StatusChip";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -138,7 +129,6 @@ export function MatchesView({
   const [expandedGroup, setExpandedGroup] = useState<
     "yourMove" | "matched" | "inProgress" | null
   >(null);
-  const MATCH_SECTION_ROW_CAP = 4;
   // Public-profile fetch state for the matched-profile modal moved into
   // the shared ProfileDetailSheet component — no longer needed here.
 
@@ -809,487 +799,53 @@ export function MatchesView({
         )}
 
         {userType === "sponsor" ? (
-          /* SPONSOR VIEW — mirrors the applicant layout: Your Move (incoming
-             asks needing a response) → Matched (ready to message) → In
-             Progress (your active referral pipeline). */
-          (() => {
-            const yourMoveCount =
-              sponsorRequests.length + interestedApplicants.length;
-            const yourMoveLoading =
-              sponsorRequestsLoading || interestedApplicantsLoading;
-            const inProgressCount = referrals.length;
-            const inProgressLoading = referralsLoading;
-            const nothingToShow =
-              !yourMoveLoading &&
-              !matchesLoading &&
-              !inProgressLoading &&
-              yourMoveCount === 0 &&
-              matches.length === 0 &&
-              inProgressCount === 0;
-
-            if (nothingToShow) {
-              return <MatchesEmptyState userType="sponsor" />;
-            }
-
-            const sponsorYourMoveRows = [
-              ...sponsorRequests.map((req) => (
-                <OpportunityRow
-                  key={req.requestId}
-                  onPress={() => setSelectedSponsorRequest(req)}
-                  leading={
-                    <Avatar
-                      photoUrl={req.applicantPhoto}
-                      name={req.applicantName}
-                      size={48}
-                      borderRadius={16}
-                    />
-                  }
-                  title={req.applicantName}
-                  subtitle={
-                    req.jobCompany
-                      ? `${req.jobTitle} · ${req.jobCompany}`
-                      : req.jobTitle
-                  }
-                  cta="Review"
-                />
-              )),
-              ...interestedApplicants.map((applicant) => (
-                <OpportunityRow
-                  key={applicant.applicantUserId}
-                  onPress={() => setSelectedInterestedApplicant(applicant)}
-                  leading={
-                    <Avatar
-                      photoUrl={applicant.image}
-                      name={applicant.name}
-                      size={48}
-                      borderRadius={16}
-                    />
-                  }
-                  title={applicant.name}
-                  subtitle={
-                    applicant.jobTitle
-                      ? `Interested in ${applicant.jobTitle}${applicant.jobCompany ? ` · ${applicant.jobCompany}` : ""}`
-                      : [applicant.roleType, applicant.location]
-                          .filter(Boolean)
-                          .join(" · ")
-                  }
-                  meta={
-                    applicant.likedAt ? (
-                      <MetaLine
-                        icon={<Heart size={10} color="#DC2626" />}
-                        text={getRelativeTime(applicant.likedAt)}
-                      />
-                    ) : undefined
-                  }
-                  cta="View"
-                />
-              )),
-            ];
-
-            const sponsorMatchedRows = renderMatchRows(
-              matches,
-              {
-                keyField: "applicantUserId",
-                getMessageUserId: (m) => m.sponsorUserId,
-              },
-              matchRowCallbacks,
-            );
-
-            const sponsorInProgressRows = referrals.map((referral, index) => {
-              // Try to find the full match object so "View" opens the profile modal
-              const matchForReferral = matches.find(
-                (m) => m.applicantUserId === referral.applicantUserId,
-              );
-              const applicantName =
-                [referral.applicantFirstName, referral.applicantLastName]
-                  .filter(Boolean)
-                  .join(" ") ||
-                matchForReferral?.name ||
-                "Applicant";
-              const applicantImage =
-                referral.applicantPhotoUrl || matchForReferral?.image || "";
-              const isReferred = referral.status === "REFERRED";
-              const isWithdrawing =
-                withdrawingReferralId === referral.referralId;
-
-              return (
-                <OpportunityRow
-                  key={`referral-${referral.referralId || index}`}
-                  onPress={() =>
-                    matchForReferral && openProfile(matchForReferral, "view")
-                  }
-                  disabled={!matchForReferral}
-                  muted={!isReferred}
-                  leading={
-                    <Avatar
-                      photoUrl={applicantImage}
-                      name={applicantName}
-                      size={48}
-                      borderRadius={16}
-                    />
-                  }
-                  title={applicantName}
-                  subtitle={
-                    referral.jobTitle || matchForReferral?.appliedRole
-                      ? `Referred for ${referral.jobTitle || matchForReferral?.appliedRole}`
-                      : "Referred"
-                  }
-                  right={
-                    isReferred ? (
-                      isWithdrawing ? (
-                        <ActivityIndicator size="small" color="#DC2626" />
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.withdrawBtn}
-                          onPress={() =>
-                            setConfirmingWithdrawReferral(referral)
-                          }
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Text style={styles.withdrawBtnText}>Withdraw</Text>
-                        </TouchableOpacity>
-                      )
-                    ) : (
-                      <StatusChip label="Withdrawn" tone="muted" />
-                    )
-                  }
-                  detail={
-                    isReferred ? (
-                      <PipelineStageTimeline
-                        currentStage={referral.checkInStage}
-                      />
-                    ) : undefined
-                  }
-                />
-              );
-            });
-
-            return (
-              <>
-                <MatchSection
-                  title="Your Move"
-                  subtitle="Applicants asking you to sponsor a role, and applicants interested in your jobs"
-                  count={yourMoveCount}
-                  loading={yourMoveLoading}
-                  error={sponsorRequestsError || interestedApplicantsError}
-                  hidden={!yourMoveLoading && yourMoveCount === 0}
-                  maxRows={MATCH_SECTION_ROW_CAP}
-                  onSeeAll={() => setExpandedGroup("yourMove")}
-                >
-                  {sponsorYourMoveRows}
-                </MatchSection>
-
-                <MatchSection
-                  title="Matched"
-                  subtitle="Applicants you've matched with — message them to start a conversation"
-                  count={matches.length}
-                  loading={matchesLoading}
-                  error={matchesError}
-                  hidden={!matchesLoading && matches.length === 0}
-                  maxRows={MATCH_SECTION_ROW_CAP}
-                  onSeeAll={() => setExpandedGroup("matched")}
-                >
-                  {sponsorMatchedRows}
-                </MatchSection>
-
-                <MatchSection
-                  title="In Progress"
-                  subtitle="Applicants you've formally referred — track their status here"
-                  count={inProgressCount}
-                  loading={inProgressLoading}
-                  error={referralsError}
-                  hidden={!inProgressLoading && inProgressCount === 0}
-                  maxRows={MATCH_SECTION_ROW_CAP}
-                  onSeeAll={() => setExpandedGroup("inProgress")}
-                >
-                  {sponsorInProgressRows}
-                </MatchSection>
-
-                <MatchListScreen
-                  visible={expandedGroup === "yourMove"}
-                  onClose={() => setExpandedGroup(null)}
-                  title="Your Move"
-                >
-                  {sponsorYourMoveRows}
-                </MatchListScreen>
-                <MatchListScreen
-                  visible={expandedGroup === "matched"}
-                  onClose={() => setExpandedGroup(null)}
-                  title="Matched"
-                >
-                  {sponsorMatchedRows}
-                </MatchListScreen>
-                <MatchListScreen
-                  visible={expandedGroup === "inProgress"}
-                  onClose={() => setExpandedGroup(null)}
-                  title="In Progress"
-                >
-                  {sponsorInProgressRows}
-                </MatchListScreen>
-              </>
-            );
-          })()
+          <SponsorMatchesSections
+            matches={matches}
+            matchesLoading={matchesLoading}
+            matchesError={matchesError}
+            sponsorRequests={sponsorRequests}
+            sponsorRequestsLoading={sponsorRequestsLoading}
+            sponsorRequestsError={sponsorRequestsError}
+            interestedApplicants={interestedApplicants}
+            interestedApplicantsLoading={interestedApplicantsLoading}
+            interestedApplicantsError={interestedApplicantsError}
+            referrals={referrals}
+            referralsLoading={referralsLoading}
+            referralsError={referralsError}
+            withdrawingReferralId={withdrawingReferralId}
+            expandedGroup={expandedGroup}
+            onSetExpandedGroup={setExpandedGroup}
+            onSelectSponsorRequest={setSelectedSponsorRequest}
+            onSelectInterestedApplicant={setSelectedInterestedApplicant}
+            onOpenProfile={openProfile}
+            onConfirmWithdrawReferral={setConfirmingWithdrawReferral}
+            matchRowCallbacks={matchRowCallbacks}
+          />
         ) : (
-          /* APPLICANT VIEW — "one card per opportunity", grouped by whose
-             move it is (Direction A). See docs from the Matches redesign
-             plan: Your Move (sponsor interest + newly-sponsored waitlist
-             jobs) → Matched (mutual, ready to message) → In Progress
-             (applied/waitlisted/referred, passively tracked). */
-          (() => {
-            const sponsoredWaitlist = waitlistedJobs.filter(
-              (j) => j.is_now_sponsored,
-            );
-            const pendingWaitlist = waitlistedJobs.filter(
-              (j) => !j.is_now_sponsored,
-            );
-            const yourMoveCount =
-              interestedSponsors.length + sponsoredWaitlist.length;
-            const yourMoveLoading =
-              interestedSponsorsLoading || waitlistedJobsLoading;
-            const inProgressCount =
-              likedJobs.length + pendingWaitlist.length + referrals.length;
-            const inProgressLoading =
-              likedJobsLoading || waitlistedJobsLoading || referralsLoading;
-            const nothingToShow =
-              !yourMoveLoading &&
-              !matchesLoading &&
-              !inProgressLoading &&
-              yourMoveCount === 0 &&
-              matches.length === 0 &&
-              inProgressCount === 0;
-
-            if (nothingToShow) {
-              return <MatchesEmptyState userType="applicant" />;
-            }
-
-            const applicantYourMoveRows = [
-              ...interestedSponsors.map((sponsor) => (
-                <OpportunityRow
-                  key={sponsor.likeId}
-                  onPress={() => openInterestedSponsor(sponsor)}
-                  leading={
-                    <Avatar
-                      photoUrl={sponsor.image}
-                      name={sponsor.name}
-                      size={48}
-                      borderRadius={16}
-                    />
-                  }
-                  title={sponsor.name}
-                  subtitle={
-                    sponsor.jobTitle || sponsor.jobCompany
-                      ? `Wants you for ${[sponsor.jobTitle, sponsor.jobCompany].filter(Boolean).join(" · ")}`
-                      : [sponsor.role, sponsor.company]
-                          .filter(Boolean)
-                          .join(" · ")
-                  }
-                  meta={
-                    sponsor.likedAt ? (
-                      <MetaLine
-                        icon={<Heart size={10} color="#DC2626" />}
-                        text={getRelativeTime(sponsor.likedAt)}
-                      />
-                    ) : undefined
-                  }
-                  cta="View"
-                />
-              )),
-              ...sponsoredWaitlist.map((job) => (
-                <OpportunityRow
-                  key={job.waitlist_id}
-                  onPress={() => setSelectedWaitlistedJob(job)}
-                  leading={
-                    <CompanyLogo
-                      logoUrl={job.organization_logo}
-                      name={job.organization}
-                      size={48}
-                      borderRadius={16}
-                    />
-                  }
-                  title={job.title}
-                  subtitle={
-                    job.location
-                      ? `${job.organization} · ${job.location}`
-                      : job.organization
-                  }
-                  meta={
-                    <MetaLine
-                      icon={<Sparkles size={10} color="#000" />}
-                      text="Now sponsored"
-                    />
-                  }
-                  cta="View"
-                />
-              )),
-            ];
-
-            const applicantMatchedRows = renderMatchRows(
-              matches,
-              {
-                keyField: "sponsorUserId",
-                getMessageUserId: (m) => m.applicantUserId,
-              },
-              matchRowCallbacks,
-            );
-
-            const applicantInProgressRows = [
-              ...likedJobs.map((job) => (
-                <OpportunityRow
-                  key={String(job.id)}
-                  onPress={() => openJob(job)}
-                  leading={
-                    <CompanyLogo
-                      logoUrl={job.companyLogoUrl}
-                      name={job.company}
-                      size={48}
-                      borderRadius={16}
-                    />
-                  }
-                  title={job.title}
-                  subtitle={
-                    job.location
-                      ? `${job.company} · ${job.location}`
-                      : job.company
-                  }
-                  right={
-                    job.status === "MATCHED" ? (
-                      <StatusChip label="Matched" tone="active" />
-                    ) : (
-                      <StatusChip label="Pending" tone="waiting" />
-                    )
-                  }
-                />
-              )),
-              ...pendingWaitlist.map((job) => (
-                <OpportunityRow
-                  key={job.waitlist_id}
-                  onPress={() => setSelectedWaitlistedJob(job)}
-                  leading={
-                    <CompanyLogo
-                      logoUrl={job.organization_logo}
-                      name={job.organization}
-                      size={48}
-                      borderRadius={16}
-                    />
-                  }
-                  title={job.title}
-                  subtitle={
-                    job.location
-                      ? `${job.organization} · ${job.location}`
-                      : job.organization
-                  }
-                  right={<StatusChip label="Waitlisted" tone="waiting" />}
-                />
-              )),
-              ...referrals.map((referral, index) => {
-                const isReferred = referral.status === "REFERRED";
-                const sponsorName =
-                  [referral.sponsorFirstName, referral.sponsorLastName]
-                    .filter(Boolean)
-                    .join(" ") || "Your sponsor";
-                return (
-                  <OpportunityRow
-                    key={`recv-referral-${referral.referralId || index}`}
-                    onPress={() => setSelectedReferral(referral)}
-                    muted={!isReferred}
-                    leading={
-                      <CompanyLogo
-                        logoUrl={referral.jobLogoUrl}
-                        name={referral.jobCompany}
-                        size={48}
-                        borderRadius={16}
-                      />
-                    }
-                    title={referral.jobTitle || "Open Role"}
-                    subtitle={`Referred by ${sponsorName}`}
-                    meta={
-                      referral.createdAt ? (
-                        <MetaLine text={getRelativeTime(referral.createdAt)} />
-                      ) : undefined
-                    }
-                    right={
-                      <StatusChip
-                        label={isReferred ? "Referred" : "Withdrawn"}
-                        tone={isReferred ? "active" : "muted"}
-                      />
-                    }
-                    detail={
-                      isReferred ? (
-                        <PipelineStageTimeline
-                          currentStage={referral.checkInStage}
-                        />
-                      ) : undefined
-                    }
-                  />
-                );
-              }),
-            ];
-
-            return (
-              <>
-                <MatchSection
-                  title="Your Move"
-                  subtitle="Sponsors interested in you, and jobs that just found a sponsor"
-                  count={yourMoveCount}
-                  loading={yourMoveLoading}
-                  error={interestedSponsorsError || waitlistedJobsError}
-                  hidden={!yourMoveLoading && yourMoveCount === 0}
-                  maxRows={MATCH_SECTION_ROW_CAP}
-                  onSeeAll={() => setExpandedGroup("yourMove")}
-                >
-                  {applicantYourMoveRows}
-                </MatchSection>
-
-                <MatchSection
-                  title="Matched"
-                  subtitle="You and the sponsor both said yes — start chatting"
-                  count={matches.length}
-                  loading={matchesLoading}
-                  error={matchesError}
-                  hidden={!matchesLoading && matches.length === 0}
-                  maxRows={MATCH_SECTION_ROW_CAP}
-                  onSeeAll={() => setExpandedGroup("matched")}
-                >
-                  {applicantMatchedRows}
-                </MatchSection>
-
-                <MatchSection
-                  title="In Progress"
-                  subtitle="Jobs and referrals you're tracking"
-                  count={inProgressCount}
-                  loading={inProgressLoading}
-                  error={likedJobsError || referralsError}
-                  hidden={!inProgressLoading && inProgressCount === 0}
-                  maxRows={MATCH_SECTION_ROW_CAP}
-                  onSeeAll={() => setExpandedGroup("inProgress")}
-                >
-                  {applicantInProgressRows}
-                </MatchSection>
-
-                <MatchListScreen
-                  visible={expandedGroup === "yourMove"}
-                  onClose={() => setExpandedGroup(null)}
-                  title="Your Move"
-                >
-                  {applicantYourMoveRows}
-                </MatchListScreen>
-                <MatchListScreen
-                  visible={expandedGroup === "matched"}
-                  onClose={() => setExpandedGroup(null)}
-                  title="Matched"
-                >
-                  {applicantMatchedRows}
-                </MatchListScreen>
-                <MatchListScreen
-                  visible={expandedGroup === "inProgress"}
-                  onClose={() => setExpandedGroup(null)}
-                  title="In Progress"
-                >
-                  {applicantInProgressRows}
-                </MatchListScreen>
-              </>
-            );
-          })()
+          <ApplicantMatchesSections
+            matches={matches}
+            matchesLoading={matchesLoading}
+            matchesError={matchesError}
+            interestedSponsors={interestedSponsors}
+            interestedSponsorsLoading={interestedSponsorsLoading}
+            interestedSponsorsError={interestedSponsorsError}
+            waitlistedJobs={waitlistedJobs}
+            waitlistedJobsLoading={waitlistedJobsLoading}
+            waitlistedJobsError={waitlistedJobsError}
+            likedJobs={likedJobs}
+            likedJobsLoading={likedJobsLoading}
+            likedJobsError={likedJobsError}
+            referrals={referrals}
+            referralsLoading={referralsLoading}
+            referralsError={referralsError}
+            expandedGroup={expandedGroup}
+            onSetExpandedGroup={setExpandedGroup}
+            onSelectInterestedSponsor={openInterestedSponsor}
+            onSelectWaitlistedJob={setSelectedWaitlistedJob}
+            onSelectJob={openJob}
+            onSelectReferral={setSelectedReferral}
+            matchRowCallbacks={matchRowCallbacks}
+          />
         )}
       </ScrollView>
 
@@ -2615,22 +2171,7 @@ const styles = StyleSheet.create({
   refPillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
   refPillTextReferred: { color: "#000" },
   refPillTextWithdrawn: { color: "#999" },
-  withdrawBtn: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 74,
-  },
-  withdrawBtnText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: "#DC2626",
-  },
+  // withdrawBtn/withdrawBtnText moved to SponsorMatchesSections.tsx.
   undoToast: {
     position: "absolute",
     bottom: 100,
