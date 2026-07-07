@@ -25,7 +25,7 @@ export interface InboxConversation {
   otherParticipant?: {
     id?: string;
     name?: string;
-    profileImageUrl?: string;
+    profileImageUrl?: string | null;
   };
   lastMessage?: { content?: string; createdAt?: string } | null;
   unreadCount?: number;
@@ -109,7 +109,7 @@ function ConvAvatar({
   unread,
 }: {
   name?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   hidden?: boolean;
   unread?: boolean;
 }) {
@@ -343,7 +343,13 @@ export function InboxList({
   return (
     <>
       {groups.map((group, index) => (
-        <Animated.View key={group.key} entering={FadeInDown.delay(index * 50)}>
+        <Animated.View
+          key={group.key}
+          // Cap the stagger so a long inbox doesn't take seconds to finish
+          // animating in — rows past the first screenful all animate
+          // together instead of visibly cascading one by one.
+          entering={FadeInDown.delay(Math.min(index, 8) * 50)}
+        >
           {group.items.length === 1 ? (
             <LeafRow
               conv={group.items[0]}

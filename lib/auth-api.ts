@@ -1,4 +1,5 @@
 import { api } from "./api";
+import type { SyncableField } from "../stores/useUserProfileStore";
 
 /**
  * 🔐 Authentication API Response Types
@@ -243,6 +244,26 @@ export const authApi = {
   },
 
   /**
+   * Permanently delete the current account and ALL its data (Apple 5.1.1(v)).
+   * Distinct from POST /api/profile/deactivate/ (reversible hide) — this runs
+   * the backend's full per-table purge and removes uploaded files from CDN
+   * storage. Requires the user's current password; the backend returns 401
+   * "Password is incorrect" on a mismatch (note: the API client's
+   * refresh-on-401 interceptor will burn one token refresh + retry before
+   * that error surfaces — harmless, and the retry returns the same message).
+   * Passing the refresh token lets the backend blacklist it.
+   */
+  deleteAccount: async (
+    password: string,
+    refreshToken?: string | null,
+  ): Promise<{ message: string }> => {
+    return api.post<{ message: string }>("/api/account/delete/", {
+      password,
+      ...(refreshToken ? { refresh_token: refreshToken } : {}),
+    });
+  },
+
+  /**
    * Request password reset
    */
   forgotPassword: async (email: string): Promise<{ message: string }> => {
@@ -345,27 +366,48 @@ export const authApi = {
    *   - PATCH /api/profile/update/            → general fields (name, phone, bio, address…)
    *   - PATCH /api/profile/applicant/update/  → applicant-specific fields
    *   - PATCH /api/profile/sponsor/update/    → sponsor-specific fields
+   *
+   * `dirtyFields` gates which top-level groups are included. Each group is
+   * sent IN FULL (every subfield, even now-empty ones) rather than only the
+   * truthy ones — the previous version guarded every field with `if (x)`,
+   * so clearing a field to "" or [] never reached the backend and
+   * fetchFromBackend's merge would resurrect the "deleted" value on the
+   * next profile fetch. Since `dirtyFields` already scopes this call to
+   * fields the user actually just edited, sending them unconditionally is
+   * safe — an untouched field's group is simply omitted from the payload,
+   * so it can't be accidentally blanked out by an unrelated sync.
    */
-  updateProfile: async (data: any): Promise<{ message: string }> => {
+  updateProfile: async (
+    data: any,
+    dirtyFields: Set<SyncableField>,
+  ): Promise<{ message: string }> => {
     // ── 1. Build the general-user-profile payload ─────────────────────────
     const basePayload: Record<string, any> = {};
-    if (data.personal?.firstName)
-      basePayload.first_name = data.personal.firstName;
-    if (data.personal?.lastName) basePayload.last_name = data.personal.lastName;
-    if (data.personal?.phone) basePayload.phone_number = data.personal.phone;
-    if (data.personal?.portfolio)
+    if (dirtyFields.has("personal")) {
+      // Names are the one exception to "send dirty groups in full": there is
+      // no clear-your-name flow, so an empty value here is never a deletion —
+      // it means the local store hasn't been populated yet (fresh install,
+      // pre-fetch race). Sending it would erase the user's real name
+      // server-side, which is exactly what happened when login seeded a
+      // blank personal group and the sync pushed it. Every other field in
+      // this group IS legitimately clearable and stays unconditional.
+      if (data.personal.firstName?.trim()) {
+        basePayload.first_name = data.personal.firstName;
+      }
+      if (data.personal.lastName?.trim()) {
+        basePayload.last_name = data.personal.lastName;
+      }
+      basePayload.phone_number = data.personal.phone;
       basePayload.portfolio_url = data.personal.portfolio;
-    if (data.personal?.address?.street)
-      basePayload.street = data.personal.address.street;
-    if (data.personal?.address?.city)
-      basePayload.city = data.personal.address.city;
-    if (data.personal?.address?.state)
-      basePayload.state = data.personal.address.state;
-    if (data.personal?.address?.zip)
-      basePayload.zip = data.personal.address.zip;
-    if (data.personal?.address?.country)
-      basePayload.country = data.personal.address.country;
-    if (data.professional?.summary) basePayload.bio = data.professional.summary;
+      basePayload.street = data.personal.address?.street ?? "";
+      basePayload.city = data.personal.address?.city ?? "";
+      basePayload.state = data.personal.address?.state ?? "";
+      basePayload.zip = data.personal.address?.zip ?? "";
+      basePayload.country = data.personal.address?.country ?? "";
+    }
+    if (dirtyFields.has("professional")) {
+      basePayload.bio = data.professional.summary;
+    }
 
     // ── 2. Determine user type from the onboarding store ─────────────────
     const { useOnboardingStore } = await import("../stores/useOnboardingStore");
@@ -375,40 +417,39 @@ export const authApi = {
     const rolePayload: Record<string, any> = {};
 
     if (userType === "sponsor") {
-      if (data.professional?.company)
+      if (dirtyFields.has("professional")) {
         rolePayload.company = data.professional.company;
-      if (data.professional?.title)
         rolePayload.job_title = data.professional.title;
-      if (data.insights?.length) rolePayload.insights = data.insights;
+      }
+      if (dirtyFields.has("insights")) rolePayload.insights = data.insights;
     } else {
       // Default to applicant
-      if (data.skills?.length) rolePayload.skills = data.skills;
-      if (data.insights?.length) rolePayload.insights = data.insights;
-      if (data.professional?.currentRole)
+      if (dirtyFields.has("skills")) rolePayload.skills = data.skills;
+      if (dirtyFields.has("insights")) rolePayload.insights = data.insights;
+      if (dirtyFields.has("professional")) {
         rolePayload.current_role = data.professional.currentRole;
-      if (data.professional?.targetIndustry)
         rolePayload.industry = data.professional.targetIndustry;
-      if (data.professional?.seekingPosition)
-        rolePayload.positions = [data.professional.seekingPosition];
-      if (data.professional?.yearsExperience)
+        rolePayload.positions = data.professional.seekingPosition
+          ? [data.professional.seekingPosition]
+          : [];
         rolePayload.years_experience = data.professional.yearsExperience;
-      if (data.achievements) rolePayload.achievements = data.achievements;
-      if (data.professional?.experiences?.length)
         rolePayload.professional_experiences = data.professional.experiences;
-      if (data.education?.entries?.length)
+      }
+      if (dirtyFields.has("achievements"))
+        rolePayload.achievements = data.achievements;
+      if (dirtyFields.has("education"))
         rolePayload.education_entries = data.education.entries;
-      if (data.certifications?.length)
+      if (dirtyFields.has("certifications"))
         rolePayload.certifications = data.certifications;
-      if (data.languages?.length) rolePayload.languages = data.languages;
-      if (data.preferences?.workAuthorization)
+      if (dirtyFields.has("languages")) rolePayload.languages = data.languages;
+      if (dirtyFields.has("preferences")) {
         rolePayload.work_authorization = data.preferences.workAuthorization;
-      if (data.preferences?.willingToRelocate)
         rolePayload.willing_to_relocate = data.preferences.willingToRelocate;
-      if (data.preferences?.requiresSponsorship)
         rolePayload.requires_sponsorship = data.preferences.requiresSponsorship;
-      if (data.workPreferences?.length)
+      }
+      if (dirtyFields.has("workPreferences"))
         rolePayload.work_preferences = data.workPreferences;
-      if (data.desiredRoles?.length)
+      if (dirtyFields.has("desiredRoles"))
         rolePayload.desired_roles = data.desiredRoles;
     }
 

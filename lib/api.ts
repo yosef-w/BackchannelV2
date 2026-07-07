@@ -388,34 +388,37 @@ export async function sponsorJob(
  * Return all jobs owned by the authenticated sponsor (active and inactive)
  * Uses GET /api/jobs/mine/
  */
+/** A single row from GET /api/jobs/mine/ — a job the authenticated sponsor owns. */
+export interface MyJobRow {
+  JOB_ID: string;
+  SPONSOR_ID: string;
+  TITLE: string;
+  COMPANY: string;
+  LOCATION: string;
+  DESCRIPTION: string;
+  SALARY_MIN: number | null;
+  SALARY_MAX: number | null;
+  SALARY_CURRENCY: string | null;
+  REQUIREMENTS: string;
+  EXPERIENCE_LEVEL: string | null;
+  EMPLOYMENT_TYPE: string | null;
+  REMOTE_OPTION: boolean;
+  CREATED_AT: string;
+  EXPIRES_AT: string;
+  IS_ACTIVE: boolean;
+  RELATIONSHIP: string | null;
+  CAN_REFER: boolean;
+  LOGO_URL: string | null;
+  LIKES_COUNT: number; // applicants who have liked this job (ACTIVE | MATCHED)
+  // PR #56 — pending-only "needs your attention" count. Use this (not the
+  // broader LIKES_COUNT) for the HomeView role-switcher badge so the
+  // number reflects unactioned interest, not lifetime activity.
+  PENDING_LIKES_COUNT: number;
+  REFERENCE_JOB_ID?: string | null;
+}
+
 export async function getMyJobs(): Promise<{
-  jobs: Array<{
-    JOB_ID: string;
-    SPONSOR_ID: string;
-    TITLE: string;
-    COMPANY: string;
-    LOCATION: string;
-    DESCRIPTION: string;
-    SALARY_MIN: number | null;
-    SALARY_MAX: number | null;
-    SALARY_CURRENCY: string | null;
-    REQUIREMENTS: string;
-    EXPERIENCE_LEVEL: string | null;
-    EMPLOYMENT_TYPE: string | null;
-    REMOTE_OPTION: boolean;
-    CREATED_AT: string;
-    EXPIRES_AT: string;
-    IS_ACTIVE: boolean;
-    RELATIONSHIP: string | null;
-    CAN_REFER: boolean;
-    LOGO_URL: string | null;
-    LIKES_COUNT: number; // applicants who have liked this job (ACTIVE | MATCHED)
-    // PR #56 — pending-only "needs your attention" count. Use this (not the
-    // broader LIKES_COUNT) for the HomeView role-switcher badge so the
-    // number reflects unactioned interest, not lifetime activity.
-    PENDING_LIKES_COUNT: number;
-    REFERENCE_JOB_ID?: string | null;
-  }>;
+  jobs: MyJobRow[];
   total_count: number;
 }> {
   return api.get("/api/jobs/mine/");
@@ -696,33 +699,36 @@ export async function getSponsorMatches(): Promise<{
  * Backend returns UPPERCASE field names (PostgreSQL, PR #25).
  * Supports pagination (PR #22): limit (default 20) and offset (default 0).
  */
+/** A single row from GET /api/messages/conversations/. */
+export interface ConversationRow {
+  CONVERSATION_ID: string;
+  JOB_ID: string;
+  APPLICANT_USER_ID: string;
+  SPONSOR_USER_ID: string;
+  STATUS: string;
+  APPLICANT_HAS_UNREAD: boolean;
+  SPONSOR_HAS_UNREAD: boolean;
+  APPLICANT_FIRST_NAME: string;
+  APPLICANT_LAST_NAME: string;
+  SPONSOR_FIRST_NAME: string;
+  SPONSOR_LAST_NAME: string;
+  TITLE: string;
+  // Enriched fields from server-side JOIN (last message + participant details)
+  LAST_BODY: string | null;
+  LAST_AT: string | null;
+  SPONSOR_PHOTO_URL: string | null;
+  APPLICANT_PHOTO_URL: string | null;
+  SPONSOR_JOB_TITLE: string | null;
+  SPONSOR_COMPANY: string | null;
+  COMPANY: string | null;
+  APPLICANT_POSITIONS: string | null; // JSON-encoded string array
+}
+
 export async function getConversations(params?: {
   limit?: number;
   offset?: number;
 }): Promise<{
-  conversations: Array<{
-    CONVERSATION_ID: string;
-    JOB_ID: string;
-    APPLICANT_USER_ID: string;
-    SPONSOR_USER_ID: string;
-    STATUS: string;
-    APPLICANT_HAS_UNREAD: boolean;
-    SPONSOR_HAS_UNREAD: boolean;
-    APPLICANT_FIRST_NAME: string;
-    APPLICANT_LAST_NAME: string;
-    SPONSOR_FIRST_NAME: string;
-    SPONSOR_LAST_NAME: string;
-    TITLE: string;
-    // Enriched fields from server-side JOIN (last message + participant details)
-    LAST_BODY: string | null;
-    LAST_AT: string | null;
-    SPONSOR_PHOTO_URL: string | null;
-    APPLICANT_PHOTO_URL: string | null;
-    SPONSOR_JOB_TITLE: string | null;
-    SPONSOR_COMPANY: string | null;
-    COMPANY: string | null;
-    APPLICANT_POSITIONS: string | null; // JSON-encoded string array
-  }>;
+  conversations: ConversationRow[];
   total_count: number;
   limit?: number;
   offset?: number;
@@ -841,19 +847,15 @@ export type ReportReason =
 /**
  * 🚩 Report a user
  *
- * Backend contract (see docs/BACKEND_CHANGES_NEEDED.md §N1):
- *   POST /api/reports/
- *   body: { reported_user_id, reason, detail?, conversation_id? }
- *   → { message }
- *
- * The endpoint doesn't exist yet. This is deliberately best-effort and never
- * throws — the caller (MessagesView) always closes the conversation via the
- * already-shipped `unmatchConversation` regardless of whether the report
- * itself was recorded, so the user-visible safety outcome ("I'll never hear
- * from this person again") works today. Returns true if the report was
- * actually recorded server-side, false if it couldn't be (missing endpoint,
- * network failure, etc.) — logged, not surfaced, so a backend gap doesn't
- * read as a frontend bug to the user.
+ * POST /api/reports/ — reporting implies blocking server-side (existing
+ * conversations close, matches/likes torn down, neither user shown to the
+ * other again). This stays best-effort and never throws: the caller
+ * (MessagesView) always closes the conversation via the already-shipped
+ * `unmatchConversation` regardless of whether the report itself was
+ * recorded, so the user-visible safety outcome ("I'll never hear from this
+ * person again") doesn't depend on this call succeeding. Returns true if the
+ * report was actually recorded server-side, false on any failure — logged,
+ * not surfaced, so a transient error doesn't read as a frontend bug.
  */
 export async function reportUser(params: {
   reportedUserId: string;
@@ -871,7 +873,7 @@ export async function reportUser(params: {
     return true;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[api] reportUser failed (endpoint may not be deployed yet):", msg);
+    console.warn("[api] reportUser failed:", msg);
     return false;
   }
 }
@@ -1461,8 +1463,12 @@ export async function uploadAndParseResume(
  * Request an email address change for the authenticated user.
  * Uses POST /api/auth/change-email/
  *
- * Backend requires both new_email and password for security.
- * Returns 501 until the backend verification flow is implemented.
+ * Backend requires both new_email and password for security. This only
+ * *requests* the change — the backend emails a single-use confirmation link
+ * to the NEW address (24h expiry); the change isn't live until that link is
+ * opened. There is no app UI wired to this yet (call site removed when the
+ * endpoint was a 501 stub) — needs a confirmation screen before this is
+ * reachable from the app again.
  */
 export async function changeEmail(
   newEmail: string,

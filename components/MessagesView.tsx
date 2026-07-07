@@ -1,74 +1,31 @@
 import {
     trackConversationOpened,
     trackMessageSent,
-    trackPublicProfileOpenedFromMessage,
-    trackReferralSubmitted,
-    trackUnmatchConfirmed,
 } from "@/lib/analytics/mixpanel";
 import {
     getBasicProfile,
     getConversationMessages,
     getConversations,
-    getPublicProfile,
     listReferrals,
-    reportUser,
     sendMessage,
-    submitReferral,
-    unmatchConversation,
     WS_BASE_URL,
-    type ReportReason,
+    type ConversationRow,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
-import { BlurView } from "expo-blur";
-import {
-    ArrowLeft,
-    Briefcase,
-    Check,
-    CheckCircle,
-    ChevronRight,
-    ClipboardCheck,
-    Clock,
-    Flag,
-    FileText,
-    Globe,
-    GraduationCap,
-    MapPin,
-    MessageCircle,
-    MoreHorizontal,
-    Send,
-    ShieldCheck,
-    Sparkles,
-    User,
-    UserCheck,
-    X,
-} from "lucide-react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     Dimensions,
-    Image,
     Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, {
-    FadeInDown,
-    FadeInUp,
-    SlideInDown,
-    SlideOutDown,
+import {
     useAnimatedKeyboard,
     useAnimatedStyle,
 } from "react-native-reanimated";
@@ -76,58 +33,82 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { InboxList } from "./messages/InboxList";
 import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
-import { ThreadContextStrip } from "./messages/ThreadContextStrip";
-import { CharCounter } from "./ui/CharCounter";
-import { CompanyLogo } from "./ui/CompanyLogo";
-import { DismissibleSheet } from "./ui/DismissibleSheet";
-import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
+import { ThreadScreen } from "./messages/ThreadScreen";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
 
-/**
- * Conversation starters for a brand-new (empty) thread. Most matches die in
- * silence because someone has to write the awkward first message — these
- * give a one-tap way past that, built entirely from data already on the
- * conversation object (job title/company, skills) so they don't need an
- * extra profile fetch just to populate an empty state.
- */
-function getConversationStarters(
-  conversation: any,
-  userType: "applicant" | "sponsor",
-): string[] {
-  const jobTitle: string | undefined = conversation?.jobContext?.jobTitle;
-  const company: string | undefined =
-    conversation?.jobContext?.company || conversation?.company;
-  const skill: string | undefined =
-    Array.isArray(conversation?.skills) && conversation.skills.length > 0
-      ? conversation.skills[0]
-      : undefined;
+/** UI-shaped conversation, as transformConversation() produces from a raw
+ * ConversationRow — the type every inbox/thread render site consumes. */
+export interface Conversation {
+  id: string;
+  status: "ACTIVE" | "CLOSED";
+  name: string;
+  role: string;
+  company: string;
+  profileImageUrl: string | null;
+  skills: string[];
+  experience: string;
+  otherParticipant: {
+    id: string;
+    name: string;
+    profileImageUrl: string | null;
+    role?: string;
+    company?: string;
+  };
+  lastMessage?: {
+    content: string;
+    senderId: string;
+    createdAt: string;
+    isRead: boolean;
+  };
+  unreadCount: number;
+  jobContext: {
+    jobId: string;
+    jobTitle: string;
+    company: string;
+    logoUrl?: string;
+  };
+  /** True when ACTIVE but no activity in 30+ days — buckets into the
+   * "Hidden (30+ days inactive)" section instead of Active. */
+  isHidden: boolean;
+}
 
-  if (userType === "applicant") {
-    return [
-      company
-        ? `What's the team culture like at ${company}?`
-        : "What's the team culture like there?",
-      jobTitle
-        ? `What's the interview process like for the ${jobTitle} role?`
-        : "What's the interview process like?",
-      company
-        ? `What made you want to work at ${company}?`
-        : "What made you want to work there?",
-    ];
+/**
+ * Merge one server message into the current thread state, reconciling any
+ * matching optimistic temp message in place — the same dedup logic the live
+ * chat socket's `chat.message` handler already used inline. Extracted so the
+ * socket-reconnect catch-up fetch (see the chat WebSocket effect) can apply
+ * it per-message too, instead of doing a destructive full replace that would
+ * drop an optimistic send still in flight when the reconnect fetch runs.
+ */
+function mergeIncomingMessage(prev: any[], incoming: any): any[] {
+  // Already have this message by serverId or id — nothing to do.
+  if (prev.some((msg) => msg.serverId === incoming.id || msg.id === incoming.id)) {
+    return prev;
   }
 
-  return [
-    jobTitle
-      ? `What interests you about the ${jobTitle} role?`
-      : "What are you looking for in your next role?",
-    skill
-      ? `I noticed you know ${skill} — how have you used that day to day?`
-      : "Tell me a bit about your background.",
-    "What's most important to you in your next role?",
-  ];
+  // An optimistic temp message from the same sender/content — replace it
+  // in place rather than appending a duplicate.
+  const tempIndex = prev.findIndex(
+    (msg) =>
+      msg.id.startsWith("temp-") &&
+      msg.senderId === incoming.senderId &&
+      msg.content === incoming.content,
+  );
+  if (tempIndex >= 0) {
+    const updated = [...prev];
+    updated[tempIndex] = {
+      ...updated[tempIndex],
+      serverId: incoming.id,
+      createdAt: incoming.createdAt,
+      isRead: true,
+    };
+    return updated;
+  }
+
+  return [...prev, incoming];
 }
 
 interface MessagesViewProps {
@@ -176,18 +157,6 @@ export function MessagesView({
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
   >(externalSelectedConversationId ?? null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showApplicationDetail, setShowApplicationDetail] = useState(false);
-  const [showReferralFlow, setShowReferralFlow] = useState(false);
-  const [referralStep, setReferralStep] = useState(1);
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [messageText, setMessageText] = useState("");
-  const [hasMessaged, setHasMessaged] = useState(false);
-  const [feelsConfident, setFeelsConfident] = useState(false);
-  const [knowsBackground, setKnowsBackground] = useState(false);
-  const [comfortableAttaching, setComfortableAttaching] = useState(false);
-  const [referralSubmitting, setReferralSubmitting] = useState(false);
-  const [referralError, setReferralError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard();
@@ -213,15 +182,13 @@ export function MessagesView({
     enabled: !!currentUserId,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
-    queryFn: async (): Promise<any[]> => {
+    queryFn: async (): Promise<Conversation[]> => {
       try {
         const response = await getConversations({ limit: 20, offset: 0 });
         setConversationsTotalCount(
           response.total_count ?? response.conversations.length,
         );
-        return response.conversations.map((conv) =>
-          transformConversation(conv as any),
-        );
+        return response.conversations.map(transformConversation);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to fetch conversations";
@@ -243,12 +210,12 @@ export function MessagesView({
   // every existing setConversations(...) call site works unchanged while the
   // list actually lives in the React Query cache.
   const setConversations = useCallback(
-    (next: any[] | ((prev: any[]) => any[])) => {
-      queryClient.setQueryData<any[]>(
+    (next: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
+      queryClient.setQueryData<Conversation[]>(
         ["conversations", "list", currentUserId],
         (prev) =>
           typeof next === "function"
-            ? (next as (p: any[]) => any[])(prev ?? [])
+            ? (next as (p: Conversation[]) => Conversation[])(prev ?? [])
             : next,
       );
     },
@@ -265,35 +232,23 @@ export function MessagesView({
   const [messagesError, setMessagesError] = useState<string | null>(null);
 
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
-
-  // Referral flow — full public profile of the applicant being referred
-  const [referralProfile, setReferralProfile] = useState<any>(null);
-  const [referralProfileLoading, setReferralProfileLoading] = useState(false);
 
   // Tracks which (applicantUserId:jobId) pairs have already been referred so
   // the header button reflects the referral status without a separate lookup.
   const [referredSet, setReferredSet] = useState<Set<string>>(new Set());
 
-  // Unmatch / Report — one sheet, two steps. "actions" is the initial
-  // Report/Unmatch/Cancel picker; "report" is the reason-picker step shown
-  // after tapping Report. showUnmatchMenu still gates the sheet's overall
-  // visibility (kept the name to avoid an unrelated rename).
-  const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
-  const [isUnmatching, setIsUnmatching] = useState(false);
-  const [threadMenuStep, setThreadMenuStep] = useState<"actions" | "report">(
-    "actions",
-  );
-  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
-  const [reportDetail, setReportDetail] = useState("");
-  const [isReporting, setIsReporting] = useState(false);
-
   // Refs mirror state for use inside the long-lived inbox WebSocket handler,
   // which is created once and must read the *current* values without the
   // socket reconnecting every time selection or the list changes.
   const selectedConversationRef = useRef<string | null>(selectedConversation);
-  const conversationsRef = useRef<any[]>(conversations);
+  const conversationsRef = useRef<Conversation[]>(conversations);
   const prevSelectedRef = useRef<string | null>(selectedConversation);
+  // How many messages were already in the thread the moment it was opened —
+  // only messages at or past this index get the entering fade (see the
+  // render below). Without this, opening a 100-message history staggered
+  // every bubble in at `index * 50`ms, so the user watched ~5 seconds of
+  // messages they'd already read fade in one by one.
+  const initialMessageCountRef = useRef(0);
   useEffect(() => {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
@@ -335,7 +290,7 @@ export function MessagesView({
   // automatically once `currentUserId` is set — no manual effect needed.)
 
   // Build a transformed conversation object from raw API response (shared by initial fetch + load more)
-  const transformConversation = (c: any) => {
+  const transformConversation = (c: ConversationRow): Conversation => {
     const isCurrentUserApplicant = c.APPLICANT_USER_ID === currentUserId;
     const otherPersonFirstName = isCurrentUserApplicant
       ? c.SPONSOR_FIRST_NAME
@@ -372,8 +327,13 @@ export function MessagesView({
       role: otherPersonRole || "Unknown Role",
       company: otherPersonCompany || c.COMPANY || "Unknown Company",
       profileImageUrl: otherPersonPhoto,
-      skills: c.SKILLS ? (Array.isArray(c.SKILLS) ? c.SKILLS : [c.SKILLS]) : [],
-      experience: c.YEARS_EXPERIENCE ? `${c.YEARS_EXPERIENCE} years` : "N/A",
+      // GET /api/messages/conversations/ doesn't return SKILLS or
+      // YEARS_EXPERIENCE — this was reading fields that don't exist on the
+      // response, always silently falling through to these defaults.
+      // getConversationStarters() and the referral flow's Key Skills
+      // section both already degrade gracefully to an empty list.
+      skills: [],
+      experience: "N/A",
       otherParticipant: {
         id: otherPersonId,
         name:
@@ -404,9 +364,20 @@ export function MessagesView({
         // join LOGO_URL onto the row. Pull whichever naming surfaces if
         // backend adds it later; otherwise stays undefined and downstream
         // CompanyLogo components fall back to the company initial.
-        logoUrl: c.LOGO_URL || c.logo_url || c.ORGANIZATION_LOGO || undefined,
+        logoUrl: (c as any).LOGO_URL || (c as any).logo_url || undefined,
       },
-      createdAt: new Date().toISOString(),
+      // "Hidden (30+ days inactive)" — a thread with no activity in 30+
+      // days buckets out of Active. Previously this field was declared as
+      // a filter target (see activeConversations/hiddenConversations below)
+      // but never actually set here, so the Hidden section was permanently
+      // empty; typing this transform's output surfaced the gap.
+      isHidden: (() => {
+        if (!c.LAST_AT) return false;
+        const lastActivityMs = new Date(c.LAST_AT).getTime();
+        if (Number.isNaN(lastActivityMs)) return false;
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        return Date.now() - lastActivityMs > THIRTY_DAYS_MS;
+      })(),
     };
   };
 
@@ -440,15 +411,54 @@ export function MessagesView({
       setIsLoadingMore(false);
     }
   };
+  // Per-conversation chat WebSocket, with the same exponential-backoff
+  // reconnect the inbox socket below already used — previously a dropped
+  // connection mid-thread just went quiet with no retry until the user
+  // manually backed out and reopened the conversation. On a successful
+  // reconnect (not the first connect), we also pull the latest history and
+  // merge it in via mergeIncomingMessage() rather than replacing the whole
+  // array — a destructive full-replace here could wipe out an optimistic
+  // message still in flight (its REST POST not yet resolved) if the catch-up
+  // fetch happens to land in that window.
   useEffect(() => {
     if (!selectedConversation) {
       return;
     }
 
     let ws: WebSocket | null = null;
-    const accessToken = useAuthStore.getState().accessToken;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    let attempt = 0;
+    let hasConnectedOnce = false;
 
-    if (accessToken) {
+    const catchUpHistory = async () => {
+      try {
+        const response = await getConversationMessages(selectedConversation, {
+          limit: 100,
+        });
+        if (cancelled) return;
+        setMessages((prev) =>
+          response.messages.reduce(
+            (acc, msg) =>
+              mergeIncomingMessage(acc, {
+                id: msg.MESSAGE_ID,
+                senderId: msg.SENDER_USER_ID,
+                content: msg.BODY,
+                createdAt: msg.CREATED_AT,
+              }),
+            prev,
+          ),
+        );
+      } catch (err) {
+        console.warn("[MessagesView] Reconnect catch-up fetch failed:", err);
+      }
+    };
+
+    const connect = () => {
+      if (cancelled) return;
+      const accessToken = useAuthStore.getState().accessToken;
+      if (!accessToken) return;
+
       try {
         // Connect to WebSocket for real-time messages. Built from the same
         // env-configured API host as every REST call (see WS_BASE_URL) so
@@ -456,125 +466,106 @@ export function MessagesView({
         const wsUrl = `${WS_BASE_URL}/ws/chat/${selectedConversation}/?token=${accessToken}`;
         // Never log the full URL — it carries the access token in the query
         // string, and this line was previously leaking it into device logs.
-        console.log(
-          "[MessagesView] Connecting to WebSocket for conversation:",
-          selectedConversation,
-        );
-
         ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          console.log("[MessagesView] WebSocket connected");
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log("[MessagesView] WebSocket message received:", data);
-
-            if (data.type === "chat.message") {
-              // Add new message to the list in real-time, reconciling any optimistic temp message
-              const newMessage = {
-                id: data.message_id,
-                serverId: data.message_id,
-                senderId: data.sender_user_id,
-                content: data.body,
-                messageType: "text" as const,
-                isRead: true,
-                createdAt: data.created_at,
-              };
-
-              setMessages((prev) => {
-                // If already have this message by serverId or id, keep as-is
-                if (
-                  prev.some(
-                    (msg) =>
-                      msg.serverId === newMessage.id ||
-                      msg.id === newMessage.id,
-                  )
-                ) {
-                  return prev;
-                }
-
-                // If we have an optimistic temp message from same sender/content, replace it in-place
-                const tempIndex = prev.findIndex(
-                  (msg) =>
-                    msg.id.startsWith("temp-") &&
-                    msg.senderId === newMessage.senderId &&
-                    msg.content === newMessage.content,
-                );
-                if (tempIndex >= 0) {
-                  const updated = [...prev];
-                  updated[tempIndex] = {
-                    ...updated[tempIndex],
-                    serverId: newMessage.id,
-                    createdAt: newMessage.createdAt,
-                    isRead: true,
-                  };
-                  return updated;
-                }
-
-                return [...prev, newMessage];
-              });
-
-              // Keep the inbox list's last-message preview in sync so the
-              // conversation row updates live instead of going stale until
-              // the list is refetched (e.g. on a tab switch).
-              setConversations((prev) =>
-                prev.map((c) =>
-                  c.id === selectedConversation
-                    ? {
-                        ...c,
-                        lastMessage: {
-                          content: newMessage.content,
-                          senderId: newMessage.senderId,
-                          createdAt: newMessage.createdAt,
-                          isRead: true,
-                        },
-                      }
-                    : c,
-                ),
-              );
-
-              // Scroll to bottom when new message arrives
-              setTimeout(() => scrollToBottom(true), 100);
-            } else if (data.type === "error") {
-              console.warn("[MessagesView] WebSocket error:", data.message);
-            }
-          } catch (err) {
-            console.warn(
-              "[MessagesView] Failed to parse WebSocket message:",
-              err,
-            );
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.warn("[MessagesView] WebSocket error:", error);
-        };
-
-        ws.onclose = (event) => {
-          console.log(
-            "[MessagesView] WebSocket closed:",
-            event.code,
-            event.reason,
-          );
-          if (event.code === 4001) {
-            console.warn(
-              "[MessagesView] WebSocket auth failed - invalid token",
-            );
-          } else if (event.code === 4003) {
-            console.warn(
-              "[MessagesView] WebSocket rejected - not a participant",
-            );
-          }
-        };
       } catch (err) {
         console.warn("[MessagesView] Failed to connect to WebSocket:", err);
+        scheduleReconnect();
+        return;
       }
-    }
+
+      ws.onopen = () => {
+        attempt = 0;
+        console.log("[MessagesView] WebSocket connected");
+        if (hasConnectedOnce) catchUpHistory();
+        hasConnectedOnce = true;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("[MessagesView] WebSocket message received:", data);
+
+          if (data.type === "chat.message") {
+            const newMessage = {
+              id: data.message_id,
+              serverId: data.message_id,
+              senderId: data.sender_user_id,
+              content: data.body,
+              messageType: "text" as const,
+              isRead: true,
+              createdAt: data.created_at,
+            };
+
+            setMessages((prev) => mergeIncomingMessage(prev, newMessage));
+
+            // Keep the inbox list's last-message preview in sync so the
+            // conversation row updates live instead of going stale until
+            // the list is refetched (e.g. on a tab switch).
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === selectedConversation
+                  ? {
+                      ...c,
+                      lastMessage: {
+                        content: newMessage.content,
+                        senderId: newMessage.senderId,
+                        createdAt: newMessage.createdAt,
+                        isRead: true,
+                      },
+                    }
+                  : c,
+              ),
+            );
+
+            // Scroll to bottom when new message arrives
+            setTimeout(() => scrollToBottom(true), 100);
+          } else if (data.type === "error") {
+            console.warn("[MessagesView] WebSocket error:", data.message);
+          }
+        } catch (err) {
+          console.warn(
+            "[MessagesView] Failed to parse WebSocket message:",
+            err,
+          );
+        }
+      };
+
+      ws.onerror = () => {
+        // `onclose` fires right after and handles reconnect.
+      };
+
+      ws.onclose = (event) => {
+        console.log(
+          "[MessagesView] WebSocket closed:",
+          event.code,
+          event.reason,
+        );
+        if (cancelled) return;
+        // 4001 = bad token, 4003 = forbidden — don't hammer reconnect on an
+        // auth failure that won't fix itself.
+        if (event.code === 4001 || event.code === 4003) {
+          console.warn(
+            `[MessagesView] WebSocket rejected: ${event.code}`,
+          );
+          return;
+        }
+        scheduleReconnect();
+      };
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      attempt += 1;
+      // Exponential backoff, capped at 30s.
+      const delay = Math.min(30000, 1000 * 2 ** attempt);
+      reconnectTimer = setTimeout(connect, delay);
+    };
+
+    connect();
 
     return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) {
         console.log("[MessagesView] Closing WebSocket connection");
         ws.close();
@@ -704,6 +695,11 @@ export function MessagesView({
 
   // Fetch messages when conversation is selected
   useEffect(() => {
+    // Reset immediately on every conversation change (including to null) so
+    // a stale count from the previous thread can't briefly apply while the
+    // new one's history is still loading.
+    initialMessageCountRef.current = 0;
+
     const fetchMessages = async () => {
       if (!selectedConversation) {
         setMessages([]);
@@ -735,6 +731,7 @@ export function MessagesView({
         }));
 
         setMessages(transformedMessages);
+        initialMessageCountRef.current = transformedMessages.length;
 
         // Infer current user ID from messages
         if (response.messages && response.messages.length > 0) {
@@ -791,93 +788,6 @@ export function MessagesView({
     }
   };
 
-  const handleUnmatch = async () => {
-    if (!selectedConversation) return;
-    try {
-      setIsUnmatching(true);
-      trackUnmatchConfirmed({ conversationId: selectedConversation });
-      await unmatchConversation(selectedConversation);
-      // Mark the conversation CLOSED rather than dropping it. This moves it
-      // into the "Past Connections" section (instead of making it vanish),
-      // and keeps `selectedConversation` pointing at a row that still
-      // exists — so the thread can't flash a "Conversation not found"
-      // screen in the render between this update and navigating away.
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedConversation
-            ? { ...c, status: "CLOSED" as const }
-            : c,
-        ),
-      );
-      closeThreadMenu();
-      handleConversationSelect(null);
-    } catch (err) {
-      console.warn("[MessagesView] Failed to unmatch:", err);
-      closeThreadMenu();
-      showToast(
-        err instanceof Error
-          ? err.message
-          : "Failed to unmatch. Please try again.",
-        "error",
-      );
-    } finally {
-      setIsUnmatching(false);
-    }
-  };
-
-  // Resets the sheet back to its default step whenever it's closed, so it
-  // doesn't reopen mid-report next time.
-  const closeThreadMenu = () => {
-    setShowUnmatchMenu(false);
-    setThreadMenuStep("actions");
-    setReportReason(null);
-    setReportDetail("");
-  };
-
-  // Report a user, then close the conversation the same way Unmatch does.
-  // The block/close effect always happens via the already-shipped unmatch
-  // endpoint, regardless of whether the report itself was recorded — see
-  // reportUser()'s doc comment for why that's split this way.
-  const handleSubmitReport = async () => {
-    if (!selectedConversation || !reportReason) return;
-    const reportedUserId = conversations.find(
-      (c) => c.id === selectedConversation,
-    )?.otherParticipant?.id;
-    setIsReporting(true);
-    try {
-      if (reportedUserId) {
-        await reportUser({
-          reportedUserId: String(reportedUserId),
-          reason: reportReason,
-          detail: reportDetail.trim() || undefined,
-          conversationId: selectedConversation,
-        });
-      }
-      await unmatchConversation(selectedConversation);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedConversation
-            ? { ...c, status: "CLOSED" as const }
-            : c,
-        ),
-      );
-      closeThreadMenu();
-      handleConversationSelect(null);
-      showToast("Reported. This conversation has been closed.", "success");
-    } catch (err) {
-      console.warn("[MessagesView] Failed to close reported conversation:", err);
-      closeThreadMenu();
-      showToast(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.",
-        "error",
-      );
-    } finally {
-      setIsReporting(false);
-    }
-  };
-
   // Auto-navigate to a conversation thread when coming from Matches tab via
   // pendingJobId. When `pendingUserId` is also supplied (matches list cards
   // pass it now), match on BOTH jobId AND counterpart user id — necessary
@@ -914,13 +824,20 @@ export function MessagesView({
     }
   }, [pendingConversationId, conversations]);
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedConversation || sendingMessage) return;
+  // Takes the composer text as a parameter rather than reading it from
+  // closure state, since messageText now lives inside ThreadScreen (Stage
+  // 3b). Returns whether the send succeeded so the caller can restore the
+  // draft text on failure — the same optimistic-then-restore behavior as
+  // before, just with ThreadScreen owning the text itself.
+  const handleSendMessage = async (text: string): Promise<boolean> => {
+    const messageToSend = text.trim();
+    if (!messageToSend || !selectedConversation || sendingMessage)
+      return false;
 
     const tempMessage = {
       id: `temp-${Date.now()}`,
       senderId: currentUserId || "me",
-      content: messageText.trim(),
+      content: messageToSend,
       messageType: "text" as const,
       isRead: false,
       createdAt: new Date().toISOString(),
@@ -945,8 +862,6 @@ export function MessagesView({
           : c,
       ),
     );
-    const messageToSend = messageText.trim();
-    setMessageText("");
 
     try {
       setSendingMessage(true);
@@ -987,20 +902,16 @@ export function MessagesView({
 
       // Scroll to bottom after sending
       setTimeout(() => scrollToBottom(true), 100);
+      return true;
     } catch (err) {
       console.warn("[MessagesView] Failed to send message:", err);
       // Remove optimistic message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
-      setMessageText(messageToSend); // Restore message text
       showToast("Failed to send message. Please try again.", "error");
+      return false;
     } finally {
       setSendingMessage(false);
     }
-  };
-
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
-    setActiveSlide(slide);
   };
 
   const scrollToBottom = (animated = true) => {
@@ -1042,1711 +953,37 @@ export function MessagesView({
     return () => showSub.remove();
   }, []);
 
-  const resetReferralFlow = () => {
-    setReferralStep(1);
-    setHasMessaged(false);
-    setFeelsConfident(false);
-    setKnowsBackground(false);
-    setComfortableAttaching(false);
-    setReferralError(null);
-    setReferralSubmitting(false);
-    setReferralProfile(null);
-  };
-
-  // Fetch the applicant's full public profile when the referral flow opens so
-  // the Step 2 review card can show rich, real data.
-  useEffect(() => {
-    if (!showReferralFlow) {
-      setReferralProfile(null);
-      return;
-    }
-    const conv = conversations.find((c) => c.id === selectedConversation);
-    const applicantId = conv?.otherParticipant?.id;
-    if (!applicantId) return;
-    setReferralProfileLoading(true);
-    getPublicProfile(String(applicantId))
-      .then((profile) => setReferralProfile(profile))
-      .catch((err) =>
-        console.warn("[MessagesView] Failed to fetch referral profile:", err),
-      )
-      .finally(() => setReferralProfileLoading(false));
-  }, [showReferralFlow]);
-
-  const canProceedFromStep1 =
-    hasMessaged && feelsConfident && knowsBackground && comfortableAttaching;
-
-  const getStatusLabel = (status: string) => {
-    const labels = {
-      applied: "Applied",
-      reviewing: "Under Review",
-      interview_scheduled: "Interview",
-      offer: "Offer",
-      rejected: "Closed",
-    };
-    return labels[status as keyof typeof labels] || status;
-  };
-
-  const getStatusDotColor = (status: string) => {
-    const colors = {
-      applied: { backgroundColor: "#666" },
-      reviewing: { backgroundColor: "#666" },
-      interview_scheduled: { backgroundColor: "#000" },
-      offer: { backgroundColor: "#000" },
-      rejected: { backgroundColor: "#DC2626" },
-    };
-    return (
-      colors[status as keyof typeof colors] || { backgroundColor: "#9CA3AF" }
-    );
-  };
-
-  const getStatusBadgeStyle = (status: string) => {
-    const styles = {
-      applied: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      interview_scheduled: {
-        backgroundColor: "#F4F4F5",
-        borderColor: "#E5E5E5",
-      },
-      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
-    };
-    return (
-      styles[status as keyof typeof styles] || {
-        backgroundColor: "#F3F4F6",
-        borderColor: "#E5E7EB",
-      }
-    );
-  };
-
-  const getStatusTextColor = (status: string) => {
-    const colors = {
-      applied: { color: "#666" },
-      reviewing: { color: "#666" },
-      interview_scheduled: { color: "#000" },
-      offer: { color: "#000" },
-      rejected: { color: "#DC2626" },
-    };
-    return colors[status as keyof typeof colors] || { color: "#374151" };
-  };
-
-  const openReferral = () => {
-    setShowProfileModal(false);
-    setReferralStep(1);
-    setShowReferralFlow(true);
-  };
-
-  const getApplicationFromConversation = (conv: any) => {
-    if (!conv.applicationStatus) return null;
-
-    const statusToTimeline: Record<string, any[]> = {
-      applied: [
-        {
-          stage: "Applied",
-          date: conv.appliedDate || "Recent",
-          completed: true,
-        },
-        {
-          stage: "Referred",
-          date: "Pending",
-          completed: false,
-          isReferred: true,
-        },
-        { stage: "Screening", date: "Pending", completed: false },
-        { stage: "Interview", date: "TBD", completed: false },
-        { stage: "Decision", date: "TBD", completed: false },
-      ],
-      reviewing: [
-        {
-          stage: "Applied",
-          date: conv.appliedDate || "Recent",
-          completed: true,
-        },
-        {
-          stage: "Referred",
-          date: "Completed",
-          completed: true,
-          isReferred: true,
-        },
-        { stage: "Screening", date: "In Progress", completed: false },
-        { stage: "Interview", date: "TBD", completed: false },
-        { stage: "Decision", date: "TBD", completed: false },
-      ],
-      interview_scheduled: [
-        {
-          stage: "Applied",
-          date: conv.appliedDate || "Recent",
-          completed: true,
-        },
-        {
-          stage: "Referred",
-          date: "Completed",
-          completed: true,
-          isReferred: true,
-        },
-        { stage: "Screening", date: "Completed", completed: true },
-        { stage: "Interview", date: "Scheduled", completed: false },
-        { stage: "Decision", date: "TBD", completed: false },
-      ],
-      offer: [
-        {
-          stage: "Applied",
-          date: conv.appliedDate || "Recent",
-          completed: true,
-        },
-        {
-          stage: "Referred",
-          date: "Completed",
-          completed: true,
-          isReferred: true,
-        },
-        { stage: "Screening", date: "Completed", completed: true },
-        { stage: "Interview", date: "Completed", completed: true },
-        { stage: "Decision", date: "Offer Received", completed: true },
-      ],
-      rejected: [
-        {
-          stage: "Applied",
-          date: conv.appliedDate || "Recent",
-          completed: true,
-        },
-        {
-          stage: "Referred",
-          date: "Completed",
-          completed: true,
-          isReferred: true,
-        },
-        { stage: "Screening", date: "Completed", completed: true },
-        { stage: "Interview", date: "Completed", completed: true },
-        { stage: "Decision", date: "Closed", completed: true },
-      ],
-    };
-
-    return {
-      jobTitle: conv.appliedRole,
-      company: conv.company,
-      companyLogo: conv.image,
-      status: conv.applicationStatus,
-      appliedDate: conv.appliedDate || "Recent",
-      nextAction: conv.nextAction || "No pending actions",
-      sponsorName: conv.name,
-      sponsorRole: conv.role,
-      sponsorImage: conv.image,
-      timeline:
-        statusToTimeline[conv.applicationStatus] || statusToTimeline.applied,
-    };
-  };
-
-  /** Normalize a backend ISO string to UTC (append 'Z' when no offset present). */
-  const normalizeToUtc = (s: string): string => {
-    const t = s.trim();
-    return /Z$/i.test(t) || /[+-]\d{2}:?\d{2}$/.test(t) ? s : `${s}Z`;
-  };
-
-  // Day header formatter for message thread dividers
-  const formatDayHeader = (timestamp: string) => {
-    const date = new Date(normalizeToUtc(timestamp));
-    const now = new Date();
-    const todayDate = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const yesterdayDate = new Date(todayDate);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const msgDate = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-    );
-    const timeStr = date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    if (msgDate.getTime() === todayDate.getTime()) {
-      return `Today · ${timeStr}`;
-    } else if (msgDate.getTime() === yesterdayDate.getTime()) {
-      return `Yesterday · ${timeStr}`;
-    } else {
-      const sameYear = date.getFullYear() === now.getFullYear();
-      const dateStr = date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        ...(sameYear ? {} : { year: "numeric" }),
-      });
-      return `${dateStr} · ${timeStr}`;
-    }
-  };
-
   if (selectedConversation) {
-    const conversation = conversations.find(
-      (c) => c.id === selectedConversation,
-    );
-
-    // In-thread referral prompt eligibility (sponsor only) — after a real
-    // back-and-forth (3+ messages each way), nudge the sponsor toward the
-    // Refer flow instead of relying on them remembering the header button
-    // exists. Plain computation, not useMemo/hook — this whole block is
-    // inside a conditional branch of the component, so a hook here would
-    // violate the Rules of Hooks. Message lists are small enough that
-    // recomputing this every render is cheap.
-    let sponsorReferralPromptEligible = false;
-    if (userType === "sponsor" && conversation?.otherParticipant?.id) {
-      const applicantId = conversation.otherParticipant.id;
-      const jobId = conversation.jobContext?.jobId;
-      const alreadyReferred =
-        !!(applicantId && jobId) &&
-        referredSet.has(`${applicantId}:${jobId}`);
-      if (!alreadyReferred) {
-        let mine = 0;
-        let theirs = 0;
-        for (const m of messages) {
-          const isMine = currentUserId
-            ? m.senderId === currentUserId ||
-              m.senderId === "me" ||
-              (m.id.startsWith("temp-") && !m.serverId)
-            : m.id.startsWith("temp-") || m.senderId === "me";
-          if (isMine) mine++;
-          else theirs++;
-        }
-        sponsorReferralPromptEligible = mine >= 3 && theirs >= 3;
-      }
-    }
-
-    if (!conversation) {
-      // Conversations are still fetching — show a loading state so we don't flash
-      // a false "not found" message while the async fetch completes after a
-      // re-mount (e.g. navigating back from the public profile view).
-      if (conversationsLoading) {
-        return (
-          <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-          >
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: "#F4F4F5",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 12,
-              }}
-            >
-              <MessageCircle color="#BBB" size={28} strokeWidth={2} />
-            </View>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#AAA" }}>
-              Loading conversation…
-            </Text>
-          </View>
-        );
-      }
-
-      return (
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <Text style={{ fontSize: 16, color: "#666" }}>
-            Conversation not found
-          </Text>
-          <TouchableOpacity
-            onPress={() => handleConversationSelect(null)}
-            style={{
-              marginTop: 16,
-              padding: 12,
-              backgroundColor: "#000",
-              borderRadius: 12,
-            }}
-          >
-            <Text style={{ color: "#FFF", fontWeight: "700" }}>
-              Back to Messages
-            </Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
     return (
-      <View style={{ flex: 1 }}>
-        <Animated.View style={[styles.chatContainer, keyboardSpacerStyle]}>
-          <View style={styles.chatHeader}>
-            <TouchableOpacity
-              onPress={() => handleConversationSelect(null)}
-              style={styles.backButton}
-            >
-              <ArrowLeft color="#000" size={24} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerIdentity}
-              onPress={() => setShowProfileModal(true)}
-              activeOpacity={0.7}
-            >
-              {conversation.otherParticipant.profileImageUrl ? (
-                <Image
-                  source={{
-                    uri: conversation.otherParticipant.profileImageUrl,
-                  }}
-                  style={styles.headerImage}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.headerImage,
-                    {
-                      backgroundColor: "#000",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
-                  >
-                    {(conversation.otherParticipant.name ||
-                      "?")[0].toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerName} numberOfLines={1}>
-                  {conversation.otherParticipant.name}
-                </Text>
-                <Text style={styles.headerRole}>
-                  {conversation.otherParticipant.role &&
-                  conversation.otherParticipant.company
-                    ? `${conversation.otherParticipant.role} @ ${conversation.otherParticipant.company}`
-                    : conversation.otherParticipant.role ||
-                      conversation.otherParticipant.company ||
-                      ""}
-                </Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.headerActions}>
-              {/* Hide the Refer button and three-dots (unmatch) menu on
-                  closed threads — the action is moot (you can't refer
-                  someone you're no longer matched with, and you can't
-                  unmatch what's already unmatched). The profile-image and
-                  name tap target above stays live so the profile sheet
-                  still opens. */}
-              {conversation.status !== "CLOSED" && (
-                <>
-                  {userType === "sponsor" ? (
-                    (() => {
-                      const applicantId = conversation.otherParticipant?.id;
-                      const jobId = conversation.jobContext?.jobId;
-                      const alreadyReferred =
-                        !!(applicantId && jobId) &&
-                        referredSet.has(`${applicantId}:${jobId}`);
-                      return alreadyReferred ? (
-                        <View style={styles.headerReferBtn}>
-                          <CheckCircle
-                            color="#000"
-                            size={17}
-                            strokeWidth={2.5}
-                          />
-                          <Text
-                            style={[
-                              styles.headerReferText,
-                              styles.headerReferTextDone,
-                            ]}
-                          >
-                            Referred
-                          </Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.headerReferBtn}
-                          onPress={openReferral}
-                          activeOpacity={0.7}
-                        >
-                          <UserCheck color="#000" size={20} />
-                          <Text style={styles.headerReferText}>Refer</Text>
-                        </TouchableOpacity>
-                      );
-                    })()
-                  ) : conversation.applicationStatus ? (
-                    <TouchableOpacity
-                      style={styles.headerStatusBtn}
-                      onPress={() => setShowApplicationDetail(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.headerStatusText}>Status</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  <TouchableOpacity
-                    style={styles.headerMoreBtn}
-                    onPress={() => setShowUnmatchMenu(true)}
-                    activeOpacity={0.7}
-                  >
-                    <MoreHorizontal color="#000" size={20} />
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-          {/* Pins which role this thread is about — the header above only
-              says who you're talking to. Shown on closed threads too, since
-              context matters most when reviewing an old conversation. */}
-          <ThreadContextStrip
-            jobTitle={conversation.jobContext?.jobTitle}
-            company={conversation.jobContext?.company}
-            logoUrl={conversation.jobContext?.logoUrl}
-            onPress={() => setShowProfileModal(true)}
-          />
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesScroll}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => scrollToBottom(false)}
-          >
-            {messagesLoading ? (
-              <View style={{ padding: 40, alignItems: "center" }}>
-                <Text style={{ color: "#999", fontSize: 15 }}>
-                  Loading messages...
-                </Text>
-              </View>
-            ) : messagesError ? (
-              <View style={{ padding: 40, alignItems: "center" }}>
-                <Text
-                  style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}
-                >
-                  Failed to load messages
-                </Text>
-                <Text
-                  style={{ color: "#999", fontSize: 13, textAlign: "center" }}
-                >
-                  {messagesError}
-                </Text>
-              </View>
-            ) : messages.length === 0 ? (
-              <View style={{ padding: 28, alignItems: "center" }}>
-                <Text style={{ color: "#999", fontSize: 15 }}>
-                  No messages yet
-                </Text>
-                <Text
-                  style={{
-                    color: "#BBB",
-                    fontSize: 13,
-                    marginTop: 8,
-                    marginBottom: 20,
-                  }}
-                >
-                  Start the conversation!
-                </Text>
-                {/* Conversation starters — most matches die in silence
-                    because someone has to write the awkward first message.
-                    Tapping fills the composer rather than sending straight
-                    away, so the user still reviews/personalizes it. */}
-                <View style={styles.startersHeader}>
-                  <Sparkles size={13} color="#999" strokeWidth={2.2} />
-                  <Text style={styles.startersHeaderText}>BREAK THE ICE</Text>
-                </View>
-                <View style={styles.startersList}>
-                  {getConversationStarters(conversation, userType).map(
-                    (starter, i) => (
-                      <TouchableOpacity
-                        key={i}
-                        style={styles.starterChip}
-                        onPress={() => setMessageText(starter)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.starterChipText}>{starter}</Text>
-                      </TouchableOpacity>
-                    ),
-                  )}
-                </View>
-              </View>
-            ) : (
-              (() => {
-                // A message is mine if:
-                //  1. sender matches the resolved currentUserId
-                //  2. it is still an unreconciled optimistic temp (senderId may be "me" or real ID)
-                //  3. senderId is literally "me" (fallback before currentUserId loaded)
-                const isMine = (m: any) =>
-                  currentUserId
-                    ? m.senderId === currentUserId ||
-                      m.senderId === "me" ||
-                      (m.id.startsWith("temp-") && !m.serverId)
-                    : m.id.startsWith("temp-") || m.senderId === "me";
-                // Two messages cluster when the same sender sends them within
-                // a couple of minutes on the same day — clustered bubbles sit
-                // tight together with softened facing corners (the iMessage/
-                // WhatsApp convention) instead of every bubble floating with
-                // identical spacing.
-                const CLUSTER_WINDOW_MS = 2 * 60 * 1000;
-                const clustersWith = (a: any, b: any) =>
-                  !!a &&
-                  !!b &&
-                  isMine(a) === isMine(b) &&
-                  new Date(a.createdAt).toDateString() ===
-                    new Date(b.createdAt).toDateString() &&
-                  Math.abs(
-                    new Date(a.createdAt).getTime() -
-                      new Date(b.createdAt).getTime(),
-                  ) < CLUSTER_WINDOW_MS;
-
-                return messages.map((message, index) => {
-                  const isMyMessage = isMine(message);
-                  const prevMessage = index > 0 ? messages[index - 1] : null;
-                  const nextMessage =
-                    index < messages.length - 1 ? messages[index + 1] : null;
-                  const isFirstOfDay =
-                    !prevMessage ||
-                    new Date(message.createdAt).toDateString() !==
-                      new Date(prevMessage.createdAt).toDateString();
-                  const clusteredWithPrev =
-                    !isFirstOfDay && clustersWith(prevMessage, message);
-                  const clusteredWithNext = clustersWith(message, nextMessage);
-                  const isTapped = tappedMessageId === message.id;
-
-                  return (
-                    <React.Fragment key={message.id}>
-                      {isFirstOfDay && (
-                        <View style={styles.dayHeader}>
-                          <Text style={styles.dayHeaderText}>
-                            {formatDayHeader(message.createdAt)}
-                          </Text>
-                        </View>
-                      )}
-                      <Animated.View
-                        entering={FadeInUp.delay(index * 50)}
-                        style={[
-                          styles.messageWrapper,
-                          isMyMessage ? styles.msgRight : styles.msgLeft,
-                          {
-                            marginTop: isFirstOfDay
-                              ? 0
-                              : clusteredWithPrev
-                                ? 3
-                                : 20,
-                          },
-                        ]}
-                      >
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          onPress={() =>
-                            setTappedMessageId(isTapped ? null : message.id)
-                          }
-                          style={[
-                            styles.bubble,
-                            isMyMessage ? styles.bubbleMe : styles.bubbleThem,
-                            clusteredWithPrev &&
-                              (isMyMessage
-                                ? styles.bubbleClusterTopMe
-                                : styles.bubbleClusterTopThem),
-                            clusteredWithNext &&
-                              (isMyMessage
-                                ? styles.bubbleClusterBottomMe
-                                : styles.bubbleClusterBottomThem),
-                          ]}
-                        >
-                          <Text
-                            style={isMyMessage ? styles.txtMe : styles.txtThem}
-                          >
-                            {message.content}
-                          </Text>
-                        </TouchableOpacity>
-                        {isTapped && (
-                          <Text style={styles.msgTime}>
-                            {new Date(message.createdAt).toLocaleTimeString(
-                              "en-US",
-                              {
-                                hour: "numeric",
-                                minute: "2-digit",
-                              },
-                            )}
-                          </Text>
-                        )}
-                      </Animated.View>
-                    </React.Fragment>
-                  );
-                });
-              })()
-            )}
-          </ScrollView>
-          {conversation.status === "CLOSED" ? (
-            // Closed-thread notice — replaces the input area entirely so
-            // the user can't even attempt to type. Matches the backend's
-            // behavior (it rejects sends with "conversation is closed");
-            // surfacing it pre-emptively avoids the "I typed it but it
-            // never sent" confusion.
-            <View style={styles.closedNotice}>
-              <Text style={styles.closedNoticeText}>
-                This conversation has been closed. You are no longer matched.
-              </Text>
-            </View>
-          ) : (
-            <View>
-              {/* In-thread referral nudge (sponsor only) — see
-                  sponsorReferralPromptEligible above. Disappears on its own
-                  once the sponsor actually refers (alreadyReferred flips),
-                  no dismiss needed. */}
-              {sponsorReferralPromptEligible && (
-                <TouchableOpacity
-                  style={styles.referralNudge}
-                  onPress={openReferral}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.referralNudgeIconCircle}>
-                    <UserCheck color="#FFF" size={16} strokeWidth={2.5} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.referralNudgeTitle}>
-                      Feeling good about{" "}
-                      {conversation.otherParticipant.name.split(" ")[0]}?
-                    </Text>
-                    <Text style={styles.referralNudgeSubtitle}>
-                      Tap to refer them for the role
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color="#999" />
-                </TouchableOpacity>
-              )}
-              {/* Only surface the counter as you approach the 2000-char cap so
-                  it doesn't clutter normal chatting. */}
-              {messageText.length >= 1800 && (
-                <CharCounter
-                  count={messageText.length}
-                  max={2000}
-                  style={{ marginRight: 16, marginBottom: 4, marginTop: 0 }}
-                />
-              )}
-              <View style={styles.inputArea}>
-              <TextInput
-                value={messageText}
-                onChangeText={setMessageText}
-                placeholder="Write a message..."
-                placeholderTextColor="#BBB"
-                style={styles.textInput}
-                multiline
-                maxLength={2000}
-                autoCapitalize="sentences"
-                onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
-              />
-              <TouchableOpacity
-                style={[
-                  styles.sendBtn,
-                  (!messageText.trim() || sendingMessage) && { opacity: 0.5 },
-                ]}
-                onPress={handleSendMessage}
-                disabled={!messageText.trim() || sendingMessage}
-              >
-                <Send color="#FFF" size={18} strokeWidth={2.5} />
-              </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </Animated.View>
-
-        {/* PROFILE SHEET — opened when the user taps the participant's
-            name or avatar at the top of the thread. Powered by the shared
-            ProfileDetailSheet so it matches the layout we use on
-            MatchesView and JobsView. Sponsor side gets two CTAs (View
-            Full Profile + Provide Referral); applicant side gets just
-            View Full Profile. */}
-        {conversation && (
-          <ProfileDetailSheet
-            visible={showProfileModal}
-            onDismiss={() => setShowProfileModal(false)}
-            userId={String(conversation.otherParticipant?.id || "")}
-            variant={userType === "sponsor" ? "applicant" : "sponsor"}
-            initial={{
-              name: conversation.otherParticipant?.name || "",
-              image: conversation.otherParticipant?.profileImageUrl,
-              role: conversation.otherParticipant?.role,
-              company: conversation.otherParticipant?.company,
-            }}
-            roleContext={
-              conversation.jobContext?.jobTitle
-                ? {
-                    label:
-                      userType === "sponsor" ? "INTERESTED IN" : "CONNECTED ON",
-                    title: conversation.jobContext.jobTitle,
-                    company: conversation.jobContext.company,
-                    logoUrl: conversation.jobContext.logoUrl,
-                  }
-                : undefined
-            }
-            primaryCta={
-              userType === "sponsor"
-                ? {
-                    label: "Provide Referral",
-                    icon: (
-                      <UserCheck color="#FFF" size={18} strokeWidth={2.5} />
-                    ),
-                    onPress: openReferral,
-                  }
-                : {
-                    label: "View Full Profile",
-                    icon: <User color="#FFF" size={18} strokeWidth={2.5} />,
-                    onPress: () => {
-                      setShowProfileModal(false);
-                      const otherUserId = conversation.otherParticipant?.id;
-                      if (otherUserId) {
-                        trackPublicProfileOpenedFromMessage({
-                          viewedUserId: String(otherUserId),
-                        });
-                      }
-                      if (onShowPublicProfile) {
-                        onShowPublicProfile(conversation);
-                      }
-                    },
-                  }
-            }
-            secondaryCta={
-              userType === "sponsor"
-                ? {
-                    label: "View Full Profile",
-                    icon: <User color="#000" size={18} strokeWidth={2.5} />,
-                    onPress: () => {
-                      setShowProfileModal(false);
-                      const otherUserId = conversation.otherParticipant?.id;
-                      if (otherUserId) {
-                        trackPublicProfileOpenedFromMessage({
-                          viewedUserId: String(otherUserId),
-                        });
-                      }
-                      if (onShowPublicProfile) {
-                        onShowPublicProfile(conversation);
-                      }
-                    },
-                  }
-                : undefined
-            }
-          />
-        )}
-
-        <Modal visible={showReferralFlow} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => {
-                setShowReferralFlow(false);
-                resetReferralFlow();
-              }}
-            >
-              <BlurView
-                intensity={60}
-                style={StyleSheet.absoluteFill}
-                tint="dark"
-              />
-            </TouchableOpacity>
-            <Animated.View
-              entering={SlideInDown}
-              style={styles.referralFlowContainer}
-            >
-              <View style={styles.flowHeader}>
-                <Text style={styles.flowTitle}>Referral Vetting</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowReferralFlow(false);
-                    resetReferralFlow();
-                  }}
-                >
-                  <X color="#000" size={24} />
-                </TouchableOpacity>
-              </View>
-              {referralStep === 1 && (
-                <Animated.View entering={FadeInUp} style={styles.stepContent}>
-                  <Text style={styles.stepSubtitle}>Confidence Check</Text>
-                  <Text style={styles.stepDesc}>
-                    Before referring{" "}
-                    {conversation.otherParticipant?.name || conversation.name},
-                    please confirm your due diligence:
-                  </Text>
-                  <View style={styles.vettingList}>
-                    <TouchableOpacity
-                      style={styles.vettingItem}
-                      onPress={() => setHasMessaged(!hasMessaged)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.vettingCheck}>
-                        {hasMessaged ? (
-                          <CheckCircle size={18} color="#000" />
-                        ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
-                        )}
-                      </View>
-                      <Text style={styles.vettingText}>
-                        I have messaged and spoken to the applicant directly.
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.vettingItem}
-                      onPress={() => setFeelsConfident(!feelsConfident)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.vettingCheck}>
-                        {feelsConfident ? (
-                          <CheckCircle size={18} color="#000" />
-                        ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
-                        )}
-                      </View>
-                      <Text style={styles.vettingText}>
-                        I feel confident they would be successful in this role.
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.vettingItem}
-                      onPress={() => setKnowsBackground(!knowsBackground)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.vettingCheck}>
-                        {knowsBackground ? (
-                          <CheckCircle size={18} color="#000" />
-                        ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
-                        )}
-                      </View>
-                      <Text style={styles.vettingText}>
-                        I am aware of their background and experience level.
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.vettingItem}
-                      onPress={() =>
-                        setComfortableAttaching(!comfortableAttaching)
-                      }
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.vettingCheck}>
-                        {comfortableAttaching ? (
-                          <CheckCircle size={18} color="#000" />
-                        ) : (
-                          <CheckCircle size={18} color="#E5E5E5" />
-                        )}
-                      </View>
-                      <Text style={styles.vettingText}>
-                        I feel comfortable attaching my name to this referral.
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.primaryBtn,
-                      !canProceedFromStep1 && styles.primaryBtnDisabled,
-                    ]}
-                    onPress={() => canProceedFromStep1 && setReferralStep(2)}
-                    disabled={!canProceedFromStep1}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.primaryBtnText}>
-                      Review Applicant Details
-                    </Text>
-                    <ChevronRight color="#FFF" size={18} />
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-              {referralStep === 2 && (
-                <Animated.View entering={FadeInUp} style={styles.stepContent}>
-                  <ScrollView
-                    style={styles.summaryScroll}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 8 }}
-                  >
-                    {referralProfileLoading ? (
-                      <View style={styles.referralProfileLoading}>
-                        <View
-                          style={{
-                            width: 56,
-                            height: 56,
-                            borderRadius: 28,
-                            backgroundColor: "#F4F4F5",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            marginBottom: 8,
-                          }}
-                        >
-                          <User color="#BBB" size={24} strokeWidth={2} />
-                        </View>
-                        <Text style={styles.referralProfileLoadingText}>
-                          Loading candidate details…
-                        </Text>
-                      </View>
-                    ) : (
-                      (() => {
-                        const photo =
-                          referralProfile?.PHOTO_URL ||
-                          conversation.profileImageUrl;
-                        const name = referralProfile
-                          ? `${referralProfile.FIRST_NAME || ""} ${
-                              referralProfile.LAST_NAME || ""
-                            }`.trim()
-                          : conversation.otherParticipant?.name ||
-                            conversation.name;
-                        const currentRole =
-                          referralProfile?.applicant_profile?.CURRENT_ROLE ||
-                          conversation.otherParticipant?.role ||
-                          conversation.role ||
-                          "";
-                        const location = [
-                          referralProfile?.CITY,
-                          referralProfile?.STATE,
-                        ]
-                          .filter(Boolean)
-                          .join(", ");
-                        const industry =
-                          referralProfile?.applicant_profile?.INDUSTRY || "";
-                        const yearsExp =
-                          referralProfile?.applicant_profile?.YEARS_EXPERIENCE;
-                        const jobTitle =
-                          conversation.jobContext?.jobTitle || "";
-                        const company = conversation.jobContext?.company || "";
-                        const bio = referralProfile?.BIO;
-                        const experiences: any[] =
-                          referralProfile?.applicant_profile
-                            ?.PROFESSIONAL_EXPERIENCES || [];
-                        const education: any[] =
-                          referralProfile?.applicant_profile
-                            ?.EDUCATION_ENTRIES || [];
-                        const skills: string[] =
-                          referralProfile?.applicant_profile?.SKILLS ||
-                          conversation.skills ||
-                          [];
-                        const portfolioUrl = referralProfile?.PORTFOLIO_URL;
-
-                        return (
-                          <View style={{ gap: 12 }}>
-                            {/* ATS hint banner — monochrome, modern */}
-                            <View style={styles.atsBanner}>
-                              <FileText
-                                size={14}
-                                color="#666"
-                                strokeWidth={2}
-                              />
-                              <Text style={styles.atsBannerText}>
-                                Enter these details into your ATS portal when
-                                submitting the referral.
-                              </Text>
-                            </View>
-
-                            {/* Hero: avatar + name + current role + quick chips */}
-                            <View style={styles.candidateHero}>
-                              {photo ? (
-                                <Image
-                                  source={{ uri: photo }}
-                                  style={styles.candidateHeroAvatar}
-                                />
-                              ) : (
-                                <View
-                                  style={[
-                                    styles.candidateHeroAvatar,
-                                    styles.candidateHeroAvatarFallback,
-                                  ]}
-                                >
-                                  <User color="#999" size={32} />
-                                </View>
-                              )}
-                              <Text
-                                style={styles.candidateHeroName}
-                                numberOfLines={1}
-                              >
-                                {name}
-                              </Text>
-                              {!!currentRole && (
-                                <Text
-                                  style={styles.candidateHeroRole}
-                                  numberOfLines={1}
-                                >
-                                  {currentRole}
-                                </Text>
-                              )}
-                              {(!!location || !!industry || !!yearsExp) && (
-                                <View style={styles.candidateChipsRow}>
-                                  {!!location && (
-                                    <View style={styles.candidateChip}>
-                                      <MapPin size={11} color="#666" />
-                                      <Text style={styles.candidateChipText}>
-                                        {location}
-                                      </Text>
-                                    </View>
-                                  )}
-                                  {!!industry && (
-                                    <View style={styles.candidateChip}>
-                                      <Briefcase size={11} color="#666" />
-                                      <Text style={styles.candidateChipText}>
-                                        {industry}
-                                      </Text>
-                                    </View>
-                                  )}
-                                  {!!yearsExp && (
-                                    <View style={styles.candidateChip}>
-                                      <Clock size={11} color="#666" />
-                                      <Text style={styles.candidateChipText}>
-                                        {yearsExp} yrs
-                                      </Text>
-                                    </View>
-                                  )}
-                                </View>
-                              )}
-                            </View>
-
-                            {/* APPLYING FOR — role-context card. Hero logo
-                                from PR #62 pipeline when conversations
-                                eventually carry one (currently undefined,
-                                so falls back to the company initial). */}
-                            {!!jobTitle && (
-                              <View style={styles.refContext}>
-                                <View style={styles.refContextRow}>
-                                  <CompanyLogo
-                                    logoUrl={conversation.jobContext?.logoUrl}
-                                    name={company || jobTitle}
-                                    size={40}
-                                    borderRadius={10}
-                                    initialFontSize={17}
-                                  />
-                                  <View style={{ flex: 1, minWidth: 0 }}>
-                                    <Text style={styles.refContextLabel}>
-                                      APPLYING FOR
-                                    </Text>
-                                    <Text
-                                      style={styles.refContextTitle}
-                                      numberOfLines={1}
-                                    >
-                                      {jobTitle}
-                                    </Text>
-                                    {!!company && (
-                                      <Text
-                                        style={styles.refContextCompany}
-                                        numberOfLines={1}
-                                      >
-                                        {company}
-                                      </Text>
-                                    )}
-                                  </View>
-                                </View>
-                              </View>
-                            )}
-
-                            {/* Professional Summary */}
-                            {!!bio && (
-                              <View style={styles.refSection}>
-                                <View style={styles.refSectionHeader}>
-                                  <FileText size={16} color="#000" />
-                                  <Text style={styles.refSectionTitle}>
-                                    Professional Summary
-                                  </Text>
-                                </View>
-                                <Text style={styles.refSectionBody}>{bio}</Text>
-                              </View>
-                            )}
-
-                            {/* Experience — full list */}
-                            {(experiences.length > 0 || !!yearsExp) && (
-                              <View style={styles.refSection}>
-                                <View style={styles.refSectionHeader}>
-                                  <Briefcase size={16} color="#000" />
-                                  <Text style={styles.refSectionTitle}>
-                                    Experience
-                                  </Text>
-                                </View>
-                                {!!yearsExp && (
-                                  <Text style={styles.refSectionMeta}>
-                                    {yearsExp} years in industry
-                                  </Text>
-                                )}
-                                {experiences.map((exp: any, idx: number) => (
-                                  <View
-                                    key={idx}
-                                    style={[
-                                      styles.refEntryRow,
-                                      idx > 0 && styles.refEntryRowDivider,
-                                    ]}
-                                  >
-                                    <Text style={styles.refEntryTitle}>
-                                      {exp.jobTitle || "Role"}
-                                    </Text>
-                                    <Text style={styles.refEntryMeta}>
-                                      {exp.company || ""}
-                                      {exp.current
-                                        ? " · Current"
-                                        : exp.endDate
-                                          ? ` · ${exp.endDate}`
-                                          : ""}
-                                    </Text>
-                                  </View>
-                                ))}
-                              </View>
-                            )}
-
-                            {/* Education — full list */}
-                            {education.length > 0 && (
-                              <View style={styles.refSection}>
-                                <View style={styles.refSectionHeader}>
-                                  <GraduationCap size={16} color="#000" />
-                                  <Text style={styles.refSectionTitle}>
-                                    Education
-                                  </Text>
-                                </View>
-                                {education.map((edu: any, idx: number) => {
-                                  const degreeLine = [edu.degree, edu.major]
-                                    .filter(Boolean)
-                                    .join(" in ");
-                                  const head =
-                                    degreeLine || edu.university || "Education";
-                                  const meta = degreeLine ? edu.university : "";
-                                  return (
-                                    <View
-                                      key={idx}
-                                      style={[
-                                        styles.refEntryRow,
-                                        idx > 0 && styles.refEntryRowDivider,
-                                      ]}
-                                    >
-                                      <Text style={styles.refEntryTitle}>
-                                        {head}
-                                      </Text>
-                                      {!!meta && (
-                                        <Text style={styles.refEntryMeta}>
-                                          {meta}
-                                        </Text>
-                                      )}
-                                    </View>
-                                  );
-                                })}
-                              </View>
-                            )}
-
-                            {/* Key Skills */}
-                            {skills.length > 0 && (
-                              <View style={styles.refSection}>
-                                <View style={styles.refSectionHeader}>
-                                  <Sparkles size={16} color="#000" />
-                                  <Text style={styles.refSectionTitle}>
-                                    Key Skills
-                                  </Text>
-                                </View>
-                                <View style={styles.skillsRow}>
-                                  {skills.map((skill: string, idx: number) => (
-                                    <View key={idx} style={styles.skillBadge}>
-                                      <Text style={styles.skillBadgeText}>
-                                        {skill}
-                                      </Text>
-                                    </View>
-                                  ))}
-                                </View>
-                              </View>
-                            )}
-
-                            {/* Portfolio */}
-                            {!!portfolioUrl && (
-                              <View style={styles.refSection}>
-                                <View style={styles.refSectionHeader}>
-                                  <Globe size={16} color="#000" />
-                                  <Text style={styles.refSectionTitle}>
-                                    Portfolio
-                                  </Text>
-                                </View>
-                                <TouchableOpacity
-                                  onPress={() =>
-                                    Linking.openURL(portfolioUrl).catch(
-                                      () => {},
-                                    )
-                                  }
-                                  activeOpacity={0.7}
-                                  style={styles.refPortfolio}
-                                >
-                                  <Text
-                                    style={styles.refPortfolioText}
-                                    numberOfLines={1}
-                                  >
-                                    {portfolioUrl}
-                                  </Text>
-                                  <Globe size={14} color="#666" />
-                                </TouchableOpacity>
-                              </View>
-                            )}
-                          </View>
-                        );
-                      })()
-                    )}
-                    {/* Final Confirmation — always shown, even while
-                        the candidate profile is still loading */}
-                    <View style={[styles.refSection, { marginTop: 12 }]}>
-                      <View style={styles.refSectionHeader}>
-                        <ShieldCheck size={16} color="#000" />
-                        <Text style={styles.refSectionTitle}>
-                          Final Confirmation
-                        </Text>
-                      </View>
-                      <View style={styles.refFinalRow}>
-                        <View style={styles.refFinalBullet} />
-                        <Text style={styles.refFinalText}>
-                          This referral is binding within our system.
-                        </Text>
-                      </View>
-                      <View style={styles.refFinalRow}>
-                        <View style={styles.refFinalBullet} />
-                        <Text style={styles.refFinalText}>
-                          Your reputation score may be affected by the outcome.
-                        </Text>
-                      </View>
-                    </View>
-                  </ScrollView>
-                  {/* Inline error — shown if submission fails */}
-                  {referralError && (
-                    <View style={styles.referralErrorBox}>
-                      <Text style={styles.referralErrorText}>
-                        {referralError}
-                      </Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={[
-                      styles.confirmBtn,
-                      referralSubmitting && { opacity: 0.65 },
-                    ]}
-                    onPress={async () => {
-                      const applicantUserId = conversation.otherParticipant?.id;
-                      const jobId = conversation.jobContext?.jobId;
-
-                      if (!applicantUserId || !jobId) {
-                        setReferralError(
-                          "Missing applicant or job information. Please try again.",
-                        );
-                        return;
-                      }
-
-                      setReferralSubmitting(true);
-                      setReferralError(null);
-                      try {
-                        await submitReferral({
-                          applicant_user_id: applicantUserId,
-                          job_id: jobId,
-                          confidence_checks: {
-                            has_messaged: hasMessaged,
-                            feels_confident: feelsConfident,
-                            knows_background: knowsBackground,
-                            comfortable_attaching: comfortableAttaching,
-                          },
-                        });
-                        trackReferralSubmitted({
-                          conversationId: selectedConversation || "",
-                          jobId,
-                          applicantUserId,
-                        });
-                        // Mark this pair as referred so the header button
-                        // updates immediately without a re-fetch.
-                        setReferredSet((prev) => {
-                          const next = new Set(prev);
-                          next.add(`${applicantUserId}:${jobId}`);
-                          return next;
-                        });
-                        // Submission succeeded — move to success step
-                        setReferralStep(3);
-                      } catch (err) {
-                        const msg =
-                          err instanceof Error ? err.message : String(err);
-                        if (
-                          msg.includes("400") ||
-                          msg.toLowerCase().includes("already")
-                        ) {
-                          setReferralError(
-                            "A referral already exists for this applicant and role.",
-                          );
-                        } else if (
-                          msg.includes("403") ||
-                          msg.toLowerCase().includes("match")
-                        ) {
-                          setReferralError(
-                            "You must be matched with this applicant to refer them.",
-                          );
-                        } else {
-                          setReferralError(
-                            "Failed to submit referral. Please try again.",
-                          );
-                        }
-                      } finally {
-                        setReferralSubmitting(false);
-                      }
-                    }}
-                    disabled={referralSubmitting}
-                    activeOpacity={0.7}
-                  >
-                    {referralSubmitting ? (
-                      <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                      <>
-                        <ClipboardCheck color="#FFF" size={20} />
-                        <Text style={styles.primaryBtnText}>
-                          Submit Formal Referral
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-              {referralStep === 3 && (
-                <Animated.View entering={FadeInDown} style={styles.successStep}>
-                  <View style={styles.successIcon}>
-                    <CheckCircle size={60} color="#000" />
-                  </View>
-                  <Text style={styles.successTitle}>Referral Submitted!</Text>
-                  <Text style={styles.successDesc}>
-                    You have successfully referred{" "}
-                    {referralProfile
-                      ? `${referralProfile.FIRST_NAME || ""} ${referralProfile.LAST_NAME || ""}`.trim()
-                      : conversation.otherParticipant?.name ||
-                        conversation.name}{" "}
-                    for the {conversation.jobContext?.jobTitle || "this"}{" "}
-                    position.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.primaryBtn}
-                    onPress={() => {
-                      setShowReferralFlow(false);
-                      resetReferralFlow();
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.primaryBtnText}>Back to Messages</Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-            </Animated.View>
-          </View>
-        </Modal>
-
-        {/* APPLICATION DETAIL MODAL */}
-        {conversation.applicationStatus &&
-          (() => {
-            const applicationData =
-              getApplicationFromConversation(conversation);
-            if (!applicationData) return null;
-
-            return (
-              <Modal
-                visible={showApplicationDetail}
-                transparent
-                animationType="fade"
-              >
-                <View style={styles.modalOverlay}>
-                  <TouchableOpacity
-                    style={StyleSheet.absoluteFill}
-                    activeOpacity={1}
-                    onPress={() => setShowApplicationDetail(false)}
-                  >
-                    <BlurView
-                      intensity={60}
-                      style={StyleSheet.absoluteFill}
-                      tint="dark"
-                    />
-                  </TouchableOpacity>
-
-                  <Animated.View
-                    entering={SlideInDown}
-                    exiting={SlideOutDown}
-                    style={styles.modalContent}
-                  >
-                    <View style={styles.modalHandle} />
-                    <TouchableOpacity
-                      style={styles.modalCloseBtn}
-                      onPress={() => setShowApplicationDetail(false)}
-                    >
-                      <X color="#000" size={24} />
-                    </TouchableOpacity>
-
-                    <ScrollView
-                      showsVerticalScrollIndicator={false}
-                      style={styles.modalScroll}
-                    >
-                      <View style={styles.appDetailHeader}>
-                        <Image
-                          source={{ uri: applicationData.companyLogo }}
-                          style={styles.appDetailLogo}
-                        />
-                        <Text style={styles.appDetailTitle}>
-                          {applicationData.jobTitle}
-                        </Text>
-                        <Text style={styles.appDetailCompany}>
-                          {applicationData.company}
-                        </Text>
-                        <View style={styles.statusBadgeBlack}>
-                          <Text style={styles.statusBadgeBlackText}>
-                            {getStatusLabel(applicationData.status)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.detailSection}>
-                        <Text style={styles.detailSectionTitle}>
-                          APPLICATION TIMELINE
-                        </Text>
-                        <View style={styles.timelineDetailContainer}>
-                          {applicationData.timeline.map(
-                            (stage: any, idx: number) => (
-                              <View key={idx} style={styles.timelineDetailItem}>
-                                <View style={styles.timelineDetailLeft}>
-                                  <View
-                                    style={[
-                                      styles.timelineDetailDot,
-                                      stage.completed &&
-                                        styles.timelineDetailDotCompleted,
-                                      stage.isReferred &&
-                                        styles.timelineDetailDotReferred,
-                                      stage.isReferred &&
-                                        stage.completed &&
-                                        styles.timelineDetailDotReferredCompleted,
-                                    ]}
-                                  />
-                                  {idx <
-                                    applicationData.timeline.length - 1 && (
-                                    <View
-                                      style={[
-                                        styles.timelineDetailLine,
-                                        stage.completed &&
-                                          applicationData.timeline[idx + 1]
-                                            .completed &&
-                                          styles.timelineDetailLineCompleted,
-                                      ]}
-                                    />
-                                  )}
-                                </View>
-                                <View style={styles.timelineDetailRight}>
-                                  <Text
-                                    style={[
-                                      styles.timelineDetailStage,
-                                      stage.completed &&
-                                        styles.timelineDetailStageCompleted,
-                                      stage.isReferred &&
-                                        stage.completed &&
-                                        styles.timelineDetailStageReferred,
-                                    ]}
-                                  >
-                                    {stage.stage}
-                                  </Text>
-                                  <Text style={styles.timelineDetailDate}>
-                                    {stage.date}
-                                  </Text>
-                                </View>
-                              </View>
-                            ),
-                          )}
-                        </View>
-                      </View>
-
-                      <View style={styles.detailSection}>
-                        <Text style={styles.detailSectionTitle}>SPONSOR</Text>
-                        <View style={styles.sponsorCard}>
-                          <Image
-                            source={{ uri: applicationData.sponsorImage }}
-                            style={styles.sponsorDetailAvatar}
-                          />
-                          <View style={styles.sponsorDetailInfo}>
-                            <Text style={styles.sponsorDetailName}>
-                              {applicationData.sponsorName}
-                            </Text>
-                            <Text style={styles.sponsorDetailRole}>
-                              {applicationData.sponsorRole} @{" "}
-                              {applicationData.company}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-
-                      <View style={styles.detailSection}>
-                        <Text style={styles.detailSectionTitle}>
-                          NEXT STEPS
-                        </Text>
-                        <View style={styles.nextActionCard}>
-                          <Clock size={20} color="#000" />
-                          <Text style={styles.nextActionText}>
-                            {applicationData.nextAction}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <TouchableOpacity
-                        style={styles.messageBtn}
-                        activeOpacity={0.7}
-                        onPress={() => setShowApplicationDetail(false)}
-                      >
-                        <MessageCircle color="#FFF" size={20} />
-                        <Text style={styles.messageBtnText}>
-                          Continue Conversation
-                        </Text>
-                      </TouchableOpacity>
-                    </ScrollView>
-                  </Animated.View>
-                </View>
-              </Modal>
-            );
-          })()}
-
-        {/* THREAD MENU SHEET — same visual + motion pattern as the profile
-            detail sheet: fade-in blur backdrop, swipe-down dismissible
-            bottom sheet, no native slide animation. Two steps: "actions"
-            (Report / Unmatch / Cancel) and "report" (reason picker), shown
-            in the same sheet so it reads as one flow rather than a modal
-            stack. */}
-        <Modal visible={showUnmatchMenu} transparent animationType="none">
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.modalOverlay}
-          >
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() =>
-                !isUnmatching && !isReporting && closeThreadMenu()
-              }
-            >
-              <BlurView
-                intensity={30}
-                style={StyleSheet.absoluteFill}
-                tint="dark"
-              />
-            </TouchableOpacity>
-
-            <DismissibleSheet
-              onDismiss={() =>
-                !isUnmatching && !isReporting && closeThreadMenu()
-              }
-              style={styles.unmatchSheet}
-            >
-              {threadMenuStep === "actions" ? (
-                <>
-                  <Text style={styles.unmatchSheetTitle}>
-                    {conversation.otherParticipant.name}
-                  </Text>
-                  <Text style={styles.unmatchSheetSubtitle}>
-                    Unmatching or reporting permanently ends your match and
-                    closes this conversation. It moves to Past Connections as
-                    read-only and can't be undone.
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.reportActionBtn}
-                    onPress={() => setThreadMenuStep("report")}
-                    activeOpacity={0.7}
-                  >
-                    <Flag size={18} color="#000" strokeWidth={2} />
-                    <Text style={styles.reportActionText}>
-                      Report {conversation.otherParticipant.name.split(" ")[0]}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.unmatchActionBtn,
-                      isUnmatching && { opacity: 0.6 },
-                    ]}
-                    onPress={handleUnmatch}
-                    disabled={isUnmatching}
-                    activeOpacity={0.7}
-                  >
-                    {isUnmatching ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <Text style={styles.unmatchActionText}>Unmatch</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.unmatchCancelBtn}
-                    onPress={closeThreadMenu}
-                    disabled={isUnmatching}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.unmatchCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.unmatchSheetTitle}>
-                    Report {conversation.otherParticipant.name}
-                  </Text>
-                  <Text style={styles.unmatchSheetSubtitle}>
-                    Reporting also ends this match and closes the
-                    conversation. What happened?
-                  </Text>
-
-                  <View style={styles.reportReasonList}>
-                    {(
-                      [
-                        ["harassment", "Harassment or bullying"],
-                        ["spam", "Spam or scam"],
-                        ["inappropriate", "Inappropriate content"],
-                        ["fake_profile", "Fake profile"],
-                        ["other", "Something else"],
-                      ] as [ReportReason, string][]
-                    ).map(([value, label]) => {
-                      const isSelected = reportReason === value;
-                      return (
-                        <TouchableOpacity
-                          key={value}
-                          style={[
-                            styles.reportReasonRow,
-                            isSelected && styles.reportReasonRowSelected,
-                          ]}
-                          onPress={() => setReportReason(value)}
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              styles.reportReasonText,
-                              isSelected && styles.reportReasonTextSelected,
-                            ]}
-                          >
-                            {label}
-                          </Text>
-                          {isSelected && (
-                            <Check size={16} color="#FFF" strokeWidth={3} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  <TextInput
-                    style={styles.reportDetailInput}
-                    placeholder="Add details (optional)"
-                    placeholderTextColor="#AAA"
-                    value={reportDetail}
-                    onChangeText={setReportDetail}
-                    multiline
-                    maxLength={500}
-                  />
-
-                  <TouchableOpacity
-                    style={[
-                      styles.unmatchActionBtn,
-                      (isReporting || !reportReason) && { opacity: 0.5 },
-                    ]}
-                    onPress={handleSubmitReport}
-                    disabled={isReporting || !reportReason}
-                    activeOpacity={0.7}
-                  >
-                    {isReporting ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <Text style={styles.unmatchActionText}>
-                        Submit Report
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.unmatchCancelBtn}
-                    onPress={() => setThreadMenuStep("actions")}
-                    disabled={isReporting}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.unmatchCancelText}>Back</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </DismissibleSheet>
-          </KeyboardAvoidingView>
-        </Modal>
-      </View>
+      <ThreadScreen
+        // Keying on the conversation id forces a clean unmount/remount when
+        // switching directly between two threads (e.g. a push-notification
+        // deep link while another thread is already open) — the same reset
+        // that already happens naturally when going back to the list first.
+        // This is what makes ThreadScreen's own local state (draft text,
+        // tapped-timestamp reveal, referral-flow visibility) start fresh
+        // per conversation instead of leaking from the previous one.
+        key={selectedConversation}
+        conversations={conversations}
+        setConversations={setConversations}
+        selectedConversation={selectedConversation}
+        userType={userType}
+        referredSet={referredSet}
+        setReferredSet={setReferredSet}
+        messages={messages}
+        currentUserId={currentUserId}
+        conversationsLoading={conversationsLoading}
+        handleConversationSelect={handleConversationSelect}
+        keyboardSpacerStyle={keyboardSpacerStyle}
+        scrollViewRef={scrollViewRef}
+        scrollToBottom={scrollToBottom}
+        messagesLoading={messagesLoading}
+        messagesError={messagesError}
+        initialMessageCountRef={initialMessageCountRef}
+        sendingMessage={sendingMessage}
+        handleSendMessage={handleSendMessage}
+        onShowPublicProfile={onShowPublicProfile}
+      />
     );
   }
 
@@ -2883,37 +1120,6 @@ export function MessagesView({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
-  // Conversation-starter chips shown in a brand-new empty thread.
-  startersHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 12,
-  },
-  startersHeaderText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1,
-  },
-  startersList: {
-    width: "100%",
-    gap: 8,
-  },
-  starterChip: {
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  starterChipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    textAlign: "left",
-  },
   headerTitleContainer: { marginBottom: 32 },
   title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.2 },
   subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
@@ -2940,156 +1146,7 @@ const styles = StyleSheet.create({
   // Tag rendered in the timestamp slot of a Past Connections row so the
   // user knows why the conversation is muted (vs the "30+ days inactive"
   // hidden state).
-  // In-thread banner shown in place of the message input when the
-  // conversation has been unmatched/closed.
-  closedNotice: {
-    backgroundColor: "#F8F9FB",
-    borderTopWidth: 1,
-    borderTopColor: "#EEE",
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-  closedNoticeText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#999",
-    textAlign: "center",
-    lineHeight: 19,
-  },
-  referralNudge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  referralNudgeIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  referralNudgeTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-  },
-  referralNudgeSubtitle: {
-    fontSize: 11,
-    color: "#999",
-    marginTop: 1,
-  },
-  chatContainer: { flex: 1, backgroundColor: "#FFF" },
-  chatHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  backButton: { padding: 8, marginLeft: -8 },
-  headerIdentity: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginLeft: 8,
-  },
-  headerImage: { width: 40, height: 40, borderRadius: 20 },
-  headerInfo: { marginLeft: 12 },
-  headerName: { fontSize: 16, fontWeight: "700" },
-  headerRole: { fontSize: 12, color: "#666" },
-  headerReferBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
   headerReferBtnDone: {},
-  headerReferText: { fontSize: 13, fontWeight: "700" },
-  headerReferTextDone: { color: "#000" },
-  headerStatusBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F9F9F9",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  headerStatusText: { fontSize: 13, fontWeight: "700", color: "#000" },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginTop: 8,
-    alignSelf: "flex-start",
-    borderWidth: 1,
-  },
-  statusBadgeText: { fontSize: 11, fontWeight: "700" },
-  messagesScroll: { flex: 1, paddingHorizontal: 20 },
-  // Spacing between messages lives on each messageWrapper (via an inline
-  // marginTop) rather than a container gap, so clustered messages from the
-  // same sender can sit tight while cluster boundaries keep the full gap.
-  messagesContent: { paddingTop: 20, paddingBottom: 28 },
-  messageWrapper: { maxWidth: "85%" },
-  msgLeft: { alignSelf: "flex-start" },
-  msgRight: { alignSelf: "flex-end" },
-  bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
-  bubbleMe: { backgroundColor: "#000" },
-  bubbleThem: { backgroundColor: "#F2F2F2" },
-  // Within a cluster, the corners facing the adjacent bubble tighten so the
-  // run reads as one grouped exchange.
-  bubbleClusterTopMe: { borderTopRightRadius: 6 },
-  bubbleClusterTopThem: { borderTopLeftRadius: 6 },
-  bubbleClusterBottomMe: { borderBottomRightRadius: 6 },
-  bubbleClusterBottomThem: { borderBottomLeftRadius: 6 },
-  txtMe: { color: "#FFF", fontSize: 15 },
-  txtThem: { color: "#000", fontSize: 15 },
-  msgTime: {
-    fontSize: 10,
-    color: "#BBB",
-    marginTop: 6,
-    fontWeight: "600",
-    alignSelf: "flex-end",
-  },
-  dayHeader: {
-    alignItems: "center",
-    paddingVertical: 16,
-  },
-  dayHeaderText: {
-    fontSize: 12,
-    color: "#999",
-    fontWeight: "500",
-  },
-  inputArea: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 12 : 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
-    backgroundColor: "#FFF",
-  },
   iconBtn: {
     width: 40,
     height: 40,
@@ -3100,29 +1157,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     marginBottom: 2,
   },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 10,
-    minHeight: 44,
-    maxHeight: 110,
-    marginRight: 10,
-    color: "#000",
-  },
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
-  },
-  modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
@@ -3385,42 +1419,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  referralFlowContainer: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 32,
-    paddingBottom: 50,
-    width: "100%",
-    minHeight: 400,
-  },
-  flowHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  flowTitle: { fontSize: 24, fontWeight: "800" },
-  stepContent: { gap: 12 },
-  stepSubtitle: { fontSize: 18, fontWeight: "700", color: "#000" },
-  stepDesc: { fontSize: 14, color: "#666", lineHeight: 20, marginBottom: 10 },
-  vettingList: { gap: 16, marginBottom: 20 },
-  vettingItem: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
-  vettingCheck: { marginTop: 2 },
-  vettingText: { fontSize: 15, fontWeight: "600", color: "#444", flex: 1 },
-  primaryBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 18,
-    borderRadius: 20,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    width: "100%",
-  },
-  primaryBtnDisabled: { backgroundColor: "#E5E5E5" },
-  primaryBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  summaryScroll: { maxHeight: SCREEN_HEIGHT * 0.6, marginBottom: 10 },
   summaryCard: {
     backgroundColor: "#F8F9FB",
     padding: 20,
@@ -3443,549 +1441,4 @@ const styles = StyleSheet.create({
   },
   summarySkills: { flexDirection: "row", flexWrap: "wrap" },
   summarySkillText: { fontSize: 13, color: "#666", fontWeight: "600" },
-  // ── Referral Step 2 — modern detail-sheet aesthetic ─────────────────
-
-  // ATS hint banner — monochrome, modern
-  atsBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ECECEC",
-  },
-  atsBannerText: {
-    flex: 1,
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
-    lineHeight: 17,
-  },
-
-  // Hero — centered avatar + name + role + quick-stats chips
-  candidateHero: {
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  candidateHeroAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    marginBottom: 14,
-    backgroundColor: "#EEE",
-  },
-  candidateHeroAvatarFallback: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F4F4F5",
-  },
-  candidateHeroName: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-    marginBottom: 4,
-    letterSpacing: -0.4,
-  },
-  candidateHeroRole: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    textAlign: "center",
-  },
-  candidateChipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 12,
-  },
-  candidateChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#ECECEC",
-  },
-  candidateChipText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#666",
-  },
-
-  // APPLYING FOR — role-context card (mirrors ProfileDetailSheet roleContext)
-  refContext: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  refContextRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  refContextLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-    color: "#999",
-    marginBottom: 6,
-  },
-  refContextTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-  },
-  refContextCompany: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
-    marginTop: 2,
-  },
-
-  // Detail sections — mirror the MatchesView detailSection aesthetic
-  refSection: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-      },
-      android: { elevation: 1 },
-    }),
-  },
-  refSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingBottom: 10,
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  refSectionTitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.7,
-  },
-  refSectionBody: {
-    fontSize: 14,
-    color: "#444",
-    lineHeight: 20,
-  },
-  refSectionMeta: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-
-  // Experience / Education entry rows (stack with subtle dividers)
-  refEntryRow: {
-    paddingVertical: 8,
-  },
-  refEntryRowDivider: {
-    borderTopWidth: 1,
-    borderTopColor: "#F4F4F5",
-  },
-  refEntryTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 2,
-  },
-  refEntryMeta: {
-    fontSize: 13,
-    color: "#666",
-  },
-
-  // Portfolio link tile
-  refPortfolio: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: "#FAFAFA",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  refPortfolioText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#000",
-  },
-
-  // Skills badges (shared within refSection)
-  skillsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  skillBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#ECECEC",
-  },
-  skillBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#000",
-  },
-
-  // Final Confirmation rows
-  refFinalRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    paddingVertical: 5,
-  },
-  refFinalBullet: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#000",
-    marginTop: 8,
-  },
-  refFinalText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#444",
-    fontWeight: "500",
-    lineHeight: 19,
-  },
-  confirmBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 18,
-    borderRadius: 20,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 10,
-  },
-  successStep: { alignItems: "center", paddingVertical: 20, width: "100%" },
-  successIcon: { marginBottom: 20 },
-  successTitle: { fontSize: 22, fontWeight: "800", marginBottom: 10 },
-  successDesc: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-
-  // Application Detail Modal Styles
-  modalCloseBtn: { position: "absolute", top: 24, right: 24, zIndex: 10 },
-  modalScroll: { maxHeight: "80%" },
-  appDetailHeader: { alignItems: "center", marginBottom: 32 },
-  appDetailLogo: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    backgroundColor: "#F9F9F9",
-    marginBottom: 16,
-  },
-  appDetailTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  appDetailCompany: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "600",
-    marginBottom: 16,
-  },
-  statusBadgeBlack: {
-    backgroundColor: "#000",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  statusBadgeBlackText: { fontSize: 13, fontWeight: "700", color: "#FFF" },
-  detailSection: { marginBottom: 28 },
-  detailSectionTitle: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#BBB",
-    letterSpacing: 1.2,
-    marginBottom: 12,
-  },
-  timelineDetailContainer: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    padding: 20,
-  },
-  timelineDetailItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 20,
-  },
-  timelineDetailLeft: { alignItems: "center", marginRight: 16 },
-  timelineDetailDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#E5E5E5",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  timelineDetailDotCompleted: { backgroundColor: "#000" },
-  timelineDetailDotReferred: { width: 18, height: 18, borderRadius: 9 },
-  timelineDetailDotReferredCompleted: {
-    backgroundColor: "#000",
-    borderWidth: 4,
-    borderColor: "#F9F9F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  timelineDetailLine: {
-    width: 2,
-    height: 32,
-    backgroundColor: "#E5E5E5",
-    marginTop: 4,
-  },
-  timelineDetailLineCompleted: { backgroundColor: "#BBB" },
-  timelineDetailRight: { flex: 1, paddingTop: 2 },
-  timelineDetailStage: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#999",
-    marginBottom: 2,
-  },
-  timelineDetailStageCompleted: { color: "#000" },
-  timelineDetailStageReferred: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  timelineDetailDate: { fontSize: 13, color: "#BBB", fontWeight: "600" },
-  sponsorCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    padding: 16,
-  },
-  sponsorDetailAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFF",
-  },
-  sponsorDetailInfo: { flex: 1, marginLeft: 12 },
-  sponsorDetailName: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 2,
-  },
-  sponsorDetailRole: { fontSize: 13, color: "#666", fontWeight: "600" },
-  nextActionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  nextActionText: { flex: 1, fontSize: 14, fontWeight: "700", color: "#000" },
-  messageBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginTop: 12,
-  },
-  messageBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-
-  // Referral flow
-  referralProfileLoading: {
-    paddingVertical: 40,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-  },
-  referralProfileLoadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "400" as const,
-  },
-  referralErrorBox: {
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
-  referralErrorText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#DC2626",
-    lineHeight: 18,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  headerMoreBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  unmatchSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 28,
-    paddingBottom: 52,
-  },
-  unmatchSheetTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  unmatchSheetSubtitle: {
-    fontSize: 14,
-    color: "#888",
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 28,
-  },
-  // Unmatch CTA — solid black to match the rest of the app's primary
-  // action pattern (Match button, Send button, etc.). The destructive
-  // context is communicated by the modal subtitle ("This cannot be
-  // undone."), not by the button color — keeps the brand palette
-  // consistent across surfaces.
-  unmatchActionBtn: {
-    paddingVertical: 17,
-    borderRadius: 18,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  unmatchActionText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFF",
-  },
-  unmatchCancelBtn: {
-    paddingVertical: 17,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  unmatchCancelText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-  },
-  // Report — outlined (not filled) to sit visually below Unmatch's solid
-  // black CTA without resorting to red; severity is communicated by copy
-  // and icon, matching the app's monochrome-only convention for
-  // destructive actions (see the comment on unmatchActionBtn above).
-  reportActionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: "#000",
-    marginBottom: 12,
-  },
-  reportActionText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-  },
-  reportReasonList: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  reportReasonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  reportReasonRowSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
-  },
-  reportReasonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
-  },
-  reportReasonTextSelected: {
-    color: "#FFF",
-  },
-  reportDetailInput: {
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#000",
-    minHeight: 70,
-    textAlignVertical: "top",
-    marginBottom: 20,
-  },
 });

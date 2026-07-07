@@ -55,7 +55,6 @@ import {
 } from "../lib/analytics/mixpanel";
 import {
     classifyResume,
-    deactivateAccount,
     getExtractedResumeText,
     logout,
     unregisterDevice,
@@ -79,6 +78,7 @@ import {
     cancelDailyDeckReminder,
     cancelUnfinishedDeckReminder,
 } from "../lib/localNotifications";
+import { cancelCheckInNudges } from "../lib/checkInNudges";
 import { logBreadcrumb, Sentry } from "../lib/sentry";
 import { validateProfileField } from "../lib/validation";
 import { checkProfileCompleteness } from "../utils/profileCompletion";
@@ -134,7 +134,6 @@ interface SponsorProfile {
   bio: string;
   expertiseLabel: string;
   expertise: string[];
-  successStories: { name: string; result: string }[];
 }
 
 interface ProfileInsight {
@@ -233,7 +232,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [location, setLocation] = useState("");
   const [email, setEmail] = useState("");
   const [workEmail, setWorkEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState("");
 
@@ -309,143 +307,104 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (!userProfileData || !userProfileData.personal) {
       return { isComplete: false, percentage: 0, missingFields: [] };
     }
-    const result = checkProfileCompleteness(userProfileData);
+    const result = checkProfileCompleteness(userProfileData, userType);
     return result;
-  }, [userProfileData]);
+  }, [userProfileData, userType]);
 
   // Mirror the swipe gate: incomplete = any required field still missing
   // (not a percentage threshold), so the banner/prompts and the gate agree.
   const hasIncompleteProfile = !profileCompletion.isComplete;
 
   useEffect(() => {
-    // Update profile display when user profile data changes
-    if (
-      userProfileData.personal.email ||
-      userProfileData.personal.firstName ||
-      userProfileData.personal.fullName
-    ) {
-      setFirstName(userProfileData.personal.firstName);
-      setLastName(userProfileData.personal.lastName);
-      setName(
-        userProfileData.personal.fullName ||
-          `${userProfileData.personal.firstName} ${userProfileData.personal.lastName}`.trim(),
-      );
-      setEmail(userProfileData.personal.email);
-      // Prefer pendingWorkEmail (set when sponsor edits in the verification
-      // modal) so the display stays current even before backend confirmation.
-      setWorkEmail(
-        userProfileData.personal.workEmail || pendingWorkEmail || "",
-      );
-      setPhone(userProfileData.personal.phone);
-      setProfileImage(userProfileData.personal.profileImage || null);
-      setCity(userProfileData.personal.address.city);
-      setState(userProfileData.personal.address.state);
-      setLocation(
-        `${userProfileData.personal.address.city}${userProfileData.personal.address.state ? ", " + userProfileData.personal.address.state : ""}`,
-      );
-    }
-    if (userProfileData.professional.title) {
-      setRole(userProfileData.professional.title);
-      setJobTitle(userProfileData.professional.title);
-    }
-    if (userProfileData.professional.company) {
-      setCompany(userProfileData.professional.company);
-    }
-    if (userProfileData.professional.summary) {
-      setBio(userProfileData.professional.summary);
-      setSummary(userProfileData.professional.summary);
-    }
-    if (userProfileData.professional.yearsExperience) {
-      setYearsExperience(userProfileData.professional.yearsExperience);
-    }
-    if (
-      userProfileData.professional.experiences &&
-      userProfileData.professional.experiences.length > 0
-    ) {
-      setProfessionalExperiences(userProfileData.professional.experiences);
-    }
-    if (userProfileData.education.degree) {
-      setDegree(userProfileData.education.degree);
-    }
-    if (userProfileData.education.major) {
-      setMajor(userProfileData.education.major);
-    }
-    if (userProfileData.education.university) {
-      setUniversity(userProfileData.education.university);
-    }
-    if (userProfileData.education.graduationYear) {
-      setGraduationYear(userProfileData.education.graduationYear);
-    }
-    if (userProfileData.education.gpa) {
-      setGpa(userProfileData.education.gpa);
-    }
-    if (
-      userProfileData.education.entries &&
-      userProfileData.education.entries.length > 0
-    ) {
-      setEducationEntries(userProfileData.education.entries);
-    }
-    if (userProfileData.preferences.workAuthorization) {
-      setWorkAuthorization(userProfileData.preferences.workAuthorization);
-    }
-    if (userProfileData.preferences.willingToRelocate) {
-      setWillingToRelocate(userProfileData.preferences.willingToRelocate);
-    }
-    if (userProfileData.preferences.requiresSponsorship) {
-      setRequiresSponsorship(userProfileData.preferences.requiresSponsorship);
-    }
-    if (userProfileData.skills.length > 0) {
-      setExpertise(userProfileData.skills);
-    }
-    if (userProfileData.insights.length > 0) {
-      setProfileInsights(userProfileData.insights);
-    }
-    // Load work preferences from store
-    if (
-      userProfileData.workPreferences &&
-      userProfileData.workPreferences.length > 0
-    ) {
-      setWorkPreferences(userProfileData.workPreferences);
-    }
-    // Load desired roles from store — prefer explicit desiredRoles, fall back to seekingPosition
-    if (
-      userProfileData.desiredRoles &&
-      userProfileData.desiredRoles.length > 0
-    ) {
-      setDesiredRoles(userProfileData.desiredRoles);
-    } else if (userProfileData.professional.seekingPosition) {
-      setDesiredRoles([userProfileData.professional.seekingPosition]);
-    }
-    // Load additional details if they exist in the store
-    if (
-      userProfileData.certifications &&
-      userProfileData.certifications.length > 0
-    ) {
-      setCertifications(userProfileData.certifications);
-    }
-    if (userProfileData.languages && userProfileData.languages.length > 0) {
-      setLanguages(userProfileData.languages);
-    }
-    if (userProfileData.achievements) {
-      setAchievements(userProfileData.achievements);
-    }
-  }, [userProfileData]);
+    // Mirror the store faithfully on every change — no truthy guards. The
+    // previous version only called a setter when the store's value was
+    // non-empty, which meant a field the user had just cleared (via
+    // handleSaveField elsewhere, or a background sync catching up) could
+    // never actually display as cleared: the local state just kept
+    // whatever it last held. Store-side data integrity (deletions
+    // reaching the backend, and a pending local edit not being clobbered
+    // by an in-flight fetch) is handled in useUserProfileStore's dirty-
+    // field tracking — this effect's only job is to reflect the store,
+    // not to second-guess it.
+    setFirstName(userProfileData.personal.firstName);
+    setLastName(userProfileData.personal.lastName);
+    setName(
+      userProfileData.personal.fullName ||
+        `${userProfileData.personal.firstName} ${userProfileData.personal.lastName}`.trim(),
+    );
+    setEmail(userProfileData.personal.email);
+    // Prefer pendingWorkEmail (set when sponsor edits in the verification
+    // modal) so the display stays current even before backend confirmation.
+    setWorkEmail(userProfileData.personal.workEmail || pendingWorkEmail || "");
+    setProfileImage(userProfileData.personal.profileImage || null);
+    setCity(userProfileData.personal.address.city);
+    setState(userProfileData.personal.address.state);
+    setLocation(
+      `${userProfileData.personal.address.city}${userProfileData.personal.address.state ? ", " + userProfileData.personal.address.state : ""}`,
+    );
 
-  // Auto-save certifications when they change
+    setRole(userProfileData.professional.title);
+    setJobTitle(userProfileData.professional.title);
+    setCompany(userProfileData.professional.company);
+    setBio(userProfileData.professional.summary);
+    setSummary(userProfileData.professional.summary);
+    setYearsExperience(userProfileData.professional.yearsExperience);
+    setProfessionalExperiences(userProfileData.professional.experiences || []);
+
+    setDegree(userProfileData.education.degree);
+    setMajor(userProfileData.education.major);
+    setUniversity(userProfileData.education.university);
+    setGraduationYear(userProfileData.education.graduationYear);
+    setGpa(userProfileData.education.gpa);
+    setEducationEntries(userProfileData.education.entries || []);
+
+    setWorkAuthorization(userProfileData.preferences.workAuthorization);
+    setWillingToRelocate(userProfileData.preferences.willingToRelocate);
+    setRequiresSponsorship(userProfileData.preferences.requiresSponsorship);
+
+    setExpertise(userProfileData.skills);
+    setProfileInsights(userProfileData.insights);
+    setWorkPreferences(userProfileData.workPreferences || []);
+
+    // desiredRoles falls back to seekingPosition only when genuinely
+    // empty — a derivation between two backend-sourced values, not a
+    // "prefer local over backend" guard, so it's kept as-is.
+    setDesiredRoles(
+      userProfileData.desiredRoles && userProfileData.desiredRoles.length > 0
+        ? userProfileData.desiredRoles
+        : userProfileData.professional.seekingPosition
+          ? [userProfileData.professional.seekingPosition]
+          : [],
+    );
+
+    setCertifications(userProfileData.certifications || []);
+    setLanguages(userProfileData.languages || []);
+    setAchievements(userProfileData.achievements);
+  }, [userProfileData, pendingWorkEmail]);
+
+  // Auto-save certifications when they change. Guarded against the store's
+  // own value (not just emptiness) — updateCertifications() always writes a
+  // new `data` object regardless of content, and the mirror-the-store effect
+  // above calls setCertifications() on every `data` change (a new array
+  // reference even when unchanged). Without this comparison, that pair
+  // ping-pongs forever: store change -> setCertifications -> this effect
+  // fires -> updateCertifications -> new store object -> repeat, hitting
+  // React's "Maximum update depth exceeded" guard.
   useEffect(() => {
-    if (
-      certifications.length > 0 ||
-      (userProfileData.certifications?.length ?? 0) > 0
-    ) {
-      updateCertifications(certifications);
+    if (JSON.stringify(certifications) === JSON.stringify(userProfileData.certifications ?? [])) {
+      return;
     }
+    updateCertifications(certifications);
   }, [certifications]);
 
-  // Auto-save languages when they change
+  // Auto-save languages when they change — see the certifications effect
+  // above for why this needs to compare against the store's current value
+  // rather than just checking length.
   useEffect(() => {
-    if (languages.length > 0 || (userProfileData.languages?.length ?? 0) > 0) {
-      updateLanguages(languages);
+    if (JSON.stringify(languages) === JSON.stringify(userProfileData.languages ?? [])) {
+      return;
     }
+    updateLanguages(languages);
   }, [languages]);
 
   // Load existing resume status on mount (applicant only)
@@ -480,58 +439,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
       });
   }, [userType]);
 
-  const getStatusLabel = (status: string) => {
-    const labels = {
-      applied: "Applied",
-      reviewing: "Under Review",
-      interview_scheduled: "Interview",
-      offer: "Offer",
-      rejected: "Closed",
-    };
-    return labels[status as keyof typeof labels] || status;
-  };
-
-  const getStatusDotColor = (status: string) => {
-    const colors = {
-      applied: { backgroundColor: "#666" },
-      reviewing: { backgroundColor: "#666" },
-      interview_scheduled: { backgroundColor: "#000" },
-      offer: { backgroundColor: "#000" },
-      rejected: { backgroundColor: "#DC2626" },
-    };
-    return colors[status as keyof typeof colors] || { backgroundColor: "#999" };
-  };
-
-  const getStatusBadgeStyle = (status: string) => {
-    const styles = {
-      applied: { backgroundColor: "#F9F9F9", borderColor: "#E5E5E5" },
-      reviewing: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      interview_scheduled: {
-        backgroundColor: "#F4F4F5",
-        borderColor: "#E5E5E5",
-      },
-      offer: { backgroundColor: "#F4F4F5", borderColor: "#E5E5E5" },
-      rejected: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
-    };
-    return (
-      styles[status as keyof typeof styles] || {
-        backgroundColor: "#F5F5F5",
-        borderColor: "#E5E5E5",
-      }
-    );
-  };
-
-  const getStatusTextColor = (status: string) => {
-    const colors = {
-      applied: { color: "#000" },
-      reviewing: { color: "#666" },
-      interview_scheduled: { color: "#000" },
-      offer: { color: "#000" },
-      rejected: { color: "#DC2626" },
-    };
-    return colors[status as keyof typeof colors] || { color: "#666" };
-  };
-
   const applicantData: ApplicantProfile = {
     name,
     role,
@@ -552,11 +459,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     bio,
     expertiseLabel: "I Can Help With",
     expertise,
-    successStories: [
-      { name: "Sarah M.", result: "Landed PM role at Meta" },
-      { name: "David K.", result: "Senior Engineer at Google" },
-      { name: "Lisa P.", result: "Design Lead at Airbnb" },
-    ],
   };
 
   const profileData = userType === "applicant" ? applicantData : sponsorData;
@@ -644,12 +546,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           }
           break;
         // email is read-only — changes require a dedicated change-email flow with verification
-        case "phone":
-          setPhone(valueToSave);
-          await updatePersonal({ phone: valueToSave });
-          // API call for phone
-          await updateGeneralProfile({ phone_number: valueToSave });
-          break;
         case "bio":
           setBio(valueToSave);
           await updateProfessional({ summary: valueToSave });
@@ -1855,9 +1751,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
     // Cancel the locally-scheduled "your deck is ready" / unfinished-deck
     // reminders too — those are on-device schedules, not backend push, so
-    // unregistering the device token alone wouldn't stop them.
+    // unregistering the device token alone wouldn't stop them. Same for the
+    // referral check-in nudge — without this, a logged-out device (or the
+    // next user who logs into it) could still get "check in on your
+    // referral" notifications scheduled under the previous session.
     cancelDailyDeckReminder();
     cancelUnfinishedDeckReminder();
+    cancelCheckInNudges(userType);
     try {
       // Call backend logout to invalidate session
       await logout();
@@ -1876,47 +1776,32 @@ export function ProfileView({ userType }: ProfileViewProps) {
     router.replace("/splash");
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Delete Account",
-      "This will permanently delete your account and all your data. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setShowPrivacySecurity(false);
-            // Deactivate push token so no further notifications reach this device
-            if (deviceToken) {
-              try {
-                await unregisterDevice(deviceToken);
-              } catch (err) {
-                console.warn(
-                  "[ProfileView] Failed to unregister device token before delete:",
-                  err,
-                );
-              }
-            }
-            try {
-              await deactivateAccount();
-              trackAccountDeleted();
-              resetUser();
-              rcReset();
-            } catch (err) {
-              console.warn(
-                "[ProfileView] Deactivate account call failed:",
-                err,
-              );
-              // Non-fatal — clear local state regardless
-            }
-            await clearAuth();
-            await clearUserProfileData();
-            router.replace("/splash");
-          },
-        },
-      ],
-    );
+  // Runs AFTER PrivacySecurityScreen's delete step has confirmed the
+  // password and the backend has permanently purged the account (POST
+  // /api/account/delete/ — the real deletion Apple 5.1.1(v) requires, not
+  // the old reversible deactivate). Everything here is local teardown; the
+  // server side — including the device-token rows and CDN files — is
+  // already gone, so no unregisterDevice call is needed (and it would fail
+  // against a purged account anyway).
+  const handleAccountDeleted = async () => {
+    setShowPrivacySecurity(false);
+    // Cancel every on-device schedule the same way logout does — without
+    // this, re-registering on this device inherits the deleted account's
+    // deck reminders and check-in nudges.
+    cancelDailyDeckReminder();
+    cancelUnfinishedDeckReminder();
+    cancelCheckInNudges(userType);
+    trackAccountDeleted();
+    resetUser();
+    rcReset();
+    await clearAuth();
+    await clearUserProfileData();
+    // Parity with logout — reset jobs store + onboarding data so a
+    // re-registration on this device doesn't inherit deck state
+    // (card index, session likes/matches) from the deleted account.
+    resetJobsStore();
+    clearOnboarding();
+    router.replace("/splash");
   };
 
   // Helper to count missing fields by category
@@ -2865,7 +2750,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         workEmailVerified={workEmailVerified}
         email={email}
         workEmail={workEmail}
-        phone={phone}
         bio={bio}
         location={location}
         expertise={expertise}
@@ -2921,7 +2805,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <PrivacySecurityScreen
         visible={showPrivacySecurity}
         onClose={() => setShowPrivacySecurity(false)}
-        onDeleteAccount={handleDeleteAccount}
+        onAccountDeleted={handleAccountDeleted}
       />
 
       {/* NOTIFICATIONS SCREEN */}
@@ -3425,8 +3309,8 @@ const styles = StyleSheet.create({
   },
   // Delete-account card — same shape as the sibling privacy cards but a
   // tick darker on the background so it visually pulls forward from the
-  // row above. The native Alert confirmation in handleDeleteAccount is
-  // still the actual safety net.
+  // row above. (The confirmation safety net now lives in
+  // PrivacySecurityScreen's password-confirmed delete step.)
   deleteActionCard: {
     flexDirection: "row",
     alignItems: "center",

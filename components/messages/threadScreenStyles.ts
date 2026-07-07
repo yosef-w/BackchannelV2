@@ -1,0 +1,200 @@
+import { Platform, StyleSheet } from "react-native";
+
+/**
+ * Style cluster for ThreadScreen, extracted verbatim from
+ * MessagesView's StyleSheet. Two pre-existing dead styles
+ * (headerReferBtnDone, iconBtn) were interspersed among these and
+ * left behind in MessagesView, unrelated to this extraction.
+ */
+export const threadScreenStyles = StyleSheet.create({
+  startersHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  startersHeaderText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#999",
+    letterSpacing: 1,
+  },
+  startersList: {
+    width: "100%",
+    gap: 8,
+  },
+  starterChip: {
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  starterChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "left",
+  },
+
+  closedNotice: {
+    backgroundColor: "#F8F9FB",
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    alignItems: "center",
+  },
+  closedNoticeText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  referralNudge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  referralNudgeIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  referralNudgeTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+  },
+  referralNudgeSubtitle: {
+    fontSize: 11,
+    color: "#999",
+    marginTop: 1,
+  },
+  chatContainer: { flex: 1, backgroundColor: "#FFF" },
+  chatHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F5",
+  },
+  backButton: { padding: 8, marginLeft: -8 },
+  headerIdentity: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginLeft: 8,
+  },
+  headerImage: { width: 40, height: 40, borderRadius: 20 },
+  headerInfo: { marginLeft: 12 },
+  headerName: { fontSize: 16, fontWeight: "700" },
+  headerRole: { fontSize: 12, color: "#666" },
+  headerReferBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  headerReferText: { fontSize: 13, fontWeight: "700" },
+  headerReferTextDone: { color: "#000" },
+  messagesScroll: { flex: 1, paddingHorizontal: 20 },
+  // Spacing between messages lives on each messageWrapper (via an inline
+  // marginTop) rather than a container gap, so clustered messages from the
+  // same sender can sit tight while cluster boundaries keep the full gap.
+  messagesContent: { paddingTop: 20, paddingBottom: 28 },
+  messageWrapper: { maxWidth: "85%" },
+  msgLeft: { alignSelf: "flex-start" },
+  msgRight: { alignSelf: "flex-end" },
+  bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
+  bubbleMe: { backgroundColor: "#000" },
+  bubbleThem: { backgroundColor: "#F2F2F2" },
+  // Within a cluster, the corners facing the adjacent bubble tighten so the
+  // run reads as one grouped exchange.
+  bubbleClusterTopMe: { borderTopRightRadius: 6 },
+  bubbleClusterTopThem: { borderTopLeftRadius: 6 },
+  bubbleClusterBottomMe: { borderBottomRightRadius: 6 },
+  bubbleClusterBottomThem: { borderBottomLeftRadius: 6 },
+  txtMe: { color: "#FFF", fontSize: 15 },
+  txtThem: { color: "#000", fontSize: 15 },
+  msgTime: {
+    fontSize: 10,
+    color: "#BBB",
+    marginTop: 6,
+    fontWeight: "600",
+    alignSelf: "flex-end",
+  },
+  dayHeader: {
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  dayHeaderText: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+  inputArea: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 12 : 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F5F5F5",
+    backgroundColor: "#FFF",
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    minHeight: 44,
+    maxHeight: 110,
+    marginRight: 10,
+    color: "#000",
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerMoreBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

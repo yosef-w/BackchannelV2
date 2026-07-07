@@ -687,9 +687,10 @@ export function MainApp({ userType }: MainAppProps) {
   // the Matches screen's cached lists for relationship-changing pushes so a
   // new like/match/referral appears without the user pulling to refresh.
   // ("matchesScreen" is MatchesView's MATCHES_SCREEN_ROOT query key — keep in
-  // sync if that constant is ever renamed.) Note: a sponsor liking an
-  // applicant's profile without a match currently sends NO push, so the
-  // applicant's "Interested in You" list still relies on focus/pull-to-refresh.
+  // sync if that constant is ever renamed.) `profile_like` (§D) fires when a
+  // sponsor likes an applicant's profile without a match — the applicant's
+  // "Interested in You" list now refreshes live instead of relying on
+  // focus/pull-to-refresh.
   useEffect(() => {
     if (!isAuthenticated) return;
     const received = Notifications.addNotificationReceivedListener(
@@ -703,7 +704,8 @@ export function MainApp({ userType }: MainAppProps) {
           type === "match" ||
           type === "referral" ||
           type === "job_like" ||
-          type === "waitlist"
+          type === "waitlist" ||
+          type === "profile_like"
         ) {
           queryClient.invalidateQueries({ queryKey: ["matchesScreen"] });
         }
@@ -802,9 +804,12 @@ export function MainApp({ userType }: MainAppProps) {
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleViewChange("notifications");
-                // Optimistically clear badge when the user opens the screen;
-                // the NotificationsView will mark-all-read on its own.
-                setUnreadNotificationCount(0);
+                // Don't optimistically zero the badge here — NotificationsView
+                // does NOT auto-mark-all-read (that's a manual "Mark all read"
+                // button), so zeroing on tap understated the count until the
+                // next 60s poll caught up. The real count is refetched when
+                // the user leaves the screen (see onBack below), by which
+                // point any read actions taken inside it have landed.
               }}
               activeOpacity={0.7}
               style={styles.headerIconButton}
@@ -883,7 +888,12 @@ export function MainApp({ userType }: MainAppProps) {
           {activeView === "notifications" && (
             <NotificationsView
               userType={userType}
-              onBack={() => setActiveView(previousView)}
+              onBack={() => {
+                setActiveView(previousView);
+                // Refresh the real unread count now that the user has seen
+                // (and possibly acted on) whatever was in the list.
+                fetchUnreadCount();
+              }}
               onOpenConversation={(conversationId) => {
                 setSelectedConversationId(conversationId);
                 setPreviousView("messages");

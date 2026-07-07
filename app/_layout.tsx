@@ -60,6 +60,7 @@ function RootLayout() {
   const fetchFromBackend = useUserProfileStore(
     (state) => state.fetchFromBackend,
   );
+  const flushSyncNow = useUserProfileStore((state) => state.flushSyncNow);
   const accessToken = useAuthStore((state) => state.accessToken);
   const initSubscriptions = useSubscriptionStore((state) => state.initialize);
 
@@ -85,22 +86,41 @@ function RootLayout() {
   }, [loadTokens, loadUserProfileData, initSubscriptions]);
 
   /**
-   * 🔄 Fetch latest profile from backend if authenticated
+   * 🔄 Push any pending local edits, then fetch latest profile from
+   * backend, once authenticated.
+   *
+   * flushSyncNow() runs first — if the app was killed with dirty fields
+   * still pending (the 2s debounce never fired, or the request was in
+   * flight), loadFromStorage() restored `needsSync`/`dirtyFields` from
+   * AsyncStorage on startup, and this is what actually retries pushing
+   * them instead of leaving the edit stuck on-device forever. Flushing
+   * before fetching means the subsequent pull already reflects the
+   * just-pushed edit rather than racing it.
    */
   useEffect(() => {
     if (accessToken) {
-      fetchFromBackend().catch((error) => {
-        console.warn("[Layout] Failed to sync profile from backend:", error);
-        // Don't show error to user - they'll just see cached data or login screen
-      });
+      flushSyncNow()
+        .catch((error) => {
+          console.warn("[Layout] Failed to flush pending profile sync:", error);
+        })
+        .finally(() => {
+          fetchFromBackend().catch((error) => {
+            console.warn(
+              "[Layout] Failed to sync profile from backend:",
+              error,
+            );
+            // Don't show error to user - they'll just see cached data or login screen
+          });
+        });
     }
-  }, [accessToken, fetchFromBackend]);
+  }, [accessToken, fetchFromBackend, flushSyncNow]);
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
       {/* Every screen in this app hardcodes a white background and
           dark-content status bar — there's no dark-mode styling anywhere
-          (the scaffold's ThemedText/ThemedView/useColorScheme are unused).
+          (the scaffold's ThemedText/ThemedView/useColorScheme were removed
+          as dead code — see docs/AUDIT_REMEDIATION_PLAN.md Phase 1).
           Following the system color scheme here previously left dark-mode
           users with mismatched nav chrome and, via StatusBar style="auto",
           a light status bar rendered on a white background. Pin to light

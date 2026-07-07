@@ -92,7 +92,9 @@ export function AuthScreen({
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const updatePersonal = useUserProfileStore((state) => state.updatePersonal);
+  const seedSessionEmail = useUserProfileStore(
+    (state) => state.seedSessionEmail,
+  );
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
 
@@ -104,22 +106,14 @@ export function AuthScreen({
       // Store real tokens + role from backend (PR #19)
       await setAuthTokens(data.access_token, data.refresh_token, data.role);
 
-      // Backend doesn't return profile info in login response
-      // Just store the email, profile data will be loaded from cache or fetched later
-      updatePersonal({
-        email: data.email,
-        firstName: "",
-        lastName: "",
-        fullName: "",
-        phone: "",
-        address: {
-          city: "",
-          state: "",
-          street: "",
-          zip: "",
-          country: "",
-        },
-      });
+      // Backend doesn't return profile info in login response — seed just
+      // the email locally; fetchFromBackend() (fired by _layout.tsx as soon
+      // as the token lands) populates the rest. This must NOT go through
+      // updatePersonal(): that marks the whole `personal` group dirty and
+      // the sync then pushes it IN FULL — including the store's
+      // still-default empty firstName/lastName/phone/address — which
+      // permanently erased users' real names on the backend on every login.
+      seedSessionEmail(data.email);
 
       // Identify the user for the rest of their session, and stamp basic
       // profile attributes onto the People record. Other profile fields will

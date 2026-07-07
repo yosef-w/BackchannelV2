@@ -1,15 +1,12 @@
-// Full-screen Privacy & Security editor. Change Password is a sub-step
-// pushed within this same screen (via EditorScreen's onBack) instead of the
-// old pattern of closing this modal and opening a second one on top of it.
-//
-// Change Email is intentionally not surfaced here — the backend endpoint
-// still returns 501, and the old modal for it was already unreachable
-// (nothing called setShowEmailChange). Once that ships, add it as a second
-// sub-step alongside "password".
+// Full-screen Privacy & Security editor. Change Password / Change Email /
+// Delete Account are all sub-steps pushed within this same screen (via
+// EditorScreen's onBack) instead of the old pattern of closing this modal
+// and opening a second one on top of it.
 
-import { ChevronRight, Lock, Trash2 } from "lucide-react-native";
+import { ChevronRight, Lock, Mail, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Linking,
   StyleSheet,
   Text,
@@ -21,25 +18,32 @@ import {
   trackPrivacyPolicyTapped,
   trackTermsTapped,
 } from "../../lib/analytics/mixpanel";
-import { changePassword } from "../../lib/api";
+import { changeEmail, changePassword } from "../../lib/api";
+import { authApi } from "../../lib/auth-api";
+import { isValidEmail } from "../../lib/validation";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { useToastStore } from "../../stores/useToastStore";
 import { EditorScreen } from "./EditorScreen";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
 
-type Step = "main" | "password";
+type Step = "main" | "password" | "delete" | "email";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onDeleteAccount: () => void;
+  /** Called AFTER the backend confirms permanent deletion — the parent runs
+   * its local teardown (analytics, notification schedules, stores, auth) and
+   * navigates away. The API call itself lives here so a wrong password stays
+   * an inline field error instead of tearing anything down. */
+  onAccountDeleted: () => void | Promise<void>;
 }
 
 export function PrivacySecurityScreen({
   visible,
   onClose,
-  onDeleteAccount,
+  onAccountDeleted,
 }: Props) {
   const [step, setStep] = useState<Step>("main");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -47,6 +51,18 @@ export function PrivacySecurityScreen({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [changingEmail, setChangingEmail] = useState(false);
+  // True once the backend has sent the confirmation link — the email isn't
+  // live yet (only the redeemed link flips it), so this swaps the form for
+  // a "check your inbox" message rather than a success toast.
+  const [emailRequestSent, setEmailRequestSent] = useState(false);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
   const showToast = useToastStore((s) => s.showToast);
 
   const resetPasswordFields = () => {
@@ -56,10 +72,46 @@ export function PrivacySecurityScreen({
     setPasswordError("");
   };
 
+  const resetDeleteFields = () => {
+    setDeletePassword("");
+    setDeleteError("");
+  };
+
+  const resetEmailFields = () => {
+    setNewEmail("");
+    setEmailPassword("");
+    setEmailError("");
+    setEmailRequestSent(false);
+  };
+
   const handleClose = () => {
     resetPasswordFields();
+    resetDeleteFields();
+    resetEmailFields();
     setStep("main");
     onClose();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletePassword || deleting) return;
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await authApi.deleteAccount(deletePassword, refreshToken);
+      // Deletion is done server-side; hand off to the parent for local
+      // teardown + navigation. Don't reset `deleting` on this path — the
+      // button stays in its spinner state for the beat until we route away,
+      // instead of flashing back to a tappable "Delete" on a dead account.
+      await onAccountDeleted();
+    } catch (err: any) {
+      const msg: string = err?.message || "";
+      setDeleteError(
+        msg.toLowerCase().includes("password")
+          ? "That password is incorrect. Please try again."
+          : msg || "Couldn't delete your account. Please try again.",
+      );
+      setDeleting(false);
+    }
   };
 
   const handlePasswordChange = async () => {
@@ -90,6 +142,34 @@ export function PrivacySecurityScreen({
       );
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    setEmailError("");
+
+    if (!newEmail.trim() || !emailPassword) {
+      setEmailError("Both fields are required");
+      return;
+    }
+    if (!isValidEmail(newEmail.trim())) {
+      setEmailError("Enter a valid email address");
+      return;
+    }
+
+    setChangingEmail(true);
+    try {
+      await changeEmail(newEmail.trim(), emailPassword);
+      setEmailRequestSent(true);
+    } catch (err: any) {
+      const msg: string = err?.message || "";
+      setEmailError(
+        msg.toLowerCase().includes("password")
+          ? "That password is incorrect. Please try again."
+          : msg || "Couldn't request the email change. Please try again.",
+      );
+    } finally {
+      setChangingEmail(false);
     }
   };
 
@@ -167,6 +247,188 @@ export function PrivacySecurityScreen({
     );
   }
 
+  if (step === "email") {
+    return (
+      <EditorScreen
+        visible={visible}
+        onClose={handleClose}
+        onBack={() => {
+          resetEmailFields();
+          setStep("main");
+        }}
+        title="Change Email"
+      >
+        {emailRequestSent ? (
+          <>
+            <View style={styles.deleteIconCircle}>
+              <Mail color="#000" size={26} strokeWidth={2.2} />
+            </View>
+            <Text style={styles.deleteHeadline}>Check your new inbox</Text>
+            <Text style={styles.deleteSubtitle}>
+              We sent a confirmation link to {newEmail.trim()}. Your email
+              won&apos;t change until you open it and confirm — including
+              your spam folder if it doesn&apos;t show up in a minute.
+            </Text>
+            <TouchableOpacity
+              style={styles.updateBtn}
+              onPress={() => {
+                resetEmailFields();
+                setStep("main");
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.updateBtnText}>Done</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.subtitle}>
+              We&apos;ll send a confirmation link to your new address — your
+              email won&apos;t change until you open it.
+            </Text>
+
+            <Text style={styles.fieldLabel}>NEW EMAIL</Text>
+            <View style={styles.inputWrapper}>
+              <Mail color="#AAA" size={18} />
+              <TextInput
+                style={styles.input}
+                placeholder="name@example.com"
+                placeholderTextColor="#BBB"
+                value={newEmail}
+                onChangeText={setNewEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
+            <View style={styles.inputWrapper}>
+              <Lock color="#AAA" size={18} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password to confirm"
+                placeholderTextColor="#BBB"
+                value={emailPassword}
+                onChangeText={setEmailPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            {emailError ? (
+              <Text style={styles.errorText}>{emailError}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.updateBtn, changingEmail && { opacity: 0.6 }]}
+              onPress={handleChangeEmail}
+              disabled={changingEmail}
+            >
+              {changingEmail ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.updateBtnText}>Send Confirmation Link</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+      </EditorScreen>
+    );
+  }
+
+  if (step === "delete") {
+    return (
+      <EditorScreen
+        visible={visible}
+        onClose={handleClose}
+        onBack={() => {
+          if (deleting) return;
+          resetDeleteFields();
+          setStep("main");
+        }}
+        title="Delete Account"
+      >
+        <View style={styles.deleteIconCircle}>
+          <Trash2 color="#000" size={26} strokeWidth={2.2} />
+        </View>
+
+        <Text style={styles.deleteHeadline}>This is permanent</Text>
+        <Text style={styles.deleteSubtitle}>
+          Deleting your account erases everything, right away. There is no
+          grace period and no way to undo it.
+        </Text>
+
+        <View style={styles.deleteWarningCard}>
+          {[
+            "Your profile, photo, and resume are permanently erased",
+            "All matches and conversations are deleted for good",
+            "Your likes, referrals, and check-in history are removed",
+          ].map((line) => (
+            <View key={line} style={styles.deleteWarningRow}>
+              <View style={styles.deleteWarningDot} />
+              <Text style={styles.deleteWarningText}>{line}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.fieldLabel}>CONFIRM YOUR PASSWORD</Text>
+        <View style={styles.inputWrapper}>
+          <Lock color="#AAA" size={18} />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password to continue"
+            placeholderTextColor="#BBB"
+            value={deletePassword}
+            onChangeText={(t) => {
+              setDeletePassword(t);
+              if (deleteError) setDeleteError("");
+            }}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!deleting}
+          />
+        </View>
+
+        {deleteError ? (
+          <Text style={styles.errorText}>{deleteError}</Text>
+        ) : null}
+
+        <TouchableOpacity
+          style={[
+            styles.deleteConfirmBtn,
+            (!deletePassword || deleting) && styles.deleteConfirmBtnDisabled,
+          ]}
+          onPress={handleConfirmDelete}
+          disabled={!deletePassword || deleting}
+          activeOpacity={0.8}
+        >
+          {deleting ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.deleteConfirmBtnText}>
+              Permanently Delete My Account
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteCancelBtn}
+          onPress={() => {
+            if (deleting) return;
+            resetDeleteFields();
+            setStep("main");
+          }}
+          disabled={deleting}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.deleteCancelBtnText}>Keep My Account</Text>
+        </TouchableOpacity>
+      </EditorScreen>
+    );
+  }
+
   return (
     <EditorScreen visible={visible} onClose={handleClose} title="Privacy & Security">
       <Text style={styles.groupLabel}>PROFILE</Text>
@@ -189,6 +451,18 @@ export function PrivacySecurityScreen({
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={styles.rowLabel}>Change Password</Text>
             <Text style={styles.rowDescription}>Update your password</Text>
+          </View>
+          <ChevronRight color="#BBB" size={20} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionRow, { borderBottomWidth: 0 }]}
+          onPress={() => setStep("email")}
+        >
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.rowLabel}>Change Email</Text>
+            <Text style={styles.rowDescription}>
+              Update the email you log in with
+            </Text>
           </View>
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>
@@ -225,14 +499,18 @@ export function PrivacySecurityScreen({
       </View>
 
       <Text style={styles.groupLabel}>ACCOUNT REMOVAL</Text>
-      <TouchableOpacity style={styles.deleteRow} onPress={onDeleteAccount}>
-        <Trash2 color="#DC2626" size={18} />
+      <TouchableOpacity
+        style={styles.deleteRow}
+        onPress={() => setStep("delete")}
+      >
+        <Trash2 color="#000" size={18} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.deleteTitle}>Delete Account</Text>
           <Text style={styles.rowDescription}>
             Remove your account permanently
           </Text>
         </View>
+        <ChevronRight color="#BBB" size={20} />
       </TouchableOpacity>
     </EditorScreen>
   );
@@ -275,15 +553,15 @@ const styles = StyleSheet.create({
   deleteRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "#F9F9F9",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderColor: "#F0F0F0",
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
   },
-  deleteTitle: { fontSize: 15, fontWeight: "700", color: "#DC2626" },
+  deleteTitle: { fontSize: 15, fontWeight: "700", color: "#000" },
   subtitle: { fontSize: 13, color: "#999", marginBottom: 20, lineHeight: 18 },
   fieldLabel: {
     fontSize: 11,
@@ -320,4 +598,85 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   updateBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
+  // ── Delete-account confirmation step ────────────────────────────────
+  // Monochrome like the rest of the app's primary/destructive actions
+  // (Unmatch, Send, etc.) — severity is carried by the copy, the warning
+  // list, and the required password, not by color.
+  deleteIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginTop: 8,
+    marginBottom: 18,
+  },
+  deleteHeadline: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    textAlign: "center",
+    letterSpacing: -0.5,
+    marginBottom: 10,
+  },
+  deleteSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 21,
+    fontWeight: "500",
+    marginBottom: 22,
+    paddingHorizontal: 4,
+  },
+  deleteWarningCard: {
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    padding: 16,
+    marginBottom: 24,
+    gap: 10,
+  },
+  deleteWarningRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  deleteWarningDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#000",
+    marginTop: 7,
+  },
+  deleteWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#444",
+    lineHeight: 19,
+    fontWeight: "600",
+  },
+  deleteConfirmBtn: {
+    backgroundColor: "#000",
+    borderRadius: 14,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  deleteConfirmBtnDisabled: {
+    opacity: 0.4,
+  },
+  deleteConfirmBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
+  deleteCancelBtn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  deleteCancelBtnText: { color: "#000", fontSize: 15, fontWeight: "700" },
 });

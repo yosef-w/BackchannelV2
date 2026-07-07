@@ -1,5 +1,6 @@
+import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
 
 /**
  * Renders a company logo. Prefers the backend-provided URL (from PR #62's
@@ -98,7 +99,9 @@ export function CompanyLogo({
         <Image
           source={{ uri: usableUrl }}
           style={{ width: size, height: size }}
-          resizeMode={resizeMode}
+          contentFit={resizeMode}
+          cachePolicy="memory-disk"
+          transition={150}
           onError={() => setImgFailed(true)}
         />
       ) : (

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState } from "react-native";
 import { create } from "zustand";
 
 // NOTE: Profile cache is stored in AsyncStorage (not SecureStore) because
@@ -101,6 +102,24 @@ export interface AutofillData {
   notificationPreferences: NotificationPreferences;
 }
 
+/**
+ * Top-level AutofillData keys that authApi.updateProfile knows how to sync.
+ * `demographics` and `resumeUrl` are intentionally excluded — there is no
+ * backend field for either yet (see docs/BACKEND_CHANGES_NEEDED.md).
+ */
+export type SyncableField =
+  | "personal"
+  | "professional"
+  | "education"
+  | "preferences"
+  | "skills"
+  | "insights"
+  | "workPreferences"
+  | "desiredRoles"
+  | "certifications"
+  | "languages"
+  | "achievements";
+
 interface UserProfileStore {
   data: AutofillData;
   isLoaded: boolean;
@@ -108,8 +127,44 @@ interface UserProfileStore {
   lastSyncedAt: Date | null;
   syncError: string | null;
   needsSync: boolean;
+  /**
+   * Top-level fields with local edits not yet confirmed synced to the
+   * backend. This is the source of truth for two things:
+   *   1. syncToBackend() only ever sends dirty fields, and sends them in
+   *      full (including now-empty values) — so clearing a field actually
+   *      clears it server-side instead of being silently dropped.
+   *   2. fetchFromBackend()'s merge treats a dirty field as "local wins,
+   *      don't let a fetch clobber this in-flight edit" instead of
+   *      "prefer non-empty backend value" — which previously resurrected
+   *      data the user had just deleted.
+   * Persisted to AsyncStorage alongside `needsSync` so a sync interrupted
+   * by the app being killed is retried on next launch (see loadFromStorage).
+   */
+  dirtyFields: Set<SyncableField>;
+  /**
+   * Consecutive syncToBackend() failures with nothing cleared. Persisted
+   * (survives a killed/relaunched app) so a dirty field that keeps failing
+   * for a non-network reason — e.g. a payload the backend always rejects —
+   * doesn't stay "protected" from fetchFromBackend's merge forever. Past
+   * MAX_SYNC_FAILURES_BEFORE_ABANDONING, fetchFromBackend gives up on the
+   * pending local edit and lets the backend value win instead, so a stuck
+   * flag can't permanently mask real server data (see fetchFromBackend).
+   * Reset to 0 on every successful sync attempt, even a partial one.
+   */
+  syncFailureCount: number;
 
   updatePersonal: (data: Partial<AutofillData["personal"]>) => Promise<void>;
+  /**
+   * Set the signed-in account's email locally WITHOUT marking the personal
+   * group dirty or queueing a sync. Login only knows the email; seeding it
+   * through updatePersonal() marked `personal` dirty, and since the
+   * send-in-full sync change that pushed the store's (often still-default,
+   * i.e. empty) firstName/lastName/phone/address to the backend on every
+   * login — permanently erasing the user's real name server-side.
+   * fetchFromBackend(), which _layout.tsx fires right after login, fills in
+   * the rest of the profile.
+   */
+  seedSessionEmail: (email: string) => Promise<void>;
   updateProfessional: (
     data: Partial<AutofillData["professional"]>,
   ) => Promise<void>;
@@ -144,6 +199,8 @@ interface UserProfileStore {
 
   loadFromProfile: (profileData: any) => Promise<void>;
   syncToBackend: () => Promise<void>;
+  /** Bypass the 2s debounce and sync immediately if there's anything dirty. */
+  flushSyncNow: () => Promise<void>;
   fetchFromBackend: () => Promise<void>;
 
   workEmailVerified: boolean;
@@ -164,6 +221,21 @@ interface UserProfileStore {
 
 const STORAGE_KEY = "autofill_data";
 const PENDING_WORK_EMAIL_KEY = "pending_work_email";
+/** Persists `dirtyFields` (as a JSON array) so a sync interrupted by the app
+ * being killed — the 2s debounce never fired, or fired but the request
+ * hadn't completed — is retried on next launch instead of silently lost. */
+const DIRTY_FIELDS_KEY = "autofill_dirty_fields";
+/** Persists `syncFailureCount` so a run of failures survives a killed app
+ * instead of resetting to 0 on relaunch and never reaching the threshold. */
+const SYNC_FAILURE_COUNT_KEY = "autofill_sync_failure_count";
+/** After this many consecutive failed sync attempts, fetchFromBackend stops
+ * protecting the dirty local value and lets the backend win instead — see
+ * the `syncFailureCount` doc comment above for why this exists. Chosen to
+ * be well past what network flakiness alone would produce (every attempt
+ * is either a 2s-debounced edit, an app-foreground flush, or a launch
+ * retry — a handful of consecutive failures across those is a strong
+ * signal of a real, non-transient problem, not a bad connection). */
+const MAX_SYNC_FAILURES_BEFORE_ABANDONING = 5;
 
 const defaultData: AutofillData = {
   personal: {
@@ -226,6 +298,38 @@ const defaultData: AutofillData = {
   notificationPreferences: {},
 };
 
+/** Returns a new Set with `field` added — never mutates `prev` in place. */
+function withDirty(
+  prev: Set<SyncableField>,
+  field: SyncableField,
+): Set<SyncableField> {
+  const next = new Set(prev);
+  next.add(field);
+  return next;
+}
+
+/** Persist the current dirty-fields set so it survives a killed app. */
+async function persistDirtyFields(fields: Set<SyncableField>) {
+  try {
+    await AsyncStorage.setItem(
+      DIRTY_FIELDS_KEY,
+      JSON.stringify(Array.from(fields)),
+    );
+  } catch (error) {
+    console.warn("Failed to persist dirty fields:", error);
+  }
+}
+
+/** Persist the current sync-failure count so a run of failures survives a
+ * killed app instead of resetting to 0 on relaunch. */
+async function persistSyncFailureCount(count: number) {
+  try {
+    await AsyncStorage.setItem(SYNC_FAILURE_COUNT_KEY, String(count));
+  } catch (error) {
+    console.warn("Failed to persist sync failure count:", error);
+  }
+}
+
 export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   data: defaultData,
   isLoaded: false,
@@ -233,6 +337,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   lastSyncedAt: null,
   syncError: null,
   needsSync: false,
+  dirtyFields: new Set<SyncableField>(),
+  syncFailureCount: 0,
   workEmailVerified: false,
   setWorkEmailVerified: (verified) => set({ workEmailVerified: verified }),
 
@@ -259,7 +365,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         `${newData.personal.firstName} ${newData.personal.lastName}`.trim();
     }
 
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "personal");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -270,10 +378,26 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     queueSync();
   },
 
+  seedSessionEmail: async (email) => {
+    const newData = { ...get().data };
+    newData.personal = { ...newData.personal, email };
+    // Deliberately NOT marked dirty and no queueSync() — this is session
+    // bookkeeping, not a user edit; see the interface doc comment.
+    set({ data: newData });
+
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch (error) {
+      console.warn("Failed to save autofill data:", error);
+    }
+  },
+
   updateProfessional: async (updates) => {
     const newData = { ...get().data };
     newData.professional = { ...newData.professional, ...updates };
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "professional");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -287,7 +411,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateEducation: async (updates) => {
     const newData = { ...get().data };
     newData.education = { ...newData.education, ...updates };
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "education");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -301,7 +427,11 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateProfessionalExperiences: async (experiences) => {
     const newData = { ...get().data };
     newData.professional.experiences = experiences;
-    set({ data: newData, needsSync: true });
+    // Nested under `professional` — authApi.updateProfile syncs experiences
+    // as part of the same rolePayload group, so mark the parent dirty.
+    const dirtyFields = withDirty(get().dirtyFields, "professional");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -315,7 +445,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateEducationEntries: async (entries) => {
     const newData = { ...get().data };
     newData.education.entries = entries;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "education");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -329,7 +461,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updatePreferences: async (updates) => {
     const newData = { ...get().data };
     newData.preferences = { ...newData.preferences, ...updates };
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "preferences");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -357,7 +491,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateSkills: async (skills) => {
     const newData = { ...get().data };
     newData.skills = skills;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "skills");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -371,7 +507,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateWorkPreferences: async (prefs) => {
     const newData = { ...get().data };
     newData.workPreferences = prefs;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "workPreferences");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -385,7 +523,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateDesiredRoles: async (roles) => {
     const newData = { ...get().data };
     newData.desiredRoles = roles;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "desiredRoles");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -399,7 +539,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateInsights: async (insights) => {
     const newData = { ...get().data };
     newData.insights = insights;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "insights");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -427,7 +569,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateCertifications: async (certifications) => {
     const newData = { ...get().data };
     newData.certifications = certifications;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "certifications");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -441,7 +585,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateLanguages: async (languages) => {
     const newData = { ...get().data };
     newData.languages = languages;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "languages");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -455,7 +601,9 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   updateAchievements: async (achievements) => {
     const newData = { ...get().data };
     newData.achievements = achievements;
-    set({ data: newData, needsSync: true });
+    const dirtyFields = withDirty(get().dirtyFields, "achievements");
+    set({ data: newData, needsSync: true, dirtyFields });
+    persistDirtyFields(dirtyFields);
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -579,16 +727,46 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   },
 
   syncToBackend: async () => {
-    const { data, isSyncing } = get();
+    const { isSyncing, dirtyFields } = get();
 
-    if (isSyncing) return;
+    if (isSyncing || dirtyFields.size === 0) return;
+
+    // Snapshot exactly what we're about to send. Only dirty fields are
+    // included, and they're sent in full (including now-empty arrays/
+    // strings) — this is what makes a cleared field actually clear
+    // server-side instead of being silently dropped by a truthy guard.
+    const fieldsToSync = new Set(dirtyFields);
+    const dataSnapshot = get().data;
 
     set({ isSyncing: true });
 
     try {
       const { authApi } = await import("../lib/auth-api");
-      await authApi.updateProfile(data);
-      set({ lastSyncedAt: new Date(), syncError: null, needsSync: false });
+      await authApi.updateProfile(dataSnapshot, fieldsToSync);
+
+      // Only clear a field's dirty flag if it still holds the exact value
+      // we just sent — if the user edited it again while this request was
+      // in flight, markDirty already re-added it (or it was never removed),
+      // and it'll go out on the next sync with the newer value instead of
+      // being lost.
+      const current = get().data;
+      const remainingDirty = new Set(
+        [...get().dirtyFields].filter(
+          (field) =>
+            !fieldsToSync.has(field) ||
+            JSON.stringify((current as any)[field]) !==
+              JSON.stringify((dataSnapshot as any)[field]),
+        ),
+      );
+      set({
+        lastSyncedAt: new Date(),
+        syncError: null,
+        dirtyFields: remainingDirty,
+        needsSync: remainingDirty.size > 0,
+        syncFailureCount: 0,
+      });
+      persistDirtyFields(remainingDirty);
+      persistSyncFailureCount(0);
     } catch (error: any) {
       console.warn("Failed to sync profile to backend:", error);
 
@@ -596,12 +774,34 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         error.message?.includes("network") ||
         error.message?.includes("offline")
       ) {
+        // A connectivity gap isn't evidence of a stuck/broken sync — leave
+        // syncFailureCount untouched so an extended period offline can't by
+        // itself trip the abandon-local-edits threshold below and risk
+        // discarding a real pending edit the moment the network returns.
         set({ syncError: "offline", needsSync: true });
       } else {
-        set({ syncError: error.message || "Sync failed" });
+        // A non-network failure (e.g. the backend rejecting the payload)
+        // means retrying won't help on its own — count it, so a run of
+        // these eventually trips fetchFromBackend's abandon-stuck-dirty-
+        // fields safety net instead of masking real backend data forever.
+        const syncFailureCount = get().syncFailureCount + 1;
+        set({ syncError: error.message || "Sync failed", syncFailureCount });
+        persistSyncFailureCount(syncFailureCount);
       }
+      // dirtyFields is left untouched on failure — nothing was confirmed
+      // synced, so the next debounced/flushed attempt retries all of it.
     } finally {
       set({ isSyncing: false });
+    }
+  },
+
+  flushSyncNow: async () => {
+    if (syncTimeout) {
+      clearTimeout(syncTimeout);
+      syncTimeout = null;
+    }
+    if (get().dirtyFields.size > 0) {
+      await get().syncToBackend();
     }
   },
 
@@ -848,6 +1048,53 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         })(),
       };
 
+      // Local edits still pending sync must win over whatever the backend
+      // just returned — otherwise a fetch racing an in-flight (or not-yet-
+      // debounced) edit would overwrite it with stale server state, and a
+      // fetch racing a field the user just CLEARED would resurrect the old
+      // value the moment the backend caught up (the merge logic above
+      // already prefers non-empty backend data, which is exactly backwards
+      // for a field mid-deletion). Fields with no pending edit are left as
+      // the normal backend-preferred merge computed above.
+      //
+      // Fail-safe: if syncToBackend has failed MAX_SYNC_FAILURES_BEFORE_-
+      // ABANDONING times in a row for a non-network reason, that "local
+      // wins" protection is abandoned instead — a dirty flag stuck because
+      // the backend keeps rejecting the payload (not just a bad
+      // connection) would otherwise mask real backend data (e.g. a
+      // correctly-set name) forever, since it never clears on its own.
+      // Past the threshold, this fetch is treated as the authority and the
+      // stuck flags are dropped so future edits aren't shadowed either.
+      const syncFailureCount = get().syncFailureCount;
+      const abandoningStuckEdits =
+        syncFailureCount >= MAX_SYNC_FAILURES_BEFORE_ABANDONING;
+      const dirtyFields = abandoningStuckEdits
+        ? new Set<SyncableField>()
+        : get().dirtyFields;
+      if (abandoningStuckEdits && get().dirtyFields.size > 0) {
+        console.warn(
+          `[useUserProfileStore] Sync has failed ${syncFailureCount} times in a row — abandoning ${get().dirtyFields.size} stuck dirty field(s) so the backend's data isn't masked forever.`,
+        );
+        set({ dirtyFields: new Set<SyncableField>(), syncFailureCount: 0 });
+        persistDirtyFields(new Set<SyncableField>());
+        persistSyncFailureCount(0);
+      }
+      if (dirtyFields.has("personal")) autofillData.personal = existing.personal;
+      if (dirtyFields.has("professional"))
+        autofillData.professional = existing.professional;
+      if (dirtyFields.has("education")) autofillData.education = existing.education;
+      if (dirtyFields.has("skills")) autofillData.skills = existing.skills;
+      if (dirtyFields.has("insights")) autofillData.insights = existing.insights;
+      if (dirtyFields.has("workPreferences"))
+        autofillData.workPreferences = existing.workPreferences;
+      if (dirtyFields.has("desiredRoles"))
+        autofillData.desiredRoles = existing.desiredRoles;
+      if (dirtyFields.has("certifications"))
+        autofillData.certifications = existing.certifications;
+      if (dirtyFields.has("languages")) autofillData.languages = existing.languages;
+      if (dirtyFields.has("achievements"))
+        autofillData.achievements = existing.achievements;
+
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });
 
       // Update work email verification status. Backend now ships this field
@@ -895,14 +1142,20 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
   loadFromStorage: async () => {
     try {
-      const [stored, storedPending] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEY),
-        AsyncStorage.getItem(PENDING_WORK_EMAIL_KEY),
-      ]);
+      const [stored, storedPending, storedDirty, storedFailureCount] =
+        await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY),
+          AsyncStorage.getItem(PENDING_WORK_EMAIL_KEY),
+          AsyncStorage.getItem(DIRTY_FIELDS_KEY),
+          AsyncStorage.getItem(SYNC_FAILURE_COUNT_KEY),
+        ]);
       const patch: Partial<{
         data: AutofillData;
         isLoaded: boolean;
         pendingWorkEmail: string | null;
+        dirtyFields: Set<SyncableField>;
+        needsSync: boolean;
+        syncFailureCount: number;
       }> = {};
       if (stored) {
         patch.data = JSON.parse(stored);
@@ -910,6 +1163,30 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       }
       if (storedPending) {
         patch.pendingWorkEmail = storedPending;
+      }
+      // A non-empty dirty-fields set here means the app was killed before a
+      // debounced sync fired (or while one was in flight) — retry it once
+      // auth is ready rather than losing the edit silently. See _layout.tsx,
+      // which calls flushSyncNow() once accessToken is available.
+      if (storedDirty) {
+        try {
+          const fields: SyncableField[] = JSON.parse(storedDirty);
+          if (Array.isArray(fields) && fields.length > 0) {
+            patch.dirtyFields = new Set(fields);
+            patch.needsSync = true;
+          }
+        } catch {
+          // Malformed — ignore, nothing to retry.
+        }
+      }
+      // Restored so a run of non-network sync failures across app restarts
+      // still reaches MAX_SYNC_FAILURES_BEFORE_ABANDONING instead of
+      // resetting to 0 on every relaunch and never tripping the safety net.
+      if (storedFailureCount) {
+        const count = Number(storedFailureCount);
+        if (Number.isFinite(count) && count > 0) {
+          patch.syncFailureCount = count;
+        }
       }
       if (Object.keys(patch).length > 0) {
         set(patch);
@@ -924,6 +1201,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       await Promise.all([
         AsyncStorage.removeItem(STORAGE_KEY),
         AsyncStorage.removeItem(PENDING_WORK_EMAIL_KEY),
+        AsyncStorage.removeItem(DIRTY_FIELDS_KEY),
+        AsyncStorage.removeItem(SYNC_FAILURE_COUNT_KEY),
       ]);
     } catch (error) {
       console.warn("Failed to clear autofill data:", error);
@@ -936,6 +1215,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       lastSyncedAt: null,
       syncError: null,
       needsSync: false,
+      dirtyFields: new Set<SyncableField>(),
+      syncFailureCount: 0,
       workEmailVerified: false,
       pendingWorkEmail: null,
     });
@@ -957,3 +1238,15 @@ const queueSync = () => {
     await useUserProfileStore.getState().syncToBackend();
   }, 2000);
 };
+
+// Flush any pending debounced sync the instant the app leaves the
+// foreground. Without this, an edit made just before backgrounding (e.g.
+// the user edits a field then immediately swipes the app away) sat in the
+// 2s debounce window and was lost — the local cache showed the edit, but
+// the backend never heard about it, and nothing retried since `needsSync`
+// wasn't persisted (see loadFromStorage for the launch-time counterpart).
+AppState.addEventListener("change", (status) => {
+  if (status !== "active") {
+    useUserProfileStore.getState().flushSyncNow();
+  }
+});
