@@ -10,6 +10,7 @@ import {
     View,
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
+import { useKeyboardVisible } from "./useKeyboardVisible";
 
 interface CreateJobUrlScreenProps {
   visible: boolean;
@@ -32,6 +33,7 @@ export function CreateJobUrlScreen({
   onClose,
 }: CreateJobUrlScreenProps) {
   const [clipboardUrl, setClipboardUrl] = useState<string | null>(null);
+  const keyboardVisible = useKeyboardVisible();
 
   useEffect(() => {
     if (!visible) {
@@ -127,7 +129,7 @@ export function CreateJobUrlScreen({
           </Text>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, keyboardVisible && styles.footerKeyboard]}>
           <TouchableOpacity
             style={[styles.continueBtn, !canContinue && styles.continueBtnDisabled]}
             disabled={!canContinue}
@@ -197,10 +199,16 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
+    height: 52,
     fontSize: 15,
     color: "#000",
-    paddingVertical: 14,
     fontWeight: "500",
+    // Android pads single-line text with extra font-metric space by
+    // default, pushing text/placeholder visibly below center — kill it and
+    // force vertical centering explicitly instead of relying on padding.
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
   hint: {
     fontSize: 13,
@@ -214,6 +222,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingTop: 12,
   },
+  footerKeyboard: { paddingBottom: 12 },
   continueBtn: {
     backgroundColor: "#000",
     paddingVertical: 18,

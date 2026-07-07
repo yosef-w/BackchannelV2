@@ -471,6 +471,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    // Give the input the same fixed height as its row (searchWrap) instead
+    // of relying on intrinsic content sizing — without it, centering the
+    // text/placeholder within an auto-sized box is unreliable and it ends up
+    // sitting low.
+    height: 48,
     fontSize: 16,
     color: "#000",
     fontWeight: "500",

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { JobPreviewCard } from "./JobPreviewCard";
+import { useKeyboardVisible } from "./useKeyboardVisible";
 
 export interface EditableJobFields {
   title: string;
@@ -47,6 +48,7 @@ export function CreateJobReviewScreen({
   onClose,
 }: CreateJobReviewScreenProps) {
   const [fields, setFields] = useState(initial);
+  const keyboardVisible = useKeyboardVisible();
 
   // Re-seed local edit state whenever a fresh scrape result arrives.
   useEffect(() => {
@@ -136,7 +138,7 @@ export function CreateJobReviewScreen({
           />
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, keyboardVisible && styles.footerKeyboard]}>
           <TouchableOpacity
             style={[styles.continueBtn, !canContinue && styles.continueBtnDisabled]}
             disabled={!canContinue}
@@ -238,6 +240,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
   },
+  // The 24px bottom padding clears the home indicator when the keyboard is
+  // down; once the keyboard is docked at the bottom, that same padding reads
+  // as a dead gap between the button and the keyboard — drop it to a small
+  // breathing margin instead.
+  footerKeyboard: { paddingBottom: 12 },
   continueBtn: {
     flexDirection: "row",
     backgroundColor: "#000",
