@@ -6,7 +6,7 @@ import {
   DollarSign,
   MapPin,
   Zap,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React from "react";
 import { Image, Text, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";

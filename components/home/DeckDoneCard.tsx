@@ -3,7 +3,7 @@ import {
   ChevronRight,
   RefreshCcw,
   Sparkles,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";

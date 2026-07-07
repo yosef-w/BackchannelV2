@@ -7,7 +7,7 @@ import {
     Rocket,
     TrendingUp,
     UserCheck
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useState } from "react";
 import {
     Dimensions,

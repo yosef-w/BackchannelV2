@@ -52,7 +52,7 @@ import {
   Users,
   X,
   Zap,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,

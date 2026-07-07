@@ -11,7 +11,7 @@
 // on onClose) so flows like Change Password don't need to stack a second
 // modal — they just push a step inside this one.
 
-import { ChevronLeft, X } from "lucide-react-native";
+import { ChevronLeft, X } from "@/components/ui/icons";
 import React from "react";
 import {
   KeyboardAvoidingView,

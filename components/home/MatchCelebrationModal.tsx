@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { MessageCircle, Sparkles } from "lucide-react-native";
+import { MessageCircle, Sparkles } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {

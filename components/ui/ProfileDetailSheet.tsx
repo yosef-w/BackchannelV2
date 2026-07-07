@@ -15,7 +15,7 @@
 // while the richer fields arrive.
 
 import { getPublicProfile } from "@/lib/api";
-import { CheckCircle } from "lucide-react-native";
+import { CheckCircle } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,

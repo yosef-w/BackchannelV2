@@ -3,7 +3,7 @@
 // EditorScreen's onBack) instead of the old pattern of closing this modal
 // and opening a second one on top of it.
 
-import { ChevronRight, Lock, Mail, Trash2 } from "lucide-react-native";
+import { ChevronRight, Lock, Mail, Trash2 } from "@/components/ui/icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,

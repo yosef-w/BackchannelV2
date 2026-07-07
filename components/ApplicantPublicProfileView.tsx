@@ -8,7 +8,7 @@ import {
     MapPin,
     Sparkles,
     Target,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,

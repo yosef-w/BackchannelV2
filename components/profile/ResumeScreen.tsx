@@ -6,7 +6,7 @@
 // mechanism (editingField/tempValue/handleEditField/handleSaveField) as the
 // Edit Profile screen, so that state is passed through too.
 
-import { Briefcase, Edit, GraduationCap, Plus } from "lucide-react-native";
+import { Briefcase, Edit, GraduationCap, Plus } from "@/components/ui/icons";
 import React from "react";
 import {
   StyleSheet,

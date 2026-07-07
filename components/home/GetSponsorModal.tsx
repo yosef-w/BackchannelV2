@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { BellRing, Check, ChevronRight, X } from "lucide-react-native";
+import { BellRing, Check, ChevronRight, X } from "@/components/ui/icons";
 import React from "react";
 import {
   ActivityIndicator,

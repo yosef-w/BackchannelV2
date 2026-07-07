@@ -23,7 +23,7 @@ import {
     Trash2,
     Upload,
     X,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,

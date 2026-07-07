@@ -8,7 +8,7 @@
 // Pure UI over the existing insights data shape (`{ question, answer }[]`), so
 // it drops into both signup questionnaires with no data-model change.
 
-import { ChevronRight, Pencil, Plus, Search, X } from "lucide-react-native";
+import { ChevronRight, Pencil, Plus, Search, X } from "@/components/ui/icons";
 import React, { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,

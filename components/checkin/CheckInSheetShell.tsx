@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { Check } from "lucide-react-native";
+import { Check } from "@/components/ui/icons";
 import React from "react";
 import {
   ActivityIndicator,

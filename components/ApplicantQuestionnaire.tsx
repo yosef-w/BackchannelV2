@@ -17,7 +17,7 @@ import {
   Upload,
   UserCheck,
   X,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,

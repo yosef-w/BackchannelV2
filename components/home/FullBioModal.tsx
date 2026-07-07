@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { Info, X } from "lucide-react-native";
+import { Info, X } from "@/components/ui/icons";
 import React from "react";
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";

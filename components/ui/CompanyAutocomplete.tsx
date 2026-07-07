@@ -9,7 +9,7 @@
 // isn't deployed the field behaves like a plain TextInput.
 
 import { searchAtsOrganizations, type AtsOrganization } from "@/lib/api";
-import { Check } from "lucide-react-native";
+import { Check } from "@/components/ui/icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,

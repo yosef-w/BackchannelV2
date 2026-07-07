@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { ChevronRight, Info, Mail } from "lucide-react-native";
+import { ChevronRight, Info, Mail } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,

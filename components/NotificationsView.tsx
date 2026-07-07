@@ -12,7 +12,7 @@ import {
     Star,
     Trash2,
     UserPlus,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import { Image } from "expo-image";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {

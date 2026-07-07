@@ -8,7 +8,7 @@
  * Not dismissible by tapping outside; only exits via Submit / Close.
  */
 
-import { Check, ChevronRight } from "lucide-react-native";
+import { Check, ChevronRight } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,

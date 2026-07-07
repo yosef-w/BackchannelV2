@@ -1,5 +1,5 @@
 import type { Job } from "@/types/jobs";
-import { DollarSign, MapPin, MoreHorizontal, Users } from "lucide-react-native";
+import { DollarSign, MapPin, MoreHorizontal, Users } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";

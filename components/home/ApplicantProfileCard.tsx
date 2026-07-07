@@ -1,4 +1,4 @@
-import { Briefcase, Heart, MapPin } from "lucide-react-native";
+import { Briefcase, Heart, MapPin } from "@/components/ui/icons";
 import React from "react";
 import { ActivityIndicator, Image, Text, View } from "react-native";
 import { cardStyles } from "./cardStyles";

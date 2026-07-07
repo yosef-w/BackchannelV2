@@ -14,7 +14,7 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Mail, X } from "lucide-react-native";
+import { Check, Mail, X } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,

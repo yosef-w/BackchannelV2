@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "@/components/ui/icons";
 import React, { useState } from "react";
 import {
     ActivityIndicator,

@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { AlertCircle, ChevronRight } from "lucide-react-native";
+import { AlertCircle, ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import {
   Modal,

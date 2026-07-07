@@ -1,4 +1,4 @@
-import { MessageCircle } from "lucide-react-native";
+import { MessageCircle } from "@/components/ui/icons";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Heart } from "lucide-react-native";
+import { ChevronRight, Heart } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";

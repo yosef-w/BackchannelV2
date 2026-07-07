@@ -16,7 +16,7 @@
 // ResumeScreen's Achievements field — this screen only owns the local text
 // values while the user is typing.
 
-import { Check, Lock, MapPin, Plus, X } from "lucide-react-native";
+import { Check, Lock, MapPin, Plus, X } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   StyleSheet,

@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { AlertTriangle } from "lucide-react-native";
+import { AlertTriangle } from "@/components/ui/icons";
 import React from "react";
 import {
   ActivityIndicator,

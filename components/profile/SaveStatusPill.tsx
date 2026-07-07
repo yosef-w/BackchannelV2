@@ -1,4 +1,4 @@
-import { Check } from "lucide-react-native";
+import { Check } from "@/components/ui/icons";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import type { SaveStatus } from "./useAutosaveStatus";

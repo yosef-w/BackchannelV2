@@ -16,7 +16,7 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Lock, X } from "lucide-react-native";
+import { Check, Lock, X } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,

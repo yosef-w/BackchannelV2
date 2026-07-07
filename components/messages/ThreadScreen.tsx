@@ -19,7 +19,7 @@ import {
   Sparkles,
   User,
   UserCheck,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useState } from "react";
 import {
   Image,

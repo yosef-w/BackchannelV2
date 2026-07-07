@@ -1,4 +1,4 @@
-import { CheckCircle, Info, XCircle } from "lucide-react-native";
+import { CheckCircle, Info, XCircle } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";

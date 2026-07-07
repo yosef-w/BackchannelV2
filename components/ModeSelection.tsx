@@ -3,7 +3,7 @@ import {
     Briefcase,
     ChevronRight,
     Handshake,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useState } from "react";
 import {
     SafeAreaView,

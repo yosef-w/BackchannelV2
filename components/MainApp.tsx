@@ -11,7 +11,7 @@ import {
     MessageCircle,
     Star,
     User,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     AppState,

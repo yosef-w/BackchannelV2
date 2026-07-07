@@ -1,4 +1,4 @@
-import { Briefcase, Camera, Edit, MapPin } from "lucide-react-native";
+import { Briefcase, Camera, Edit, MapPin } from "@/components/ui/icons";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AvatarCompletionRing } from "./AvatarCompletionRing";

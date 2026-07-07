@@ -5,7 +5,7 @@
 //
 // Role-aware copy; one-time per role (the caller persists the flag).
 
-import { ArrowRight } from "lucide-react-native";
+import { ArrowRight } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,

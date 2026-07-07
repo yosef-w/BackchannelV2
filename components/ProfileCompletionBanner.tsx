@@ -1,4 +1,4 @@
-import { AlertCircle, ChevronRight, X } from "lucide-react-native";
+import { AlertCircle, ChevronRight, X } from "@/components/ui/icons";
 import React from "react";
 import {
   StyleSheet,
