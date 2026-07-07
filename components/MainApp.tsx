@@ -687,9 +687,10 @@ export function MainApp({ userType }: MainAppProps) {
   // the Matches screen's cached lists for relationship-changing pushes so a
   // new like/match/referral appears without the user pulling to refresh.
   // ("matchesScreen" is MatchesView's MATCHES_SCREEN_ROOT query key — keep in
-  // sync if that constant is ever renamed.) Note: a sponsor liking an
-  // applicant's profile without a match currently sends NO push, so the
-  // applicant's "Interested in You" list still relies on focus/pull-to-refresh.
+  // sync if that constant is ever renamed.) `profile_like` (§D) fires when a
+  // sponsor likes an applicant's profile without a match — the applicant's
+  // "Interested in You" list now refreshes live instead of relying on
+  // focus/pull-to-refresh.
   useEffect(() => {
     if (!isAuthenticated) return;
     const received = Notifications.addNotificationReceivedListener(
@@ -703,7 +704,8 @@ export function MainApp({ userType }: MainAppProps) {
           type === "match" ||
           type === "referral" ||
           type === "job_like" ||
-          type === "waitlist"
+          type === "waitlist" ||
+          type === "profile_like"
         ) {
           queryClient.invalidateQueries({ queryKey: ["matchesScreen"] });
         }

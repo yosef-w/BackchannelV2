@@ -94,6 +94,7 @@ const NOTIFICATION_ICON: Record<string, React.ComponentType<any>> = {
   message: MessageCircle,
   referral: Award,
   job_like: Star,
+  profile_like: Heart,
   waitlist: Briefcase,
   sponsor_request: BellRing,
   connection: UserPlus,
@@ -357,6 +358,12 @@ export function NotificationsView({
       case "job_like": {
         // Defensive: backend only sends this to sponsors, but guard anyway.
         onOpenTab(userType === "sponsor" ? "jobs" : "matches");
+        return;
+      }
+      case "profile_like": {
+        // Sponsor liked the applicant's profile without a match yet (§D) —
+        // surfaces under Matches' "Interested in You" section.
+        onOpenTab("matches");
         return;
       }
       case "waitlist": {

@@ -847,19 +847,15 @@ export type ReportReason =
 /**
  * 🚩 Report a user
  *
- * Backend contract (see docs/BACKEND_CHANGES_NEEDED.md §N1):
- *   POST /api/reports/
- *   body: { reported_user_id, reason, detail?, conversation_id? }
- *   → { message }
- *
- * The endpoint doesn't exist yet. This is deliberately best-effort and never
- * throws — the caller (MessagesView) always closes the conversation via the
- * already-shipped `unmatchConversation` regardless of whether the report
- * itself was recorded, so the user-visible safety outcome ("I'll never hear
- * from this person again") works today. Returns true if the report was
- * actually recorded server-side, false if it couldn't be (missing endpoint,
- * network failure, etc.) — logged, not surfaced, so a backend gap doesn't
- * read as a frontend bug to the user.
+ * POST /api/reports/ — reporting implies blocking server-side (existing
+ * conversations close, matches/likes torn down, neither user shown to the
+ * other again). This stays best-effort and never throws: the caller
+ * (MessagesView) always closes the conversation via the already-shipped
+ * `unmatchConversation` regardless of whether the report itself was
+ * recorded, so the user-visible safety outcome ("I'll never hear from this
+ * person again") doesn't depend on this call succeeding. Returns true if the
+ * report was actually recorded server-side, false on any failure — logged,
+ * not surfaced, so a transient error doesn't read as a frontend bug.
  */
 export async function reportUser(params: {
   reportedUserId: string;
@@ -877,7 +873,7 @@ export async function reportUser(params: {
     return true;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[api] reportUser failed (endpoint may not be deployed yet):", msg);
+    console.warn("[api] reportUser failed:", msg);
     return false;
   }
 }
@@ -1467,8 +1463,12 @@ export async function uploadAndParseResume(
  * Request an email address change for the authenticated user.
  * Uses POST /api/auth/change-email/
  *
- * Backend requires both new_email and password for security.
- * Returns 501 until the backend verification flow is implemented.
+ * Backend requires both new_email and password for security. This only
+ * *requests* the change — the backend emails a single-use confirmation link
+ * to the NEW address (24h expiry); the change isn't live until that link is
+ * opened. There is no app UI wired to this yet (call site removed when the
+ * endpoint was a 501 stub) — needs a confirmation screen before this is
+ * reachable from the app again.
  */
 export async function changeEmail(
   newEmail: string,
