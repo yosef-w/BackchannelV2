@@ -3,8 +3,6 @@ import { isValidUrl } from "@/lib/validation";
 import { requireOptionalNativeModule } from "expo-modules-core";
 import React, { useEffect, useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
     StyleSheet,
     Text,
     TextInput,
@@ -73,10 +71,9 @@ export function CreateJobUrlScreen({
   return (
     <View style={styles.screen}>
       <CreateJobStepHeader title="Add a Job" onClose={onClose} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      {/* Keyboard avoidance is handled once at the flow root
+          (CreateJobFlowScreen) — no per-screen KAV. */}
+      <View style={styles.flex}>
         <View style={styles.content}>
           <Text style={styles.heading}>Paste the job link</Text>
           <Text style={styles.subheading}>
@@ -147,7 +144,7 @@ export function CreateJobUrlScreen({
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

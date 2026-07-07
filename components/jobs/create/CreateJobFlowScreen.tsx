@@ -1,7 +1,15 @@
 import type { PromptAnswer } from "@/components/ui/PromptsIntake";
+import { cleanJobText } from "@/components/jobs/jobTransforms";
 import { normalizeUrl } from "@/lib/validation";
 import React, { useEffect, useState } from "react";
-import { Modal, SafeAreaView, StyleSheet } from "react-native";
+import {
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     CreateJobInsightsScreen,
     CreateJobSuccessScreen,
@@ -70,6 +78,7 @@ export function CreateJobFlowScreen({
   published,
   onDone,
 }: CreateJobFlowScreenProps) {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>("url");
   const [url, setUrl] = useState("");
   const [normalizedUrl, setNormalizedUrl] = useState("");
@@ -104,7 +113,9 @@ export function CreateJobFlowScreen({
       location: data.structured?.location || "",
       salary: data.structured?.salary || "",
       type: formatEmploymentType(data.structured?.employmentType ?? null),
-      description: data.structured?.description || "",
+      // JSON-LD descriptions often arrive with inline HTML — strip it before
+      // the sponsor sees it in the review editor.
+      description: cleanJobText(data.structured?.description),
     });
     setStep("review");
   };
@@ -134,6 +145,16 @@ export function CreateJobFlowScreen({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={styles.safeArea}>
+        {/* One keyboard-avoider for the whole flow, sitting exactly
+            insets.top below the real screen top — KAV measures its frame
+            relative to its parent, so it needs that offset to compute the
+            true keyboard overlap. Individual steps must NOT nest their own
+            KeyboardAvoidingView or the padding doubles up. */}
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={insets.top}
+        >
         {published ? (
           <CreateJobSuccessScreen
             visible
@@ -176,6 +197,7 @@ export function CreateJobFlowScreen({
             />
           </>
         )}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
@@ -183,6 +205,7 @@ export function CreateJobFlowScreen({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#FFF" },
+  flex: { flex: 1 },
 });
 
 /** Rough employment-type label from JSON-LD's SCREAMING_SNAKE_CASE enum. */

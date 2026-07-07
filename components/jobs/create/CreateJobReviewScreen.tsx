@@ -1,8 +1,6 @@
 import { ChevronRight } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -72,10 +70,9 @@ export function CreateJobReviewScreen({
         onBack={onBack}
         onClose={onClose}
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      {/* Keyboard avoidance is handled once at the flow root
+          (CreateJobFlowScreen) — no per-screen KAV. */}
+      <View style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -157,7 +154,7 @@ export function CreateJobReviewScreen({
             {canContinue && <ChevronRight color="#FFF" size={18} />}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

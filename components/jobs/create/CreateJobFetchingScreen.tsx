@@ -114,6 +114,11 @@ const JOB_SCRAPING_SCRIPT = `
   })();
 `;
 
+// Delay before each scrape attempt (measured from the previous one), after
+// onLoadEnd. Client-rendered job boards can take several seconds past "load"
+// to put JSON-LD in the DOM; ~12s of patience total before giving up.
+const SCRAPE_DELAYS_MS = [900, 1500, 2200, 3000, 4200];
+
 /** Rough employment-type label from JSON-LD's SCREAMING_SNAKE_CASE enum. */
 function formatEmploymentType(raw: string | null): string {
   if (!raw) return "";
@@ -159,14 +164,18 @@ export function CreateJobFetchingScreen({
 
   // Auto-scrape once the page has settled. SPAs (Greenhouse/Lever/Workday
   // often render client-side) may not have their JobPosting JSON-LD in the
-  // DOM the instant onLoadEnd fires, so the first pass waits a beat and a
-  // second pass retries once more if the first came back empty.
+  // DOM the instant onLoadEnd fires. The old modal flow waited for the
+  // sponsor to manually tap "Confirm" — often 5-15s after load — so the
+  // automatic version has to be patient too: keep retrying on a backoff
+  // schedule until the scrape finds a title/company signal, and only then
+  // (or after the last attempt) accept the result. "Skip waiting" stays one
+  // tap away the whole time.
   useEffect(() => {
     if (!visible || !pageLoaded || scraped) return;
-    const delay = attempted === 0 ? 1100 : 1600;
+    if (attempted >= SCRAPE_DELAYS_MS.length) return;
     const timer = setTimeout(() => {
       webviewRef.current?.injectJavaScript(JOB_SCRAPING_SCRIPT);
-    }, delay);
+    }, SCRAPE_DELAYS_MS[attempted]);
     return () => clearTimeout(timer);
   }, [visible, pageLoaded, scraped, attempted]);
 
@@ -176,10 +185,9 @@ export function CreateJobFetchingScreen({
       if (msg.type !== "JOB_CONTENT_SCRAPED") return;
       const payload = msg.data as ScrapedJobData;
       const hasSignal = !!(payload.structured?.title || payload.structured?.company);
-      if (!hasSignal && attempted === 0) {
-        // First pass came back empty — the retry effect above will fire a
-        // second injection; just record that we tried once.
-        setAttempted(1);
+      if (!hasSignal && attempted < SCRAPE_DELAYS_MS.length - 1) {
+        // Came back empty — the retry effect above schedules the next pass.
+        setAttempted((a) => a + 1);
         return;
       }
       setScraped(payload);
@@ -285,8 +293,15 @@ export function CreateJobFetchingScreen({
 
       {/* The WebView never unmounts once created — toggling visibility
           keeps the page (and anything scraped) alive whether the sponsor
-          is looking at the preview or the raw posting. */}
-      <View style={showRawView ? styles.rawViewContainer : styles.hiddenWebview}>
+          is looking at the preview or the raw posting. While "hidden" it
+          keeps a full-screen frame (invisible, non-interactive) rather than
+          a 1x1 box: job boards that lazy-render based on viewport size
+          never mount their content in a 1px viewport, which made scrapes
+          come back empty. */}
+      <View
+        style={showRawView ? styles.rawViewContainer : styles.hiddenWebview}
+        pointerEvents={showRawView ? "auto" : "none"}
+      >
         {showRawView && (
           <SafeAreaView style={styles.rawViewSafeArea}>
             <View style={styles.rawViewHeader}>
@@ -406,12 +421,8 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
   hiddenWebview: {
-    position: "absolute",
-    width: 1,
-    height: 1,
+    ...StyleSheet.absoluteFillObject,
     opacity: 0,
-    top: 0,
-    left: 0,
   },
   webview: { flex: 1 },
   rawViewContainer: {

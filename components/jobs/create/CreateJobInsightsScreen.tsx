@@ -1,4 +1,4 @@
-import { Check, MessageSquareQuote, Sparkles } from "@/components/ui/icons";
+import { Check, MessageSquareQuote } from "@/components/ui/icons";
 import {
     PromptsIntake,
     type PromptAnswer,
@@ -10,8 +10,6 @@ import {
 import React from "react";
 import {
     ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -68,10 +66,9 @@ export function CreateJobInsightsScreen({
         onBack={onBack}
         onClose={onClose}
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      {/* Keyboard avoidance is handled once at the flow root
+          (CreateJobFlowScreen) — no per-screen KAV. */}
+      <View style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -113,10 +110,7 @@ export function CreateJobInsightsScreen({
             {isPublishing ? (
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
-              <>
-                <Sparkles color="#FFF" size={18} />
-                <Text style={styles.publishBtnText}>Publish Job</Text>
-              </>
+              <Text style={styles.publishBtnText}>Publish Job</Text>
             )}
           </TouchableOpacity>
           {!hasAnyInsight && !isPublishing && (
@@ -131,7 +125,7 @@ export function CreateJobInsightsScreen({
             </TouchableOpacity>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
