@@ -4,7 +4,7 @@
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); **§O** — create-from-URL doesn't reuse a company's known logo (medium priority — same-company jobs created via URL paste get a lower-confidence logo lookup instead of the logo already on file from ATS/other sponsored jobs).
+> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); **§O** — create-from-URL doesn't reuse a company's known logo (medium priority — same-company jobs created via URL paste get a lower-confidence logo lookup instead of the logo already on file from ATS/other sponsored jobs); **§P** — original posting URL isn't threaded through the ATS-sponsor path or the liked-jobs endpoint (medium priority — the frontend now shows a "View original posting" trust link, but it only lights up for create-from-URL jobs until these two gaps close).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -58,6 +58,29 @@ This is the same company-name-matching infrastructure §G already needs (fuzzy/I
 ### Frontend status
 
 No frontend change needed (verified 2026-07-08): the app never resolves logos itself — both job lists render whatever `LOGO_URL` the backend persisted (via the `getMyJobs()` refetch after creation) with a shared stock-image fallback, and sponsors already have a manual escape hatch: the job menu's "Replace Company Logo" editor (PR #62, `logo_url` on `PATCH /api/jobs/<id>/edit/`) can paste a correct logo onto any affected job today. Once the backend reuses/resolves logos properly, they appear on the same refetch with zero app changes.
+
+---
+
+## §P — Original posting URL isn't threaded through every job-creation/read path 🟡 Medium priority (trust/data quality)
+
+**Why:** The frontend now shows a "View original posting: `<domain>`" link on every job detail screen (applicant Home deck, applicant liked-job detail, sponsor's own job detail) — a deliberate anti-embellishment signal: since sponsors can freely edit a create-from-URL job's fields before publishing (title, salary, description — necessary, since scrapes are unreliable), the one thing that's hard to fake is the link to the real posting. A mismatch between what's published and what the link actually shows becomes visible to the applicant. This only works where `job_postings.URL` is actually populated and returned, and today that's inconsistent:
+
+| Path | URL populated? | Where |
+|---|---|---|
+| Create job from pasted URL | ✅ Yes | `create_job_from_url` (`services/jobs.py:254`) passes `url=url` |
+| Sponsor an ATS listing | ❌ **No** | `sponsor_job` (`services/jobs.py:771`) never passes a `url=` to `create_sponsored_job`, even though `ats.silver_jobs.job_url` has the real per-listing URL (confirmed in `docs/schemas/migrations/postgres/001_initial_schema.sql:401` — distinct column from `organization_url`, which is the company's general site, not the listing) |
+| Applicant's liked-jobs list | ❌ **No** | `get_liked_jobs_for_user` (`queries/likes.py:150`) doesn't `SELECT j.URL` from `jobs.job_postings` at all, even for jobs where it's populated |
+
+### Requested change
+
+1. **`sponsor_job`**: add `JOB_URL` to `find_silver_job`'s SELECT (`queries/jobs.py:337`, alongside the existing `ORGANIZATION_LOGO`/`ORGANIZATION_URL`/`DOMAIN_DERIVED`), and pass `url=silver_job.get('JOB_URL')` through to `create_sponsored_job` (`services/jobs.py:771`) the same way `logo_url` already is.
+2. **`get_liked_jobs_for_user`**: add `j.URL` to the SELECT list (`queries/likes.py:150-163`) and thread it through `services/matching.py:get_liked_jobs`'s row formatting to the frontend response.
+
+Both are narrow, additive column selections — no schema change, no new endpoint, low risk.
+
+### Frontend status
+
+Shipped (2026-07-08) and waiting on the backend: `components/jobs/jobTransforms.ts`'s `extractDisplayDomain()` renders the link wherever `job.url` is present; `matches/matchesQueries.ts`'s `JobOpportunity.url` is already wired defensively (reads `likedJob.URL || likedJob.url`, same pattern as the existing `companyLogoUrl` field) so the applicant liked-job detail link lights up the moment change #2 ships, with zero further app changes. Same for #1 — `getMyJobs()`/`Job.url` already exists on the type, it's just empty today for ATS-sponsored jobs.
 
 ---
 
