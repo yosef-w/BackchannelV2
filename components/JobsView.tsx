@@ -23,7 +23,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
-import { isValidUrl, normalizeUrl } from "@/lib/validation";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { Job } from "@/types/jobs";
 import { CheckCircle, Plus, Zap } from "@/components/ui/icons";
@@ -41,17 +40,18 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { WebView } from "react-native-webview";
 import { JobsEmptyState } from "./jobs/JobsEmptyState";
 import {
   type Applicant,
-  cleanJobText,
   parseSkillsField,
   transformBrowseResponse,
   transformMyJobRow,
 } from "./jobs/jobTransforms";
 import { BrowseJobsTab } from "./jobs/BrowseJobsTab";
-import { CreateJobFlow } from "./jobs/CreateJobFlow";
+import {
+  CreateJobFlowScreen,
+  type CreateJobPublishPayload,
+} from "./jobs/create/CreateJobFlowScreen";
 import { JobDetailsModal } from "./jobs/JobDetailsModal";
 import { JobMenuModal } from "./jobs/JobMenuModal";
 import { SponsorGateModal } from "./jobs/SponsorGateModal";
@@ -523,126 +523,8 @@ export function JobsView() {
 
   // Create Listing Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createFlowStep, setCreateFlowStep] = useState<
-    "url" | "webview" | "insights"
-  >("url");
-  const [jobUrlInput, setJobUrlInput] = useState("");
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [webviewLoading, setWebviewLoading] = useState(false);
-  const [webviewCanGoBack, setWebviewCanGoBack] = useState(false);
-  const [webviewCanGoForward, setWebviewCanGoForward] = useState(false);
-  const [insiderInsights, setInsiderInsights] = useState("");
-  const [dayToDay, setDayToDay] = useState("");
-  const [teamCulture, setTeamCulture] = useState("");
-  const [idealCandidate, setIdealCandidate] = useState("");
   const [isCreatingJob, setIsCreatingJob] = useState(false);
-  const [isScraping, setIsScraping] = useState(false);
-  const [jobScrapedData, setJobScrapedData] = useState<{
-    url: string;
-    structured: Record<string, string | null> | null;
-    rawText: string;
-  } | null>(null);
-
-  const previewWebViewRef = useRef<WebView>(null);
-
-  // Injected JS: tries JSON-LD JobPosting schema (Option 3) first,
-  // supplements with OG meta tags, then falls back to body.innerText (Option 1).
-  const jobScrapingScript = `
-    (function() {
-      try {
-        var structured = null;
-
-        // --- Option 3: JSON-LD structured data ---
-        var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
-        for (var i = 0; i < ldScripts.length; i++) {
-          try {
-            var parsed = JSON.parse(ldScripts[i].textContent || ldScripts[i].innerText || '');
-            var items = Array.isArray(parsed) ? parsed : [parsed];
-            for (var j = 0; j < items.length; j++) {
-              var item = items[j];
-              if (item['@type'] === 'JobPosting') {
-                var salaryNode = item.baseSalary;
-                var salaryStr = null;
-                if (salaryNode && salaryNode.value) {
-                  var sv = salaryNode.value;
-                  salaryStr = (sv.minValue || '') + (sv.maxValue ? ' - ' + sv.maxValue : '') + (salaryNode.currency ? ' ' + salaryNode.currency : '');
-                  salaryStr = salaryStr.trim() || null;
-                }
-                var locNode = item.jobLocation;
-                var locStr = null;
-                if (locNode) {
-                  var addr = Array.isArray(locNode) ? locNode[0] : locNode;
-                  if (addr && addr.address) {
-                    locStr = [addr.address.addressLocality, addr.address.addressRegion, addr.address.addressCountry]
-                      .filter(Boolean).join(', ') || null;
-                  }
-                }
-                structured = {
-                  title: item.title || null,
-                  company: (item.hiringOrganization && item.hiringOrganization.name) || null,
-                  location: locStr,
-                  description: item.description || null,
-                  employmentType: item.employmentType || null,
-                  salary: salaryStr,
-                  datePosted: item.datePosted || null,
-                };
-                break;
-              }
-            }
-            if (structured) break;
-          } catch(e) {}
-        }
-
-        // --- Supplement / fallback: OG + standard meta tags ---
-        if (!structured) {
-          var getMeta = function(sel) {
-            var el = document.querySelector(sel);
-            return el ? (el.getAttribute('content') || null) : null;
-          };
-          var ogTitle = getMeta('meta[property="og:title"]') || getMeta('meta[name="title"]');
-          var ogDesc  = getMeta('meta[property="og:description"]') || getMeta('meta[name="description"]');
-          var ogSite  = getMeta('meta[property="og:site_name"]');
-          if (ogTitle || ogDesc) {
-            structured = {
-              title: ogTitle,
-              company: ogSite,
-              location: null,
-              description: ogDesc,
-              employmentType: null,
-              salary: null,
-              datePosted: null,
-            };
-          }
-        }
-
-        // --- Option 1: Raw visible text fallback ---
-        var rawText = (document.body && document.body.innerText) || '';
-        if (rawText.length > 60000) rawText = rawText.slice(0, 60000);
-
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'JOB_CONTENT_SCRAPED',
-          data: {
-            url: window.location.href,
-            structured: structured,
-            rawText: rawText,
-          }
-        }));
-      } catch(err) {
-        // Last-resort: at least send the URL and whatever text we can get
-        var fallbackText = '';
-        try { fallbackText = (document.body && document.body.innerText.slice(0, 60000)) || ''; } catch(e2) {}
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'JOB_CONTENT_SCRAPED',
-          data: {
-            url: window.location.href,
-            structured: null,
-            rawText: fallbackText,
-          }
-        }));
-      }
-      true;
-    })();
-  `;
+  const [published, setPublished] = useState(false);
 
   const handleOpenModal = (job: JobPosting) => {
     setSelectedJob(job);
@@ -736,118 +618,25 @@ export function JobsView() {
 
   const openCreateModal = () => {
     trackJobCreateFromUrlStarted();
-    setCreateFlowStep("url");
-    setJobUrlInput("");
-    setPreviewUrl("");
+    setPublished(false);
     setShowCreateModal(true);
   };
 
   const closeCreateModal = () => {
     setShowCreateModal(false);
-    setCreateFlowStep("url");
-    setJobUrlInput("");
-    setPreviewUrl("");
-    setWebviewLoading(false);
-    setWebviewCanGoBack(false);
-    setWebviewCanGoForward(false);
-    setInsiderInsights("");
-    setDayToDay("");
-    setTeamCulture("");
-    setIdealCandidate("");
+    setPublished(false);
     setIsCreatingJob(false);
-    setIsScraping(false);
-    setJobScrapedData(null);
   };
 
-  const handlePreviewJob = () => {
-    const raw = jobUrlInput.trim();
-    if (!isValidUrl(raw)) {
-      showToast("Enter a valid job posting link (e.g. company.com/role).", "error");
-      return;
-    }
-    setPreviewUrl(normalizeUrl(raw));
-    setWebviewLoading(true);
-    setCreateFlowStep("webview");
-  };
-
-  const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
-    try {
-      const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === "JOB_CONTENT_SCRAPED") {
-        const payload = msg.data as {
-          url: string;
-          structured: Record<string, string | null> | null;
-          rawText: string;
-        };
-        setJobScrapedData(payload);
-        setIsScraping(false);
-
-        // ── Dev logging ─────────────────────────────────────────────────────
-        console.log("[CreateJob] ✅ Job content scraped successfully");
-        console.log("[CreateJob] URL:", payload.url);
-        if (payload.structured) {
-          console.log(
-            "[CreateJob] Structured data (JSON-LD / OG):",
-            JSON.stringify(payload.structured, null, 2),
-          );
-        } else {
-          console.log(
-            "[CreateJob] No structured data found — using raw text only.",
-          );
-        }
-        console.log(
-          "[CreateJob] Raw text preview (first 500 chars):\n",
-          payload.rawText.slice(0, 500),
-        );
-        console.log("[CreateJob] Full payload ready to send to backend:", {
-          url: payload.url,
-          hasStructured: !!payload.structured,
-          rawTextLength: payload.rawText.length,
-        });
-        // ────────────────────────────────────────────────────────────────────
-
-        // Advance to insights step
-        setCreateFlowStep("insights");
-      }
-    } catch {
-      // Non-JSON messages from the page itself — ignore
-    }
-  };
-
-  const handleConfirmJob = () => {
-    setIsScraping(true);
-    previewWebViewRef.current?.injectJavaScript(jobScrapingScript);
-  };
-
-  const handleCreateJob = async () => {
-    const cleanedStructured: Record<string, string | null> | null =
-      jobScrapedData?.structured
-        ? {
-            ...jobScrapedData.structured,
-            // JSON-LD descriptions often contain inline HTML.
-            description: cleanJobText(jobScrapedData.structured.description),
-          }
-        : null;
-
-    const payload = {
-      url: jobScrapedData?.url ?? previewUrl,
-      structured: cleanedStructured,
-      rawText: jobScrapedData?.rawText ?? "",
-      insights: { dayToDay, teamCulture, idealCandidate, insiderInsights },
-    };
-
+  const handlePublishJob = async (payload: CreateJobPublishPayload) => {
     if (__DEV__) {
-      const structuredForLog = payload.structured as Record<
-        string,
-        string | null
-      > | null;
       console.log("[JobsView] create-from-url payload", {
         url: payload.url,
-        hasStructured: !!structuredForLog,
-        structuredTitle: structuredForLog?.title,
-        structuredCompany: structuredForLog?.company,
+        hasStructured: !!payload.structured,
+        structuredTitle: payload.structured?.title,
+        structuredCompany: payload.structured?.company,
         structuredDescriptionPreview:
-          structuredForLog?.description?.slice(0, 220) || "",
+          payload.structured?.description?.slice(0, 220) || "",
         rawTextLength: payload.rawText.length,
       });
     }
@@ -856,6 +645,8 @@ export function JobsView() {
       setIsCreatingJob(true);
       const response = await createJobFromUrl(payload);
       console.log("[JobsView] Job created from URL:", response);
+      const { dayToDay, teamCulture, idealCandidate, insiderInsights } =
+        payload.insights;
       const hasInsights = [
         dayToDay,
         teamCulture,
@@ -871,7 +662,7 @@ export function JobsView() {
       // Refresh "My Sponsored" so the badge + tab reflect the new posting
       refreshMyJobs(false);
 
-      closeCreateModal();
+      setPublished(true);
 
       // If the backend used the LLM fallback path (no JSON-LD on the page),
       // nudge the sponsor to double-check the auto-extracted fields. The
@@ -917,8 +708,10 @@ export function JobsView() {
     }
   };
 
-  // Validation for each step
-  const canProceedStep3 = true; // insights are all optional
+  const handleDoneCreatingJob = () => {
+    closeCreateModal();
+    setActiveTab("sponsored");
+  };
 
   return (
     <View style={styles.container}>
@@ -1130,36 +923,15 @@ export function JobsView() {
         />
       </Modal>
 
-      {/* Create-from-URL flow (URL entry -> WebView preview -> insights) —
-          extracted to components/jobs/CreateJobFlow.tsx. The webview ref and
-          scrape handlers stay here because handleConfirmJob injects the
-          scraping script into the same ref. */}
-      <CreateJobFlow
+      {/* Create-from-URL flow: pushed full-screen editor (matches
+          Account/Edit Profile) instead of a chain of modals. */}
+      <CreateJobFlowScreen
         visible={showCreateModal}
-        step={createFlowStep}
-        onSetStep={setCreateFlowStep}
         onClose={closeCreateModal}
-        jobUrlInput={jobUrlInput}
-        onSetJobUrlInput={setJobUrlInput}
-        onPreviewJob={handlePreviewJob}
-        webviewRef={previewWebViewRef}
-        previewUrl={previewUrl}
-        webviewLoading={webviewLoading}
-        onSetWebviewLoading={setWebviewLoading}
-        webviewCanGoBack={webviewCanGoBack}
-        webviewCanGoForward={webviewCanGoForward}
-        onSetWebviewCanGoBack={setWebviewCanGoBack}
-        onSetWebviewCanGoForward={setWebviewCanGoForward}
-        onWebViewMessage={handleWebViewMessage}
-        isScraping={isScraping}
-        onConfirmJob={handleConfirmJob}
-        insights={{ dayToDay, teamCulture, idealCandidate, insiderInsights }}
-        onSetDayToDay={setDayToDay}
-        onSetTeamCulture={setTeamCulture}
-        onSetIdealCandidate={setIdealCandidate}
-        onSetInsiderInsights={setInsiderInsights}
-        isCreatingJob={isCreatingJob}
-        onCreateJob={handleCreateJob}
+        isPublishing={isCreatingJob}
+        onPublish={handlePublishJob}
+        published={published}
+        onDone={handleDoneCreatingJob}
       />
 
       {/* Menu Modal */}
