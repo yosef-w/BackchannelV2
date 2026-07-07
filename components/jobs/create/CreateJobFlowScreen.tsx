@@ -1,6 +1,6 @@
 import { normalizeUrl } from "@/lib/validation";
 import React, { useEffect, useState } from "react";
-import { Modal } from "react-native";
+import { Modal, SafeAreaView, StyleSheet } from "react-native";
 import {
     CreateJobInsightsScreen,
     CreateJobSuccessScreen,
@@ -137,53 +137,59 @@ export function CreateJobFlowScreen({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      {published ? (
-        <CreateJobSuccessScreen
-          visible
-          jobTitle={fields.title}
-          onDone={onDone}
-        />
-      ) : (
-        <>
-          <CreateJobUrlScreen
-            visible={step === "url"}
-            url={url}
-            onSetUrl={setUrl}
-            onContinue={handleUrlContinue}
-            onClose={onClose}
-          />
-          <CreateJobFetchingScreen
-            visible={step === "fetching"}
-            url={normalizedUrl}
-            onContinue={handleScraped}
-            onBack={() => setStep("url")}
-            onClose={onClose}
-          />
-          <CreateJobReviewScreen
-            visible={step === "review"}
-            initial={fields}
-            wasAutoFilled={!!scraped?.structured}
-            onContinue={handleReviewContinue}
-            onBack={() => setStep("url")}
-            onClose={onClose}
-          />
-          <CreateJobInsightsScreen
-            visible={step === "insights"}
+      <SafeAreaView style={styles.safeArea}>
+        {published ? (
+          <CreateJobSuccessScreen
+            visible
             jobTitle={fields.title}
-            values={insights}
-            onChange={(key, text) =>
-              setInsights((prev) => ({ ...prev, [key]: text }))
-            }
-            isPublishing={isPublishing}
-            onPublish={handlePublish}
-            onBack={() => setStep("review")}
-            onClose={onClose}
+            onDone={onDone}
           />
-        </>
-      )}
+        ) : (
+          <>
+            <CreateJobUrlScreen
+              visible={step === "url"}
+              url={url}
+              onSetUrl={setUrl}
+              onContinue={handleUrlContinue}
+              onClose={onClose}
+            />
+            <CreateJobFetchingScreen
+              visible={step === "fetching"}
+              url={normalizedUrl}
+              onContinue={handleScraped}
+              onBack={() => setStep("url")}
+              onClose={onClose}
+            />
+            <CreateJobReviewScreen
+              visible={step === "review"}
+              initial={fields}
+              wasAutoFilled={!!scraped?.structured}
+              onContinue={handleReviewContinue}
+              onBack={() => setStep("url")}
+              onClose={onClose}
+            />
+            <CreateJobInsightsScreen
+              visible={step === "insights"}
+              jobTitle={fields.title}
+              values={insights}
+              onChange={(key, text) =>
+                setInsights((prev) => ({ ...prev, [key]: text }))
+              }
+              isPublishing={isPublishing}
+              onPublish={handlePublish}
+              onBack={() => setStep("review")}
+              onClose={onClose}
+            />
+          </>
+        )}
+      </SafeAreaView>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#FFF" },
+});
 
 /** Rough employment-type label from JSON-LD's SCREAMING_SNAKE_CASE enum. */
 function formatEmploymentType(raw: string | null): string {
