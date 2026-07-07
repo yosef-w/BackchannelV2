@@ -70,28 +70,30 @@ Consider normalizing/validating `sponsor_profiles.COMPANY` against this canonica
 
 ---
 
-## §L — Unused profile fields — collected/stored but never read (onboarding rework, Phase 4) 🟢 Low priority (cleanup + PII minimization)
+## §L — Unused profile fields — collected/stored but never read 🟢 Low priority (cleanup + PII minimization)
 
-**Context (2026-07-01):** The onboarding/profile rework audited every field the applicant profile collects against the two things that actually consume profile data — the matching algorithm (`services/scoring.py`: skills, role, experience, location) and the sponsor-facing card (name, photo, title, bio, city/state, experience, education, certifications, languages, achievements, skills, insights, industry). Several collected fields feed neither.
+**Context (updated 2026-07-08 against the current codebase):** The onboarding/profile rework audited every field the applicant profile collects against the two things that actually consume profile data — the matching algorithm (`services/scoring.py`: skills, role, experience, location) and the sponsor-facing card (name, photo, title, bio, city/state, experience, education, certifications, languages, achievements, skills, insights, industry). Several collected fields feed neither.
 
 **Findings — fields the product does not use:**
 
 | Field | Backend column | Status |
 |---|---|---|
-| Portfolio URL | `user_profiles.PORTFOLIO_URL` | **Frontend UI removed** (ProfileView, Phase 4). Not scored, not shown on the card. Column now unwritten by the app. |
-| Street address | address street | Not scored, not displayed (only city/state feed `LOCATION`). Frontend UI removal pending (coupled to the combined address editor — deferred until the onboarding branch is tested). |
-| ZIP | `ZIP` | Same — unused, UI removal pending. |
-| Country | address country | Same — unused, UI removal pending. |
-| Phone number | `PHONE_NUMBER` | Collected historically; **no longer gated** (Phase 1) and not used by any feature (no call/SMS). UI still present. Product decision to keep for future contact/verification vs. drop. |
+| Street address | address street | **UI removal complete.** `EditProfileScreen.tsx` and `ApplicantQuestionnaire.tsx` now only collect a single "City, State" location field — confirmed no street/ZIP/country editor exists anywhere in the app. Safe to drop. |
+| ZIP | `ZIP` | Same as street — UI removal complete, safe to drop. |
+| Country | address country | Same as street — UI removal complete, safe to drop. |
+| Phone number | `PHONE_NUMBER` | **UI removal complete.** No phone input exists anywhere in `ProfileView`, `EditProfileScreen`, or either questionnaire — confirmed via full-app search, zero hits. Not used by any feature (no call/SMS). Safe to drop. |
 | Date of birth | `DATE_OF_BIRTH` | **Dead** — zero UI in the app (never collected or displayed). Column exists only. |
 | LinkedIn | `LINKED_IN` | **Dead** — zero UI in the app. Column exists only. |
 
-**Requested backend action (no rush; coordinate with the frontend cleanup):**
-- These columns can be considered for **dropping** (or at least never requiring). This aligns with **§C** (account-deletion / PII minimization): `DATE_OF_BIRTH` in particular is sensitive PII that is collected nowhere and read nowhere, so retaining the column is pure liability.
-- Do **not** drop anything the ATS-autofill (`services/autofill.py`) or resume-classify (`services/documents.py`) paths write to without checking those first.
-- No endpoint contract changes are required for the frontend — `updateGeneralProfile` simply stops sending `portfolio_url` (and, once the UI is removed, `street`/`zip`/`country`). The fields remaining in the PATCH schema are harmless if unused.
+**Portfolio URL is NOT in this list — it's still live, do not drop `PORTFOLIO_URL`.** A candidate's portfolio link is read and displayed to sponsors in the referral flow (`components/messages/ReferralFlowModal.tsx`'s candidate review screen), and `lib/auth-api.ts` still forwards it to the backend whenever it's populated by resume-classify/ATS-autofill. An earlier version of this doc incorrectly listed it as dropped/unused — corrected here.
 
-**Frontend status:** Phase 4 removed the Portfolio field UI. The address street/ZIP/country fields and the (unused) phone field are documented here for a follow-up pass — deliberately deferred rather than ripped out of the tightly-coupled address editor before the onboarding branch has been run on-device.
+**Requested backend action (no rush; coordinate with the frontend cleanup):**
+- The six columns above can be considered for **dropping** (or at least never requiring). This aligns with **§C** (account-deletion / PII minimization): `DATE_OF_BIRTH` in particular is sensitive PII that is collected nowhere and read nowhere, so retaining the column is pure liability.
+- Do **not** drop `PORTFOLIO_URL` — see above.
+- Do **not** drop anything the ATS-autofill (`services/autofill.py`) or resume-classify (`services/documents.py`) paths write to without checking those first.
+- **Note for the backend:** `lib/auth-api.ts → updateProfile()` still unconditionally sends `phone_number`/`street`/`zip`/`country` on every "personal" group sync — always as empty strings now, since no UI populates them. That's harmless (an always-blank value into a dropped/ignored column), but it does mean these keys will keep showing up in the PATCH payload even after the columns are gone. A follow-up frontend cleanup to stop sending them entirely would be tidier but isn't required for the backend change to be safe.
+
+**Frontend status:** the *UI* for these fields (address editor, phone input) is fully removed — confirmed no editor exists anywhere in the app. The *payload* still echoes them as empty strings (see note above), which is a small separate frontend cleanup, not a blocker for the backend to drop the columns.
 
 ---
 
