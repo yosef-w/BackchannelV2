@@ -4,7 +4,7 @@
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side).
+> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); **§O** — create-from-URL doesn't reuse a company's known logo (medium priority — same-company jobs created via URL paste get a lower-confidence logo lookup instead of the logo already on file from ATS/other sponsored jobs).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -33,6 +33,27 @@ Match-state cutover (reading `/api/matches/*` instead of the derived like `STATU
 ### Acceptance test
 
 `PATCH /api/profile/update/` with `{"first_name": "", "last_name": ""}` leaves the stored names unchanged (or returns 400); a normal non-empty name update still works.
+
+---
+
+## §O — Create-from-URL job creation doesn't reuse a known company logo 🟡 Medium priority (data quality)
+
+**Why:** Two different backend paths resolve a job's logo, and only one of them is good:
+
+- **Sponsoring an existing ATS listing** (`services/jobs.py:765`, `sponsor_job`) checks `silver_job.get('ORGANIZATION_LOGO')` first — the logo already ingested for that ATS organization — and only falls back to `logo_svc.resolve_logo_url()` with a **real domain** (`silver_job['DOMAIN_DERIVED']` / `ORGANIZATION_URL`) if that's missing.
+- **Creating a job from a pasted URL** (`services/jobs.py:240`, `create_job_from_url`) does neither: `logo = logo_svc.resolve_logo_url(company_name=company)` — a **name-only** Logo.dev lookup with no domain and no check against any existing logo on file for that company. Concretely: a sponsor who already has a "Google" job (via ATS sponsorship, with a good logo) gets a different, lower-confidence, sometimes-empty logo when they create a *second* "Google" job by pasting a URL — even though the job-posting URL they just pasted (e.g. `jobs.google.com/...`) contains a perfectly good domain that's simply never passed to the resolver, and the already-known-good logo for that company is never looked up at all.
+
+### Requested change
+
+In `create_job_from_url` (`services/jobs.py`), before calling `logo_svc.resolve_logo_url`:
+1. **Reuse an existing logo for the same company**, checking (in order): `ats.silver_jobs.ORGANIZATION_LOGO` for an `ORGANIZATION` match (same `ILIKE`/normalization already used in `browse_silver_jobs`/`_normalize_company`), then any existing `JOB_POSTINGS` row with a non-null `logo_url` for the same company (covers companies with no ATS presence but an existing sponsor-created job, e.g. from this same flow).
+2. **Only if no existing logo is found**, fall back to `logo_svc.resolve_logo_url`, but pass a domain: extract it from the pasted job URL itself (the same `_extract_domain` helper `services/logos.py:31` already has, just unused on this path) via `organization_url=url`, not just `company_name=company`.
+
+This is the same company-name-matching infrastructure §G already needs (fuzzy/ILIKE matching against `ats.silver_jobs.ORGANIZATION`) — worth building together if §G is picked up, since §G's proposed `GET /api/ats/organizations/` endpoint already returns `logo_url` per organization and could double as the lookup this needs.
+
+### Frontend status
+
+No frontend change needed — `createJobFromUrl()`'s response doesn't currently return a resolved logo either way (the create-flow's preview card shows no logo during the scrape step, by design — the logo is a server-side concern resolved at creation time), and the job's logo appears via the normal `getMyJobs()` refetch after creation, using whatever `LOGO_URL` the backend persisted. Once the backend reuses the existing logo, it'll simply appear correctly on that same refetch with zero app changes.
 
 ---
 
