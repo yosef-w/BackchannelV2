@@ -14,14 +14,14 @@ export default function SplashRoute() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard" as any);
+      router.replace("/dashboard");
     }
   }, [isLoading, isAuthenticated]);
 
   return (
     <SplashScreen
-      onGetStarted={() => router.replace("/choose-role" as any)}
-      onSignIn={() => router.push("/sign-in" as any)}
+      onGetStarted={() => router.replace("/choose-role")}
+      onSignIn={() => router.push("/sign-in")}
     />
   );
 }

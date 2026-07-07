@@ -1,6 +1,8 @@
 import { trackApiError } from "@/lib/analytics/mixpanel";
 import { captureApiServerError, logBreadcrumb } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
+import type { BrowseJobResponse, JobApiResponse } from "@/types/jobs";
+import type { ProfilePackRow } from "@/types/profiles";
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ??
@@ -183,7 +185,9 @@ class ApiClient {
 
     if (!response.ok) {
       const rawText = await response.text().catch(() => "");
-      let errorData: any = {};
+      // Parsed error body — shape varies by endpoint, so type just the
+      // three message fields we actually read.
+      let errorData: { error?: string; detail?: string; message?: string } = {};
       try {
         errorData = JSON.parse(rawText);
       } catch {}
@@ -225,7 +229,9 @@ class ApiClient {
     const retryResponse = await fetch(url, retryConfig);
     if (!retryResponse.ok) {
       const rawText = await retryResponse.text().catch(() => "");
-      let errorData: any = {};
+      // Parsed error body — shape varies by endpoint, so type just the
+      // three message fields we actually read.
+      let errorData: { error?: string; detail?: string; message?: string } = {};
       try {
         errorData = JSON.parse(rawText);
       } catch {}
@@ -323,10 +329,11 @@ export const api = new ApiClient(API_BASE_URL);
  * 💼 Fetch Jobs Pack
  * Retrieves a curated pack of job listings
  */
-export async function fetchJobsPack(): Promise<any[]> {
-  const response = await api.get<{ jobs: any[]; total_count: number }>(
-    "/api/jobs/pack/",
-  );
+export async function fetchJobsPack(): Promise<JobApiResponse[]> {
+  const response = await api.get<{
+    jobs: JobApiResponse[];
+    total_count: number;
+  }>("/api/jobs/pack/");
   // Jobs are ranked by relevance_score (skills 40%, experience 20%, role 20%, location 10%, recency 10%)
   // New fields: relevance_score (float 0-1), REQUIREMENTS_SUMMARY (string|null), CORE_RESPONSIBILITIES (string|null)
   return response.jobs;
@@ -349,7 +356,7 @@ export async function browseJobs(filters?: {
   location?: string;
   remote?: boolean;
   limit?: number;
-}): Promise<{ jobs: any[]; total_count: number }> {
+}): Promise<{ jobs: BrowseJobResponse[]; total_count: number }> {
   const params = new URLSearchParams();
   if (filters?.title) params.append("title", filters.title);
   if (filters?.location) params.append("location", filters.location);
@@ -362,7 +369,7 @@ export async function browseJobs(filters?: {
     ? `/api/jobs/browse/?${queryString}`
     : "/api/jobs/browse/";
 
-  return api.get<{ jobs: any[]; total_count: number }>(endpoint);
+  return api.get<{ jobs: BrowseJobResponse[]; total_count: number }>(endpoint);
 }
 
 /**
@@ -559,13 +566,13 @@ export async function getWaitlistedJobs(): Promise<{
  * Required: job_id query parameter
  */
 export async function fetchProfilesPack(jobId?: string): Promise<{
-  profiles: any[];
+  profiles: ProfilePackRow[];
   total_count: number;
 }> {
   const url = jobId
     ? `/api/profiles/pack/?job_id=${jobId}`
     : `/api/profiles/pack/`;
-  return api.get<{ profiles: any[]; total_count: number }>(url);
+  return api.get<{ profiles: ProfilePackRow[]; total_count: number }>(url);
 }
 
 /**
@@ -982,7 +989,8 @@ export async function getProfile(): Promise<{
     REASON: string;
     POSITIONS: string[];
     SKILLS: string[];
-    RESUME_DATA: any;
+    // Freeform classifier JSON blob — narrow before use.
+    RESUME_DATA: unknown;
   };
   sponsor_profile?: {
     COMPANY: string;
@@ -1094,7 +1102,7 @@ export async function updateApplicantProfile(updates: {
   reason?: string;
   positions?: string[];
   skills?: string[];
-  resume_data?: any;
+  resume_data?: unknown;
   current_role?: string;
   years_experience?: string;
   work_authorization?: string;
@@ -1406,7 +1414,7 @@ export async function addResume(resumeData: object): Promise<{
 export async function updateResumeField(data: object): Promise<{
   message: string;
   updated_fields: string[];
-  resume_data: any;
+  resume_data: unknown;
 }> {
   return api.patch("/api/resume/update/", data);
 }
@@ -1433,7 +1441,7 @@ export async function getExtractedResumeText(): Promise<{
  * Call this after uploadAndParseResume so extracted text is already stored.
  */
 export async function classifyResume(signal?: AbortSignal): Promise<{
-  classified_data: any;
+  classified_data: unknown;
   applicant_fields_updated: string[];
   user_fields_updated: string[];
   message: string;

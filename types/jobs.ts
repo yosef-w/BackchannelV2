@@ -100,6 +100,14 @@ export interface BrowseJobsApiResponse {
   total_count: number;
 }
 
+/** A sponsor attached to a job, as rendered in the Job Sponsors card. */
+export interface JobSponsor {
+  name: string;
+  role: string;
+  image: string;
+  canRefer: boolean;
+}
+
 /**
  * Internal Job Posting Interface
  * Used throughout the app for displaying jobs
@@ -135,12 +143,14 @@ export interface Job {
    */
   pendingApplicants?: number;
   image: string;
-  currentSponsors: any[]; // Sponsor information
+  currentSponsors: JobSponsor[];
   // Optional fields for UI
   logo?: string;
   benefits: string[]; // Job benefits/perks
   isSponsored?: boolean;
-  topApplicants?: any[];
+  /** Legacy — never populated by any fetch path (applicants are fetched
+   * separately via getJobApplicantsLikes); kept for shape compatibility. */
+  topApplicants?: unknown[];
   requirementsSummary?: string | null;
   coreResponsibilities?: string | null;
   relevanceScore?: number;
@@ -376,5 +386,5 @@ export function transformJobApiResponse(apiJob: JobApiResponse): Job {
           canRefer: apiJob.sponsor.can_provide_direct_referral ?? false,
         }
       : null,
-  } as any; // Cast to any to allow extra fields for compatibility
+  };
 }

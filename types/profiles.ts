@@ -11,7 +11,7 @@
  */
 
 /** Safely parse a field that may be a JSON string, already-parsed array, or absent. */
-function parseJsonArray(value: unknown): any[] {
+function parseJsonArray(value: unknown): unknown[] {
   if (!value) return [];
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
@@ -25,6 +25,12 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
+/** One insight prompt as rendered on the applicant deck card. */
+export interface ProfilePrompt {
+  question?: string;
+  answer?: string;
+}
+
 export interface ProfilePackRow {
   USER_ID: string;
   FIRST_NAME?: string | null;
@@ -34,10 +40,12 @@ export interface ProfilePackRow {
   POSITIONS?: string | string[] | null;
   BIO?: string | null;
   REASON?: string | null;
-  INSIGHTS?: string | any[] | null;
+  INSIGHTS?: string | ProfilePrompt[] | null;
   PHOTO_URL?: string | null;
   HAS_LIKED_JOB?: boolean;
-  [key: string]: any;
+  // The pack endpoint ships more columns than the card reads; keep the row
+  // open but force consumers to narrow before using extra fields.
+  [key: string]: unknown;
 }
 
 /** UI-shaped applicant deck card, as HomeView's sponsor view expects. */
@@ -49,16 +57,21 @@ export interface ProfileDeckCard {
   skills: string[];
   desiredRole: string;
   bio: string;
-  prompts: any[];
+  prompts: ProfilePrompt[];
   image: string;
   company: string;
-  [key: string]: any;
+  // Raw row fields spread through by the transform (see `...profile` below).
+  [key: string]: unknown;
 }
 
 export function transformProfilePackRow(profile: ProfilePackRow): ProfileDeckCard {
-  const skills = parseJsonArray(profile.SKILLS);
-  const positions = parseJsonArray(profile.POSITIONS);
-  const prompts = parseJsonArray(profile.INSIGHTS);
+  // Backend contract: SKILLS/POSITIONS are string arrays and INSIGHTS is a
+  // prompt-object array (JSON-encoded or pre-parsed). The casts assert that
+  // contract rather than validating each element — same runtime behavior as
+  // before, now visible in the types.
+  const skills = parseJsonArray(profile.SKILLS) as string[];
+  const positions = parseJsonArray(profile.POSITIONS) as string[];
+  const prompts = parseJsonArray(profile.INSIGHTS) as ProfilePrompt[];
 
   const bio: string =
     profile.BIO || profile.REASON || "Looking for new opportunities";
