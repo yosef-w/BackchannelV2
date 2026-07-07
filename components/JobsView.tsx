@@ -34,14 +34,12 @@ import {
   CheckCircle,
   ChevronRight,
   DollarSign,
-  Image as ImageIcon,
   Info,
   Lock,
   MapPin,
   Plus,
   Search,
   Sparkles,
-  ThumbsDown,
   Trash2,
   TrendingUp,
   Users,
@@ -74,13 +72,13 @@ import { WebView } from "react-native-webview";
 import { JobCard } from "./jobs/JobCard";
 import { JobsEmptyState } from "./jobs/JobsEmptyState";
 import {
-  UNSPONSOR_REASONS,
   cleanJobText,
   parseSkillsField,
   transformBrowseResponse,
   transformMyJobRow,
 } from "./jobs/jobTransforms";
 import { CreateJobFlow } from "./jobs/CreateJobFlow";
+import { JobMenuModal } from "./jobs/JobMenuModal";
 import { SponsorJobModal } from "./jobs/SponsorJobModal";
 import { SponsoredJobCard } from "./jobs/SponsoredJobCard";
 import { CompanyLogo } from "./ui/CompanyLogo";
@@ -1476,225 +1474,30 @@ export function JobsView() {
         animationType="none"
         onRequestClose={closeMenu}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeMenu}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={closeMenu}
-            style={[
-              styles.modalContent,
-              // Absolute maxHeight — a "%" value resolves against the
-              // gesture-root wrapper (which is content-sized), so the sheet
-              // mis-measures and floats above the bottom. Absolute doesn't.
-              { maxHeight: SCREEN_HEIGHT * 0.9 },
-            ]}
-          >
-            {/* Job context — title + company so the user knows which card they tapped */}
-            {menuJob && (
-              <View style={styles.menuSheetJobHeader}>
-                <Text style={styles.menuSheetJobTitle} numberOfLines={1}>
-                  {menuJob.title}
-                </Text>
-                <Text style={styles.menuSheetJobCompany} numberOfLines={1}>
-                  {menuJob.company}
-                </Text>
-              </View>
-            )}
-
-            {showLogoEditor ? (
-              /* Step 2 — replace the company logo. PR #62 ships a
-                 sponsor-overridable `logo_url` on PATCH /api/jobs/<id>/edit/,
-                 useful when the Logo.dev resolver picked the wrong domain
-                 or doesn't know a boutique company. */
-              <View style={{ flexShrink: 1, paddingBottom: 8 }}>
-                <Text style={styles.unsponsorReasonHeading}>
-                  Replace Company Logo
-                </Text>
-                <Text style={styles.unsponsorReasonSub}>
-                  Paste a direct image URL (PNG, JPG, or SVG). Leave blank
-                  to keep the current logo.
-                </Text>
-                <View style={{ alignItems: "center", marginVertical: 16 }}>
-                  <CompanyLogo
-                    logoUrl={logoUrlInput.trim() || menuJob?.image}
-                    name={menuJob?.company}
-                    size={72}
-                    borderRadius={22}
-                    initialFontSize={32}
-                  />
-                </View>
-                <TextInput
-                  style={styles.reasonOtherInput}
-                  placeholder="https://example.com/logo.png"
-                  placeholderTextColor="#BBB"
-                  value={logoUrlInput}
-                  onChangeText={setLogoUrlInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.unsponsorConfirmBtn,
-                    (!logoUrlInput.trim() || isSavingLogo) && { opacity: 0.4 },
-                  ]}
-                  disabled={!logoUrlInput.trim() || isSavingLogo}
-                  onPress={handleSaveLogoUrl}
-                  activeOpacity={0.8}
-                >
-                  {isSavingLogo ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.unsponsorConfirmBtnText}>
-                      Save Logo
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : showUnsponsorReasons ? (
-              /* Step 2 — capture WHY before removing the listing, so the
-                 backend can prune stale jobs (see §12 in
-                 docs/BACKEND_CHANGES_NEEDED.md). */
-              <View style={{ flexShrink: 1, paddingBottom: 8 }}>
-                <Text style={styles.unsponsorReasonHeading}>
-                  Why are you unsponsoring?
-                </Text>
-                <Text style={styles.unsponsorReasonSub}>
-                  This helps us keep job listings accurate and up to date.
-                </Text>
-                <ScrollView
-                  style={{ flexShrink: 1 }}
-                  showsVerticalScrollIndicator={false}
-                  bounces={false}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {UNSPONSOR_REASONS.map((reason) => {
-                    const selected = unsponsorReason === reason.value;
-                    return (
-                      <TouchableOpacity
-                        key={reason.value}
-                        style={styles.reasonRow}
-                        onPress={() => setUnsponsorReason(reason.value)}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={[
-                            styles.radioOuter,
-                            selected && styles.radioOuterActive,
-                          ]}
-                        >
-                          {selected && <View style={styles.radioInner} />}
-                        </View>
-                        <Text style={styles.reasonLabel}>{reason.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                  {unsponsorReason === "other" && (
-                    <TextInput
-                      style={styles.reasonOtherInput}
-                      placeholder="Tell us more (optional)"
-                      placeholderTextColor="#BBB"
-                      value={unsponsorReasonDetail}
-                      onChangeText={setUnsponsorReasonDetail}
-                      multiline
-                      autoCapitalize="sentences"
-                    />
-                  )}
-                </ScrollView>
-                <TouchableOpacity
-                  style={[
-                    styles.unsponsorConfirmBtn,
-                    !unsponsorReason && { opacity: 0.4 },
-                  ]}
-                  disabled={!unsponsorReason}
-                  onPress={() =>
-                    menuJob &&
-                    unsponsorReason &&
-                    handleUnsponsor(
-                      menuJob,
-                      unsponsorReason,
-                      unsponsorReasonDetail,
-                    )
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.unsponsorConfirmBtnText}>
-                    Unsponsor Job
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={{ gap: 10, paddingBottom: 8 }}>
-                {activeTab === "sponsored" && menuJob ? (
-                  <>
-                    <TouchableOpacity
-                      style={styles.menuOptionCard}
-                      onPress={() => {
-                        // Seed the input with whatever logo the card is
-                        // showing right now so the sponsor can edit it
-                        // instead of re-typing from scratch.
-                        setLogoUrlInput(menuJob.image || "");
-                        setShowLogoEditor(true);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.menuIconContainer}>
-                        <ImageIcon size={18} color="#666" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.menuOptionTitle}>Replace Logo</Text>
-                        <Text style={styles.menuOptionDesc}>
-                          Override the auto-resolved company logo
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.menuOptionCard}
-                      onPress={() => setShowUnsponsorReasons(true)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.menuIconContainer}>
-                        <Trash2 size={18} color="#666" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
-                        <Text style={styles.menuOptionDesc}>
-                          Remove this listing from your sponsored jobs
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.menuOptionCard}
-                    onPress={closeMenu}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.menuIconContainer}>
-                      <ThumbsDown size={18} color="#666" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.menuOptionTitle}>Not Interested</Text>
-                      <Text style={styles.menuOptionDesc}>
-                        Hide this job from your feed
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </DismissibleSheet>
-        </View>
+        <JobMenuModal
+          job={menuJob}
+          activeTab={activeTab}
+          showUnsponsorReasons={showUnsponsorReasons}
+          onShowUnsponsorReasons={() => setShowUnsponsorReasons(true)}
+          unsponsorReason={unsponsorReason}
+          onSetUnsponsorReason={setUnsponsorReason}
+          unsponsorReasonDetail={unsponsorReasonDetail}
+          onSetUnsponsorReasonDetail={setUnsponsorReasonDetail}
+          onUnsponsor={handleUnsponsor}
+          showLogoEditor={showLogoEditor}
+          onOpenLogoEditor={() => {
+            // Seed the input with whatever logo the card is showing right
+            // now so the sponsor can edit it instead of re-typing from
+            // scratch.
+            setLogoUrlInput(menuJob?.image || "");
+            setShowLogoEditor(true);
+          }}
+          logoUrlInput={logoUrlInput}
+          onSetLogoUrlInput={setLogoUrlInput}
+          isSavingLogo={isSavingLogo}
+          onSaveLogoUrl={handleSaveLogoUrl}
+          onClose={closeMenu}
+        />
       </Modal>
 
       {/* Job Details Modal */}
