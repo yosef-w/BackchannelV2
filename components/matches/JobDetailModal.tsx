@@ -236,20 +236,27 @@ export function JobDetailModal({
               </View>
             )}
 
-            {/* Original posting — trust signal + verification link,
-                regardless of how the job was created. See
+            {/* Source — trust signal + verification link, regardless of
+                how the job was created. Same bordered detailSection card
+                every other section on this modal uses, so it reads as a
+                peer section rather than orphaned floating text. See
                 BACKEND_CHANGES_NEEDED.md §O/§P. */}
             {job.url && extractDisplayDomain(job.url) && (
-              <TouchableOpacity
-                style={cardStyles.originalPostingRow}
-                onPress={() => Linking.openURL(job.url!).catch(() => {})}
-                activeOpacity={0.7}
-              >
-                <ExternalLink size={13} color="#999" strokeWidth={2} />
-                <Text style={cardStyles.originalPostingText}>
-                  View original posting: {extractDisplayDomain(job.url)}
-                </Text>
-              </TouchableOpacity>
+              <View style={modalStyles.detailSection}>
+                <View style={modalStyles.detailSectionHeader}>
+                  <Text style={modalStyles.detailSectionTitle}>Source</Text>
+                </View>
+                <TouchableOpacity
+                  style={cardStyles.originalPostingRow}
+                  onPress={() => Linking.openURL(job.url!).catch(() => {})}
+                  activeOpacity={0.7}
+                >
+                  <ExternalLink size={14} color="#666" strokeWidth={2} />
+                  <Text style={cardStyles.originalPostingText}>
+                    {extractDisplayDomain(job.url)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {/* About the Role — full description, last because it's the

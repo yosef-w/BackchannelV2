@@ -532,16 +532,17 @@ export const cardStyles = StyleSheet.create({
 
   // "View original posting" row — shows the sponsor's pasted domain
   // (subdomain and all) as a legibility/trust signal, tappable to open the
-  // real posting. See BACKEND_CHANGES_NEEDED.md §O.
+  // real posting. Lives inside a hingeSection (this file) alongside every
+  // other card section, so no extra top margin here. See
+  // BACKEND_CHANGES_NEEDED.md §O.
   originalPostingRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 6,
-    marginTop: 4,
   },
   originalPostingText: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 14,
+    color: "#333",
     fontWeight: "500" as const,
   },
 });

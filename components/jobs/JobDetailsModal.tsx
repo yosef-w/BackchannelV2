@@ -236,20 +236,26 @@ export function JobDetailsModal({
               </View>
             )}
 
-            {/* Original posting — trust signal + verification link, shown
-                to the sponsor for their own listing regardless of how it
-                was created. See BACKEND_CHANGES_NEEDED.md §O/§P. */}
+            {/* Source — trust signal + verification link, shown to the
+                sponsor for their own listing regardless of how it was
+                created. Same header+title pattern every other section on
+                this modal uses. See BACKEND_CHANGES_NEEDED.md §O/§P. */}
             {job.url && extractDisplayDomain(job.url) && (
-              <TouchableOpacity
-                style={cardStyles.originalPostingRow}
-                onPress={() => Linking.openURL(job.url).catch(() => {})}
-                activeOpacity={0.7}
-              >
-                <ExternalLink size={13} color="#999" strokeWidth={2} />
-                <Text style={cardStyles.originalPostingText}>
-                  View original posting: {extractDisplayDomain(job.url)}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.detailSection}>
+                <View style={styles.detailSectionHeader}>
+                  <Text style={styles.detailSectionTitle}>Source</Text>
+                </View>
+                <TouchableOpacity
+                  style={cardStyles.originalPostingRow}
+                  onPress={() => Linking.openURL(job.url).catch(() => {})}
+                  activeOpacity={0.7}
+                >
+                  <ExternalLink size={14} color="#666" strokeWidth={2} />
+                  <Text style={cardStyles.originalPostingText}>
+                    {extractDisplayDomain(job.url)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {/* About the Role — full description last (longest free-form text) */}

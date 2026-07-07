@@ -333,25 +333,30 @@ export function JobCardContent({
           </View>
         )}
 
-      {/* ORIGINAL POSTING — the sponsor's pasted/ATS source link, shown
-          whenever the job has one (regardless of how it was created).
-          Deliberately shows the real domain rather than generic "Source"
-          text: a mismatched domain is a legibility signal on its own, and
-          it lets an applicant verify the listing against the real
-          posting. See BACKEND_CHANGES_NEEDED.md §O. */}
+      {/* SOURCE — the sponsor's pasted/ATS source link, shown whenever the
+          job has one (regardless of how it was created). Deliberately
+          shows the real domain rather than generic "Source" text: a
+          mismatched domain is a legibility signal on its own, and it lets
+          an applicant verify the listing against the real posting. Same
+          hingeSection rhythm as every other card section (label + body)
+          rather than a bare row, so it reads as a peer section, not an
+          addendum tacked onto Highlights. See BACKEND_CHANGES_NEEDED.md §O. */}
       {"url" in currentData &&
         currentData.url &&
         extractDisplayDomain(currentData.url) && (
-          <TouchableOpacity
-            style={cardStyles.originalPostingRow}
-            onPress={() => Linking.openURL(currentData.url).catch(() => {})}
-            activeOpacity={0.7}
-          >
-            <ExternalLink size={13} color="#999" strokeWidth={2} />
-            <Text style={cardStyles.originalPostingText}>
-              View original posting: {extractDisplayDomain(currentData.url)}
-            </Text>
-          </TouchableOpacity>
+          <View style={cardStyles.hingeSection}>
+            <Text style={cardStyles.hingeSectionLabel}>SOURCE</Text>
+            <TouchableOpacity
+              style={cardStyles.originalPostingRow}
+              onPress={() => Linking.openURL(currentData.url).catch(() => {})}
+              activeOpacity={0.7}
+            >
+              <ExternalLink size={14} color="#666" strokeWidth={2} />
+              <Text style={cardStyles.originalPostingText}>
+                {extractDisplayDomain(currentData.url)}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
       {/* NO SPONSOR YET — status block + company description */}
