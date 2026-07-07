@@ -1,3 +1,4 @@
+import type { PublicProfileUserData } from "@/types/profiles";
 import {
     trackConversationOpened,
     trackMessageSent,
@@ -115,7 +116,7 @@ function mergeIncomingMessage(prev: any[], incoming: any): any[] {
 interface MessagesViewProps {
   onThreadActiveChange?: (isThreadActive: boolean) => void;
   userType?: "applicant" | "sponsor";
-  onShowPublicProfile?: (userData: any) => void;
+  onShowPublicProfile?: (userData: PublicProfileUserData) => void;
   selectedConversationId?: string | null;
   onConversationChange?: (conversationId: string | null) => void;
   pendingJobId?: string | null;

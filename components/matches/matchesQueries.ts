@@ -422,7 +422,7 @@ export const likedJobsQuery = (userType: string) => ({
       : (response as any).liked_jobs || [];
 
     // Backend can send arrays as either real arrays or JSONB-cast strings.
-    const parseArray = (v: any): string[] => {
+    const parseArray = (v: unknown): string[] => {
       if (!v) return [];
       if (Array.isArray(v)) return v.filter((x) => typeof x === "string");
       if (typeof v === "string") {

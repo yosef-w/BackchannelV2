@@ -81,13 +81,13 @@ export interface PublicProfileUserData {
   company?: string;
   appliedRole?: string;
   skills?: string[] | string;
-  profileImageUrl?: string;
+  profileImageUrl?: string | null;
   otherParticipant?: {
     id?: string;
     name?: string;
     role?: string;
     company?: string;
-    profileImageUrl?: string;
+    profileImageUrl?: string | null;
   };
   jobContext?: {
     jobTitle?: string;

@@ -1,3 +1,4 @@
+import type { PublicProfileUserData } from "@/types/profiles";
 import {
   trackPublicProfileOpenedFromMessage,
   trackUnmatchConfirmed,
@@ -108,7 +109,7 @@ interface ThreadScreenProps {
    * closure state) and reports success/failure so this component can
    * restore the draft on a failed send — see the call site below. */
   handleSendMessage: (text: string) => Promise<boolean>;
-  onShowPublicProfile?: (userData: any) => void;
+  onShowPublicProfile?: (userData: PublicProfileUserData) => void;
 }
 
 /**
@@ -806,7 +807,7 @@ return (
                     });
                   }
                   if (onShowPublicProfile) {
-                    onShowPublicProfile(conversation);
+                    onShowPublicProfile({ ...conversation });
                   }
                 },
               }
@@ -825,7 +826,7 @@ return (
                     });
                   }
                   if (onShowPublicProfile) {
-                    onShowPublicProfile(conversation);
+                    onShowPublicProfile({ ...conversation });
                   }
                 },
               }
