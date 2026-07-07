@@ -49,7 +49,6 @@ interface Props {
   workEmailVerified: boolean;
   email: string;
   workEmail: string;
-  phone: string;
   bio: string;
   location: string;
   expertise: string[];
@@ -83,7 +82,6 @@ export function EditProfileScreen({
   workEmailVerified,
   email,
   workEmail,
-  phone,
   bio,
   location,
   expertise,
@@ -101,7 +99,6 @@ export function EditProfileScreen({
     lastName,
     role,
     company,
-    phone,
     bio,
     location,
   });
@@ -118,7 +115,6 @@ export function EditProfileScreen({
         lastName,
         role,
         company,
-        phone,
         bio,
         location,
       });
@@ -220,15 +216,6 @@ export function EditProfileScreen({
           note="Your corporate email — helps verify your employer. Cannot be changed here. Contact support to update it."
         />
       )}
-
-      <Field
-        label="PHONE"
-        required={isFieldMissing("phone")}
-        value={local.phone}
-        onChangeText={set("phone")}
-        onBlur={saveOnBlur("phone", "phone")}
-        keyboardType="phone-pad"
-      />
 
       <View style={styles.field}>
         <View style={styles.fieldLabelRow}>

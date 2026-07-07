@@ -250,7 +250,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [location, setLocation] = useState("");
   const [email, setEmail] = useState("");
   const [workEmail, setWorkEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState("");
 
@@ -355,7 +354,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // Prefer pendingWorkEmail (set when sponsor edits in the verification
     // modal) so the display stays current even before backend confirmation.
     setWorkEmail(userProfileData.personal.workEmail || pendingWorkEmail || "");
-    setPhone(userProfileData.personal.phone);
     setProfileImage(userProfileData.personal.profileImage || null);
     setCity(userProfileData.personal.address.city);
     setState(userProfileData.personal.address.state);
@@ -566,12 +564,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
           }
           break;
         // email is read-only — changes require a dedicated change-email flow with verification
-        case "phone":
-          setPhone(valueToSave);
-          await updatePersonal({ phone: valueToSave });
-          // API call for phone
-          await updateGeneralProfile({ phone_number: valueToSave });
-          break;
         case "bio":
           setBio(valueToSave);
           await updateProfessional({ summary: valueToSave });
@@ -2776,7 +2768,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         workEmailVerified={workEmailVerified}
         email={email}
         workEmail={workEmail}
-        phone={phone}
         bio={bio}
         location={location}
         expertise={expertise}
