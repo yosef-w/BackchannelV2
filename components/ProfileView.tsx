@@ -1414,6 +1414,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         uri,
         name: "photo.jpg",
         type: "image/jpeg",
+        // RN's FormData accepts {uri,name,type} file descriptors but the
+        // web-typed lib.dom signature doesn't know that — cast required.
       } as any);
       // POST /api/upload/image/ → DigitalOcean Spaces CDN, always returns cdn_url
       const uploadResult = await uploadProfileImage(form);
@@ -1546,6 +1548,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         uri: file.uri,
         name: file.name,
         type: file.mimeType || "application/pdf",
+        // RN FormData file descriptor — see the image upload above.
       } as any);
       console.log("[Resume] 📤 Uploading to POST /api/upload-and-parse/ ...");
       // 60s timeout for upload + Snowflake text extraction
@@ -1658,7 +1661,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           stored.professional.experiences.length +
           " entries):",
         JSON.stringify(
-          stored.professional.experiences.map((e: any, i: number) => ({
+          stored.professional.experiences.map((e, i) => ({
             "#": i + 1,
             jobTitle: e.jobTitle,
             company: e.company,
@@ -1678,7 +1681,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           stored.education.entries.length +
           " entries):",
         JSON.stringify(
-          stored.education.entries.map((e: any, i: number) => ({
+          stored.education.entries.map((e, i) => ({
             "#": i + 1,
             degree: e.degree,
             major: e.major,
@@ -1705,13 +1708,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
         JSON.stringify(stored.languages, null, 2),
       );
       // ─────────────────────────────────────────────────────────────────────
-    } catch (err: any) {
+    } catch (err) {
       stopElapsedTimer();
       setResumeElapsedSecs(0);
       abortControllerRef.current = null;
+      const errName = err instanceof Error ? err.name : "";
+      const errMessage = err instanceof Error ? err.message : "";
 
       // User pressed Cancel — abort silently, return to idle
-      if (err?.name === "AbortError") {
+      if (errName === "AbortError") {
         console.log("[Resume] ℹ️ Upload cancelled by user.");
         setResumeUploadStep("idle");
         return;
@@ -1719,7 +1724,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       console.warn(
         "[Resume] ❌ Resume upload pipeline failed:",
-        err?.message,
+        errMessage,
         err,
       );
       // The résumé pipeline (upload → parse → AI classify → refetch) is the
@@ -1727,7 +1732,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       // failures here should page the dashboard, not just show a toast.
       Sentry.captureException(err, { tags: { flow: "resume_upload" } });
       setResumeUploadStep("error");
-      setResumeUploadError(err?.message || "Upload failed. Please try again.");
+      setResumeUploadError(errMessage || "Upload failed. Please try again.");
     }
   };
 

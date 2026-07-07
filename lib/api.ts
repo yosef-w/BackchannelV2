@@ -379,8 +379,26 @@ export async function browseJobs(filters?: {
  * before agreeing to sponsor.
  * Uses GET /api/jobs/silver/<job_id>/
  */
-export async function getJobDetail(jobId: string): Promise<any> {
-  return api.get<any>(`/api/jobs/silver/${jobId}/`);
+export interface SilverJobDetail {
+  JOB_ID?: string;
+  TITLE?: string;
+  ORGANIZATION?: string;
+  /** PR #62 — server-resolved company logo; either casing may surface. */
+  organization_logo?: string | null;
+  ORGANIZATION_LOGO?: string | null;
+  FULL_LOCATION?: string | null;
+  IS_REMOTE?: boolean;
+  SALARY_ANNUAL_MIN?: number | null;
+  SALARY_ANNUAL_MAX?: number | null;
+  SALARY_CURRENCY?: string | null;
+  EXPERIENCE_LEVEL?: string | null;
+  EMPLOYMENT_TYPES?: string | null;
+  SKILLS?: string | null;
+  DESCRIPTION_TEXT?: string | null;
+}
+
+export async function getJobDetail(jobId: string): Promise<SilverJobDetail> {
+  return api.get<SilverJobDetail>(`/api/jobs/silver/${jobId}/`);
 }
 
 export interface AtsOrganization {
@@ -782,6 +800,10 @@ export async function getSponsorMatches(): Promise<{
 /** A single row from GET /api/messages/conversations/. */
 export interface ConversationRow {
   CONVERSATION_ID: string;
+  /** Forward-compat — not currently joined onto the row; either naming may
+   * surface if the backend adds the company logo later. */
+  LOGO_URL?: string | null;
+  logo_url?: string | null;
   JOB_ID: string;
   APPLICANT_USER_ID: string;
   SPONSOR_USER_ID: string;

@@ -527,7 +527,7 @@ export const authApi = {
     }
 
     // ── 4. Fire the PATCH requests in parallel ────────────────────────────
-    const calls: Promise<any>[] = [];
+    const calls: Promise<unknown>[] = [];
     if (Object.keys(basePayload).length > 0) {
       calls.push(api.patch("/api/profile/update/", basePayload));
     }

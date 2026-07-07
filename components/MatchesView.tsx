@@ -6,6 +6,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import {
     getJobDetail,
+    type SilverJobDetail,
     likeBackSponsor,
     likeProfile,
     requestSponsorForJob,
@@ -179,7 +180,9 @@ export function MatchesView({
   const [srJobDetailVisible, setSrJobDetailVisible] = useState(false);
   const [srJobDetailLoading, setSrJobDetailLoading] = useState(false);
   const [srJobDetailError, setSrJobDetailError] = useState<string | null>(null);
-  const [srJobDetail, setSrJobDetail] = useState<any>(null);
+  const [srJobDetail, setSrJobDetail] = useState<SilverJobDetail | null>(
+    null,
+  );
 
   // ── Sponsor-request multi-step flow state ──────────────────────────────
   // Step 1 = overview, 2 = confirm (relationship + canRefer), 3 = insights, 4 = success

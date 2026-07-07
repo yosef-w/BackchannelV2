@@ -44,7 +44,10 @@ export function PipelineStageTimeline({
     );
   }
 
-  const currentIndex = Math.max(0, CORE_STAGES.indexOf(stage as any));
+  const currentIndex = Math.max(
+    0,
+    (CORE_STAGES as readonly string[]).indexOf(stage),
+  );
 
   return (
     <View style={styles.container}>

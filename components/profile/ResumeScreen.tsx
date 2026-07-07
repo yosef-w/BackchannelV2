@@ -15,7 +15,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import type { EducationEntry, ProfessionalExperience } from "../../stores/useUserProfileStore";
+import type {
+  AutofillData,
+  EducationEntry,
+  ProfessionalExperience,
+} from "../../stores/useUserProfileStore";
 import { CharCounter } from "../ui/CharCounter";
 import { EditorScreen } from "./EditorScreen";
 
@@ -26,8 +30,8 @@ interface Props {
   missingFieldLabels: string[];
   professionalExperiences: ProfessionalExperience[];
   educationEntries: EducationEntry[];
-  certifications: any[];
-  languages: any[];
+  certifications: AutofillData["certifications"];
+  languages: AutofillData["languages"];
   achievements: string;
   editingField: string | null;
   tempValue: string;
@@ -36,8 +40,14 @@ interface Props {
   handleSaveField: (field: string) => void;
   renderExperienceCard: (experience: ProfessionalExperience) => React.ReactElement | null;
   renderEducationCard: (education: EducationEntry) => React.ReactElement | null;
-  renderCertificationCard: (cert: any, index: number) => React.ReactElement | null;
-  renderLanguageCard: (lang: any, index: number) => React.ReactElement | null;
+  renderCertificationCard: (
+    cert: AutofillData["certifications"][number],
+    index: number,
+  ) => React.ReactElement | null;
+  renderLanguageCard: (
+    lang: AutofillData["languages"][number],
+    index: number,
+  ) => React.ReactElement | null;
   handleAddExperience: () => void;
   handleAddEducation: () => void;
   handleAddCertification: () => void;

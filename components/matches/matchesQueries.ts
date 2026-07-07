@@ -315,6 +315,8 @@ export const matchesQuery = (userType: string) => ({
 
       // Transform API response to Match interface
       return rawMatches.map((m) => {
+        // Deliberate: drift-tolerant row reads (uppercase adapter columns
+        // with lowercase fallbacks) — the fallback chains ARE the contract.
         const match = m as any;
         const sponsorName = match.sponsor?.name
           ? match.sponsor.name

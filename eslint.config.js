@@ -28,6 +28,18 @@ module.exports = defineConfig([
     },
   },
   {
+    // Scoped to TS files — the @typescript-eslint plugin is only defined
+    // for them (via eslint-config-expo).
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      // The any count was driven from 233 to ~21 justified keepers (RN
+      // FormData file descriptors, reanimated refs, cloneElement, icon
+      // component props, drift-tolerant row reads). Keep new ones visible
+      // in review — prefer a real contract type or `unknown` + narrowing.
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+  {
     // Jest test files use the canonical mock idioms: a require() inside the
     // jest.mock factory (imports would be hoisted past the mock) and value
     // imports placed after the jest.mock calls. Both are correct there.

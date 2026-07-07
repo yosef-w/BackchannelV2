@@ -77,6 +77,18 @@ export interface Conversation {
   isHidden: boolean;
 }
 
+/** One chat message as the thread renders it. `id` is "temp-…" for an
+ * optimistic send until the server echo arrives and sets `serverId`. */
+export interface ThreadMessage {
+  id: string;
+  serverId?: string;
+  senderId: string;
+  content: string;
+  messageType?: "text";
+  isRead?: boolean;
+  createdAt: string;
+}
+
 /**
  * Merge one server message into the current thread state, reconciling any
  * matching optimistic temp message in place — the same dedup logic the live
@@ -85,7 +97,10 @@ export interface Conversation {
  * it per-message too, instead of doing a destructive full replace that would
  * drop an optimistic send still in flight when the reconnect fetch runs.
  */
-function mergeIncomingMessage(prev: any[], incoming: any): any[] {
+function mergeIncomingMessage(
+  prev: ThreadMessage[],
+  incoming: ThreadMessage,
+): ThreadMessage[] {
   // Already have this message by serverId or id — nothing to do.
   if (prev.some((msg) => msg.serverId === incoming.id || msg.id === incoming.id)) {
     return prev;
@@ -229,7 +244,7 @@ export function MessagesView({
   // tapping expands their per-role sub-threads.
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
 
@@ -366,7 +381,7 @@ export function MessagesView({
         // join LOGO_URL onto the row. Pull whichever naming surfaces if
         // backend adds it later; otherwise stays undefined and downstream
         // CompanyLogo components fall back to the company initial.
-        logoUrl: (c as any).LOGO_URL || (c as any).logo_url || undefined,
+        logoUrl: c.LOGO_URL || c.logo_url || undefined,
       },
       // "Hidden (30+ days inactive)" — a thread with no activity in 30+
       // days buckets out of Active. Previously this field was declared as
@@ -404,7 +419,7 @@ export function MessagesView({
         offset: conversations.length,
       });
       const more = response.conversations.map((conv) =>
-        transformConversation(conv as any),
+        transformConversation(conv),
       );
       setConversations((prev) => [...prev, ...more]);
     } catch (err) {
@@ -596,7 +611,14 @@ export function MessagesView({
     let attempt = 0;
     let hasConnectedOnce = false;
 
-    const applyInboxUpdate = (data: any) => {
+    // Inbox socket wire format for message events; conversation_id is
+    // re-checked below since malformed frames shouldn't touch state.
+    const applyInboxUpdate = (data: {
+      conversation_id?: string;
+      sender_user_id: string;
+      body: string;
+      created_at: string;
+    }) => {
       const convId = data.conversation_id;
       if (!convId) return;
 

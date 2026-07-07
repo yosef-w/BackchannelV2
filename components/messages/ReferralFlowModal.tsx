@@ -27,7 +27,13 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp, SlideInDown } from "react-native-reanimated";
-import { getPublicProfile, submitReferral } from "@/lib/api";
+import {
+    getPublicProfile,
+    submitReferral,
+    type PublicProfileEducation,
+    type PublicProfileExperience,
+    type PublicProfileResponse,
+} from "@/lib/api";
 import { trackReferralSubmitted } from "@/lib/analytics/mixpanel";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import type { Conversation } from "../MessagesView";
@@ -64,7 +70,8 @@ export function ReferralFlowModal({
   const [comfortableAttaching, setComfortableAttaching] = useState(false);
   const [referralSubmitting, setReferralSubmitting] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
-  const [referralProfile, setReferralProfile] = useState<any>(null);
+  const [referralProfile, setReferralProfile] =
+    useState<PublicProfileResponse | null>(null);
   const [referralProfileLoading, setReferralProfileLoading] = useState(false);
 
   // Reset all local state the moment the modal hides — mirrors the original
@@ -248,15 +255,21 @@ export function ReferralFlowModal({
                 const jobTitle = conversation.jobContext?.jobTitle || "";
                 const company = conversation.jobContext?.company || "";
                 const bio = referralProfile?.BIO;
-                const experiences: any[] =
-                  referralProfile?.applicant_profile?.PROFESSIONAL_EXPERIENCES ||
-                  [];
-                const education: any[] =
-                  referralProfile?.applicant_profile?.EDUCATION_ENTRIES || [];
-                const skills: string[] =
+                // These arrive as real arrays on this endpoint's path —
+                // the casts assert that (same runtime as before typing).
+                const experiences = (referralProfile?.applicant_profile
+                  ?.PROFESSIONAL_EXPERIENCES || []) as PublicProfileExperience[];
+                const education = (referralProfile?.applicant_profile
+                  ?.EDUCATION_ENTRIES || []) as PublicProfileEducation[];
+                const rawSkills =
                   referralProfile?.applicant_profile?.SKILLS ||
                   conversation.skills ||
                   [];
+                // SKILLS is a real array on this endpoint's path; tolerate
+                // the string-encoded variant by falling back to [].
+                const skills: string[] = Array.isArray(rawSkills)
+                  ? rawSkills
+                  : [];
                 const portfolioUrl = referralProfile?.PORTFOLIO_URL;
 
                 return (
@@ -384,7 +397,7 @@ export function ReferralFlowModal({
                             {yearsExp} years in industry
                           </Text>
                         )}
-                        {experiences.map((exp: any, idx: number) => (
+                        {experiences.map((exp, idx) => (
                           <View
                             key={idx}
                             style={[
@@ -415,7 +428,7 @@ export function ReferralFlowModal({
                           <GraduationCap size={16} color="#000" />
                           <Text style={styles.refSectionTitle}>Education</Text>
                         </View>
-                        {education.map((edu: any, idx: number) => {
+                        {education.map((edu, idx) => {
                           const degreeLine = [edu.degree, edu.major]
                             .filter(Boolean)
                             .join(" in ");
