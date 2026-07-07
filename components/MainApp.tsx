@@ -57,7 +57,7 @@ import type { PublicProfileUserData } from "../types/profiles";
 import {
     ApplicantCheckInModal,
     type CheckInReferral,
-} from "./ApplicantCheckInModal";
+} from "./checkin/ApplicantCheckInModal";
 import { ApplicantPublicProfileView } from "./ApplicantPublicProfileView";
 import { DECK_SIZE, HomeView } from "./HomeView";
 import { JobsView } from "./JobsView";
@@ -68,7 +68,7 @@ import { ProfileView } from "./ProfileView";
 import {
     SponsorCheckInModal,
     type SponsorCheckInReferral,
-} from "./SponsorCheckInModal";
+} from "./checkin/SponsorCheckInModal";
 import { SponsorPublicProfileView } from "./SponsorPublicProfileView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");

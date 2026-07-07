@@ -22,14 +22,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     trackApplicantCheckInSubmitted,
     trackCheckInFailed,
-} from "../lib/analytics/mixpanel";
-import { ApplicantCheckInStage, submitApplicantCheckIn } from "../lib/api";
-import { useToastStore } from "../stores/useToastStore";
+} from "@/lib/analytics/mixpanel";
+import { ApplicantCheckInStage, submitApplicantCheckIn } from "@/lib/api";
+import { useToastStore } from "@/stores/useToastStore";
 import {
     getLocalCheckInTimes,
     saveLocalCheckInStage,
-} from "../utils/checkInStageCache";
-import { CheckInSheetShell } from "./checkin/CheckInSheetShell";
+} from "@/utils/checkInStageCache";
+import { CheckInSheetShell } from "./CheckInSheetShell";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface CheckInReferral {
