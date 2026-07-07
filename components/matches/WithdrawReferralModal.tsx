@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
-import type { Referral } from "../MatchesView";
+import type { Referral } from "./matchesQueries";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
