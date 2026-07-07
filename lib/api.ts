@@ -80,10 +80,14 @@ class ApiClient {
     }
   }
 
-  private getAuthHeaders(): HeadersInit {
+  /**
+   * `jsonContentType: false` is for multipart bodies — fetch must set the
+   * Content-Type itself (with the form boundary), so we only attach auth.
+   */
+  private getAuthHeaders(jsonContentType = true): HeadersInit {
     const token = useAuthStore.getState().accessToken;
     return {
-      "Content-Type": "application/json",
+      ...(jsonContentType ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
   }
@@ -120,6 +124,7 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {},
     skipAuth = false,
+    jsonContentType = true,
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
@@ -128,8 +133,10 @@ class ApiClient {
       headers: {
         ...options.headers,
         ...(skipAuth
-          ? { "Content-Type": "application/json" }
-          : this.getAuthHeaders()),
+          ? jsonContentType
+            ? { "Content-Type": "application/json" }
+            : {}
+          : this.getAuthHeaders(jsonContentType)),
       },
     };
 
@@ -159,7 +166,7 @@ class ApiClient {
       // A refresh is already in flight — queue this request and wait.
       if (this.isRefreshing) {
         const newToken = await this.waitForRefresh();
-        return this.retryWithToken<T>(url, options, newToken);
+        return this.retryWithToken<T>(url, options, newToken, jsonContentType);
       }
 
       // This is the first request to see the 401; it owns the refresh.
@@ -169,7 +176,7 @@ class ApiClient {
         if (refreshed) {
           const newToken = useAuthStore.getState().accessToken!;
           this.drainRefreshQueue(newToken);
-          return this.retryWithToken<T>(url, options, newToken);
+          return this.retryWithToken<T>(url, options, newToken, jsonContentType);
         } else {
           // Both tokens are expired. clearAuth() was already called inside
           // refreshAccessToken, which will drive navigation to the login screen.
@@ -217,12 +224,13 @@ class ApiClient {
     url: string,
     options: RequestInit,
     token: string,
+    jsonContentType = true,
   ): Promise<T> {
     const retryConfig: RequestInit = {
       ...options,
       headers: {
         ...options.headers,
-        "Content-Type": "application/json",
+        ...(jsonContentType ? { "Content-Type": "application/json" } : {}),
         Authorization: `Bearer ${token}`,
       },
     };
@@ -317,6 +325,29 @@ class ApiClient {
       method: "DELETE",
       body: data ? JSON.stringify(data) : undefined,
     });
+  }
+
+  /**
+   * Multipart POST (file/image uploads).
+   *
+   * No Content-Type header is set — fetch derives multipart/form-data with
+   * the correct boundary from the FormData body. Goes through the same
+   * request() pipeline as JSON calls, so uploads get the 401
+   * refresh-and-retry behavior instead of failing on an expired token
+   * (they previously bypassed ApiClient with a raw fetch and did exactly
+   * that).
+   */
+  async postMultipart<T>(
+    endpoint: string,
+    formData: FormData,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      { method: "POST", body: formData, signal },
+      false,
+      false,
+    );
   }
 }
 
@@ -1525,23 +1556,7 @@ export async function uploadProfileImage(formData: FormData): Promise<{
   content_type: string;
   message: string;
 }> {
-  // Multipart upload — must NOT send Content-Type: application/json,
-  // so we bypass the ApiClient and call fetch directly.
-  const token = useAuthStore.getState().accessToken;
-  const response = await fetch(`${API_BASE_URL}/api/upload/image/`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData?.error ||
-        errorData?.detail ||
-        `Image upload failed: ${response.status}`,
-    );
-  }
-  return response.json();
+  return api.postMultipart("/api/upload/image/", formData);
 }
 
 /**
@@ -1566,23 +1581,7 @@ export async function uploadAndParseResume(
   extracted_text: string | null; // null when Snowflake Cortex fails to parse
   parsing_error?: string | null; // present on parse failure
 }> {
-  // Multipart upload — must NOT send Content-Type: application/json.
-  const token = useAuthStore.getState().accessToken;
-  const response = await fetch(`${API_BASE_URL}/api/upload-and-parse/`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-    signal,
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData?.error ||
-        errorData?.detail ||
-        `Resume upload failed: ${response.status}`,
-    );
-  }
-  return response.json();
+  return api.postMultipart("/api/upload-and-parse/", formData, signal);
 }
 
 // ============================================================
