@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
 import { create } from "zustand";
 import { Sentry } from "../lib/sentry";
+import type { RawEducationRow, RawExperienceRow } from "../lib/auth-api";
 
 // NOTE: Profile cache is stored in AsyncStorage (not SecureStore) because
 // SecureStore has a 2 KB per-value limit, which a full resume-classified
@@ -121,6 +122,62 @@ export type SyncableField =
   | "languages"
   | "achievements";
 
+/**
+ * The flat payload the onboarding questionnaires assemble at signup and
+ * hand to loadFromProfile — top-level identity fields plus the nested
+ * role-specific `profileData` blob the register endpoints echo back.
+ */
+export interface SignupProfilePayload {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  portfolio?: string;
+  jobTitle?: string;
+  company?: string;
+  yearsExperience?: string;
+  bio?: string;
+  desiredSalary?: string;
+  availableStartDate?: string;
+  workAuthorization?: string;
+  willingToRelocate?: string;
+  requiresSponsorship?: string;
+  securityClearance?: string;
+  achievements?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
+  education?: Partial<AutofillData["education"]>;
+  demographics?: Partial<AutofillData["demographics"]>;
+  experiences?: AutofillData["professional"]["experiences"];
+  certifications?: AutofillData["certifications"];
+  languages?: AutofillData["languages"];
+  sponsorCompanies?: string[];
+  notificationPreferences?: Record<string, boolean>;
+  profileData?: {
+    workEmail?: string;
+    seekingPosition?: string;
+    company?: string;
+    /** Sponsor-flow variant of the top-level jobTitle. */
+    jobTitle?: string;
+    yearsAtCompany?: string;
+    openToReferrals?: string;
+    pastReferrals?: string;
+    referralBonus?: string;
+    currentRole?: string;
+    targetIndustry?: string;
+    skills?: string[];
+    insights?: AutofillData["insights"];
+    workPreferences?: string[];
+    desiredRoles?: string[];
+    resumeUrl?: string | null;
+  };
+}
+
 interface UserProfileStore {
   data: AutofillData;
   isLoaded: boolean;
@@ -198,7 +255,7 @@ interface UserProfileStore {
     prefs: Partial<NotificationPreferences>,
   ) => Promise<void>;
 
-  loadFromProfile: (profileData: any) => Promise<void>;
+  loadFromProfile: (profileData: SignupProfilePayload) => Promise<void>;
   syncToBackend: () => Promise<void>;
   /** Bypass the 2s debounce and sync immediately if there's anything dirty. */
   flushSyncNow: () => Promise<void>;
@@ -755,8 +812,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         [...get().dirtyFields].filter(
           (field) =>
             !fieldsToSync.has(field) ||
-            JSON.stringify((current as any)[field]) !==
-              JSON.stringify((dataSnapshot as any)[field]),
+            JSON.stringify(current[field as keyof AutofillData]) !==
+              JSON.stringify(dataSnapshot[field as keyof AutofillData]),
         ),
       );
       set({
@@ -768,12 +825,13 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       });
       persistDirtyFields(remainingDirty);
       persistSyncFailureCount(0);
-    } catch (error: any) {
+    } catch (error) {
       console.warn("Failed to sync profile to backend:", error);
+      const errorMessage = error instanceof Error ? error.message : "";
 
       if (
-        error.message?.includes("network") ||
-        error.message?.includes("offline")
+        errorMessage.includes("network") ||
+        errorMessage.includes("offline")
       ) {
         // A connectivity gap isn't evidence of a stuck/broken sync — leave
         // syncFailureCount untouched so an extended period offline can't by
@@ -786,7 +844,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         // these eventually trips fetchFromBackend's abandon-stuck-dirty-
         // fields safety net instead of masking real backend data forever.
         const syncFailureCount = get().syncFailureCount + 1;
-        set({ syncError: error.message || "Sync failed", syncFailureCount });
+        set({ syncError: errorMessage || "Sync failed", syncFailureCount });
         persistSyncFailureCount(syncFailureCount);
         // Data-loss adjacent (the blank-name incident came from this exact
         // path) — report which field GROUPS failed, never their values.
@@ -826,7 +884,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       const profile = await authApi.getProfile();
 
       // Set user type based on backend flags
-      const userType = (profile as any).IS_SPONSOR ? "sponsor" : "applicant";
+      const userType = profile.IS_SPONSOR ? "sponsor" : "applicant";
       useOnboardingStore.getState().setUserType(userType);
 
       // Preserve all locally-stored data so fields not returned by the backend
@@ -835,7 +893,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
       // Helper: parse PostgreSQL JSONB columns that may arrive as JSON strings
       // (pg_utils.py casts JSONB → TEXT for backwards compatibility — PR #25)
-      const parseVariant = (v: any): any[] => {
+      const parseVariant = <T,>(v: string | T[] | null | undefined): T[] => {
         if (!v) return [];
         if (typeof v === "string") {
           try {
@@ -850,35 +908,43 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
       // Skills: prefer backend value if present, fall back to local
       const backendSkills: string[] = parseVariant(
-        (profile as any).applicant_profile?.SKILLS ||
-          (profile as any).sponsor_profile?.SKILLS,
+        profile.applicant_profile?.SKILLS ||
+          profile.sponsor_profile?.SKILLS,
       );
       const mergedSkills =
         backendSkills.length > 0 ? backendSkills : existing.skills;
 
-      const backendInsights: Array<{ question: string; answer: string }> =
-        parseVariant(
-          (profile as any).applicant_profile?.INSIGHTS ||
-            (profile as any).sponsor_profile?.INSIGHTS,
-        );
+      // Backend contract: insight rows carry both question and answer; the
+      // cast asserts that (same runtime as the previously-untyped parse).
+      const backendInsights = parseVariant(
+        profile.applicant_profile?.INSIGHTS ||
+          profile.sponsor_profile?.INSIGHTS,
+      ) as Array<{ question: string; answer: string }>;
       const mergedInsights =
         backendInsights.length > 0 ? backendInsights : existing.insights;
 
       const backendExperiences = parseVariant(
-        (profile as any).applicant_profile?.PROFESSIONAL_EXPERIENCES,
+        profile.applicant_profile?.PROFESSIONAL_EXPERIENCES,
       );
       const backendEducationEntries = parseVariant(
-        (profile as any).applicant_profile?.EDUCATION_ENTRIES,
+        profile.applicant_profile?.EDUCATION_ENTRIES,
       );
-      const backendCertifications = parseVariant(
-        (profile as any).applicant_profile?.CERTIFICATIONS,
+      const backendCertifications = parseVariant<{
+        name: string;
+        organization: string;
+        year: string;
+      }>(
+        profile.applicant_profile?.CERTIFICATIONS,
       );
-      const backendLanguages = parseVariant(
-        (profile as any).applicant_profile?.LANGUAGES,
+      const backendLanguages = parseVariant<{
+        language: string;
+        proficiency: string;
+      }>(
+        profile.applicant_profile?.LANGUAGES,
       );
       const backendAchievements: string =
-        (profile as any).applicant_profile?.ACHIEVEMENTS ||
-        (profile as any).ACHIEVEMENTS ||
+        profile.applicant_profile?.ACHIEVEMENTS ||
+        profile.ACHIEVEMENTS ||
         "";
 
       // ── FIELD SHAPE NORMALIZERS ───────────────────────────────────────────
@@ -891,7 +957,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
        * Our interface:  { id, jobTitle, company, startDate, endDate, current, description }
        * "dates" is a combined string like "2022 – Present" or "2019 – 2022".
        */
-      const mapExperience = (raw: any, idx: number) => {
+      const mapExperience = (raw: RawExperienceRow, idx: number) => {
         // Experiences saved through the app already have startDate/endDate/current
         // as direct fields.  AI-classified experiences use a combined "dates" string
         // like "2022 – Present".  Prefer direct fields; fall back to parsing "dates".
@@ -923,7 +989,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
        * Backend shape: { degree, school, year }
        * Our interface:  { id, degree, major, university, graduationYear, gpa }
        */
-      const mapEducation = (raw: any, idx: number) => ({
+      const mapEducation = (raw: RawEducationRow, idx: number) => ({
         id: raw.id || `edu-${idx}`,
         degree: raw.degree || "",
         major: raw.major || "",
@@ -935,38 +1001,38 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
       const autofillData: AutofillData = {
         personal: {
-          firstName: (profile as any).FIRST_NAME || existing.personal.firstName,
-          lastName: (profile as any).LAST_NAME || existing.personal.lastName,
+          firstName: profile.FIRST_NAME || existing.personal.firstName,
+          lastName: profile.LAST_NAME || existing.personal.lastName,
           fullName:
-            (profile as any).FIRST_NAME && (profile as any).LAST_NAME
-              ? `${(profile as any).FIRST_NAME} ${(profile as any).LAST_NAME}`
+            profile.FIRST_NAME && profile.LAST_NAME
+              ? `${profile.FIRST_NAME} ${profile.LAST_NAME}`
               : existing.personal.fullName,
-          email: (profile as any).EMAIL || existing.personal.email,
-          phone: (profile as any).PHONE_NUMBER || existing.personal.phone,
+          email: profile.EMAIL || existing.personal.email,
+          phone: profile.PHONE_NUMBER || existing.personal.phone,
           portfolio:
-            (profile as any).PORTFOLIO_URL || existing.personal.portfolio,
+            profile.PORTFOLIO_URL || existing.personal.portfolio,
           profileImage:
-            (profile as any).PHOTO_URL || existing.personal.profileImage,
+            profile.PHOTO_URL || existing.personal.profileImage,
           workEmail:
-            (profile as any).sponsor_profile?.WORK_EMAIL ||
+            profile.sponsor_profile?.WORK_EMAIL ||
             existing.personal.workEmail ||
             "",
           address: {
             street:
-              (profile as any).STREET ||
+              profile.STREET ||
               existing.personal.address?.street ||
               "",
             city:
-              (profile as any).LOCATION?.split(",")[0]?.trim() ||
+              profile.LOCATION?.split(",")[0]?.trim() ||
               existing.personal.address?.city ||
               "",
             state:
-              (profile as any).LOCATION?.split(",")[1]?.trim() ||
+              profile.LOCATION?.split(",")[1]?.trim() ||
               existing.personal.address?.state ||
               "",
-            zip: (profile as any).ZIP || existing.personal.address?.zip || "",
+            zip: profile.ZIP || existing.personal.address?.zip || "",
             country:
-              (profile as any).COUNTRY ||
+              profile.COUNTRY ||
               existing.personal.address?.country ||
               "",
           },
@@ -975,29 +1041,29 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           // Use the actual job title fields — ROLE_TYPE is "Applicant"/"Sponsor" enum, not a title
           title:
             userType === "sponsor"
-              ? (profile as any).sponsor_profile?.JOB_TITLE ||
+              ? profile.sponsor_profile?.JOB_TITLE ||
                 existing.professional.title
-              : (profile as any).applicant_profile?.CURRENT_ROLE ||
+              : profile.applicant_profile?.CURRENT_ROLE ||
                 existing.professional.title,
           // Company is returned in sponsor_profile.COMPANY
           company:
-            (profile as any).sponsor_profile?.COMPANY ||
+            profile.sponsor_profile?.COMPANY ||
             existing.professional.company ||
             "",
           currentRole:
-            (profile as any).applicant_profile?.CURRENT_ROLE ||
+            profile.applicant_profile?.CURRENT_ROLE ||
             existing.professional.currentRole,
           yearsExperience:
-            (profile as any).applicant_profile?.YEARS_EXPERIENCE ||
+            profile.applicant_profile?.YEARS_EXPERIENCE ||
             existing.professional.yearsExperience,
           // BIO is saved via PATCH but not yet returned by GET /api/profile/.
           // Falls back to existing local value; will auto-populate once backend
           // starts returning the field (BACKEND_CHANGES_NEEDED.md #5).
-          summary: (profile as any).BIO || existing.professional.summary,
+          summary: profile.BIO || existing.professional.summary,
           desiredSalary: existing.professional.desiredSalary,
           availableStartDate: existing.professional.availableStartDate,
           targetIndustry:
-            (profile as any).applicant_profile?.INDUSTRY ||
+            profile.applicant_profile?.INDUSTRY ||
             existing.professional.targetIndustry,
           seekingPosition: existing.professional.seekingPosition,
           experiences:
@@ -1017,14 +1083,14 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         skills: mergedSkills,
         insights: mergedInsights,
         workPreferences:
-          parseVariant((profile as any).applicant_profile?.WORK_PREFERENCES)
+          parseVariant(profile.applicant_profile?.WORK_PREFERENCES)
             .length > 0
-            ? parseVariant((profile as any).applicant_profile?.WORK_PREFERENCES)
+            ? parseVariant(profile.applicant_profile?.WORK_PREFERENCES)
             : existing.workPreferences || [],
         desiredRoles:
-          parseVariant((profile as any).applicant_profile?.DESIRED_ROLES)
+          parseVariant(profile.applicant_profile?.DESIRED_ROLES)
             .length > 0
-            ? parseVariant((profile as any).applicant_profile?.DESIRED_ROLES)
+            ? parseVariant(profile.applicant_profile?.DESIRED_ROLES)
             : existing.desiredRoles || [],
         // resumeUrl is not returned by GET /api/profile/ — preserve local value
         resumeUrl: existing.resumeUrl,
@@ -1037,19 +1103,19 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         achievements: backendAchievements || existing.achievements,
         sponsorCompanies: (() => {
           const fromBackend = parseVariant(
-            (profile as any).sponsor_profile?.COMPANIES_CAN_REFER_TO,
+            profile.sponsor_profile?.COMPANIES_CAN_REFER_TO,
           );
           if (fromBackend.length > 0) return fromBackend;
           if (existing.sponsorCompanies.length > 0)
             return existing.sponsorCompanies;
           // Seed with their own company if COMPANIES_CAN_REFER_TO is null
-          const ownCompany = (profile as any).sponsor_profile?.COMPANY;
+          const ownCompany = profile.sponsor_profile?.COMPANY;
           return ownCompany ? [ownCompany] : [];
         })(),
         notificationPreferences: (() => {
           // Backend parses JSON in services/profiles.py:34 but may still return
           // a string in older responses — accept both shapes.
-          const raw = (profile as any).NOTIFICATION_PREFERENCES;
+          const raw = profile.NOTIFICATION_PREFERENCES;
           if (!raw) return existing.notificationPreferences || {};
           if (typeof raw === "string") {
             try {
@@ -1117,7 +1183,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // through. Applicants don't have a sponsor_profile, so the value is
       // undefined for them; defaulting to false there is harmless because
       // the HomeView gate only checks this flag for sponsors.
-      const workEmailVerifiedRaw = (profile as any).sponsor_profile
+      const workEmailVerifiedRaw = profile.sponsor_profile
         ?.WORK_EMAIL_VERIFIED;
       const isVerified = workEmailVerifiedRaw === true;
       set({ workEmailVerified: isVerified });
@@ -1127,7 +1193,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // user's last submitted address. If the user updated to "B" but the
       // backend still shows verified "A", we should keep "B" pending.
       const backendWorkEmail =
-        ((profile as any).sponsor_profile?.WORK_EMAIL as string | undefined) ||
+        (profile.sponsor_profile?.WORK_EMAIL as string | undefined) ||
         "";
       const { pendingWorkEmail } = get();
       if (
