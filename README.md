@@ -1,6 +1,6 @@
-# Backchannel
+# BackChannel
 
-Backchannel is a mobile application designed to connect applicants and sponsors. Built with React Native and Expo, it features a role-based experience tailored for both sides of the marketplace.
+BackChannel is a mobile application designed to connect applicants and sponsors. Built with React Native and Expo, it features a role-based experience tailored for both sides of the marketplace.
 
 ## Features
 

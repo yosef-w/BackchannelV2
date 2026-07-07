@@ -154,7 +154,7 @@ function RootLayout() {
         <GestureHandlerRootView style={styles.root}>
           <StatusBar style="dark" />
 
-          {/* Main navigation stack for Backchannel */}
+          {/* Main navigation stack for BackChannel */}
           <Stack initialRouteName="splash">
             <Stack.Screen name="splash" options={{ headerShown: false }} />
             <Stack.Screen name="choose-role" options={{ headerShown: false }} />
