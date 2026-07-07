@@ -31,6 +31,39 @@ export interface ProfilePrompt {
   answer?: string;
 }
 
+/**
+ * The loose "who am I looking at" payload handed to the public-profile
+ * overlay (MainApp → Applicant/SponsorPublicProfileView). Callers pass
+ * whatever they have on hand — a conversation row (otherParticipant), a
+ * deck card (USER_ID), or a minimal { userId } — and the views resolve the
+ * id and seed the header from whichever fields are present, then fetch the
+ * full profile themselves.
+ */
+export interface PublicProfileUserData {
+  USER_ID?: string;
+  userId?: string;
+  name?: string;
+  role?: string;
+  company?: string;
+  appliedRole?: string;
+  skills?: string[] | string;
+  profileImageUrl?: string;
+  otherParticipant?: {
+    id?: string;
+    name?: string;
+    role?: string;
+    company?: string;
+    profileImageUrl?: string;
+  };
+  jobContext?: {
+    jobTitle?: string;
+    company?: string;
+  };
+  // Callers pass richer objects (full conversation rows, deck cards) —
+  // tolerate extra fields without another cast at every call site.
+  [key: string]: unknown;
+}
+
 export interface ProfilePackRow {
   USER_ID: string;
   FIRST_NAME?: string | null;

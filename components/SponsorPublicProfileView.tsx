@@ -1,4 +1,5 @@
-import { getPublicProfile } from "@/lib/api";
+import { getPublicProfile, type PublicProfileResponse } from "@/lib/api";
+import type { PublicProfileUserData } from "@/types/profiles";
 import {
     Award,
     Briefcase,
@@ -25,7 +26,7 @@ import { ExpandableText } from "./ui/ExpandableText";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
-  userData: any;
+  userData: PublicProfileUserData;
   onClose: () => void;
 }
 
@@ -33,7 +34,8 @@ export function SponsorPublicProfileView({
   userData,
   onClose,
 }: SponsorPublicProfileViewProps) {
-  const [fullProfile, setFullProfile] = useState<any>(null);
+  const [fullProfile, setFullProfile] =
+    useState<PublicProfileResponse | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   // The sponsor's user ID lives in otherParticipant.id of the conversation object.
@@ -57,7 +59,8 @@ export function SponsorPublicProfileView({
   // ── Derive display values ─────────────────────────────────────────────────
   // Prefer full API data; fall back to conversation fields so something shows
   // while the network call is in-flight.
-  const sp = fullProfile?.sponsor_profile || {};
+  const sp: Partial<NonNullable<PublicProfileResponse["sponsor_profile"]>> =
+    fullProfile?.sponsor_profile || {};
 
   const firstName =
     fullProfile?.FIRST_NAME ||
@@ -83,8 +86,12 @@ export function SponsorPublicProfileView({
   const duration = sp.DURATION;
   const openToReferrals = sp.OPEN_TO_REFERRALS as boolean | undefined;
   const companiesCanReferTo: string[] = sp.COMPANIES_CAN_REFER_TO || [];
-  const insights: Array<{ question: string; answer: string }> =
-    sp.INSIGHTS || [];
+  // Same runtime as the untyped version (no parse) — the cast asserts the
+  // array form the backend sends on this endpoint.
+  const insights = (sp.INSIGHTS || []) as Array<{
+    question: string;
+    answer: string;
+  }>;
 
   // Context from the conversation (the job they connected on)
   const matchedJobTitle =

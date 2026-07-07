@@ -53,6 +53,7 @@ import {
 } from "../utils/checkInStageCache";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useJobsStore } from "../stores/useJobsStore";
+import type { PublicProfileUserData } from "../types/profiles";
 import {
     ApplicantCheckInModal,
     type CheckInReferral,
@@ -115,7 +116,7 @@ function NavItem({
   isActive,
   onPress,
 }: {
-  item: any;
+  item: (typeof navItems)[number];
   isActive: boolean;
   onPress: () => void;
 }) {
@@ -197,7 +198,8 @@ export function MainApp({ userType }: MainAppProps) {
       headerTranslateY.value = withTiming(0, { duration: 200 });
     }
   }, [activeView, navTranslateY, headerTranslateY]);
-  const [publicProfileData, setPublicProfileData] = useState<any>(null);
+  const [publicProfileData, setPublicProfileData] =
+    useState<PublicProfileUserData | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
   >(null);
@@ -234,16 +236,21 @@ export function MainApp({ userType }: MainAppProps) {
   const referralsRequestIdRef = useRef(0);
 
   // Accept both legacy and newer backend key variants so check-in modals stay
-  // resilient across backend response-shape drift.
-  const pickField = (row: any, keys: string[]): any => {
+  // resilient across backend response-shape drift. Rows are treated as open
+  // records on purpose — the key list IS the contract here.
+  const pickField = (
+    row: Record<string, unknown>,
+    keys: string[],
+  ): string | null => {
     for (const k of keys) {
       const v = row?.[k];
-      if (v !== undefined && v !== null && v !== "") return v;
+      // All referral columns are text; the cast asserts that contract.
+      if (v !== undefined && v !== null && v !== "") return v as string;
     }
     return null;
   };
 
-  const normalizeReferralRow = (r: any) => ({
+  const normalizeReferralRow = (r: Record<string, unknown>) => ({
     referralId: String(
       pickField(r, ["REFERRAL_ID", "referral_id", "referralId", "id"]) || "",
     ),
@@ -311,14 +318,12 @@ export function MainApp({ userType }: MainAppProps) {
         });
       }
       const response = await listReferrals({ limit: 50, offset: 0 });
-      const rows = Array.isArray((response as any)?.referrals)
-        ? (response as any).referrals
+      const rows = Array.isArray(response?.referrals)
+        ? response.referrals
         : [];
-      const normalizedRows = rows.map((r: any) => normalizeReferralRow(r));
-      const transformed = normalizedRows.filter((r: any) => !!r.referralId);
-      const droppedNoId = normalizedRows.filter(
-        (r: any) => !r.referralId,
-      ).length;
+      const normalizedRows = rows.map((r) => normalizeReferralRow(r));
+      const transformed = normalizedRows.filter((r) => !!r.referralId);
+      const droppedNoId = normalizedRows.filter((r) => !r.referralId).length;
 
       if (__DEV__) {
         console.log("[MainApp] fetchReferralsForCheckIn:result", {
@@ -326,8 +331,8 @@ export function MainApp({ userType }: MainAppProps) {
           rawCount: rows.length,
           transformedCount: transformed.length,
           droppedNoId,
-          statuses: transformed.map((r: any) => r.status),
-          sample: transformed.slice(0, 3).map((r: any) => ({
+          statuses: transformed.map((r) => r.status),
+          sample: transformed.slice(0, 3).map((r) => ({
             referralId: r.referralId,
             jobTitle: r.jobTitle,
             jobCompany: r.jobCompany,
@@ -736,7 +741,7 @@ export function MainApp({ userType }: MainAppProps) {
     }
   }, [params.tab]);
 
-  const handleShowPublicProfile = (userData: any) => {
+  const handleShowPublicProfile = (userData: PublicProfileUserData) => {
     setPublicProfileData(userData);
     setActiveView("publicProfile");
   };

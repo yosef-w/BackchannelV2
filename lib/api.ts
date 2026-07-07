@@ -1195,7 +1195,40 @@ export async function updateSponsorProfile(updates: {
  *
  * @param userId - The user ID to fetch profile for
  */
-export async function getPublicProfile(userId: string): Promise<{
+/**
+ * GET /api/profiles/<id>/public/ response. Named (rather than inline on
+ * getPublicProfile) so every consumer of a public profile — the deck cards,
+ * the public-profile overlays, ProfileDetailSheet — shares one contract
+ * instead of re-declaring fragments of it with `any`.
+ *
+ * Array-ish sub-fields (experiences, education, insights, …) can arrive
+ * either as real arrays or as JSON-encoded strings depending on the
+ * backend path — consumers run them through a tolerant parser, so they're
+ * typed as `string | T[]`.
+ */
+export interface PublicProfileExperience {
+  jobTitle: string;
+  company: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+  description: string;
+}
+
+export interface PublicProfileEducation {
+  degree: string;
+  major?: string;
+  university: string;
+  graduationYear?: string;
+  gpa?: string;
+}
+
+export interface PublicProfileInsight {
+  question: string;
+  answer: string;
+}
+
+export interface PublicProfileResponse {
   USER_ID: string;
   FIRST_NAME: string;
   LAST_NAME: string;
@@ -1207,57 +1240,52 @@ export async function getPublicProfile(userId: string): Promise<{
   STATE: string | null;
   COUNTRY: string | null;
   PORTFOLIO_URL: string | null;
+  /** Present on sponsor rows once work-email verification shipped. */
+  WORK_EMAIL_VERIFIED?: boolean;
   applicant_profile?: {
     INDUSTRY: string;
     CURRENT_ROLE: string;
     YEARS_EXPERIENCE: string;
-    SKILLS: string[];
-    POSITIONS: string[];
-    PROFESSIONAL_EXPERIENCES: Array<{
-      jobTitle: string;
-      company: string;
-      startDate: string;
-      endDate?: string;
-      current: boolean;
-      description: string;
-    }>;
-    EDUCATION_ENTRIES: Array<{
-      degree: string;
-      major?: string;
-      university: string;
-      graduationYear?: string;
-      gpa?: string;
-    }>;
-    CERTIFICATIONS: Array<{
-      name: string;
-      organization: string;
-      year: string;
-    }>;
-    LANGUAGES: Array<{
-      language: string;
-      proficiency: string;
-    }>;
-    INSIGHTS: Array<{
-      question: string;
-      answer: string;
-    }>;
+    SKILLS: string | string[];
+    POSITIONS: string | string[];
+    PROFESSIONAL_EXPERIENCES: string | PublicProfileExperience[];
+    EDUCATION_ENTRIES: string | PublicProfileEducation[];
+    CERTIFICATIONS:
+      | string
+      | Array<{
+          name: string;
+          organization: string;
+          year: string;
+        }>;
+    LANGUAGES:
+      | string
+      | Array<{
+          language: string;
+          proficiency: string;
+        }>;
+    INSIGHTS: string | PublicProfileInsight[];
+    /** Freeform achievements text — not in every row. */
+    ACHIEVEMENTS?: string | null;
   };
   sponsor_profile?: {
     COMPANY: string;
     JOB_TITLE: string;
     WORK_EMAIL: string;
+    WORK_EMAIL_VERIFIED?: boolean;
     DURATION: string;
     FINANCIAL_REWARD: boolean;
     REFERRAL_ELIGIBLE: boolean;
     REFERRAL_EXPERIENCE: boolean;
     OPEN_TO_REFERRALS: boolean;
     COMPANIES_CAN_REFER_TO: string[];
-    INSIGHTS: Array<{
-      question: string;
-      answer: string;
-    }>;
+    SKILLS?: string | string[];
+    INSIGHTS: string | PublicProfileInsight[];
   };
-}> {
+}
+
+export async function getPublicProfile(
+  userId: string,
+): Promise<PublicProfileResponse> {
   return api.get(`/api/profiles/${userId}/public/`);
 }
 
