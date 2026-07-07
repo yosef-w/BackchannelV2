@@ -19,8 +19,7 @@
       "channel": "production",
       "env": {
         "SENTRY_ORG": "backchannel-f6",
-        "SENTRY_PROJECT": "react-native",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_PROJECT": "react-native"
       },
       "environment": "production"
     }
