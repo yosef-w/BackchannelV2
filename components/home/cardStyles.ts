@@ -529,4 +529,19 @@ export const cardStyles = StyleSheet.create({
     color: "#000",
     fontWeight: "500" as const,
   },
+
+  // "View original posting" row — shows the sponsor's pasted domain
+  // (subdomain and all) as a legibility/trust signal, tappable to open the
+  // real posting. See BACKEND_CHANGES_NEEDED.md §O.
+  originalPostingRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    marginTop: 4,
+  },
+  originalPostingText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500" as const,
+  },
 });

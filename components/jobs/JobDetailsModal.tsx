@@ -3,6 +3,7 @@ import {
     Check,
     CheckCircle,
     DollarSign,
+    ExternalLink,
     Info,
     MapPin,
     Trash2,
@@ -18,14 +19,17 @@ import {
     ActivityIndicator,
     Dimensions,
     Image,
+    Linking,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { cardStyles } from "../home/cardStyles";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { extractDisplayDomain } from "./jobTransforms";
 import { jobsModalStyles } from "./jobsModalStyles";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -230,6 +234,22 @@ export function JobDetailsModal({
                   </View>
                 ))}
               </View>
+            )}
+
+            {/* Original posting — trust signal + verification link, shown
+                to the sponsor for their own listing regardless of how it
+                was created. See BACKEND_CHANGES_NEEDED.md §O/§P. */}
+            {job.url && extractDisplayDomain(job.url) && (
+              <TouchableOpacity
+                style={cardStyles.originalPostingRow}
+                onPress={() => Linking.openURL(job.url).catch(() => {})}
+                activeOpacity={0.7}
+              >
+                <ExternalLink size={13} color="#999" strokeWidth={2} />
+                <Text style={cardStyles.originalPostingText}>
+                  View original posting: {extractDisplayDomain(job.url)}
+                </Text>
+              </TouchableOpacity>
             )}
 
             {/* About the Role — full description last (longest free-form text) */}

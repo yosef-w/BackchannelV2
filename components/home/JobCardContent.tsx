@@ -4,16 +4,18 @@ import {
   Calendar,
   Check,
   DollarSign,
+  ExternalLink,
   MapPin,
   Zap,
 } from "@/components/ui/icons";
 import { Image } from "expo-image";
 import React from "react";
-import { Text, View } from "react-native";
+import { Linking, Text, TouchableOpacity, View } from "react-native";
 import type { Job } from "@/types/jobs";
 import type { EnrichedSponsorProfile } from "@/types/profiles";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { ExpandableText } from "../ui/ExpandableText";
+import { extractDisplayDomain } from "../jobs/jobTransforms";
 import { cardStyles } from "./cardStyles";
 
 /**
@@ -330,7 +332,28 @@ export function JobCardContent({
             </View>
           </View>
         )}
-    
+
+      {/* ORIGINAL POSTING — the sponsor's pasted/ATS source link, shown
+          whenever the job has one (regardless of how it was created).
+          Deliberately shows the real domain rather than generic "Source"
+          text: a mismatched domain is a legibility signal on its own, and
+          it lets an applicant verify the listing against the real
+          posting. See BACKEND_CHANGES_NEEDED.md §O. */}
+      {"url" in currentData &&
+        currentData.url &&
+        extractDisplayDomain(currentData.url) && (
+          <TouchableOpacity
+            style={cardStyles.originalPostingRow}
+            onPress={() => Linking.openURL(currentData.url).catch(() => {})}
+            activeOpacity={0.7}
+          >
+            <ExternalLink size={13} color="#999" strokeWidth={2} />
+            <Text style={cardStyles.originalPostingText}>
+              View original posting: {extractDisplayDomain(currentData.url)}
+            </Text>
+          </TouchableOpacity>
+        )}
+
       {/* NO SPONSOR YET — status block + company description */}
       {"isSponsored" in currentData &&
       currentData.isSponsored === false ? (

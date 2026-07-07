@@ -104,6 +104,25 @@ export function formatExperienceLevel(raw: string | null | undefined): string {
   return s;
 }
 
+/**
+ * Bare display domain from a job posting URL, for the "View original
+ * posting" link — e.g. "https://careers.snowflake.com/us/en/job/..." ->
+ * "careers.snowflake.com". Display-only: this intentionally does NOT strip
+ * to a registrable root domain or special-case ATS hosts the way the
+ * backend's logo resolution does (BACKEND_CHANGES_NEEDED.md §O) — showing
+ * the sponsor's actual pasted host, subdomain and all, is exactly the
+ * point (it's what makes a mismatch with the real posting visible).
+ */
+export function extractDisplayDomain(url: string | null | undefined): string {
+  if (!url) return "";
+  try {
+    const withScheme = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    return new URL(withScheme).hostname.replace(/^www\./i, "");
+  } catch {
+    return "";
+  }
+}
+
 // Transform a browse (SILVER_JOBS) API response into the UI Job shape. Shared
 // by the mount load and the "did you mean" company-correction refetch so both
 // produce identical cards. `sponsoredJobs` marks which ATS jobs the sponsor

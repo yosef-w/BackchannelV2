@@ -36,6 +36,7 @@ export { default as Clock } from "lucide-react-native/dist/esm/icons/clock.js";
 export { default as Coffee } from "lucide-react-native/dist/esm/icons/coffee.js";
 export { default as DollarSign } from "lucide-react-native/dist/esm/icons/dollar-sign.js";
 export { default as Edit } from "lucide-react-native/dist/esm/icons/square-pen.js";
+export { default as ExternalLink } from "lucide-react-native/dist/esm/icons/external-link.js";
 export { default as Eye } from "lucide-react-native/dist/esm/icons/eye.js";
 export { default as EyeOff } from "lucide-react-native/dist/esm/icons/eye-off.js";
 export { default as FileText } from "lucide-react-native/dist/esm/icons/file-text.js";

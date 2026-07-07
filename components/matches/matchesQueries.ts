@@ -147,6 +147,13 @@ export interface JobOpportunity {
    * here so cards light up automatically once the backend joins it.
    */
   companyLogoUrl?: string;
+  /**
+   * Original job-posting URL, for the "View original posting" trust link
+   * (BACKEND_CHANGES_NEEDED.md §P). /api/likes/jobs/ doesn't currently
+   * SELECT job_postings.URL — present here so the link lights up
+   * automatically once the backend adds it.
+   */
+  url?: string;
   description: string;
   skills: string[];
   benefits: string[];
@@ -465,6 +472,7 @@ export const likedJobsQuery = (userType: string) => ({
       // and the CompanyLogo component falls back to the initial.
       companyLogoUrl:
         likedJob.LOGO_URL || likedJob.ORGANIZATION_LOGO || undefined,
+      url: likedJob.URL || likedJob.url || undefined,
       description: likedJob.DESCRIPTION || "",
       // ATS-enriched fields from PR #41 — COALESCE'd from the sponsored
       // posting first, ats.silver_jobs second. Manually-created jobs

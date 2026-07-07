@@ -2,11 +2,52 @@ import type { BrowseJobResponse } from "@/types/jobs";
 import type { MyJobRow } from "@/lib/api";
 import {
     cleanJobText,
+    extractDisplayDomain,
     formatExperienceLevel,
     parseSkillsField,
     transformBrowseResponse,
     transformMyJobRow,
 } from "../jobTransforms";
+
+describe("extractDisplayDomain", () => {
+  it("extracts the host, subdomain and all, from a full URL", () => {
+    expect(
+      extractDisplayDomain(
+        "https://careers.snowflake.com/us/en/job/SNC123/Software-Engineer",
+      ),
+    ).toBe("careers.snowflake.com");
+  });
+
+  it("strips a leading www.", () => {
+    expect(extractDisplayDomain("https://www.example.com/jobs/1")).toBe(
+      "example.com",
+    );
+  });
+
+  it("tolerates a URL with no scheme", () => {
+    expect(extractDisplayDomain("jobs.acme.com/role/123")).toBe(
+      "jobs.acme.com",
+    );
+  });
+
+  it("ignores query params and fragments", () => {
+    expect(
+      extractDisplayDomain(
+        "https://careers.snowflake.com/job?utm_campaign=google_jobs_apply",
+      ),
+    ).toBe("careers.snowflake.com");
+  });
+
+  it("returns empty string for null/undefined/empty input", () => {
+    expect(extractDisplayDomain(null)).toBe("");
+    expect(extractDisplayDomain(undefined)).toBe("");
+    expect(extractDisplayDomain("")).toBe("");
+  });
+
+  it("returns empty string for unparseable input", () => {
+    expect(extractDisplayDomain("not a url at all")).toBe("");
+  });
+});
 
 describe("parseSkillsField", () => {
   it("parses JSON array strings", () => {

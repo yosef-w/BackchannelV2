@@ -4,6 +4,7 @@ import {
     CheckCircle,
     Clock,
     DollarSign,
+    ExternalLink,
     Info,
     MapPin,
     MessageCircle,
@@ -15,6 +16,7 @@ import React from "react";
 import {
     Image,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     ScrollView,
     StyleSheet,
@@ -22,8 +24,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { cardStyles } from "../home/cardStyles";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { extractDisplayDomain } from "../jobs/jobTransforms";
 import { JobOpportunity } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
@@ -230,6 +234,22 @@ export function JobDetailModal({
                   </View>
                 ))}
               </View>
+            )}
+
+            {/* Original posting — trust signal + verification link,
+                regardless of how the job was created. See
+                BACKEND_CHANGES_NEEDED.md §O/§P. */}
+            {job.url && extractDisplayDomain(job.url) && (
+              <TouchableOpacity
+                style={cardStyles.originalPostingRow}
+                onPress={() => Linking.openURL(job.url!).catch(() => {})}
+                activeOpacity={0.7}
+              >
+                <ExternalLink size={13} color="#999" strokeWidth={2} />
+                <Text style={cardStyles.originalPostingText}>
+                  View original posting: {extractDisplayDomain(job.url)}
+                </Text>
+              </TouchableOpacity>
             )}
 
             {/* About the Role — full description, last because it's the
