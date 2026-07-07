@@ -15,27 +15,18 @@ import {
 import { useToastStore } from "@/stores/useToastStore";
 import { saveSponsorRequestOutcome } from "@/utils/sponsorRequestCache";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BlurView } from "expo-blur";
 import {
-    AlertTriangle,
-    Briefcase,
-    ChevronLeft,
     ChevronRight,
     Clock,
-    DollarSign,
     Heart,
-    Info,
-    MapPin,
     MessageCircle,
     Sparkles,
-    TrendingUp,
     Zap,
 } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
-    KeyboardAvoidingView,
     Modal,
     NativeScrollEvent,
     NativeSyntheticEvent,
@@ -65,7 +56,6 @@ import {
     likedJobsQuery,
     matchesQuery,
     matchesScreenKeys,
-    parseSkillsField,
     referralsQuery,
     sponsorRequestsQuery,
     waitlistedJobsQuery,
@@ -78,11 +68,11 @@ import { JobDetailModal } from "./matches/JobDetailModal";
 import { ReferralDetailModal } from "./matches/ReferralDetailModal";
 import { RolePickerModal } from "./matches/RolePickerModal";
 import { SponsorRequestModal } from "./matches/SponsorRequestModal";
+import { SrJobDetailModal } from "./matches/SrJobDetailModal";
 import { WaitlistedJobModal } from "./matches/WaitlistedJobModal";
 import { WithdrawReferralModal } from "./matches/WithdrawReferralModal";
 import { Avatar } from "./ui/Avatar";
 import { CompanyLogo } from "./ui/CompanyLogo";
-import { DismissibleSheet } from "./ui/DismissibleSheet";
 import { PipelineStageTimeline } from "./ui/PipelineStageTimeline";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
 import { StatusChip } from "./ui/StatusChip";
@@ -1574,209 +1564,13 @@ export function MatchesView({
 
       {/* Sponsor-Request Job Detail Modal — full role data before committing to sponsor */}
       <Modal visible={srJobDetailVisible} transparent animationType="none">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setSrJobDetailVisible(false)}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={() => setSrJobDetailVisible(false)}
-            style={styles.modalContent}
-          >
-            {/* Header row — back to request */}
-            <TouchableOpacity
-              style={styles.srJobDetailBackRow}
-              onPress={() => setSrJobDetailVisible(false)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <ChevronLeft size={18} color="#000" />
-              <Text style={styles.srJobDetailBackText}>Back to Request</Text>
-            </TouchableOpacity>
-
-            {srJobDetailLoading ? (
-              <View style={styles.interestedLoadingContainer}>
-                <View
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 32,
-                    backgroundColor: "#F4F4F5",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Briefcase color="#BBB" size={28} strokeWidth={1.8} />
-                </View>
-                <Text style={styles.interestedLoadingText}>
-                  Loading role details…
-                </Text>
-              </View>
-            ) : srJobDetailError ? (
-              <View style={styles.interestedLoadingContainer}>
-                <AlertTriangle size={32} color="#DC2626" />
-                <Text style={styles.srJobDetailErrorTitle}>
-                  Could not load role details
-                </Text>
-                <Text style={styles.srJobDetailErrorSub}>
-                  {srJobDetailError}
-                </Text>
-              </View>
-            ) : srJobDetail ? (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                contentContainerStyle={{ paddingBottom: 8 }}
-              >
-                {/* Hero — company logo, title, company, location */}
-                <View style={styles.jobModalHero}>
-                  <CompanyLogo
-                    logoUrl={
-                      srJobDetail.organization_logo ||
-                      srJobDetail.ORGANIZATION_LOGO
-                    }
-                    name={srJobDetail.ORGANIZATION}
-                    size={72}
-                    borderRadius={22}
-                    initialFontSize={32}
-                    style={{ marginBottom: 16 }}
-                  />
-                  <Text style={styles.jobModalHeroTitle}>
-                    {srJobDetail.TITLE}
-                  </Text>
-                  <Text style={styles.jobModalHeroCompany}>
-                    {srJobDetail.ORGANIZATION}
-                  </Text>
-                  {!!srJobDetail.FULL_LOCATION && (
-                    <View style={styles.jobModalLocationRow}>
-                      <MapPin size={13} color="#999" />
-                      <Text style={styles.jobModalLocationText}>
-                        {srJobDetail.FULL_LOCATION}
-                      </Text>
-                      {srJobDetail.IS_REMOTE && (
-                        <View style={styles.jobRemoteBadge}>
-                          <Text style={styles.jobRemoteText}>Remote</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-
-                {/* Compensation + experience strip */}
-                {(srJobDetail.SALARY_ANNUAL_MIN ||
-                  srJobDetail.EXPERIENCE_LEVEL) && (
-                  <View style={styles.jobModalCompStrip}>
-                    {!!(
-                      srJobDetail.SALARY_ANNUAL_MIN &&
-                      srJobDetail.SALARY_ANNUAL_MAX
-                    ) && (
-                      <View style={styles.jobModalCompCell}>
-                        <DollarSign size={14} color="#555" />
-                        <View>
-                          <Text style={styles.jobModalCompLabel}>SALARY</Text>
-                          <Text style={styles.jobModalCompValue}>
-                            {`$${Math.round(srJobDetail.SALARY_ANNUAL_MIN / 1000)}k – $${Math.round(srJobDetail.SALARY_ANNUAL_MAX / 1000)}k`}
-                            {srJobDetail.SALARY_CURRENCY &&
-                            srJobDetail.SALARY_CURRENCY !== "USD"
-                              ? ` ${srJobDetail.SALARY_CURRENCY}`
-                              : ""}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                    {!!srJobDetail.EXPERIENCE_LEVEL && (
-                      <View
-                        style={[
-                          styles.jobModalCompCell,
-                          srJobDetail.SALARY_ANNUAL_MIN &&
-                            styles.jobModalCompCellBorder,
-                        ]}
-                      >
-                        <Briefcase size={14} color="#555" />
-                        <View>
-                          <Text style={styles.jobModalCompLabel}>
-                            EXPERIENCE
-                          </Text>
-                          <Text style={styles.jobModalCompValue}>
-                            {srJobDetail.EXPERIENCE_LEVEL}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* Role details — employment type + remote chip */}
-                {!!(srJobDetail.EMPLOYMENT_TYPES || srJobDetail.IS_REMOTE) && (
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailSectionHeader}>
-                      <Info size={16} color="#000" />
-                      <Text style={styles.detailSectionTitle}>
-                        Role Details
-                      </Text>
-                    </View>
-                    <View style={styles.skillsRow}>
-                      {!!srJobDetail.EMPLOYMENT_TYPES && (
-                        <View style={styles.roleDetailChip}>
-                          <Text style={styles.roleDetailChipText}>
-                            {srJobDetail.EMPLOYMENT_TYPES}
-                          </Text>
-                        </View>
-                      )}
-                      {srJobDetail.IS_REMOTE && (
-                        <View style={styles.roleDetailChip}>
-                          <MapPin size={13} color="#000" />
-                          <Text style={styles.roleDetailChipText}>Remote</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                )}
-
-                {/* Required skills */}
-                {parseSkillsField(srJobDetail.SKILLS).length > 0 && (
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailSectionHeader}>
-                      <TrendingUp size={16} color="#000" />
-                      <Text style={styles.detailSectionTitle}>
-                        Required Skills
-                      </Text>
-                    </View>
-                    <View style={styles.skillsRow}>
-                      {parseSkillsField(srJobDetail.SKILLS).map(
-                        (skill: string, idx: number) => (
-                          <View key={idx} style={styles.skillBadge}>
-                            <Text style={styles.skillBadgeText}>{skill}</Text>
-                          </View>
-                        ),
-                      )}
-                    </View>
-                  </View>
-                )}
-
-                {/* Description */}
-                {!!srJobDetail.DESCRIPTION_TEXT && (
-                  <View style={styles.jobSection}>
-                    <Text style={styles.jobSectionTitle}>About the Role</Text>
-                    <Text style={styles.jobSectionText}>
-                      {srJobDetail.DESCRIPTION_TEXT}
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
-            ) : null}
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
+        <SrJobDetailModal
+          visible={srJobDetailVisible}
+          loading={srJobDetailLoading}
+          error={srJobDetailError}
+          detail={srJobDetail}
+          onBack={() => setSrJobDetailVisible(false)}
+        />
       </Modal>
 
       {/* Withdraw Referral Confirmation Modal — extracted to
