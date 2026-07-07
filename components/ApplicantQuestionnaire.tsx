@@ -51,6 +51,7 @@ import { PromptsIntake } from "./ui/PromptsIntake";
 import {
   identifyUser,
   trackOnboardingCompleted,
+  trackOnboardingStepViewed,
   trackResumeUploaded,
   trackSignUpFailed,
   trackSignUpSucceeded,
@@ -688,6 +689,20 @@ export function ApplicantQuestionnaire({
   // Guard the index against the list shrinking under us (e.g. resumeFilled flips).
   const safeIndex = Math.min(currentQuestion, activeQuestions.length - 1);
   const question = activeQuestions[safeIndex];
+
+  // Onboarding funnel — one event per step the user actually SEES, named by
+  // the question key ("resume", "skills", "photo", …) so Mixpanel's funnel
+  // view shows exactly where signups stall. Step completion is implied by
+  // the next step's view (plus trackOnboardingCompleted at the end), so
+  // there's no separate completed event to keep in sync.
+  useEffect(() => {
+    trackOnboardingStepViewed({
+      role: "applicant",
+      stepIndex: safeIndex,
+      stepName: question?.key,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeIndex]);
   const progress = ((safeIndex + 1) / activeQuestions.length) * 100;
   const isLastQuestion = safeIndex === activeQuestions.length - 1;
   const isResumeScreen = question.type === "file";

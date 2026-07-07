@@ -1,6 +1,7 @@
 import {
   trackPublicProfileOpenedFromMessage,
   trackUnmatchConfirmed,
+  trackUserReported,
 } from "@/lib/analytics/mixpanel";
 import {
   reportUser,
@@ -227,6 +228,7 @@ export function ThreadScreen({
           detail: detail.trim() || undefined,
           conversationId: selectedConversation,
         });
+        trackUserReported({ reason, fromConversation: true });
       }
       await unmatchConversation(selectedConversation);
       setConversations((prev) =>

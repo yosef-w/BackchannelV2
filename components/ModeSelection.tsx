@@ -4,7 +4,7 @@ import {
     ChevronRight,
     Handshake,
 } from "@/components/ui/icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     SafeAreaView,
     StatusBar,
@@ -14,7 +14,10 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { trackSignUpRoleSelected } from "../lib/analytics/mixpanel";
+import {
+  trackScreenViewed,
+  trackSignUpRoleSelected,
+} from "../lib/analytics/mixpanel";
 import { useOnboardingStore } from "../stores/useOnboardingStore";
 
 interface ModeSelectionProps {
@@ -23,6 +26,10 @@ interface ModeSelectionProps {
 }
 
 export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
+  useEffect(() => {
+    trackScreenViewed("mode_selection");
+  }, []);
+
   const [selected, setSelected] = useState<"applicant" | "sponsor" | null>(
     null,
   );

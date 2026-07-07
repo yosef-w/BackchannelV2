@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
 import { create } from "zustand";
+import { Sentry } from "../lib/sentry";
 
 // NOTE: Profile cache is stored in AsyncStorage (not SecureStore) because
 // SecureStore has a 2 KB per-value limit, which a full resume-classified
@@ -787,6 +788,19 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         const syncFailureCount = get().syncFailureCount + 1;
         set({ syncError: error.message || "Sync failed", syncFailureCount });
         persistSyncFailureCount(syncFailureCount);
+        // Data-loss adjacent (the blank-name incident came from this exact
+        // path) — report which field GROUPS failed, never their values.
+        try {
+          Sentry.captureException(error, {
+            tags: { flow: "profile_sync" },
+            extra: {
+              dirty_fields: [...fieldsToSync],
+              consecutive_failures: syncFailureCount,
+            },
+          });
+        } catch {
+          // Observability never blocks the sync path.
+        }
       }
       // dirtyFields is left untouched on failure — nothing was confirmed
       // synced, so the next debounced/flushed attempt retries all of it.

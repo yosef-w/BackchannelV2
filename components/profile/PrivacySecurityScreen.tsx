@@ -15,9 +15,12 @@ import {
   View,
 } from "react-native";
 import {
+  trackChangeEmailRequested,
+  trackPasswordChanged,
   trackPrivacyPolicyTapped,
   trackTermsTapped,
 } from "../../lib/analytics/mixpanel";
+import { Sentry } from "../../lib/sentry";
 import { changeEmail, changePassword } from "../../lib/api";
 import { authApi } from "../../lib/auth-api";
 import { isValidEmail } from "../../lib/validation";
@@ -105,8 +108,14 @@ export function PrivacySecurityScreen({
       await onAccountDeleted();
     } catch (err: any) {
       const msg: string = err?.message || "";
+      const wrongPassword = msg.toLowerCase().includes("password");
+      // A failed DELETION (not a mistyped password) is a legal/App-Store
+      // promise breaking — worth a Sentry issue, not just a toast.
+      if (!wrongPassword) {
+        Sentry.captureException(err, { tags: { flow: "account_delete" } });
+      }
       setDeleteError(
-        msg.toLowerCase().includes("password")
+        wrongPassword
           ? "That password is incorrect. Please try again."
           : msg || "Couldn't delete your account. Please try again.",
       );
@@ -133,6 +142,7 @@ export function PrivacySecurityScreen({
     setUpdating(true);
     try {
       await changePassword(currentPassword, newPassword);
+      trackPasswordChanged();
       resetPasswordFields();
       setStep("main");
       showToast("Password changed successfully.", "success");
@@ -160,6 +170,7 @@ export function PrivacySecurityScreen({
     setChangingEmail(true);
     try {
       await changeEmail(newEmail.trim(), emailPassword);
+      trackChangeEmailRequested();
       setEmailRequestSent(true);
     } catch (err: any) {
       const msg: string = err?.message || "";

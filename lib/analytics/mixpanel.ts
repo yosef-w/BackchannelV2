@@ -18,6 +18,7 @@
  */
 
 import { Mixpanel } from "mixpanel-react-native";
+import { clearSentryUser, setSentryUser } from "../sentry";
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,14 @@ interface IdentifyArgs {
  */
 export async function identifyUser(args: IdentifyArgs): Promise<void> {
   currentUserType = args.userType;
+  // Mirror identity into Sentry (id-only) so a crash report can always be
+  // matched to the account that hit it. Kept here — rather than at each
+  // login/signup call site — so the two systems can't drift apart.
+  try {
+    setSentryUser(args.userId);
+  } catch {
+    // Sentry identity is best-effort, never blocks analytics.
+  }
   if (!initialized) await initAnalytics();
   if (!initialized || !mixpanel) return;
   try {
@@ -140,6 +149,13 @@ export async function identifyUser(args: IdentifyArgs): Promise<void> {
  */
 export async function resetUser(): Promise<void> {
   currentUserType = "unknown";
+  // Paired with the setSentryUser() in identifyUser — crashes after logout /
+  // account deletion must not be attributed to the previous account.
+  try {
+    clearSentryUser();
+  } catch {
+    // Best-effort, never blocks the logout path.
+  }
   if (!initialized || !mixpanel) return;
   try {
     await mixpanel.reset();
@@ -283,18 +299,6 @@ export function trackOnboardingStepViewed(args: {
   });
 }
 
-export function trackOnboardingStepCompleted(args: {
-  role: AnalyticsUserType;
-  stepIndex: number;
-  stepName?: string;
-}): void {
-  safeTrack("Onboarding Step Completed", {
-    onboarding_role: args.role,
-    step_index: args.stepIndex,
-    step_name: args.stepName,
-  });
-}
-
 export function trackOnboardingCompleted(role: AnalyticsUserType): void {
   safeTrack("Onboarding Completed", { onboarding_role: role });
 }
@@ -333,6 +337,24 @@ export function trackResendVerificationRequested(args: {
   safeTrack("Resend Verification Requested", { request_source: args.source });
 }
 
+// Work-email verification (sponsors) — the swipe gate that most commonly
+// stalls sponsor activation, so each affordance in the modal gets its own
+// event to see WHERE stuck sponsors go: resend, fix the address, or confirm.
+
+export function trackWorkEmailResendRequested(): void {
+  safeTrack("Work Email Resend Requested");
+}
+
+/** Sponsor corrected their work email in the modal ("Save & resend"). */
+export function trackWorkEmailUpdated(): void {
+  safeTrack("Work Email Updated");
+}
+
+/** "I've Verified My Email" pressed — outcome says if the backend agreed. */
+export function trackWorkEmailVerifyChecked(args: { verified: boolean }): void {
+  safeTrack("Work Email Verify Checked", { verified: args.verified });
+}
+
 export function trackResetPasswordOpened(args: { hasToken: boolean }): void {
   safeTrack("Reset Password Opened", { has_token: args.hasToken });
 }
@@ -354,18 +376,6 @@ export function trackJobCardViewed(args: {
   safeTrack("Job Card Viewed", {
     job_id: args.jobId,
     is_sponsored: args.isSponsored,
-  });
-}
-
-export function trackJobCardFlipped(args: {
-  jobId: string;
-  isSponsored: boolean;
-  flippedToBack: boolean;
-}): void {
-  safeTrack("Job Card Flipped", {
-    job_id: args.jobId,
-    is_sponsored: args.isSponsored,
-    flipped_to: args.flippedToBack ? "back" : "front",
   });
 }
 
@@ -408,16 +418,6 @@ export function trackProfileCardViewed(args: {
   safeTrack("Profile Card Viewed", {
     applicant_user_id: args.applicantUserId,
     job_id: args.jobId,
-  });
-}
-
-export function trackProfileCardFlipped(args: {
-  applicantUserId: string;
-  flippedToBack: boolean;
-}): void {
-  safeTrack("Profile Card Flipped", {
-    applicant_user_id: args.applicantUserId,
-    flipped_to: args.flippedToBack ? "back" : "front",
   });
 }
 
@@ -475,14 +475,6 @@ export function trackApplicantLikedBack(args: {
   });
 }
 
-export function trackLikedJobRemoved(args: { jobId: string }): void {
-  safeTrack("Liked Job Removed", { job_id: args.jobId });
-}
-
-export function trackWaitlistRemoved(args: { jobId: string }): void {
-  safeTrack("Waitlist Removed", { job_id: args.jobId });
-}
-
 export function trackReferralWithdrawn(args: { referralId: string }): void {
   safeTrack("Referral Withdrawn", { referral_id: args.referralId });
 }
@@ -519,6 +511,21 @@ export function trackPublicProfileOpenedFromMessage(args: {
 
 export function trackUnmatchConfirmed(args: { conversationId: string }): void {
   safeTrack("Unmatch Confirmed", { conversation_id: args.conversationId });
+}
+
+/**
+ * A report was filed against another user (which also blocks them). Safety
+ * signal worth watching per-reason — a spike in "harassment" is a different
+ * problem than a spike in "fake_profile".
+ */
+export function trackUserReported(args: {
+  reason: string;
+  fromConversation: boolean;
+}): void {
+  safeTrack("User Reported", {
+    report_reason: args.reason,
+    from_conversation: args.fromConversation,
+  });
 }
 
 export function trackReferralSubmitted(args: {
@@ -656,6 +663,16 @@ export function trackResumeReuploaded(): void {
 
 export function trackAccountDeleted(): void {
   safeTrack("Account Deleted");
+}
+
+/** Change-email confirmation link sent (the change isn't live until the
+ * link is opened, so this is "requested", not "changed"). */
+export function trackChangeEmailRequested(): void {
+  safeTrack("Change Email Requested");
+}
+
+export function trackPasswordChanged(): void {
+  safeTrack("Password Changed");
 }
 
 export function trackPrivacyPolicyTapped(): void {

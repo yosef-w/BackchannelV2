@@ -8,7 +8,8 @@ import {
     TrendingUp,
     UserCheck
 } from "@/components/ui/icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { trackScreenViewed } from "../lib/analytics/mixpanel";
 import {
     Dimensions,
     SafeAreaView,
@@ -71,6 +72,10 @@ const sponsorSlides = [
 ];
 
 export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
+  useEffect(() => {
+    trackScreenViewed("onboarding_intro");
+  }, []);
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const slides = userType === "applicant" ? applicantSlides : sponsorSlides;
 

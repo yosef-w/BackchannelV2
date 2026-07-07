@@ -34,12 +34,51 @@ export function initSentry(): void {
     // Dev crashes show up in Metro with full stacks already; only report
     // from real builds so the dashboard stays signal, not noise.
     enabled: !__DEV__,
+    environment: __DEV__ ? "development" : "production",
     // Resumes, photos and emails flow through this app — never attach
     // request bodies / user IP automatically.
     sendDefaultPii: false,
     // Light performance sampling — enough to spot slow screens during the
     // beta without burning quota.
     tracesSampleRate: 0.2,
+  });
+}
+
+/**
+ * Attach the logged-in account to subsequent crash reports so a Sentry
+ * issue can be matched to the tester who hit it (and to their Mixpanel
+ * profile via the same id). Deliberately id-only — no email/name — in
+ * keeping with sendDefaultPii: false. Called from identifyUser() in
+ * lib/analytics/mixpanel.ts so Sentry and Mixpanel identity can never
+ * drift apart.
+ */
+export function setSentryUser(userId: string): void {
+  Sentry.setUser({ id: userId });
+}
+
+/** Detach identity on logout / account deletion (paired with resetUser()). */
+export function clearSentryUser(): void {
+  Sentry.setUser(null);
+}
+
+/**
+ * Report a server-side API failure (5xx) as a Sentry event. Grouped by
+ * method+endpoint via an explicit fingerprint so "POST /api/messages/send
+ * is 500ing" shows as ONE issue with a counter, not hundreds of scattered
+ * events. Endpoint must already be scrubbed of query strings (tokens!).
+ */
+export function captureApiServerError(
+  method: string,
+  endpoint: string,
+  status: number,
+  serverMessage?: string,
+): void {
+  Sentry.withScope((scope) => {
+    scope.setTag("api.endpoint", endpoint);
+    scope.setTag("api.status", String(status));
+    scope.setFingerprint(["api-5xx", method, endpoint]);
+    if (serverMessage) scope.setExtra("server_message", serverMessage);
+    Sentry.captureMessage(`API ${status}: ${method} ${endpoint}`, "error");
   });
 }
 

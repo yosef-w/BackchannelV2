@@ -1,5 +1,9 @@
 import { AppToast } from "@/components/ui/AppToast";
-import { initAnalytics, trackAppOpened } from "@/lib/analytics/mixpanel";
+import {
+    initAnalytics,
+    setUserProperties,
+    trackAppOpened,
+} from "@/lib/analytics/mixpanel";
 import { initSentry, sentryWrap } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
@@ -104,13 +108,34 @@ function RootLayout() {
           console.warn("[Layout] Failed to flush pending profile sync:", error);
         })
         .finally(() => {
-          fetchFromBackend().catch((error) => {
-            console.warn(
-              "[Layout] Failed to sync profile from backend:",
-              error,
-            );
-            // Don't show error to user - they'll just see cached data or login screen
-          });
+          fetchFromBackend()
+            .then(() => {
+              // Enrich the Mixpanel People record from the freshly-fetched
+              // profile. Login only knows the email (identifyUser at the
+              // AuthScreen is deliberately lean); without this, accounts
+              // that log in — rather than sign up — show up in Mixpanel
+              // with no name/company/verification state, which makes the
+              // People view useless for matching testers to behavior.
+              const { data, workEmailVerified } =
+                useUserProfileStore.getState();
+              setUserProperties({
+                firstName: data.personal.firstName || undefined,
+                lastName: data.personal.lastName || undefined,
+                email: data.personal.email || undefined,
+                company: data.professional.company || undefined,
+                jobTitle: data.professional.title || undefined,
+                location: data.personal.address.city || undefined,
+                currentRole: data.professional.currentRole || undefined,
+                workEmailVerified,
+              });
+            })
+            .catch((error) => {
+              console.warn(
+                "[Layout] Failed to sync profile from backend:",
+                error,
+              );
+              // Don't show error to user - they'll just see cached data or login screen
+            });
         });
     }
   }, [accessToken, fetchFromBackend, flushSyncNow]);
