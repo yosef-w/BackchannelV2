@@ -18,7 +18,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import {
     AlertTriangle,
-    Award,
     BellRing,
     Briefcase,
     Check,
@@ -84,6 +83,7 @@ import { MatchListScreen } from "./matches/MatchListScreen";
 import { MatchSection } from "./matches/MatchSection";
 import { MetaLine, OpportunityRow } from "./matches/OpportunityRow";
 import { JobDetailModal } from "./matches/JobDetailModal";
+import { ReferralDetailModal } from "./matches/ReferralDetailModal";
 import { RolePickerModal } from "./matches/RolePickerModal";
 import { WithdrawReferralModal } from "./matches/WithdrawReferralModal";
 import { Avatar } from "./ui/Avatar";
@@ -1478,175 +1478,11 @@ export function MatchesView({
       {/* Referral detail sheet — applicant taps a "Referrals Received" card.
           Mirrors the Applied-Jobs job modal: hero, sponsor card, and details. */}
       <Modal visible={!!selectedReferral} transparent animationType="none">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeAllModals}
-          >
-            <BlurView
-              intensity={30}
-              style={StyleSheet.absoluteFill}
-              tint="dark"
-            />
-          </TouchableOpacity>
-
-          <DismissibleSheet
-            onDismiss={closeAllModals}
-            style={styles.modalContent}
-          >
-            {selectedReferral &&
-              (() => {
-                const r = selectedReferral;
-                const isReferred = r.status === "REFERRED";
-                const sponsorName =
-                  [r.sponsorFirstName, r.sponsorLastName]
-                    .filter(Boolean)
-                    .join(" ") || "Your sponsor";
-                const sponsorFirst = r.sponsorFirstName?.trim() || "Sponsor";
-                const company = r.jobCompany || "the company";
-                const canMessage =
-                  isReferred && !!onNavigateToMessages && !!r.jobId;
-                return (
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    bounces={false}
-                    contentContainerStyle={{ paddingBottom: 8 }}
-                  >
-                    {/* Status + date */}
-                    <View style={styles.jobModalTopRow}>
-                      <View style={styles.refPill}>
-                        <View
-                          style={[
-                            styles.refPillDot,
-                            isReferred
-                              ? styles.refPillDotReferred
-                              : styles.refPillDotWithdrawn,
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.refPillText,
-                            isReferred
-                              ? styles.refPillTextReferred
-                              : styles.refPillTextWithdrawn,
-                          ]}
-                        >
-                          {isReferred ? "Referred" : "Withdrawn"}
-                        </Text>
-                      </View>
-                      {!!r.createdAt && (
-                        <Text style={styles.jobModalLikedDate}>
-                          Referred{" "}
-                          {new Date(r.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </Text>
-                      )}
-                    </View>
-
-                    {/* Hero — company logo + role */}
-                    <View style={styles.jobModalHero}>
-                      <CompanyLogo
-                        logoUrl={r.jobLogoUrl}
-                        name={r.jobCompany}
-                        size={72}
-                        borderRadius={22}
-                        initialFontSize={32}
-                        style={{ marginBottom: 16 }}
-                      />
-                      <Text style={styles.jobModalHeroTitle}>
-                        {r.jobTitle || "Open Role"}
-                      </Text>
-                      <Text style={styles.jobModalHeroCompany}>
-                        {r.jobCompany || "Company"}
-                      </Text>
-                    </View>
-
-                    {/* Referred By — the sponsor */}
-                    <View style={styles.sponsorInfoCard}>
-                      <View style={styles.sponsorCardHeader}>
-                        <Award size={16} color="#000" />
-                        <Text style={styles.sponsorCardTitle}>Referred By</Text>
-                      </View>
-                      <View style={styles.sponsorCardContent}>
-                        {r.sponsorPhotoUrl ? (
-                          <Image
-                            source={{ uri: r.sponsorPhotoUrl }}
-                            style={styles.sponsorCardAvatar}
-                          />
-                        ) : (
-                          <View style={styles.jobSponsorInitialAvatar}>
-                            <Text style={styles.jobSponsorInitialText}>
-                              {sponsorName[0].toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.sponsorCardName}>
-                            {sponsorName}
-                          </Text>
-                          <Text style={styles.sponsorCardRole}>
-                            {isReferred
-                              ? "Referred you for this role"
-                              : "Withdrew this referral"}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* What this means */}
-                    <View style={styles.detailSection}>
-                      <View style={styles.detailSectionHeader}>
-                        <Info size={16} color="#000" />
-                        <Text style={styles.detailSectionTitle}>
-                          What This Means
-                        </Text>
-                      </View>
-                      <Text style={styles.jobDetailText}>
-                        {isReferred
-                          ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
-                          : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
-                      </Text>
-                    </View>
-
-                    {/* CTA */}
-                    {canMessage ? (
-                      <TouchableOpacity
-                        style={styles.applyBtnLarge}
-                        onPress={() => {
-                          const jid = r.jobId;
-                          closeAllModals();
-                          onNavigateToMessages?.(jid);
-                        }}
-                      >
-                        <MessageCircle
-                          color="#FFF"
-                          size={20}
-                          strokeWidth={2.5}
-                        />
-                        <Text style={styles.applyBtnLargeText}>
-                          Message {sponsorFirst}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.applyBtnLarge}
-                        onPress={closeAllModals}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.applyBtnLargeText}>Got It</Text>
-                      </TouchableOpacity>
-                    )}
-                  </ScrollView>
-                );
-              })()}
-          </DismissibleSheet>
-        </KeyboardAvoidingView>
+        <ReferralDetailModal
+          referral={selectedReferral}
+          onClose={closeAllModals}
+          onNavigateToMessages={onNavigateToMessages}
+        />
       </Modal>
 
       {/* Interested-sponsor detail sheet — applicant tapped a sponsor who
