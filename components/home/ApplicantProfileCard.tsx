@@ -1,14 +1,19 @@
 import { Briefcase, Heart, MapPin } from "@/components/ui/icons";
+import type {
+    EnrichedApplicantProfile,
+    ProfileDeckCard,
+    ProfilePrompt,
+} from "@/types/profiles";
 import React from "react";
 import { ActivityIndicator, Image, Text, View } from "react-native";
 import { cardStyles } from "./cardStyles";
 
 interface ApplicantProfileCardProps {
-  /** The current sponsor-side profile pack entry. Loosely typed to match
-   * the parent's own `profiles: any[]` state — HomeView already relies on
-   * `"x" in currentData` runtime checks rather than a discriminated union. */
-  currentData: any;
-  fullProfileCache: Record<string, any>;
+  /** The current sponsor-side profile pack entry (the transformed deck
+   * card). The `"x" in currentData` runtime checks below predate this
+   * typing and are kept as belt-and-suspenders against partial rows. */
+  currentData: ProfileDeckCard;
+  fullProfileCache: Record<string, EnrichedApplicantProfile>;
   fullProfileLoading: boolean;
 }
 
@@ -35,7 +40,7 @@ export function ApplicantProfileCard({
       {/* "Liked your role" badge (PR #56) — high-conviction
           interest, anchored at the top before the hero so
           it's the first thing the sponsor sees. */}
-      {(currentData as any).HAS_LIKED_JOB === true && (
+      {currentData.HAS_LIKED_JOB === true && (
         <View style={cardStyles.likedYourRoleRow}>
           <View style={cardStyles.likedYourRolePill}>
             <Heart
@@ -105,7 +110,7 @@ export function ApplicantProfileCard({
     
       {/* ABOUT — full bio, no clamp */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cachedBio =
           uid && fullProfileCache[String(uid)]?.bio;
         const bio: string =
@@ -126,15 +131,13 @@ export function ApplicantProfileCard({
     
       {/* INSIGHTS — Q&A cards, full text */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cached = uid
           ? fullProfileCache[String(uid)]
           : null;
         const inlinePrompts =
-          "prompts" in currentData
-            ? (currentData as any).prompts
-            : null;
-        const prompts: any[] =
+          "prompts" in currentData ? currentData.prompts : null;
+        const prompts: ProfilePrompt[] =
           cached?.prompts && cached.prompts.length > 0
             ? cached.prompts
             : Array.isArray(inlinePrompts)
@@ -163,7 +166,7 @@ export function ApplicantProfileCard({
             <Text style={cardStyles.hingeSectionLabel}>
               INSIGHTS
             </Text>
-            {prompts.map((prompt: any, idx: number) => (
+            {prompts.map((prompt, idx) => (
               <View
                 key={idx}
                 style={[
@@ -204,17 +207,16 @@ export function ApplicantProfileCard({
     
       {/* TOP SKILLS — chips */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cached = uid
           ? fullProfileCache[String(uid)]
           : null;
-        const fromCache = Array.isArray((cached as any)?.skills)
-          ? ((cached as any).skills as string[])
+        const fromCache = Array.isArray(cached?.skills)
+          ? cached.skills
           : [];
         const fromCard =
-          "skills" in currentData &&
-          Array.isArray((currentData as any).skills)
-            ? ((currentData as any).skills as string[])
+          "skills" in currentData && Array.isArray(currentData.skills)
+            ? currentData.skills
             : [];
         const skills =
           fromCache.length > 0 ? fromCache : fromCard;
@@ -239,14 +241,12 @@ export function ApplicantProfileCard({
     
       {/* EXPERIENCE — timeline */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cached = uid
           ? fullProfileCache[String(uid)]
           : null;
-        const experiences: any[] = Array.isArray(
-          cached?.experiences,
-        )
-          ? cached!.experiences
+        const experiences = Array.isArray(cached?.experiences)
+          ? cached.experiences
           : [];
         if (experiences.length === 0) return null;
         return (
@@ -254,7 +254,7 @@ export function ApplicantProfileCard({
             <Text style={cardStyles.hingeSectionLabel}>
               EXPERIENCE
             </Text>
-            {experiences.map((exp: any, idx: number) => (
+            {experiences.map((exp, idx) => (
               <View
                 key={idx}
                 style={[
@@ -294,14 +294,12 @@ export function ApplicantProfileCard({
     
       {/* EDUCATION — timeline */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cached = uid
           ? fullProfileCache[String(uid)]
           : null;
-        const education: any[] = Array.isArray(
-          cached?.education,
-        )
-          ? cached!.education
+        const education = Array.isArray(cached?.education)
+          ? cached.education
           : [];
         if (education.length === 0) return null;
         return (
@@ -309,7 +307,7 @@ export function ApplicantProfileCard({
             <Text style={cardStyles.hingeSectionLabel}>
               EDUCATION
             </Text>
-            {education.map((edu: any, idx: number) => (
+            {education.map((edu, idx) => (
               <View
                 key={idx}
                 style={[
@@ -344,14 +342,12 @@ export function ApplicantProfileCard({
     
       {/* CERTIFICATIONS — credential blocks */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cached = uid
           ? fullProfileCache[String(uid)]
           : null;
-        const certs: any[] = Array.isArray(
-          cached?.certifications,
-        )
-          ? cached!.certifications
+        const certs = Array.isArray(cached?.certifications)
+          ? cached.certifications
           : [];
         if (certs.length === 0) return null;
         return (
@@ -360,7 +356,7 @@ export function ApplicantProfileCard({
               CERTIFICATIONS
             </Text>
             <View style={cardStyles.hingeCredentialList}>
-              {certs.map((cert: any, idx: number) => (
+              {certs.map((cert, idx) => (
                 <View
                   key={idx}
                   style={cardStyles.hingeCredentialBlock}
@@ -381,12 +377,12 @@ export function ApplicantProfileCard({
     
       {/* LANGUAGES — credential blocks */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cached = uid
           ? fullProfileCache[String(uid)]
           : null;
-        const langs: any[] = Array.isArray(cached?.languages)
-          ? cached!.languages
+        const langs = Array.isArray(cached?.languages)
+          ? cached.languages
           : [];
         if (langs.length === 0) return null;
         return (
@@ -395,7 +391,7 @@ export function ApplicantProfileCard({
               LANGUAGES
             </Text>
             <View style={cardStyles.hingeCredentialList}>
-              {langs.map((lang: any, idx: number) => (
+              {langs.map((lang, idx) => (
                 <View
                   key={idx}
                   style={cardStyles.hingeCredentialBlock}
@@ -415,7 +411,7 @@ export function ApplicantProfileCard({
     
       {/* ACHIEVEMENTS */}
       {(() => {
-        const uid = (currentData as any)?.USER_ID;
+        const uid = currentData?.USER_ID;
         const cached = uid
           ? fullProfileCache[String(uid)]
           : null;

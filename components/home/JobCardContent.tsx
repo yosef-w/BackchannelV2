@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/icons";
 import React from "react";
 import { Image, Text, View } from "react-native";
+import type { Job } from "@/types/jobs";
+import type { EnrichedSponsorProfile } from "@/types/profiles";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { ExpandableText } from "../ui/ExpandableText";
 import { cardStyles } from "./cardStyles";
@@ -27,14 +29,14 @@ function formatRelevancePercent(raw: unknown): number | null {
 }
 
 interface JobCardContentProps {
-  /** The current applicant-side job entry. Loosely typed to match the
-   * parent's own `jobs: any[]` state — HomeView already relies on
-   * `"x" in currentData` runtime checks rather than a discriminated union. */
-  currentData: any;
+  /** The current applicant-side job entry. The `"x" in currentData`
+   * runtime checks below predate this typing and are kept as
+   * belt-and-suspenders against partial rows. */
+  currentData: Job;
   waitlistedJobIds: Set<string>;
   requestedSponsorJobIds: Set<string>;
   appliedJobIds: Set<string>;
-  sponsorProfileCache: Record<string, any>;
+  sponsorProfileCache: Record<string, EnrichedSponsorProfile>;
 }
 
 /**
@@ -177,7 +179,7 @@ export function JobCardContent({
             const percent =
               "relevanceScore" in currentData
                 ? formatRelevancePercent(
-                    (currentData as any).relevanceScore,
+                    currentData.relevanceScore,
                   )
                 : null;
             if (percent === null) return null;
@@ -218,11 +220,11 @@ export function JobCardContent({
       {(() => {
         const expLvl =
           "experienceLevel" in currentData
-            ? (currentData as any).experienceLevel
+            ? currentData.experienceLevel
             : "";
         const workArr =
           "workArrangement" in currentData
-            ? (currentData as any).workArrangement
+            ? currentData.workArrangement
             : "";
         if (!expLvl && !workArr) return null;
         return (
@@ -259,26 +261,26 @@ export function JobCardContent({
     
       {/* CORE RESPONSIBILITIES */}
       {"coreResponsibilities" in currentData &&
-        (currentData as any).coreResponsibilities && (
+        currentData.coreResponsibilities && (
           <View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>
               CORE RESPONSIBILITIES
             </Text>
             <Text style={cardStyles.hingeBodyText}>
-              {(currentData as any).coreResponsibilities}
+              {currentData.coreResponsibilities}
             </Text>
           </View>
         )}
     
       {/* REQUIREMENTS */}
       {"requirementsSummary" in currentData &&
-        (currentData as any).requirementsSummary && (
+        currentData.requirementsSummary && (
           <View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>
               REQUIREMENTS
             </Text>
             <Text style={cardStyles.hingeBodyText}>
-              {(currentData as any).requirementsSummary}
+              {currentData.requirementsSummary}
             </Text>
           </View>
         )}
@@ -379,7 +381,7 @@ export function JobCardContent({
           const company =
             "company" in currentData ? currentData.company : "";
           const qa = (sp?.insights || []).filter(
-            (i: any) => i && i.question && i.answer,
+            (i) => i && i.question && i.answer,
           );
           const ins =
             "backchannelInsights" in currentData &&
@@ -405,10 +407,10 @@ export function JobCardContent({
               label: "WHO THRIVES HERE",
               text: ins.idealCandidate,
             });
-          if ((ins as any)?.insiderInsights)
+          if (ins?.insiderInsights)
             jobInsights.push({
               label: "EVERYTHING ELSE",
-              text: (ins as any).insiderInsights,
+              text: ins.insiderInsights,
             });
           return (
             <>
@@ -533,7 +535,7 @@ export function JobCardContent({
                         <Text style={cardStyles.sponsorZoneQALabel}>
                           SPONSOR INSIGHTS
                         </Text>
-                        {qa.map((item: any, i: number) => (
+                        {qa.map((item, i) => (
                           <View
                             key={item.question}
                             style={[

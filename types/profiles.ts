@@ -25,10 +25,44 @@ function parseJsonArray(value: unknown): unknown[] {
   return [];
 }
 
+import type {
+    PublicProfileEducation,
+    PublicProfileExperience,
+} from "@/lib/api";
+
 /** One insight prompt as rendered on the applicant deck card. */
 export interface ProfilePrompt {
   question?: string;
   answer?: string;
+}
+
+/**
+ * HomeView's lazily-fetched enrichment for a sponsor-side deck card — the
+ * heavier resume sections GET /api/profiles/pack/ omits, fetched per
+ * applicant from the public-profile endpoint and cached by USER_ID.
+ */
+export interface EnrichedApplicantProfile {
+  experiences: PublicProfileExperience[];
+  education: PublicProfileEducation[];
+  certifications: { name?: string; organization?: string; year?: string }[];
+  languages: { language?: string; proficiency?: string }[];
+  achievements: string;
+  prompts: ProfilePrompt[];
+  bio: string;
+  /** Not currently populated by the enrichment fetch — the card reads it
+   * defensively as a future-proof override of the pack row's skills. */
+  skills?: string[];
+}
+
+/**
+ * HomeView's "Meet your sponsor" back-face enrichment for an applicant-side
+ * sponsored job card, cached by the sponsor's user id.
+ */
+export interface EnrichedSponsorProfile {
+  bio: string;
+  insights: ProfilePrompt[];
+  companiesCanReferTo: string[];
+  verified: boolean;
 }
 
 /**

@@ -153,6 +153,9 @@ export interface Job {
   topApplicants?: unknown[];
   requirementsSummary?: string | null;
   coreResponsibilities?: string | null;
+  /** Legacy/mock-data field — not emitted by current backend endpoints but
+   * still rendered when present ("About the Company" card section). */
+  companyDescription?: string;
   relevanceScore?: number;
   sponsorInfo?: {
     name: string;
