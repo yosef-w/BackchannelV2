@@ -6,11 +6,13 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development"
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "environment": "preview"
     },
     "production": {
       "autoIncrement": true,
@@ -19,7 +21,8 @@
         "SENTRY_ORG": "backchannel-f6",
         "SENTRY_PROJECT": "react-native",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
-      }
+      },
+      "environment": "production"
     }
   },
   "submit": {
