@@ -4,7 +4,7 @@
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§N1** — report/block a user (App Store requirement, top priority — `reportUser` still POSTs to a nonexistent `/api/reports/`); **§M** — reject empty `first_name`/`last_name` in `PATCH /api/profile/update/` + repair already-blanked rows (new, high priority — see the login name-erasure incident); **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§N2** — `/api/referrals/` doesn't return the current pipeline check-in stage (medium priority); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority); the **email deployment checklist** at the bottom (deliverability — SPF/DKIM/DMARC); and **`change_email`** (still a 501 stub per backend `KNOWN_ISSUES.md` §7 — the app hides the change-email UI until it ships).
+> **Open items:** **§N1** — report/block a user (App Store requirement, top priority — `reportUser` still POSTs to a nonexistent `/api/reports/`); **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§N2** — `/api/referrals/` doesn't return the current pipeline check-in stage (medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§D** — notify the applicant when a sponsor likes their profile (low priority, UX freshness); **§F** — larger daily deck for premium users (low priority, monetization); **§B** — act on the captured unsponsor reason (low priority); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); the **email deployment checklist** at the bottom (deliverability — SPF/DKIM/DMARC); and **`change_email`** (still a 501 stub per backend `KNOWN_ISSUES.md` §7 — the app hides the change-email UI until it ships).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -18,18 +18,15 @@
 
 ---
 
-## §M — Reject empty `first_name` / `last_name` in `PATCH /api/profile/update/` + repair blanked rows 🔴 High priority (new 2026-07-06)
+## §M — Reject empty `first_name` / `last_name` in `PATCH /api/profile/update/` 🟡 Medium priority
 
-**Incident:** demo/test accounts (first seen on `emily.rodriguez@demo.backchannel.app`) showed a blank first/last name in the app even though the seed had set them. Root cause was **frontend**: the login handler seeded the local store with an all-blank `personal` group, and the app's dirty-field sync then PATCHed `first_name: ""`, `last_name: ""` (plus blank phone/address) to `/api/profile/update/` on every login — and the backend **accepted it**, erasing the real values in `user_info.user_profiles`. Fixed on the frontend in `BackchannelV2` commit `3f524bd` (login no longer dirties the personal group, and the sync layer now refuses to send empty names).
+**Resolved on our side:** the frontend bug that caused this (login seeding an all-blank `personal` group, then syncing it in full) is fixed (`BackchannelV2` commit `3f524bd`), and the two known-affected accounts (`sarah.chen@` and `emily.rodriguez@demo.backchannel.app`) have been manually repaired via the API from their seed data — names, phone, and address all restored.
 
-### Requested backend changes
-
-1. **Server-side guard (defense in depth):** in `services/profiles.py` → `update_user_profile`, ignore (or 400) `first_name`/`last_name` when the value is empty/whitespace. There is no legitimate clear-your-name flow — an empty name from any client is always a bug, and this incident shows the API is one buggy client away from silently destroying identity data. (Blank is fine for genuinely clearable fields — phone, address, portfolio — those must keep accepting `""` per the deletion-sync contract.)
-2. **Repair the already-blanked rows:** any account that was logged into via a dev build carrying the frontend bug has `FIRST_NAME`/`LAST_NAME` (and possibly `PHONE_NUMBER`/address fields) blanked. Find them with something like `SELECT user_id, email FROM user_info.user_profiles WHERE first_name = '' OR last_name = '';` and restore from the seed definitions (demo/persona accounts) or ask the affected testers to re-enter their name in the app (which now syncs correctly). Known-affected: `emily.rodriguez@demo.backchannel.app`.
+**Still open:** the backend has no server-side guard against this class of bug — `update_user_profile` will still silently accept and store `first_name: ""` / `last_name: ""` from any client. Requested: in `services/profiles.py` → `update_user_profile`, ignore (or 400) `first_name`/`last_name` when empty/whitespace — there's no legitimate clear-your-name flow, so an empty name from any client is always a bug. (Phone/address/portfolio must keep accepting `""` — those ARE legitimately clearable.) Also worth a one-time sweep for any **non-demo** account that logged into an affected build and is still silently blanked: `SELECT user_id, email FROM user_info.user_profiles WHERE first_name = '' OR last_name = '';`
 
 ### Acceptance test
 
-`PATCH /api/profile/update/` with `{"first_name": "", "last_name": ""}` leaves the stored names unchanged (or returns 400); a normal non-empty name update still works; the Emily demo row shows "Emily Rodriguez" again in `GET /api/profile/`.
+`PATCH /api/profile/update/` with `{"first_name": "", "last_name": ""}` leaves the stored names unchanged (or returns 400); a normal non-empty name update still works.
 
 ---
 
