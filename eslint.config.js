@@ -27,4 +27,14 @@ module.exports = defineConfig([
       ],
     },
   },
+  {
+    // Jest test files use the canonical mock idioms: a require() inside the
+    // jest.mock factory (imports would be hoisted past the mock) and value
+    // imports placed after the jest.mock calls. Both are correct there.
+    files: ['**/__tests__/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'import/first': 'off',
+    },
+  },
 ]);
