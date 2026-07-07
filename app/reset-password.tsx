@@ -33,8 +33,8 @@ import {
     trackResetPasswordFailed,
     trackResetPasswordOpened,
     trackResetPasswordSucceeded,
-} from "../lib/analytics/mixpanel";
-import { authApi } from "../lib/auth-api";
+} from "@/lib/analytics/mixpanel";
+import { authApi } from "@/lib/auth-api";
 
 type Status = "form" | "missingToken" | "success";
 

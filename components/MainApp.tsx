@@ -35,25 +35,25 @@ import {
     trackCheckInModalOpened,
     trackPushNotificationTapped,
     trackScreenViewed,
-} from "../lib/analytics/mixpanel";
+} from "@/lib/analytics/mixpanel";
 import {
     getUnreadNotificationCount,
     listReferrals,
     registerDevice,
-} from "../lib/api";
+} from "@/lib/api";
 import {
     cancelUnfinishedDeckReminder,
     scheduleDailyDeckReminder,
     scheduleUnfinishedDeckReminder,
-} from "../lib/localNotifications";
-import { cancelCheckInNudges, scheduleCheckInNudges } from "../lib/checkInNudges";
+} from "@/lib/localNotifications";
+import { cancelCheckInNudges, scheduleCheckInNudges } from "@/lib/checkInNudges";
 import {
   getLocalCheckInStages,
   getLocalCheckInTimes,
-} from "../utils/checkInStageCache";
-import { useAuthStore } from "../stores/useAuthStore";
-import { useJobsStore } from "../stores/useJobsStore";
-import type { PublicProfileUserData } from "../types/profiles";
+} from "@/utils/checkInStageCache";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useJobsStore } from "@/stores/useJobsStore";
+import type { PublicProfileUserData } from "@/types/profiles";
 import {
     ApplicantCheckInModal,
     type CheckInReferral,

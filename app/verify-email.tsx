@@ -30,8 +30,8 @@ import {
     trackVerifyEmailFailed,
     trackVerifyEmailOpened,
     trackVerifyEmailSucceeded,
-} from "../lib/analytics/mixpanel";
-import { authApi } from "../lib/auth-api";
+} from "@/lib/analytics/mixpanel";
+import { authApi } from "@/lib/auth-api";
 
 type Status = "loading" | "success" | "alreadyVerified" | "error";
 

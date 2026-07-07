@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanimated";
-import { ProfileCompletenessResult } from "../utils/profileCompletion";
+import { ProfileCompletenessResult } from "@/utils/profileCompletion";
 
 interface ProfileCompletionModalProps {
   visible: boolean;

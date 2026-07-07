@@ -1,4 +1,4 @@
-import type { AutofillData } from "../../stores/useUserProfileStore";
+import type { AutofillData } from "@/stores/useUserProfileStore";
 import { checkProfileCompleteness } from "../profileCompletion";
 
 // Build a minimal AutofillData covering only the fields the completeness

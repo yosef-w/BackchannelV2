@@ -29,15 +29,15 @@ import {
     trackAllNotificationsMarkedRead,
     trackNotificationMarkedRead,
     trackNotificationTapped,
-} from "../lib/analytics/mixpanel";
+} from "@/lib/analytics/mixpanel";
 import {
     clearReadNotifications,
     deleteNotification,
     getNotifications,
     markAllNotificationsAsRead,
     markNotificationAsRead,
-} from "../lib/api";
-import { useToastStore } from "../stores/useToastStore";
+} from "@/lib/api";
+import { useToastStore } from "@/stores/useToastStore";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // React Query key for the notifications list. Caching it means the screen

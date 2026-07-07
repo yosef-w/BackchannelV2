@@ -8,6 +8,10 @@
 // @testing-library/react-native added later.
 module.exports = {
   preset: "jest-expo",
+  // Honor the tsconfig "@/*" path alias inside tests.
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/$1",
+  },
   testMatch: ["**/__tests__/**/*.test.ts?(x)"],
   // Keep test discovery out of build artifacts and the repo's docs.
   testPathIgnorePatterns: ["/node_modules/", "/dist/", "/.expo/"],

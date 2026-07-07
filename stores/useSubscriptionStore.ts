@@ -27,7 +27,7 @@ import {
     RC_ENTITLEMENT_ID,
     REVENUECAT_API_KEY_ANDROID,
     REVENUECAT_API_KEY_IOS,
-} from "../constants/config";
+} from "@/constants/config";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -2,8 +2,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo } from "react";
 import { View } from "react-native";
 import { MainApp } from "../components/MainApp";
-import { useAuthStore } from "../stores/useAuthStore";
-import { useUserProfileStore } from "../stores/useUserProfileStore";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 
 type UserType = "applicant" | "sponsor";
 

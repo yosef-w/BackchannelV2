@@ -40,12 +40,12 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from "react-native-reanimated";
-import { GOOGLE_PLACES_API_KEY } from "../constants/config";
+import { GOOGLE_PLACES_API_KEY } from "@/constants/config";
 import {
   APPLICANT_PROMPT_CATEGORIES,
   APPLICANT_PROMPT_EXAMPLES,
-} from "../constants/prompts";
-import { SKILLS_BY_INDUSTRY } from "../constants/skills";
+} from "@/constants/prompts";
+import { SKILLS_BY_INDUSTRY } from "@/constants/skills";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
 import { PromptsIntake } from "./ui/PromptsIntake";
 import {
@@ -55,7 +55,7 @@ import {
   trackResumeUploaded,
   trackSignUpFailed,
   trackSignUpSucceeded,
-} from "../lib/analytics/mixpanel";
+} from "@/lib/analytics/mixpanel";
 import { HOME_INTRO_PENDING_KEY } from "./ui/HomeIntro";
 import {
   classifyResume,
@@ -63,17 +63,17 @@ import {
   updateGeneralProfile,
   uploadAndParseResume,
   uploadProfileImage,
-} from "../lib/api";
-import { authApi } from "../lib/auth-api";
-import { useAuthStore } from "../stores/useAuthStore";
-import { useOnboardingStore } from "../stores/useOnboardingStore";
-import { useSubscriptionStore } from "../stores/useSubscriptionStore";
-import { useToastStore } from "../stores/useToastStore";
+} from "@/lib/api";
+import { authApi } from "@/lib/auth-api";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { useToastStore } from "@/stores/useToastStore";
 import {
   EducationEntry,
   ProfessionalExperience,
   useUserProfileStore,
-} from "../stores/useUserProfileStore";
+} from "@/stores/useUserProfileStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 

@@ -17,8 +17,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import {
   trackScreenViewed,
   trackSignUpRoleSelected,
-} from "../lib/analytics/mixpanel";
-import { useOnboardingStore } from "../stores/useOnboardingStore";
+} from "@/lib/analytics/mixpanel";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
 
 interface ModeSelectionProps {
   onSelect: (mode: "applicant" | "sponsor") => void;

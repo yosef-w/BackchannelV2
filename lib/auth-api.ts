@@ -2,7 +2,7 @@ import { api } from "./api";
 import type {
   AutofillData,
   SyncableField,
-} from "../stores/useUserProfileStore";
+} from "@/stores/useUserProfileStore";
 
 /**
  * 🔐 Authentication API Response Types

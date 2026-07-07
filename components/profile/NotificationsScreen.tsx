@@ -6,8 +6,8 @@
 
 import React, { useState } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
-import { useToastStore } from "../../stores/useToastStore";
-import { useUserProfileStore } from "../../stores/useUserProfileStore";
+import { useToastStore } from "@/stores/useToastStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
 import { SaveStatusPill } from "./SaveStatusPill";
 import { useAutosaveStatus } from "./useAutosaveStatus";

@@ -35,7 +35,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { PREMIUM_ENABLED } from "../constants/config";
+import { PREMIUM_ENABLED } from "@/constants/config";
 import {
     resetUser,
     trackAccountDeleted,
@@ -43,7 +43,7 @@ import {
     trackProfileEditOpened,
     trackProfileFieldUpdated,
     trackProfilePhotoUploaded,
-} from "../lib/analytics/mixpanel";
+} from "@/lib/analytics/mixpanel";
 import {
     logout,
     unregisterDevice,
@@ -51,31 +51,31 @@ import {
     updateGeneralProfile,
     updateSponsorProfile,
     uploadProfileImage,
-} from "../lib/api";
-import { useAuthStore } from "../stores/useAuthStore";
-import { useJobsStore } from "../stores/useJobsStore";
-import { useOnboardingStore } from "../stores/useOnboardingStore";
-import { useSubscriptionStore } from "../stores/useSubscriptionStore";
-import { useToastStore } from "../stores/useToastStore";
+} from "@/lib/api";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useJobsStore } from "@/stores/useJobsStore";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { useToastStore } from "@/stores/useToastStore";
 import {
     EducationEntry,
     ProfessionalExperience,
     useUserProfileStore,
-} from "../stores/useUserProfileStore";
+} from "@/stores/useUserProfileStore";
 import {
     cancelDailyDeckReminder,
     cancelUnfinishedDeckReminder,
-} from "../lib/localNotifications";
-import { cancelCheckInNudges } from "../lib/checkInNudges";
-import { logBreadcrumb, Sentry } from "../lib/sentry";
-import { validateProfileField } from "../lib/validation";
-import { checkProfileCompleteness } from "../utils/profileCompletion";
+} from "@/lib/localNotifications";
+import { cancelCheckInNudges } from "@/lib/checkInNudges";
+import { logBreadcrumb, Sentry } from "@/lib/sentry";
+import { validateProfileField } from "@/lib/validation";
+import { checkProfileCompleteness } from "@/utils/profileCompletion";
 import {
   APPLICANT_PROMPT_CATEGORIES,
   APPLICANT_PROMPT_EXAMPLES,
   SPONSOR_PROMPT_CATEGORIES,
   SPONSOR_PROMPT_EXAMPLES,
-} from "../constants/prompts";
+} from "@/constants/prompts";
 import { EditorScreen } from "./profile/EditorScreen";
 import { ProfileActionSheet } from "./profile/ProfileActionSheet";
 import { useResumePipeline } from "./profile/useResumePipeline";

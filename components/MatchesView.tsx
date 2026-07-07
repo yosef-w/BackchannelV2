@@ -40,7 +40,7 @@ import Animated, {
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
-import { getRelativeTime } from "../utils/relativeTime";
+import { getRelativeTime } from "@/utils/relativeTime";
 import {
     InterestedApplicant,
     InterestedSponsor,

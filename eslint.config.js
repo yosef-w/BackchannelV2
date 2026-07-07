@@ -23,6 +23,26 @@ module.exports = defineConfig([
                 "Import icons from '@/components/ui/icons' instead — the barrel bundles all ~1,667 icons.",
             },
           ],
+          // Top-level modules are imported via the @/ alias everywhere —
+          // relative climbs to them were normalized once; keep it that way.
+          patterns: [
+            {
+              group: [
+                '../lib/*',
+                '../stores/*',
+                '../utils/*',
+                '../types/*',
+                '../constants/*',
+                '../../lib/*',
+                '../../stores/*',
+                '../../utils/*',
+                '../../types/*',
+                '../../constants/*',
+              ],
+              message:
+                "Use the '@/' alias for top-level modules (e.g. '@/lib/api').",
+            },
+          ],
         },
       ],
     },

@@ -24,14 +24,14 @@ import {
     trackLoginSubmitted,
     trackLoginSucceeded,
     trackSignUpFormSubmitted,
-} from "../lib/analytics/mixpanel";
-import { authApi, LoginResponse } from "../lib/auth-api";
-import { isValidEmail } from "../lib/validation";
-import { useAuthStore } from "../stores/useAuthStore";
-import { useOnboardingStore } from "../stores/useOnboardingStore";
-import { useSubscriptionStore } from "../stores/useSubscriptionStore";
-import { useToastStore } from "../stores/useToastStore";
-import { useUserProfileStore } from "../stores/useUserProfileStore";
+} from "@/lib/analytics/mixpanel";
+import { authApi, LoginResponse } from "@/lib/auth-api";
+import { isValidEmail } from "@/lib/validation";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { useToastStore } from "@/stores/useToastStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 

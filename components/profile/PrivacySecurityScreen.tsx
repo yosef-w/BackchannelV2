@@ -19,13 +19,13 @@ import {
   trackPasswordChanged,
   trackPrivacyPolicyTapped,
   trackTermsTapped,
-} from "../../lib/analytics/mixpanel";
-import { Sentry } from "../../lib/sentry";
-import { changeEmail, changePassword } from "../../lib/api";
-import { authApi } from "../../lib/auth-api";
-import { isValidEmail } from "../../lib/validation";
-import { useAuthStore } from "../../stores/useAuthStore";
-import { useToastStore } from "../../stores/useToastStore";
+} from "@/lib/analytics/mixpanel";
+import { Sentry } from "@/lib/sentry";
+import { changeEmail, changePassword } from "@/lib/api";
+import { authApi } from "@/lib/auth-api";
+import { isValidEmail } from "@/lib/validation";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useToastStore } from "@/stores/useToastStore";
 import { EditorScreen } from "./EditorScreen";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";

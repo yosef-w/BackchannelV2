@@ -19,7 +19,7 @@ import {
   trackWorkEmailUpdated,
   trackWorkEmailVerifyChecked,
 } from "@/lib/analytics/mixpanel";
-import { useUserProfileStore } from "../../stores/useUserProfileStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 
 interface WorkEmailVerificationModalProps {

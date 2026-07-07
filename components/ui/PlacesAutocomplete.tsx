@@ -25,12 +25,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { GOOGLE_PLACES_API_KEY } from "../../constants/config";
+import { GOOGLE_PLACES_API_KEY } from "@/constants/config";
 import {
   AddressComponent,
   ParsedAddress,
   parseAddressComponents,
-} from "../../lib/addressParser";
+} from "@/lib/addressParser";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL_BASE = "https://places.googleapis.com/v1/places";
