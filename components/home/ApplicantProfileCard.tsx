@@ -4,8 +4,9 @@ import type {
     ProfileDeckCard,
     ProfilePrompt,
 } from "@/types/profiles";
+import { Image } from "expo-image";
 import React from "react";
-import { ActivityIndicator, Image, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { cardStyles } from "./cardStyles";
 
 interface ApplicantProfileCardProps {
@@ -62,6 +63,9 @@ export function ApplicantProfileCard({
           <Image
             source={{ uri: currentData.image as string }}
             style={cardStyles.hingeHeroAvatar}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
           />
         ) : (
           <View style={cardStyles.hingeHeroAvatarFallback}>

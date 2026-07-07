@@ -40,6 +40,7 @@ import {
 } from "@/types/profiles";
 import type { PublicProfileResponse } from "@/lib/api";
 import { BlurView } from "expo-blur";
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import {
   Briefcase,
@@ -436,6 +437,30 @@ export function HomeView({
     ) &&
     !(userType === "applicant" && jobsError != null && jobs.length === 0) &&
     !(userType === "applicant" && !jobsLoading && jobs.length === 0);
+
+  // ── Prefetch the hero image for upcoming cards ────────────────────────────
+  // The hero photo (applicant avatar / job's sponsor avatar) used to be the
+  // one part of a card that visibly lagged behind everything else on swipe —
+  // every other field comes from data already sitting in memory, but the
+  // image only started fetching once the new card mounted. Warming
+  // expo-image's cache for the next couple of cards while the CURRENT one is
+  // still on screen means it's already decoded and cached by the time the
+  // user swipes to it.
+  useEffect(() => {
+    const deck =
+      userType === "sponsor" ? sponsorProfiles : applicantJobs;
+    if (deck.length === 0) return;
+    const urls = [1, 2]
+      .map((offset) => {
+        const item = deck[(currentProfileIndex + offset) % deck.length];
+        if (!item) return null;
+        return userType === "sponsor"
+          ? (item as ProfileDeckCard).image
+          : (item as Job).sponsorInfo?.image;
+      })
+      .filter((url): url is string => !!url);
+    if (urls.length > 0) ExpoImage.prefetch(urls);
+  }, [currentProfileIndex, userType, sponsorProfiles, applicantJobs]);
 
   // ── First-run editorial intro ─────────────────────────────────────────────
   // Shown once, ONLY to users who just signed up: signup sets a one-time

@@ -7,8 +7,9 @@ import {
   MapPin,
   Zap,
 } from "@/components/ui/icons";
+import { Image } from "expo-image";
 import React from "react";
-import { Image, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import type { Job } from "@/types/jobs";
 import type { EnrichedSponsorProfile } from "@/types/profiles";
 import { CompanyLogo } from "../ui/CompanyLogo";
@@ -434,6 +435,9 @@ export function JobCardContent({
                         <Image
                           source={{ uri: si.image }}
                           style={cardStyles.sponsorMeetAvatar}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          transition={150}
                         />
                       ) : (
                         <View
