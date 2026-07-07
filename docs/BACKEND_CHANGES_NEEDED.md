@@ -91,9 +91,9 @@ Consider normalizing/validating `sponsor_profiles.COMPANY` against this canonica
 - The six columns above can be considered for **dropping** (or at least never requiring). This aligns with **§C** (account-deletion / PII minimization): `DATE_OF_BIRTH` in particular is sensitive PII that is collected nowhere and read nowhere, so retaining the column is pure liability.
 - Do **not** drop `PORTFOLIO_URL` — see above.
 - Do **not** drop anything the ATS-autofill (`services/autofill.py`) or resume-classify (`services/documents.py`) paths write to without checking those first.
-- **Note for the backend:** `lib/auth-api.ts → updateProfile()` still unconditionally sends `phone_number`/`street`/`zip`/`country` on every "personal" group sync — always as empty strings now, since no UI populates them. That's harmless (an always-blank value into a dropped/ignored column), but it does mean these keys will keep showing up in the PATCH payload even after the columns are gone. A follow-up frontend cleanup to stop sending them entirely would be tidier but isn't required for the backend change to be safe.
+- Dropping these columns is safe against the current PATCH payload — `lib/auth-api.ts → updateProfile()` no longer sends `phone_number`/`street`/`zip`/`country` at all (frontend cleanup shipped alongside this doc update), so there's nothing left going out that would clobber the columns with blanks or need accommodating.
 
-**Frontend status:** the *UI* for these fields (address editor, phone input) is fully removed — confirmed no editor exists anywhere in the app. The *payload* still echoes them as empty strings (see note above), which is a small separate frontend cleanup, not a blocker for the backend to drop the columns.
+**Frontend status:** both the UI (address editor, phone input — confirmed no editor exists anywhere in the app) and the outgoing payload for these four fields are fully removed. Nothing pending on the frontend side for this item.
 
 ---
 

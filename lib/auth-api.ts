@@ -470,13 +470,15 @@ export const authApi = {
       if (data.personal.lastName?.trim()) {
         basePayload.last_name = data.personal.lastName;
       }
-      basePayload.phone_number = data.personal.phone;
       basePayload.portfolio_url = data.personal.portfolio;
-      basePayload.street = data.personal.address?.street ?? "";
       basePayload.city = data.personal.address?.city ?? "";
       basePayload.state = data.personal.address?.state ?? "";
-      basePayload.zip = data.personal.address?.zip ?? "";
-      basePayload.country = data.personal.address?.country ?? "";
+      // phone_number/street/zip/country deliberately NOT sent — there's no
+      // UI anywhere in the app that populates them (BACKEND_CHANGES_NEEDED
+      // §L), so they'd only ever go out as empty strings. Read-side support
+      // (loadFromProfile picking them up from an existing backend value)
+      // stays intact — this only stops the outgoing PATCH from clobbering
+      // them with blanks on every unrelated "personal" group sync.
     }
     if (dirtyFields.has("professional")) {
       basePayload.bio = data.professional.summary;
