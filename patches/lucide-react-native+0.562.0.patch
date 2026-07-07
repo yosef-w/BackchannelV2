@@ -1,8 +1,14 @@
-diff --git a/node_modules/lucide-react-native/.DS_Store b/node_modules/lucide-react-native/.DS_Store
-new file mode 100644
-index 0000000..e9ae7f8
-Binary files /dev/null and b/node_modules/lucide-react-native/.DS_Store differ
-diff --git a/node_modules/lucide-react-native/dist/.DS_Store b/node_modules/lucide-react-native/dist/.DS_Store
-new file mode 100644
-index 0000000..6eaf254
-Binary files /dev/null and b/node_modules/lucide-react-native/dist/.DS_Store differ
+diff --git a/node_modules/lucide-react-native/package.json b/node_modules/lucide-react-native/package.json
+index fab9d67..11a02d4 100644
+--- a/node_modules/lucide-react-native/package.json
++++ b/node_modules/lucide-react-native/package.json
+@@ -39,7 +39,8 @@
+       "import": "./dist/esm/icons/index.js",
+       "browser": "./dist/esm/icons/index.js",
+       "require": "./dist/cjs/icons/index.js"
+-    }
++    },
++    "./dist/esm/icons/*": "./dist/esm/icons/*"
+   },
+   "sideEffects": false,
+   "files": [
