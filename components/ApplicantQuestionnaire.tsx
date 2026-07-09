@@ -22,6 +22,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -577,6 +578,11 @@ export function ApplicantQuestionnaire({
   // Final step: persist everything collected after registration, then show the
   // résumé review (if we classified one) or finish.
   const handleFinalize = async () => {
+    // The last step is a text input (location), so the keyboard is typically
+    // open when "Create Profile" is tapped. Drop it before the transition —
+    // otherwise it lingers over the review screen, which has no input to
+    // give it focus and no obvious way to dismiss it.
+    Keyboard.dismiss();
     setIsSubmitting(true);
     setFinalizing(true);
     setShowSuccess(true);
