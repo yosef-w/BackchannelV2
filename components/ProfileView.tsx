@@ -368,30 +368,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
     setAchievements(userProfileData.achievements);
   }, [userProfileData, pendingWorkEmail]);
 
-  // Auto-save certifications when they change. Guarded against the store's
-  // own value (not just emptiness) — updateCertifications() always writes a
-  // new `data` object regardless of content, and the mirror-the-store effect
-  // above calls setCertifications() on every `data` change (a new array
-  // reference even when unchanged). Without this comparison, that pair
-  // ping-pongs forever: store change -> setCertifications -> this effect
-  // fires -> updateCertifications -> new store object -> repeat, hitting
-  // React's "Maximum update depth exceeded" guard.
-  useEffect(() => {
-    if (JSON.stringify(certifications) === JSON.stringify(userProfileData.certifications ?? [])) {
-      return;
-    }
-    updateCertifications(certifications);
-  }, [certifications]);
-
-  // Auto-save languages when they change — see the certifications effect
-  // above for why this needs to compare against the store's current value
-  // rather than just checking length.
-  useEffect(() => {
-    if (JSON.stringify(languages) === JSON.stringify(userProfileData.languages ?? [])) {
-      return;
-    }
-    updateLanguages(languages);
-  }, [languages]);
+  // Certifications/languages are saved AT THE MUTATION SITES (the
+  // handleAdd/Update/Delete handlers below call updateCertifications/
+  // updateLanguages directly), the same pattern every other field here
+  // uses — NOT via a "sync local state to store" effect. The previous
+  // effect-based auto-save couldn't distinguish "user edited" from
+  // "component just mounted": on first commit it ran with the initial []
+  // state before the mirror effect's values had landed, saw [] differ from
+  // a store that had real data, and wrote the empty array into the store —
+  // destructively wiping resume-classified certs/languages and kicking off
+  // a mirror <-> auto-save ping-pong across the shared `data` object that
+  // tripped React's "Maximum update depth exceeded" guard.
 
 
   const applicantData: ApplicantProfile = {
@@ -889,11 +876,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
-  // Handlers for Certifications
+  // Handlers for Certifications — each persists via updateCertifications
+  // (dirty-tracked, debounced sync) at the mutation site; see the comment
+  // where the old effect-based auto-save used to live.
   const handleAddCertification = () => {
     const newCert = { name: "", organization: "", year: "" };
     const updated = [...certifications, newCert];
     setCertifications(updated);
+    updateCertifications(updated);
     setExpandedCertification(updated.length - 1);
   };
 
@@ -905,21 +895,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
       i === index ? { ...cert, ...updates } : cert,
     );
     setCertifications(updated);
+    updateCertifications(updated);
   };
 
   const handleDeleteCertification = (index: number) => {
     const updated = certifications.filter((_, i) => i !== index);
     setCertifications(updated);
+    updateCertifications(updated);
     if (expandedCertification === index) {
       setExpandedCertification(null);
     }
   };
 
-  // Handlers for Languages
+  // Handlers for Languages — same persist-at-the-mutation-site pattern.
   const handleAddLanguage = () => {
     const newLang = { language: "", proficiency: "" };
     const updated = [...languages, newLang];
     setLanguages(updated);
+    updateLanguages(updated);
     setExpandedLanguage(updated.length - 1);
   };
 
@@ -931,11 +924,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
       i === index ? { ...lang, ...updates } : lang,
     );
     setLanguages(updated);
+    updateLanguages(updated);
   };
 
   const handleDeleteLanguage = (index: number) => {
     const updated = languages.filter((_, i) => i !== index);
     setLanguages(updated);
+    updateLanguages(updated);
     if (expandedLanguage === index) {
       setExpandedLanguage(null);
     }
