@@ -19,6 +19,11 @@ import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import {
+  clearOnboardingDraft,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+} from "@/utils/onboardingDraft";
 import { HOME_INTRO_PENDING_KEY } from "@/components/ui/HomeIntro";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
@@ -216,14 +221,23 @@ export function SponsorQuestionnaire({
   // ── Resumable onboarding (autosave) ──────────────────────────────────────
   // `hydratedRef` gates the save effect so it can't clobber a stored draft with
   // the initial empty state before the restore has run.
+  //
+  // Drafts are identity-scoped (utils/onboardingDraft.ts): stamped with the
+  // signup email from the AuthScreen and only restored for the SAME email —
+  // an abandoned signup's draft no longer leaks into the next signup on
+  // this device.
   const hydratedRef = useRef(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(SPONSOR_DRAFT_KEY);
-        if (raw) {
-          const d = JSON.parse(raw);
+        const d = await loadOnboardingDraft<{
+          answers?: typeof answers;
+          selectedInsights?: typeof selectedInsights;
+          bioText?: string;
+          currentQuestion?: number;
+        }>(SPONSOR_DRAFT_KEY, sponsorData.email);
+        if (d) {
           if (d.answers) setAnswers(d.answers);
           if (Array.isArray(d.selectedInsights))
             setSelectedInsights(d.selectedInsights);
@@ -237,17 +251,19 @@ export function SponsorQuestionnaire({
         hydratedRef.current = true;
       }
     })();
-    // Run once on mount.
+    // Run once on mount (the signup email is fixed before this screen mounts).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!hydratedRef.current) return;
-    const draft = { answers, selectedInsights, bioText, currentQuestion };
-    AsyncStorage.setItem(SPONSOR_DRAFT_KEY, JSON.stringify(draft)).catch(
-      () => {},
-    );
-  }, [answers, selectedInsights, bioText, currentQuestion]);
+    saveOnboardingDraft(SPONSOR_DRAFT_KEY, sponsorData.email, {
+      answers,
+      selectedInsights,
+      bioText,
+      currentQuestion,
+    });
+  }, [answers, selectedInsights, bioText, currentQuestion, sponsorData.email]);
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
@@ -317,7 +333,7 @@ export function SponsorQuestionnaire({
       // Clear onboarding data + the saved draft (stop autosaving first).
       clearOnboardingData();
       hydratedRef.current = false;
-      AsyncStorage.removeItem(SPONSOR_DRAFT_KEY).catch(() => {});
+      clearOnboardingDraft(SPONSOR_DRAFT_KEY);
 
       // Sponsor cold-start fix — now that registration + auth are done, the
       // company-scoped browse endpoint actually works. If there are open

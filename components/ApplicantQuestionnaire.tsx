@@ -74,6 +74,11 @@ import {
   ProfessionalExperience,
   useUserProfileStore,
 } from "@/stores/useUserProfileStore";
+import {
+  clearOnboardingDraft,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+} from "@/utils/onboardingDraft";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -266,7 +271,7 @@ export function ApplicantQuestionnaire({
     // Onboarding finished — stop autosaving, discard the draft, clear the
     // in-memory onboarding data (auth basics no longer needed).
     hydratedRef.current = false;
-    AsyncStorage.removeItem(APPLICANT_DRAFT_KEY).catch(() => {});
+    clearOnboardingDraft(APPLICANT_DRAFT_KEY);
     clearOnboardingData();
     trackOnboardingCompleted("applicant");
     setIsSubmitting(false);
@@ -338,14 +343,26 @@ export function ApplicantQuestionnaire({
   // ── Resumable onboarding (autosave) ──────────────────────────────────────
   // `hydrated` gates the save effect so it can't clobber a stored draft with
   // the initial empty state before the restore has run.
+  //
+  // Drafts are identity-scoped (utils/onboardingDraft.ts): stamped with the
+  // signup email from the AuthScreen and only restored for the SAME email.
+  // A new signup session with a different identity discards any old draft
+  // instead of hydrating it — previously an abandoned signup's junk answers
+  // leaked into the next signup on the same device and looked like broken
+  // resume auto-fill.
   const hydratedRef = useRef(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(APPLICANT_DRAFT_KEY);
-        if (raw) {
-          const d = JSON.parse(raw);
+        const d = await loadOnboardingDraft<{
+          answers?: typeof answers;
+          selectedSkills?: string[];
+          selectedInsights?: typeof selectedInsights;
+          selectedWorkPreferences?: string[];
+          locationText?: string;
+        }>(APPLICANT_DRAFT_KEY, applicantData.email);
+        if (d) {
           if (d.answers) setAnswers(d.answers);
           if (Array.isArray(d.selectedSkills)) setSelectedSkills(d.selectedSkills);
           if (Array.isArray(d.selectedInsights))
@@ -363,28 +380,26 @@ export function ApplicantQuestionnaire({
         hydratedRef.current = true;
       }
     })();
-    // Run once on mount.
+    // Run once on mount (the signup email is fixed before this screen mounts).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!hydratedRef.current) return;
-    const draft = {
+    saveOnboardingDraft(APPLICANT_DRAFT_KEY, applicantData.email, {
       answers,
       selectedSkills,
       selectedInsights,
       selectedWorkPreferences,
       locationText,
-    };
-    AsyncStorage.setItem(APPLICANT_DRAFT_KEY, JSON.stringify(draft)).catch(
-      () => {},
-    );
+    });
   }, [
     answers,
     selectedSkills,
     selectedInsights,
     selectedWorkPreferences,
     locationText,
+    applicantData.email,
   ]);
 
   const createProfileMutation = useMutation({
