@@ -106,9 +106,14 @@ function Node({
           state === "active" && styles.labelActive,
           state === "upcoming" && styles.labelMuted,
         ]}
-        numberOfLines={2}
+        numberOfLines={3}
       >
-        {label}
+        {/* Break multi-word labels at the space deliberately: the active
+            state's heavier weight makes words a touch wider, and letting RN
+            wrap inside the narrow node column mid-word turned "Recruiter
+            Screen" into "Recruite / r Screen" the moment it was selected.
+            One word per line can never mid-word break. */}
+        {label.split(" ").join("\n")}
       </Text>
     </TouchableOpacity>
   );
@@ -237,6 +242,11 @@ const styles = StyleSheet.create({
     color: "#555",
     textAlign: "center",
     lineHeight: 12,
+    // Wider render box than the 46pt node column (negative margins keep the
+    // layout width unchanged) so the longest word still fits on one line at
+    // the active state's heavier weight.
+    width: 58,
+    marginHorizontal: -6,
   },
   labelActive: {
     color: "#000",
