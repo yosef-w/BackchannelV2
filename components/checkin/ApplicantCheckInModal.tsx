@@ -131,9 +131,6 @@ export function ApplicantCheckInModal({
       loadingText="Loading your referrals…"
       emptyTitle="No active referrals"
       emptyText="You don't have any active referrals to update right now. Once a sponsor refers you, your pipeline will show up here."
-      // Success frame unused — the stack's recap is the session exit.
-      successTitle=""
-      successSubtitle=""
     >
       <CheckInStack
         key={sessionKey}

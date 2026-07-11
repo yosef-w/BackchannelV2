@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { Check } from "@/components/ui/icons";
+
 import React from "react";
 import {
   ActivityIndicator,
@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { SlideInDown, SlideOutDown, ZoomIn } from "react-native-reanimated";
+import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -25,12 +25,10 @@ interface CheckInSheetShellProps {
    */
   onClose: () => void;
   /** Which frame to show. "content" renders children. */
-  state: "loading" | "empty" | "success" | "content";
+  state: "loading" | "empty" | "content";
   loadingText: string;
   emptyTitle: string;
   emptyText: string;
-  successTitle: string;
-  successSubtitle: string;
   /** Sheet height as a fraction of the screen. Defaults to the original
    * near-full height; the card-stack sheets use a shorter one. */
   heightFraction?: number;
@@ -38,20 +36,18 @@ interface CheckInSheetShellProps {
 }
 
 /**
- * Shared shell for the referral check-in sheets — the full-height modal,
- * blur backdrop, drag handle, and the loading/empty/success frames were
- * duplicated nearly line-for-line across ApplicantCheckInModal and
- * SponsorCheckInModal; this owns them once so the two roles' sheets can't
- * drift apart visually. The flows inside stay separate on purpose: the
- * applicant sheet is a single-referral report (timeline + note), the
- * sponsor sheet is a batch triage — different interaction models, not
- * duplicated code.
+ * Shared shell for the referral check-in sheets — the modal, blur backdrop,
+ * drag handle, and the loading/empty frames, owned once so the two roles'
+ * sheets can't drift apart visually. Both roles render a CheckInStack
+ * session inside (the old success frame is gone — the stack's recap is the
+ * session exit).
  *
  * Intentionally has no close/X affordance and isn't dismissible by tapping
- * the backdrop. This sheet exists to nudge a check-in the user might
- * otherwise put off indefinitely, so the only way out of the "content"
- * frame is submitting an update — the "empty" frame is the sole exception,
- * since there's genuinely nothing to check in on there.
+ * the backdrop. Its entry points are all user-initiated (Matches banner,
+ * check-in notification, stale-count header icon), so the lock means
+ * "finish the pass you started" — and the stack's per-card Skip keeps it
+ * from ever being a hostage situation. The "empty" frame is the sole
+ * direct exit, since there's genuinely nothing to check in on there.
  */
 export function CheckInSheetShell({
   visible,
@@ -60,8 +56,6 @@ export function CheckInSheetShell({
   loadingText,
   emptyTitle,
   emptyText,
-  successTitle,
-  successSubtitle,
   heightFraction,
   children,
 }: CheckInSheetShellProps) {
@@ -90,18 +84,7 @@ export function CheckInSheetShell({
               dismiss on swipe (no dismiss gesture wired to this handle). */}
           <View style={styles.handle} />
 
-          {state === "success" ? (
-            <Animated.View
-              entering={ZoomIn.duration(320)}
-              style={styles.successContainer}
-            >
-              <View style={styles.successCircle}>
-                <Check color="#FFF" size={34} strokeWidth={3} />
-              </View>
-              <Text style={styles.successTitle}>{successTitle}</Text>
-              <Text style={styles.successSubtitle}>{successSubtitle}</Text>
-            </Animated.View>
-          ) : state === "loading" ? (
+          {state === "loading" ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator color="#000" />
               <Text style={styles.stateText}>{loadingText}</Text>
@@ -155,32 +138,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
-  },
-  successContainer: {
-    alignItems: "center",
-    paddingVertical: 52,
-    paddingHorizontal: 20,
-  },
-  successCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 10,
-  },
-  successSubtitle: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
   },
   loadingContainer: {
     alignItems: "center",

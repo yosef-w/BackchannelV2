@@ -130,9 +130,6 @@ export function SponsorCheckInModal({
       loadingText="Loading your referrals…"
       emptyTitle="No active referrals"
       emptyText="You haven't referred anyone yet. Once you submit a referral, you can track and update its progress here."
-      // Success frame unused — the stack's recap is the session exit.
-      successTitle=""
-      successSubtitle=""
     >
       <CheckInStack
         key={sessionKey}
