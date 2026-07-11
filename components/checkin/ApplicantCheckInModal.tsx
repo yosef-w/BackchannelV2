@@ -147,6 +147,16 @@ export function ApplicantCheckInModal({
             ? "Your sponsor will be notified of your progress."
             : `${n} updates sent — your sponsors will be notified.`
         }
+        // The most common answer by far — lets a 10-referral pass finish in
+        // one tap from the overview. stageIndex 0 = "Referred" (still
+        // waiting to hear back).
+        bulkAction={{
+          label: (n) =>
+            n === 1
+              ? "Mark 1 remaining as still waiting"
+              : `Mark ${n} remaining as still waiting`,
+          stageIndex: 0,
+        }}
         onSubmitCard={async (item, selection) => {
           const stage: ApplicantCheckInStage = selection.terminal
             ? TERMINAL_STAGE

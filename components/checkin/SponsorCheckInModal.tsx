@@ -147,6 +147,15 @@ export function SponsorCheckInModal({
         finalizeLabel={(n) =>
           n === 1 ? "Send 1 update" : `Send ${n} updates`
         }
+        // One-tap "no movement" for the whole remaining pass. stageIndex 0 =
+        // "Referred" (still in pipeline).
+        bulkAction={{
+          label: (n) =>
+            n === 1
+              ? "Mark 1 remaining as still in pipeline"
+              : `Mark ${n} remaining as still in pipeline`,
+          stageIndex: 0,
+        }}
         onFinalize={async (updates) => {
           // Backend rejects > 50 updates per call. Slice to the limit and
           // surface a toast if any changes were dropped (they'll be stale

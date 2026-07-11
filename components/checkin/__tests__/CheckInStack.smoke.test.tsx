@@ -106,6 +106,78 @@ describe("CheckInStack — immediate mode (applicant)", () => {
   });
 });
 
+describe("CheckInStack — overview + bulk (scale features)", () => {
+  it("overview lists all cards with status and jumps on tap", async () => {
+    const { getByText, getByLabelText } = render(
+      <CheckInStack {...baseProps} onSubmitCard={jest.fn()} />,
+    );
+    // Skip Snowflake → now on Google; open the overview.
+    fireEvent.press(getByText("Skip"));
+    await waitFor(() => expect(getByText("Google")).toBeTruthy());
+    fireEvent.press(getByLabelText("See all referrals"));
+
+    expect(getByText("This pass")).toBeTruthy();
+    expect(getByText("Skipped")).toBeTruthy(); // Snowflake's row
+    expect(getByText("Pending")).toBeTruthy(); // Google's row
+
+    // Jump back to Snowflake's card.
+    fireEvent.press(getByText("Snowflake"));
+    expect(getByText("Backend Engineer")).toBeTruthy();
+  });
+
+  it("bulk action submits every pending card (immediate mode) and reaches the recap", async () => {
+    const onSubmitCard = jest.fn().mockResolvedValue(undefined);
+    const { getByText, getByLabelText } = render(
+      <CheckInStack
+        {...baseProps}
+        onSubmitCard={onSubmitCard}
+        bulkAction={{
+          label: (n) => `Mark ${n} remaining as still waiting`,
+          stageIndex: 0,
+        }}
+      />,
+    );
+    fireEvent.press(getByLabelText("See all referrals"));
+    await act(async () => {
+      fireEvent.press(getByText("Mark 2 remaining as still waiting"));
+    });
+
+    expect(onSubmitCard).toHaveBeenCalledTimes(2);
+    expect(onSubmitCard).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "r1" }),
+      expect.objectContaining({ stageIndex: 0, terminal: false }),
+    );
+    await waitFor(() => expect(getByText("All caught up")).toBeTruthy());
+    expect(getByText("2 updates sent.")).toBeTruthy();
+  });
+
+  it("skip never downgrades a card already updated this session", async () => {
+    const { getByText, getByLabelText } = render(
+      <CheckInStack {...baseProps} onSubmitCard={jest.fn().mockResolvedValue(undefined)} />,
+    );
+    // Update Snowflake to Offer.
+    fireEvent.press(getByText("Offer"));
+    await act(async () => {
+      fireEvent.press(getByText("Send update"));
+    });
+    await waitFor(() => expect(getByText("Google")).toBeTruthy());
+    // Jump back to the already-updated Snowflake and skip it.
+    fireEvent.press(getByLabelText("See all referrals"));
+    fireEvent.press(getByText("Snowflake"));
+    fireEvent.press(getByText("Skip"));
+    // Google still pending; finish it, then the recap must show Snowflake
+    // as UPDATED (Offer), not skipped.
+    await waitFor(() => expect(getByText("Google")).toBeTruthy());
+    fireEvent.press(getByText("Hired"));
+    await act(async () => {
+      fireEvent.press(getByText("Send update"));
+    });
+    await waitFor(() => expect(getByText("All caught up")).toBeTruthy());
+    expect(getByText("Offer")).toBeTruthy();
+    expect(getByText("2 updates sent.")).toBeTruthy();
+  });
+});
+
 describe("CheckInStack — accumulate mode (sponsor)", () => {
   it("collects answers and finalizes once from the recap", async () => {
     const onFinalize = jest.fn().mockResolvedValue(undefined);

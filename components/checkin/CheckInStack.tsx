@@ -13,7 +13,7 @@
 //  - accumulate (sponsor): results collect across cards and onFinalize
 //    fires once from the recap (maps onto the batch endpoint).
 
-import { Check, ChevronRight } from "@/components/ui/icons";
+import { Check, ChevronRight, List, X } from "@/components/ui/icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -77,6 +77,13 @@ interface CheckInStackProps {
   finalizeLabel?: (count: number) => string;
   /** Recap subtitle line. */
   recapSubtitle: (updated: number) => string;
+  /**
+   * One-tap bulk answer for every still-pending card, offered from the
+   * overview (e.g. applicant: "Mark N remaining as still waiting"). In
+   * immediate mode each pending card is submitted sequentially; in
+   * accumulate mode the answers are just recorded.
+   */
+  bulkAction?: { label: (pending: number) => string; stageIndex: number };
   /** Session finished and (if accumulate) finalized — dismiss the sheet. */
   onDone: () => void;
 }
@@ -91,6 +98,7 @@ export function CheckInStack({
   onFinalize,
   finalizeLabel,
   recapSubtitle,
+  bulkAction,
   onDone,
 }: CheckInStackProps) {
   const ids = useMemo(() => items.map((i) => i.id), [items]);
@@ -98,6 +106,8 @@ export function CheckInStack({
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<SessionResults>({});
   const [showRecap, setShowRecap] = useState(false);
+  const [showOverview, setShowOverview] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
 
   // Per-card transient state.
   const [stageIndex, setStageIndex] = useState<number | null>(null);
@@ -131,12 +141,57 @@ export function CheckInStack({
 
   const handleSkip = () => {
     if (submitting || !current) return;
+    // Skip never downgrades: a card the user already UPDATED this session
+    // (then jumped back to via the overview) keeps its update — skipping
+    // there means "leave it as answered", not "unanswer it".
+    const existing = results[current.id];
     const nextResults: SessionResults = {
       ...results,
-      [current.id]: { kind: "skipped" },
+      [current.id]:
+        existing?.kind === "updated" ? existing : { kind: "skipped" },
     };
     setResults(nextResults);
     advance(nextResults);
+  };
+
+  const handleBulk = async () => {
+    if (!bulkAction || bulkRunning || submitting) return;
+    const pendingItems = items.filter((i) => !results[i.id]);
+    if (pendingItems.length === 0) return;
+
+    const result: CardResult = {
+      kind: "updated",
+      stageIndex: bulkAction.stageIndex,
+      terminal: false,
+    };
+
+    setBulkRunning(true);
+    const nextResults: SessionResults = { ...results };
+    try {
+      for (const item of pendingItems) {
+        if (onSubmitCard) {
+          // Immediate mode: real submits, sequentially; the first failure
+          // stops the run — everything already sent stays recorded.
+          await onSubmitCard(item, {
+            stageIndex: bulkAction.stageIndex,
+            terminal: false,
+            note: "",
+          });
+        }
+        nextResults[item.id] = result;
+      }
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      ).catch(() => {});
+      setResults(nextResults);
+      setShowOverview(false);
+      setShowRecap(true);
+    } catch {
+      // Parent toasted; keep what succeeded and stay in the overview.
+      setResults(nextResults);
+    } finally {
+      setBulkRunning(false);
+    }
   };
 
   const handleSend = async () => {
@@ -263,6 +318,87 @@ export function CheckInStack({
     );
   }
 
+  // ── Overview frame — the scale view: jump anywhere, or bulk-answer ──────
+  if (showOverview) {
+    const pendingCount = items.filter((i) => !results[i.id]).length;
+    return (
+      <Animated.View entering={FadeIn.duration(180)} style={styles.flex}>
+        <View style={styles.overviewHeader}>
+          <Text style={styles.overviewTitle}>This pass</Text>
+          <TouchableOpacity
+            onPress={() => setShowOverview(false)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to cards"
+          >
+            <X color="#000" size={20} strokeWidth={2.2} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={styles.flex}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.overviewList}
+        >
+          {items.map((item, i) => {
+            const r = results[item.id];
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.overviewRow}
+                onPress={() => {
+                  setIndex(i);
+                  setShowOverview(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.overviewRowText}>
+                  <Text style={styles.overviewRowHeading} numberOfLines={1}>
+                    {item.heading}
+                  </Text>
+                  <Text style={styles.overviewRowSub} numberOfLines={1}>
+                    {item.subheading}
+                  </Text>
+                </View>
+                {r?.kind === "updated" ? (
+                  <View style={styles.recapRowBadge}>
+                    <Check color="#FFF" size={10} strokeWidth={3.5} />
+                    <Text style={styles.recapRowBadgeText}>
+                      {r.terminal ? terminalLabel : stages[r.stageIndex]}
+                    </Text>
+                  </View>
+                ) : r?.kind === "skipped" ? (
+                  <Text style={styles.recapRowSkipped}>Skipped</Text>
+                ) : (
+                  <Text style={styles.overviewPending}>
+                    {item.stale ? "Needs update" : "Pending"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {bulkAction && pendingCount > 0 && (
+          <TouchableOpacity
+            style={[styles.bulkBtn, bulkRunning && styles.primaryBtnDisabled]}
+            onPress={handleBulk}
+            disabled={bulkRunning}
+            activeOpacity={0.85}
+          >
+            {bulkRunning ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {bulkAction.label(pendingCount)}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+    );
+  }
+
   if (!current) return null;
 
   // ── Card frame ───────────────────────────────────────────────────────────
@@ -308,9 +444,19 @@ export function CheckInStack({
           }
         >
           {items.length > 1 && (
-            <Text style={styles.positionText}>
-              {position} of {items.length}
-            </Text>
+            <View style={styles.positionRow}>
+              <Text style={styles.positionText}>
+                {position} of {items.length}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowOverview(true)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="See all referrals"
+              >
+                <List color="#999" size={18} strokeWidth={2.2} />
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Identity block */}
@@ -453,13 +599,74 @@ const styles = StyleSheet.create({
   cardScroll: {
     paddingBottom: 16,
   },
+  positionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
   positionText: {
     fontSize: 12,
     fontWeight: "800",
     color: "#999",
     letterSpacing: 0.8,
     textTransform: "uppercase",
+  },
+
+  // Overview (scale view)
+  overviewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 14,
+  },
+  overviewTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.3,
+  },
+  overviewList: {
+    gap: 8,
+    paddingBottom: 12,
+  },
+  overviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  overviewRowText: {
+    flex: 1,
+    gap: 2,
+  },
+  overviewRowHeading: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  overviewRowSub: {
+    fontSize: 12,
+    color: "#888",
+    fontWeight: "500",
+  },
+  overviewPending: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#666",
+  },
+  bulkBtn: {
+    backgroundColor: "#000",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 10,
   },
 
   identity: {
