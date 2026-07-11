@@ -37,6 +37,18 @@ interface JobDetailModalProps {
   onClose: () => void;
   /** Wired only when the job is MATCHED — messages the sponsor. */
   onNavigateToMessages?: (jobId: string) => void;
+  /**
+   * Replaces the default Message/Pending CTA. Used when this modal is
+   * layered over another flow whose action should carry through — e.g. an
+   * interested sponsor's job context, where the right action is "Connect",
+   * not a disabled "Pending Match".
+   */
+  cta?: {
+    label: string;
+    icon?: React.ReactNode;
+    onPress: () => void;
+    loading?: boolean;
+  };
 }
 
 /**
@@ -50,6 +62,7 @@ export function JobDetailModal({
   job,
   onClose,
   onNavigateToMessages,
+  cta,
 }: JobDetailModalProps) {
   return (
     <KeyboardAvoidingView
@@ -318,8 +331,23 @@ export function JobDetailModal({
             {/* Primary CTA. Messaging is gated on a mutual match —
                 applicants can only DM the sponsor after status flips to
                 "MATCHED". Before that, the CTA shows "Awaiting Sponsor"
-                so the user knows why the action is unavailable. */}
-            {job.status === "MATCHED" && onNavigateToMessages && !!job.jobId ? (
+                so the user knows why the action is unavailable. An explicit
+                `cta` prop overrides all of this (e.g. "Connect" when this
+                modal is layered over an interested sponsor's profile). */}
+            {cta ? (
+              <TouchableOpacity
+                style={[
+                  modalStyles.applyBtnLarge,
+                  cta.loading && { opacity: 0.6 },
+                ]}
+                onPress={cta.onPress}
+                disabled={cta.loading}
+                activeOpacity={0.8}
+              >
+                {cta.icon}
+                <Text style={modalStyles.applyBtnLargeText}>{cta.label}</Text>
+              </TouchableOpacity>
+            ) : job.status === "MATCHED" && onNavigateToMessages && !!job.jobId ? (
               <TouchableOpacity
                 style={modalStyles.applyBtnLarge}
                 onPress={() => {

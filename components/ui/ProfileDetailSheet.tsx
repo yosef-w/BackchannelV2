@@ -15,7 +15,7 @@
 // while the richer fields arrive.
 
 import { getPublicProfile, type PublicProfileResponse } from "@/lib/api";
-import { CheckCircle } from "@/components/ui/icons";
+import { CheckCircle, ChevronRight } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -111,6 +111,10 @@ export interface ProfileDetailSheetProps {
     title: string;
     company?: string;
     logoUrl?: string | null;
+    /** When provided, the block becomes tappable (chevron affordance) —
+     * e.g. opening the full job detail for the role a sponsor wants the
+     * applicant for. */
+    onPress?: () => void;
   };
 
   /** Required primary action button (pinned at the bottom). */
@@ -332,9 +336,20 @@ export function ProfileDetailSheet({
                 </View>
               </View>
 
-              {/* ── Role context ──────────────────────────────────── */}
+              {/* ── Role context — tappable when onPress is wired ──── */}
               {roleContext && (
-                <View style={styles.contextBlock}>
+                <TouchableOpacity
+                  style={styles.contextBlock}
+                  onPress={roleContext.onPress}
+                  disabled={!roleContext.onPress}
+                  activeOpacity={0.7}
+                  accessibilityRole={roleContext.onPress ? "button" : undefined}
+                  accessibilityLabel={
+                    roleContext.onPress
+                      ? `View job: ${roleContext.title}`
+                      : undefined
+                  }
+                >
                   <View style={styles.contextBlockRow}>
                     <CompanyLogo
                       logoUrl={roleContext.logoUrl}
@@ -360,8 +375,11 @@ export function ProfileDetailSheet({
                         </Text>
                       )}
                     </View>
+                    {roleContext.onPress && (
+                      <ChevronRight color="#999" size={18} strokeWidth={2.2} />
+                    )}
                   </View>
-                </View>
+                </TouchableOpacity>
               )}
 
               {/* ── Loading or content ────────────────────────────── */}

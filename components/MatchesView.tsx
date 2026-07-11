@@ -13,6 +13,7 @@ import {
     sponsorJob,
     withdrawReferral,
 } from "@/lib/api";
+import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { saveSponsorRequestOutcome } from "@/utils/sponsorRequestCache";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -169,6 +170,55 @@ export function MatchesView({
   const [likingBackSponsorId, setLikingBackSponsorId] = useState<string | null>(
     null,
   );
+  // Job detail layered OVER the interested-sponsor profile sheet — the
+  // applicant tapped the "WANTS YOU FOR" role block to go deeper on the job
+  // before deciding to connect. Separate state (not an activeModal kind) so
+  // the profile sheet stays open underneath; closing the job modal returns
+  // to it.
+  const [interestedSponsorJob, setInterestedSponsorJob] =
+    useState<JobOpportunity | null>(null);
+
+  /**
+   * Build the richest JobOpportunity we can for an interested sponsor's
+   * role context. There's no applicant-facing single-job endpoint, but the
+   * Home deck cache often has the full posting (description, skills,
+   * benefits) — enrich from it when the jobId matches, and fall back to the
+   * like-row's title/company (the modal hides sections whose data is
+   * missing). The sponsor herself is the job's sponsor, so her identity
+   * fills the "Introduced By" card either way.
+   */
+  const buildInterestedSponsorJob = (
+    s: InterestedSponsor,
+  ): JobOpportunity => {
+    const deckJob = s.jobId
+      ? useJobsStore.getState().jobs.find((j) => j.id === s.jobId)
+      : undefined;
+    return {
+      id: s.jobId || `interested-${s.likeId}`,
+      jobId: s.jobId,
+      title: s.jobTitle || deckJob?.title || "A role at their company",
+      company: s.jobCompany || deckJob?.company || s.company || "",
+      location: deckJob?.location || "",
+      salary: deckJob?.salary || "Competitive",
+      type: deckJob?.type || "",
+      experienceLevel: deckJob?.experienceLevel || "",
+      image: s.image,
+      companyLogoUrl: deckJob?.image || undefined,
+      url: deckJob?.url || undefined,
+      description: deckJob?.description || "",
+      skills: deckJob?.skills || [],
+      benefits: deckJob?.benefits || [],
+      coreResponsibilities: deckJob?.coreResponsibilities || "",
+      workArrangement: deckJob?.workArrangement || "",
+      status: "ACTIVE",
+      sponsorInfo: {
+        name: s.name,
+        role: s.role,
+        image: s.image,
+        canRefer: false,
+      },
+    };
+  };
 
   // Sponsor-requests — applicants asking sponsors at the company to sponsor a
   // specific job. List cached via useQuery below.
@@ -492,6 +542,7 @@ export function MatchesView({
 
   const closeAllModals = () => {
     setActiveModal(null);
+    setInterestedSponsorJob(null);
     setSrJobDetailVisible(false);
     setSrJobDetail(null);
     setSrJobDetailError(null);
@@ -1034,6 +1085,13 @@ export function MatchesView({
                     selectedInterestedSponsor.jobTitle ||
                     "A role at their company",
                   company: selectedInterestedSponsor.jobCompany,
+                  // Go deeper on the role before deciding — opens the same
+                  // job detail modal the In Progress section uses, layered
+                  // over this sheet.
+                  onPress: () =>
+                    setInterestedSponsorJob(
+                      buildInterestedSponsorJob(selectedInterestedSponsor),
+                    ),
                 }
               : undefined
           }
@@ -1047,6 +1105,34 @@ export function MatchesView({
             onPress: () => handleLikeBackSponsor(selectedInterestedSponsor),
           }}
         />
+      )}
+
+      {/* Job detail layered over the interested-sponsor sheet — the "WANTS
+          YOU FOR" block tapped. Same modal as In Progress jobs, enriched
+          from the deck cache when possible; closing it returns to the
+          profile sheet. The CTA carries the Connect action through so the
+          decision can be made right where the information is. */}
+      {selectedInterestedSponsor && (
+        <Modal
+          visible={!!interestedSponsorJob}
+          transparent
+          animationType="none"
+        >
+          <JobDetailModal
+            job={interestedSponsorJob}
+            onClose={() => setInterestedSponsorJob(null)}
+            cta={{
+              label:
+                likingBackSponsorId === selectedInterestedSponsor.likeId
+                  ? "Connecting..."
+                  : `Connect with ${selectedInterestedSponsor.firstName}`,
+              icon: <Heart color="#FFF" size={18} strokeWidth={2.5} />,
+              loading:
+                likingBackSponsorId === selectedInterestedSponsor.likeId,
+              onPress: () => handleLikeBackSponsor(selectedInterestedSponsor),
+            }}
+          />
+        </Modal>
       )}
 
       {/* Waitlisted Job Detail Modal */}
