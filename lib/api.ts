@@ -404,6 +404,54 @@ export async function browseJobs(filters?: {
 }
 
 /**
+ * 📋 List Sponsored Jobs (any authenticated role)
+ * GET /api/jobs/ — active JOB_POSTINGS rows with FULL detail columns
+ * (description, salary, skills, benefits, responsibilities, insights, URL),
+ * filterable by title/company. There's no single-job detail endpoint for
+ * applicants, so consumers that need one job's detail (e.g. the interested-
+ * sponsor "wants you for" modal) fetch a narrow title+company filter and
+ * match JOB_ID client-side.
+ *
+ * Uppercase keys from the Postgres adapter; KEY_SKILLS/BENEFITS may arrive
+ * as JSON-encoded strings (JSONB→TEXT cast) — parse tolerantly.
+ */
+export interface SponsoredJobRow {
+  JOB_ID: string;
+  SPONSOR_ID?: string;
+  TITLE: string | null;
+  COMPANY: string | null;
+  LOCATION: string | null;
+  DESCRIPTION: string | null;
+  SALARY_MIN: number | null;
+  SALARY_MAX: number | null;
+  SALARY_CURRENCY: string | null;
+  REQUIREMENTS?: string | null;
+  EXPERIENCE_LEVEL: string | null;
+  EMPLOYMENT_TYPE?: string | null;
+  REMOTE_OPTION?: boolean | null;
+  URL?: string | null;
+  KEY_SKILLS?: string | string[] | null;
+  BENEFITS?: string | string[] | null;
+  RESPONSIBILITIES?: string | null;
+  WORK_ARRANGEMENT?: string | null;
+}
+
+export async function getSponsoredJobs(filters?: {
+  title?: string;
+  company?: string;
+  location?: string;
+  limit?: number;
+}): Promise<{ jobs: SponsoredJobRow[]; total_count: number }> {
+  const params = new URLSearchParams();
+  if (filters?.title) params.append("title", filters.title);
+  if (filters?.company) params.append("company", filters.company);
+  if (filters?.location) params.append("location", filters.location);
+  if (filters?.limit) params.append("limit", String(filters.limit));
+  const queryString = params.toString();
+  return api.get(queryString ? `/api/jobs/?${queryString}` : "/api/jobs/");
+}
+
+/**
  * 🔍 Get Job Detail (Silver Job)
  * Retrieves full details for a single ATS/silver job by ID.
  * Used by the sponsor-request flow so a sponsor can review the role

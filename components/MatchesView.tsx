@@ -6,6 +6,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import {
     getJobDetail,
+    getSponsoredJobs,
     type SilverJobDetail,
     likeBackSponsor,
     likeProfile,
@@ -13,6 +14,7 @@ import {
     sponsorJob,
     withdrawReferral,
 } from "@/lib/api";
+import { parseSkillsField } from "./jobs/jobTransforms";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { saveSponsorRequestOutcome } from "@/utils/sponsorRequestCache";
@@ -218,6 +220,77 @@ export function MatchesView({
         canRefer: false,
       },
     };
+  };
+
+  /**
+   * Open the job modal immediately with whatever we already have (like-row
+   * basics + deck-cache enrichment), then fetch the FULL posting in the
+   * background from GET /api/jobs/ — the interested-sponsor payload only
+   * carries title/company, so without this the modal is near-empty unless
+   * the job happened to be in today's deck. Filtered by title+company to
+   * keep the fetch narrow; matched by JOB_ID (title+company equality as the
+   * legacy fallback for likes that predate jobId). Merge only lands if the
+   * modal is still showing the same job.
+   */
+  const openInterestedSponsorJob = (s: InterestedSponsor) => {
+    const base = buildInterestedSponsorJob(s);
+    setInterestedSponsorJob(base);
+
+    getSponsoredJobs({
+      title: s.jobTitle || undefined,
+      company: s.jobCompany || undefined,
+      limit: 25,
+    })
+      .then(({ jobs }) => {
+        const row = s.jobId
+          ? jobs.find((j) => j.JOB_ID === s.jobId)
+          : jobs.find(
+              (j) =>
+                (j.TITLE || "") === s.jobTitle &&
+                (j.COMPANY || "") === s.jobCompany,
+            );
+        if (!row) return;
+        const salary =
+          row.SALARY_MIN && row.SALARY_MAX
+            ? `$${Math.round(row.SALARY_MIN / 1000)}k – $${Math.round(row.SALARY_MAX / 1000)}k`
+            : base.salary;
+        setInterestedSponsorJob((prev) => {
+          if (!prev || prev.id !== base.id) return prev;
+          return {
+            ...prev,
+            title: row.TITLE || prev.title,
+            company: row.COMPANY || prev.company,
+            location: row.LOCATION || prev.location,
+            salary,
+            salaryMin: row.SALARY_MIN ?? prev.salaryMin,
+            salaryMax: row.SALARY_MAX ?? prev.salaryMax,
+            salaryCurrency: row.SALARY_CURRENCY || prev.salaryCurrency,
+            experienceLevel: row.EXPERIENCE_LEVEL || prev.experienceLevel,
+            description: row.DESCRIPTION || prev.description,
+            skills: prev.skills.length
+              ? prev.skills
+              : parseSkillsField(
+                  typeof row.KEY_SKILLS === "string"
+                    ? row.KEY_SKILLS
+                    : JSON.stringify(row.KEY_SKILLS ?? []),
+                ),
+            benefits: prev.benefits.length
+              ? prev.benefits
+              : parseSkillsField(
+                  typeof row.BENEFITS === "string"
+                    ? row.BENEFITS
+                    : JSON.stringify(row.BENEFITS ?? []),
+                ),
+            coreResponsibilities:
+              row.RESPONSIBILITIES || prev.coreResponsibilities,
+            workArrangement: row.WORK_ARRANGEMENT || prev.workArrangement,
+            url: row.URL || prev.url,
+          };
+        });
+      })
+      .catch(() => {
+        // Best-effort enrichment — the modal already shows the basics.
+      });
   };
 
   // Sponsor-requests — applicants asking sponsors at the company to sponsor a
@@ -1089,12 +1162,11 @@ export function MatchesView({
                     "A role at their company",
                   company: selectedInterestedSponsor.jobCompany,
                   // Go deeper on the role before deciding — opens the same
-                  // job detail modal the In Progress section uses, layered
-                  // over this sheet.
+                  // job detail modal the In Progress section uses (opens
+                  // instantly with basics, enriches with the full posting
+                  // in the background).
                   onPress: () =>
-                    setInterestedSponsorJob(
-                      buildInterestedSponsorJob(selectedInterestedSponsor),
-                    ),
+                    openInterestedSponsorJob(selectedInterestedSponsor),
                 }
               : undefined
           }
