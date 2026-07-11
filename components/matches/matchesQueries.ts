@@ -4,6 +4,7 @@ import {
     getLikedJobs,
     getMatches,
     getMyJobs,
+    getSponsoredJobs,
     getSponsorMatches,
     getSponsorRequests,
     getWaitlistedJobs,
@@ -178,6 +179,70 @@ export interface JobOpportunity {
     image: string;
     canRefer: boolean;
   };
+}
+
+/**
+ * Fetch the full sponsored posting behind a job reference that only carries
+ * title/company (interested-sponsor likes, thread jobContext strips, …) and
+ * map it into JobOpportunity fields for merging into a partially-built
+ * modal payload.
+ *
+ * There's no applicant-facing single-job endpoint, so this filters
+ * GET /api/jobs/ by title+company (narrow result set) and matches the exact
+ * JOB_ID — title+company equality is the legacy fallback for rows that
+ * predate jobId. Returns only the fields that had real values, so callers
+ * can spread the result over their base object without clobbering
+ * anything; null when the posting isn't found (inactive, filtered, …).
+ */
+export async function fetchSponsoredJobEnrichment(ref: {
+  jobId?: string;
+  title?: string;
+  company?: string;
+}): Promise<Partial<JobOpportunity> | null> {
+  const { jobs } = await getSponsoredJobs({
+    title: ref.title || undefined,
+    company: ref.company || undefined,
+    limit: 25,
+  });
+  const row = ref.jobId
+    ? jobs.find((j) => j.JOB_ID === ref.jobId)
+    : jobs.find(
+        (j) =>
+          (j.TITLE || "") === (ref.title || "") &&
+          (j.COMPANY || "") === (ref.company || ""),
+      );
+  if (!row) return null;
+
+  const enriched: Partial<JobOpportunity> = {};
+  if (row.TITLE) enriched.title = row.TITLE;
+  if (row.COMPANY) enriched.company = row.COMPANY;
+  if (row.LOCATION) enriched.location = row.LOCATION;
+  if (row.SALARY_MIN && row.SALARY_MAX) {
+    enriched.salary = `$${Math.round(row.SALARY_MIN / 1000)}k – $${Math.round(row.SALARY_MAX / 1000)}k`;
+    enriched.salaryMin = row.SALARY_MIN;
+    enriched.salaryMax = row.SALARY_MAX;
+  }
+  if (row.SALARY_CURRENCY) enriched.salaryCurrency = row.SALARY_CURRENCY;
+  if (row.EXPERIENCE_LEVEL) enriched.experienceLevel = row.EXPERIENCE_LEVEL;
+  if (row.DESCRIPTION) enriched.description = row.DESCRIPTION;
+  if (row.RESPONSIBILITIES) enriched.coreResponsibilities = row.RESPONSIBILITIES;
+  if (row.WORK_ARRANGEMENT) enriched.workArrangement = row.WORK_ARRANGEMENT;
+  if (row.URL) enriched.url = row.URL;
+
+  const skills = parseSkillsField(
+    typeof row.KEY_SKILLS === "string"
+      ? row.KEY_SKILLS
+      : JSON.stringify(row.KEY_SKILLS ?? []),
+  );
+  if (skills.length) enriched.skills = skills;
+  const benefits = parseSkillsField(
+    typeof row.BENEFITS === "string"
+      ? row.BENEFITS
+      : JSON.stringify(row.BENEFITS ?? []),
+  );
+  if (benefits.length) enriched.benefits = benefits;
+
+  return enriched;
 }
 
 /**

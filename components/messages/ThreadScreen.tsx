@@ -37,7 +37,13 @@ import Animated, {
   FadeInUp,
   type AnimatedStyle,
 } from "react-native-reanimated";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { Conversation, ThreadMessage } from "../MessagesView";
+import { JobDetailModal } from "../matches/JobDetailModal";
+import {
+  fetchSponsoredJobEnrichment,
+  type JobOpportunity,
+} from "../matches/matchesQueries";
 import { CharCounter } from "../ui/CharCounter";
 import { ProfileDetailSheet } from "../ui/ProfileDetailSheet";
 import { ReferralFlowModal } from "./ReferralFlowModal";
@@ -163,6 +169,72 @@ export function ThreadScreen({
   const showToast = useToastStore((state) => state.showToast);
 
   const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Full job detail for the thread's role-context strip — same modal (and
+  // same background enrichment) as the Matches screen's job views. Kept
+  // separate from showProfileModal: the strip is about the JOB, the avatar
+  // is about the PERSON, and they used to confusingly open the same sheet.
+  const [jobDetail, setJobDetail] = useState<JobOpportunity | null>(null);
+
+  /** Open the job modal instantly with the strip's basics, then merge in
+   * the full posting (description, salary, skills, benefits) when the
+   * background fetch lands. */
+  const openJobContext = () => {
+    if (!conversation) return;
+    const ctx = conversation.jobContext;
+    if (!ctx?.jobTitle && !ctx?.company) return;
+
+    // The job's sponsor: the counterpart when an applicant is viewing, the
+    // viewer themself when a sponsor is (it's their own posting).
+    const self = useUserProfileStore.getState().data.personal;
+    const sponsorInfo =
+      userType === "applicant"
+        ? {
+            name: conversation.otherParticipant?.name || "Sponsor",
+            role: conversation.otherParticipant?.role || "",
+            image: conversation.otherParticipant?.profileImageUrl || "",
+            canRefer: false,
+          }
+        : {
+            name: self.fullName || "You",
+            role: "",
+            image: self.profileImage || "",
+            canRefer: false,
+          };
+
+    const base: JobOpportunity = {
+      id: ctx.jobId || `thread-${conversation.id}`,
+      jobId: ctx.jobId,
+      title: ctx.jobTitle || "This role",
+      company: ctx.company || "",
+      location: "",
+      salary: "Competitive",
+      type: "",
+      image: sponsorInfo.image,
+      companyLogoUrl: ctx.logoUrl || undefined,
+      description: "",
+      skills: [],
+      benefits: [],
+      status: "MATCHED",
+      sponsorInfo,
+    };
+    setJobDetail(base);
+
+    fetchSponsoredJobEnrichment({
+      jobId: ctx.jobId,
+      title: ctx.jobTitle,
+      company: ctx.company,
+    })
+      .then((enriched) => {
+        if (!enriched) return;
+        setJobDetail((prev) =>
+          prev && prev.id === base.id ? { ...prev, ...enriched } : prev,
+        );
+      })
+      .catch(() => {
+        // Best-effort — the modal already shows the basics.
+      });
+  };
   const [showReferralFlow, setShowReferralFlow] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
@@ -500,12 +572,13 @@ return (
       </View>
       {/* Pins which role this thread is about — the header above only
           says who you're talking to. Shown on closed threads too, since
-          context matters most when reviewing an old conversation. */}
+          context matters most when reviewing an old conversation. Tapping
+          opens the JOB detail (the avatar opens the person). */}
       <ThreadContextStrip
         jobTitle={conversation.jobContext?.jobTitle}
         company={conversation.jobContext?.company}
         logoUrl={conversation.jobContext?.logoUrl}
-        onPress={() => setShowProfileModal(true)}
+        onPress={openJobContext}
       />
       <ScrollView
         ref={scrollViewRef}
@@ -840,6 +913,22 @@ return (
         }
       />
     )}
+
+    {/* Job detail for the thread's role-context strip — the same modal
+        (and background enrichment) the Matches screen uses. The CTA just
+        returns to the conversation: the user is already exactly where the
+        default "Message" action would take them. */}
+    <Modal visible={!!jobDetail} transparent animationType="none">
+      <JobDetailModal
+        job={jobDetail}
+        onClose={() => setJobDetail(null)}
+        cta={{
+          label: "Back to conversation",
+          icon: <MessageCircle color="#FFF" size={18} strokeWidth={2.5} />,
+          onPress: () => setJobDetail(null),
+        }}
+      />
+    </Modal>
 
     {/* Referral flow — extracted to
         components/messages/ReferralFlowModal.tsx (self-contained: the
