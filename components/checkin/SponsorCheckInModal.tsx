@@ -1,40 +1,36 @@
 /**
- * SponsorCheckInModal
- * Lets a sponsor triage their active referral pipeline — update the stage for
- * each candidate they've referred inline, then submit all changes at once via
- * the batch check-in endpoint.
+ * SponsorCheckInModal — the sponsor's referral triage, rebuilt on the
+ * CheckInStack card engine (one candidate per card, tappable StageTrack,
+ * Skip, recap) in place of the old inline-chips batch list.
  *
- * Wired to POST /api/referrals/checkin/batch/ (PR #37, 2026-04-30).
- * Not dismissible by tapping outside; only exits via Submit / Close.
+ * Accumulate mode: answers collect across cards and submit ONCE from the
+ * recap via the existing batch endpoint (POST /api/referrals/checkin/batch/,
+ * 50-update cap). Behavioral improvement over the old sheet: every explicit
+ * answer is submitted — including "Referred" ("still in pipeline, no
+ * movement") — where the old sheet only sent stages that *changed* from the
+ * default, meaning a no-movement confirmation never refreshed the stale
+ * tracking. Skipped cards send nothing, exactly as before.
  */
 
-import { Check, ChevronRight } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
-import {
-    trackCheckInFailed,
-    trackSponsorBatchCheckInSubmitted,
+  trackCheckInFailed,
+  trackSponsorBatchCheckInSubmitted,
 } from "@/lib/analytics/mixpanel";
 import {
-    SPONSOR_CHECKIN_STAGES,
-    SponsorCheckInStage,
-    submitSponsorBatchCheckIn,
+  SPONSOR_CHECKIN_STAGES,
+  SponsorCheckInStage,
+  submitSponsorBatchCheckIn,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
 import {
-    getLocalCheckInTimes,
-    saveLocalCheckInStages,
+  getLocalCheckInTimes,
+  saveLocalCheckInStages,
 } from "@/utils/checkInStageCache";
 import { CheckInSheetShell } from "./CheckInSheetShell";
+import { CheckInStack, type StackCardItem } from "./CheckInStack";
+import { daysSince, isStale, sortStaleFirst } from "./checkInSession";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
 export interface SponsorCheckInReferral {
   referralId: string;
   applicantFirstName: string | null;
@@ -61,46 +57,20 @@ interface Props {
   onSubmitted?: () => void;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const STATUS_STAGES = SPONSOR_CHECKIN_STAGES;
+/** Pipeline stages (in order); "No Longer Active" is the terminal exit. */
+const TIMELINE_STAGES: SponsorCheckInStage[] = SPONSOR_CHECKIN_STAGES.filter(
+  (s) => s !== "No Longer Active",
+);
+const TERMINAL_STAGE: SponsorCheckInStage = "No Longer Active";
 
-/**
- * Backend caps each batch request at 50 updates. We cap at the same number.
- */
+/** Backend caps each batch request at 50 updates. We cap at the same number. */
 const BATCH_LIMIT = 50;
-/** Same "needs an update" window as the header badge / Matches nudge. */
-const STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function applicantName(r: SponsorCheckInReferral): string {
-  const first = r.applicantFirstName || "";
-  const last = r.applicantLastName || "";
-  const full = `${first} ${last}`.trim();
+  const full = `${r.applicantFirstName || ""} ${r.applicantLastName || ""}`.trim();
   return full || "Applicant";
 }
 
-function daysSince(iso: string): number | null {
-  if (!iso) return null;
-  const t = Date.parse(iso);
-  if (isNaN(t)) return null;
-  return Math.max(0, Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24)));
-}
-
-/**
- * Map the (uppercase) referral.status from listReferrals into the closest
- * sponsor check-in stage. Used as the initial value before the sponsor picks
- * an update.
- */
-function initialStageFor(r: SponsorCheckInReferral): SponsorCheckInStage {
-  const s = (r.status || "").toUpperCase();
-  if (s === "REFERRED" || s === "ACTIVE") return "Referred";
-  // Backend stores referrals in REFERRED/WITHDRAWN at row level; per-stage state
-  // lives in matching.referral_checkins. We default to "Referred" here and let
-  // the sponsor pick the latest known stage.
-  return "Referred";
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
 export function SponsorCheckInModal({
   visible,
   onDismiss,
@@ -110,511 +80,111 @@ export function SponsorCheckInModal({
 }: Props) {
   const showToast = useToastStore((s) => s.showToast);
 
-  // Last locally-submitted check-in per referral — drives stale-first
-  // sorting and the "needs update" marker below.
   const [checkInTimes, setCheckInTimes] = useState<Record<string, string>>({});
   useEffect(() => {
     if (visible) getLocalCheckInTimes().then(setCheckInTimes);
   }, [visible]);
 
-  const needsUpdate = (r: SponsorCheckInReferral) => {
-    const created = Date.parse(r.createdAt || "");
-    if (isNaN(created) || created > Date.now() - STALE_MS) return false;
-    const lastCheckIn = Date.parse(checkInTimes[r.referralId] || "");
-    return isNaN(lastCheckIn) || lastCheckIn <= Date.now() - STALE_MS;
-  };
-
-  // Filter out withdrawn referrals — backend rejects check-ins on those.
-  // The user opened this sheet because something needs attention, so
-  // referrals needing an update sort first (oldest first within that).
-  const activeReferrals = useMemo(
-    () =>
-      referrals
-        .filter((r) => (r.status || "").toUpperCase() !== "WITHDRAWN")
-        .sort((a, b) => {
-          const staleDiff = Number(needsUpdate(b)) - Number(needsUpdate(a));
-          if (staleDiff !== 0) return staleDiff;
-          return (
-            (Date.parse(a.createdAt || "") || 0) -
-            (Date.parse(b.createdAt || "") || 0)
-          );
-        }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [referrals, checkInTimes],
-  );
-
-  // Map of referralId → currently selected stage. Initialised when the modal
-  // becomes visible or when the referral list changes underneath.
-  const [stageById, setStageById] = useState<
-    Record<string, SponsorCheckInStage>
-  >({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  // "Up to date" section starts collapsed so a long pipeline reads as just
-  // the referrals that need attention.
-  const [showUpToDate, setShowUpToDate] = useState(false);
-
-  // (Re-)initialise the stage map whenever the modal opens or referrals change.
+  // Session identity: remount the stack (fresh session state) each open.
+  const [sessionKey, setSessionKey] = useState(0);
   useEffect(() => {
-    if (!visible) return;
-    const next: Record<string, SponsorCheckInStage> = {};
-    for (const r of activeReferrals) {
-      next[r.referralId] = initialStageFor(r);
-    }
-    setStageById(next);
-    setSubmitted(false);
-    setShowUpToDate(false);
-  }, [visible, activeReferrals]);
+    if (visible) setSessionKey((k) => k + 1);
+  }, [visible]);
 
-  /**
-   * "Changed" = stage now differs from the initial value when the modal
-   * opened. We compute initial values inline rather than tracking a separate
-   * baseline state, since the baseline is deterministic from the referral row.
-   */
-  const changedUpdates = useMemo(() => {
-    return activeReferrals
-      .map((r) => {
-        const initial = initialStageFor(r);
-        const current = stageById[r.referralId];
-        if (!current || current === initial) return null;
-        return { referral_id: r.referralId, stage: current };
-      })
-      .filter(
-        (u): u is { referral_id: string; stage: SponsorCheckInStage } =>
-          u !== null,
-      );
-  }, [activeReferrals, stageById]);
-
-  const hasChanges = changedUpdates.length > 0;
-
-  const handleSetStatus = (referralId: string, stage: SponsorCheckInStage) => {
-    setStageById((prev) => ({ ...prev, [referralId]: stage }));
-  };
-
-  const handleClose = () => {
-    if (submitting) return;
-    onDismiss();
-  };
-
-  const handleSubmit = async () => {
-    if (!hasChanges) {
-      onDismiss();
-      return;
-    }
-
-    // Backend rejects > 50 updates per call. Slice to the limit and surface a
-    // toast if any changes were dropped.
-    const toSubmit = changedUpdates.slice(0, BATCH_LIMIT);
-    const dropped = changedUpdates.length - toSubmit.length;
-
-    try {
-      setSubmitting(true);
-      await submitSponsorBatchCheckIn(toSubmit);
-      trackSponsorBatchCheckInSubmitted({ updateCount: toSubmit.length });
-      // Mirror locally so the Matches screen's pipeline timeline reflects
-      // these updates immediately — see checkInStageCache.ts for why this is
-      // necessary until the backend returns stages on GET /api/referrals/.
-      saveLocalCheckInStages(
-        toSubmit.map((u) => ({ referralId: u.referral_id, stage: u.stage })),
-      );
-      onSubmitted?.();
-      if (dropped > 0) {
-        showToast(
-          `Updated ${toSubmit.length} referrals; ${dropped} more will need a second pass.`,
-          "success",
-        );
-      }
-      setSubmitted(true);
-      setTimeout(() => {
-        setSubmitted(false);
-        onDismiss();
-      }, 1600);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      trackCheckInFailed({ role: "sponsor", reason: msg || "unknown" });
-      showToast(msg || "Failed to save updates. Try again.", "error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const sheetState = submitted
-    ? ("success" as const)
-    : loading
-      ? ("loading" as const)
-      : activeReferrals.length === 0
-        ? ("empty" as const)
-        : ("content" as const);
-
-  const renderCard = (referral: SponsorCheckInReferral) => {
-    const currentStage =
-      stageById[referral.referralId] ?? initialStageFor(referral);
-    const days = daysSince(referral.createdAt);
-    const stale = needsUpdate(referral);
-    return (
-      <View key={referral.referralId} style={styles.referralCard}>
-        {/* Card header row */}
-        <View style={styles.cardHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.candidateName}>{applicantName(referral)}</Text>
-            <Text style={styles.candidateRole}>
-              {referral.jobTitle || "Role"}
-              {referral.jobCompany ? ` at ${referral.jobCompany}` : ""}
-            </Text>
-          </View>
-          <View style={styles.cardHeaderRight}>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusBadgeText}>{currentStage}</Text>
-            </View>
-            {days !== null && (
-              <Text
-                style={[styles.lastUpdated, stale && styles.lastUpdatedStale]}
-              >
-                {stale
-                  ? `needs update · ${days}d`
-                  : days === 0
-                    ? "today"
-                    : `${days}d ago`}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* Stage chips — one horizontally-scrollable line instead of a
-            2-3 line wrap, so a long list of referrals stays scannable. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {STATUS_STAGES.map((stage) => {
-            const isSelected = currentStage === stage;
-            return (
-              <TouchableOpacity
-                key={stage}
-                style={[
-                  styles.statusChip,
-                  isSelected && styles.statusChipSelected,
-                ]}
-                onPress={() => handleSetStatus(referral.referralId, stage)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    isSelected && styles.statusChipTextSelected,
-                  ]}
-                >
-                  {stage}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+  const items: StackCardItem[] = useMemo(() => {
+    const active = referrals.filter(
+      (r) => (r.status || "").toUpperCase() !== "WITHDRAWN",
     );
-  };
+    return sortStaleFirst(active, checkInTimes).map((r) => {
+      const d = daysSince(r.createdAt);
+      const when =
+        d === null
+          ? ""
+          : d === 0
+            ? " · referred today"
+            : ` · referred ${d} day${d === 1 ? "" : "s"} ago`;
+      const role = r.jobTitle || "Role";
+      const at = r.jobCompany ? ` at ${r.jobCompany}` : "";
+      return {
+        id: r.referralId,
+        heading: applicantName(r),
+        subheading: `${role}${at}`,
+        meta: `You referred them${when}`,
+        stale: isStale(r, checkInTimes),
+      };
+    });
+  }, [referrals, checkInTimes]);
 
-  // Triage split — the actionable referrals lead; up-to-date ones collapse
-  // behind their header so a long pipeline stays a short list.
-  const staleList = activeReferrals.filter(needsUpdate);
-  const freshList = activeReferrals.filter((r) => !needsUpdate(r));
+  const sheetState = loading
+    ? ("loading" as const)
+    : items.length === 0
+      ? ("empty" as const)
+      : ("content" as const);
 
   return (
     <CheckInSheetShell
       visible={visible}
-      onClose={handleClose}
+      onClose={onDismiss}
       state={sheetState}
-      loadingText="Loading referrals…"
+      heightFraction={0.78}
+      loadingText="Loading your referrals…"
       emptyTitle="No active referrals"
-      emptyText="You haven't submitted any referrals yet, or all of them have been withdrawn."
-      successTitle="Updates Saved!"
-      successSubtitle="Your referral statuses have been updated."
+      emptyText="You haven't referred anyone yet. Once you submit a referral, you can track and update its progress here."
+      // Success frame unused — the stack's recap is the session exit.
+      successTitle=""
+      successSubtitle=""
     >
-      {/* Sheet header */}
-      <View style={styles.sheetHeader}>
-        <View style={styles.sheetTitleRow}>
-          <Text style={styles.sheetTitle}>Referral Pipeline</Text>
-          <View style={styles.sheetCountPill}>
-            <Text style={styles.sheetCountPillText}>
-              {activeReferrals.length}
-            </Text>
-          </View>
-        </View>
-        <Text style={styles.sheetSubtitle}>
-          Update the status on your active referrals
-        </Text>
-      </View>
+      <CheckInStack
+        key={sessionKey}
+        items={items}
+        stages={TIMELINE_STAGES}
+        terminalLabel={TERMINAL_STAGE}
+        recapSubtitle={(n) =>
+          n === 1
+            ? "1 pipeline update ready to send."
+            : `${n} pipeline updates ready to send.`
+        }
+        finalizeLabel={(n) =>
+          n === 1 ? "Send 1 update" : `Send ${n} updates`
+        }
+        onFinalize={async (updates) => {
+          // Backend rejects > 50 updates per call. Slice to the limit and
+          // surface a toast if any changes were dropped (they'll be stale
+          // again next pass).
+          const mapped = updates.map((u) => ({
+            referral_id: u.id,
+            stage: u.terminal
+              ? TERMINAL_STAGE
+              : TIMELINE_STAGES[u.stageIndex],
+          }));
+          const toSubmit = mapped.slice(0, BATCH_LIMIT);
+          const dropped = mapped.length - toSubmit.length;
 
-      <ScrollView
-        style={styles.mainScroll}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {staleList.length > 0 ? (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionLabel}>NEEDS UPDATE</Text>
-              <View style={styles.sectionCountPill}>
-                <Text style={styles.sectionCountPillText}>
-                  {staleList.length}
-                </Text>
-              </View>
-            </View>
-            {staleList.map(renderCard)}
-          </>
-        ) : (
-          <Text style={styles.allCaughtUpText}>
-            Nothing needs an update right now.
-          </Text>
-        )}
-
-        {freshList.length > 0 && (
-          <>
-            <TouchableOpacity
-              style={styles.sectionHeader}
-              onPress={() => setShowUpToDate((s) => !s)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.sectionLabel}>UP TO DATE</Text>
-              <View style={styles.sectionCountPill}>
-                <Text style={styles.sectionCountPillText}>
-                  {freshList.length}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }} />
-              <ChevronRight
-                size={16}
-                color="#BBB"
-                style={showUpToDate && { transform: [{ rotate: "90deg" }] }}
-              />
-            </TouchableOpacity>
-            {showUpToDate && freshList.map(renderCard)}
-          </>
-        )}
-      </ScrollView>
-
-      {/* Sticky submit — pinned below the list so a sponsor with a long
-          pipeline never scrolls to find the commit action. */}
-      <View style={styles.stickyFooter}>
-        <TouchableOpacity
-          style={[
-            styles.submitBtn,
-            !hasChanges && styles.submitBtnNoChanges,
-            submitting && styles.submitBtnNoChanges,
-          ]}
-          onPress={handleSubmit}
-          disabled={submitting}
-          activeOpacity={0.8}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <>
-              <Text
-                style={[
-                  styles.submitBtnText,
-                  !hasChanges && styles.submitBtnTextNoChanges,
-                ]}
-              >
-                {hasChanges
-                  ? `Submit ${changedUpdates.length} Update${changedUpdates.length === 1 ? "" : "s"}`
-                  : "No Changes — Close"}
-              </Text>
-              {hasChanges && <Check color="#FFF" size={18} strokeWidth={2.5} />}
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+          try {
+            await submitSponsorBatchCheckIn(toSubmit);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            trackCheckInFailed({ role: "sponsor", reason: msg || "unknown" });
+            showToast(msg || "Failed to save updates. Try again.", "error");
+            throw err; // stay on the recap so nothing is lost
+          }
+          trackSponsorBatchCheckInSubmitted({ updateCount: toSubmit.length });
+          // Mirror locally so the Matches screen's pipeline timeline reflects
+          // these updates immediately — see checkInStageCache.ts for why this
+          // is necessary until the backend returns stages on GET /api/referrals/.
+          saveLocalCheckInStages(
+            toSubmit.map((u) => ({ referralId: u.referral_id, stage: u.stage })),
+          );
+          onSubmitted?.();
+          if (dropped > 0) {
+            showToast(
+              `Updated ${toSubmit.length} referrals; ${dropped} more will need a second pass.`,
+              "success",
+            );
+          }
+        }}
+        onDone={onDismiss}
+      />
     </CheckInSheetShell>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-
-  // ── Sheet header ────────────────────────────────────────────────────────────
-  sheetHeader: {
-    marginBottom: 20,
-  },
-  sheetTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  sheetTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
-  },
-  sheetCountPill: {
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 6,
-    borderRadius: 11,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sheetCountPillText: { fontSize: 12, fontWeight: "800", color: "#FFF" },
-  sheetSubtitle: {
-    fontSize: 13,
-    color: "#999",
-    fontWeight: "500",
-  },
-
-  // ── Section headers (NEEDS UPDATE / UP TO DATE) ────────────────────────────
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 4,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 0.8,
-  },
-  sectionCountPill: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 5,
-    borderRadius: 9,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionCountPillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
-  allCaughtUpText: {
-    fontSize: 13,
-    color: "#999",
-    fontWeight: "600",
-    paddingVertical: 8,
-  },
-
-  // ── Sticky submit footer ────────────────────────────────────────────────────
-  stickyFooter: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-  },
-
-  // ── Scroll content ──────────────────────────────────────────────────────────
-  scrollContent: {
-    flexGrow: 1,
-    gap: 12,
-    paddingBottom: 8,
-  },
-  mainScroll: {
-    flex: 1,
-  },
-
-  // ── Referral card — system tokens (#F9F9F9/16, no shadow) ─────────────────
-  referralCard: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    gap: 14,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  candidateName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 3,
-  },
-  candidateRole: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
-  },
-  cardHeaderRight: {
-    alignItems: "flex-end",
-    gap: 4,
-  },
-  statusBadge: {
-    backgroundColor: "#000",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: 0.3,
-  },
-  lastUpdated: {
-    fontSize: 10,
-    color: "#BBB",
-    fontWeight: "500",
-  },
-  // "needs update · 12d" — the reason this card sorted to the top.
-  lastUpdatedStale: {
-    color: "#000",
-    fontWeight: "800",
-  },
-
-  // ── Status chips — single horizontal line inside a ScrollView ──────────────
-  chipsRow: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  statusChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  statusChipSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
-  },
-  statusChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#555",
-  },
-  statusChipTextSelected: {
-    color: "#FFF",
-  },
-
-  // ── Submit button ────────────────────────────────────────────────────────────
-  submitBtn: {
-    backgroundColor: "#000",
-    height: 56,
-    borderRadius: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 8,
-  },
-  submitBtnNoChanges: {
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  submitBtnText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  submitBtnTextNoChanges: {
-    color: "#555",
-  },
-
-  // ── Success / Loading / Empty states ────────────────────────────────────────
-});
