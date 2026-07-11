@@ -31,6 +31,9 @@ interface CheckInSheetShellProps {
   emptyText: string;
   successTitle: string;
   successSubtitle: string;
+  /** Sheet height as a fraction of the screen. Defaults to the original
+   * near-full height; the card-stack sheets use a shorter one. */
+  heightFraction?: number;
   children: React.ReactNode;
 }
 
@@ -59,9 +62,12 @@ export function CheckInSheetShell({
   emptyText,
   successTitle,
   successSubtitle,
+  heightFraction,
   children,
 }: CheckInSheetShellProps) {
   const insets = useSafeAreaInsets();
+  const fraction =
+    heightFraction ?? (Platform.OS === "ios" ? 0.94 : 0.92);
 
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
@@ -76,10 +82,7 @@ export function CheckInSheetShell({
             styles.sheet,
             {
               paddingBottom: Math.max(24, insets.bottom + 16),
-              height:
-                Platform.OS === "ios"
-                  ? SCREEN_HEIGHT * 0.94
-                  : SCREEN_HEIGHT * 0.92,
+              height: SCREEN_HEIGHT * fraction,
             },
           ]}
         >
