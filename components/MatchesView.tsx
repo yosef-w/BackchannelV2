@@ -1059,7 +1059,10 @@ export function MatchesView({
           screen; the Connect CTA likes them back to create the match. */}
       {selectedInterestedSponsor && (
         <ProfileDetailSheet
-          visible={!!selectedInterestedSponsor}
+          // Hidden (not unmounted) while the job detail is open: iOS can't
+          // present two sibling RN Modals at once, so the sheet hands its
+          // presentation slot to the job modal and takes it back on close.
+          visible={!!selectedInterestedSponsor && !interestedSponsorJob}
           onDismiss={closeAllModals}
           userId={selectedInterestedSponsor.userId}
           variant="sponsor"
