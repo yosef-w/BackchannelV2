@@ -4,7 +4,6 @@ import {
     Briefcase,
     Check,
     ChevronLeft,
-    ChevronRight,
     MessageCircle,
 } from "@/components/ui/icons";
 import { getRelativeTime } from "@/utils/relativeTime";
@@ -22,9 +21,15 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
-import { FooterButton, InsiderCard, SheetFooter } from "./JobSheetKit";
+import {
+    BarFooter,
+    canvasSheet,
+    HostCard,
+    QuietAction,
+    RoleTicket,
+    SectionCard,
+} from "./JobSheetKit";
 import { SponsorRequest } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
@@ -113,7 +118,10 @@ export function SponsorRequestModal({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <DismissibleSheet onDismiss={onClose} style={modalStyles.modalContent}>
+      <DismissibleSheet
+        onDismiss={onClose}
+        style={[modalStyles.modalContent, canvasSheet]}
+      >
         {request && (
           <>
             {/* ── Step indicator (steps 2 & 3 only) — segmented bars,
@@ -163,59 +171,30 @@ export function SponsorRequestModal({
                   </View>
 
                   {/* Applicant — the human asking is what this sheet is
-                      about, so they get the one inverted block. */}
-                  <InsiderCard
+                      about, so they get the host-card stage. */}
+                  <HostCard
                     label="The Applicant"
                     name={request.applicantName}
                     role="Requesting your sponsorship for this role"
                     image={request.applicantPhoto || undefined}
                   />
 
-                  {/* Job context card — tappable to review the full role.
-                      Hero logo from the silver-detail fetch where possible
-                      (the same job the chevron opens); /api/jobs/sponsor-requests/
-                      doesn't currently include a logo, so the CompanyLogo
-                      component falls back to the company initial. */}
-                  <TouchableOpacity
-                    style={styles.sponsorRequestJobCard}
+                  {/* Job context — tappable role ticket into the full
+                      role. Logo from the silver-detail prefetch where
+                      possible; falls back to the company initial. */}
+                  <RoleTicket
+                    label="Wants sponsorship for"
+                    title={request.jobTitle}
+                    company={request.jobCompany}
+                    logoUrl={
+                      jobDetailPreview?.organization_logo ||
+                      jobDetailPreview?.ORGANIZATION_LOGO
+                    }
                     onPress={onOpenJobDetail}
-                    activeOpacity={0.75}
-                  >
-                    <CompanyLogo
-                      logoUrl={
-                        jobDetailPreview?.organization_logo ||
-                        jobDetailPreview?.ORGANIZATION_LOGO
-                      }
-                      name={request.jobCompany}
-                      size={40}
-                      borderRadius={20}
-                      initialFontSize={17}
-                    />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.sponsorRequestJobLabel}>
-                        WANTS SPONSORSHIP FOR
-                      </Text>
-                      <Text
-                        style={styles.sponsorRequestJobTitle}
-                        numberOfLines={2}
-                      >
-                        {request.jobTitle}
-                      </Text>
-                      {!!request.jobCompany && (
-                        <Text style={styles.sponsorRequestJobCompany}>
-                          {request.jobCompany}
-                        </Text>
-                      )}
-                      <Text style={styles.srJobCardTapHint}>
-                        Tap to review this role
-                      </Text>
-                    </View>
-                    <ChevronRight color="#CCC" size={18} />
-                  </TouchableOpacity>
+                  />
 
                   {/* What happens callout */}
-                  <View style={[styles.srCallout, { marginTop: 20 }]}>
-                    <Text style={styles.srCalloutTitle}>How This Works</Text>
+                  <SectionCard title="How This Works">
                     <Text style={styles.srCalloutText}>
                       By sponsoring this role, you&apos;re putting your
                       professional backing behind{" "}
@@ -224,7 +203,7 @@ export function SponsorRequestModal({
                       be able to connect with you directly — opening the door
                       to communicate and provide a referral.
                     </Text>
-                  </View>
+                  </SectionCard>
                 </>
               )}
 
@@ -315,16 +294,13 @@ export function SponsorRequestModal({
                     else. All fields are optional.
                   </Text>
 
-                  <View style={styles.srCallout}>
-                    <Text style={styles.srCalloutTitle}>
-                      💡 Why This Matters
-                    </Text>
+                  <SectionCard title="Why This Matters">
                     <Text style={styles.srCalloutText}>
                       Unlike traditional job boards, BackChannel gives
                       candidates real insider knowledge — which means better
                       applicants and fewer surprises on both sides.
                     </Text>
-                  </View>
+                  </SectionCard>
 
                   {[
                     {
@@ -409,63 +385,70 @@ export function SponsorRequestModal({
                   {/* Message now — only available if we already have a
                       matched jobId back from the sponsorJob call */}
                   {newJobId && onNavigateToMessages && (
-                    <TouchableOpacity
-                      style={[modalStyles.applyBtnLarge, { marginBottom: 12 }]}
-                      onPress={() => {
-                        const jid = newJobId;
-                        onClose();
-                        onNavigateToMessages(jid, request.applicantUserId);
-                      }}
-                    >
-                      <MessageCircle color="#FFF" size={20} strokeWidth={2.5} />
-                      <Text style={modalStyles.applyBtnLargeText}>
-                        Message Now
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={{ alignSelf: "stretch", marginBottom: 4 }}>
+                      <BarFooter
+                        button={{
+                          label: "Message Now",
+                          icon: (
+                            <MessageCircle
+                              color="#FFF"
+                              size={17}
+                              strokeWidth={2.5}
+                            />
+                          ),
+                          onPress: () => {
+                            const jid = newJobId;
+                            onClose();
+                            onNavigateToMessages(jid, request.applicantUserId);
+                          },
+                        }}
+                      />
+                    </View>
                   )}
 
-                  <TouchableOpacity style={styles.srDismissBtn} onPress={onClose}>
-                    <Text style={styles.srDismissBtnText}>
-                      Back to Matches
-                    </Text>
-                  </TouchableOpacity>
+                  <QuietAction label="Back to Matches" onPress={onClose} />
                 </Animated.View>
               )}
             </ScrollView>
 
-            {/* ── Pinned footer — each step's action is always visible
+            {/* ── Pinned action bar — each step's action is always visible
                 (the success step keeps its inline, centered CTAs). ─── */}
             {step === 1 && (
-              <SheetFooter>
-                <FooterButton
-                  label="Sponsor & Connect"
-                  icon={<Briefcase color="#FFF" size={20} strokeWidth={2.5} />}
-                  onPress={() => onSetStep(2)}
-                />
-                <TouchableOpacity style={styles.srDismissBtn} onPress={onClose}>
-                  <Text style={styles.srDismissBtnText}>Not right now</Text>
-                </TouchableOpacity>
-              </SheetFooter>
+              <BarFooter
+                button={{
+                  label: "Sponsor & Connect",
+                  icon: (
+                    <Briefcase color="#FFF" size={17} strokeWidth={2.5} />
+                  ),
+                  onPress: () => onSetStep(2),
+                }}
+              >
+                <QuietAction label="Not right now" onPress={onClose} />
+              </BarFooter>
             )}
             {step === 2 && (
-              <SheetFooter>
-                <FooterButton
-                  label="Continue"
-                  disabled={!relationship || canRefer === null}
-                  onPress={() => onSetStep(3)}
-                />
-              </SheetFooter>
+              <BarFooter
+                context={{
+                  title: "Step 1 of 2",
+                  sub: "Your relationship to the role",
+                }}
+                button={{
+                  label: "Continue",
+                  disabled: !relationship || canRefer === null,
+                  onPress: () => onSetStep(3),
+                }}
+              />
             )}
             {step === 3 && (
-              <SheetFooter>
-                <FooterButton
-                  label="Confirm Sponsorship"
-                  icon={<Check color="#FFF" size={20} strokeWidth={2.5} />}
-                  loading={sponsoring}
-                  spinnerOnLoading
-                  onPress={() => onSponsorAndConnect(request)}
-                />
-              </SheetFooter>
+              <BarFooter
+                button={{
+                  label: "Confirm Sponsorship",
+                  icon: <Check color="#FFF" size={17} strokeWidth={2.5} />,
+                  loading: sponsoring,
+                  spinnerOnLoading: true,
+                  onPress: () => onSponsorAndConnect(request),
+                }}
+              />
             )}
           </>
         )}
@@ -493,53 +476,7 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     fontWeight: "700",
   },
-  sponsorRequestJobCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "#F8F9FB",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    padding: 16,
-    borderRadius: 16,
-  },
-  sponsorRequestJobCompany: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
-    marginTop: 2,
-  },
-  sponsorRequestJobLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  sponsorRequestJobTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    lineHeight: 21,
-  },
-  srCallout: {
-    backgroundColor: "#F0F0F0",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: "#000",
-  },
   srCalloutText: { fontSize: 14, color: "#555", lineHeight: 22 },
-  srCalloutTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 8,
-  },
-  srDismissBtn: { alignItems: "center", marginTop: 14, paddingVertical: 8 },
-  srDismissBtnText: { fontSize: 14, color: "#999", fontWeight: "600" },
   // Segmented progress — same language as the check-in stack's bars.
   srSegments: {
     flex: 1,
@@ -567,6 +504,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   srFormSection: { marginBottom: 24 },
+  // Form surfaces sit white on the Gallery canvas.
   srHalfOption: {
     flex: 1,
     flexDirection: "row",
@@ -574,16 +512,9 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  srJobCardTapHint: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#AAA",
-    marginTop: 6,
-    letterSpacing: 0.2,
+    borderColor: "rgba(15,23,42,0.06)",
   },
   srRadioCircle: {
     width: 20,
@@ -595,11 +526,11 @@ const styles = StyleSheet.create({
   srRadioCircleActive: { borderColor: "#000", borderWidth: 6 },
   srRadioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   srRadioOption: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: "#FFF",
     padding: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "rgba(15,23,42,0.06)",
     marginBottom: 12,
   },
   srRadioText: { fontSize: 15, color: "#666", fontWeight: "600" },
@@ -653,9 +584,9 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   srTextInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "rgba(15,23,42,0.06)",
     borderRadius: 12,
     padding: 16,
     paddingTop: 16,

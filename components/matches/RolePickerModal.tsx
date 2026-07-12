@@ -14,7 +14,7 @@ import {
 import { BlurView } from "expo-blur";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
-import { SheetCloseButton } from "./JobSheetKit";
+import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -58,7 +58,10 @@ export function RolePickerModal({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <DismissibleSheet onDismiss={onClose} style={styles.modalContent}>
+      <DismissibleSheet
+        onDismiss={onClose}
+        style={[styles.modalContent, canvasSheet]}
+      >
         {roleGroup && (
           <>
             <SheetCloseButton onPress={onClose} />
@@ -177,12 +180,26 @@ const styles = StyleSheet.create({
     marginTop: 3,
     lineHeight: 18,
   },
+  // Each role is a floating white card on the canvas — a tappable object,
+  // not a divider-separated list row.
   rolePickerRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F2F2F2",
+    padding: 12,
+    marginBottom: 10,
+    backgroundColor: "#FFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(15,23,42,0.06)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#0F172A",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+      },
+      android: { elevation: 2 },
+    }),
   },
   rolePickerRowMain: {
     flex: 1,

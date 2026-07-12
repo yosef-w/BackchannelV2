@@ -2,7 +2,6 @@ import { BlurView } from "expo-blur";
 import { AlertTriangle } from "@/components/ui/icons";
 import React from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   StyleSheet,
   Text,
@@ -10,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
-import { FooterButton, SheetFooter } from "./JobSheetKit";
+import { BarFooter, canvasSheet, QuietAction } from "./JobSheetKit";
 import type { Referral } from "./matchesQueries";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -52,7 +51,11 @@ export function WithdrawReferralModal({
 
       <DismissibleSheet
         onDismiss={onCancel}
-        style={[styles.modalContent, { maxHeight: SCREEN_HEIGHT * 0.6 }]}
+        style={[
+          styles.modalContent,
+          canvasSheet,
+          { maxHeight: SCREEN_HEIGHT * 0.6 },
+        ]}
       >
         {referral && (
           <View>
@@ -85,29 +88,23 @@ export function WithdrawReferralModal({
                 </Text>
               </View>
             </View>
-            {/* Destructive confirm: the SAFE path gets the primary black
-                button; the destructive action is the quiet red text below
-                it, so a reflexive tap keeps the referral. */}
-            <SheetFooter>
-              <FooterButton
-                label="Keep Referral"
-                onPress={onCancel}
-                disabled={isProcessing}
-              />
-              <TouchableOpacity
-                style={styles.withdrawQuietBtn}
+            {/* Destructive confirm: the SAFE path gets the primary pill;
+                the destructive action is the quiet red text below it, so
+                a reflexive tap keeps the referral. */}
+            <BarFooter
+              button={{
+                label: "Keep Referral",
+                onPress: onCancel,
+                disabled: isProcessing,
+              }}
+            >
+              <QuietAction
+                label="Yes, withdraw"
+                destructive
+                loading={isProcessing}
                 onPress={() => onConfirm(referral)}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <ActivityIndicator size="small" color="#DC2626" />
-                ) : (
-                  <Text style={styles.withdrawQuietBtnText}>
-                    Yes, withdraw
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </SheetFooter>
+              />
+            </BarFooter>
           </View>
         )}
       </DismissibleSheet>
@@ -182,16 +179,5 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     lineHeight: 19,
     fontWeight: "600",
-  },
-  withdrawQuietBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-    paddingVertical: 8,
-  },
-  withdrawQuietBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#DC2626",
   },
 });
