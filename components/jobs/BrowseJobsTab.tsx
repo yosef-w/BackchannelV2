@@ -77,10 +77,10 @@ export function BrowseJobsTab({
             <Search size={28} color="#000" strokeWidth={2.5} />
           </View>
           <Text style={styles.didYouMeanTitle}>
-            No jobs found for "{sponsorCompany}"
+            No jobs found for &ldquo;{sponsorCompany}&rdquo;
           </Text>
           <Text style={styles.didYouMeanSub}>
-            We couldn't match that to a company in our listings. Did you mean
+            We couldn&apos;t match that to a company in our listings. Did you mean
             one of these?
           </Text>
 
