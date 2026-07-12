@@ -1,7 +1,9 @@
 import {
+    Briefcase,
     Check,
     CheckCircle,
     ChevronDown,
+    ChevronRight,
     ChevronUp,
     Handshake,
     MapPin,
@@ -203,6 +205,70 @@ export function InsiderNote({ text }: { text: string }) {
 }
 
 /**
+ * The InsiderCard's mirror image — on a PERSON sheet, the one inverted
+ * block is the role connecting you. Tap it to land on the job sheet
+ * (whose inverted block is the person — two sides of the same coin).
+ */
+export function RoleCard({
+  label,
+  title,
+  company,
+  logoUrl,
+  onPress,
+}: {
+  /** e.g. "Wants you for" / "Interested in". */
+  label: string;
+  title: string;
+  company?: string;
+  logoUrl?: string | null;
+  onPress?: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.insiderCard}
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={0.8}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={onPress ? `View job: ${title}` : undefined}
+    >
+      <View style={styles.insiderHeader}>
+        <Briefcase size={14} color="rgba(255,255,255,0.75)" />
+        <Text style={styles.insiderLabel}>{label}</Text>
+      </View>
+      <View style={styles.insiderRow}>
+        <View style={styles.roleCardLogoWrap}>
+          <CompanyLogo
+            logoUrl={logoUrl || undefined}
+            name={company || title}
+            size={44}
+            borderRadius={12}
+            initialFontSize={18}
+          />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.insiderName} numberOfLines={1}>
+            {title}
+          </Text>
+          {!!company && (
+            <Text style={styles.insiderRole} numberOfLines={1}>
+              {company}
+            </Text>
+          )}
+        </View>
+        {onPress && (
+          <ChevronRight
+            color="rgba(255,255,255,0.5)"
+            size={18}
+            strokeWidth={2.2}
+          />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/**
  * The insider card's placeholder — no human yet (dashed empty slot) or a
  * human just arrived (solid, celebratory). The absence IS the status.
  */
@@ -337,20 +403,22 @@ export function FooterButton({
   icon,
   onPress,
   loading,
+  disabled,
   spinnerOnLoading,
 }: {
   label: string;
   icon?: React.ReactNode;
   onPress: () => void;
   loading?: boolean;
+  disabled?: boolean;
   /** Swap the label for a spinner while loading (vs. label-only states). */
   spinnerOnLoading?: boolean;
 }) {
   return (
     <TouchableOpacity
-      style={[styles.footerBtn, loading && { opacity: 0.6 }]}
+      style={[styles.footerBtn, (loading || disabled) && { opacity: 0.6 }]}
       onPress={onPress}
-      disabled={loading}
+      disabled={loading || disabled}
       activeOpacity={0.8}
     >
       {loading && spinnerOnLoading ? (
@@ -566,6 +634,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+  // White backing so company logos (often on transparent PNGs) read
+  // against the card's black.
+  roleCardLogoWrap: {
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#FFF",
   },
   insiderAvatar: {
     width: 44,

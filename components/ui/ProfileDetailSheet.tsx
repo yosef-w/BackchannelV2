@@ -15,10 +15,16 @@
 // while the richer fields arrive.
 
 import { getPublicProfile, type PublicProfileResponse } from "@/lib/api";
-import { CheckCircle, ChevronRight } from "@/components/ui/icons";
+import { CheckCircle } from "@/components/ui/icons";
+import {
+  FooterButton,
+  ReadMoreText,
+  RoleCard,
+  SheetCloseButton,
+  SheetFooter,
+} from "@/components/matches/JobSheetKit";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -38,7 +44,6 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { CompanyLogo } from "./CompanyLogo";
 import { DismissibleSheet } from "./DismissibleSheet";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -268,13 +273,14 @@ export function ProfileDetailSheet({
           style={{ ...styles.sheet, ...dynamicSheet }}
         >
           <View style={{ flex: 1 }}>
+            <SheetCloseButton onPress={onDismiss} />
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 16 }}
               style={{ flexShrink: 1, flexGrow: 1 }}
             >
               {/* ── Hero ──────────────────────────────────────────── */}
-              <View style={styles.heroRow}>
+              <View style={[styles.heroRow, { paddingRight: 36 }]}>
                 {initial.image ? (
                   <Image
                     source={{ uri: initial.image }}
@@ -336,50 +342,18 @@ export function ProfileDetailSheet({
                 </View>
               </View>
 
-              {/* ── Role context — tappable when onPress is wired ──── */}
+              {/* ── Role context — the sheet's one inverted block. On a
+                  person sheet, black is reserved for the ROLE connecting
+                  you (the mirror of the job sheets' insider card); tap
+                  lands on the job sheet when wired. ── */}
               {roleContext && (
-                <TouchableOpacity
-                  style={styles.contextBlock}
+                <RoleCard
+                  label={roleContext.label}
+                  title={roleContext.title}
+                  company={roleContext.company}
+                  logoUrl={roleContext.logoUrl}
                   onPress={roleContext.onPress}
-                  disabled={!roleContext.onPress}
-                  activeOpacity={0.7}
-                  accessibilityRole={roleContext.onPress ? "button" : undefined}
-                  accessibilityLabel={
-                    roleContext.onPress
-                      ? `View job: ${roleContext.title}`
-                      : undefined
-                  }
-                >
-                  <View style={styles.contextBlockRow}>
-                    <CompanyLogo
-                      logoUrl={roleContext.logoUrl}
-                      name={roleContext.company || roleContext.title}
-                      size={40}
-                      borderRadius={10}
-                      initialFontSize={17}
-                    />
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.sectionLabel}>{roleContext.label}</Text>
-                      <Text
-                        style={styles.contextTitle}
-                        numberOfLines={1}
-                      >
-                        {roleContext.title}
-                      </Text>
-                      {!!roleContext.company && (
-                        <Text
-                          style={styles.contextCompany}
-                          numberOfLines={1}
-                        >
-                          {roleContext.company}
-                        </Text>
-                      )}
-                    </View>
-                    {roleContext.onPress && (
-                      <ChevronRight color="#999" size={18} strokeWidth={2.2} />
-                    )}
-                  </View>
-                </TouchableOpacity>
+                />
               )}
 
               {/* ── Loading or content ────────────────────────────── */}
@@ -478,11 +452,12 @@ export function ProfileDetailSheet({
                 </>
               ) : (
                 <>
-                  {/* About / bio */}
+                  {/* About / bio — collapses past ~280 chars so long bios
+                      don't wall off the rest of the profile. */}
                   {!!bio && (
                     <View style={styles.block}>
                       <Text style={styles.sectionLabel}>ABOUT</Text>
-                      <Text style={styles.body}>{bio}</Text>
+                      <ReadMoreText text={bio} />
                     </View>
                   )}
 
@@ -570,7 +545,7 @@ export function ProfileDetailSheet({
                   {!loading && isEmpty && (
                     <View style={styles.fallback}>
                       <Text style={styles.fallbackText}>
-                        {firstName} hasn't filled out a profile yet.
+                        {firstName} hasn&apos;t filled out a profile yet.
                       </Text>
                     </View>
                   )}
@@ -579,39 +554,28 @@ export function ProfileDetailSheet({
             </ScrollView>
 
             {/* ── Pinned CTA(s) ──────────────────────────────────── */}
-            {secondaryCta && (
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                activeOpacity={0.7}
-                onPress={secondaryCta.onPress}
-              >
-                {secondaryCta.icon}
-                <Text style={styles.secondaryBtnText}>
-                  {secondaryCta.label}
-                </Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[
-                styles.primaryBtn,
-                { marginTop: secondaryCta ? 8 : 12 },
-                (primaryCta.loading || primaryCta.disabled) && {
-                  opacity: 0.5,
-                },
-              ]}
-              activeOpacity={0.85}
-              disabled={primaryCta.loading || primaryCta.disabled}
-              onPress={primaryCta.onPress}
-            >
-              {primaryCta.loading ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <>
-                  {primaryCta.icon}
-                  <Text style={styles.primaryBtnText}>{primaryCta.label}</Text>
-                </>
+            <SheetFooter>
+              {secondaryCta && (
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  activeOpacity={0.7}
+                  onPress={secondaryCta.onPress}
+                >
+                  {secondaryCta.icon}
+                  <Text style={styles.secondaryBtnText}>
+                    {secondaryCta.label}
+                  </Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+              <FooterButton
+                label={primaryCta.label}
+                icon={primaryCta.icon}
+                onPress={primaryCta.onPress}
+                loading={primaryCta.loading}
+                disabled={primaryCta.disabled}
+                spinnerOnLoading
+              />
+            </SheetFooter>
           </View>
         </DismissibleSheet>
       </KeyboardAvoidingView>
@@ -675,19 +639,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.2,
   },
-  contextBlock: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-    padding: 16,
-    marginBottom: 16,
-  },
-  contextBlockRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
   sectionLabel: {
     fontSize: 9,
     fontWeight: "900",
@@ -695,13 +646,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     marginBottom: 6,
   },
-  contextTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 2,
-  },
-  contextCompany: { fontSize: 13, fontWeight: "500", color: "#666" },
   // Skeleton placeholder base — neutral light gray with a soft border so
   // the shape reads even at the brightest point of the pulse animation.
   skeletonBase: {
@@ -709,12 +653,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   block: { marginBottom: 20 },
-  body: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#444",
-    lineHeight: 22,
-  },
   capRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -731,13 +669,15 @@ const styles = StyleSheet.create({
   },
   capPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  // Light chips — chips are information, not the star; black is reserved
+  // for the sheet's single inverted block (the RoleCard) and the CTA.
   darkChip: {
-    backgroundColor: "#000",
+    backgroundColor: "#F5F5F5",
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  darkChipText: { fontSize: 12, fontWeight: "700", color: "#FFF" },
+  darkChipText: { fontSize: 12, fontWeight: "700", color: "#000" },
   insightCard: {
     backgroundColor: "#F8F9FB",
     borderRadius: 14,
@@ -774,32 +714,17 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     lineHeight: 19,
   },
-  primaryBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 16,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  primaryBtnText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-  },
   secondaryBtn: {
     backgroundColor: "#FFF",
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     borderWidth: 1.5,
     borderColor: "#000",
-    marginTop: 12,
+    marginBottom: 8,
   },
   secondaryBtnText: {
     color: "#000",
