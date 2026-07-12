@@ -8,17 +8,15 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import {
-    FooterButton,
-    InsiderSlot,
-    JobSheetHero,
-    JourneySteps,
+    BarFooter,
+    canvasSheet,
+    EmptySeatCard,
+    PosterHero,
     SheetCloseButton,
-    SheetFooter,
-    WaitingBar,
+    Timeline,
 } from "./JobSheetKit";
 import { WaitlistedJob } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
@@ -35,11 +33,10 @@ interface WaitlistedJobModalProps {
 const NUDGE_COOLDOWN_MS = 5 * 24 * 60 * 60 * 1000;
 
 /**
- * Waitlisted-job detail sheet (applicant view) — JobSheetKit layout. The
- * whole point of this sheet is "where am I in the wait?", so the journey
- * strip carries the status, and the insider card renders as an EMPTY slot
- * (dashed) until a sponsor picks the role up — the absence of the human is
- * the status. Nudge lives in the pinned footer once the request has gone
+ * Waitlisted-job detail sheet (applicant view) — Gallery layout. The
+ * vertical timeline carries the status ("where am I in the wait?"), and
+ * the insider seat renders as a soft dashed card until a sponsor picks
+ * the role up. Nudge lives in the action bar once the request has gone
  * quiet for 5+ days.
  */
 export function WaitlistedJobModal({
@@ -67,7 +64,10 @@ export function WaitlistedJobModal({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <DismissibleSheet onDismiss={onClose} style={modalStyles.modalContent}>
+      <DismissibleSheet
+        onDismiss={onClose}
+        style={[modalStyles.modalContent, canvasSheet]}
+      >
         {job && (
           <>
             <SheetCloseButton onPress={onClose} />
@@ -77,17 +77,15 @@ export function WaitlistedJobModal({
               bounces={false}
               contentContainerStyle={{ paddingBottom: 16 }}
             >
-              <JobSheetHero
+              <PosterHero
                 logoName={job.organization}
                 title={job.title}
                 company={job.organization}
                 location={job.location}
                 remote={job.is_remote}
-                insetForClose
               />
-              <View style={{ height: 12 }} />
 
-              <JourneySteps
+              <Timeline
                 steps={[
                   {
                     label: "Requested",
@@ -101,24 +99,24 @@ export function WaitlistedJobModal({
                   },
                   {
                     label: "Match",
-                    sub: sponsored ? "Up next" : undefined,
-                    state: "todo",
+                    sub: sponsored ? "Up next" : "After a sponsor joins",
+                    state: sponsored ? "active" : "todo",
                   },
                 ]}
               />
 
-              {/* The slot your insider will fill — dashed while empty,
+              {/* The seat your insider will fill — dashed while empty,
                   solid the moment someone picks the role up. */}
               {sponsored ? (
-                <InsiderSlot
+                <EmptySeatCard
                   filled
                   title="Someone picked this up!"
                   body="A sponsor has taken on this role. Head back to your feed to connect with them directly."
                 />
               ) : (
-                <InsiderSlot
-                  title="Nobody here yet"
-                  body="We're looking for your way in — you'll get a notification the moment a sponsor picks up this role."
+                <EmptySeatCard
+                  title="No insider yet"
+                  body="This seat is waiting for your way in — you'll get a notification the moment a sponsor picks up this role."
                 />
               )}
 
@@ -127,20 +125,33 @@ export function WaitlistedJobModal({
               )}
             </ScrollView>
 
-            <SheetFooter>
-              {sponsored ? (
-                <FooterButton label="Back to Your Feed" onPress={onClose} />
-              ) : canNudge ? (
-                <FooterButton
-                  label="Nudge Again"
-                  onPress={() => onNudge(job)}
-                  loading={isNudging}
-                  spinnerOnLoading
-                />
-              ) : (
-                <WaitingBar text="We'll notify you when a sponsor steps up" />
-              )}
-            </SheetFooter>
+            {sponsored ? (
+              <BarFooter
+                button={{ label: "Back to Your Feed", onPress: onClose }}
+              />
+            ) : canNudge ? (
+              <BarFooter
+                context={{
+                  title: "No sponsor yet",
+                  sub: `Waitlisted ${getRelativeTime(job.waitlisted_at)}`,
+                  waiting: true,
+                }}
+                button={{
+                  label: "Nudge",
+                  onPress: () => onNudge(job),
+                  loading: isNudging,
+                  spinnerOnLoading: true,
+                }}
+              />
+            ) : (
+              <BarFooter
+                context={{
+                  title: "We'll notify you",
+                  sub: "The moment a sponsor steps up",
+                  waiting: true,
+                }}
+              />
+            )}
           </>
         )}
       </DismissibleSheet>
@@ -150,7 +161,7 @@ export function WaitlistedJobModal({
 
 const styles = StyleSheet.create({
   // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned footer; scrolls the overflow.
+  // leaving room for the pinned action bar; scrolls the overflow.
   scroll: { flexShrink: 1 },
   outcomeMessage: {
     fontSize: 12,
@@ -159,5 +170,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontStyle: "italic",
     marginBottom: 8,
+    paddingHorizontal: 4,
   },
 });

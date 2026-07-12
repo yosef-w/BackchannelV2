@@ -12,16 +12,16 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import {
-    EnrichmentSkeleton,
-    FooterButton,
-    InsiderCard,
-    InsiderNote,
-    JobSheetHero,
-    JourneySteps,
+    BarFooter,
+    canvasSheet,
+    HostCard,
+    PosterHero,
     ReadMoreText,
+    SectionCard,
     SheetCloseButton,
-    SheetFooter,
-    StatRail,
+    SkeletonCard,
+    StatStrip,
+    Timeline,
 } from "./JobSheetKit";
 import {
     fetchSponsoredJobEnrichment,
@@ -39,12 +39,11 @@ interface ReferralDetailModalProps {
 }
 
 /**
- * Received-referral detail sheet (applicant view) — JobSheetKit layout.
- * The insider card leads (a referral IS the insider moment — their note
- * renders inside it), the journey strip shows where the referral sits, and
- * the role itself is background-enriched from GET /api/jobs/ so the sheet
- * can answer "which role is this again?" — the payload only carries
- * title/company.
+ * Received-referral detail sheet (applicant view) — Gallery layout. The
+ * sponsor's host card (with their note quoted inside it) leads: a referral
+ * IS the human moment. Below it, the vertical timeline shows where the
+ * referral sits, and the role is background-enriched from GET /api/jobs/
+ * (the payload only carries title/company).
  */
 export function ReferralDetailModal({
   referral,
@@ -96,7 +95,10 @@ export function ReferralDetailModal({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <DismissibleSheet onDismiss={onClose} style={modalStyles.modalContent}>
+      <DismissibleSheet
+        onDismiss={onClose}
+        style={[modalStyles.modalContent, canvasSheet]}
+      >
         {referral &&
           (() => {
             const r = referral;
@@ -121,13 +123,10 @@ export function ReferralDetailModal({
                     : ""),
               });
             if (enriched?.experienceLevel)
-              stats.push({
-                label: "Experience",
-                value: enriched.experienceLevel,
-              });
+              stats.push({ label: "Level", value: enriched.experienceLevel });
             if (enriched?.workArrangement)
               stats.push({
-                label: "Arrangement",
+                label: "Setting",
                 value: enriched.workArrangement,
               });
 
@@ -143,19 +142,18 @@ export function ReferralDetailModal({
                   bounces={false}
                   contentContainerStyle={{ paddingBottom: 16 }}
                 >
-                  <JobSheetHero
+                  <PosterHero
                     logoUrl={r.jobLogoUrl || undefined}
                     logoName={r.jobCompany || undefined}
                     title={r.jobTitle || "Open Role"}
                     company={r.jobCompany || "Company"}
                     location={enriched?.location}
-                    insetForClose
                   />
-                  <View style={{ height: 12 }} />
 
-                  {/* The referral IS the insider moment — their card leads,
-                      with their note (when they wrote one) inside it. */}
-                  <InsiderCard
+                  {/* The referral IS the human moment — the sponsor's host
+                      card leads, their note quoted inside it. */}
+                  <HostCard
+                    label="Referred By"
                     name={sponsorName}
                     role={
                       isReferred
@@ -163,19 +161,16 @@ export function ReferralDetailModal({
                         : "Withdrew this referral"
                     }
                     image={r.sponsorPhotoUrl || undefined}
-                    chip={
-                      isReferred
-                        ? { label: "Referred" }
-                        : { label: "Withdrawn", muted: true }
+                    pill={
+                      isReferred ? { label: "Referral submitted" } : undefined
                     }
-                  >
-                    {!!r.referralNote && <InsiderNote text={r.referralNote} />}
-                  </InsiderCard>
+                    note={r.referralNote || undefined}
+                  />
 
                   {/* Journey — only while the referral is live; a withdrawn
                       one has no momentum to show. */}
                   {isReferred && (
-                    <JourneySteps
+                    <Timeline
                       steps={[
                         { label: "Matched", state: "done" },
                         {
@@ -189,40 +184,32 @@ export function ReferralDetailModal({
                           state: "done",
                         },
                         {
-                          label: "Hiring team",
-                          sub: "Reviewing",
+                          label: "Hiring team review",
+                          sub: "In progress",
                           state: "active",
                         },
                       ]}
                     />
                   )}
 
-                  {/* What this means */}
-                  <View style={modalStyles.jobSection}>
-                    <Text style={modalStyles.jobSectionTitle}>
-                      What This Means
-                    </Text>
+                  <SectionCard title="What This Means">
                     <Text style={modalStyles.jobSectionText}>
                       {isReferred
                         ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
                         : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
                     </Text>
-                  </View>
+                  </SectionCard>
 
                   {/* The role itself — background-enriched. */}
-                  <StatRail stats={stats} />
-                  {showSkeleton && <EnrichmentSkeleton />}
+                  <StatStrip stats={stats} />
+                  {showSkeleton && <SkeletonCard title="About the Role" />}
                   {!!enriched?.description && (
-                    <View style={modalStyles.jobSection}>
-                      <Text style={modalStyles.jobSectionTitle}>
-                        About the Role
-                      </Text>
+                    <SectionCard title="About the Role">
                       <ReadMoreText text={enriched.description} />
-                    </View>
+                    </SectionCard>
                   )}
                   {!!enriched?.skills?.length && (
-                    <View style={modalStyles.jobSection}>
-                      <Text style={modalStyles.jobSectionTitle}>Skills</Text>
+                    <SectionCard title="Skills">
                       <View style={modalStyles.skillsRow}>
                         {enriched.skills.map((skill, idx) => (
                           <View key={idx} style={modalStyles.skillBadge}>
@@ -232,31 +219,37 @@ export function ReferralDetailModal({
                           </View>
                         ))}
                       </View>
-                    </View>
+                    </SectionCard>
                   )}
                 </ScrollView>
 
-                <SheetFooter>
-                  {canMessage ? (
-                    <FooterButton
-                      label={`Message ${sponsorFirst}`}
-                      icon={
+                {canMessage ? (
+                  <BarFooter
+                    context={{
+                      title: `Referred by ${sponsorFirst}`,
+                      done: true,
+                    }}
+                    button={{
+                      label: "Message",
+                      icon: (
                         <MessageCircle
                           color="#FFF"
-                          size={20}
+                          size={17}
                           strokeWidth={2.5}
                         />
-                      }
-                      onPress={() => {
+                      ),
+                      onPress: () => {
                         const jid = r.jobId;
                         onClose();
                         onNavigateToMessages?.(jid);
-                      }}
-                    />
-                  ) : (
-                    <FooterButton label="Got It" onPress={onClose} />
-                  )}
-                </SheetFooter>
+                      },
+                    }}
+                  />
+                ) : (
+                  <BarFooter
+                    button={{ label: "Got It", onPress: onClose }}
+                  />
+                )}
               </>
             );
           })()}
@@ -267,6 +260,6 @@ export function ReferralDetailModal({
 
 const styles = StyleSheet.create({
   // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned footer; scrolls the overflow.
+  // leaving room for the pinned action bar; scrolls the overflow.
   scroll: { flexShrink: 1 },
 });

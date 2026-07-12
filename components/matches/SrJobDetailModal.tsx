@@ -12,13 +12,13 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import {
-    EnrichmentSkeleton,
-    FooterButton,
-    JobSheetHero,
+    BarFooter,
+    canvasSheet,
+    PosterHero,
     ReadMoreText,
-    SheetFooter,
-    SkeletonHero,
-    StatRail,
+    SectionCard,
+    SkeletonCard,
+    StatStrip,
 } from "./JobSheetKit";
 import { parseSkillsField } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
@@ -37,8 +37,8 @@ interface SrJobDetailModalProps {
 /**
  * Full role detail for the job a sponsor-request references — reached by
  * tapping "Tap to review this role" on the sponsor-request overview step.
- * JobSheetKit layout, but a DRILL-IN, not a destination: the viewer is the
- * would-be insider themself, so there's no insider card, and the pinned
+ * Gallery layout, but a DRILL-IN, not a destination: the viewer is the
+ * would-be insider themself, so there's no host card, and the pinned
  * action is the way back to the request.
  */
 export function SrJobDetailModal({
@@ -54,14 +54,14 @@ export function SrJobDetailModal({
       stats.push({
         label: "Salary",
         value:
-          `$${Math.round(detail.SALARY_ANNUAL_MIN / 1000)}k – $${Math.round(detail.SALARY_ANNUAL_MAX / 1000)}k` +
+          `$${Math.round(detail.SALARY_ANNUAL_MIN / 1000)}k–${Math.round(detail.SALARY_ANNUAL_MAX / 1000)}k` +
           (detail.SALARY_CURRENCY && detail.SALARY_CURRENCY !== "USD"
             ? ` ${detail.SALARY_CURRENCY}`
             : ""),
       });
     }
     if (detail.EXPERIENCE_LEVEL)
-      stats.push({ label: "Experience", value: detail.EXPERIENCE_LEVEL });
+      stats.push({ label: "Level", value: detail.EXPERIENCE_LEVEL });
     if (detail.EMPLOYMENT_TYPES)
       stats.push({ label: "Type", value: detail.EMPLOYMENT_TYPES });
   }
@@ -80,7 +80,10 @@ export function SrJobDetailModal({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <DismissibleSheet onDismiss={onBack} style={modalStyles.modalContent}>
+      <DismissibleSheet
+        onDismiss={onBack}
+        style={[modalStyles.modalContent, canvasSheet]}
+      >
         {/* Header row — drill-in affordance back to the request. */}
         <TouchableOpacity
           style={styles.backRow}
@@ -93,9 +96,8 @@ export function SrJobDetailModal({
 
         {loading ? (
           <View style={{ paddingBottom: 8 }}>
-            <SkeletonHero />
-            <View style={{ height: 20 }} />
-            <EnrichmentSkeleton />
+            <SkeletonCard />
+            <SkeletonCard title="About the Role" />
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
@@ -111,7 +113,7 @@ export function SrJobDetailModal({
               bounces={false}
               contentContainerStyle={{ paddingBottom: 16 }}
             >
-              <JobSheetHero
+              <PosterHero
                 logoUrl={
                   detail.organization_logo ||
                   detail.ORGANIZATION_LOGO ||
@@ -123,14 +125,11 @@ export function SrJobDetailModal({
                 location={detail.FULL_LOCATION || undefined}
                 remote={!!detail.IS_REMOTE}
               />
-              <View style={{ height: 12 }} />
 
-              <StatRail stats={stats} />
+              <StatStrip stats={stats} />
 
-              {/* Skills */}
               {skills.length > 0 && (
-                <View style={modalStyles.jobSection}>
-                  <Text style={modalStyles.jobSectionTitle}>Skills</Text>
+                <SectionCard title="Skills">
                   <View style={modalStyles.skillsRow}>
                     {skills.map((skill: string, idx: number) => (
                       <View key={idx} style={modalStyles.skillBadge}>
@@ -138,27 +137,24 @@ export function SrJobDetailModal({
                       </View>
                     ))}
                   </View>
-                </View>
+                </SectionCard>
               )}
 
               {/* Description — silver descriptions run LONG; collapse. */}
               {!!detail.DESCRIPTION_TEXT && (
-                <View style={modalStyles.jobSection}>
-                  <Text style={modalStyles.jobSectionTitle}>
-                    About the Role
-                  </Text>
+                <SectionCard title="About the Role">
                   <ReadMoreText text={detail.DESCRIPTION_TEXT} />
-                </View>
+                </SectionCard>
               )}
             </ScrollView>
 
-            <SheetFooter>
-              <FooterButton
-                label="Back to Request"
-                icon={<ChevronLeft size={18} color="#FFF" strokeWidth={2.5} />}
-                onPress={onBack}
-              />
-            </SheetFooter>
+            <BarFooter
+              button={{
+                label: "Back to Request",
+                icon: <ChevronLeft size={17} color="#FFF" strokeWidth={2.5} />,
+                onPress: onBack,
+              }}
+            />
           </>
         ) : null}
       </DismissibleSheet>
@@ -168,7 +164,7 @@ export function SrJobDetailModal({
 
 const styles = StyleSheet.create({
   // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned footer; scrolls the overflow.
+  // leaving room for the pinned action bar; scrolls the overflow.
   scroll: { flexShrink: 1 },
   backRow: {
     flexDirection: "row",
