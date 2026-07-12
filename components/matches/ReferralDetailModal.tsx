@@ -18,7 +18,6 @@ import {
     PosterHero,
     ReadMoreText,
     SectionCard,
-    SheetCloseButton,
     SkeletonCard,
     StatStrip,
     Timeline,
@@ -135,7 +134,6 @@ export function ReferralDetailModal({
 
             return (
               <>
-                <SheetCloseButton onPress={onClose} />
                 <ScrollView
                   style={styles.scroll}
                   showsVerticalScrollIndicator={false}
@@ -148,6 +146,7 @@ export function ReferralDetailModal({
                     title={r.jobTitle || "Open Role"}
                     company={r.jobCompany || "Company"}
                     location={enriched?.location}
+                    onClose={onClose}
                   />
 
                   {/* The referral IS the human moment — the sponsor's host

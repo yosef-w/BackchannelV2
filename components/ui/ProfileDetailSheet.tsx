@@ -23,7 +23,7 @@ import {
   ReadMoreText,
   RoleTicket,
   SectionCard,
-  SheetCloseButton,
+  SkeletonCard,
 } from "@/components/matches/JobSheetKit";
 import React, { useEffect, useState } from "react";
 import {
@@ -39,35 +39,9 @@ import {
   type ViewStyle,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
 import { DismissibleSheet } from "./DismissibleSheet";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-// SkeletonBlock — a gray rounded placeholder with a gentle opacity pulse.
-// Mounted once per render and reused throughout the loading state. The
-// animation runs on the UI thread via reanimated, so we don't burn JS
-// frames driving it. Width/height/radius come from style so consumers
-// can size each shape to its eventual content.
-function SkeletonBlock({ style }: { style: ViewStyle | ViewStyle[] }) {
-  const opacity = useSharedValue(0.5);
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withTiming(0.9, { duration: 900 }),
-      -1,
-      true,
-    );
-  }, [opacity]);
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return (
-    <Animated.View style={[styles.skeletonBase, style, animatedStyle]} />
-  );
-}
 
 export interface ProfileDetailSheetProps {
   visible: boolean;
@@ -274,7 +248,6 @@ export function ProfileDetailSheet({
           style={{ ...styles.sheet, ...dynamicSheet, ...canvasSheet }}
         >
           <View style={{ flex: 1 }}>
-            <SheetCloseButton onPress={onDismiss} />
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 16 }}
@@ -291,6 +264,7 @@ export function ProfileDetailSheet({
                 }
                 location={location || undefined}
                 pill={badge}
+                onClose={onDismiss}
               />
 
               {/* ── Role context — a tappable role ticket; lands on the
@@ -307,97 +281,11 @@ export function ProfileDetailSheet({
 
               {/* ── Loading or content ────────────────────────────── */}
               {loading && isEmpty ? (
-                // Skeleton — gray placeholder shapes that approximate the
-                // real content layout (bio paragraph, capability pill,
-                // skill chips, two insight cards). Reads as "content is on
-                // its way" instead of a spinner that gives no preview of
-                // what's about to render.
+                // Skeleton cards where About and Insights will land —
+                // same loading language as every other Gallery sheet.
                 <>
-                  <View style={styles.block}>
-                    <SkeletonBlock
-                      style={{ width: 60, height: 9, marginBottom: 12 }}
-                    />
-                    <SkeletonBlock
-                      style={{
-                        width: "100%",
-                        height: 14,
-                        marginBottom: 8,
-                      }}
-                    />
-                    <SkeletonBlock
-                      style={{
-                        width: "92%",
-                        height: 14,
-                        marginBottom: 8,
-                      }}
-                    />
-                    <SkeletonBlock
-                      style={{ width: "55%", height: 14 }}
-                    />
-                  </View>
-                  <View style={styles.capRow}>
-                    <SkeletonBlock
-                      style={{
-                        width: 120,
-                        height: 28,
-                        borderRadius: 20,
-                      }}
-                    />
-                  </View>
-                  <View style={styles.block}>
-                    <SkeletonBlock
-                      style={{ width: 50, height: 9, marginBottom: 12 }}
-                    />
-                    <View style={styles.chipRow}>
-                      <SkeletonBlock
-                        style={{ width: 62, height: 24, borderRadius: 8 }}
-                      />
-                      <SkeletonBlock
-                        style={{ width: 88, height: 24, borderRadius: 8 }}
-                      />
-                      <SkeletonBlock
-                        style={{ width: 54, height: 24, borderRadius: 8 }}
-                      />
-                      <SkeletonBlock
-                        style={{ width: 72, height: 24, borderRadius: 8 }}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.block}>
-                    <SkeletonBlock
-                      style={{ width: 70, height: 9, marginBottom: 12 }}
-                    />
-                    <View style={styles.insightCard}>
-                      <SkeletonBlock
-                        style={{ width: 90, height: 9, marginBottom: 10 }}
-                      />
-                      <SkeletonBlock
-                        style={{
-                          width: "100%",
-                          height: 12,
-                          marginBottom: 6,
-                        }}
-                      />
-                      <SkeletonBlock
-                        style={{ width: "70%", height: 12 }}
-                      />
-                    </View>
-                    <View style={styles.insightCard}>
-                      <SkeletonBlock
-                        style={{ width: 110, height: 9, marginBottom: 10 }}
-                      />
-                      <SkeletonBlock
-                        style={{
-                          width: "100%",
-                          height: 12,
-                          marginBottom: 6,
-                        }}
-                      />
-                      <SkeletonBlock
-                        style={{ width: "60%", height: 12 }}
-                      />
-                    </View>
-                  </View>
+                  <SkeletonCard title="About" />
+                  <SkeletonCard title="Insights" />
                 </>
               ) : (
                 <>
@@ -549,16 +437,12 @@ const styles = StyleSheet.create({
     padding: 28,
     paddingBottom: 40,
   },
-  // Skeleton placeholder base — neutral light gray with a soft border so
-  // the shape reads even at the brightest point of the pulse animation.
-  skeletonBase: {
-    backgroundColor: "#ECECEC",
-    borderRadius: 4,
-  },
-  block: { marginBottom: 20 },
+  // Pill rows float directly on the canvas under the centered hero, so
+  // they center too — left-aligned they read as misplaced.
   capRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center",
     gap: 8,
     marginBottom: 16,
   },
@@ -581,11 +465,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   darkChipText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  // Inset tint deep enough to read as a distinct block inside a white
+  // card — #F8F9FB was invisible against it.
   insightCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: "#F3F5F9",
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
     padding: 14,
     marginBottom: 10,
   },

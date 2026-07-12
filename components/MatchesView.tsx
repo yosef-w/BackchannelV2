@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { saveSponsorRequestOutcome } from "@/utils/sponsorRequestCache";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -181,6 +182,16 @@ export function MatchesView({
   // True while the background full-posting fetch is in flight — the modal
   // shows a details skeleton instead of letting the content pop in.
   const [enrichingSponsorJob, setEnrichingSponsorJob] = useState(false);
+  // Same, for the In Progress (liked) job sheet.
+  const [enrichingSelectedJob, setEnrichingSelectedJob] = useState(false);
+  // Job detail layered OVER the matched-profile sheet — the user tapped
+  // the profile's role ticket to see the full role. Mirrors
+  // interestedSponsorJob (the profile sheet hides while this shows and
+  // takes its presentation slot back on close).
+  const [matchedProfileJob, setMatchedProfileJob] =
+    useState<JobOpportunity | null>(null);
+  const [enrichingMatchedProfileJob, setEnrichingMatchedProfileJob] =
+    useState(false);
 
   /**
    * Build the richest JobOpportunity we can for an interested sponsor's
@@ -232,6 +243,64 @@ export function MatchesView({
    * in today's deck. Merge only lands if the modal is still showing the
    * same job.
    */
+  /**
+   * Open the full job sheet for the role a matched profile is about —
+   * instant basics from the match row (role-aware: the counterpart is the
+   * insider when an applicant is viewing; the viewer themself when a
+   * sponsor is, since it's their posting), full posting merged in from
+   * the background fetch.
+   */
+  const openMatchedProfileJob = (m: Match) => {
+    const self = useUserProfileStore.getState().data.personal;
+    const sponsorInfo =
+      userType === "applicant"
+        ? {
+            name: m.name || "Sponsor",
+            role: m.role || "",
+            image: m.image || "",
+            canRefer: false,
+          }
+        : {
+            name: self.fullName || "You",
+            role: "",
+            image: self.profileImage || "",
+            canRefer: false,
+          };
+    const base: JobOpportunity = {
+      id: m.jobId || `match-${m.id}`,
+      jobId: m.jobId,
+      title: m.appliedRole || "This role",
+      company: m.company || "",
+      location: "",
+      salary: "Competitive",
+      type: "",
+      image: sponsorInfo.image,
+      companyLogoUrl: m.companyLogoUrl || undefined,
+      description: "",
+      skills: [],
+      benefits: [],
+      status: "MATCHED",
+      sponsorInfo,
+    };
+    setMatchedProfileJob(base);
+    setEnrichingMatchedProfileJob(true);
+    fetchSponsoredJobEnrichment({
+      jobId: m.jobId,
+      title: m.appliedRole,
+      company: m.company,
+    })
+      .then((enriched) => {
+        if (!enriched) return;
+        setMatchedProfileJob((prev) =>
+          prev && prev.id === base.id ? { ...prev, ...enriched } : prev,
+        );
+      })
+      .catch(() => {
+        // Best-effort — the modal already shows the basics.
+      })
+      .finally(() => setEnrichingMatchedProfileJob(false));
+  };
+
   const openInterestedSponsorJob = (s: InterestedSponsor) => {
     const base = buildInterestedSponsorJob(s);
     setInterestedSponsorJob(base);
@@ -522,6 +591,28 @@ export function MatchesView({
   const openJob = (job: JobOpportunity) => {
     setActiveModal({ kind: "job", job });
     setActiveSlide(0);
+    // Parity with the layered opens: the liked-jobs payload is missing
+    // fields the full posting carries (URL, responsibilities, work
+    // arrangement — see BACKEND doc §P), so In Progress sheets looked
+    // thinner than Your Move's. Fill the gaps in the background.
+    setEnrichingSelectedJob(true);
+    fetchSponsoredJobEnrichment({
+      jobId: job.jobId,
+      title: job.title,
+      company: job.company,
+    })
+      .then((enriched) => {
+        if (!enriched) return;
+        setActiveModal((prev) =>
+          prev?.kind === "job" && prev.job.id === job.id
+            ? { kind: "job", job: { ...prev.job, ...enriched } }
+            : prev,
+        );
+      })
+      .catch(() => {
+        // Best-effort — the modal already shows the liked-job data.
+      })
+      .finally(() => setEnrichingSelectedJob(false));
   };
 
   const openInterestedSponsor = (sponsor: InterestedSponsor) => {
@@ -577,6 +668,7 @@ export function MatchesView({
   const closeAllModals = () => {
     setActiveModal(null);
     setInterestedSponsorJob(null);
+    setMatchedProfileJob(null);
     setSrJobDetailVisible(false);
     setSrJobDetail(null);
     setSrJobDetailError(null);
@@ -967,7 +1059,10 @@ export function MatchesView({
           renders the standardized layout. */}
       {selectedProfile && (
         <ProfileDetailSheet
-          visible={!!selectedProfile}
+          // Hidden (not unmounted) while the job detail is open: iOS can't
+          // present two sibling RN Modals at once, so the sheet hands its
+          // presentation slot to the job modal and takes it back on close.
+          visible={!!selectedProfile && !matchedProfileJob}
           onDismiss={closeAllModals}
           userId={String(
             userType === "sponsor"
@@ -989,6 +1084,9 @@ export function MatchesView({
                   title: selectedProfile.appliedRole,
                   company: selectedProfile.company,
                   logoUrl: selectedProfile.companyLogoUrl,
+                  // Go deeper on the role — the same enriched job sheet
+                  // the In Progress section opens.
+                  onPress: () => openMatchedProfileJob(selectedProfile),
                 }
               : undefined
           }
@@ -1006,6 +1104,28 @@ export function MatchesView({
             },
           }}
         />
+      )}
+
+      {/* Job detail layered over the matched-profile sheet — the profile's
+          role ticket tapped. Matched, so the default footer applies:
+          'Matched with X · Message'. Closing returns to the profile. */}
+      {selectedProfile && (
+        <Modal visible={!!matchedProfileJob} transparent animationType="none">
+          <JobDetailModal
+            job={matchedProfileJob}
+            enriching={enrichingMatchedProfileJob}
+            onClose={() => setMatchedProfileJob(null)}
+            onNavigateToMessages={(jid) => {
+              trackMatchMessageTapped({ jobId: jid });
+              closeAllModals();
+              onNavigateToMessages?.(
+                jid,
+                selectedProfile.applicantUserId ||
+                  selectedProfile.sponsorUserId,
+              );
+            }}
+          />
+        </Modal>
       )}
 
       {/* Interested applicant detail sheet — sponsor tapped on an applicant
@@ -1072,6 +1192,7 @@ export function MatchesView({
       <Modal visible={!!selectedJob} transparent animationType="none">
         <JobDetailModal
           job={selectedJob}
+          enriching={enrichingSelectedJob}
           onClose={closeAllModals}
           onNavigateToMessages={onNavigateToMessages}
         />

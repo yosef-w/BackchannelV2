@@ -65,11 +65,13 @@ const cardShadow: ViewStyle = Platform.select({
   android: { elevation: 3 },
 })!;
 
-// ── Hero ────────────────────────────────────────────────────────────────
+// ── Close affordances ───────────────────────────────────────────────────
 
 /**
- * Pinned close affordance — render it OUTSIDE the sheet's ScrollView (it's
- * absolutely positioned against the sheet) so it never scrolls away.
+ * Close affordance pinned against the SHEET (absolute) — for sheets whose
+ * top region is static (e.g. a fixed header row). Sheets whose content
+ * scrolls from the very top should use the hero cards' `onClose` instead,
+ * so the button scrolls away with the content it belongs to.
  */
 export function SheetCloseButton({ onPress }: { onPress: () => void }) {
   return (
@@ -80,6 +82,20 @@ export function SheetCloseButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Close"
     >
       <X size={16} color="#666" strokeWidth={2.5} />
+    </TouchableOpacity>
+  );
+}
+
+/** Close affordance in a hero card's corner — scrolls with the content. */
+function CardCloseButton({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={g.cardClose}
+      onPress={onPress}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityLabel="Close"
+    >
+      <X size={15} color="#6B7280" strokeWidth={2.5} />
     </TouchableOpacity>
   );
 }
@@ -192,6 +208,7 @@ export function PosterHero({
   location,
   remote,
   sourceUrl,
+  onClose,
 }: {
   logoUrl?: string;
   logoName?: string;
@@ -200,10 +217,13 @@ export function PosterHero({
   location?: string;
   remote?: boolean;
   sourceUrl?: string;
+  /** Close affordance in the card's corner — scrolls with the content. */
+  onClose?: () => void;
 }) {
   const domain = sourceUrl ? extractDomainForPill(sourceUrl) : null;
   return (
     <View style={[g.card, g.posterCard]}>
+      {onClose && <CardCloseButton onPress={onClose} />}
       <View style={g.posterLogoTile}>
         <CompanyLogo
           logoUrl={logoUrl}
@@ -269,15 +289,19 @@ export function PersonHero({
   meta,
   location,
   pill,
+  onClose,
 }: {
   name: string;
   image?: string;
   meta?: string;
   location?: string;
   pill?: { label: string; color?: string; bgColor?: string };
+  /** Close affordance in the card's corner — scrolls with the content. */
+  onClose?: () => void;
 }) {
   return (
     <View style={[g.card, g.posterCard]}>
+      {onClose && <CardCloseButton onPress={onClose} />}
       {image ? (
         <Image source={{ uri: image }} style={g.personAvatar} />
       ) : (
@@ -706,6 +730,18 @@ const g = StyleSheet.create({
     marginBottom: 10,
   },
   posterCard: { alignItems: "center", paddingVertical: 24 },
+  cardClose: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: CANVAS,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   posterLogoTile: {
     padding: 12,
     borderRadius: 26,

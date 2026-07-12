@@ -18,7 +18,6 @@ import {
     PosterHero,
     ReadMoreText,
     SectionCard,
-    SheetCloseButton,
     SkeletonCard,
     StatStrip,
     Timeline,
@@ -120,7 +119,6 @@ export function JobDetailModal({
       >
         {job && (
           <>
-            <SheetCloseButton onPress={onClose} />
             <ScrollView
               style={styles.scroll}
               showsVerticalScrollIndicator={false}
@@ -135,6 +133,7 @@ export function JobDetailModal({
                 location={job.location}
                 remote={job.remoteOption}
                 sourceUrl={job.url}
+                onClose={onClose}
               />
 
               <StatStrip stats={stats} />

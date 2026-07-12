@@ -428,10 +428,6 @@ export function SponsorRequestModal({
             )}
             {step === 2 && (
               <BarFooter
-                context={{
-                  title: "Step 1 of 2",
-                  sub: "Your relationship to the role",
-                }}
                 button={{
                   label: "Continue",
                   disabled: !relationship || canRefer === null,

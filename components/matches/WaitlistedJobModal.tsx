@@ -15,7 +15,6 @@ import {
     canvasSheet,
     EmptySeatCard,
     PosterHero,
-    SheetCloseButton,
     Timeline,
 } from "./JobSheetKit";
 import { WaitlistedJob } from "./matchesQueries";
@@ -70,7 +69,6 @@ export function WaitlistedJobModal({
       >
         {job && (
           <>
-            <SheetCloseButton onPress={onClose} />
             <ScrollView
               style={styles.scroll}
               showsVerticalScrollIndicator={false}
@@ -83,6 +81,7 @@ export function WaitlistedJobModal({
                 company={job.organization}
                 location={job.location}
                 remote={job.is_remote}
+                onClose={onClose}
               />
 
               <Timeline
