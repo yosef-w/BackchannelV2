@@ -18,13 +18,12 @@
 //   The scroll view reports its offset on the UI thread and runs
 //   simultaneously with the sheet's pan, so the handoff is seamless.
 
-import React, { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext } from "react";
 import { Dimensions, StyleSheet, View, ViewStyle } from "react-native";
 import {
   Gesture,
   GestureDetector,
   GestureHandlerRootView,
-  type GestureType,
 } from "react-native-gesture-handler";
 import type { ScrollViewProps } from "react-native";
 import Animated, {
@@ -48,12 +47,13 @@ interface SheetScrollContextValue {
   /** Inner scroll offset, written on the UI thread. */
   scrollOffset: SharedValue<number>;
   /**
-   * Ref the scroll's Gesture.Native() registers itself into — the sheet's
-   * pan declares it as a simultaneous external gesture, which is what lets
-   * a body-wide pan run at the same time as native scrolling instead of
-   * being cancelled by it.
+   * The sheet-owned Gesture.Native() the SheetScrollView must attach to
+   * its scroll view. The sheet configures IT and its pan as mutually
+   * simultaneous — both directions matter: the orchestrator consults the
+   * ACTIVATING gesture's config when deciding whether to cancel the other,
+   * so a one-sided declaration still let the scroll cancel the pan.
    */
-  nativeGestureRef: React.MutableRefObject<GestureType | undefined>;
+  nativeGesture: ReturnType<typeof Gesture.Native>;
 }
 
 const SheetScrollContext = createContext<SheetScrollContextValue | null>(
@@ -90,9 +90,7 @@ export function SheetScrollView({
   );
   if (!ctx) return scrollView;
   return (
-    <GestureDetector gesture={Gesture.Native().withRef(ctx.nativeGestureRef)}>
-      {scrollView}
-    </GestureDetector>
+    <GestureDetector gesture={ctx.nativeGesture}>{scrollView}</GestureDetector>
   );
 }
 
@@ -130,7 +128,10 @@ export function DismissibleSheet({
   // "rebases" here so the sheet only starts moving from the moment the
   // scroll hits the top — no jump equal to the distance already scrolled.
   const dragBase = useSharedValue(0);
-  const nativeGestureRef = useRef<GestureType | undefined>(undefined);
+  // The inner SheetScrollView attaches this to its scroll view (via
+  // context); created here so the pan and the scroll can be declared
+  // mutually simultaneous with direct object references.
+  const nativeGesture = Gesture.Native();
 
   const settle = (velocityY: number) => {
     "worklet";
@@ -173,7 +174,6 @@ export function DismissibleSheet({
   // inner SheetScrollView and only moves the sheet while that scroll sits
   // at (or above) the top.
   const scrollPan = Gesture.Pan()
-    .simultaneousWithExternalGesture(nativeGestureRef)
     // Vertical intent only — sideways movement (stat rails, chip rows)
     // fails the gesture instead of dragging the sheet diagonally.
     .activeOffsetY(10)
@@ -192,6 +192,9 @@ export function DismissibleSheet({
       translateY.value = Math.max(0, e.translationY - dragBase.value);
     })
     .onEnd((e) => settle(e.velocityY));
+  // BOTH directions — see SheetScrollContextValue.nativeGesture.
+  scrollPan.simultaneousWithExternalGesture(nativeGesture);
+  nativeGesture.simultaneousWithExternalGesture(scrollPan);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -212,9 +215,7 @@ export function DismissibleSheet({
         <GestureDetector gesture={handlePan}>{handle}</GestureDetector>
       )}
       {scrollDismiss ? (
-        <SheetScrollContext.Provider
-          value={{ scrollOffset, nativeGestureRef }}
-        >
+        <SheetScrollContext.Provider value={{ scrollOffset, nativeGesture }}>
           {children}
         </SheetScrollContext.Provider>
       ) : (
