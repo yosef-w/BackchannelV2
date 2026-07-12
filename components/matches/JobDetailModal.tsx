@@ -1,9 +1,8 @@
-import { Check, ExternalLink, MessageCircle } from "@/components/ui/icons";
+import { Check, MessageCircle } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
     KeyboardAvoidingView,
-    Linking,
     Platform,
     ScrollView,
     StyleSheet,
@@ -12,18 +11,17 @@ import {
     View,
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
-import { extractDisplayDomain } from "../jobs/jobTransforms";
 import {
-    EnrichmentSkeleton,
-    FooterButton,
-    InsiderCard,
-    JobSheetHero,
-    JourneySteps,
+    BarFooter,
+    canvasSheet,
+    HostCard,
+    PosterHero,
     ReadMoreText,
+    SectionCard,
     SheetCloseButton,
-    SheetFooter,
-    StatRail,
-    WaitingBar,
+    SkeletonCard,
+    StatStrip,
+    Timeline,
 } from "./JobSheetKit";
 import { JobOpportunity } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
@@ -56,11 +54,10 @@ interface JobDetailModalProps {
 }
 
 /**
- * Liked-job detail sheet — "insider first" layout on the JobSheetKit
- * vocabulary. The story reads top to bottom: the role (compact hero + stat
- * rail), the human way in (inverted insider card), the journey so far
- * (liked → matched → chat), then the long-form details. The primary action
- * is pinned below the scroll so it never has to be scrolled to.
+ * Liked-job detail sheet — Gallery layout: poster hero, App-Store stat
+ * strip, the insider as an Airbnb-style host card, a vertical timeline,
+ * and detail sections as floating cards on the soft canvas. The action
+ * bar is pinned under the scroll with the current state spelled out.
  */
 export function JobDetailModal({
   job,
@@ -88,13 +85,12 @@ export function JobDetailModal({
       });
     }
     if (job.experienceLevel)
-      stats.push({ label: "Experience", value: job.experienceLevel });
+      stats.push({ label: "Level", value: job.experienceLevel });
     if (job.workArrangement)
-      stats.push({ label: "Arrangement", value: job.workArrangement });
-    if (job.type) stats.push({ label: "Type", value: job.type });
+      stats.push({ label: "Setting", value: job.workArrangement });
+    else if (job.type) stats.push({ label: "Type", value: job.type });
   }
 
-  const sourceDomain = job?.url ? extractDisplayDomain(job.url) : null;
   // Skeleton only while the details area would otherwise be empty; the
   // moment any real detail lands, the real sections take over.
   const showSkeleton =
@@ -118,7 +114,10 @@ export function JobDetailModal({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <DismissibleSheet onDismiss={onClose} style={modalStyles.modalContent}>
+      <DismissibleSheet
+        onDismiss={onClose}
+        style={[modalStyles.modalContent, canvasSheet]}
+      >
         {job && (
           <>
             <SheetCloseButton onPress={onClose} />
@@ -128,37 +127,21 @@ export function JobDetailModal({
               bounces={false}
               contentContainerStyle={{ paddingBottom: 16 }}
             >
-              <JobSheetHero
+              <PosterHero
                 logoUrl={job.companyLogoUrl}
                 logoName={job.company}
                 title={job.title}
                 company={job.company}
                 location={job.location}
                 remote={job.remoteOption}
-                insetForClose
+                sourceUrl={job.url}
               />
 
-              {/* Source — trust signal, above the fold: verify the posting
-                  before investing in the read. See BACKEND doc §O/§P. */}
-              {sourceDomain && (
-                <TouchableOpacity
-                  style={styles.sourceRow}
-                  onPress={() => Linking.openURL(job.url!).catch(() => {})}
-                  activeOpacity={0.7}
-                  accessibilityLabel={`View original posting on ${sourceDomain}`}
-                >
-                  <ExternalLink size={12} color="#666" strokeWidth={2} />
-                  <Text style={styles.sourceText}>
-                    Original posting · {sourceDomain}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <StatStrip stats={stats} />
 
-              <StatRail stats={stats} />
-
-              {/* The Insider — the differentiator, so it sits right under
-                  the role facts and is the sheet's one inverted block. */}
-              <InsiderCard
+              {/* The insider — the human way in gets the host-card stage. */}
+              <HostCard
+                label="Your Insider"
                 name={job.sponsorInfo.name}
                 role={
                   job.sponsorInfo.role !== "Sponsor"
@@ -166,14 +149,15 @@ export function JobDetailModal({
                     : undefined
                 }
                 image={job.sponsorInfo.image}
-                chip={matched && !cta ? { label: "Matched" } : undefined}
+                pill={
+                  matched && !cta ? { label: "Matched with you" } : undefined
+                }
               />
 
-              {/* Journey — liked → matched → chat, the momentum story.
-                  Only for liked jobs (layered contexts have no likedAt and
-                  carry their own action through the cta prop). */}
+              {/* Journey — liked → matched → chat. Only for liked jobs
+                  (layered contexts carry their own action via cta). */}
               {!!job.likedAt && !cta && (
-                <JourneySteps
+                <Timeline
                   steps={[
                     {
                       label: "Liked",
@@ -185,50 +169,38 @@ export function JobDetailModal({
                     },
                     {
                       label: "Matched",
-                      sub: matched ? undefined : "Waiting",
+                      sub: matched ? undefined : "Waiting on the sponsor",
                       state: matched ? "done" : "active",
                     },
                     {
-                      label: "Chat",
-                      sub: matched ? "Unlocked" : "Locked",
-                      state: matched ? "done" : "todo",
+                      label: "Start the chat",
+                      sub: matched ? "Unlocked" : "Unlocks on match",
+                      state: matched ? "active" : "todo",
                     },
                   ]}
                 />
               )}
 
               {/* Enrichment skeleton — holds the details area's place while
-                  the full posting loads, instead of content popping in
-                  mid-read. */}
-              {showSkeleton && <EnrichmentSkeleton />}
+                  the full posting loads. */}
+              {showSkeleton && <SkeletonCard title="About the Role" />}
 
-              {/* About the Role — collapsed to a preview; the full text is
-                  one tap away instead of a wall on open. */}
               {!!job.description && (
-                <View style={modalStyles.jobSection}>
-                  <Text style={modalStyles.jobSectionTitle}>
-                    About the Role
-                  </Text>
+                <SectionCard title="About the Role">
                   <ReadMoreText text={job.description} />
-                </View>
+                </SectionCard>
               )}
 
-              {/* What You'll Do */}
               {!!job.coreResponsibilities && (
-                <View style={modalStyles.jobSection}>
-                  <Text style={modalStyles.jobSectionTitle}>
-                    What You&apos;ll Do
-                  </Text>
+                <SectionCard title="What You'll Do">
                   <Text style={modalStyles.jobSectionText}>
                     {job.coreResponsibilities}
                   </Text>
-                </View>
+                </SectionCard>
               )}
 
-              {/* Skills */}
               {job.skills.length > 0 && (
-                <View style={modalStyles.jobSection}>
-                  <Text style={modalStyles.jobSectionTitle}>Skills</Text>
+                <SectionCard title="Skills">
                   <View style={modalStyles.skillsRow}>
                     {job.skills.map((skill, idx) => (
                       <View key={idx} style={modalStyles.skillBadge}>
@@ -236,49 +208,58 @@ export function JobDetailModal({
                       </View>
                     ))}
                   </View>
-                </View>
+                </SectionCard>
               )}
 
-              {/* Highlights / Benefits */}
               {job.benefits.length > 0 && (
-                <View style={modalStyles.jobSection}>
-                  <Text style={modalStyles.jobSectionTitle}>Highlights</Text>
+                <SectionCard title="Highlights">
                   {job.benefits.map((benefit, idx) => (
                     <View key={idx} style={modalStyles.benefitRow}>
                       <Check size={14} color="#000" />
                       <Text style={modalStyles.benefitText}>{benefit}</Text>
                     </View>
                   ))}
-                </View>
+                </SectionCard>
               )}
             </ScrollView>
 
-            {/* Pinned footer — the action (or the honest waiting state)
-                is always visible; nothing to scroll for. */}
-            <SheetFooter>
-              {cta ? (
-                <FooterButton
-                  label={cta.label}
-                  icon={cta.icon}
-                  onPress={cta.onPress}
-                  loading={cta.loading}
-                />
-              ) : matched && onNavigateToMessages && !!job.jobId ? (
-                <FooterButton
-                  label={`Message ${sponsorFirstName}`}
-                  icon={
-                    <MessageCircle color="#FFF" size={20} strokeWidth={2.5} />
-                  }
-                  onPress={() => {
+            {/* Action bar — the state and the action, always visible. */}
+            {cta ? (
+              <BarFooter
+                button={{
+                  label: cta.label,
+                  icon: cta.icon,
+                  onPress: cta.onPress,
+                  loading: cta.loading,
+                }}
+              />
+            ) : matched && onNavigateToMessages && !!job.jobId ? (
+              <BarFooter
+                context={{
+                  title: `Matched with ${sponsorFirstName}`,
+                  done: true,
+                }}
+                button={{
+                  label: "Message",
+                  icon: (
+                    <MessageCircle color="#FFF" size={17} strokeWidth={2.5} />
+                  ),
+                  onPress: () => {
                     const jid = job.jobId as string;
                     onClose();
                     onNavigateToMessages(jid);
-                  }}
-                />
-              ) : (
-                <WaitingBar text={`Waiting on ${sponsorFirstName} to accept`} />
-              )}
-            </SheetFooter>
+                  },
+                }}
+              />
+            ) : (
+              <BarFooter
+                context={{
+                  title: `Waiting on ${sponsorFirstName}`,
+                  sub: "Chat unlocks when they accept",
+                  waiting: true,
+                }}
+              />
+            )}
           </>
         )}
       </DismissibleSheet>
@@ -288,20 +269,6 @@ export function JobDetailModal({
 
 const styles = StyleSheet.create({
   // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned footer; scrolls the overflow.
+  // leaving room for the pinned action bar; scrolls the overflow.
   scroll: { flexShrink: 1 },
-  sourceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    marginBottom: 16,
-    paddingVertical: 4,
-  },
-  sourceText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
-    textDecorationLine: "underline",
-  },
 });
