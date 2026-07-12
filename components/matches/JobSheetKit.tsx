@@ -141,6 +141,7 @@ export function InsiderCard({
   name,
   role,
   image,
+  children,
 }: {
   label?: string;
   /** Small status chip on the header row; muted = gray-on-black. */
@@ -148,6 +149,8 @@ export function InsiderCard({
   name: string;
   role?: string;
   image?: string;
+  /** Extra content below the person row (e.g. their referral note). */
+  children?: React.ReactNode;
 }) {
   return (
     <View style={styles.insiderCard}>
@@ -189,8 +192,14 @@ export function InsiderCard({
           )}
         </View>
       </View>
+      {children}
     </View>
   );
+}
+
+/** A quote from the insider, rendered inside their card. */
+export function InsiderNote({ text }: { text: string }) {
+  return <Text style={styles.insiderNote}>&ldquo;{text}&rdquo;</Text>;
 }
 
 /**
@@ -588,6 +597,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "rgba(255,255,255,0.65)",
     marginTop: 2,
+  },
+  insiderNote: {
+    fontSize: 13,
+    fontStyle: "italic",
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.8)",
+    lineHeight: 19,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.12)",
   },
   insiderSlotTitle: {
     fontSize: 15,

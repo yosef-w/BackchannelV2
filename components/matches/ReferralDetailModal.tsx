@@ -1,8 +1,7 @@
-import { Award, Info, MessageCircle } from "@/components/ui/icons";
+import { MessageCircle } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -11,9 +10,24 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
-import { Referral } from "./matchesQueries";
+import {
+    EnrichmentSkeleton,
+    FooterButton,
+    InsiderCard,
+    InsiderNote,
+    JobSheetHero,
+    JourneySteps,
+    ReadMoreText,
+    SheetCloseButton,
+    SheetFooter,
+    StatRail,
+} from "./JobSheetKit";
+import {
+    fetchSponsoredJobEnrichment,
+    JobOpportunity,
+    Referral,
+} from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
 interface ReferralDetailModalProps {
@@ -25,16 +39,50 @@ interface ReferralDetailModalProps {
 }
 
 /**
- * Received-referral detail sheet (applicant view) — who referred them, what
- * it means, and a CTA to message the sponsor (or just dismiss, if the
- * referral was withdrawn). Extracted from MatchesView; shares the hero/
- * detail-section/sponsor-card visual language via sharedModalStyles.ts.
+ * Received-referral detail sheet (applicant view) — JobSheetKit layout.
+ * The insider card leads (a referral IS the insider moment — their note
+ * renders inside it), the journey strip shows where the referral sits, and
+ * the role itself is background-enriched from GET /api/jobs/ so the sheet
+ * can answer "which role is this again?" — the payload only carries
+ * title/company.
  */
 export function ReferralDetailModal({
   referral,
   onClose,
   onNavigateToMessages,
 }: ReferralDetailModalProps) {
+  const [enriched, setEnriched] = useState<Partial<JobOpportunity> | null>(
+    null,
+  );
+  const [enriching, setEnriching] = useState(false);
+  // Guards a slow fetch from landing on a different referral's sheet.
+  const activeReferralId = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeReferralId.current = referral?.referralId ?? null;
+    setEnriched(null);
+    if (!referral || (!referral.jobTitle && !referral.jobCompany)) {
+      setEnriching(false);
+      return;
+    }
+    const rid = referral.referralId;
+    setEnriching(true);
+    fetchSponsoredJobEnrichment({
+      jobId: referral.jobId,
+      title: referral.jobTitle || undefined,
+      company: referral.jobCompany || undefined,
+    })
+      .then((result) => {
+        if (activeReferralId.current === rid && result) setEnriched(result);
+      })
+      .catch(() => {
+        // Best-effort — the sheet already shows the referral itself.
+      })
+      .finally(() => {
+        if (activeReferralId.current === rid) setEnriching(false);
+      });
+  }, [referral]);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -61,137 +109,155 @@ export function ReferralDetailModal({
             const company = r.jobCompany || "the company";
             const canMessage =
               isReferred && !!onNavigateToMessages && !!r.jobId;
+
+            const stats: { label: string; value: string }[] = [];
+            if (enriched?.salary)
+              stats.push({
+                label: "Salary",
+                value:
+                  enriched.salary +
+                  (enriched.salaryCurrency && enriched.salaryCurrency !== "USD"
+                    ? ` ${enriched.salaryCurrency}`
+                    : ""),
+              });
+            if (enriched?.experienceLevel)
+              stats.push({
+                label: "Experience",
+                value: enriched.experienceLevel,
+              });
+            if (enriched?.workArrangement)
+              stats.push({
+                label: "Arrangement",
+                value: enriched.workArrangement,
+              });
+
+            const showSkeleton =
+              enriching && !enriched?.description && !enriched?.skills?.length;
+
             return (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                contentContainerStyle={{ paddingBottom: 8 }}
-              >
-                {/* Status + date */}
-                <View style={modalStyles.jobModalTopRow}>
-                  <View style={styles.refPill}>
-                    <View
-                      style={[
-                        styles.refPillDot,
-                        isReferred
-                          ? styles.refPillDotReferred
-                          : styles.refPillDotWithdrawn,
+              <>
+                <SheetCloseButton onPress={onClose} />
+                <ScrollView
+                  style={styles.scroll}
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  contentContainerStyle={{ paddingBottom: 16 }}
+                >
+                  <JobSheetHero
+                    logoUrl={r.jobLogoUrl || undefined}
+                    logoName={r.jobCompany || undefined}
+                    title={r.jobTitle || "Open Role"}
+                    company={r.jobCompany || "Company"}
+                    location={enriched?.location}
+                    insetForClose
+                  />
+                  <View style={{ height: 12 }} />
+
+                  {/* The referral IS the insider moment — their card leads,
+                      with their note (when they wrote one) inside it. */}
+                  <InsiderCard
+                    name={sponsorName}
+                    role={
+                      isReferred
+                        ? "Vouched for you personally"
+                        : "Withdrew this referral"
+                    }
+                    image={r.sponsorPhotoUrl || undefined}
+                    chip={
+                      isReferred
+                        ? { label: "Referred" }
+                        : { label: "Withdrawn", muted: true }
+                    }
+                  >
+                    {!!r.referralNote && <InsiderNote text={r.referralNote} />}
+                  </InsiderCard>
+
+                  {/* Journey — only while the referral is live; a withdrawn
+                      one has no momentum to show. */}
+                  {isReferred && (
+                    <JourneySteps
+                      steps={[
+                        { label: "Matched", state: "done" },
+                        {
+                          label: "Referred",
+                          sub: r.createdAt
+                            ? new Date(r.createdAt).toLocaleDateString(
+                                "en-US",
+                                { month: "short", day: "numeric" },
+                              )
+                            : undefined,
+                          state: "done",
+                        },
+                        {
+                          label: "Hiring team",
+                          sub: "Reviewing",
+                          state: "active",
+                        },
                       ]}
                     />
-                    <Text
-                      style={[
-                        styles.refPillText,
-                        isReferred
-                          ? styles.refPillTextReferred
-                          : styles.refPillTextWithdrawn,
-                      ]}
-                    >
-                      {isReferred ? "Referred" : "Withdrawn"}
-                    </Text>
-                  </View>
-                  {!!r.createdAt && (
-                    <Text style={modalStyles.jobModalLikedDate}>
-                      Referred{" "}
-                      {new Date(r.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </Text>
                   )}
-                </View>
 
-                {/* Hero — company logo + role */}
-                <View style={modalStyles.jobModalHero}>
-                  <CompanyLogo
-                    logoUrl={r.jobLogoUrl}
-                    name={r.jobCompany}
-                    size={72}
-                    borderRadius={22}
-                    initialFontSize={32}
-                    style={{ marginBottom: 16 }}
-                  />
-                  <Text style={modalStyles.jobModalHeroTitle}>
-                    {r.jobTitle || "Open Role"}
-                  </Text>
-                  <Text style={modalStyles.jobModalHeroCompany}>
-                    {r.jobCompany || "Company"}
-                  </Text>
-                </View>
-
-                {/* Referred By — the sponsor */}
-                <View style={modalStyles.sponsorInfoCard}>
-                  <View style={modalStyles.sponsorCardHeader}>
-                    <Award size={16} color="#000" />
-                    <Text style={modalStyles.sponsorCardTitle}>
-                      Referred By
-                    </Text>
-                  </View>
-                  <View style={modalStyles.sponsorCardContent}>
-                    {r.sponsorPhotoUrl ? (
-                      <Image
-                        source={{ uri: r.sponsorPhotoUrl }}
-                        style={modalStyles.sponsorCardAvatar}
-                      />
-                    ) : (
-                      <View style={modalStyles.jobSponsorInitialAvatar}>
-                        <Text style={modalStyles.jobSponsorInitialText}>
-                          {sponsorName[0].toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={modalStyles.sponsorCardName}>
-                        {sponsorName}
-                      </Text>
-                      <Text style={modalStyles.sponsorCardRole}>
-                        {isReferred
-                          ? "Referred you for this role"
-                          : "Withdrew this referral"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* What this means */}
-                <View style={modalStyles.detailSection}>
-                  <View style={modalStyles.detailSectionHeader}>
-                    <Info size={16} color="#000" />
-                    <Text style={modalStyles.detailSectionTitle}>
+                  {/* What this means */}
+                  <View style={modalStyles.jobSection}>
+                    <Text style={modalStyles.jobSectionTitle}>
                       What This Means
                     </Text>
-                  </View>
-                  <Text style={modalStyles.jobDetailText}>
-                    {isReferred
-                      ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
-                      : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
-                  </Text>
-                </View>
-
-                {/* CTA */}
-                {canMessage ? (
-                  <TouchableOpacity
-                    style={modalStyles.applyBtnLarge}
-                    onPress={() => {
-                      const jid = r.jobId;
-                      onClose();
-                      onNavigateToMessages?.(jid);
-                    }}
-                  >
-                    <MessageCircle color="#FFF" size={20} strokeWidth={2.5} />
-                    <Text style={modalStyles.applyBtnLargeText}>
-                      Message {sponsorFirst}
+                    <Text style={modalStyles.jobSectionText}>
+                      {isReferred
+                        ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
+                        : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
                     </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={modalStyles.applyBtnLarge}
-                    onPress={onClose}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={modalStyles.applyBtnLargeText}>Got It</Text>
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
+                  </View>
+
+                  {/* The role itself — background-enriched. */}
+                  <StatRail stats={stats} />
+                  {showSkeleton && <EnrichmentSkeleton />}
+                  {!!enriched?.description && (
+                    <View style={modalStyles.jobSection}>
+                      <Text style={modalStyles.jobSectionTitle}>
+                        About the Role
+                      </Text>
+                      <ReadMoreText text={enriched.description} />
+                    </View>
+                  )}
+                  {!!enriched?.skills?.length && (
+                    <View style={modalStyles.jobSection}>
+                      <Text style={modalStyles.jobSectionTitle}>Skills</Text>
+                      <View style={modalStyles.skillsRow}>
+                        {enriched.skills.map((skill, idx) => (
+                          <View key={idx} style={modalStyles.skillBadge}>
+                            <Text style={modalStyles.skillBadgeText}>
+                              {skill}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </ScrollView>
+
+                <SheetFooter>
+                  {canMessage ? (
+                    <FooterButton
+                      label={`Message ${sponsorFirst}`}
+                      icon={
+                        <MessageCircle
+                          color="#FFF"
+                          size={20}
+                          strokeWidth={2.5}
+                        />
+                      }
+                      onPress={() => {
+                        const jid = r.jobId;
+                        onClose();
+                        onNavigateToMessages?.(jid);
+                      }}
+                    />
+                  ) : (
+                    <FooterButton label="Got It" onPress={onClose} />
+                  )}
+                </SheetFooter>
+              </>
             );
           })()}
       </DismissibleSheet>
@@ -200,21 +266,7 @@ export function ReferralDetailModal({
 }
 
 const styles = StyleSheet.create({
-  refPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: "#F4F4F5",
-    borderWidth: 1,
-    borderColor: "#ECECEC",
-  },
-  refPillDot: { width: 6, height: 6, borderRadius: 3 },
-  refPillDotReferred: { backgroundColor: "#000" },
-  refPillDotWithdrawn: { backgroundColor: "#BBB" },
-  refPillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
-  refPillTextReferred: { color: "#000" },
-  refPillTextWithdrawn: { color: "#999" },
+  // Shrinks below its content height when the sheet hits its maxHeight cap,
+  // leaving room for the pinned footer; scrolls the overflow.
+  scroll: { flexShrink: 1 },
 });
