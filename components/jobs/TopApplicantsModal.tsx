@@ -3,14 +3,17 @@ import { BlurView } from "expo-blur";
 import React from "react";
 import {
     ActivityIndicator,
+    Dimensions,
     Image,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { Applicant } from "./jobTransforms";
 
@@ -44,12 +47,16 @@ export function TopApplicantsModal({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <Animated.View
-        entering={SlideInDown}
-        exiting={SlideOutDown}
-        style={[jobsModalStyles.modalContent, { maxHeight: "60%" }]}
+      <DismissibleSheet
+        scrollDismiss
+        onDismiss={onClose}
+        style={[
+          jobsModalStyles.modalContent,
+          // Absolute px — a % maxHeight resolves against the sheet's
+          // content-sized gesture-root wrapper and mis-measures.
+          { maxHeight: Dimensions.get("window").height * 0.6 },
+        ]}
       >
-        <View style={styles.modalHandle} />
         <View style={jobsModalStyles.modalHeader}>
           <Text style={jobsModalStyles.modalMainTitle}>Top Applicants</Text>
           <TouchableOpacity
@@ -60,7 +67,7 @@ export function TopApplicantsModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <SheetScrollView
           contentContainerStyle={{ paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
@@ -161,21 +168,13 @@ export function TopApplicantsModal({
               </TouchableOpacity>
             ))
           )}
-        </ScrollView>
-      </Animated.View>
+        </SheetScrollView>
+      </DismissibleSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  modalHandle: {
-    width: 40,
-    height: 5,
-    backgroundColor: "#EEE",
-    borderRadius: 3,
-    alignSelf: "center",
-    marginBottom: 20,
-  },
   applicantRow: {
     flexDirection: "row",
     alignItems: "center",

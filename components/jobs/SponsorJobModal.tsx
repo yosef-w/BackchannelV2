@@ -3,19 +3,19 @@ import type { Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
+    Dimensions,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, {
-    FadeIn,
-    SlideInDown,
-    SlideOutDown,
-} from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { SponsorInsightCards } from "./SponsorInsightCards";
 
@@ -89,10 +89,15 @@ export function SponsorJobModal({
       >
         <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
-      <Animated.View
-        entering={SlideInDown}
-        exiting={SlideOutDown}
-        style={jobsModalStyles.modalContent}
+      <DismissibleSheet
+        scrollDismiss
+        onDismiss={onClose}
+        style={[
+          jobsModalStyles.modalContent,
+          // Absolute px — a % maxHeight resolves against the sheet's
+          // content-sized gesture-root wrapper and mis-measures.
+          { maxHeight: Dimensions.get("window").height * 0.9 },
+        ]}
       >
         <View style={jobsModalStyles.modalHeader}>
           <Text style={jobsModalStyles.modalMainTitle}>
@@ -124,7 +129,7 @@ export function SponsorJobModal({
                 Step 1 of 2
               </Text>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+            <SheetScrollView>
               <Text style={jobsModalStyles.modalSubTitle}>
                 Help us understand your role and referral capability
               </Text>
@@ -205,7 +210,7 @@ export function SponsorJobModal({
                   </TouchableOpacity>
                 </View>
               </View>
-            </ScrollView>
+            </SheetScrollView>
             <TouchableOpacity
               style={[
                 jobsModalStyles.confirmBtn,
@@ -238,9 +243,7 @@ export function SponsorJobModal({
                 Step 2 of 2
               </Text>
             </View>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              bounces={false}
+            <SheetScrollView
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 16 }}
             >
@@ -281,7 +284,7 @@ export function SponsorJobModal({
                   {isSponsoring ? "Sponsoring..." : "Confirm Sponsorship"}
                 </Text>
               </TouchableOpacity>
-            </ScrollView>
+            </SheetScrollView>
           </>
         ) : (
           <Animated.View entering={FadeIn} style={styles.successStep}>
@@ -304,7 +307,7 @@ export function SponsorJobModal({
             </TouchableOpacity>
           </Animated.View>
         )}
-      </Animated.View>
+      </DismissibleSheet>
     </KeyboardAvoidingView>
   );
 }

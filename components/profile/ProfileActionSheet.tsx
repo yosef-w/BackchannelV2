@@ -2,6 +2,7 @@ import { X } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
+    Dimensions,
     Modal,
     StyleSheet,
     Text,
@@ -103,7 +104,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 32,
-    maxHeight: "90%",
+    // Absolute px — a % maxHeight resolves against DismissibleSheet's
+    // content-sized gesture-root wrapper, mis-measures, and floats the
+    // sheet off the bottom of the screen.
+    maxHeight: Dimensions.get("window").height * 0.9,
   },
   modalHeader: {
     flexDirection: "row",
