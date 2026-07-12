@@ -4,13 +4,15 @@ import React, { useEffect, useRef, useState } from "react";
 import {
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import {
     BarFooter,
     canvasSheet,
@@ -95,6 +97,7 @@ export function ReferralDetailModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onClose}
         style={[modalStyles.modalContent, canvasSheet]}
       >
@@ -134,10 +137,8 @@ export function ReferralDetailModal({
 
             return (
               <>
-                <ScrollView
+                <SheetScrollView
                   style={styles.scroll}
-                  showsVerticalScrollIndicator={false}
-                  bounces={false}
                   contentContainerStyle={{ paddingBottom: 16 }}
                 >
                   <PosterHero
@@ -220,7 +221,7 @@ export function ReferralDetailModal({
                       </View>
                     </SectionCard>
                   )}
-                </ScrollView>
+                </SheetScrollView>
 
                 {canMessage ? (
                   <BarFooter

@@ -50,6 +50,7 @@ export function WithdrawReferralModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onCancel}
         style={[
           styles.modalContent,

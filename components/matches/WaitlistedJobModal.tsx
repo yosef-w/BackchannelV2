@@ -4,12 +4,14 @@ import React from "react";
 import {
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
 } from "react-native";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import {
     BarFooter,
     canvasSheet,
@@ -64,15 +66,14 @@ export function WaitlistedJobModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onClose}
         style={[modalStyles.modalContent, canvasSheet]}
       >
         {job && (
           <>
-            <ScrollView
+            <SheetScrollView
               style={styles.scroll}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
               contentContainerStyle={{ paddingBottom: 16 }}
             >
               <PosterHero
@@ -122,7 +123,7 @@ export function WaitlistedJobModal({
               {!!job.outcomeMessage && !sponsored && (
                 <Text style={styles.outcomeMessage}>{job.outcomeMessage}</Text>
               )}
-            </ScrollView>
+            </SheetScrollView>
 
             {sponsored ? (
               <BarFooter

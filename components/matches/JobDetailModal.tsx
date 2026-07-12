@@ -4,13 +4,15 @@ import React from "react";
 import {
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import {
     BarFooter,
     canvasSheet,
@@ -114,15 +116,14 @@ export function JobDetailModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onClose}
         style={[modalStyles.modalContent, canvasSheet]}
       >
         {job && (
           <>
-            <ScrollView
+            <SheetScrollView
               style={styles.scroll}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
               contentContainerStyle={{ paddingBottom: 16 }}
             >
               <PosterHero
@@ -220,7 +221,7 @@ export function JobDetailModal({
                   ))}
                 </SectionCard>
               )}
-            </ScrollView>
+            </SheetScrollView>
 
             {/* Action bar — the state and the action, always visible. */}
             {cta ? (

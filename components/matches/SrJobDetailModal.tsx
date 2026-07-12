@@ -4,13 +4,15 @@ import React from "react";
 import {
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import {
     BarFooter,
     canvasSheet,
@@ -81,6 +83,7 @@ export function SrJobDetailModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onBack}
         style={[modalStyles.modalContent, canvasSheet]}
       >
@@ -107,10 +110,8 @@ export function SrJobDetailModal({
           </View>
         ) : detail ? (
           <>
-            <ScrollView
+            <SheetScrollView
               style={styles.scroll}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
               contentContainerStyle={{ paddingBottom: 16 }}
             >
               <PosterHero
@@ -146,7 +147,7 @@ export function SrJobDetailModal({
                   <ReadMoreText text={detail.DESCRIPTION_TEXT} />
                 </SectionCard>
               )}
-            </ScrollView>
+            </SheetScrollView>
 
             <BarFooter
               button={{

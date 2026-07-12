@@ -5,7 +5,6 @@ import {
     Image,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -13,7 +12,10 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { CompanyLogo } from "../ui/CompanyLogo";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
 
@@ -59,6 +61,7 @@ export function RolePickerModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onClose}
         style={[styles.modalContent, canvasSheet]}
       >
@@ -104,11 +107,7 @@ export function RolePickerModal({
               </View>
             </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              style={{ marginTop: 8 }}
-            >
+            <SheetScrollView style={{ marginTop: 8 }}>
               {roleGroup.items.map((m) => (
                 <View key={m.id} style={styles.rolePickerRow}>
                   <TouchableOpacity
@@ -144,7 +143,7 @@ export function RolePickerModal({
                   </TouchableOpacity>
                 </View>
               ))}
-            </ScrollView>
+            </SheetScrollView>
           </>
         )}
       </DismissibleSheet>

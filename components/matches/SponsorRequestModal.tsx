@@ -13,7 +13,6 @@ import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -21,7 +20,10 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import {
     BarFooter,
     canvasSheet,
@@ -119,6 +121,7 @@ export function SponsorRequestModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onClose}
         style={[modalStyles.modalContent, canvasSheet]}
       >
@@ -149,10 +152,8 @@ export function SponsorRequestModal({
               </View>
             )}
 
-            <ScrollView
+            <SheetScrollView
               style={{ flexShrink: 1 }}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 8 }}
             >
@@ -409,7 +410,7 @@ export function SponsorRequestModal({
                   <QuietAction label="Back to Matches" onPress={onClose} />
                 </Animated.View>
               )}
-            </ScrollView>
+            </SheetScrollView>
 
             {/* ── Pinned action bar — each step's action is always visible
                 (the success step keeps its inline, centered CTAs). ─── */}

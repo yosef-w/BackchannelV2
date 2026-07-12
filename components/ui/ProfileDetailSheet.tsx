@@ -31,7 +31,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -39,7 +38,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import { DismissibleSheet } from "./DismissibleSheet";
+import { DismissibleSheet, SheetScrollView } from "./DismissibleSheet";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -244,12 +243,12 @@ export function ProfileDetailSheet({
         </TouchableOpacity>
 
         <DismissibleSheet
+          scrollDismiss
           onDismiss={onDismiss}
           style={{ ...styles.sheet, ...dynamicSheet, ...canvasSheet }}
         >
           <View style={{ flex: 1 }}>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
+            <SheetScrollView
               contentContainerStyle={{ paddingBottom: 16 }}
               style={{ flexShrink: 1, flexGrow: 1 }}
             >
@@ -391,7 +390,7 @@ export function ProfileDetailSheet({
                   )}
                 </>
               )}
-            </ScrollView>
+            </SheetScrollView>
 
             {/* ── Pinned action bar — primary pill, secondary outlined
                 below it when present. ── */}

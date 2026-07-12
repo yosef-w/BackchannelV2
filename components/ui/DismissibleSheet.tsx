@@ -6,31 +6,87 @@
 // GestureDetector won't work unless a GestureHandlerRootView is an ancestor
 // *inside* the modal — hence the wrapper here.
 //
-// The grey handle pill is the drag target (the universal iOS "drag me"
-// affordance). Keeping the gesture on the handle — not the whole sheet —
-// avoids fighting the ScrollView that lives inside most of these sheets.
+// Three drag modes:
+// - default: the grey handle pill is the drag target (the universal iOS
+//   "drag me" affordance). Keeping the gesture on the handle — not the whole
+//   sheet — avoids fighting a plain ScrollView inside the sheet.
+// - `fullSheetGesture`: the whole sheet drags. For sheets WITHOUT inner
+//   scrollables.
+// - `scrollDismiss` + <SheetScrollView>: the whole sheet drags, but only
+//   once the inner scroll sits at the top — scroll up through the content,
+//   keep pulling, and the sheet follows the finger down into a dismiss.
+//   The scroll view reports its offset on the UI thread and runs
+//   simultaneously with the sheet's pan, so the handoff is seamless.
 
-import React from "react";
+import React, { createContext, useContext, useRef } from "react";
 import { Dimensions, StyleSheet, View, ViewStyle } from "react-native";
 import {
   Gesture,
   GestureDetector,
   GestureHandlerRootView,
+  ScrollView as GHScrollView,
 } from "react-native-gesture-handler";
+import type { ScrollViewProps } from "react-native";
 import Animated, {
   runOnJS,
   SlideInDown,
   SlideOutDown,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 // Drag down past this many px — or flick down faster than this — to dismiss.
 const DISMISS_DISTANCE = 110;
 const DISMISS_VELOCITY = 900;
+
+const AnimatedGHScrollView = Animated.createAnimatedComponent(GHScrollView);
+
+interface SheetScrollContextValue {
+  /** Inner scroll offset, written on the UI thread. */
+  scrollOffset: SharedValue<number>;
+  /** The sheet pan's ref — the scroll view registers it as simultaneous. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  panRef: React.MutableRefObject<any>;
+}
+
+const SheetScrollContext = createContext<SheetScrollContextValue | null>(
+  null,
+);
+
+/**
+ * The scrollable body of a `scrollDismiss` DismissibleSheet. Reports its
+ * offset to the sheet (so the drag-to-close only engages at the top) and
+ * declares the sheet's pan as a simultaneous gesture (so the same finger
+ * movement can hand over from scrolling to dragging).
+ */
+export function SheetScrollView({
+  children,
+  ...props
+}: ScrollViewProps & { children?: React.ReactNode }) {
+  const ctx = useContext(SheetScrollContext);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      if (ctx) ctx.scrollOffset.value = e.contentOffset.y;
+    },
+  });
+  return (
+    <AnimatedGHScrollView
+      bounces={false}
+      showsVerticalScrollIndicator={false}
+      {...props}
+      simultaneousHandlers={ctx ? ctx.panRef : undefined}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+    >
+      {children}
+    </AnimatedGHScrollView>
+  );
+}
 
 interface DismissibleSheetProps {
   onDismiss: () => void;
@@ -44,6 +100,13 @@ interface DismissibleSheetProps {
    * buttons still register normally.
    */
   fullSheetGesture?: boolean;
+  /**
+   * When true, the whole sheet drags to dismiss but yields to an inner
+   * <SheetScrollView>: while the content is scrolled, downward pans scroll;
+   * once it reaches the top, continuing the pull drags the sheet with the
+   * finger. Sheets without a SheetScrollView get whole-surface dragging.
+   */
+  scrollDismiss?: boolean;
 }
 
 export function DismissibleSheet({
@@ -51,33 +114,77 @@ export function DismissibleSheet({
   style,
   children,
   fullSheetGesture = false,
+  scrollDismiss = false,
 }: DismissibleSheetProps) {
   const translateY = useSharedValue(0);
+  const scrollOffset = useSharedValue(0);
+  // While the finger is down but the content isn't at the top yet, the pan
+  // "rebases" here so the sheet only starts moving from the moment the
+  // scroll hits the top — no jump equal to the distance already scrolled.
+  const dragBase = useSharedValue(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const panRef = useRef<any>(null);
 
-  let pan = Gesture.Pan()
+  const settle = (velocityY: number) => {
+    "worklet";
+    if (
+      translateY.value > DISMISS_DISTANCE ||
+      (velocityY > DISMISS_VELOCITY && translateY.value > 0)
+    ) {
+      translateY.value = withTiming(
+        SCREEN_HEIGHT,
+        { duration: 220 },
+        (finished) => {
+          if (finished) runOnJS(onDismiss)();
+        },
+      );
+    } else {
+      translateY.value = withSpring(0, { damping: 20, stiffness: 220 });
+    }
+  };
+
+  // Handle-pill pan — always available, unconditional (the handle never
+  // scrolls, so no gating).
+  const handlePan = Gesture.Pan()
     .onUpdate((e) => {
-      // Only let the sheet move downward.
       translateY.value = Math.max(0, e.translationY);
     })
-    .onEnd((e) => {
-      if (e.translationY > DISMISS_DISTANCE || e.velocityY > DISMISS_VELOCITY) {
-        translateY.value = withTiming(
-          SCREEN_HEIGHT,
-          { duration: 220 },
-          (finished) => {
-            if (finished) runOnJS(onDismiss)();
-          },
-        );
-      } else {
-        translateY.value = withSpring(0, { damping: 20, stiffness: 220 });
-      }
-    });
+    .onEnd((e) => settle(e.velocityY));
+
+  // Whole-surface pan for fullSheetGesture mode (10 px tolerance keeps
+  // taps working).
+  let bodyPan = Gesture.Pan()
+    .onUpdate((e) => {
+      translateY.value = Math.max(0, e.translationY);
+    })
+    .onEnd((e) => settle(e.velocityY));
   if (fullSheetGesture) {
-    // 10 px tolerance: a quick tap stays a tap; a deliberate swipe past 10 px
-    // of downward movement activates the dismiss gesture and the underlying
-    // button (if any) is released without firing.
-    pan = pan.activeOffsetY(10);
+    bodyPan = bodyPan.activeOffsetY(10);
   }
+
+  // Scroll-aware pan for scrollDismiss mode: runs simultaneously with the
+  // inner SheetScrollView and only moves the sheet while that scroll sits
+  // at (or above) the top.
+  const scrollPan = Gesture.Pan()
+    .withRef(panRef)
+    // Vertical intent only — sideways movement (stat rails, chip rows)
+    // fails the gesture instead of dragging the sheet diagonally.
+    .activeOffsetY(10)
+    .failOffsetX([-20, 20])
+    .onStart(() => {
+      dragBase.value = 0;
+    })
+    .onUpdate((e) => {
+      if (scrollOffset.value > 0 && translateY.value <= 0) {
+        // Content still scrolled — keep rebasing so the sheet starts
+        // moving from wherever the finger is when the top is reached.
+        dragBase.value = e.translationY;
+        translateY.value = 0;
+        return;
+      }
+      translateY.value = Math.max(0, e.translationY - dragBase.value);
+    })
+    .onEnd((e) => settle(e.velocityY));
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -90,29 +197,39 @@ export function DismissibleSheet({
     </View>
   );
 
-  // In full-sheet mode the GestureDetector wraps the whole Animated.View, so
-  // the handle inherits the gesture automatically (no need to wrap it again).
-  // In handle-only mode the GestureDetector wraps just the handle so inner
-  // buttons / scrollviews aren't hijacked.
+  const inner = (
+    <>
+      {fullSheetGesture || scrollDismiss ? (
+        handle
+      ) : (
+        <GestureDetector gesture={handlePan}>{handle}</GestureDetector>
+      )}
+      {scrollDismiss ? (
+        <SheetScrollContext.Provider value={{ scrollOffset, panRef }}>
+          {children}
+        </SheetScrollContext.Provider>
+      ) : (
+        children
+      )}
+    </>
+  );
+
   const sheet = (
     <Animated.View
       entering={SlideInDown}
       exiting={SlideOutDown}
       style={[style, animatedStyle]}
     >
-      {fullSheetGesture ? (
-        handle
-      ) : (
-        <GestureDetector gesture={pan}>{handle}</GestureDetector>
-      )}
-      {children}
+      {inner}
     </Animated.View>
   );
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      {fullSheetGesture ? (
-        <GestureDetector gesture={pan}>{sheet}</GestureDetector>
+      {scrollDismiss ? (
+        <GestureDetector gesture={scrollPan}>{sheet}</GestureDetector>
+      ) : fullSheetGesture ? (
+        <GestureDetector gesture={bodyPan}>{sheet}</GestureDetector>
       ) : (
         sheet
       )}
