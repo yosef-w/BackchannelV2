@@ -1,4 +1,4 @@
-import { MessageCircle } from "@/components/ui/icons";
+import { ChevronRight, MessageCircle } from "@/components/ui/icons";
 import React from "react";
 import {
     Dimensions,
@@ -14,6 +14,7 @@ import {
 import { BlurView } from "expo-blur";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -60,7 +61,8 @@ export function RolePickerModal({
       <DismissibleSheet onDismiss={onClose} style={styles.modalContent}>
         {roleGroup && (
           <>
-            <View style={styles.rolePickerHeader}>
+            <SheetCloseButton onPress={onClose} />
+            <View style={[styles.rolePickerHeader, { paddingRight: 36 }]}>
               {roleGroup.items[0].image ? (
                 <Image
                   source={{ uri: roleGroup.items[0].image }}
@@ -128,6 +130,7 @@ export function RolePickerModal({
                           .join(" · ")}
                       </Text>
                     </View>
+                    <ChevronRight color="#CCC" size={18} strokeWidth={2.2} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.rolePickerMsgBtn}

@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { FooterButton, SheetFooter } from "./JobSheetKit";
 import type { Referral } from "./matchesQueries";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -61,7 +62,7 @@ export function WithdrawReferralModal({
 
             <Text style={styles.withdrawModalTitle}>Withdraw referral?</Text>
             <Text style={styles.withdrawModalSubtitle}>
-              You're about to withdraw{" "}
+              You&apos;re about to withdraw{" "}
               <Text style={styles.withdrawModalEmphasis}>
                 {applicantName}
               </Text>
@@ -74,7 +75,7 @@ export function WithdrawReferralModal({
               <View style={styles.withdrawWarningRow}>
                 <View style={styles.withdrawWarningDot} />
                 <Text style={styles.withdrawWarningText}>
-                  You'll have a few seconds to undo this.
+                  You&apos;ll have a few seconds to undo this.
                 </Text>
               </View>
               <View style={styles.withdrawWarningRow}>
@@ -84,31 +85,29 @@ export function WithdrawReferralModal({
                 </Text>
               </View>
             </View>
-            <View style={styles.withdrawModalActions}>
-              <TouchableOpacity
-                style={styles.withdrawCancelBtn}
+            {/* Destructive confirm: the SAFE path gets the primary black
+                button; the destructive action is the quiet red text below
+                it, so a reflexive tap keeps the referral. */}
+            <SheetFooter>
+              <FooterButton
+                label="Keep Referral"
                 onPress={onCancel}
                 disabled={isProcessing}
-              >
-                <Text style={styles.withdrawCancelBtnText}>Keep referral</Text>
-              </TouchableOpacity>
+              />
               <TouchableOpacity
-                style={[
-                  styles.withdrawConfirmBtn,
-                  isProcessing && styles.withdrawBtnDisabled,
-                ]}
+                style={styles.withdrawQuietBtn}
                 onPress={() => onConfirm(referral)}
                 disabled={isProcessing}
               >
                 {isProcessing ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color="#DC2626" />
                 ) : (
-                  <Text style={styles.withdrawConfirmBtnText}>
+                  <Text style={styles.withdrawQuietBtnText}>
                     Yes, withdraw
                   </Text>
                 )}
               </TouchableOpacity>
-            </View>
+            </SheetFooter>
           </View>
         )}
       </DismissibleSheet>
@@ -124,9 +123,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     padding: 28,
     paddingBottom: 40,
-  },
-  withdrawBtnDisabled: {
-    opacity: 0.5,
   },
   withdrawIconCircle: {
     width: 64,
@@ -187,34 +183,15 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: "600",
   },
-  withdrawModalActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  withdrawCancelBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#F3F4F6",
+  withdrawQuietBtn: {
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 12,
+    paddingVertical: 8,
   },
-  withdrawCancelBtnText: {
+  withdrawQuietBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
-  },
-  withdrawConfirmBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#DC2626",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  withdrawConfirmBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFF",
+    color: "#DC2626",
   },
 });
