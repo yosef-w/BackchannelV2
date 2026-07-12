@@ -1,12 +1,4 @@
-import {
-    AlertTriangle,
-    Briefcase,
-    ChevronLeft,
-    DollarSign,
-    Info,
-    MapPin,
-    TrendingUp,
-} from "@/components/ui/icons";
+import { AlertTriangle, ChevronLeft } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
@@ -18,8 +10,16 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    EnrichmentSkeleton,
+    FooterButton,
+    JobSheetHero,
+    ReadMoreText,
+    SheetFooter,
+    SkeletonHero,
+    StatRail,
+} from "./JobSheetKit";
 import { parseSkillsField } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
@@ -37,16 +37,36 @@ interface SrJobDetailModalProps {
 /**
  * Full role detail for the job a sponsor-request references — reached by
  * tapping "Tap to review this role" on the sponsor-request overview step.
- * Extracted from MatchesView; shares the hero/comp-strip/detail-section
- * visual language via sharedModalStyles.ts.
+ * JobSheetKit layout, but a DRILL-IN, not a destination: the viewer is the
+ * would-be insider themself, so there's no insider card, and the pinned
+ * action is the way back to the request.
  */
 export function SrJobDetailModal({
-  visible,
+  visible: _visible,
   loading,
   error,
   detail,
   onBack,
 }: SrJobDetailModalProps) {
+  const stats: { label: string; value: string }[] = [];
+  if (detail) {
+    if (detail.SALARY_ANNUAL_MIN && detail.SALARY_ANNUAL_MAX) {
+      stats.push({
+        label: "Salary",
+        value:
+          `$${Math.round(detail.SALARY_ANNUAL_MIN / 1000)}k – $${Math.round(detail.SALARY_ANNUAL_MAX / 1000)}k` +
+          (detail.SALARY_CURRENCY && detail.SALARY_CURRENCY !== "USD"
+            ? ` ${detail.SALARY_CURRENCY}`
+            : ""),
+      });
+    }
+    if (detail.EXPERIENCE_LEVEL)
+      stats.push({ label: "Experience", value: detail.EXPERIENCE_LEVEL });
+    if (detail.EMPLOYMENT_TYPES)
+      stats.push({ label: "Type", value: detail.EMPLOYMENT_TYPES });
+  }
+  const skills = detail ? parseSkillsField(detail.SKILLS) : [];
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -61,185 +81,85 @@ export function SrJobDetailModal({
       </TouchableOpacity>
 
       <DismissibleSheet onDismiss={onBack} style={modalStyles.modalContent}>
-        {/* Header row — back to request */}
+        {/* Header row — drill-in affordance back to the request. */}
         <TouchableOpacity
-          style={styles.srJobDetailBackRow}
+          style={styles.backRow}
           onPress={onBack}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <ChevronLeft size={18} color="#000" />
-          <Text style={styles.srJobDetailBackText}>Back to Request</Text>
+          <Text style={styles.backText}>Back to Request</Text>
         </TouchableOpacity>
 
         {loading ? (
-          <View style={styles.interestedLoadingContainer}>
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: "#F4F4F5",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Briefcase color="#BBB" size={28} strokeWidth={1.8} />
-            </View>
-            <Text style={styles.interestedLoadingText}>
-              Loading role details…
-            </Text>
+          <View style={{ paddingBottom: 8 }}>
+            <SkeletonHero />
+            <View style={{ height: 20 }} />
+            <EnrichmentSkeleton />
           </View>
         ) : error ? (
-          <View style={styles.interestedLoadingContainer}>
+          <View style={styles.errorContainer}>
             <AlertTriangle size={32} color="#DC2626" />
-            <Text style={styles.srJobDetailErrorTitle}>
-              Could not load role details
-            </Text>
-            <Text style={styles.srJobDetailErrorSub}>{error}</Text>
+            <Text style={styles.errorTitle}>Could not load role details</Text>
+            <Text style={styles.errorSub}>{error}</Text>
           </View>
         ) : detail ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            contentContainerStyle={{ paddingBottom: 8 }}
-          >
-            {/* Hero — company logo, title, company, location */}
-            <View style={modalStyles.jobModalHero}>
-              <CompanyLogo
-                logoUrl={detail.organization_logo || detail.ORGANIZATION_LOGO}
-                name={detail.ORGANIZATION}
-                size={72}
-                borderRadius={22}
-                initialFontSize={32}
-                style={{ marginBottom: 16 }}
+          <>
+            <ScrollView
+              style={styles.scroll}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+            >
+              <JobSheetHero
+                logoUrl={
+                  detail.organization_logo ||
+                  detail.ORGANIZATION_LOGO ||
+                  undefined
+                }
+                logoName={detail.ORGANIZATION}
+                title={detail.TITLE || "Open Role"}
+                company={detail.ORGANIZATION}
+                location={detail.FULL_LOCATION || undefined}
+                remote={!!detail.IS_REMOTE}
               />
-              <Text style={modalStyles.jobModalHeroTitle}>
-                {detail.TITLE}
-              </Text>
-              <Text style={modalStyles.jobModalHeroCompany}>
-                {detail.ORGANIZATION}
-              </Text>
-              {!!detail.FULL_LOCATION && (
-                <View style={modalStyles.jobModalLocationRow}>
-                  <MapPin size={13} color="#999" />
-                  <Text style={modalStyles.jobModalLocationText}>
-                    {detail.FULL_LOCATION}
-                  </Text>
-                  {detail.IS_REMOTE && (
-                    <View style={modalStyles.jobRemoteBadge}>
-                      <Text style={modalStyles.jobRemoteText}>Remote</Text>
-                    </View>
-                  )}
+              <View style={{ height: 12 }} />
+
+              <StatRail stats={stats} />
+
+              {/* Skills */}
+              {skills.length > 0 && (
+                <View style={modalStyles.jobSection}>
+                  <Text style={modalStyles.jobSectionTitle}>Skills</Text>
+                  <View style={modalStyles.skillsRow}>
+                    {skills.map((skill: string, idx: number) => (
+                      <View key={idx} style={modalStyles.skillBadge}>
+                        <Text style={modalStyles.skillBadgeText}>{skill}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
               )}
-            </View>
 
-            {/* Compensation + experience strip */}
-            {(detail.SALARY_ANNUAL_MIN || detail.EXPERIENCE_LEVEL) && (
-              <View style={modalStyles.jobModalCompStrip}>
-                {!!(detail.SALARY_ANNUAL_MIN && detail.SALARY_ANNUAL_MAX) && (
-                  <View style={modalStyles.jobModalCompCell}>
-                    <DollarSign size={14} color="#555" />
-                    <View>
-                      <Text style={modalStyles.jobModalCompLabel}>
-                        SALARY
-                      </Text>
-                      <Text style={modalStyles.jobModalCompValue}>
-                        {`$${Math.round(detail.SALARY_ANNUAL_MIN / 1000)}k – $${Math.round(detail.SALARY_ANNUAL_MAX / 1000)}k`}
-                        {detail.SALARY_CURRENCY &&
-                        detail.SALARY_CURRENCY !== "USD"
-                          ? ` ${detail.SALARY_CURRENCY}`
-                          : ""}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {!!detail.EXPERIENCE_LEVEL && (
-                  <View
-                    style={[
-                      modalStyles.jobModalCompCell,
-                      !!detail.SALARY_ANNUAL_MIN &&
-                        modalStyles.jobModalCompCellBorder,
-                    ]}
-                  >
-                    <Briefcase size={14} color="#555" />
-                    <View>
-                      <Text style={modalStyles.jobModalCompLabel}>
-                        EXPERIENCE
-                      </Text>
-                      <Text style={modalStyles.jobModalCompValue}>
-                        {detail.EXPERIENCE_LEVEL}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Role details — employment type + remote chip */}
-            {!!(detail.EMPLOYMENT_TYPES || detail.IS_REMOTE) && (
-              <View style={modalStyles.detailSection}>
-                <View style={modalStyles.detailSectionHeader}>
-                  <Info size={16} color="#000" />
-                  <Text style={modalStyles.detailSectionTitle}>
-                    Role Details
+              {/* Description — silver descriptions run LONG; collapse. */}
+              {!!detail.DESCRIPTION_TEXT && (
+                <View style={modalStyles.jobSection}>
+                  <Text style={modalStyles.jobSectionTitle}>
+                    About the Role
                   </Text>
+                  <ReadMoreText text={detail.DESCRIPTION_TEXT} />
                 </View>
-                <View style={modalStyles.skillsRow}>
-                  {!!detail.EMPLOYMENT_TYPES && (
-                    <View style={modalStyles.roleDetailChip}>
-                      <Text style={modalStyles.roleDetailChipText}>
-                        {detail.EMPLOYMENT_TYPES}
-                      </Text>
-                    </View>
-                  )}
-                  {detail.IS_REMOTE && (
-                    <View style={modalStyles.roleDetailChip}>
-                      <MapPin size={13} color="#000" />
-                      <Text style={modalStyles.roleDetailChipText}>
-                        Remote
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
+              )}
+            </ScrollView>
 
-            {/* Required skills */}
-            {parseSkillsField(detail.SKILLS).length > 0 && (
-              <View style={modalStyles.detailSection}>
-                <View style={modalStyles.detailSectionHeader}>
-                  <TrendingUp size={16} color="#000" />
-                  <Text style={modalStyles.detailSectionTitle}>
-                    Required Skills
-                  </Text>
-                </View>
-                <View style={modalStyles.skillsRow}>
-                  {parseSkillsField(detail.SKILLS).map(
-                    (skill: string, idx: number) => (
-                      <View key={idx} style={modalStyles.skillBadge}>
-                        <Text style={modalStyles.skillBadgeText}>
-                          {skill}
-                        </Text>
-                      </View>
-                    ),
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* Description */}
-            {!!detail.DESCRIPTION_TEXT && (
-              <View style={modalStyles.jobSection}>
-                <Text style={modalStyles.jobSectionTitle}>
-                  About the Role
-                </Text>
-                <Text style={modalStyles.jobSectionText}>
-                  {detail.DESCRIPTION_TEXT}
-                </Text>
-              </View>
-            )}
-          </ScrollView>
+            <SheetFooter>
+              <FooterButton
+                label="Back to Request"
+                icon={<ChevronLeft size={18} color="#FFF" strokeWidth={2.5} />}
+                onPress={onBack}
+              />
+            </SheetFooter>
+          </>
         ) : null}
       </DismissibleSheet>
     </KeyboardAvoidingView>
@@ -247,35 +167,33 @@ export function SrJobDetailModal({
 }
 
 const styles = StyleSheet.create({
-  srJobDetailBackRow: {
+  // Shrinks below its content height when the sheet hits its maxHeight cap,
+  // leaving room for the pinned footer; scrolls the overflow.
+  scroll: { flexShrink: 1 },
+  backRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginBottom: 18,
   },
-  srJobDetailBackText: {
+  backText: {
     fontSize: 14,
     fontWeight: "600",
     color: "#000",
   },
-  interestedLoadingContainer: {
+  errorContainer: {
     alignItems: "center",
     paddingVertical: 48,
     gap: 12,
   },
-  interestedLoadingText: {
-    fontSize: 14,
-    color: "#AAA",
-    fontWeight: "500",
-  },
-  srJobDetailErrorTitle: {
+  errorTitle: {
     fontSize: 15,
     fontWeight: "700",
     color: "#DC2626",
     marginTop: 12,
     textAlign: "center",
   },
-  srJobDetailErrorSub: {
+  errorSub: {
     fontSize: 13,
     color: "#999",
     marginTop: 4,
