@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
   capPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   // Light chips — chips are information, not the star; black is reserved
-  // for the sheet's single inverted block (the RoleCard) and the CTA.
+  // for display type and the CTA pill.
   darkChip: {
     backgroundColor: "#F5F5F5",
     borderRadius: 8,
