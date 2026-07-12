@@ -3,16 +3,14 @@ import {
     BellRing,
     Briefcase,
     Check,
+    ChevronLeft,
     ChevronRight,
     MessageCircle,
-    X,
 } from "@/components/ui/icons";
 import { getRelativeTime } from "@/utils/relativeTime";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
-    ActivityIndicator,
-    Image,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -26,6 +24,7 @@ import {
 import Animated, { FadeIn } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { FooterButton, InsiderCard, SheetFooter } from "./JobSheetKit";
 import { SponsorRequest } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
@@ -117,39 +116,33 @@ export function SponsorRequestModal({
       <DismissibleSheet onDismiss={onClose} style={modalStyles.modalContent}>
         {request && (
           <>
-            {/* ── Step indicator (steps 2 & 3 only) ───────────────── */}
-            {step === 2 && (
+            {/* ── Step indicator (steps 2 & 3 only) — segmented bars,
+                the same progress language as the check-in stack. The
+                left affordance goes BACK a step (it's a ChevronLeft,
+                not an X — dismissal is the backdrop/drag). ─────────── */}
+            {(step === 2 || step === 3) && (
               <View style={styles.srStepRow}>
                 <TouchableOpacity
-                  onPress={() => onSetStep(1)}
+                  onPress={() => onSetStep(step - 1)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <X size={20} color="#999" />
+                  <ChevronLeft size={20} color="#999" />
                 </TouchableOpacity>
-                <View style={styles.srStepDots}>
-                  <View style={[styles.srDot, styles.srDotActive]} />
-                  <View style={styles.srDot} />
+                <View style={styles.srSegments}>
+                  <View style={[styles.srSegment, styles.srSegmentActive]} />
+                  <View
+                    style={[
+                      styles.srSegment,
+                      step === 3 && styles.srSegmentActive,
+                    ]}
+                  />
                 </View>
-                <Text style={styles.srStepLabel}>Step 1 of 2</Text>
-              </View>
-            )}
-            {step === 3 && (
-              <View style={styles.srStepRow}>
-                <TouchableOpacity
-                  onPress={() => onSetStep(2)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <X size={20} color="#999" />
-                </TouchableOpacity>
-                <View style={styles.srStepDots}>
-                  <View style={[styles.srDot, styles.srDotActive]} />
-                  <View style={[styles.srDot, styles.srDotActive]} />
-                </View>
-                <Text style={styles.srStepLabel}>Step 2 of 2</Text>
+                <Text style={styles.srStepLabel}>Step {step - 1} of 2</Text>
               </View>
             )}
 
             <ScrollView
+              style={{ flexShrink: 1 }}
               showsVerticalScrollIndicator={false}
               bounces={false}
               keyboardShouldPersistTaps="handled"
@@ -169,27 +162,14 @@ export function SponsorRequestModal({
                     </Text>
                   </View>
 
-                  {/* Applicant hero */}
-                  <View style={styles.sponsorRequestHero}>
-                    {request.applicantPhoto ? (
-                      <Image
-                        source={{ uri: request.applicantPhoto }}
-                        style={styles.sponsorRequestAvatar}
-                      />
-                    ) : (
-                      <View style={styles.sponsorRequestInitial}>
-                        <Text style={styles.sponsorRequestInitialText}>
-                          {(request.applicantName || "?")[0].toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                    <Text style={styles.sponsorRequestName}>
-                      {request.applicantName}
-                    </Text>
-                    <Text style={styles.srOverviewSub}>
-                      is requesting your sponsorship for this role
-                    </Text>
-                  </View>
+                  {/* Applicant — the human asking is what this sheet is
+                      about, so they get the one inverted block. */}
+                  <InsiderCard
+                    label="The Applicant"
+                    name={request.applicantName}
+                    role="Requesting your sponsorship for this role"
+                    image={request.applicantPhoto || undefined}
+                  />
 
                   {/* Job context card — tappable to review the full role.
                       Hero logo from the silver-detail fetch where possible
@@ -237,32 +217,14 @@ export function SponsorRequestModal({
                   <View style={[styles.srCallout, { marginTop: 20 }]}>
                     <Text style={styles.srCalloutTitle}>How This Works</Text>
                     <Text style={styles.srCalloutText}>
-                      By sponsoring this role, you're putting your
+                      By sponsoring this role, you&apos;re putting your
                       professional backing behind{" "}
-                      {request.applicantName.split(" ")[0]}'s application.
+                      {request.applicantName.split(" ")[0]}&apos;s application.
                       Once you do, {request.applicantName.split(" ")[0]} will
                       be able to connect with you directly — opening the door
                       to communicate and provide a referral.
                     </Text>
                   </View>
-
-                  {/* Primary CTA → step 2 */}
-                  <TouchableOpacity
-                    style={modalStyles.applyBtnLarge}
-                    onPress={() => onSetStep(2)}
-                  >
-                    <Briefcase color="#FFF" size={20} strokeWidth={2.5} />
-                    <Text style={modalStyles.applyBtnLargeText}>
-                      Sponsor & Connect
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.srDismissBtn}
-                    onPress={onClose}
-                  >
-                    <Text style={styles.srDismissBtnText}>Not right now</Text>
-                  </TouchableOpacity>
                 </>
               )}
 
@@ -339,18 +301,6 @@ export function SponsorRequestModal({
                     </View>
                   </View>
 
-                  <TouchableOpacity
-                    style={[
-                      modalStyles.applyBtnLarge,
-                      (!relationship || canRefer === null) && {
-                        opacity: 0.35,
-                      },
-                    ]}
-                    disabled={!relationship || canRefer === null}
-                    onPress={() => onSetStep(3)}
-                  >
-                    <Text style={modalStyles.applyBtnLargeText}>Continue</Text>
-                  </TouchableOpacity>
                 </>
               )}
 
@@ -361,7 +311,7 @@ export function SponsorRequestModal({
                     Add Insider Insights
                   </Text>
                   <Text style={styles.srStepSub}>
-                    Share the inside story candidates won't find anywhere
+                    Share the inside story candidates won&apos;t find anywhere
                     else. All fields are optional.
                   </Text>
 
@@ -429,25 +379,6 @@ export function SponsorRequestModal({
                     </View>
                   ))}
 
-                  <TouchableOpacity
-                    style={[
-                      modalStyles.applyBtnLarge,
-                      sponsoring && { opacity: 0.6 },
-                    ]}
-                    disabled={sponsoring}
-                    onPress={() => onSponsorAndConnect(request)}
-                  >
-                    {sponsoring ? (
-                      <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                      <>
-                        <Check color="#FFF" size={20} strokeWidth={2.5} />
-                        <Text style={modalStyles.applyBtnLargeText}>
-                          Confirm Sponsorship
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
                 </>
               )}
 
@@ -464,13 +395,14 @@ export function SponsorRequestModal({
                     Sponsorship Confirmed!
                   </Text>
                   <Text style={styles.srSuccessDesc}>
-                    You're now sponsoring{" "}
+                    You&apos;re now sponsoring{" "}
                     <Text style={{ fontWeight: "800" }}>
                       {request.jobTitle}
                     </Text>
                     .{"\n\n"}
                     {request.applicantName.split(" ")[0]} will see you under
-                    "Wants to Connect With You" and can message you directly
+                    &ldquo;Wants to Connect With You&rdquo; and can message
+                    you directly
                     once they connect back.
                   </Text>
 
@@ -500,6 +432,41 @@ export function SponsorRequestModal({
                 </Animated.View>
               )}
             </ScrollView>
+
+            {/* ── Pinned footer — each step's action is always visible
+                (the success step keeps its inline, centered CTAs). ─── */}
+            {step === 1 && (
+              <SheetFooter>
+                <FooterButton
+                  label="Sponsor & Connect"
+                  icon={<Briefcase color="#FFF" size={20} strokeWidth={2.5} />}
+                  onPress={() => onSetStep(2)}
+                />
+                <TouchableOpacity style={styles.srDismissBtn} onPress={onClose}>
+                  <Text style={styles.srDismissBtnText}>Not right now</Text>
+                </TouchableOpacity>
+              </SheetFooter>
+            )}
+            {step === 2 && (
+              <SheetFooter>
+                <FooterButton
+                  label="Continue"
+                  disabled={!relationship || canRefer === null}
+                  onPress={() => onSetStep(3)}
+                />
+              </SheetFooter>
+            )}
+            {step === 3 && (
+              <SheetFooter>
+                <FooterButton
+                  label="Confirm Sponsorship"
+                  icon={<Check color="#FFF" size={20} strokeWidth={2.5} />}
+                  loading={sponsoring}
+                  spinnerOnLoading
+                  onPress={() => onSponsorAndConnect(request)}
+                />
+              </SheetFooter>
+            )}
           </>
         )}
       </DismissibleSheet>
@@ -525,31 +492,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#DC2626",
     fontWeight: "700",
-  },
-  sponsorRequestAvatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#F2F2F2",
-    marginBottom: 12,
-  },
-  sponsorRequestHero: {
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  sponsorRequestInitial: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#F2F2F2",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  sponsorRequestInitialText: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#999",
   },
   sponsorRequestJobCard: {
     flexDirection: "row",
@@ -581,13 +523,6 @@ const styles = StyleSheet.create({
     color: "#000",
     lineHeight: 21,
   },
-  sponsorRequestName: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
-    textAlign: "center",
-  },
   srCallout: {
     backgroundColor: "#F0F0F0",
     padding: 20,
@@ -605,13 +540,20 @@ const styles = StyleSheet.create({
   },
   srDismissBtn: { alignItems: "center", marginTop: 14, paddingVertical: 8 },
   srDismissBtnText: { fontSize: 14, color: "#999", fontWeight: "600" },
-  srDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#E5E5E5",
+  // Segmented progress — same language as the check-in stack's bars.
+  srSegments: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    marginHorizontal: 16,
   },
-  srDotActive: { backgroundColor: "#000", width: 24, borderRadius: 4 },
+  srSegment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#EEE",
+  },
+  srSegmentActive: { backgroundColor: "#000" },
   srFieldHint: {
     fontSize: 13,
     color: "#999",
@@ -643,12 +585,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     letterSpacing: 0.2,
   },
-  srOverviewSub: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    marginTop: 4,
-  },
   srRadioCircle: {
     width: 20,
     height: 20,
@@ -669,7 +605,6 @@ const styles = StyleSheet.create({
   srRadioText: { fontSize: 15, color: "#666", fontWeight: "600" },
   srRadioTextActive: { color: "#000", fontWeight: "600" },
   srSideBySide: { flexDirection: "row", gap: 12 },
-  srStepDots: { flexDirection: "row", gap: 6 },
   srStepLabel: { fontSize: 12, fontWeight: "700", color: "#999" },
   srStepRow: {
     flexDirection: "row",
