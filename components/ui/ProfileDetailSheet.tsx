@@ -15,18 +15,19 @@
 // while the richer fields arrive.
 
 import { getPublicProfile, type PublicProfileResponse } from "@/lib/api";
-import { CheckCircle } from "@/components/ui/icons";
 import {
-  FooterButton,
+  BarFooter,
+  canvasSheet,
+  PersonHero,
+  PillButton,
   ReadMoreText,
-  RoleCard,
+  RoleTicket,
+  SectionCard,
   SheetCloseButton,
-  SheetFooter,
 } from "@/components/matches/JobSheetKit";
 import React, { useEffect, useState } from "react";
 import {
   Dimensions,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -270,7 +271,7 @@ export function ProfileDetailSheet({
 
         <DismissibleSheet
           onDismiss={onDismiss}
-          style={{ ...styles.sheet, ...dynamicSheet }}
+          style={{ ...styles.sheet, ...dynamicSheet, ...canvasSheet }}
         >
           <View style={{ flex: 1 }}>
             <SheetCloseButton onPress={onDismiss} />
@@ -279,75 +280,23 @@ export function ProfileDetailSheet({
               contentContainerStyle={{ paddingBottom: 16 }}
               style={{ flexShrink: 1, flexGrow: 1 }}
             >
-              {/* ── Hero ──────────────────────────────────────────── */}
-              <View style={[styles.heroRow, { paddingRight: 36 }]}>
-                {initial.image ? (
-                  <Image
-                    source={{ uri: initial.image }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.avatar,
-                      {
-                        backgroundColor: "#000",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.avatarInitial}>
-                      {(initial.name || "?")[0].toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{initial.name}</Text>
-                  {!!(displayedRole || displayedCompany) && (
-                    <Text style={styles.meta} numberOfLines={2}>
-                      {[displayedRole, displayedCompany]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </Text>
-                  )}
-                  {!!location && (
-                    <Text style={styles.metaLocation} numberOfLines={1}>
-                      {location}
-                    </Text>
-                  )}
-                  {badge && (
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        {
-                          backgroundColor: badge.bgColor ?? "#F4F4F5",
-                        },
-                      ]}
-                    >
-                      <CheckCircle
-                        size={11}
-                        color={badge.color ?? "#000"}
-                      />
-                      <Text
-                        style={[
-                          styles.statusBadgeText,
-                          { color: badge.color ?? "#000" },
-                        ]}
-                      >
-                        {badge.label}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+              {/* ── Hero — photo-forward, centered on a poster card. ── */}
+              <PersonHero
+                name={initial.name}
+                image={initial.image}
+                meta={
+                  [displayedRole, displayedCompany]
+                    .filter(Boolean)
+                    .join(" · ") || undefined
+                }
+                location={location || undefined}
+                pill={badge}
+              />
 
-              {/* ── Role context — the sheet's one inverted block. On a
-                  person sheet, black is reserved for the ROLE connecting
-                  you (the mirror of the job sheets' insider card); tap
-                  lands on the job sheet when wired. ── */}
+              {/* ── Role context — a tappable role ticket; lands on the
+                  job sheet when wired. ── */}
               {roleContext && (
-                <RoleCard
+                <RoleTicket
                   label={roleContext.label}
                   title={roleContext.title}
                   company={roleContext.company}
@@ -455,10 +404,9 @@ export function ProfileDetailSheet({
                   {/* About / bio — collapses past ~280 chars so long bios
                       don't wall off the rest of the profile. */}
                   {!!bio && (
-                    <View style={styles.block}>
-                      <Text style={styles.sectionLabel}>ABOUT</Text>
+                    <SectionCard title="About">
                       <ReadMoreText text={bio} />
-                    </View>
+                    </SectionCard>
                   )}
 
                   {/* Applicant: experience pill */}
@@ -502,8 +450,7 @@ export function ProfileDetailSheet({
 
                   {/* Applicant skills */}
                   {variant === "applicant" && skills.length > 0 && (
-                    <View style={styles.block}>
-                      <Text style={styles.sectionLabel}>SKILLS</Text>
+                    <SectionCard title="Skills">
                       <View style={styles.chipRow}>
                         {skills.map((s, i) => (
                           <View key={i} style={styles.darkChip}>
@@ -511,13 +458,12 @@ export function ProfileDetailSheet({
                           </View>
                         ))}
                       </View>
-                    </View>
+                    </SectionCard>
                   )}
 
                   {/* Sponsor: companies can refer to */}
                   {variant === "sponsor" && canReferTo.length > 0 && (
-                    <View style={styles.block}>
-                      <Text style={styles.sectionLabel}>CAN REFER TO</Text>
+                    <SectionCard title="Can Refer To">
                       <View style={styles.chipRow}>
                         {canReferTo.map((c, i) => (
                           <View key={i} style={styles.darkChip}>
@@ -525,57 +471,63 @@ export function ProfileDetailSheet({
                           </View>
                         ))}
                       </View>
-                    </View>
+                    </SectionCard>
                   )}
 
-                  {/* Insights (Q&A prompts) */}
+                  {/* Insights (Q&A prompts) — Hinge-style, each on its own
+                      soft inset inside the card. */}
                   {insights.length > 0 && (
-                    <View style={styles.block}>
-                      <Text style={styles.sectionLabel}>INSIGHTS</Text>
+                    <SectionCard title="Insights">
                       {insights.map((p, i) => (
-                        <View key={i} style={styles.insightCard}>
+                        <View
+                          key={i}
+                          style={[
+                            styles.insightCard,
+                            i === insights.length - 1 && { marginBottom: 0 },
+                          ]}
+                        >
                           <Text style={styles.insightQ}>{p.question}</Text>
                           <Text style={styles.insightA}>{p.answer}</Text>
                         </View>
                       ))}
-                    </View>
+                    </SectionCard>
                   )}
 
                   {/* Empty fallback */}
                   {!loading && isEmpty && (
-                    <View style={styles.fallback}>
+                    <SectionCard>
                       <Text style={styles.fallbackText}>
                         {firstName} hasn&apos;t filled out a profile yet.
                       </Text>
-                    </View>
+                    </SectionCard>
                   )}
                 </>
               )}
             </ScrollView>
 
-            {/* ── Pinned CTA(s) ──────────────────────────────────── */}
-            <SheetFooter>
+            {/* ── Pinned action bar — primary pill, secondary outlined
+                below it when present. ── */}
+            <BarFooter
+              button={{
+                label: primaryCta.label,
+                icon: primaryCta.icon,
+                onPress: primaryCta.onPress,
+                loading: primaryCta.loading,
+                disabled: primaryCta.disabled,
+                spinnerOnLoading: true,
+              }}
+            >
               {secondaryCta && (
-                <TouchableOpacity
-                  style={styles.secondaryBtn}
-                  activeOpacity={0.7}
-                  onPress={secondaryCta.onPress}
-                >
-                  {secondaryCta.icon}
-                  <Text style={styles.secondaryBtnText}>
-                    {secondaryCta.label}
-                  </Text>
-                </TouchableOpacity>
+                <View style={{ marginTop: 8 }}>
+                  <PillButton
+                    label={secondaryCta.label}
+                    icon={secondaryCta.icon}
+                    onPress={secondaryCta.onPress}
+                    variant="outline"
+                  />
+                </View>
               )}
-              <FooterButton
-                label={primaryCta.label}
-                icon={primaryCta.icon}
-                onPress={primaryCta.onPress}
-                loading={primaryCta.loading}
-                disabled={primaryCta.disabled}
-                spinnerOnLoading
-              />
-            </SheetFooter>
+            </BarFooter>
           </View>
         </DismissibleSheet>
       </KeyboardAvoidingView>
@@ -596,55 +548,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     padding: 28,
     paddingBottom: 40,
-  },
-  heroRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 20,
-  },
-  avatar: { width: 68, height: 68, borderRadius: 34 },
-  avatarInitial: { fontSize: 24, fontWeight: "800", color: "#FFF" },
-  name: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
-  },
-  meta: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  metaLocation: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#999",
-    marginTop: 2,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    marginTop: 8,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
-  sectionLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#BBB",
-    letterSpacing: 1.2,
-    marginBottom: 6,
   },
   // Skeleton placeholder base — neutral light gray with a soft border so
   // the shape reads even at the brightest point of the pulse animation.
@@ -700,36 +603,10 @@ const styles = StyleSheet.create({
     color: "#222",
     lineHeight: 20,
   },
-  fallback: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-    padding: 14,
-    marginBottom: 16,
-  },
   fallbackText: {
     fontSize: 13,
     color: "#666",
     fontWeight: "500",
     lineHeight: 19,
-  },
-  secondaryBtn: {
-    backgroundColor: "#FFF",
-    paddingVertical: 14,
-    borderRadius: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: "#000",
-    marginBottom: 8,
-  },
-  secondaryBtnText: {
-    color: "#000",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: -0.2,
   },
 });
