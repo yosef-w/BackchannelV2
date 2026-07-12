@@ -175,6 +175,9 @@ export function ThreadScreen({
   // separate from showProfileModal: the strip is about the JOB, the avatar
   // is about the PERSON, and they used to confusingly open the same sheet.
   const [jobDetail, setJobDetail] = useState<JobOpportunity | null>(null);
+  // True while the background full-posting fetch is in flight — the modal
+  // shows a details skeleton instead of letting the content pop in.
+  const [enrichingJobDetail, setEnrichingJobDetail] = useState(false);
 
   /** Open the job modal instantly with the strip's basics, then merge in
    * the full posting (description, salary, skills, benefits) when the
@@ -219,6 +222,7 @@ export function ThreadScreen({
       sponsorInfo,
     };
     setJobDetail(base);
+    setEnrichingJobDetail(true);
 
     fetchSponsoredJobEnrichment({
       jobId: ctx.jobId,
@@ -233,7 +237,8 @@ export function ThreadScreen({
       })
       .catch(() => {
         // Best-effort — the modal already shows the basics.
-      });
+      })
+      .finally(() => setEnrichingJobDetail(false));
   };
   const [showReferralFlow, setShowReferralFlow] = useState(false);
   const [messageText, setMessageText] = useState("");
@@ -921,6 +926,7 @@ return (
     <Modal visible={!!jobDetail} transparent animationType="none">
       <JobDetailModal
         job={jobDetail}
+        enriching={enrichingJobDetail}
         onClose={() => setJobDetail(null)}
         cta={{
           label: "Back to conversation",

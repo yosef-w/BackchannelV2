@@ -52,6 +52,13 @@ interface JobDetailModalProps {
     onPress: () => void;
     loading?: boolean;
   };
+  /**
+   * True while the caller is still fetching the full posting in the
+   * background (thread strip / interested sponsor open with basics only).
+   * Renders a skeleton where the details will land instead of letting
+   * them pop in mid-read.
+   */
+  enriching?: boolean;
 }
 
 /** Collapsed description shorter than this never needs a Read more toggle. */
@@ -69,6 +76,7 @@ export function JobDetailModal({
   onClose,
   onNavigateToMessages,
   cta,
+  enriching,
 }: JobDetailModalProps) {
   const [descExpanded, setDescExpanded] = useState(false);
   useEffect(() => setDescExpanded(false), [job?.id]);
@@ -100,6 +108,15 @@ export function JobDetailModal({
 
   const sourceDomain = job?.url ? extractDisplayDomain(job.url) : null;
   const showReadMore = !!job && job.description.length > READ_MORE_THRESHOLD;
+  // Skeleton only while the details area would otherwise be empty; the
+  // moment any real detail lands, the real sections take over.
+  const showSkeleton =
+    !!enriching &&
+    !!job &&
+    !job.description &&
+    !job.coreResponsibilities &&
+    job.skills.length === 0 &&
+    job.benefits.length === 0;
 
   return (
     <KeyboardAvoidingView
@@ -284,6 +301,11 @@ export function JobDetailModal({
                 </View>
               )}
 
+              {/* Enrichment skeleton — holds the details area's place while
+                  the full posting loads, instead of content popping in
+                  mid-read. */}
+              {showSkeleton && <EnrichmentSkeleton />}
+
               {/* About the Role — collapsed to a preview; the full text is
                   one tap away instead of a wall on open. */}
               {!!job.description && (
@@ -437,6 +459,30 @@ function JourneyNode({
       )}
       <Text style={styles.journeyLabel}>{label}</Text>
       {!!sub && <Text style={styles.journeySub}>{sub}</Text>}
+    </View>
+  );
+}
+
+/** Pulsing placeholder for the details area while enrichment loads. */
+function EnrichmentSkeleton() {
+  const opacity = useSharedValue(0.9);
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(0.35, { duration: 700 }), -1, true);
+  }, [opacity]);
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <View style={modalStyles.jobSection}>
+      <Text style={modalStyles.jobSectionTitle}>About the Role</Text>
+      <Animated.View style={animatedStyle}>
+        <View style={[styles.skelBar, { width: "100%" }]} />
+        <View style={[styles.skelBar, { width: "94%" }]} />
+        <View style={[styles.skelBar, { width: "72%" }]} />
+        <View style={styles.skelChipRow}>
+          <View style={[styles.skelChip, { width: 72 }]} />
+          <View style={[styles.skelChip, { width: 96 }]} />
+          <View style={[styles.skelChip, { width: 60 }]} />
+        </View>
+      </Animated.View>
     </View>
   );
 }
@@ -697,6 +743,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#888",
+  },
+  skelBar: {
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#F0F0F0",
+    marginBottom: 10,
+  },
+  skelChipRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
+  skelChip: {
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#F0F0F0",
   },
   pulseDot: {
     width: 8,

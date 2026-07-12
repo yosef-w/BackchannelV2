@@ -178,6 +178,9 @@ export function MatchesView({
   // to it.
   const [interestedSponsorJob, setInterestedSponsorJob] =
     useState<JobOpportunity | null>(null);
+  // True while the background full-posting fetch is in flight — the modal
+  // shows a details skeleton instead of letting the content pop in.
+  const [enrichingSponsorJob, setEnrichingSponsorJob] = useState(false);
 
   /**
    * Build the richest JobOpportunity we can for an interested sponsor's
@@ -232,6 +235,7 @@ export function MatchesView({
   const openInterestedSponsorJob = (s: InterestedSponsor) => {
     const base = buildInterestedSponsorJob(s);
     setInterestedSponsorJob(base);
+    setEnrichingSponsorJob(true);
 
     fetchSponsoredJobEnrichment({
       jobId: s.jobId,
@@ -246,7 +250,8 @@ export function MatchesView({
       })
       .catch(() => {
         // Best-effort enrichment — the modal already shows the basics.
-      });
+      })
+      .finally(() => setEnrichingSponsorJob(false));
   };
 
   // Sponsor-requests — applicants asking sponsors at the company to sponsor a
@@ -1151,6 +1156,7 @@ export function MatchesView({
         >
           <JobDetailModal
             job={interestedSponsorJob}
+            enriching={enrichingSponsorJob}
             onClose={() => setInterestedSponsorJob(null)}
             cta={{
               label:
