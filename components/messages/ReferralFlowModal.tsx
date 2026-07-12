@@ -19,13 +19,16 @@ import {
   Image,
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeInDown, FadeInUp, SlideInDown } from "react-native-reanimated";
+import {
+  DismissibleSheet,
+  SheetScrollView,
+} from "../ui/DismissibleSheet";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import {
     getPublicProfile,
     submitReferral,
@@ -109,7 +112,11 @@ export function ReferralFlowModal({
     hasMessaged && feelsConfident && knowsBackground && comfortableAttaching;
 
   return (
-    <Animated.View entering={SlideInDown} style={styles.referralFlowContainer}>
+    <DismissibleSheet
+      scrollDismiss
+      onDismiss={onClose}
+      style={styles.referralFlowContainer}
+    >
       <View style={styles.flowHeader}>
         <Text style={styles.flowTitle}>Referral Vetting</Text>
         <TouchableOpacity onPress={onClose}>
@@ -206,9 +213,8 @@ export function ReferralFlowModal({
       )}
       {referralStep === 2 && (
         <Animated.View entering={FadeInUp} style={styles.stepContent}>
-          <ScrollView
+          <SheetScrollView
             style={styles.summaryScroll}
-            showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 8 }}
           >
             {referralProfileLoading ? (
@@ -513,7 +519,7 @@ export function ReferralFlowModal({
                 </Text>
               </View>
             </View>
-          </ScrollView>
+          </SheetScrollView>
           {/* Inline error — shown if submission fails */}
           {referralError && (
             <View style={styles.referralErrorBox}>
@@ -614,7 +620,7 @@ export function ReferralFlowModal({
           </TouchableOpacity>
         </Animated.View>
       )}
-    </Animated.View>
+    </DismissibleSheet>
   );
 }
 

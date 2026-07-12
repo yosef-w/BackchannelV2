@@ -1,8 +1,18 @@
 import { BlurView } from "expo-blur";
 import { Briefcase, X } from "@/components/ui/icons";
 import React from "react";
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import {
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  DismissibleSheet,
+  SheetScrollView,
+} from "../ui/DismissibleSheet";
 
 interface JobDescriptionModalProps {
   visible: boolean;
@@ -26,47 +36,29 @@ export function JobDescriptionModal({
 }: JobDescriptionModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+        </TouchableOpacity>
 
-      <Animated.View
-        entering={SlideInDown}
-        exiting={SlideOutDown}
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: "#FFF",
-          borderTopLeftRadius: 28,
-          borderTopRightRadius: 28,
-          paddingTop: 12,
-          paddingBottom: 40,
-          maxHeight: "50%",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 20,
-          elevation: 20,
-        }}
-      >
-        {/* Drag Handle */}
-        <View
+        <DismissibleSheet
+          scrollDismiss
+          onDismiss={onClose}
           style={{
-            width: 40,
-            height: 5,
-            borderRadius: 3,
-            backgroundColor: "#D1D5DB",
-            alignSelf: "center",
-            marginBottom: 20,
+            backgroundColor: "#FFF",
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            paddingTop: 12,
+            paddingBottom: 40,
+            // Absolute px — a % here resolves against DismissibleSheet's
+            // content-sized gesture-root wrapper and collapses.
+            maxHeight: Dimensions.get("window").height * 0.5,
           }}
-        />
-
+        >
         {/* Header */}
         <View
           style={{
@@ -142,9 +134,8 @@ export function JobDescriptionModal({
         />
 
         {/* Content */}
-        <ScrollView
-          style={{ maxHeight: "100%", paddingHorizontal: 28 }}
-          showsVerticalScrollIndicator={false}
+        <SheetScrollView
+          style={{ paddingHorizontal: 28, flexShrink: 1 }}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           <Text
@@ -158,8 +149,9 @@ export function JobDescriptionModal({
           >
             {description}
           </Text>
-        </ScrollView>
-      </Animated.View>
+        </SheetScrollView>
+        </DismissibleSheet>
+      </View>
     </Modal>
   );
 }

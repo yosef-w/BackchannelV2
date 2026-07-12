@@ -20,15 +20,17 @@ import {
     Dimensions,
     Image,
     Linking,
-    ScrollView,
-    StyleSheet,
+      StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
 import { cardStyles } from "../home/cardStyles";
 import { CompanyLogo } from "../ui/CompanyLogo";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import { extractDisplayDomain } from "./jobTransforms";
 import { jobsModalStyles } from "./jobsModalStyles";
 
@@ -72,6 +74,7 @@ export function JobDetailsModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onClose}
         style={[
           jobsModalStyles.modalContent,
@@ -79,11 +82,7 @@ export function JobDetailsModal({
         ]}
       >
         {job && (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            contentContainerStyle={{ paddingBottom: 8 }}
-          >
+          <SheetScrollView contentContainerStyle={{ paddingBottom: 8 }}>
             {/* Hero: Company Logo (initial fallback) + Title + Company + Location */}
             <View style={styles.jobModalHero}>
               <CompanyLogo
@@ -372,7 +371,7 @@ export function JobDetailsModal({
                 <Text style={styles.applyBtnLargeText}>Sponsor</Text>
               </TouchableOpacity>
             )}
-          </ScrollView>
+          </SheetScrollView>
         )}
       </DismissibleSheet>
     </View>

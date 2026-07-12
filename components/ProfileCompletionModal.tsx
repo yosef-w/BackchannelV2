@@ -3,13 +3,12 @@ import { AlertCircle, ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import {
   Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { ProfileCompletenessResult } from "@/utils/profileCompletion";
 
 interface ProfileCompletionModalProps {
@@ -31,19 +30,24 @@ export function ProfileCompletionModal({
   
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
+      <View style={styles.modalOverlay}>
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <BlurView
+            intensity={60}
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+          />
+        </TouchableOpacity>
 
-      <Animated.View
-        entering={SlideInDown}
-        exiting={SlideOutDown}
-        style={styles.modalContent}
-      >
+        <DismissibleSheet
+          scrollDismiss
+          onDismiss={onClose}
+          style={styles.modalContent}
+        >
         <View style={styles.iconContainer}>
           <AlertCircle color="#666" size={48} />
         </View>
@@ -98,17 +102,15 @@ export function ProfileCompletionModal({
             <Text style={styles.testerButtonText}>I am a tester (dev only)</Text>
           </TouchableOpacity>
         )}
-      </Animated.View>
+        </DismissibleSheet>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: "#FFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

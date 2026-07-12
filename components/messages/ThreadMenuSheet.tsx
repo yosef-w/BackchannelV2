@@ -77,14 +77,18 @@ export function ThreadMenuSheet({
         <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <DismissibleSheet onDismiss={handleDismiss} style={styles.unmatchSheet}>
+      <DismissibleSheet
+        scrollDismiss
+        onDismiss={handleDismiss}
+        style={styles.unmatchSheet}
+      >
         {threadMenuStep === "actions" ? (
           <>
             <Text style={styles.unmatchSheetTitle}>{participantName}</Text>
             <Text style={styles.unmatchSheetSubtitle}>
               Unmatching or reporting permanently ends your match and closes
               this conversation. It moves to Past Connections as read-only
-              and can't be undone.
+              and can&apos;t be undone.
             </Text>
 
             <TouchableOpacity

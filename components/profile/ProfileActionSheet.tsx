@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 
 interface ProfileActionSheetProps {
   visible: boolean;
@@ -53,11 +53,10 @@ export function ProfileActionSheet({
           <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
         </TouchableOpacity>
 
-        <Animated.View
-          entering={SlideInDown}
-          exiting={SlideOutDown}
+        <DismissibleSheet
+          scrollDismiss
+          onDismiss={onClose}
           style={[styles.modalContent, { paddingBottom: 50 }]}
-          pointerEvents="auto"
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
@@ -88,7 +87,7 @@ export function ProfileActionSheet({
               <Text style={styles.whiteBtnText}>{secondaryLabel}</Text>
             </TouchableOpacity>
           </View>
-        </Animated.View>
+        </DismissibleSheet>
       </View>
     </Modal>
   );

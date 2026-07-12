@@ -5,13 +5,15 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -59,8 +61,8 @@ export function JobSwitcherSheet({
         </TouchableOpacity>
 
         <DismissibleSheet
+          scrollDismiss
           onDismiss={onClose}
-          fullSheetGesture
           style={styles.sheet}
         >
           <Text style={styles.title}>Switch role</Text>
@@ -69,11 +71,7 @@ export function JobSwitcherSheet({
             match them with that role when you swipe right.
           </Text>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            style={{ marginTop: 8 }}
-          >
+          <SheetScrollView style={{ marginTop: 8 }}>
             {jobs.map((job) => {
               const isActive = job.jobId === activeJobId;
               const count = job.likesCount ?? 0;
@@ -112,7 +110,7 @@ export function JobSwitcherSheet({
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </SheetScrollView>
         </DismissibleSheet>
       </KeyboardAvoidingView>
     </Modal>

@@ -5,7 +5,6 @@ import React from "react";
 import {
     ActivityIndicator,
     Dimensions,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -13,7 +12,10 @@ import {
     View,
 } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
-import { DismissibleSheet } from "../ui/DismissibleSheet";
+import {
+    DismissibleSheet,
+    SheetScrollView,
+} from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { UNSPONSOR_REASONS } from "./jobTransforms";
 
@@ -79,6 +81,7 @@ export function JobMenuModal({
       </TouchableOpacity>
 
       <DismissibleSheet
+        scrollDismiss
         onDismiss={onClose}
         style={[
           jobsModalStyles.modalContent,
@@ -159,10 +162,8 @@ export function JobMenuModal({
             <Text style={styles.unsponsorReasonSub}>
               This helps us keep job listings accurate and up to date.
             </Text>
-            <ScrollView
+            <SheetScrollView
               style={{ flexShrink: 1 }}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
               keyboardShouldPersistTaps="handled"
             >
               {UNSPONSOR_REASONS.map((reason) => {
@@ -197,7 +198,7 @@ export function JobMenuModal({
                   autoCapitalize="sentences"
                 />
               )}
-            </ScrollView>
+            </SheetScrollView>
             <TouchableOpacity
               style={[
                 styles.unsponsorConfirmBtn,
