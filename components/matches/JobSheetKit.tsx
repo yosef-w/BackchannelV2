@@ -288,6 +288,7 @@ export function PersonHero({
   image,
   meta,
   location,
+  infoPill,
   pill,
   onClose,
 }: {
@@ -295,6 +296,12 @@ export function PersonHero({
   image?: string;
   meta?: string;
   location?: string;
+  /**
+   * Quiet neutral fact pill between the location and the status pill —
+   * e.g. tenure ("3-5 years at Snowflake") or experience. Detail facts
+   * belong on the person's card, not floating between content cards.
+   */
+  infoPill?: string;
   pill?: { label: string; color?: string; bgColor?: string };
   /** Close affordance in the card's corner — scrolls with the content. */
   onClose?: () => void;
@@ -321,9 +328,17 @@ export function PersonHero({
           </Text>
         </View>
       )}
+      {!!infoPill && (
+        <View style={[g.tintPill, { marginTop: 10 }]}>
+          <Text style={g.tintPillText}>{infoPill}</Text>
+        </View>
+      )}
       {pill && (
         <View
-          style={[g.tintPill, { marginTop: 10, backgroundColor: pill.bgColor ?? TINT }]}
+          style={[
+            g.tintPill,
+            { marginTop: infoPill ? 8 : 10, backgroundColor: pill.bgColor ?? TINT },
+          ]}
         >
           <CheckCircle size={11} color={pill.color ?? "#3B4353"} />
           <Text style={[g.tintPillText, { color: pill.color ?? "#3B4353" }]}>

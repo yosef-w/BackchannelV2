@@ -262,6 +262,17 @@ export function ProfileDetailSheet({
                     .join(" · ") || undefined
                 }
                 location={location || undefined}
+                // Tenure/experience live on the person's hero card — a lone
+                // fact pill floating between content cards read as noise.
+                // DURATION is the sponsor's "How long have you worked
+                // there?" answer, so it gets the company for context.
+                infoPill={
+                  variant === "sponsor" && sponsorCapabilities.duration
+                    ? `${sponsorCapabilities.duration} at ${displayedCompany || "their company"}`
+                    : variant === "applicant" && years
+                      ? years
+                      : undefined
+                }
                 pill={badge}
                 onClose={onDismiss}
               />
@@ -296,20 +307,10 @@ export function ProfileDetailSheet({
                     </SectionCard>
                   )}
 
-                  {/* Applicant: experience pill */}
-                  {variant === "applicant" && !!years && (
-                    <View style={styles.capRow}>
-                      <View style={styles.capPill}>
-                        <Text style={styles.capPillText}>{years}</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Sponsor: capability pills */}
+                  {/* Sponsor: capability pills (tenure moved to the hero) */}
                   {variant === "sponsor" &&
                     (sponsorCapabilities.openToReferrals ||
-                      sponsorCapabilities.financialReward ||
-                      !!sponsorCapabilities.duration) && (
+                      sponsorCapabilities.financialReward) && (
                       <View style={styles.capRow}>
                         {sponsorCapabilities.openToReferrals && (
                           <View style={styles.capPill}>
@@ -322,17 +323,6 @@ export function ProfileDetailSheet({
                           <View style={styles.capPill}>
                             <Text style={styles.capPillText}>
                               Financial Reward
-                            </Text>
-                          </View>
-                        )}
-                        {!!sponsorCapabilities.duration && (
-                          <View style={styles.capPill}>
-                            <Text style={styles.capPillText}>
-                              {/* DURATION is their tenure ("How long have
-                                  you worked there?") — a bare "3-5 years"
-                                  pill reads as noise without the company. */}
-                              {sponsorCapabilities.duration} at{" "}
-                              {displayedCompany || "their company"}
                             </Text>
                           </View>
                         )}
