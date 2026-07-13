@@ -1114,6 +1114,10 @@ export function MatchesView({
           <JobDetailModal
             job={matchedProfileJob}
             enriching={enrichingMatchedProfileJob}
+            // The person to message is the profile being viewed — for a
+            // sponsor the insider on the sheet is themself, so without
+            // this the footer would read "Matched with {their own name}".
+            messageName={selectedProfile.name?.split(" ")[0]}
             onClose={() => setMatchedProfileJob(null)}
             onNavigateToMessages={(jid) => {
               trackMatchMessageTapped({ jobId: jid });

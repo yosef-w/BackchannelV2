@@ -52,6 +52,13 @@ interface JobDetailModalProps {
    * them pop in mid-read.
    */
   enriching?: boolean;
+  /**
+   * First name for the footer's "Matched with X · Message" — defaults to
+   * the insider's. Pass it when the viewer IS the insider (a sponsor
+   * looking at their own posting), where the person they'd message is the
+   * matched applicant, not themselves.
+   */
+  messageName?: string;
 }
 
 /**
@@ -66,12 +73,14 @@ export function JobDetailModal({
   onNavigateToMessages,
   cta,
   enriching,
+  messageName,
 }: JobDetailModalProps) {
   const matched = job?.status === "MATCHED";
-  const sponsorFirstName =
-    job && job.sponsorInfo.name && job.sponsorInfo.name !== "Pending"
+  const counterpartFirstName =
+    messageName ||
+    (job && job.sponsorInfo.name && job.sponsorInfo.name !== "Pending"
       ? job.sponsorInfo.name.split(" ")[0]
-      : "the sponsor";
+      : "the sponsor");
 
   const stats: { label: string; value: string }[] = [];
   if (job) {
@@ -149,8 +158,13 @@ export function JobDetailModal({
                     : undefined
                 }
                 image={job.sponsorInfo.image}
+                // No pill when messageName is set: the viewer is (or may
+                // be) the insider themself, and "Matched with you" on your
+                // own card reads wrong — the footer carries the state.
                 pill={
-                  matched && !cta ? { label: "Matched with you" } : undefined
+                  matched && !cta && !messageName
+                    ? { label: "Matched with you" }
+                    : undefined
                 }
               />
 
@@ -236,7 +250,7 @@ export function JobDetailModal({
             ) : matched && onNavigateToMessages && !!job.jobId ? (
               <BarFooter
                 context={{
-                  title: `Matched with ${sponsorFirstName}`,
+                  title: `Matched with ${counterpartFirstName}`,
                   done: true,
                 }}
                 button={{
@@ -254,7 +268,7 @@ export function JobDetailModal({
             ) : (
               <BarFooter
                 context={{
-                  title: `Waiting on ${sponsorFirstName}`,
+                  title: `Waiting on ${counterpartFirstName}`,
                   sub: "Chat unlocks when they accept",
                   waiting: true,
                 }}

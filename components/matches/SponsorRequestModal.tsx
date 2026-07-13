@@ -28,6 +28,7 @@ import {
     BarFooter,
     canvasSheet,
     HostCard,
+    PillButton,
     QuietAction,
     RoleTicket,
     SectionCard,
@@ -387,21 +388,19 @@ export function SponsorRequestModal({
                       matched jobId back from the sponsorJob call */}
                   {newJobId && onNavigateToMessages && (
                     <View style={{ alignSelf: "stretch", marginBottom: 4 }}>
-                      <BarFooter
-                        button={{
-                          label: "Message Now",
-                          icon: (
-                            <MessageCircle
-                              color="#FFF"
-                              size={17}
-                              strokeWidth={2.5}
-                            />
-                          ),
-                          onPress: () => {
-                            const jid = newJobId;
-                            onClose();
-                            onNavigateToMessages(jid, request.applicantUserId);
-                          },
+                      <PillButton
+                        label="Message Now"
+                        icon={
+                          <MessageCircle
+                            color="#FFF"
+                            size={17}
+                            strokeWidth={2.5}
+                          />
+                        }
+                        onPress={() => {
+                          const jid = newJobId;
+                          onClose();
+                          onNavigateToMessages(jid, request.applicantUserId);
                         }}
                       />
                     </View>

@@ -47,11 +47,15 @@ const SUB = "#6B7280";
 const FAINT = "#9CA3AF";
 const TINT = "#F0F2F7";
 
+/** Bottom inset of a canvas sheet — BarFooter extends its background
+ * through it so the bar reads as anchored, not floating. */
+const SHEET_BOTTOM = 36;
+
 /** Merge into the sheet's content style to put it on the Gallery canvas. */
 export const canvasSheet: ViewStyle = {
   backgroundColor: CANVAS,
   padding: 20,
-  paddingBottom: 36,
+  paddingBottom: SHEET_BOTTOM,
 };
 
 /** Elevation shared by every floating card. */
@@ -974,14 +978,24 @@ const g = StyleSheet.create({
   },
   pillBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
   footer: {
+    // Bleed through the sheet's padding on all three closed sides so the
+    // bar's white runs edge-to-edge AND down to the screen bottom — the
+    // sheet's canvas showing beneath the bar made the spacing look uneven
+    // and the bar look like it was floating.
     marginHorizontal: -20,
+    marginBottom: -SHEET_BOTTOM,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 14,
+    paddingBottom: SHEET_BOTTOM,
     borderTopWidth: 1,
     borderTopColor: HAIRLINE,
     backgroundColor: "rgba(255,255,255,0.92)",
   },
-  footerRow: { flexDirection: "row", alignItems: "center" },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 46,
+  },
   footerTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   footerTitle: {
     fontSize: 14,
