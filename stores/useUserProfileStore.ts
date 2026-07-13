@@ -93,12 +93,12 @@ export interface AutofillData {
     disability: string;
   };
   skills: string[];
-  insights: Array<{ question: string; answer: string }>;
+  insights: { question: string; answer: string }[];
   workPreferences: string[];
   desiredRoles: string[];
   resumeUrl: string | null;
-  certifications: Array<{ name: string; organization: string; year: string }>;
-  languages: Array<{ language: string; proficiency: string }>;
+  certifications: { name: string; organization: string; year: string }[];
+  languages: { language: string; proficiency: string }[];
   achievements: string;
   sponsorCompanies: string[];
   notificationPreferences: NotificationPreferences;
@@ -241,14 +241,14 @@ interface UserProfileStore {
   updateWorkPreferences: (prefs: string[]) => Promise<void>;
   updateDesiredRoles: (roles: string[]) => Promise<void>;
   updateInsights: (
-    insights: Array<{ question: string; answer: string }>,
+    insights: { question: string; answer: string }[],
   ) => Promise<void>;
   updateResumeUrl: (url: string | null) => Promise<void>;
   updateCertifications: (
-    certifications: Array<{ name: string; organization: string; year: string }>,
+    certifications: { name: string; organization: string; year: string }[],
   ) => Promise<void>;
   updateLanguages: (
-    languages: Array<{ language: string; proficiency: string }>,
+    languages: { language: string; proficiency: string }[],
   ) => Promise<void>;
   updateAchievements: (achievements: string) => Promise<void>;
   updateNotificationPreferences: (
@@ -696,8 +696,21 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     } catch (error) {
       console.warn("Failed to save notification preferences:", error);
       // Roll back on failure so the UI doesn't show a state the backend
-      // didn't accept.
-      const rolledBack = { ...get().data, notificationPreferences: prev };
+      // didn't accept — but ONLY the keys THIS call touched. Restoring the
+      // whole pre-call snapshot would clobber any other toggle the user
+      // flipped while this request was in flight.
+      const current = get().data.notificationPreferences || {};
+      const restored = { ...current };
+      for (const key of Object.keys(
+        updates,
+      ) as (keyof NotificationPreferences)[]) {
+        if (key in prev) restored[key] = prev[key];
+        else delete restored[key];
+      }
+      const rolledBack = {
+        ...get().data,
+        notificationPreferences: restored,
+      };
       set({ data: rolledBack });
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rolledBack));
@@ -893,7 +906,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
       // Helper: parse PostgreSQL JSONB columns that may arrive as JSON strings
       // (pg_utils.py casts JSONB → TEXT for backwards compatibility — PR #25)
-      const parseVariant = <T,>(v: string | T[] | null | undefined): T[] => {
+      const parseVariant = <T>(v: string | T[] | null | undefined): T[] => {
         if (!v) return [];
         if (typeof v === "string") {
           try {
@@ -908,8 +921,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
       // Skills: prefer backend value if present, fall back to local
       const backendSkills: string[] = parseVariant(
-        profile.applicant_profile?.SKILLS ||
-          profile.sponsor_profile?.SKILLS,
+        profile.applicant_profile?.SKILLS || profile.sponsor_profile?.SKILLS,
       );
       const mergedSkills =
         backendSkills.length > 0 ? backendSkills : existing.skills;
@@ -919,7 +931,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       const backendInsights = parseVariant(
         profile.applicant_profile?.INSIGHTS ||
           profile.sponsor_profile?.INSIGHTS,
-      ) as Array<{ question: string; answer: string }>;
+      ) as { question: string; answer: string }[];
       const mergedInsights =
         backendInsights.length > 0 ? backendInsights : existing.insights;
 
@@ -933,19 +945,13 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         name: string;
         organization: string;
         year: string;
-      }>(
-        profile.applicant_profile?.CERTIFICATIONS,
-      );
+      }>(profile.applicant_profile?.CERTIFICATIONS);
       const backendLanguages = parseVariant<{
         language: string;
         proficiency: string;
-      }>(
-        profile.applicant_profile?.LANGUAGES,
-      );
+      }>(profile.applicant_profile?.LANGUAGES);
       const backendAchievements: string =
-        profile.applicant_profile?.ACHIEVEMENTS ||
-        profile.ACHIEVEMENTS ||
-        "";
+        profile.applicant_profile?.ACHIEVEMENTS || profile.ACHIEVEMENTS || "";
 
       // ── FIELD SHAPE NORMALIZERS ───────────────────────────────────────────
       // The AI classify endpoint stores experiences/education with different
@@ -1009,19 +1015,14 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
               : existing.personal.fullName,
           email: profile.EMAIL || existing.personal.email,
           phone: profile.PHONE_NUMBER || existing.personal.phone,
-          portfolio:
-            profile.PORTFOLIO_URL || existing.personal.portfolio,
-          profileImage:
-            profile.PHOTO_URL || existing.personal.profileImage,
+          portfolio: profile.PORTFOLIO_URL || existing.personal.portfolio,
+          profileImage: profile.PHOTO_URL || existing.personal.profileImage,
           workEmail:
             profile.sponsor_profile?.WORK_EMAIL ||
             existing.personal.workEmail ||
             "",
           address: {
-            street:
-              profile.STREET ||
-              existing.personal.address?.street ||
-              "",
+            street: profile.STREET || existing.personal.address?.street || "",
             city:
               profile.LOCATION?.split(",")[0]?.trim() ||
               existing.personal.address?.city ||
@@ -1032,9 +1033,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
               "",
             zip: profile.ZIP || existing.personal.address?.zip || "",
             country:
-              profile.COUNTRY ||
-              existing.personal.address?.country ||
-              "",
+              profile.COUNTRY || existing.personal.address?.country || "",
           },
         },
         professional: {
@@ -1083,13 +1082,11 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         skills: mergedSkills,
         insights: mergedInsights,
         workPreferences:
-          parseVariant(profile.applicant_profile?.WORK_PREFERENCES)
-            .length > 0
+          parseVariant(profile.applicant_profile?.WORK_PREFERENCES).length > 0
             ? parseVariant(profile.applicant_profile?.WORK_PREFERENCES)
             : existing.workPreferences || [],
         desiredRoles:
-          parseVariant(profile.applicant_profile?.DESIRED_ROLES)
-            .length > 0
+          parseVariant(profile.applicant_profile?.DESIRED_ROLES).length > 0
             ? parseVariant(profile.applicant_profile?.DESIRED_ROLES)
             : existing.desiredRoles || [],
         // resumeUrl is not returned by GET /api/profile/ — preserve local value
@@ -1159,19 +1156,23 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         persistDirtyFields(new Set<SyncableField>());
         persistSyncFailureCount(0);
       }
-      if (dirtyFields.has("personal")) autofillData.personal = existing.personal;
+      if (dirtyFields.has("personal"))
+        autofillData.personal = existing.personal;
       if (dirtyFields.has("professional"))
         autofillData.professional = existing.professional;
-      if (dirtyFields.has("education")) autofillData.education = existing.education;
+      if (dirtyFields.has("education"))
+        autofillData.education = existing.education;
       if (dirtyFields.has("skills")) autofillData.skills = existing.skills;
-      if (dirtyFields.has("insights")) autofillData.insights = existing.insights;
+      if (dirtyFields.has("insights"))
+        autofillData.insights = existing.insights;
       if (dirtyFields.has("workPreferences"))
         autofillData.workPreferences = existing.workPreferences;
       if (dirtyFields.has("desiredRoles"))
         autofillData.desiredRoles = existing.desiredRoles;
       if (dirtyFields.has("certifications"))
         autofillData.certifications = existing.certifications;
-      if (dirtyFields.has("languages")) autofillData.languages = existing.languages;
+      if (dirtyFields.has("languages"))
+        autofillData.languages = existing.languages;
       if (dirtyFields.has("achievements"))
         autofillData.achievements = existing.achievements;
 
@@ -1183,8 +1184,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // through. Applicants don't have a sponsor_profile, so the value is
       // undefined for them; defaulting to false there is harmless because
       // the HomeView gate only checks this flag for sponsors.
-      const workEmailVerifiedRaw = profile.sponsor_profile
-        ?.WORK_EMAIL_VERIFIED;
+      const workEmailVerifiedRaw = profile.sponsor_profile?.WORK_EMAIL_VERIFIED;
       const isVerified = workEmailVerifiedRaw === true;
       set({ workEmailVerified: isVerified });
 
@@ -1193,8 +1193,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // user's last submitted address. If the user updated to "B" but the
       // backend still shows verified "A", we should keep "B" pending.
       const backendWorkEmail =
-        (profile.sponsor_profile?.WORK_EMAIL as string | undefined) ||
-        "";
+        (profile.sponsor_profile?.WORK_EMAIL as string | undefined) || "";
       const { pendingWorkEmail } = get();
       if (
         pendingWorkEmail &&

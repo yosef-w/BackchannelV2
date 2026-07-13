@@ -4,7 +4,7 @@
 // labels like "Someone Applied to Your Job" previously carried all the
 // explanatory weight on their own.
 
-import React, { useState } from "react";
+import React from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
@@ -32,6 +32,38 @@ interface Props {
   userType: "applicant" | "sponsor";
 }
 
+// Module-level (NOT defined inside the screen component): an inline
+// component is a new type every render, so React would unmount/remount
+// every row — and its native Switch — on any state change, making all the
+// toggles flash whenever one was touched or the save pill ticked over.
+const Row = React.memo(function Row({
+  notifKey,
+  label,
+  description,
+  value,
+  onToggle,
+}: {
+  notifKey: NotifKey;
+  label: string;
+  description: string;
+  value: boolean;
+  onToggle: (key: NotifKey, next: boolean) => void;
+}) {
+  return (
+    <View style={styles.row}>
+      <View style={{ flex: 1, marginRight: 12 }}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowDescription}>{description}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={(v) => onToggle(notifKey, v)}
+        {...SWITCH_COLORS}
+      />
+    </View>
+  );
+});
+
 export function NotificationsScreen({ visible, onClose, userType }: Props) {
   const notificationPreferences = useUserProfileStore(
     (s) => s.data.notificationPreferences || {},
@@ -41,48 +73,31 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
   );
   const showToast = useToastStore((s) => s.showToast);
   const { status, run } = useAutosaveStatus();
-  const [savingKey, setSavingKey] = useState<NotifKey | null>(null);
 
   // Backend gate lives in services/notifications.py:create_notification —
   // missing keys default to enabled, so `undefined` reads as `true`.
   const isEnabled = (key: NotifKey) => notificationPreferences[key] !== false;
 
-  const handleToggle = (key: NotifKey, next: boolean) => {
-    setSavingKey(key);
-    run(async () => {
-      try {
-        await updateNotificationPreferences({ [key]: next });
-      } catch {
-        showToast(
-          "Notification setting could not be saved. Please try again.",
-          "error",
-        );
-        throw new Error("failed");
-      }
-    }).finally(() => setSavingKey(null));
-  };
-
-  const Row = ({
-    notifKey,
-    label,
-    description,
-  }: {
-    notifKey: NotifKey;
-    label: string;
-    description: string;
-  }) => (
-    <View style={styles.row}>
-      <View style={{ flex: 1, marginRight: 12 }}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={styles.rowDescription}>{description}</Text>
-      </View>
-      <Switch
-        value={isEnabled(notifKey)}
-        onValueChange={(v) => handleToggle(notifKey, v)}
-        disabled={savingKey === notifKey}
-        {...SWITCH_COLORS}
-      />
-    </View>
+  // The store updates optimistically (and rolls back the key on failure),
+  // so the switch stays enabled throughout — no dead time where the user
+  // can't re-toggle while the request is in flight.
+  const handleToggle = React.useCallback(
+    (key: NotifKey, next: boolean) => {
+      run(async () => {
+        try {
+          await updateNotificationPreferences({ [key]: next });
+        } catch {
+          showToast(
+            "Notification setting could not be saved. Please try again.",
+            "error",
+          );
+          throw new Error("failed");
+        }
+      }).catch(() => {
+        // Status pill + toast already reflect the failure.
+      });
+    },
+    [run, updateNotificationPreferences, showToast],
   );
 
   return (
@@ -98,12 +113,16 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
           notifKey="match"
           label="New Matches"
           description="When you and someone else both connect"
+          value={isEnabled("match")}
+          onToggle={handleToggle}
         />
         {userType === "sponsor" && (
           <Row
             notifKey="job_like"
             label="Someone Applied to Your Job"
             description="An applicant showed interest in a role you sponsor"
+            value={isEnabled("job_like")}
+            onToggle={handleToggle}
           />
         )}
         {userType === "sponsor" && (
@@ -111,6 +130,8 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
             notifKey="sponsor_request"
             label="Someone Requested Your Sponsorship"
             description="An applicant asked you to sponsor them for a role"
+            value={isEnabled("sponsor_request")}
+            onToggle={handleToggle}
           />
         )}
       </View>
@@ -121,6 +142,8 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
           notifKey="message"
           label="New Messages"
           description="Someone sent you a message"
+          value={isEnabled("message")}
+          onToggle={handleToggle}
         />
       </View>
 
@@ -132,11 +155,15 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
               notifKey="referral"
               label="Referral Updates"
               description="A sponsor formally refers you, or updates your status"
+              value={isEnabled("referral")}
+              onToggle={handleToggle}
             />
             <Row
               notifKey="waitlist"
               label="Saved Job Got Sponsored"
               description="When someone connects back a wait-listed job to a sponsor"
+              value={isEnabled("waitlist")}
+              onToggle={handleToggle}
             />
           </View>
         </>
