@@ -56,7 +56,7 @@ export function SrJobDetailModal({
       stats.push({
         label: "Salary",
         value:
-          `$${Math.round(detail.SALARY_ANNUAL_MIN / 1000)}k–${Math.round(detail.SALARY_ANNUAL_MAX / 1000)}k` +
+          `$${Math.round(detail.SALARY_ANNUAL_MIN / 1000)}–${Math.round(detail.SALARY_ANNUAL_MAX / 1000)}k` +
           (detail.SALARY_CURRENCY && detail.SALARY_CURRENCY !== "USD"
             ? ` ${detail.SALARY_CURRENCY}`
             : ""),

@@ -328,7 +328,11 @@ export function ProfileDetailSheet({
                         {!!sponsorCapabilities.duration && (
                           <View style={styles.capPill}>
                             <Text style={styles.capPillText}>
-                              {sponsorCapabilities.duration}
+                              {/* DURATION is their tenure ("How long have
+                                  you worked there?") — a bare "3-5 years"
+                                  pill reads as noise without the company. */}
+                              {sponsorCapabilities.duration} at{" "}
+                              {displayedCompany || "their company"}
                             </Text>
                           </View>
                         )}

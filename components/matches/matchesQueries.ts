@@ -218,7 +218,9 @@ export async function fetchSponsoredJobEnrichment(ref: {
   if (row.COMPANY) enriched.company = row.COMPANY;
   if (row.LOCATION) enriched.location = row.LOCATION;
   if (row.SALARY_MIN && row.SALARY_MAX) {
-    enriched.salary = `$${Math.round(row.SALARY_MIN / 1000)}k – $${Math.round(row.SALARY_MAX / 1000)}k`;
+    // Compact — this renders in a one-line stat cell a third of the sheet
+    // wide, so every character of "range prose" costs legibility.
+    enriched.salary = `$${Math.round(row.SALARY_MIN / 1000)}–${Math.round(row.SALARY_MAX / 1000)}k`;
     enriched.salaryMin = row.SALARY_MIN;
     enriched.salaryMax = row.SALARY_MAX;
   }

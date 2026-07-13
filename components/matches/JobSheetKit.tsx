@@ -351,7 +351,12 @@ export function StatStrip({
         <React.Fragment key={s.label}>
           {i > 0 && <View style={g.statDivider} />}
           <View style={g.statCell}>
-            <Text style={g.statValue} numberOfLines={1}>
+            <Text
+              style={g.statValue}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {s.value}
             </Text>
             <Text style={g.statLabel}>{s.label.toUpperCase()}</Text>
