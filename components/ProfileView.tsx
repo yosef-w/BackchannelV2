@@ -591,6 +591,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
       setCity(cityPart || "");
       setState(statePart || "");
       setLocation(trimmed);
+      // Write the store's address too — the profile UI re-seeds city/state/
+      // location from the store on every data change, so patching only the
+      // backend left the store stale and the display flipped back to the
+      // old city moments later (and the autosave sync then pushed that
+      // stale city/state on the next unrelated "personal" edit).
+      const currentAddress =
+        useUserProfileStore.getState().data.personal.address;
+      await updatePersonal({
+        address: {
+          ...currentAddress,
+          city: cityPart || "",
+          state: statePart || "",
+        },
+      });
+      // LOCATION is the canonical column every reader uses (matching,
+      // public profiles, our own fetch) — patch it directly as before.
       await updateGeneralProfile({ location: trimmed });
       showToast("Profile updated.", "success");
     } catch (error) {
