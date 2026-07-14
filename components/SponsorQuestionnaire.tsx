@@ -412,6 +412,14 @@ export function SponsorQuestionnaire({
       try {
         await withTimeout(
           (async () => {
+            // Each save also mirrors into the profile store. The store's
+            // only fetch this session ran at registration — BEFORE these
+            // values existed — and nothing refetches until the next app
+            // launch, so without the mirror the profile view showed no
+            // photo/bio all session. Worse: with the store's summary left
+            // empty, editing ANY professional field later made the
+            // autosave sync push bio:"" over the bio saved here,
+            // silently erasing it server-side.
             if (selectedPhotoUri) {
               const photoForm = new FormData();
               photoForm.append("image", {
@@ -422,10 +430,18 @@ export function SponsorQuestionnaire({
                 // signature doesn't know this shape; cast required.
               } as any);
               const { cdn_url } = await uploadProfileImage(photoForm);
-              if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
+              if (cdn_url) {
+                await updateGeneralProfile({ photo_url: cdn_url });
+                await useUserProfileStore
+                  .getState()
+                  .updatePersonal({ profileImage: cdn_url });
+              }
             }
             if (bioText.trim()) {
               await updateGeneralProfile({ bio: bioText.trim() });
+              await useUserProfileStore
+                .getState()
+                .updateProfessional({ summary: bioText.trim() });
             }
           })(),
           PROCESS_TIMEOUT_MS,
