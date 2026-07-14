@@ -235,7 +235,18 @@ export default function TabsLayout() {
 
       const type = data.type as string | undefined;
       trackPushNotificationTapped({ pushType: type });
-      if (type === "match" || type === "referral") {
+      if (
+        type === "match" ||
+        type === "referral" ||
+        // Interest + request types all surface on the Matches screen:
+        // job_like (applicant liked a sponsor's job) and profile_like
+        // (sponsor liked an applicant) land in its interested sections,
+        // sponsor_request in "Your Move". These used to fall through to
+        // the generic notifications-list fallback.
+        type === "job_like" ||
+        type === "profile_like" ||
+        type === "sponsor_request"
+      ) {
         router.navigate("/(tabs)/matches");
       } else if (type === "message") {
         // Deep-link straight into the conversation the push named.
@@ -408,7 +419,6 @@ export default function TabsLayout() {
             {notificationsOpen && (
               <View style={StyleSheet.absoluteFillObject}>
                 <NotificationsView
-                  userType={userType}
                   onBack={() => {
                     setNotificationsOpen(false);
                     // Refresh the real unread count now that the user has

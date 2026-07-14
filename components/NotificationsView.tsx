@@ -47,7 +47,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 const NOTIFICATIONS_QUERY_KEY = ["notifications", "list"] as const;
 
 interface NotificationsViewProps {
-  userType: "applicant" | "sponsor";
   onBack: () => void;
   /** Open the Messages tab and focus a specific conversation */
   onOpenConversation: (conversationId: string) => void;
@@ -157,7 +156,6 @@ function bucketForDate(iso: string): SectionKey {
 }
 
 export function NotificationsView({
-  userType,
   onBack,
   onOpenConversation,
   onOpenTab,
@@ -356,8 +354,11 @@ export function NotificationsView({
         return;
       }
       case "job_like": {
-        // Defensive: backend only sends this to sponsors, but guard anyway.
-        onOpenTab(userType === "sponsor" ? "jobs" : "matches");
+        // An applicant liked the sponsor's job — they surface in Matches'
+        // interested section, same place applicants land for the mirror
+        // notification (profile_like). Used to open the Jobs tab, which
+        // read as the wrong destination.
+        onOpenTab("matches");
         return;
       }
       case "profile_like": {
