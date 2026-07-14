@@ -1142,6 +1142,24 @@ export function HomeView({
     // after showCelebration/matchedUser have already cleared.
     if (currentItemId) setLeavingItemId(String(currentItemId));
 
+    // If every card in this deck is already liked, advancing would just
+    // wrap around (currentData indexes modulo deck length) and replay the
+    // "Already connected" overlay for each card until progress crawls past
+    // DECK_SIZE — with a one-applicant deck that's the same modal up to
+    // nine Continue-taps in a row, which testers read as an inescapable
+    // loop. There's nothing left to act on, so finish the deck instead.
+    const deck = userType === "sponsor" ? sponsorProfiles : applicantJobs;
+    const everyCardLiked =
+      deck.length > 0 &&
+      deck.every((item) => {
+        const id =
+          userType === "applicant"
+            ? (item as Job).id
+            : (item as ProfileDeckCard).USER_ID ||
+              (item as ProfileDeckCard).id;
+        return !!id && likedIds.has(String(id));
+      });
+
     // Scroll back to the top so the next profile starts at its hero, not
     // mid-bio. Snap (not animated) — the cross-fade hides the jump.
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -1149,8 +1167,12 @@ export function HomeView({
     swipeOpacity.value = withTiming(0, { duration: 220 });
 
     setTimeout(() => {
-      setProgress(progress + 1);
-      setCurrentProfileIndex(currentProfileIndex + 1);
+      if (everyCardLiked) {
+        setProgress(DECK_SIZE + 1); // → isDeckFinished: the "all done" state
+      } else {
+        setProgress(progress + 1);
+        setCurrentProfileIndex(currentProfileIndex + 1);
+      }
       swipeOpacity.value = withTiming(1, { duration: 280 });
       setLeavingItemId(null);
     }, 220);
