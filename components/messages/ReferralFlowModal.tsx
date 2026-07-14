@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
+  Dimensions,
   Linking,
   StyleSheet,
   Text,
@@ -499,7 +500,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     width: "100%",
     minHeight: 420,
-    maxHeight: "88%",
+    // Absolute px — a % maxHeight resolves against DismissibleSheet's
+    // content-sized gesture-root wrapper, mis-measures, and floats the
+    // sheet off the bottom of the screen (same trap as ProfileActionSheet).
+    maxHeight: Dimensions.get("window").height * 0.88,
   },
   flowHeader: {
     flexDirection: "row",
