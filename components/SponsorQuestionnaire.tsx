@@ -401,11 +401,14 @@ export function SponsorQuestionnaire({
   const finishOnboarding = () => {
     setShowSuccess(true);
 
+    // Apply the photo + bio captured during onboarding so the sponsor's
+    // applicant-facing card isn't bare. Photo upload needs auth, so it runs
+    // here after registration. Best-effort, IN THE BACKGROUND — nothing
+    // downstream reads its result, and awaiting it before the navigation
+    // timer used to hold new sponsors on the non-dismissible success screen
+    // for up to 25s on a slow upload. If it fails, they can re-add both in
+    // their profile.
     (async () => {
-      // Apply the photo + bio captured during onboarding so the sponsor's
-      // applicant-facing card isn't bare. Photo upload needs auth, so it runs
-      // here after registration. Best-effort and bounded — a failure/timeout
-      // must never trap the user; they can re-add these in their profile.
       try {
         await withTimeout(
           (async () => {
@@ -430,38 +433,39 @@ export function SponsorQuestionnaire({
       } catch (err) {
         console.warn("[SponsorQuestionnaire] Photo/bio save failed:", err);
       }
-
-      // Fire-and-forget the work-email verification send (PR #42). The
-      // backend hands out a JWT scoped to `purpose: "work_email_verification"`
-      // and emails it to the work email the sponsor just provided. Sponsors
-      // are gated out of the swipe deck in HomeView until they click it.
-      // Failures here aren't blocking — they can re-trigger via Profile.
-      if (answers[7]) {
-        authApi
-          .sendWorkEmailVerification(String(answers[7]))
-          .catch((err) =>
-            console.warn(
-              "[SponsorQuestionnaire] Failed to send work-email verification:",
-              err,
-            ),
-          );
-      }
-
-      // Navigate to dashboard after 2.2 seconds
-      setTimeout(() => {
-        setIsSubmitting(false);
-        onComplete();
-        // Delay toast until after the navigation transition finishes. Two
-        // emails are now in flight: the login-email verification (PR #38)
-        // and the work-email verification we just kicked off (PR #42).
-        setTimeout(() => {
-          showToast(
-            "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
-            "success",
-          );
-        }, 500);
-      }, 2200);
     })();
+
+    // Fire-and-forget the work-email verification send (PR #42). The
+    // backend hands out a JWT scoped to `purpose: "work_email_verification"`
+    // and emails it to the work email the sponsor just provided. Sponsors
+    // are gated out of the swipe deck in HomeView until they click it.
+    // Failures here aren't blocking — they can re-trigger via Profile.
+    if (answers[7]) {
+      authApi
+        .sendWorkEmailVerification(String(answers[7]))
+        .catch((err) =>
+          console.warn(
+            "[SponsorQuestionnaire] Failed to send work-email verification:",
+            err,
+          ),
+        );
+    }
+
+    // Navigate after a fixed, predictable 2.2s celebratory beat — the
+    // success screen is a moment, not a loading state.
+    setTimeout(() => {
+      setIsSubmitting(false);
+      onComplete();
+      // Delay toast until after the navigation transition finishes. Two
+      // emails are now in flight: the login-email verification (PR #38)
+      // and the work-email verification we just kicked off (PR #42).
+      setTimeout(() => {
+        showToast(
+          "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
+          "success",
+        );
+      }, 500);
+    }, 2200);
   };
 
   // ── Sponsor cold-start role picker handlers ─────────────────────────────
