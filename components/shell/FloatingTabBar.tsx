@@ -40,7 +40,9 @@ const TAB_ITEMS: {
 }[] = [
   { name: "home", icon: Home, label: "Feed" },
   { name: "matches", icon: Star, label: "Matches" },
-  { name: "jobs", icon: Briefcase, label: "Jobs", sponsorOnly: true },
+  // Jobs is no longer sponsor-only — applicants get a read-only
+  // browse/search view (ApplicantJobsBrowseView).
+  { name: "jobs", icon: Briefcase, label: "Jobs" },
   { name: "messages", icon: MessageCircle, label: "Inbox" },
   { name: "profile", icon: User, label: "Account" },
 ];

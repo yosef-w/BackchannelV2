@@ -50,6 +50,27 @@ As the sponsor on a referral: `GET /api/referrals/` includes `APPLICANT_EMAIL` f
 
 ---
 
+## §R — `GET /api/jobs/browse/` needs to support applicant (cross-company) callers 🟡 Medium priority — needs a backend read first, then possibly code
+
+**Why:** applicant job browse (UX plan Phase 8.1, `components/ApplicantJobsBrowseView.tsx`) is now merged — the Jobs tab is no longer sponsor-only, and applicants get a read-only search with the existing waitlist/request-sponsor actions, so a motivated applicant isn't limited to whatever the daily 10-card deck deals them. It calls the existing `GET /api/jobs/browse/` endpoint — but that endpoint was built for **sponsors** browsing their **own company's** ATS listings, server-side filtered by the caller's `sponsor_profiles.COMPANY`. An applicant account has no `sponsor_profiles` row at all.
+
+**What's actually unknown (needs a backend read, not a guess):** what does `/api/jobs/browse/` do today when called by a user with `ROLE_TYPE = 'Applicant'`? Three possibilities, each with a different outcome:
+1. **It 403s / errors** on non-sponsor callers → needs to allow applicant callers.
+2. **It silently returns zero rows** (the company-filter join finds nothing) → needs an applicant path that doesn't filter by company.
+3. **It already returns all jobs unfiltered** for a caller with no company on file → it works today; confirm and close this ticket.
+
+**Frontend status:** shipped defensively — the view treats any failure or empty result as a "check back soon" empty state (no error screen), so the feature never looks broken regardless of which case is true. It just won't show real cross-company results until whichever fix is needed lands.
+
+### Requested backend change (pending the read above)
+
+If (1) or (2): add an applicant-facing path in the browse-jobs service that returns jobs across **all** organizations (ideally still honoring the `title`/`location`/`remote` filters the endpoint already accepts, since the search box sends them). Sponsors keep their existing company-scoped behavior unchanged.
+
+### Acceptance test
+
+As an applicant: `GET /api/jobs/browse/?title=engineer` returns matching jobs across companies. As a sponsor: results remain scoped to their own company, unchanged.
+
+---
+
 ## §O — Create-from-URL job creation doesn't reuse a known company logo 🟡 Medium priority (data quality)
 
 **Why:** Two different backend paths resolve a job's logo, and only one of them is good:
@@ -185,9 +206,9 @@ All three Phase 7 items (conversation starters, in-thread referral prompt, spons
 
 ---
 
-## UX Plan Phase 8 — Agency & growth (8.3 only — see note)
+## UX Plan Phase 8 — Agency & growth
 
-Phase 8's applicant job browse (8.1) and its §N3 backend question moved to its own `applicant-jobs-browse` branch (pending backend confirmation before merging). The share-a-job item (8.2) was descoped by product. This branch carries 8.3 only:
+Phase 8's applicant job browse (**8.1**) is now merged to main — `components/ApplicantJobsBrowseView.tsx`, reachable from the Jobs tab (no longer sponsor-only); its backend question is tracked as **§R** above. The share-a-job item (8.2) was descoped by product.
 
 - **8.3 — Sponsor-request follow-through** — the "N employees notified" message a sponsor-request returns is never persisted server-side, so (same shape as §N2's check-in-stage gap) it's mirrored client-side (`utils/sponsorRequestCache.ts`) and shown later on the Waitlisted-job detail in `MatchesView.tsx`, plus a "Nudge again" button that re-sends the request once a waitlisted job has gone 5+ days without being picked up. This is a client-only local mirror with the same limitation as §N2 — it only reflects what THIS device requested, not a durable record. No backend ticket filed for this one since the existing `request-sponsor` endpoint already supports being called again (re-notifying), which is all "nudge again" needs.
 
