@@ -493,7 +493,7 @@ export function NotificationsView({
           <View style={styles.stateIconCircle}>
             <Bell color="#BBB" size={28} strokeWidth={2} />
           </View>
-          <Text style={styles.errorText}>Couldn't load notifications</Text>
+          <Text style={styles.errorText}>Couldn&apos;t load notifications</Text>
           <TouchableOpacity
             onPress={() => refetch()}
             style={styles.retryButton}
