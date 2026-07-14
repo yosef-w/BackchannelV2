@@ -7,15 +7,14 @@
  * way to look beyond it, without touching the deck's connect-a-day economy:
  * there's no "like"/swipe here, only search, view details, and the existing
  * "join waitlist + request a sponsor" actions applicants already have
- * access to from the deck's non-sponsored-job flow (see HomeView's apply
- * modal — this reuses the exact same two API calls).
+ * access to from the deck's non-sponsored-job flow.
  *
  * Backend note: `GET /api/jobs/browse/` was built for a SPONSOR browsing
- * their own company's ATS listings (server-side filtered by the caller's
- * sponsor_profiles.COMPANY) — see docs/BACKEND_CHANGES_NEEDED.md §R for
- * why this may need a backend adjustment to return sensible cross-company
- * results for an applicant caller. Degrades to an empty "check back soon"
- * state rather than an error if the response comes back empty/unexpected.
+ * their own company's ATS listings — see docs/BACKEND_CHANGES_NEEDED.md §R
+ * for the applicant-caller question. Until that's resolved, an empty/failed
+ * live response falls back to clearly-labeled SAMPLE listings (banner on
+ * the list, actions disabled on their detail sheets) so the surface is
+ * visualizable and testable rather than a dead end.
  */
 
 import {
@@ -26,16 +25,10 @@ import {
 } from "@/lib/api";
 import { formatSalary } from "@/types/jobs";
 import type { BrowseJobResponse } from "@/types/jobs";
+import { Check, Info, MapPin, Search, X } from "@/components/ui/icons";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Briefcase,
-  Check,
-  MapPin,
-  Search,
-  X,
-} from "@/components/ui/icons";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
+  Dimensions,
   Modal,
   ScrollView,
   StatusBar,
@@ -45,8 +38,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
+import {
+  BarFooter,
+  canvasSheet,
+  PosterHero,
+  ReadMoreText,
+  SectionCard,
+  SkeletonCard,
+  StatStrip,
+} from "./matches/JobSheetKit";
+import {
+  DismissibleSheet,
+  SheetScrollView,
+} from "./ui/DismissibleSheet";
 import { CompanyLogo } from "./ui/CompanyLogo";
 
 function parseSkillsField(raw: string | null | undefined): string[] {
@@ -85,9 +91,145 @@ function cleanJobText(raw: string | null | undefined): string {
     .join("\n");
 }
 
+/**
+ * Sample listings shown when the live endpoint returns nothing (§R —
+ * applicant callers aren't supported server-side yet). IDs are prefixed
+ * so actions can be disabled; the list carries a visible banner.
+ */
+const MOCK_ID_PREFIX = "sample-";
+const MOCK_JOBS: BrowseJobResponse[] = [
+  {
+    JOB_ID: `${MOCK_ID_PREFIX}1`,
+    TITLE: "Senior Data Engineer",
+    ORGANIZATION: "Snowflake",
+    FULL_LOCATION: "San Mateo, CA",
+    DESCRIPTION_TEXT:
+      "Build and scale the pipelines behind our analytics platform. You'll own ingestion end to end — modeling, orchestration, and the tooling other teams build on. We're looking for someone who treats data quality as a product, not a chore, and who's comfortable moving between Spark jobs and stakeholder conversations in the same afternoon.",
+    EMPLOYMENT_TYPES: "Full-time",
+    IS_REMOTE: false,
+    SALARY_ANNUAL_MIN: 165000,
+    SALARY_ANNUAL_MAX: 215000,
+    SALARY_CURRENCY: "USD",
+    EXPERIENCE_LEVEL: "Senior",
+    SKILLS: '["Python","Spark","Airflow","Snowflake","dbt"]',
+    DATE_POSTED: "2026-07-08",
+    ORGANIZATION_LOGO: null,
+  },
+  {
+    JOB_ID: `${MOCK_ID_PREFIX}2`,
+    TITLE: "Product Designer",
+    ORGANIZATION: "Figma",
+    FULL_LOCATION: "New York, NY",
+    DESCRIPTION_TEXT:
+      "Design core editor experiences used by millions of designers daily. You'll partner with research and engineering from problem framing through polish, and you'll ship — our design team prototypes in production.",
+    EMPLOYMENT_TYPES: "Full-time",
+    IS_REMOTE: true,
+    SALARY_ANNUAL_MIN: 140000,
+    SALARY_ANNUAL_MAX: 185000,
+    SALARY_CURRENCY: "USD",
+    EXPERIENCE_LEVEL: "Mid-Senior",
+    SKILLS: '["Product design","Prototyping","Design systems","Figma"]',
+    DATE_POSTED: "2026-07-10",
+    ORGANIZATION_LOGO: null,
+  },
+  {
+    JOB_ID: `${MOCK_ID_PREFIX}3`,
+    TITLE: "Backend Engineer, Payments",
+    ORGANIZATION: "Stripe",
+    FULL_LOCATION: "Seattle, WA",
+    DESCRIPTION_TEXT:
+      "Work on the money-movement rails that process billions in volume. High ownership, high scrutiny, high leverage — you'll write code where correctness genuinely matters and design reviews are a team sport.",
+    EMPLOYMENT_TYPES: "Full-time",
+    IS_REMOTE: false,
+    SALARY_ANNUAL_MIN: 170000,
+    SALARY_ANNUAL_MAX: 230000,
+    SALARY_CURRENCY: "USD",
+    EXPERIENCE_LEVEL: "Senior",
+    SKILLS: '["Go","Ruby","Distributed systems","PostgreSQL"]',
+    DATE_POSTED: "2026-07-11",
+    ORGANIZATION_LOGO: null,
+  },
+  {
+    JOB_ID: `${MOCK_ID_PREFIX}4`,
+    TITLE: "Growth Marketing Manager",
+    ORGANIZATION: "Notion",
+    FULL_LOCATION: "Austin, TX",
+    DESCRIPTION_TEXT:
+      "Own paid and lifecycle experiments across our self-serve funnel. You'll run the full loop — hypothesis, launch, measure, decide — with a budget and the autonomy to spend it well.",
+    EMPLOYMENT_TYPES: "Full-time",
+    IS_REMOTE: true,
+    SALARY_ANNUAL_MIN: 115000,
+    SALARY_ANNUAL_MAX: 150000,
+    SALARY_CURRENCY: "USD",
+    EXPERIENCE_LEVEL: "Mid",
+    SKILLS: '["Lifecycle marketing","SQL","A/B testing","Paid acquisition"]',
+    DATE_POSTED: "2026-07-09",
+    ORGANIZATION_LOGO: null,
+  },
+  {
+    JOB_ID: `${MOCK_ID_PREFIX}5`,
+    TITLE: "iOS Engineer",
+    ORGANIZATION: "Airbnb",
+    FULL_LOCATION: "San Francisco, CA",
+    DESCRIPTION_TEXT:
+      "Ship guest-facing features in one of the most polished consumer apps on the platform. Swift, careful animation work, and a design partnership tighter than most teams ever get.",
+    EMPLOYMENT_TYPES: "Full-time",
+    IS_REMOTE: false,
+    SALARY_ANNUAL_MIN: 160000,
+    SALARY_ANNUAL_MAX: 210000,
+    SALARY_CURRENCY: "USD",
+    EXPERIENCE_LEVEL: "Mid-Senior",
+    SKILLS: '["Swift","SwiftUI","UIKit","GraphQL"]',
+    DATE_POSTED: "2026-07-12",
+    ORGANIZATION_LOGO: null,
+  },
+  {
+    JOB_ID: `${MOCK_ID_PREFIX}6`,
+    TITLE: "Customer Success Lead",
+    ORGANIZATION: "Datadog",
+    FULL_LOCATION: "Denver, CO",
+    DESCRIPTION_TEXT:
+      "Lead a pod of CSMs owning enterprise renewals and expansion. You'll be the customer's voice internally and the roadmap's translator externally.",
+    EMPLOYMENT_TYPES: "Full-time",
+    IS_REMOTE: true,
+    SALARY_ANNUAL_MIN: 105000,
+    SALARY_ANNUAL_MAX: 135000,
+    SALARY_CURRENCY: "USD",
+    EXPERIENCE_LEVEL: "Senior",
+    SKILLS: '["Enterprise SaaS","Renewals","Onboarding","Salesforce"]',
+    DATE_POSTED: "2026-07-07",
+    ORGANIZATION_LOGO: null,
+  },
+];
+
+/** Client-side filter for the sample listings so search still demos. */
+function filterMocks(title: string, location: string): BrowseJobResponse[] {
+  const t = title.trim().toLowerCase();
+  const l = location.trim().toLowerCase();
+  return MOCK_JOBS.filter((j) => {
+    const matchesTitle =
+      !t ||
+      j.TITLE.toLowerCase().includes(t) ||
+      j.ORGANIZATION.toLowerCase().includes(t) ||
+      (j.SKILLS || "").toLowerCase().includes(t);
+    const matchesLocation =
+      !l ||
+      j.FULL_LOCATION.toLowerCase().includes(l) ||
+      (l === "remote" && j.IS_REMOTE);
+    return matchesTitle && matchesLocation;
+  });
+}
+
+const isMockJob = (job: BrowseJobResponse) =>
+  job.JOB_ID.startsWith(MOCK_ID_PREFIX);
+
+/** Debounce for search-as-you-type. */
+const SEARCH_DEBOUNCE_MS = 400;
+
 export function ApplicantJobsBrowseView() {
   const showToast = useToastStore((s) => s.showToast);
   const [jobs, setJobs] = useState<BrowseJobResponse[]>([]);
+  const [showingSamples, setShowingSamples] = useState(false);
   const [loading, setLoading] = useState(true);
   const [titleQuery, setTitleQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
@@ -97,33 +239,40 @@ export function ApplicantJobsBrowseView() {
   const [waitlistedIds, setWaitlistedIds] = useState<Set<string>>(new Set());
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
+  // Stale-response guard for the debounced search.
+  const searchSeq = useRef(0);
 
-  const loadJobs = async (filters?: { title?: string; location?: string }) => {
+  const loadJobs = async (title: string, location: string) => {
+    const seq = ++searchSeq.current;
     setLoading(true);
+    let live: BrowseJobResponse[] = [];
     try {
       const response = await browseJobs({
-        title: filters?.title || undefined,
-        location: filters?.location || undefined,
+        title: title.trim() || undefined,
+        location: location.trim() || undefined,
         limit: 50,
       });
-      setJobs((response.jobs || []) as BrowseJobResponse[]);
+      live = (response.jobs || []) as BrowseJobResponse[];
     } catch (err) {
       console.warn("[ApplicantJobsBrowseView] Failed to browse jobs:", err);
-      // Degrade to the empty state rather than an error screen — this
-      // endpoint's behavior for an applicant caller isn't fully pinned
-      // down server-side yet (see file header), so a failure here reads
-      // more like "nothing to show" than a broken feature.
-      setJobs([]);
-    } finally {
-      setLoading(false);
     }
+    if (seq !== searchSeq.current) return; // superseded by a newer keystroke
+    if (live.length > 0) {
+      setJobs(live);
+      setShowingSamples(false);
+    } else {
+      // §R: the endpoint doesn't serve applicant callers yet — fall back
+      // to clearly-labeled sample listings so the surface demos instead
+      // of dead-ending.
+      setJobs(filterMocks(title, location));
+      setShowingSamples(true);
+    }
+    setLoading(false);
   };
 
+  // Initial load + waitlist pre-marks.
   useEffect(() => {
-    loadJobs();
-    // Applicants already have real waitlist entries from the deck's
-    // non-sponsored-job apply flow — pre-mark those so this screen doesn't
-    // offer to waitlist something they've already requested.
+    loadJobs("", "");
     getWaitlistedJobs()
       .then((res) => {
         setWaitlistedIds(
@@ -131,11 +280,23 @@ export function ApplicantJobsBrowseView() {
         );
       })
       .catch(() => {});
+     
   }, []);
 
-  const handleSearch = () => {
-    loadJobs({ title: titleQuery.trim(), location: locationQuery.trim() });
-  };
+  // Search-as-you-type, debounced — no Search button to find.
+  const isFirstRun = useRef(true);
+  useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+    const t = setTimeout(
+      () => loadJobs(titleQuery, locationQuery),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(t);
+     
+  }, [titleQuery, locationQuery]);
 
   const handleRequestSponsor = async (job: BrowseJobResponse) => {
     setIsRequesting(true);
@@ -156,12 +317,38 @@ export function ApplicantJobsBrowseView() {
     }
   };
 
+  const closeDetail = () => {
+    setSelectedJob(null);
+    setRequestMessage(null);
+  };
+
+  // Detail-sheet derivations.
+  const detailStats: { label: string; value: string }[] = [];
+  if (selectedJob) {
+    if (selectedJob.SALARY_ANNUAL_MIN || selectedJob.SALARY_ANNUAL_MAX) {
+      detailStats.push({
+        label: "Salary",
+        value: formatSalary(
+          selectedJob.SALARY_ANNUAL_MIN,
+          selectedJob.SALARY_ANNUAL_MAX,
+          selectedJob.SALARY_CURRENCY,
+        ).replace(" - ", "–"),
+      });
+    }
+    if (selectedJob.EXPERIENCE_LEVEL)
+      detailStats.push({ label: "Level", value: selectedJob.EXPERIENCE_LEVEL });
+    if (selectedJob.EMPLOYMENT_TYPES)
+      detailStats.push({ label: "Type", value: selectedJob.EMPLOYMENT_TYPES });
+  }
+  const detailSkills = selectedJob ? parseSkillsField(selectedJob.SKILLS) : [];
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
           <Text style={styles.title}>Browse Jobs</Text>
@@ -171,54 +358,80 @@ export function ApplicantJobsBrowseView() {
           </Text>
         </View>
 
-        <View style={styles.searchRow}>
+        {/* Search — as-you-type, with clear buttons; no Search button to
+            hunt for. */}
+        <View style={styles.searchStack}>
           <View style={styles.searchInputWrap}>
-            <Search size={16} color="#999" />
+            <Search size={16} color="#9CA3AF" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Role title"
-              placeholderTextColor="#BBB"
+              placeholder="Role, company, or skill"
+              placeholderTextColor="#9CA3AF"
               value={titleQuery}
               onChangeText={setTitleQuery}
-              onSubmitEditing={handleSearch}
               returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
+            {titleQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setTitleQuery("")}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Clear role search"
+              >
+                <X size={15} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.searchInputWrap}>
-            <MapPin size={16} color="#999" />
+            <MapPin size={16} color="#9CA3AF" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Location"
-              placeholderTextColor="#BBB"
+              placeholder={'Location (or "remote")'}
+              placeholderTextColor="#9CA3AF"
               value={locationQuery}
               onChangeText={setLocationQuery}
-              onSubmitEditing={handleSearch}
               returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
+            {locationQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setLocationQuery("")}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Clear location search"
+              >
+                <X size={15} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
           </View>
-          <TouchableOpacity
-            style={styles.searchBtn}
-            onPress={handleSearch}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.searchBtnText}>Search</Text>
-          </TouchableOpacity>
         </View>
 
+        {/* Sample-data banner — honest about §R until the backend serves
+            applicant callers. */}
+        {showingSamples && !loading && jobs.length > 0 && (
+          <Animated.View entering={FadeIn} style={styles.sampleBanner}>
+            <Info size={13} color="#6B7280" strokeWidth={2.2} />
+            <Text style={styles.sampleBannerText}>
+              Sample listings — live roles are coming soon.
+            </Text>
+          </Animated.View>
+        )}
+
         {loading ? (
-          <View style={styles.centerBlock}>
-            <ActivityIndicator color="#000" />
-          </View>
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
         ) : jobs.length === 0 ? (
           <View style={styles.centerBlock}>
             <View style={styles.emptyIconCircle}>
-              <Briefcase size={28} color="#CCC" />
+              <Search size={26} color="#9CA3AF" strokeWidth={2} />
             </View>
             <Text style={styles.emptyTitle}>No roles found</Text>
             <Text style={styles.emptySub}>
-              {titleQuery || locationQuery
-                ? "Try a different search, or check back soon."
-                : "Check back soon for open roles, or try searching a specific title or location."}
+              Try a different role, company, or location.
             </Text>
           </View>
         ) : (
@@ -227,32 +440,45 @@ export function ApplicantJobsBrowseView() {
             return (
               <Animated.View
                 key={job.JOB_ID}
-                entering={FadeInUp.delay(Math.min(index, 10) * 40)}
+                entering={FadeInUp.delay(Math.min(index, 8) * 40)}
               >
                 <TouchableOpacity
                   style={styles.jobCard}
-                  activeOpacity={0.85}
+                  activeOpacity={0.8}
                   onPress={() => setSelectedJob(job)}
                 >
-                  <CompanyLogo
-                    logoUrl={job.ORGANIZATION_LOGO ?? undefined}
-                    name={job.ORGANIZATION}
-                    size={48}
-                    borderRadius={14}
-                    initialFontSize={18}
-                  />
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.jobCardLogoTile}>
+                    <CompanyLogo
+                      logoUrl={job.ORGANIZATION_LOGO ?? undefined}
+                      name={job.ORGANIZATION}
+                      size={40}
+                      borderRadius={12}
+                      initialFontSize={17}
+                    />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.jobCardTitle} numberOfLines={1}>
                       {job.TITLE}
                     </Text>
                     <Text style={styles.jobCardCompany} numberOfLines={1}>
                       {job.ORGANIZATION}
                       {job.FULL_LOCATION ? ` · ${job.FULL_LOCATION}` : ""}
+                      {job.IS_REMOTE ? " · Remote" : ""}
                     </Text>
+                    {!!(job.SALARY_ANNUAL_MIN || job.SALARY_ANNUAL_MAX) && (
+                      <Text style={styles.jobCardSalary} numberOfLines={1}>
+                        {formatSalary(
+                          job.SALARY_ANNUAL_MIN,
+                          job.SALARY_ANNUAL_MAX,
+                          job.SALARY_CURRENCY,
+                        ).replace(" - ", "–")}
+                      </Text>
+                    )}
                   </View>
                   {isDone && (
-                    <View style={styles.jobCardDoneBadge}>
-                      <Check size={12} color="#FFF" strokeWidth={3} />
+                    <View style={styles.waitlistedPill}>
+                      <Check size={10} color="#3B4353" strokeWidth={3} />
+                      <Text style={styles.waitlistedPillText}>Waitlisted</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -262,128 +488,91 @@ export function ApplicantJobsBrowseView() {
         )}
       </ScrollView>
 
-      {/* Job detail modal */}
+      {/* Job detail — the same Gallery sheet language as every other job
+          surface: poster hero, stat strip, cards, pinned action bar. */}
       <Modal
         visible={!!selectedJob}
         transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setSelectedJob(null);
-          setRequestMessage(null);
-        }}
+        animationType="none"
+        onRequestClose={closeDetail}
       >
-        <View style={styles.modalOverlay}>
+        <View style={styles.detailOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => {
-              setSelectedJob(null);
-              setRequestMessage(null);
-            }}
+            onPress={closeDetail}
           />
           {selectedJob && (
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
-              <View style={styles.modalHeader}>
-                <CompanyLogo
-                  logoUrl={selectedJob.ORGANIZATION_LOGO ?? undefined}
-                  name={selectedJob.ORGANIZATION}
-                  size={52}
-                  borderRadius={16}
-                  initialFontSize={20}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalJobTitle}>
-                    {selectedJob.TITLE}
-                  </Text>
-                  <Text style={styles.modalJobCompany}>
-                    {selectedJob.ORGANIZATION}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedJob(null);
-                    setRequestMessage(null);
-                  }}
-                  style={styles.modalCloseBtn}
-                >
-                  <X size={18} color="#666" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                style={{ maxHeight: 320 }}
-                contentContainerStyle={{ paddingBottom: 12 }}
+            <DismissibleSheet
+              scrollDismiss
+              onDismiss={closeDetail}
+              style={[styles.detailSheet, canvasSheet]}
+            >
+              <SheetScrollView
+                style={{ flexShrink: 1 }}
+                contentContainerStyle={{ paddingBottom: 16 }}
               >
-                <View style={styles.modalPillRow}>
-                  {!!selectedJob.FULL_LOCATION && (
-                    <View style={styles.modalPill}>
-                      <MapPin size={11} color="#666" />
-                      <Text style={styles.modalPillText}>
-                        {selectedJob.FULL_LOCATION}
-                      </Text>
+                <PosterHero
+                  logoUrl={selectedJob.ORGANIZATION_LOGO ?? undefined}
+                  logoName={selectedJob.ORGANIZATION}
+                  title={selectedJob.TITLE}
+                  company={selectedJob.ORGANIZATION}
+                  location={selectedJob.FULL_LOCATION || undefined}
+                  remote={!!selectedJob.IS_REMOTE}
+                  onClose={closeDetail}
+                />
+                <StatStrip stats={detailStats} />
+                {detailSkills.length > 0 && (
+                  <SectionCard title="Skills">
+                    <View style={styles.skillsRow}>
+                      {detailSkills.map((skill) => (
+                        <View key={skill} style={styles.skillBadge}>
+                          <Text style={styles.skillBadgeText}>{skill}</Text>
+                        </View>
+                      ))}
                     </View>
-                  )}
-                  <View style={styles.modalPill}>
-                    <Text style={styles.modalPillText}>
-                      {formatSalary(
-                        selectedJob.SALARY_ANNUAL_MIN,
-                        selectedJob.SALARY_ANNUAL_MAX,
-                        selectedJob.SALARY_CURRENCY,
-                      )}
-                    </Text>
-                  </View>
-                </View>
-
-                {parseSkillsField(selectedJob.SKILLS).length > 0 && (
-                  <View style={styles.modalChipsWrap}>
-                    {parseSkillsField(selectedJob.SKILLS).map((skill) => (
-                      <View key={skill} style={styles.modalChip}>
-                        <Text style={styles.modalChipText}>{skill}</Text>
-                      </View>
-                    ))}
-                  </View>
+                  </SectionCard>
                 )}
-
                 {!!selectedJob.DESCRIPTION_TEXT && (
-                  <Text style={styles.modalDescription}>
-                    {cleanJobText(selectedJob.DESCRIPTION_TEXT)}
-                  </Text>
+                  <SectionCard title="About the Role">
+                    <ReadMoreText
+                      text={cleanJobText(selectedJob.DESCRIPTION_TEXT)}
+                    />
+                  </SectionCard>
                 )}
-              </ScrollView>
+              </SheetScrollView>
 
-              {requestMessage ? (
-                <View style={styles.modalDoneBlock}>
-                  <Check size={16} color="#000" strokeWidth={3} />
-                  <Text style={styles.modalDoneText}>{requestMessage}</Text>
-                </View>
+              {isMockJob(selectedJob) ? (
+                <BarFooter
+                  context={{
+                    title: "Sample listing",
+                    sub: "Actions unlock on live roles",
+                  }}
+                />
+              ) : requestMessage ? (
+                <BarFooter
+                  context={{ title: requestMessage, done: true }}
+                  button={{ label: "Done", onPress: closeDetail }}
+                />
               ) : waitlistedIds.has(selectedJob.JOB_ID) ? (
-                <View style={styles.modalDoneBlock}>
-                  <Check size={16} color="#000" strokeWidth={3} />
-                  <Text style={styles.modalDoneText}>
-                    You are on the waitlist for this role.
-                  </Text>
-                </View>
+                <BarFooter
+                  context={{
+                    title: "You're on the waitlist",
+                    sub: "We'll notify you when a sponsor picks this up",
+                    done: true,
+                  }}
+                />
               ) : (
-                <TouchableOpacity
-                  style={[
-                    styles.modalActionBtn,
-                    isRequesting && { opacity: 0.6 },
-                  ]}
-                  onPress={() => handleRequestSponsor(selectedJob)}
-                  disabled={isRequesting}
-                  activeOpacity={0.85}
-                >
-                  {isRequesting ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.modalActionText}>
-                      Get a Sponsor
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                <BarFooter
+                  button={{
+                    label: "Get a Sponsor",
+                    loading: isRequesting,
+                    spinnerOnLoading: true,
+                    onPress: () => handleRequestSponsor(selectedJob),
+                  }}
+                />
               )}
-            </View>
+            </DismissibleSheet>
           )}
         </View>
       </Modal>
@@ -392,146 +581,123 @@ export function ApplicantJobsBrowseView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 120 },
-  header: { marginBottom: 20 },
-  title: { fontSize: 28, fontWeight: "800", color: "#000", letterSpacing: -0.8 },
-  subtitle: { fontSize: 14, color: "#666", marginTop: 6, lineHeight: 20 },
-  searchRow: { gap: 8, marginBottom: 20 },
+  container: { flex: 1, backgroundColor: "#F6F7F9" },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
+  header: { marginBottom: 18 },
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.8,
+  },
+  subtitle: { fontSize: 14, color: "#6B7280", marginTop: 6, lineHeight: 20 },
+  searchStack: { gap: 8, marginBottom: 14 },
   searchInputWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 12,
+    borderColor: "rgba(15,23,42,0.06)",
+    borderRadius: 14,
     paddingHorizontal: 14,
     height: 46,
   },
   searchInput: { flex: 1, fontSize: 14, color: "#000" },
-  searchBtn: {
-    backgroundColor: "#000",
-    height: 44,
-    borderRadius: 12,
+  sampleBanner: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "#F0F2F7",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginBottom: 12,
   },
-  searchBtnText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  centerBlock: { alignItems: "center", paddingVertical: 60, paddingHorizontal: 20 },
+  sampleBannerText: { fontSize: 12, fontWeight: "700", color: "#6B7280" },
+  centerBlock: {
+    alignItems: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
   emptyIconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#F0F2F7",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 17, fontWeight: "700", color: "#000" },
+  emptyTitle: { fontSize: 17, fontWeight: "800", color: "#000" },
   emptySub: {
     fontSize: 13,
-    color: "#999",
+    color: "#6B7280",
     textAlign: "center",
     marginTop: 6,
     lineHeight: 18,
   },
+  // Floating white cards on the canvas — same object language as the
+  // Gallery sheets' rows.
   jobCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderRadius: 16,
-    padding: 14,
+    borderColor: "rgba(15,23,42,0.06)",
+    borderRadius: 18,
+    padding: 13,
     marginBottom: 10,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  jobCardTitle: { fontSize: 15, fontWeight: "700", color: "#000" },
-  jobCardCompany: { fontSize: 13, color: "#999", marginTop: 2 },
-  jobCardDoneBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#000",
+  jobCardLogoTile: {
+    padding: 5,
+    borderRadius: 14,
+    backgroundColor: "#F6F7F9",
+  },
+  jobCardTitle: { fontSize: 15, fontWeight: "800", color: "#000" },
+  jobCardCompany: { fontSize: 12.5, color: "#6B7280", marginTop: 2 },
+  jobCardSalary: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#000",
+    marginTop: 3,
+  },
+  waitlistedPill: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+    backgroundColor: "#F0F2F7",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
-  modalOverlay: {
+  waitlistedPillText: { fontSize: 10, fontWeight: "800", color: "#3B4353" },
+  detailOverlay: {
     flex: 1,
     justifyContent: "flex-end",
     backgroundColor: "rgba(0,0,0,0.4)",
   },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 36,
+  detailSheet: {
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    // Absolute px — a % maxHeight resolves against DismissibleSheet's
+    // content-sized gesture-root wrapper and floats the sheet off the
+    // bottom of the screen.
+    maxHeight: Dimensions.get("window").height * 0.88,
   },
-  modalHandle: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#E5E5E5",
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  modalJobTitle: { fontSize: 18, fontWeight: "800", color: "#000" },
-  modalJobCompany: { fontSize: 13, color: "#999", marginTop: 2 },
-  modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F5F5F5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
-  modalPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  modalPillText: { fontSize: 12, fontWeight: "600", color: "#666" },
-  modalChipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 },
-  modalChip: {
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    borderRadius: 999,
-    paddingHorizontal: 10,
+  skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  skillBadge: {
+    paddingHorizontal: 11,
     paddingVertical: 5,
+    backgroundColor: "#F0F2F7",
+    borderRadius: 999,
   },
-  modalChipText: { fontSize: 11, fontWeight: "600", color: "#000" },
-  modalDescription: { fontSize: 13, color: "#444", lineHeight: 20 },
-  modalActionBtn: {
-    backgroundColor: "#000",
-    height: 52,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 16,
-  },
-  modalActionText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
-  modalDoneBlock: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 16,
-  },
-  modalDoneText: { flex: 1, fontSize: 13, fontWeight: "600", color: "#000" },
+  skillBadgeText: { fontSize: 11, fontWeight: "700", color: "#000" },
 });
