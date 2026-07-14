@@ -63,6 +63,7 @@ import {
 } from "./matches/matchesQueries";
 import { JobDetailModal } from "./matches/JobDetailModal";
 import { ReferralDetailModal } from "./matches/ReferralDetailModal";
+import { SponsorReferralDetailModal } from "./matches/SponsorReferralDetailModal";
 import { RolePickerModal } from "./matches/RolePickerModal";
 import { SponsorMatchesSections } from "./matches/SponsorMatchesSections";
 import { ApplicantMatchesSections } from "./matches/ApplicantMatchesSections";
@@ -1019,6 +1020,9 @@ export function MatchesView({
             }
             onOpenProfile={openProfile}
             onConfirmWithdrawReferral={setConfirmingWithdrawReferral}
+            onSelectReferral={(referral) =>
+              setActiveModal({ kind: "referral", referral })
+            }
             matchRowCallbacks={matchRowCallbacks}
           />
         ) : (
@@ -1202,14 +1206,34 @@ export function MatchesView({
         />
       </Modal>
 
-      {/* Referral detail sheet — applicant taps a "Referrals Received" card.
-          Mirrors the Applied-Jobs job modal: hero, sponsor card, and details. */}
+      {/* Referral detail sheet — role-specific. Applicants see who
+          referred them (sponsor host card, note, role); sponsors see the
+          permanent referral PACKET for the applicant they referred (the
+          ATS-portal details from the flow's receipt, revisitable any time),
+          with Message + withdraw carried in the action bar. */}
       <Modal visible={!!selectedReferral} transparent animationType="none">
-        <ReferralDetailModal
-          referral={selectedReferral}
-          onClose={closeAllModals}
-          onNavigateToMessages={onNavigateToMessages}
-        />
+        {userType === "sponsor" ? (
+          <SponsorReferralDetailModal
+            referral={selectedReferral}
+            onClose={closeAllModals}
+            onMessage={(jobId, userId) => {
+              closeAllModals();
+              onNavigateToMessages?.(jobId, userId);
+            }}
+            onWithdraw={(r) => {
+              // The detail sheet closes itself first; presenting the
+              // confirm on the next tick avoids the iOS sibling-Modal
+              // handoff race (one hiding while the other shows).
+              setTimeout(() => setConfirmingWithdrawReferral(r), 350);
+            }}
+          />
+        ) : (
+          <ReferralDetailModal
+            referral={selectedReferral}
+            onClose={closeAllModals}
+            onNavigateToMessages={onNavigateToMessages}
+          />
+        )}
       </Modal>
 
       {/* Interested-sponsor detail sheet — applicant tapped a sponsor who

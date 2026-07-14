@@ -53,6 +53,8 @@ interface SponsorMatchesSectionsProps {
   onSelectInterestedApplicant: (applicant: InterestedApplicant) => void;
   onOpenProfile: (match: Match, mode: "view" | "message") => void;
   onConfirmWithdrawReferral: (referral: Referral) => void;
+  /** Open the referral detail (the permanent packet sheet). */
+  onSelectReferral: (referral: Referral) => void;
   matchRowCallbacks: MatchRowCallbacks;
 }
 
@@ -84,6 +86,7 @@ export function SponsorMatchesSections({
   onSelectInterestedApplicant,
   onOpenProfile,
   onConfirmWithdrawReferral,
+  onSelectReferral,
   matchRowCallbacks,
 }: SponsorMatchesSectionsProps) {
   const yourMoveCount = sponsorRequests.length + interestedApplicants.length;
@@ -183,10 +186,9 @@ export function SponsorMatchesSections({
     return (
       <OpportunityRow
         key={`referral-${referral.referralId || index}`}
-        onPress={() =>
-          matchForReferral && onOpenProfile(matchForReferral, "view")
-        }
-        disabled={!matchForReferral}
+        // Opens the referral detail — the permanent packet sheet — not the
+        // person's profile (the packet is what a sponsor comes back for).
+        onPress={() => onSelectReferral(referral)}
         muted={!isReferred}
         leading={
           <Avatar
