@@ -36,6 +36,20 @@ Match-state cutover (reading `/api/matches/*` instead of the derived like `STATU
 
 ---
 
+## §Q — Applicant email on referred applicants (referral packet completeness) 🟡 Medium priority (tester-blocking for some ATS portals)
+
+**Context:** the referral flow gives sponsors a "referral packet" — the applicant's details to enter into their company's ATS/job portal (name, current role, location, experience, education, skills, portfolio). Sponsors can revisit it any time from Matches → Referrals. Most ATS referral forms also require the **candidate's email address**, which no applicant-facing endpoint currently exposes: `GET /api/profiles/<user_id>/public/` is deliberately public-safe (no EMAIL), and `GET /api/referrals/` / `GET /api/referrals/<referral_id>/` don't include it either.
+
+**Requested:** include the applicant's login email on **referral responses only** — e.g. an `APPLICANT_EMAIL` field on `GET /api/referrals/` rows and/or `GET /api/referrals/<referral_id>/`, populated only when the requesting user is the referral's sponsor. Submitting a referral is explicit consent to be put forward by name, so scoping the email to the sponsor who submitted that referral (not the general public profile) keeps PII exposure minimal while making the packet actually usable.
+
+**Frontend readiness:** the packet UI reads the field opportunistically — the Email row lights up automatically once the backend sends it; nothing breaks while it's absent.
+
+### Acceptance test
+
+As the sponsor on a referral: `GET /api/referrals/` includes `APPLICANT_EMAIL` for that row. As the applicant (or any other user): the field is absent/null. The public-profile endpoint remains email-free.
+
+---
+
 ## §O — Create-from-URL job creation doesn't reuse a known company logo 🟡 Medium priority (data quality)
 
 **Why:** Two different backend paths resolve a job's logo, and only one of them is good:
