@@ -846,7 +846,7 @@ export function ApplicantQuestionnaire({
                       );
                     })}
                     <Text style={styles.comingSoonNote}>
-                      We're starting with tech — other industries are coming
+                      We&apos;re starting with tech — other industries are coming
                       soon.
                     </Text>
                   </View>
@@ -1596,6 +1596,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     color: "#000",
+    // Single-line input alignment hardening: Android adds default vertical
+    // padding and font ascent padding that sit placeholder text below
+    // center (tester-reported on the signup city search); these pin it.
+    textAlignVertical: "center",
+    includeFontPadding: false,
     paddingVertical: 14,
   },
 

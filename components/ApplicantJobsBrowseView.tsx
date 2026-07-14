@@ -713,6 +713,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
     color: "#000",
+    // The wrap owns the height — zero the input's own padding and pin
+    // vertical centering so the placeholder can't ride low (Android adds
+    // default vertical + font ascent padding otherwise).
+    paddingVertical: 0,
+    textAlignVertical: "center",
+    includeFontPadding: false,
   },
   sampleBanner: {
     flexDirection: "row",
