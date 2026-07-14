@@ -2,15 +2,20 @@ import {
   Briefcase,
   Check,
   ChevronLeft,
+  ClipboardCheck,
+  Handshake,
+  Info,
   MessageCircle,
   ShieldCheck,
   Star,
   X,
 } from "@/components/ui/icons";
-import React, { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Linking,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -31,6 +36,7 @@ import {
 } from "@/lib/api";
 import { trackReferralSubmitted } from "@/lib/analytics/mixpanel";
 import { useToastStore } from "@/stores/useToastStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import {
   BarFooter,
   canvasSheet,
@@ -44,6 +50,32 @@ import {
   type PacketField,
 } from "../matches/JobSheetKit";
 import type { Conversation } from "../MessagesView";
+
+/** Shown once (AsyncStorage-flagged), replayable via the header's ⓘ. */
+const INTRO_SEEN_KEY = "@bc/referralIntroSeen";
+// Panel width inside the sheet: window minus the canvas padding (20/side).
+const INTRO_PANEL_W = Dimensions.get("window").width - 40;
+
+const INTRO_PANELS = [
+  {
+    icon: Handshake,
+    title: "You're the bridge",
+    body: (first: string) =>
+      `A referral here isn't a button click — it's your name opening a door for ${first}. Thank you for doing that.`,
+  },
+  {
+    icon: Star,
+    title: "Two minutes, honestly",
+    body: (first: string) =>
+      `You'll review ${first}'s full profile, confirm a few statements you can stand behind, and submit. That's the whole thing.`,
+  },
+  {
+    icon: ClipboardCheck,
+    title: "We prep the paperwork",
+    body: (first: string) =>
+      `You'll get a ready-to-copy packet of ${first}'s details for your company's referral portal — saved in Matches → Referrals whenever you need it.`,
+  },
+] as const;
 
 interface ReferralFlowModalProps {
   visible: boolean;
@@ -70,7 +102,26 @@ export function ReferralFlowModal({
 }: ReferralFlowModalProps) {
   const router = useRouter();
   const showToast = useToastStore((s) => s.showToast);
+  const sponsorFirstName = useUserProfileStore(
+    (s) => s.data.personal.firstName,
+  );
   const [referralStep, setReferralStep] = useState(1);
+  // Intro pager: null = flag not read yet; false = first-timer (show the
+  // panels as step 0). Read at mount so it's settled long before opening.
+  const [introSeen, setIntroSeen] = useState<boolean | null>(null);
+  const [introPanel, setIntroPanel] = useState(0);
+  const introPagerRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(INTRO_SEEN_KEY)
+      .then((v) => setIntroSeen(v === "1"))
+      .catch(() => setIntroSeen(true));
+  }, []);
+
+  const markIntroSeen = () => {
+    setIntroSeen(true);
+    AsyncStorage.setItem(INTRO_SEEN_KEY, "1").catch(() => {});
+    setReferralStep(1);
+  };
   const [hasMessaged, setHasMessaged] = useState(false);
   const [feelsConfident, setFeelsConfident] = useState(false);
   const [knowsBackground, setKnowsBackground] = useState(false);
@@ -85,7 +136,15 @@ export function ReferralFlowModal({
   // resetReferralFlow() that ran on every close button in MessagesView, so
   // the flow is always fresh by the time it's shown again.
   useEffect(() => {
-    if (visible) return;
+    if (visible) {
+      // First-timers start on the why-this-matters panels (step 0).
+      if (introSeen === false) {
+        setReferralStep(0);
+        setIntroPanel(0);
+        introPagerRef.current?.scrollTo({ x: 0, animated: false });
+      }
+      return;
+    }
     setReferralStep(1);
     setHasMessaged(false);
     setFeelsConfident(false);
@@ -94,7 +153,11 @@ export function ReferralFlowModal({
     setReferralError(null);
     setReferralSubmitting(false);
     setReferralProfile(null);
-  }, [visible]);
+    // introSeen in deps: if the flag read resolves after the modal is
+    // already open, this re-run still routes first-timers to the panels.
+    // A false→true flip while open (finishing the intro) hits the early
+    // return without touching the step.
+  }, [visible, introSeen]);
 
   // Fetch the applicant's full public profile when the flow opens so the
   // candidate-review step shows rich, real data.
@@ -224,7 +287,8 @@ export function ReferralFlowModal({
       onDismiss={onClose}
       style={[styles.referralFlowContainer, canvasSheet]}
     >
-      {/* ── Header: back/close + segmented progress (steps 1–2) ── */}
+      {/* ── Header: back/close + segmented progress; ⓘ replays the
+          why-this-matters panels ── */}
       {referralStep < 3 && (
         <View style={styles.flowHeader}>
           <TouchableOpacity
@@ -241,16 +305,97 @@ export function ReferralFlowModal({
             )}
           </TouchableOpacity>
           <View style={styles.segments}>
-            <View style={[styles.segment, styles.segmentActive]} />
-            <View
-              style={[
-                styles.segment,
-                referralStep === 2 && styles.segmentActive,
-              ]}
-            />
+            {referralStep >= 1 && (
+              <>
+                <View style={[styles.segment, styles.segmentActive]} />
+                <View
+                  style={[
+                    styles.segment,
+                    referralStep === 2 && styles.segmentActive,
+                  ]}
+                />
+              </>
+            )}
           </View>
           <Text style={styles.flowTitle}>Refer {firstName}</Text>
+          {referralStep >= 1 && (
+            <TouchableOpacity
+              onPress={() => {
+                setIntroPanel(0);
+                introPagerRef.current?.scrollTo({ x: 0, animated: false });
+                setReferralStep(0);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="About referrals"
+              style={{ marginLeft: 10 }}
+            >
+              <Info size={17} color="#9CA3AF" strokeWidth={2.2} />
+            </TouchableOpacity>
+          )}
         </View>
+      )}
+
+      {/* ── STEP 0: Why this matters — one-time intro panels ── */}
+      {referralStep === 0 && (
+        <Animated.View entering={FadeInUp} style={styles.stepBody}>
+          <ScrollView
+            ref={introPagerRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) =>
+              setIntroPanel(
+                Math.round(e.nativeEvent.contentOffset.x / INTRO_PANEL_W),
+              )
+            }
+            style={{ flexGrow: 0 }}
+          >
+            {INTRO_PANELS.map((p) => {
+              const PanelIcon = p.icon;
+              return (
+                <View key={p.title} style={styles.introPanel}>
+                  <View style={styles.introCard}>
+                    <View style={styles.introIconTile}>
+                      <PanelIcon size={30} color="#000" strokeWidth={2} />
+                    </View>
+                    <Text style={styles.introTitle}>{p.title}</Text>
+                    <Text style={styles.introBody}>{p.body(firstName)}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+          <View style={styles.introDots}>
+            {INTRO_PANELS.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.introDot, i === introPanel && styles.introDotOn]}
+              />
+            ))}
+          </View>
+          <BarFooter
+            button={{
+              label:
+                introPanel < INTRO_PANELS.length - 1 ? "Next" : "Let's Go",
+              onPress: () => {
+                if (introPanel < INTRO_PANELS.length - 1) {
+                  const next = introPanel + 1;
+                  setIntroPanel(next);
+                  introPagerRef.current?.scrollTo({
+                    x: next * INTRO_PANEL_W,
+                    animated: true,
+                  });
+                } else {
+                  markIntroSeen();
+                }
+              },
+            }}
+          >
+            {introPanel < INTRO_PANELS.length - 1 && (
+              <QuietAction label="Skip intro" onPress={markIntroSeen} />
+            )}
+          </BarFooter>
+        </Animated.View>
       )}
 
       {/* ── STEP 1: The candidate — read before you sign ── */}
@@ -386,7 +531,8 @@ export function ReferralFlowModal({
             contentContainerStyle={{ paddingBottom: 12 }}
           >
             <Text style={styles.stepLead}>
-              Your name goes on this referral. Tap each statement you can
+              Your name goes on this referral — that&apos;s what makes it
+              worth more than a cold application. Tap each statement you can
               stand behind.
             </Text>
 
@@ -461,11 +607,16 @@ export function ReferralFlowModal({
               <View style={styles.successIconCircle}>
                 <Check color="#FFF" size={30} strokeWidth={3} />
               </View>
-              <Text style={styles.successTitle}>Referral Submitted</Text>
+              <Text style={styles.successTitle}>
+                Thank you{sponsorFirstName ? `, ${sponsorFirstName}` : ""}.
+              </Text>
               <Text style={styles.successSub}>
-                You&apos;ve referred {firstName} for{" "}
-                {jobTitle || "this position"}. Use the packet below when you
-                submit them in your company&apos;s portal.
+                Referrals like this are how people get real chances — you
+                just gave {firstName} one.
+              </Text>
+              <Text style={styles.successNext}>
+                Next step: enter the packet below into your company&apos;s
+                referral portal.
               </Text>
             </View>
 
@@ -611,6 +762,69 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 21,
     paddingHorizontal: 16,
+  },
+  successNext: {
+    fontSize: 13,
+    color: "#000",
+    fontWeight: "700",
+    textAlign: "center",
+    lineHeight: 19,
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  introPanel: {
+    width: INTRO_PANEL_W,
+    paddingBottom: 4,
+  },
+  introCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(15,23,42,0.06)",
+    alignItems: "center",
+    paddingVertical: 34,
+    paddingHorizontal: 24,
+    marginBottom: 14,
+  },
+  introIconTile: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: "#F0F2F7",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  introTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: -0.4,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  introBody: {
+    fontSize: 14,
+    color: "#4B5563",
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 21,
+  },
+  introDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 7,
+    marginBottom: 10,
+  },
+  introDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#D1D5DB",
+  },
+  introDotOn: {
+    backgroundColor: "#000",
+    width: 18,
   },
   savedHint: {
     fontSize: 13,
