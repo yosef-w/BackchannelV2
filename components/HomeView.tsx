@@ -1734,7 +1734,7 @@ export function HomeView({
                 <View style={styles.emptyIconCircle}>
                   <RefreshCcw color="#000" size={32} />
                 </View>
-                <Text style={styles.emptyTitle}>Couldn't Load Profiles</Text>
+                <Text style={styles.emptyTitle}>Couldn&apos;t Load Profiles</Text>
                 <Text style={styles.emptySub}>
                   We hit a snag fetching applicants for this role.
                   {"\n\n"}
@@ -1787,7 +1787,7 @@ export function HomeView({
                 <View style={styles.emptyIconCircle}>
                   <RefreshCcw color="#000" size={32} />
                 </View>
-                <Text style={styles.emptyTitle}>Couldn't Load Roles</Text>
+                <Text style={styles.emptyTitle}>Couldn&apos;t Load Roles</Text>
                 <Text style={styles.emptySub}>
                   Something went wrong fetching your deck. Check your connection
                   and try again.
@@ -1846,9 +1846,9 @@ export function HomeView({
                   </View>
                 </View>
 
-                <Text style={styles.sponsorEmptyTitle}>You're early</Text>
+                <Text style={styles.sponsorEmptyTitle}>You&apos;re early</Text>
                 <Text style={styles.sponsorEmptySubtitle}>
-                  We're filling the deck with roles matched to your profile.
+                  We&apos;re filling the deck with roles matched to your profile.
                   Check back tomorrow for a fresh batch.
                 </Text>
 
