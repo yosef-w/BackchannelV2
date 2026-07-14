@@ -63,11 +63,34 @@ As the sponsor on a referral: `GET /api/referrals/` includes `APPLICANT_EMAIL` f
 
 ### Requested backend change (pending the read above)
 
-If (1) or (2): add an applicant-facing path in the browse-jobs service that returns jobs across **all** organizations (ideally still honoring the `title`/`location`/`remote` filters the endpoint already accepts, since the search box sends them). Sponsors keep their existing company-scoped behavior unchanged.
+If (1) or (2): add an applicant-facing path in the browse-jobs service that returns jobs across **all** organizations. Sponsors keep their existing company-scoped behavior unchanged.
 
-### Acceptance test
+### The contract the frontend needs (what to build against)
 
-As an applicant: `GET /api/jobs/browse/?title=engineer` returns matching jobs across companies. As a sponsor: results remain scoped to their own company, unchanged.
+**Request** — the app sends (all optional):
+
+| Param | Meaning |
+|---|---|
+| `title` | free-text match — the app's search box matches **role title, company name, or skill**, so ideally this matches against TITLE + ORGANIZATION + SKILLS (or split into separate params if easier — tell us and we'll send them) |
+| `location` | free-text location match; the app also treats the literal string `remote` as "IS_REMOTE = true" |
+| `remote` | boolean (already accepted) |
+| `limit` | already accepted |
+| `offset` | **new** — the app has a "View more" button; today it fakes pagination by refetching with a larger `limit` (wasteful past a few pages). `limit`+`offset` (or a cursor) makes it real. |
+
+**Response** — the app reads these fields per row (all already in the sponsor-path response except the last): `JOB_ID`, `TITLE`, `ORGANIZATION`, `FULL_LOCATION`, `DESCRIPTION_TEXT`, `EMPLOYMENT_TYPES`, `IS_REMOTE`, `SALARY_ANNUAL_MIN/MAX`, `SALARY_CURRENCY`, `EXPERIENCE_LEVEL`, `SKILLS`, `DATE_POSTED`, `ORGANIZATION_LOGO`, plus the envelope's `total_count` (powers "View more (N remaining)").
+
+**New response field — `IS_SPONSORED` (boolean, per row):** the browse screen offers the deck's real actions, which differ by sponsorship state:
+- **Sponsored** role → the app calls the existing `POST /api/jobs/like/` with the row's `JOB_ID` (same as a right-swipe on Home, matches included). ⚠️ This means a sponsored row's `JOB_ID` must be the **same id the like endpoint accepts** (the sponsored `JOB_POSTINGS` id, not a separate ATS/silver id).
+- **Not sponsored** → the app calls the existing `POST /api/jobs/request-sponsor/` + `join-waitlist` pair (same as the deck's non-sponsored apply flow).
+
+The frontend already reads `IS_SPONSORED` opportunistically — absent is treated as not-sponsored, so this can ship after the applicant-caller fix without breaking anything in between.
+
+### Acceptance tests
+
+- As an applicant: `GET /api/jobs/browse/?title=engineer` returns matching jobs across companies; `?title=stripe` matches by company; `total_count` reflects the full match count, not the page.
+- Rows for jobs with an active sponsor have `IS_SPONSORED: true` and a `JOB_ID` that `POST /api/jobs/like/` accepts.
+- `limit=20&offset=20` returns the second page.
+- As a sponsor: results remain scoped to their own company, unchanged.
 
 ---
 

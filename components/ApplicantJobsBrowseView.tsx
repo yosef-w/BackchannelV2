@@ -21,11 +21,12 @@ import {
   browseJobs,
   getWaitlistedJobs,
   joinWaitlist,
+  likeJob,
   requestSponsorForJob,
 } from "@/lib/api";
 import { formatSalary } from "@/types/jobs";
 import type { BrowseJobResponse } from "@/types/jobs";
-import { Check, Info, MapPin, Search, X } from "@/components/ui/icons";
+import { Check, Heart, Info, MapPin, Search, X } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
@@ -131,6 +132,7 @@ const MOCK_JOBS: BrowseJobResponse[] = [
     SKILLS: '["Product design","Prototyping","Design systems","Figma"]',
     DATE_POSTED: "2026-07-10",
     ORGANIZATION_LOGO: null,
+    IS_SPONSORED: true,
   },
   {
     JOB_ID: `${MOCK_ID_PREFIX}3`,
@@ -182,6 +184,7 @@ const MOCK_JOBS: BrowseJobResponse[] = [
     SKILLS: '["Swift","SwiftUI","UIKit","GraphQL"]',
     DATE_POSTED: "2026-07-12",
     ORGANIZATION_LOGO: null,
+    IS_SPONSORED: true,
   },
   {
     JOB_ID: `${MOCK_ID_PREFIX}6`,
@@ -237,42 +240,61 @@ export function ApplicantJobsBrowseView() {
     null,
   );
   const [waitlistedIds, setWaitlistedIds] = useState<Set<string>>(new Set());
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
+  // View More pagination: the endpoint takes a limit (no offset yet — §R),
+  // so "more" = refetch with a larger window. total_count powers the
+  // button's visibility.
+  const [pageLimit, setPageLimit] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   // Stale-response guard for the debounced search.
   const searchSeq = useRef(0);
 
-  const loadJobs = async (title: string, location: string) => {
+  const loadJobs = async (
+    title: string,
+    location: string,
+    limit: number,
+    isMore = false,
+  ) => {
     const seq = ++searchSeq.current;
-    setLoading(true);
+    if (isMore) setLoadingMore(true);
+    else setLoading(true);
     let live: BrowseJobResponse[] = [];
+    let total = 0;
     try {
       const response = await browseJobs({
         title: title.trim() || undefined,
         location: location.trim() || undefined,
-        limit: 50,
+        limit,
       });
       live = (response.jobs || []) as BrowseJobResponse[];
+      total = response.total_count || live.length;
     } catch (err) {
       console.warn("[ApplicantJobsBrowseView] Failed to browse jobs:", err);
     }
     if (seq !== searchSeq.current) return; // superseded by a newer keystroke
     if (live.length > 0) {
       setJobs(live);
+      setTotalCount(total);
       setShowingSamples(false);
     } else {
       // §R: the endpoint doesn't serve applicant callers yet — fall back
       // to clearly-labeled sample listings so the surface demos instead
       // of dead-ending.
-      setJobs(filterMocks(title, location));
+      const mocks = filterMocks(title, location);
+      setJobs(mocks);
+      setTotalCount(mocks.length);
       setShowingSamples(true);
     }
     setLoading(false);
+    setLoadingMore(false);
   };
 
   // Initial load + waitlist pre-marks.
   useEffect(() => {
-    loadJobs("", "");
+    loadJobs("", "", 20);
     getWaitlistedJobs()
       .then((res) => {
         setWaitlistedIds(
@@ -290,10 +312,10 @@ export function ApplicantJobsBrowseView() {
       isFirstRun.current = false;
       return;
     }
-    const t = setTimeout(
-      () => loadJobs(titleQuery, locationQuery),
-      SEARCH_DEBOUNCE_MS,
-    );
+    const t = setTimeout(() => {
+      setPageLimit(20);
+      loadJobs(titleQuery, locationQuery, 20);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
      
   }, [titleQuery, locationQuery]);
@@ -314,6 +336,26 @@ export function ApplicantJobsBrowseView() {
         "Couldn't send the request right now. Please try again.",
         "error",
       );
+    }
+  };
+
+  // Sponsored roles get the deck's real action: a like (same
+  // POST /api/jobs/like/ the home swipe uses), matches included.
+  const handleLikeSponsored = async (job: BrowseJobResponse) => {
+    setIsRequesting(true);
+    try {
+      const response = await likeJob(job.JOB_ID);
+      setLikedIds((prev) => new Set([...prev, job.JOB_ID]));
+      setRequestMessage(
+        response.matched
+          ? "It's a match! Find them in Matches."
+          : "Interest sent — you'll match when the sponsor likes back.",
+      );
+    } catch (err) {
+      console.warn("[ApplicantJobsBrowseView] Failed to like job:", err);
+      showToast("Couldn't send your interest right now. Please try again.", "error");
+    } finally {
+      setIsRequesting(false);
     }
   };
 
@@ -436,7 +478,11 @@ export function ApplicantJobsBrowseView() {
           </View>
         ) : (
           jobs.map((job, index) => {
-            const isDone = waitlistedIds.has(job.JOB_ID);
+            const isDone =
+              waitlistedIds.has(job.JOB_ID) || likedIds.has(job.JOB_ID);
+            const doneLabel = likedIds.has(job.JOB_ID)
+              ? "Liked"
+              : "Waitlisted";
             return (
               <Animated.View
                 key={job.JOB_ID}
@@ -478,13 +524,36 @@ export function ApplicantJobsBrowseView() {
                   {isDone && (
                     <View style={styles.waitlistedPill}>
                       <Check size={10} color="#3B4353" strokeWidth={3} />
-                      <Text style={styles.waitlistedPillText}>Waitlisted</Text>
+                      <Text style={styles.waitlistedPillText}>
+                        {doneLabel}
+                      </Text>
                     </View>
                   )}
                 </TouchableOpacity>
               </Animated.View>
             );
           })
+        )}
+
+        {/* View More — the endpoint takes only a limit today (§R asks for
+            offset pagination), so "more" refetches with a larger window. */}
+        {!loading && !showingSamples && jobs.length < totalCount && (
+          <TouchableOpacity
+            style={styles.viewMoreBtn}
+            onPress={() => {
+              const next = pageLimit + 20;
+              setPageLimit(next);
+              loadJobs(titleQuery, locationQuery, next, true);
+            }}
+            disabled={loadingMore}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.viewMoreText}>
+              {loadingMore
+                ? "Loading…"
+                : `View more (${totalCount - jobs.length} remaining)`}
+            </Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
@@ -543,10 +612,22 @@ export function ApplicantJobsBrowseView() {
               </SheetScrollView>
 
               {isMockJob(selectedJob) ? (
+                // Samples show the REAL action (disabled) so both CTA
+                // types are visualizable before §R lands.
                 <BarFooter
                   context={{
                     title: "Sample listing",
                     sub: "Actions unlock on live roles",
+                  }}
+                  button={{
+                    label: selectedJob.IS_SPONSORED
+                      ? "Like this Role"
+                      : "Get a Sponsor",
+                    icon: selectedJob.IS_SPONSORED ? (
+                      <Heart color="#FFF" size={16} strokeWidth={2.5} />
+                    ) : undefined,
+                    disabled: true,
+                    onPress: () => {},
                   }}
                 />
               ) : requestMessage ? (
@@ -554,12 +635,32 @@ export function ApplicantJobsBrowseView() {
                   context={{ title: requestMessage, done: true }}
                   button={{ label: "Done", onPress: closeDetail }}
                 />
+              ) : likedIds.has(selectedJob.JOB_ID) ? (
+                <BarFooter
+                  context={{
+                    title: "Interest sent",
+                    sub: "You'll match when the sponsor likes back",
+                    done: true,
+                  }}
+                />
               ) : waitlistedIds.has(selectedJob.JOB_ID) ? (
                 <BarFooter
                   context={{
                     title: "You're on the waitlist",
                     sub: "We'll notify you when a sponsor picks this up",
                     done: true,
+                  }}
+                />
+              ) : selectedJob.IS_SPONSORED ? (
+                // Sponsored — the deck's real action: like it, match and
+                // all, exactly as a right-swipe on Home would.
+                <BarFooter
+                  button={{
+                    label: "Like this Role",
+                    icon: <Heart color="#FFF" size={16} strokeWidth={2.5} />,
+                    loading: isRequesting,
+                    spinnerOnLoading: true,
+                    onPress: () => handleLikeSponsored(selectedJob),
                   }}
                 />
               ) : (
@@ -581,7 +682,9 @@ export function ApplicantJobsBrowseView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F6F7F9" },
+  // #FFF to match every other tab screen (Home/Matches/Jobs) — the
+  // canvas tint is for SHEETS; screens are white.
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
   header: { marginBottom: 18 },
   title: {
@@ -692,6 +795,15 @@ const styles = StyleSheet.create({
     // bottom of the screen.
     maxHeight: Dimensions.get("window").height * 0.88,
   },
+  viewMoreBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 999,
+    backgroundColor: "#F0F2F7",
+    marginTop: 4,
+  },
+  viewMoreText: { fontSize: 13, fontWeight: "800", color: "#000" },
   skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   skillBadge: {
     paddingHorizontal: 11,

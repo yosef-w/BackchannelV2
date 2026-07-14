@@ -90,6 +90,13 @@ export interface BrowseJobResponse {
    * naming). Null when the pipeline couldn't resolve it.
    */
   ORGANIZATION_LOGO?: string | null;
+  /**
+   * Whether a sponsor currently backs this job (§R) — lets browse offer
+   * the deck's real actions: like when sponsored, waitlist/request when
+   * not. Optional: the endpoint doesn't send it yet; absent = treated as
+   * not sponsored.
+   */
+  IS_SPONSORED?: boolean;
 }
 
 /**
