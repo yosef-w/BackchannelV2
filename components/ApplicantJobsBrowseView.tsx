@@ -404,7 +404,7 @@ export function ApplicantJobsBrowseView() {
             hunt for. */}
         <View style={styles.searchStack}>
           <View style={styles.searchInputWrap}>
-            <Search size={16} color="#9CA3AF" />
+            <Search size={17} color="#6B7280" strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
               placeholder="Role, company, or skill"
@@ -426,7 +426,7 @@ export function ApplicantJobsBrowseView() {
             )}
           </View>
           <View style={styles.searchInputWrap}>
-            <MapPin size={16} color="#9CA3AF" />
+            <MapPin size={17} color="#6B7280" strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
               placeholder={'Location (or "remote")'}
@@ -695,18 +695,25 @@ const styles = StyleSheet.create({
   },
   subtitle: { fontSize: 14, color: "#6B7280", marginTop: 6, lineHeight: 20 },
   searchStack: { gap: 8, marginBottom: 14 },
+  // Filled + visibly bordered so the fields read as THE control on a
+  // white screen instead of blending into the result cards around them.
   searchInputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 46,
+    gap: 10,
+    backgroundColor: "#F3F5F9",
+    borderWidth: 1.5,
+    borderColor: "rgba(15,23,42,0.10)",
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    height: 50,
   },
-  searchInput: { flex: 1, fontSize: 14, color: "#000" },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#000",
+  },
   sampleBanner: {
     flexDirection: "row",
     alignItems: "center",
