@@ -34,6 +34,7 @@ export { default as ChevronUp } from "lucide-react-native/dist/esm/icons/chevron
 export { default as ClipboardCheck } from "lucide-react-native/dist/esm/icons/clipboard-check.js";
 export { default as Clock } from "lucide-react-native/dist/esm/icons/clock.js";
 export { default as Coffee } from "lucide-react-native/dist/esm/icons/coffee.js";
+export { default as Copy } from "lucide-react-native/dist/esm/icons/copy.js";
 export { default as DollarSign } from "lucide-react-native/dist/esm/icons/dollar-sign.js";
 export { default as Edit } from "lucide-react-native/dist/esm/icons/square-pen.js";
 export { default as ExternalLink } from "lucide-react-native/dist/esm/icons/external-link.js";

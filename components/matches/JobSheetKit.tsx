@@ -4,11 +4,13 @@ import {
     ChevronDown,
     ChevronRight,
     ChevronUp,
+    Copy,
     ExternalLink,
     Handshake,
     MapPin,
     X,
 } from "@/components/ui/icons";
+import * as Clipboard from "expo-clipboard";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -717,6 +719,112 @@ export function QuietAction({
   );
 }
 
+/**
+ * Whole-surface selection card — an attestation/choice the user commits to
+ * by tapping ANYWHERE on the card (testers didn't recognize bare text rows
+ * as tappable). Selected state flips the border black and fills the check.
+ */
+export function SelectionCard({
+  icon,
+  title,
+  description,
+  selected,
+  onToggle,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  description?: string;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[g.card, g.selectRow, selected && g.selectRowSelected]}
+      onPress={onToggle}
+      activeOpacity={0.75}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={title}
+    >
+      {icon && <View style={g.selectIcon}>{icon}</View>}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={g.selectTitle}>{title}</Text>
+        {!!description && (
+          <Text style={g.selectDescription}>{description}</Text>
+        )}
+      </View>
+      <View style={[g.selectCheck, selected && g.selectCheckOn]}>
+        {selected && <Check size={13} color="#FFF" strokeWidth={3.5} />}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+export interface PacketField {
+  label: string;
+  value: string;
+}
+
+/**
+ * The referral packet — the applicant's details a sponsor types into their
+ * company's ATS portal. Every row tap-copies its value (Cash-App-receipt
+ * energy); Copy All puts the whole packet on the clipboard as label: value
+ * lines. `onCopied` lets the caller toast.
+ */
+export function PacketCard({
+  title = "Referral Packet",
+  fields,
+  onCopied,
+}: {
+  title?: string;
+  fields: PacketField[];
+  onCopied?: (what: string) => void;
+}) {
+  const rows = fields.filter((f) => !!f.value);
+  if (rows.length === 0) return null;
+  const copyOne = (f: PacketField) => {
+    Clipboard.setStringAsync(f.value).catch(() => {});
+    onCopied?.(f.label);
+  };
+  const copyAll = () => {
+    Clipboard.setStringAsync(
+      rows.map((f) => `${f.label}: ${f.value}`).join("\n"),
+    ).catch(() => {});
+    onCopied?.("Everything");
+  };
+  return (
+    <View style={g.card}>
+      <Text style={g.sectionTitle}>{title.toUpperCase()}</Text>
+      {rows.map((f, i) => (
+        <TouchableOpacity
+          key={f.label}
+          style={[g.packetRow, i === rows.length - 1 && { borderBottomWidth: 0 }]}
+          onPress={() => copyOne(f)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Copy ${f.label}`}
+        >
+          <Text style={g.packetLabel}>{f.label.toUpperCase()}</Text>
+          <Text style={g.packetValue} numberOfLines={2}>
+            {f.value}
+          </Text>
+          <Copy size={14} color="#9CA3AF" strokeWidth={2} />
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity
+        style={g.packetCopyAll}
+        onPress={copyAll}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel="Copy the whole packet"
+      >
+        <Copy size={13} color="#000" strokeWidth={2.2} />
+        <Text style={g.packetCopyAllText}>Copy All</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 /** Pulsing placeholder card for content that's still loading. */
 export function SkeletonCard({ title }: { title?: string }) {
   const opacity = useSharedValue(0.9);
@@ -1016,6 +1124,86 @@ const g = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#E9ECF1",
     marginBottom: 10,
+  },
+  selectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    marginBottom: 10,
+  },
+  selectRowSelected: {
+    borderColor: "#000",
+    borderWidth: 1.5,
+  },
+  selectIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: TINT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#000",
+  },
+  selectDescription: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: SUB,
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  selectCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectCheckOn: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  packetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIRLINE,
+  },
+  packetLabel: {
+    width: 86,
+    fontSize: 9,
+    fontWeight: "900",
+    color: FAINT,
+    letterSpacing: 0.8,
+  },
+  packetValue: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  packetCopyAll: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 11,
+    borderRadius: 999,
+    backgroundColor: TINT,
+  },
+  packetCopyAllText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#000",
   },
 });
 
