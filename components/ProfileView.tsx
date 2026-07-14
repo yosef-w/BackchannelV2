@@ -624,10 +624,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
     switch (type) {
       case "expertise":
-        if (expertise.length >= 5) {
-          showToast("You can add a maximum of 5 skills.", "info");
-          return;
-        }
+        // No max — résumé extraction during signup routinely produces 10+
+        // skills, so a hard cap here just contradicted the user's own list.
         if (expertise.includes(valueToAdd)) {
           showToast("That skill has already been added.", "info");
           setNewTag("");

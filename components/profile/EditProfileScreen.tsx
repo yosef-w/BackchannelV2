@@ -281,8 +281,8 @@ export function EditProfileScreen({
         <View style={styles.fieldLabelRow}>
           <Text style={styles.fieldLabel}>
             {userType === "applicant"
-              ? "SKILLS & INTERESTS (Max 5)"
-              : "I CAN HELP WITH (Max 5)"}
+              ? "SKILLS & INTERESTS"
+              : "I CAN HELP WITH"}
           </Text>
           {isFieldMissing("skills") && (
             <Text style={styles.requiredStar}>*</Text>
@@ -298,30 +298,28 @@ export function EditProfileScreen({
             </View>
           ))}
         </View>
-        {expertise.length < 5 && (
-          <View style={styles.addTagRow}>
-            <AutocompleteInput
-              value={newTag}
-              onChangeText={setNewTag}
-              onSelect={(v) => {
-                onAddTag("expertise", v);
-                setNewTag("");
-              }}
-              suggestions={ALL_SKILLS}
-              placeholder="Add new..."
-              style={styles.tagInput}
-            />
-            <TouchableOpacity
-              style={styles.addTagBtn}
-              onPress={() => {
-                onAddTag("expertise", newTag);
-                setNewTag("");
-              }}
-            >
-              <Plus color="#FFF" size={18} />
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={styles.addTagRow}>
+          <AutocompleteInput
+            value={newTag}
+            onChangeText={setNewTag}
+            onSelect={(v) => {
+              onAddTag("expertise", v);
+              setNewTag("");
+            }}
+            suggestions={ALL_SKILLS}
+            placeholder="Add new..."
+            style={styles.tagInput}
+          />
+          <TouchableOpacity
+            style={styles.addTagBtn}
+            onPress={() => {
+              onAddTag("expertise", newTag);
+              setNewTag("");
+            }}
+          >
+            <Plus color="#FFF" size={18} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {userType === "applicant" && (
