@@ -538,7 +538,7 @@ export function ReferralSigningScreen({
                     Math.round(e.nativeEvent.contentOffset.x / SCREEN_W),
                   )
                 }
-                style={{ flexGrow: 0, flex: 1 }}
+                style={{ flex: 1 }}
               >
                 {INTRO_FRAMES.map((f) => {
                   const FrameIcon = f.icon;
