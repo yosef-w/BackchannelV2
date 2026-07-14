@@ -10,13 +10,13 @@ import {
     MapPin,
     X,
 } from "@/components/ui/icons";
-import * as Clipboard from "expo-clipboard";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Image,
     Linking,
     Platform,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -30,6 +30,20 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
+
+// expo-clipboard's NATIVE module may be missing from the running binary
+// (dev client / TestFlight build compiled before the package was linked).
+// A top-level import would throw at bundle-eval and take down every screen
+// that transitively imports this kit — require lazily and degrade instead:
+// without the module, copy actions fall back to the system share sheet
+// (which includes Copy).
+let Clipboard: typeof import("expo-clipboard") | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Clipboard = require("expo-clipboard");
+} catch {
+  Clipboard = null;
+}
 
 /**
  * The shared vocabulary of the Matches-surface sheets — the "Gallery"
@@ -782,16 +796,19 @@ export function PacketCard({
 }) {
   const rows = fields.filter((f) => !!f.value);
   if (rows.length === 0) return null;
-  const copyOne = (f: PacketField) => {
-    Clipboard.setStringAsync(f.value).catch(() => {});
-    onCopied?.(f.label);
+  const put = (text: string, what: string) => {
+    if (Clipboard) {
+      Clipboard.setStringAsync(text).catch(() => {});
+      onCopied?.(what);
+    } else {
+      // No native clipboard in this binary — the share sheet's Copy
+      // action covers it (no onCopied toast; the sheet IS the feedback).
+      Share.share({ message: text }).catch(() => {});
+    }
   };
-  const copyAll = () => {
-    Clipboard.setStringAsync(
-      rows.map((f) => `${f.label}: ${f.value}`).join("\n"),
-    ).catch(() => {});
-    onCopied?.("Everything");
-  };
+  const copyOne = (f: PacketField) => put(f.value, f.label);
+  const copyAll = () =>
+    put(rows.map((f) => `${f.label}: ${f.value}`).join("\n"), "Everything");
   return (
     <View style={g.card}>
       <Text style={g.sectionTitle}>{title.toUpperCase()}</Text>
