@@ -10,7 +10,6 @@ import {
   type ReportReason,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
-import { BlurView } from "expo-blur";
 import {
   ArrowLeft,
   CheckCircle,
@@ -26,7 +25,6 @@ import {
   Image,
   Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -46,7 +44,7 @@ import {
 } from "../matches/matchesQueries";
 import { CharCounter } from "../ui/CharCounter";
 import { ProfileDetailSheet } from "../ui/ProfileDetailSheet";
-import { ReferralFlowModal } from "./ReferralFlowModal";
+import { ReferralSigningScreen } from "./ReferralSigningScreen";
 import { ThreadContextStrip } from "./ThreadContextStrip";
 import { ThreadMenuSheet } from "./ThreadMenuSheet";
 import { threadScreenStyles as styles } from "./threadScreenStyles";
@@ -941,33 +939,18 @@ return (
         step, checkboxes, submit/error state, and lazily-fetched
         candidate profile have zero readers outside this modal, per the
         state-ownership audit). */}
-    <Modal visible={showReferralFlow} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={() => setShowReferralFlow(false)}
-        >
-          <BlurView
-            intensity={60}
-            style={StyleSheet.absoluteFill}
-            tint="dark"
-          />
-        </TouchableOpacity>
-        <ReferralFlowModal
-          visible={showReferralFlow}
-          conversation={conversation}
-          onClose={() => setShowReferralFlow(false)}
-          onSubmitted={(applicantUserId, jobId) => {
-            setReferredSet((prev) => {
-              const next = new Set(prev);
-              next.add(`${applicantUserId}:${jobId}`);
-              return next;
-            });
-          }}
-        />
-      </View>
-    </Modal>
+    <ReferralSigningScreen
+      visible={showReferralFlow}
+      conversation={conversation}
+      onClose={() => setShowReferralFlow(false)}
+      onSubmitted={(applicantUserId, jobId) => {
+        setReferredSet((prev) => {
+          const next = new Set(prev);
+          next.add(`${applicantUserId}:${jobId}`);
+          return next;
+        });
+      }}
+    />
 
     {/* THREAD MENU SHEET — extracted to
         components/messages/ThreadMenuSheet.tsx (self-contained: its
