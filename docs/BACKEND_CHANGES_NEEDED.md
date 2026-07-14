@@ -24,6 +24,35 @@ Match-state cutover (reading `/api/matches/*` instead of the derived like `STATU
 
 ---
 
+## §S — SSO sign-in (Apple, Google, LinkedIn) 🔵 Research item — scope what it takes before we commit
+
+**What we want:** let users sign up / log in with **Apple, Google, and LinkedIn** in addition to email+password. This is a research ticket first — come back with a proposed design + effort estimate; the frontend work will be planned against your answer.
+
+**One hard constraint up front:** App Store Guideline 4.8 — if we offer ANY third-party login (Google, LinkedIn), **Sign in with Apple becomes mandatory**. So the realistic scopes are "none" or "Apple + others", never "Google only".
+
+**How the flow would look (standard native pattern, for shared context):**
+1. The app runs the provider's native flow on-device (expo-apple-authentication / Google & LinkedIn OAuth) and receives an **identity token** (JWT) from the provider.
+2. The app POSTs that token to a new endpoint, e.g. `POST /api/auth/sso/` with `{ provider: "apple" | "google" | "linkedin", identity_token, ...provider extras }`.
+3. The backend **verifies the token against the provider's public keys** (issuer, audience = our client id, expiry, signature), extracts the stable provider user id + email, and then finds-or-creates our user.
+4. The backend responds with **the exact same shape as `/api/login/`** — `access_token` + `refresh_token` — plus flags the app needs for routing (below). From that point on, nothing else in the app changes: same JWTs, same everything.
+
+**The research questions (what we need answered):**
+
+1. **Account model / database:** where do provider identities live? Presumably a new table (`user_sso_identities`: user_id, provider, provider_user_id, email_at_link_time, created_at) rather than columns on `user_info.user_profiles` — confirm. What does a **password-less** user mean for the current schema/login code (nullable password hash? sentinel?), and for the password-reset flow?
+2. **Account linking & collisions:** a user signs up with email+password, later taps "Sign in with Google" using the same email — link silently (email is verified by the provider), or challenge? And the reverse: SSO first, sets a password later? What about **Apple's private relay emails** (`xyz@privaterelay.appleid.com`) — the same human can now exist twice with two different emails; any dedupe story?
+3. **Role selection:** our registration is role-specific (`/api/register/` vs `/api/register-sponsor/`, each with its own questionnaire payload). SSO gives us an authenticated identity but NO role/questionnaire data — proposal: SSO creates a bare account and returns `is_new_user: true` + `needs_onboarding: true`, and the app routes them into the existing role-choice + questionnaire, which PATCHes the profile afterwards. Confirm the register services can be split into "create auth user" vs "attach role profile" cleanly.
+4. **Provider quirks:** Apple sends the user's **name only on the very first authorization** (never again — must be captured and stored on first pass or it's gone); Apple requires our team id / service id config; LinkedIn's current product is **OpenID Connect** ("Sign In with LinkedIn v2" is sunset) — needs an app in the LinkedIn developer portal and may need a token-exchange server-side since their flow is not fully native. Google needs OAuth client ids per platform (iOS + Android + web/Expo).
+5. **Email verification interplay:** we currently send a login-email verification on registration (PR #38). Provider-verified emails should presumably skip that — confirm the flag exists to mark an email pre-verified. (Sponsor WORK-email verification is separate and unaffected.)
+6. **Session/security parity:** refresh-token rotation, logout/`unregisterDevice`, and account deletion (§C-era work) all behave the same for SSO users — anything provider-side to revoke on delete (Apple requires token revocation on account deletion per App Store rules — confirm).
+
+**What the frontend needs in the response (whatever the design):** the standard `access_token`/`refresh_token` pair, `is_new_user`, `needs_onboarding` (or equivalent), and the user's email + any name the provider supplied — so the app can route to role selection for new users or straight in for returning ones.
+
+### Deliverable
+
+A short written proposal: chosen table design, the `POST /api/auth/sso/` contract, the account-linking policy, per-provider setup needed (keys/ids we must create in Apple/Google/LinkedIn consoles), and a rough effort estimate. We'll build the app side against it.
+
+---
+
 ## §M — Reject empty `first_name` / `last_name` in `PATCH /api/profile/update/` 🟡 Medium priority
 
 **Resolved on our side:** the frontend bug that caused this (login seeding an all-blank `personal` group, then syncing it in full) is fixed (`BackchannelV2` commit `3f524bd`), and the two known-affected accounts (`sarah.chen@` and `emily.rodriguez@demo.backchannel.app`) have been manually repaired via the API from their seed data — names, phone, and address all restored.
