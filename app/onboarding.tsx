@@ -4,6 +4,7 @@ import { ApplicantQuestionnaire } from "../components/ApplicantQuestionnaire";
 import { AuthScreen } from "../components/AuthScreen";
 import { Onboarding } from "../components/Onboarding";
 import { SponsorQuestionnaire } from "../components/SponsorQuestionnaire";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 
 type UserType = "applicant" | "sponsor";
@@ -24,7 +25,23 @@ export default function OnboardingScreen() {
     setUserType(userType);
   }, [userType]);
 
-  const [step, setStep] = useState<Step>("onboarding");
+  // True for a user who authenticated via SSO on a DIFFERENT screen
+  // (app/sign-in.tsx's "Continue with Apple/Google", role unknown there)
+  // and got routed to /choose-role -> here still needing a role. They
+  // already have tokens (useAuthStore.isAuthenticated) and a pending
+  // identity (useOnboardingStore.ssoSession) — showing them the intro
+  // slides and a sign-up form again would be a confusing detour after
+  // they already completed the "sign up" gesture. A password-signup user
+  // is never both of these at once: setAuthTokens for that path doesn't
+  // fire until registration succeeds inside the questionnaire itself, well
+  // after this component's initial render, so this can't misfire for them.
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const ssoSession = useOnboardingStore((state) => state.ssoSession);
+  const skipToQuestionnaire = isAuthenticated && !!ssoSession;
+
+  const [step, setStep] = useState<Step>(
+    skipToQuestionnaire ? "questionnaire" : "onboarding",
+  );
   // Normally the auth step defaults to sign-up (this route is the new-user
   // path). But if registration later fails because the email is already
   // registered — discovered mid-questionnaire, since account creation
@@ -74,10 +91,18 @@ export default function OnboardingScreen() {
     router.replace({ pathname: "/dashboard", params: { mode: userType } });
   };
 
+  // Once authenticated via SSO there's no auth step to go back to (see
+  // skipToQuestionnaire above — this covers both the cross-screen shortcut
+  // and a normal in-place SSO signup on this screen's own auth step, which
+  // also leaves the user authenticated with a pending ssoSession). Send
+  // them to role selection instead of a nonexistent password form.
+  const handleQuestionnaireBack = () =>
+    skipToQuestionnaire ? router.replace("/choose-role") : setStep("auth");
+
   if (userType === "sponsor") {
     return (
       <SponsorQuestionnaire
-        onBack={() => setStep("auth")}
+        onBack={handleQuestionnaireBack}
         onComplete={handleComplete}
         onEmailAlreadyRegistered={goToSignInRecovery}
       />
@@ -86,7 +111,7 @@ export default function OnboardingScreen() {
 
   return (
     <ApplicantQuestionnaire
-      onBack={() => setStep("auth")}
+      onBack={handleQuestionnaireBack}
       onComplete={handleComplete}
       onEmailAlreadyRegistered={goToSignInRecovery}
     />
