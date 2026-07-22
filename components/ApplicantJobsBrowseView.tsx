@@ -9,12 +9,14 @@
  * "join waitlist + request a sponsor" actions applicants already have
  * access to from the deck's non-sponsored-job flow.
  *
- * Backend note: `GET /api/jobs/browse/` was built for a SPONSOR browsing
- * their own company's ATS listings — see docs/BACKEND_CHANGES_NEEDED.md §R
- * for the applicant-caller question. Until that's resolved, an empty/failed
- * live response falls back to clearly-labeled SAMPLE listings (banner on
- * the list, actions disabled on their detail sheets) so the surface is
- * visualizable and testable rather than a dead end.
+ * Backend: `GET /api/jobs/browse/` (§R, shipped 2026-07-21) is role-aware —
+ * sponsors keep their own-company view unchanged; any other authenticated
+ * caller (applicants) gets a cross-company search where `title` matches
+ * title, organization, OR skills, plus real `limit`+`offset` pagination
+ * and `IS_SPONSORED` per row for action branching. A hard failure (network
+ * / non-2xx) falls back to clearly-labeled SAMPLE listings so the screen
+ * never dead-ends offline; a genuine zero-result search shows the real
+ * empty state instead — those are deliberately NOT the same code path.
  */
 
 import {
@@ -93,9 +95,10 @@ function cleanJobText(raw: string | null | undefined): string {
 }
 
 /**
- * Sample listings shown when the live endpoint returns nothing (§R —
- * applicant callers aren't supported server-side yet). IDs are prefixed
- * so actions can be disabled; the list carries a visible banner.
+ * Sample listings shown only when the live search hard-fails (network /
+ * non-2xx) — a genuinely empty result set gets the real empty state, not
+ * these. IDs are prefixed so actions can be disabled; the list carries a
+ * visible banner.
  */
 const MOCK_ID_PREFIX = "sample-";
 const MOCK_JOBS: BrowseJobResponse[] = [
@@ -228,6 +231,8 @@ const isMockJob = (job: BrowseJobResponse) =>
 
 /** Debounce for search-as-you-type. */
 const SEARCH_DEBOUNCE_MS = 400;
+/** Results per page — also the "View more" page size via `offset`. */
+const PAGE_SIZE = 20;
 
 export function ApplicantJobsBrowseView() {
   const showToast = useToastStore((s) => s.showToast);
@@ -243,10 +248,7 @@ export function ApplicantJobsBrowseView() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
-  // View More pagination: the endpoint takes a limit (no offset yet — §R),
-  // so "more" = refetch with a larger window. total_count powers the
-  // button's visibility.
-  const [pageLimit, setPageLimit] = useState(20);
+  // total_count powers "View more"'s visibility + remaining-count label.
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   // Stale-response guard for the debounced search.
@@ -255,46 +257,54 @@ export function ApplicantJobsBrowseView() {
   const loadJobs = async (
     title: string,
     location: string,
-    limit: number,
+    offset: number,
     isMore = false,
   ) => {
     const seq = ++searchSeq.current;
     if (isMore) setLoadingMore(true);
     else setLoading(true);
-    let live: BrowseJobResponse[] = [];
-    let total = 0;
     try {
       const response = await browseJobs({
         title: title.trim() || undefined,
         location: location.trim() || undefined,
-        limit,
+        limit: PAGE_SIZE,
+        offset,
       });
-      live = (response.jobs || []) as BrowseJobResponse[];
-      total = response.total_count || live.length;
+      if (seq !== searchSeq.current) return; // superseded by a newer keystroke
+      const live = (response.jobs || []) as BrowseJobResponse[];
+      // offset > 0 ("View more") appends to what's already showing;
+      // a fresh search (offset 0) replaces it outright.
+      setJobs((prev) => (isMore ? [...prev, ...live] : live));
+      setTotalCount(response.total_count ?? live.length);
+      setShowingSamples(false);
     } catch (err) {
       console.warn("[ApplicantJobsBrowseView] Failed to browse jobs:", err);
+      if (seq !== searchSeq.current) return;
+      if (isMore) {
+        // Don't blow away the real results already on screen — let them
+        // retry the button instead of silently swapping in samples.
+        showToast("Couldn't load more roles. Please try again.", "error");
+      } else {
+        // Hard failure (network / non-2xx) on the primary search — fall
+        // back to samples so the screen still demos rather than dead-
+        // ending. A genuinely empty SUCCESSFUL search never reaches this
+        // branch (see the try above) — it renders the real "No roles
+        // found" empty state instead.
+        const mocks = filterMocks(title, location);
+        setJobs(mocks);
+        setTotalCount(mocks.length);
+        setShowingSamples(true);
+      }
     }
-    if (seq !== searchSeq.current) return; // superseded by a newer keystroke
-    if (live.length > 0) {
-      setJobs(live);
-      setTotalCount(total);
-      setShowingSamples(false);
-    } else {
-      // §R: the endpoint doesn't serve applicant callers yet — fall back
-      // to clearly-labeled sample listings so the surface demos instead
-      // of dead-ending.
-      const mocks = filterMocks(title, location);
-      setJobs(mocks);
-      setTotalCount(mocks.length);
-      setShowingSamples(true);
+    if (seq === searchSeq.current) {
+      setLoading(false);
+      setLoadingMore(false);
     }
-    setLoading(false);
-    setLoadingMore(false);
   };
 
   // Initial load + waitlist pre-marks.
   useEffect(() => {
-    loadJobs("", "", 20);
+    loadJobs("", "", 0);
     getWaitlistedJobs()
       .then((res) => {
         setWaitlistedIds(
@@ -302,7 +312,7 @@ export function ApplicantJobsBrowseView() {
         );
       })
       .catch(() => {});
-     
+
   }, []);
 
   // Search-as-you-type, debounced — no Search button to find.
@@ -313,11 +323,10 @@ export function ApplicantJobsBrowseView() {
       return;
     }
     const t = setTimeout(() => {
-      setPageLimit(20);
-      loadJobs(titleQuery, locationQuery, 20);
+      loadJobs(titleQuery, locationQuery, 0);
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
-     
+
   }, [titleQuery, locationQuery]);
 
   const handleRequestSponsor = async (job: BrowseJobResponse) => {
@@ -535,16 +544,14 @@ export function ApplicantJobsBrowseView() {
           })
         )}
 
-        {/* View More — the endpoint takes only a limit today (§R asks for
-            offset pagination), so "more" refetches with a larger window. */}
+        {/* View More — real offset pagination: fetch the next page and
+            append rather than refetching a larger window. */}
         {!loading && !showingSamples && jobs.length < totalCount && (
           <TouchableOpacity
             style={styles.viewMoreBtn}
-            onPress={() => {
-              const next = pageLimit + 20;
-              setPageLimit(next);
-              loadJobs(titleQuery, locationQuery, next, true);
-            }}
+            onPress={() =>
+              loadJobs(titleQuery, locationQuery, jobs.length, true)
+            }
             disabled={loadingMore}
             activeOpacity={0.75}
           >

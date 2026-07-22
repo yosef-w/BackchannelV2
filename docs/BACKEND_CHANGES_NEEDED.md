@@ -1,10 +1,10 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-06 (after the `3aa52f8..2856d62` backend drop — moderation/report-block, referral check-in stage, profile-like notification, unsponsor-reason actions, change-email)
+**Last updated:** 2026-07-21 (after the backend's §P/§Q/§O/§M/§G/§R backlog-sprint drop — see `Backchannel-backend/.../docs/FRONTEND_HANDOFF_2026-07-21.md`; all six wired frontend-side same day)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§G** — ATS organizations search endpoint (company autocomplete + "did you mean", medium priority); **§M** — reject empty `first_name`/`last_name` server-side (medium priority — the frontend bug that caused this is already fixed and known-affected accounts repaired; this is just the defense-in-depth backend guard); **§L** — drop/ignore unused profile columns (cleanup + PII minimization, low priority — phone's UI is already removed on our side); **§O** — create-from-URL doesn't reuse a company's known logo (medium priority — same-company jobs created via URL paste get a lower-confidence logo lookup instead of the logo already on file from ATS/other sponsored jobs); **§P** — original posting URL isn't threaded through the ATS-sponsor path or the liked-jobs endpoint (medium priority — the frontend now shows a "View original posting" trust link, but it only lights up for create-from-URL jobs until these two gaps close).
+> **Open items:** **§S** — SSO (Apple/Google/LinkedIn) research ticket; the backend delivered a proposal (`docs/SSO_PROPOSAL.md`) but **no endpoint exists** — do not build/wire until product explicitly green-lights against it (App Store Guideline 4.8 means Apple becomes mandatory the moment any third-party login ships, so this is a product+scope call, not just an engineering one). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -25,6 +25,8 @@ Match-state cutover (reading `/api/matches/*` instead of the derived like `STATU
 ---
 
 ## §S — SSO sign-in (Apple, Google, LinkedIn) 🔵 Research item — scope what it takes before we commit
+
+**Status (2026-07-21): proposal delivered, not yet actioned.** The backend wrote `docs/SSO_PROPOSAL.md` (in their repo) answering every question below — table design (`user_info.user_sso_identities`), the `POST /api/auth/sso/` contract (login-shaped response + `is_new_user`/`needs_onboarding`), nullable `password_hash`, an account-linking policy (auto-link on provider-verified email; Apple private-relay emails never auto-link), and a ~2–3 eng-week estimate. **No endpoint has been built.** This stays a research/scoping item — do not wire SSO buttons or start frontend work — until product explicitly commits to building it (the App Store 4.8 constraint below makes this a product scope decision, not just a technical one).
 
 **What we want:** let users sign up / log in with **Apple, Google, and LinkedIn** in addition to email+password. This is a research ticket first — come back with a proposed design + effort estimate; the frontend work will be planned against your answer.
 
@@ -53,155 +55,18 @@ A short written proposal: chosen table design, the `POST /api/auth/sso/` contrac
 
 ---
 
-## §M — Reject empty `first_name` / `last_name` in `PATCH /api/profile/update/` 🟡 Medium priority
+## ✅ Resolved (2026-07-21 backend drop — was §P §Q §O §M §G §R)
 
-**Resolved on our side:** the frontend bug that caused this (login seeding an all-blank `personal` group, then syncing it in full) is fixed (`BackchannelV2` commit `3f524bd`), and the two known-affected accounts (`sarah.chen@` and `emily.rodriguez@demo.backchannel.app`) have been manually repaired via the API from their seed data — names, phone, and address all restored.
+Full details: backend's `docs/FRONTEND_HANDOFF_2026-07-21.md` and `docs/HANDOFF_2026-07-21.md`. All six items below landed in the same backend drop and were wired frontend-side the same day.
 
-**Still open:** the backend has no server-side guard against this class of bug — `update_user_profile` will still silently accept and store `first_name: ""` / `last_name: ""` from any client. Requested: in `services/profiles.py` → `update_user_profile`, ignore (or 400) `first_name`/`last_name` when empty/whitespace — there's no legitimate clear-your-name flow, so an empty name from any client is always a bug. (Phone/address/portfolio must keep accepting `""` — those ARE legitimately clearable.) Also worth a one-time sweep for any **non-demo** account that logged into an affected build and is still silently blanked: `SELECT user_id, email FROM user_info.user_profiles WHERE first_name = '' OR last_name = '';`
+- **§P — original posting URL threading**: `sponsor_job` now selects and passes `JOB_URL` from the silver job; `get_liked_jobs_for_user` now selects `j.URL`. **Zero frontend changes needed** — `extractDisplayDomain()` + `JobOpportunity.url` (`likedJob.URL || likedJob.url`) were already wired opportunistically, so "View original posting" now lights up on ATS-sponsored jobs and the liked-jobs list with no app change. **Pending an on-device smoke test** (sponsor an ATS listing → open your own job detail → link should show the ATS domain; like it as an applicant → same link on the liked-job detail).
+- **§O — create-from-URL logo reuse**: `create_job_from_url` now reuses `ats.silver_jobs.ORGANIZATION_LOGO` / an existing posting's logo before falling back to a domain-aware Logo.dev lookup; `LOGO_DEV_TOKEN` confirmed live on both prod and dev. **Zero frontend changes needed** — `getMyJobs()` already renders whatever `LOGO_URL` the backend persists. **Pending the same on-device smoke test** (paste a careers URL for a company with a known ATS logo, e.g. Snowflake → the new job's logo should match, not be blank).
+- **§M — empty name guard**: `PATCH /api/profile/update/` now ignores/rejects empty `first_name`/`last_name` server-side (reported via `ignored_fields`), plus length caps and http(s) validation on `photo_url`/`linked_in`/`portfolio_url`. Prod swept: 0 affected non-demo rows remaining. **Zero frontend changes needed** — the seeding bug that caused this was already fixed on our side.
+- **§Q — applicant email on the referral packet**: `GET /api/referrals/` and `/api/referrals/<id>/` now include `APPLICANT_EMAIL`, sponsor-only (stripped for the applicant; never on the public profile). **Frontend wired**: `lib/api.ts` (`listReferrals`/`getReferralDetail` types) and `matches/matchesQueries.ts` (`Referral.applicantEmail`) now carry the field; an Email row shows on the sponsor's permanent packet (`SponsorReferralDetailModal`) and on the submission receipt (`ReferralSigningScreen`, via a background follow-up `getReferralDetail` call once the referral exists — the submit response itself doesn't carry it).
+- **§G — ATS organization search**: `GET /api/ats/organizations/?q=&limit=` is live (substring + pg_trgm fuzzy match, ranked prefix → similarity → job count, 5-min cache). **Frontend fixed**: `lib/api.ts → searchAtsOrganizations()` was reading the wrong case — it expected lowercase `organization`/`job_count`/`logo_url` against the backend's UPPERCASE `ORGANIZATION`/`JOB_COUNT`/`ORGANIZATION_LOGO` payload, so every row was silently dropped and the feature looked dead even though the endpoint worked. Now maps correctly. Lights up sponsor-signup company autocomplete (`CompanyAutocomplete.tsx`) and `JobsView.tsx`'s "did you mean…" on an empty board.
+- **§R — applicant job browse**: `GET /api/jobs/browse/` is now role-aware — sponsors unchanged (own-company filter), applicants get cross-company search (`title` matches title, organization, or skills) with `IS_SPONSORED`, `SILVER_JOB_ID`, and real `limit`+`offset` pagination per row. **Frontend wired** (`ApplicantJobsBrowseView.tsx`, `lib/api.ts → browseJobs`, `types/jobs.ts`): the sample-listing fallback now triggers only on a hard failure (network/non-2xx) — a genuinely empty search shows the real "No roles found" state instead of demo data; "View more" sends real `offset` and appends results instead of refetching a growing `limit`; `SILVER_JOB_ID` added to the type (unused today — the browse row already carries full description/skills/salary inline, so no separate detail fetch is needed yet, but it's there for when one is).
 
-### Acceptance test
-
-`PATCH /api/profile/update/` with `{"first_name": "", "last_name": ""}` leaves the stored names unchanged (or returns 400); a normal non-empty name update still works.
-
----
-
-## §Q — Applicant email on referred applicants (referral packet completeness) 🟡 Medium priority (tester-blocking for some ATS portals)
-
-**Context:** the referral flow gives sponsors a "referral packet" — the applicant's details to enter into their company's ATS/job portal (name, current role, location, experience, education, skills, portfolio). Sponsors can revisit it any time from Matches → Referrals. Most ATS referral forms also require the **candidate's email address**, which no applicant-facing endpoint currently exposes: `GET /api/profiles/<user_id>/public/` is deliberately public-safe (no EMAIL), and `GET /api/referrals/` / `GET /api/referrals/<referral_id>/` don't include it either.
-
-**Requested:** include the applicant's login email on **referral responses only** — e.g. an `APPLICANT_EMAIL` field on `GET /api/referrals/` rows and/or `GET /api/referrals/<referral_id>/`, populated only when the requesting user is the referral's sponsor. Submitting a referral is explicit consent to be put forward by name, so scoping the email to the sponsor who submitted that referral (not the general public profile) keeps PII exposure minimal while making the packet actually usable.
-
-**Frontend readiness:** the packet UI reads the field opportunistically — the Email row lights up automatically once the backend sends it; nothing breaks while it's absent.
-
-### Acceptance test
-
-As the sponsor on a referral: `GET /api/referrals/` includes `APPLICANT_EMAIL` for that row. As the applicant (or any other user): the field is absent/null. The public-profile endpoint remains email-free.
-
----
-
-## §R — `GET /api/jobs/browse/` needs to support applicant (cross-company) callers 🟡 Medium priority — needs a backend read first, then possibly code
-
-**Why:** applicant job browse (UX plan Phase 8.1, `components/ApplicantJobsBrowseView.tsx`) is now merged — the Jobs tab is no longer sponsor-only, and applicants get a read-only search with the existing waitlist/request-sponsor actions, so a motivated applicant isn't limited to whatever the daily 10-card deck deals them. It calls the existing `GET /api/jobs/browse/` endpoint — but that endpoint was built for **sponsors** browsing their **own company's** ATS listings, server-side filtered by the caller's `sponsor_profiles.COMPANY`. An applicant account has no `sponsor_profiles` row at all.
-
-**What's actually unknown (needs a backend read, not a guess):** what does `/api/jobs/browse/` do today when called by a user with `ROLE_TYPE = 'Applicant'`? Three possibilities, each with a different outcome:
-1. **It 403s / errors** on non-sponsor callers → needs to allow applicant callers.
-2. **It silently returns zero rows** (the company-filter join finds nothing) → needs an applicant path that doesn't filter by company.
-3. **It already returns all jobs unfiltered** for a caller with no company on file → it works today; confirm and close this ticket.
-
-**Frontend status:** shipped defensively — the view treats any failure or empty result as a "check back soon" empty state (no error screen), so the feature never looks broken regardless of which case is true. It just won't show real cross-company results until whichever fix is needed lands.
-
-### Requested backend change (pending the read above)
-
-If (1) or (2): add an applicant-facing path in the browse-jobs service that returns jobs across **all** organizations. Sponsors keep their existing company-scoped behavior unchanged.
-
-### The contract the frontend needs (what to build against)
-
-**Request** — the app sends (all optional):
-
-| Param | Meaning |
-|---|---|
-| `title` | free-text match — the app's search box matches **role title, company name, or skill**, so ideally this matches against TITLE + ORGANIZATION + SKILLS (or split into separate params if easier — tell us and we'll send them) |
-| `location` | free-text location match; the app also treats the literal string `remote` as "IS_REMOTE = true" |
-| `remote` | boolean (already accepted) |
-| `limit` | already accepted |
-| `offset` | **new** — the app has a "View more" button; today it fakes pagination by refetching with a larger `limit` (wasteful past a few pages). `limit`+`offset` (or a cursor) makes it real. |
-
-**Response** — the app reads these fields per row (all already in the sponsor-path response except the last): `JOB_ID`, `TITLE`, `ORGANIZATION`, `FULL_LOCATION`, `DESCRIPTION_TEXT`, `EMPLOYMENT_TYPES`, `IS_REMOTE`, `SALARY_ANNUAL_MIN/MAX`, `SALARY_CURRENCY`, `EXPERIENCE_LEVEL`, `SKILLS`, `DATE_POSTED`, `ORGANIZATION_LOGO`, plus the envelope's `total_count` (powers "View more (N remaining)").
-
-**New response field — `IS_SPONSORED` (boolean, per row):** the browse screen offers the deck's real actions, which differ by sponsorship state:
-- **Sponsored** role → the app calls the existing `POST /api/jobs/like/` with the row's `JOB_ID` (same as a right-swipe on Home, matches included). ⚠️ This means a sponsored row's `JOB_ID` must be the **same id the like endpoint accepts** (the sponsored `JOB_POSTINGS` id, not a separate ATS/silver id).
-- **Not sponsored** → the app calls the existing `POST /api/jobs/request-sponsor/` + `join-waitlist` pair (same as the deck's non-sponsored apply flow).
-
-The frontend already reads `IS_SPONSORED` opportunistically — absent is treated as not-sponsored, so this can ship after the applicant-caller fix without breaking anything in between.
-
-### Acceptance tests
-
-- As an applicant: `GET /api/jobs/browse/?title=engineer` returns matching jobs across companies; `?title=stripe` matches by company; `total_count` reflects the full match count, not the page.
-- Rows for jobs with an active sponsor have `IS_SPONSORED: true` and a `JOB_ID` that `POST /api/jobs/like/` accepts.
-- `limit=20&offset=20` returns the second page.
-- As a sponsor: results remain scoped to their own company, unchanged.
-
----
-
-## §O — Create-from-URL job creation doesn't reuse a known company logo 🟡 Medium priority (data quality)
-
-**Why:** Two different backend paths resolve a job's logo, and only one of them is good:
-
-- **Sponsoring an existing ATS listing** (`services/jobs.py:765`, `sponsor_job`) checks `silver_job.get('ORGANIZATION_LOGO')` first — the logo already ingested for that ATS organization — and only falls back to `logo_svc.resolve_logo_url()` with a **real domain** (`silver_job['DOMAIN_DERIVED']` / `ORGANIZATION_URL`) if that's missing.
-- **Creating a job from a pasted URL** (`services/jobs.py:240`, `create_job_from_url`) does neither: `logo = logo_svc.resolve_logo_url(company_name=company)` — a **name-only** Logo.dev lookup with no domain and no check against any existing logo on file for that company. Concretely: a sponsor who already has a "Google" job (via ATS sponsorship, with a good logo) gets a different, lower-confidence, sometimes-empty logo when they create a *second* "Google" job by pasting a URL — even though the job-posting URL they just pasted (e.g. `jobs.google.com/...`) contains a perfectly good domain that's simply never passed to the resolver, and the already-known-good logo for that company is never looked up at all.
-
-### Check first (ops, 2 minutes): is `LOGO_DEV_TOKEN` set on the deployed API?
-
-`services/logos.py` silently no-ops (`return None`) when `LOGO_DEV_TOKEN` is unset — every created-from-URL job then gets NO logo regardless of company, while ATS-sponsored jobs still look fine (their logos were baked in at ETL time from `ORGANIZATION_LOGO`). This failure mode exactly matches the observed symptom (real example: a "Snowflake" create-from-URL job, `source: structured`, correct company name, empty logo). Verify the DigitalOcean API app's env vars include a Logo.dev **publishable** key (`pk_*`, never `sk_*` — the token is embedded in client-visible image URLs). **Also: `.env.example` doesn't list `LOGO_DEV_TOKEN` at all** — please add it there so fresh environments don't silently ship without logo resolution.
-
-### Requested change (relevant even with a working token)
-
-In `create_job_from_url` (`services/jobs.py`), before calling `logo_svc.resolve_logo_url`:
-1. **Reuse an existing logo for the same company**, checking (in order): `ats.silver_jobs.ORGANIZATION_LOGO` for an `ORGANIZATION` match (same `ILIKE`/normalization already used in `browse_silver_jobs`/`_normalize_company`), then any existing `JOB_POSTINGS` row with a non-null `logo_url` for the same company (covers companies with no ATS presence but an existing sponsor-created job, e.g. from this same flow). Besides fixing missing logos, this makes same-company jobs render the *identical* image instead of two independent Logo.dev renders.
-2. **Only if no existing logo is found**, fall back to `logo_svc.resolve_logo_url`, but pass a domain: extract it from the pasted job URL itself (the same `_extract_domain` helper `services/logos.py:31` already has, just unused on this path) via `organization_url=url`, not just `company_name=company`. Two caveats for the extraction: prefer the registrable root domain (`careers.snowflake.com` → `snowflake.com`, since Logo.dev indexes by root domain), and skip known ATS hosts entirely (`greenhouse.io`, `lever.co`, `myworkdayjobs.com`, …) rather than serve the ATS vendor's logo — fall through to today's name-only lookup in that case.
-
-This is the same company-name-matching infrastructure §G already needs (fuzzy/ILIKE matching against `ats.silver_jobs.ORGANIZATION`) — worth building together if §G is picked up, since §G's proposed `GET /api/ats/organizations/` endpoint already returns `logo_url` per organization and could double as the lookup this needs.
-
-### Frontend status
-
-No frontend change needed (verified 2026-07-08): the app never resolves logos itself — both job lists render whatever `LOGO_URL` the backend persisted (via the `getMyJobs()` refetch after creation) with a shared stock-image fallback, and sponsors already have a manual escape hatch: the job menu's "Replace Company Logo" editor (PR #62, `logo_url` on `PATCH /api/jobs/<id>/edit/`) can paste a correct logo onto any affected job today. Once the backend reuses/resolves logos properly, they appear on the same refetch with zero app changes.
-
----
-
-## §P — Original posting URL isn't threaded through every job-creation/read path 🟡 Medium priority (trust/data quality)
-
-**Why:** The frontend now shows a "View original posting: `<domain>`" link on every job detail screen (applicant Home deck, applicant liked-job detail, sponsor's own job detail) — a deliberate anti-embellishment signal: since sponsors can freely edit a create-from-URL job's fields before publishing (title, salary, description — necessary, since scrapes are unreliable), the one thing that's hard to fake is the link to the real posting. A mismatch between what's published and what the link actually shows becomes visible to the applicant. This only works where `job_postings.URL` is actually populated and returned, and today that's inconsistent:
-
-| Path | URL populated? | Where |
-|---|---|---|
-| Create job from pasted URL | ✅ Yes | `create_job_from_url` (`services/jobs.py:254`) passes `url=url` |
-| Sponsor an ATS listing | ❌ **No** | `sponsor_job` (`services/jobs.py:771`) never passes a `url=` to `create_sponsored_job`, even though `ats.silver_jobs.job_url` has the real per-listing URL (confirmed in `docs/schemas/migrations/postgres/001_initial_schema.sql:401` — distinct column from `organization_url`, which is the company's general site, not the listing) |
-| Applicant's liked-jobs list | ❌ **No** | `get_liked_jobs_for_user` (`queries/likes.py:150`) doesn't `SELECT j.URL` from `jobs.job_postings` at all, even for jobs where it's populated |
-
-### Requested change
-
-1. **`sponsor_job`**: add `JOB_URL` to `find_silver_job`'s SELECT (`queries/jobs.py:337`, alongside the existing `ORGANIZATION_LOGO`/`ORGANIZATION_URL`/`DOMAIN_DERIVED`), and pass `url=silver_job.get('JOB_URL')` through to `create_sponsored_job` (`services/jobs.py:771`) the same way `logo_url` already is.
-2. **`get_liked_jobs_for_user`**: add `j.URL` to the SELECT list (`queries/likes.py:150-163`) and thread it through `services/matching.py:get_liked_jobs`'s row formatting to the frontend response.
-
-Both are narrow, additive column selections — no schema change, no new endpoint, low risk.
-
-### Frontend status
-
-Shipped (2026-07-08) and waiting on the backend: `components/jobs/jobTransforms.ts`'s `extractDisplayDomain()` renders the link wherever `job.url` is present; `matches/matchesQueries.ts`'s `JobOpportunity.url` is already wired defensively (reads `likedJob.URL || likedJob.url`, same pattern as the existing `companyLogoUrl` field) so the applicant liked-job detail link lights up the moment change #2 ships, with zero further app changes. Same for #1 — `getMyJobs()`/`Job.url` already exists on the type, it's just empty today for ATS-sponsored jobs.
-
----
-
-## §G — ATS organizations search endpoint (company autocomplete + "did you mean") 🟡 (data quality)
-
-**Why:** A sponsor's jobs board is filtered by matching their **free-text** company (from `sponsor_profiles.COMPANY`, set at signup) against `ats.silver_jobs.ORGANIZATION` using `UPPER(ORGANIZATION) ILIKE '%' || UPPER(company) || '%'` (`queries/jobs.py:493`, with legal-suffix normalization in `services/jobs.py:_normalize_company`). That handles casing and suffixes, but **not** misspellings, spacing/word-boundary differences ("JP Morgan" vs "JPMorgan Chase"), aliases (Facebook vs Meta), or over-matching short names — and on a mismatch the sponsor just sees an **empty board with no explanation**.
-
-The frontend now fixes this from both ends, but needs one read-only endpoint to do it:
-- **Company autocomplete at signup** (`components/ui/CompanyAutocomplete.tsx`) so the stored company is an *exact* ATS organization string (mismatch can't happen).
-- **"Did you mean…"** suggestions when the board is empty (`components/JobsView.tsx`) — one tap re-saves the corrected company and reloads.
-
-### Required endpoint
-
-```
-GET /api/ats/organizations/?q=<text>&limit=<n>   (auth required; sponsor)
-→ 200 { "organizations": [
-        { "organization": "Google", "job_count": 42, "logo_url": "https://…" },
-        { "organization": "Google Cloud", "job_count": 8, "logo_url": null }
-      ] }
-```
-
-- Distinct `ORGANIZATION` values from `ats.silver_jobs WHERE is_active = TRUE`, with the **active job count** per org and the org logo (`ORGANIZATION_LOGO`) when available.
-- **Matching must serve two needs:**
-  1. **Typeahead** — substring/prefix (`ILIKE '%' || q || '%'`) for as-you-type autocomplete.
-  2. **Fuzzy "did you mean"** — so a *misspelled* stored company ("Gogle") still surfaces "Google". Use **`pg_trgm` similarity** (`similarity(ORGANIZATION, q) > ~0.3`), ordered by similarity desc, then `job_count` desc. Requires `CREATE EXTENSION pg_trgm;` and ideally a GIN trigram index on `ORGANIZATION` for speed.
-- Combine both (substring OR trigram-similar), de-duplicate by `ORGANIZATION`, cap at `limit` (frontend asks for 6–8).
-
-### Frontend status
-
-Shipped and live behind a graceful fallback: `lib/api.ts → searchAtsOrganizations()` returns `null` on 404/error, so until this endpoint exists the company field is plain free-text and the empty board shows the normal empty state — **nothing breaks**. The autocomplete and "did you mean" light up automatically once the endpoint is deployed.
-
-### Optional follow-up (stronger guarantee)
-
-Consider normalizing/validating `sponsor_profiles.COMPANY` against this canonical list on write (or storing a chosen org id), so the browse filter can match on an exact key rather than `ILIKE`.
+**Known non-blocking product decision from §R (not a bug):** when multiple sponsors reference the same ATS listing, `IS_SPONSORED` and the likeable `JOB_ID` come from the **latest active posting** — that sponsor receives the like. Revisit if a different attribution rule (e.g. best-match sponsor) is wanted later.
 
 ---
 
@@ -260,7 +125,7 @@ All three Phase 7 items (conversation starters, in-thread referral prompt, spons
 
 ## UX Plan Phase 8 — Agency & growth
 
-Phase 8's applicant job browse (**8.1**) is now merged to main — `components/ApplicantJobsBrowseView.tsx`, reachable from the Jobs tab (no longer sponsor-only); its backend question is tracked as **§R** above. The share-a-job item (8.2) was descoped by product.
+Phase 8's applicant job browse (**8.1**) is merged to main — `components/ApplicantJobsBrowseView.tsx`, reachable from the Jobs tab (no longer sponsor-only); its backend question (**§R**) shipped and is wired — see the "✅ Resolved (2026-07-21…)" block above. The share-a-job item (8.2) was descoped by product.
 
 - **8.3 — Sponsor-request follow-through** — the "N employees notified" message a sponsor-request returns is never persisted server-side, so (same shape as §N2's check-in-stage gap) it's mirrored client-side (`utils/sponsorRequestCache.ts`) and shown later on the Waitlisted-job detail in `MatchesView.tsx`, plus a "Nudge again" button that re-sends the request once a waitlisted job has gone 5+ days without being picked up. This is a client-only local mirror with the same limitation as §N2 — it only reflects what THIS device requested, not a durable record. No backend ticket filed for this one since the existing `request-sponsor` endpoint already supports being called again (re-notifying), which is all "nudge again" needs.
 

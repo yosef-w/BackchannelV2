@@ -54,6 +54,7 @@ import Animated, {
 import Svg, { Circle } from "react-native-svg";
 import {
   getPublicProfile,
+  getReferralDetail,
   submitReferral,
   type PublicProfileEducation,
   type PublicProfileExperience,
@@ -305,6 +306,11 @@ export function ReferralSigningScreen({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [profile, setProfile] = useState<PublicProfileResponse | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  // §Q — the referral doesn't exist until submit succeeds, so this can
+  // only be fetched AFTER submission (a background follow-up GET, not
+  // part of the submit response). Best-effort: the receipt already shows
+  // without it, and PacketCard hides the row while it's empty.
+  const [applicantEmail, setApplicantEmail] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(INTRO_SEEN_KEY)
@@ -330,6 +336,7 @@ export function ReferralSigningScreen({
     setSubmitting(false);
     setSubmitError(null);
     setProfile(null);
+    setApplicantEmail(null);
   }, [visible, introSeen]);
 
   // Full public profile for the candidate act + the packet.
@@ -380,6 +387,9 @@ export function ReferralSigningScreen({
 
   const packetFields: PacketField[] = [
     { label: "Name", value: name || "" },
+    // §Q — fetched after submit succeeds (see handleSubmit); empty until
+    // then, and PacketCard drops empty rows so nothing shows meanwhile.
+    { label: "Email", value: applicantEmail || "" },
     { label: "Role", value: currentRole },
     { label: "Location", value: location },
     { label: "Industry", value: industry },
@@ -413,7 +423,7 @@ export function ReferralSigningScreen({
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await submitReferral({
+      const result = await submitReferral({
         applicant_user_id: applicantUserId,
         job_id: jobId,
         confidence_checks: {
@@ -430,6 +440,14 @@ export function ReferralSigningScreen({
       });
       onSubmitted(applicantUserId, jobId);
       setAct("receipt");
+      // §Q — the submit response doesn't carry APPLICANT_EMAIL; fetch the
+      // referral we just created to populate the packet's Email row. Best-
+      // effort and non-blocking: the receipt is already showing.
+      if (result.referral_id) {
+        getReferralDetail(result.referral_id)
+          .then((detail) => setApplicantEmail(detail.APPLICANT_EMAIL || null))
+          .catch(() => {});
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("400") || msg.toLowerCase().includes("already")) {

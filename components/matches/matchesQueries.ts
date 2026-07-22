@@ -105,6 +105,13 @@ export interface Referral {
   applicantFirstName: string | null;
   applicantLastName: string | null;
   applicantPhotoUrl: string | null;
+  /**
+   * The applicant's login email — for the sponsor's referral packet (§Q,
+   * shipped 2026-07-21). Present only when the caller is this referral's
+   * sponsor; the backend never sends it on an applicant's own list, so
+   * this is always null when the current user IS the applicant.
+   */
+  applicantEmail?: string | null;
   // The role-aware /referrals endpoint returns the OTHER party — so for an
   // applicant viewing received referrals these hold the sponsor's identity.
   sponsorFirstName: string | null;
@@ -729,6 +736,7 @@ export const referralsQuery = (userType: string) => ({
             r.APPLICANT_LAST_NAME || r.applicant_last_name || null,
           applicantPhotoUrl:
             r.APPLICANT_PHOTO_URL || r.applicant_photo_url || null,
+          applicantEmail: r.APPLICANT_EMAIL || r.applicant_email || null,
           sponsorFirstName:
             r.SPONSOR_FIRST_NAME || r.sponsor_first_name || null,
           sponsorLastName:

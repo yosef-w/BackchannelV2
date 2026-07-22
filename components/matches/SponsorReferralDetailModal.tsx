@@ -131,6 +131,9 @@ export function SponsorReferralDetailModal({
 
             const packetFields: PacketField[] = [
               { label: "Name", value: name },
+              // §Q — sponsor-only; PacketCard drops empty rows, so this
+              // stays invisible until the backend value is present.
+              { label: "Email", value: r.applicantEmail || "" },
               { label: "Role", value: currentRole },
               { label: "Location", value: location },
               { label: "Industry", value: industry },

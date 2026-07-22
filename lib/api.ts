@@ -382,25 +382,44 @@ export async function fetchJobsPack(): Promise<JobApiResponse[]> {
  * then the parameter is silently ignored and the backend falls back to
  * `sponsor_profiles.COMPANY` — sending it is harmless.
  */
+/**
+ * Role-aware (§R, shipped 2026-07-21): sponsors get their own company's
+ * listings unchanged; any other authenticated caller (applicants) gets a
+ * cross-company browse where `title` matches title, organization, OR
+ * skills. `offset` is real server-side pagination — combine with `limit`
+ * for "load the next page" rather than refetching a larger window.
+ */
 export async function browseJobs(filters?: {
   title?: string;
   location?: string;
   remote?: boolean;
   limit?: number;
-}): Promise<{ jobs: BrowseJobResponse[]; total_count: number }> {
+  offset?: number;
+}): Promise<{
+  jobs: BrowseJobResponse[];
+  total_count: number;
+  limit?: number;
+  offset?: number;
+}> {
   const params = new URLSearchParams();
   if (filters?.title) params.append("title", filters.title);
   if (filters?.location) params.append("location", filters.location);
   if (filters?.remote !== undefined)
     params.append("remote", String(filters.remote));
   if (filters?.limit) params.append("limit", String(filters.limit));
+  if (filters?.offset) params.append("offset", String(filters.offset));
 
   const queryString = params.toString();
   const endpoint = queryString
     ? `/api/jobs/browse/?${queryString}`
     : "/api/jobs/browse/";
 
-  return api.get<{ jobs: BrowseJobResponse[]; total_count: number }>(endpoint);
+  return api.get<{
+    jobs: BrowseJobResponse[];
+    total_count: number;
+    limit?: number;
+    offset?: number;
+  }>(endpoint);
 }
 
 /**
@@ -486,6 +505,14 @@ export interface AtsOrganization {
   logo_url?: string | null;
 }
 
+/** Raw wire shape of one row from GET /api/ats/organizations/ — UPPERCASE,
+ * matching every other list endpoint's Postgres-adapter convention. */
+interface AtsOrganizationRaw {
+  ORGANIZATION: string;
+  JOB_COUNT: number;
+  ORGANIZATION_LOGO?: string | null;
+}
+
 /**
  * 🏢 Search ATS organizations (canonical company names)
  *
@@ -494,13 +521,16 @@ export interface AtsOrganization {
  * filter uses — and (b) the "did you mean…" suggestions when a sponsor's
  * job board comes back empty (likely a typo / naming mismatch).
  *
- * Backend contract (see docs/BACKEND_CHANGES_NEEDED.md §G):
+ * Backend contract (docs/BACKEND_CHANGES_NEEDED.md §G, shipped 2026-07-21):
  *   GET /api/ats/organizations/?q=<text>&limit=<n>
- *   → { organizations: [{ organization, job_count, logo_url }] }
- * Results should combine substring (ILIKE) matches for typeahead AND
- * trigram-similar matches so misspellings still surface for "did you mean".
+ *   → { organizations: [{ ORGANIZATION, JOB_COUNT, ORGANIZATION_LOGO }] }
+ * Substring (ILIKE) + trigram-fuzzy matches combined server-side, ranked
+ * prefix → similarity → job count, so misspellings ("snowflke") still
+ * surface for "did you mean". The wire shape is UPPERCASE (same adapter
+ * convention as every other list endpoint) — mapped to this module's
+ * lowercase `AtsOrganization` below so callers don't need to know that.
  *
- * Returns `null` when the endpoint isn't available yet (404 / network), so
+ * Returns `null` when the endpoint isn't available (network/5xx), so
  * callers can gracefully fall back to plain free-text entry. An empty array
  * means "endpoint works, no matches".
  */
@@ -513,15 +543,20 @@ export async function searchAtsOrganizations(
   const params = new URLSearchParams({ q, limit: String(limit) });
   try {
     const res = await api.get<
-      { organizations?: AtsOrganization[] } | AtsOrganization[]
+      { organizations?: AtsOrganizationRaw[] } | AtsOrganizationRaw[]
     >(`/api/ats/organizations/?${params.toString()}`);
     const arr = Array.isArray(res) ? res : res.organizations || [];
-    // Defensive: only keep rows with a usable organization string.
-    return arr.filter((o) => !!o && !!o.organization);
+    return arr
+      .filter((o): o is AtsOrganizationRaw => !!o && !!o.ORGANIZATION)
+      .map((o) => ({
+        organization: o.ORGANIZATION,
+        job_count: o.JOB_COUNT ?? 0,
+        logo_url: o.ORGANIZATION_LOGO ?? null,
+      }));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // 404 = endpoint not deployed yet; treat any failure as "unavailable" so
-    // signup/browse keep working as free text rather than throwing.
+    // Treat any failure (network, 5xx) as "unavailable" so signup/browse
+    // keep working as free text rather than throwing.
     console.warn("[api] searchAtsOrganizations unavailable:", msg);
     return null;
   }
@@ -2060,6 +2095,15 @@ export async function listReferrals(params?: {
     APPLICANT_FIRST_NAME: string | null;
     APPLICANT_LAST_NAME: string | null;
     APPLICANT_PHOTO_URL: string | null;
+    /**
+     * The applicant's login email, for the sponsor's referral packet (most
+     * ATS referral forms require it). §Q, shipped 2026-07-21 — present on
+     * SPONSOR rows only (the referral's own sponsor); never sent on the
+     * applicant's list. Submitting a referral is explicit consent to be
+     * put forward, so exposure is scoped to that referral's sponsor, not
+     * the public profile (which stays email-free).
+     */
+    APPLICANT_EMAIL?: string | null;
     JOB_TITLE: string | null;
     JOB_COMPANY: string | null;
   }>;
@@ -2093,6 +2137,8 @@ export async function getReferralDetail(referralId: string): Promise<{
   SPONSOR_LAST_NAME: string | null;
   APPLICANT_FIRST_NAME: string | null;
   APPLICANT_LAST_NAME: string | null;
+  /** §Q — present only when the caller is this referral's sponsor. */
+  APPLICANT_EMAIL?: string | null;
   JOB_TITLE: string | null;
   JOB_COMPANY: string | null;
 }> {

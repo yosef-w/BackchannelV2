@@ -91,12 +91,20 @@ export interface BrowseJobResponse {
    */
   ORGANIZATION_LOGO?: string | null;
   /**
-   * Whether a sponsor currently backs this job (§R) — lets browse offer
-   * the deck's real actions: like when sponsored, waitlist/request when
-   * not. Optional: the endpoint doesn't send it yet; absent = treated as
-   * not sponsored.
+   * Whether a sponsor currently backs this job (§R, shipped 2026-07-21) —
+   * lets browse offer the deck's real actions: like when sponsored,
+   * waitlist/request when not. Only present for applicant (cross-company)
+   * callers; sponsors browsing their own board never get this field.
    */
   IS_SPONSORED?: boolean;
+  /**
+   * The ATS/silver job id (§R). Applicant callers only. When a row is
+   * sponsored, `JOB_ID` is swapped to the LIKEABLE `job_postings` id (pass
+   * it straight to POST /api/jobs/like/) — so this field is what the
+   * detail screen must use to look up the underlying ATS listing, e.g.
+   * GET /api/jobs/silver/<SILVER_JOB_ID>/, regardless of sponsorship.
+   */
+  SILVER_JOB_ID?: string;
 }
 
 /**
