@@ -25,13 +25,16 @@ import {
     trackLoginSucceeded,
     trackSignUpFormSubmitted,
 } from "@/lib/analytics/mixpanel";
-import { authApi, LoginResponse } from "@/lib/auth-api";
+import { authApi, LoginResponse, SsoLoginResponse } from "@/lib/auth-api";
+import { isAppleSignInSupported, isGoogleSignInSupported, SsoIdentity } from "@/lib/sso";
 import { isValidEmail } from "@/lib/validation";
+import { SSO_ENABLED } from "@/constants/config";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { SSOButtons } from "@/components/auth/SSOButtons";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -75,6 +78,7 @@ export function AuthScreen({
   const updateSponsorData = useOnboardingStore(
     (state) => state.updateSponsorData,
   );
+  const setSsoSession = useOnboardingStore((state) => state.setSsoSession);
   // Pre-populate sign-up fields from the onboarding store so they survive
   // navigation back from the questionnaire step.
   const savedApplicantData = useOnboardingStore((state) => state.applicantData);
@@ -105,6 +109,12 @@ export function AuthScreen({
   );
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
+  // Gate on the feature flag AND whether either provider can actually
+  // render here, so a build with SSO_ENABLED true but no supported
+  // provider (e.g. Android with no Google client IDs configured yet)
+  // doesn't show a divider with nothing underneath it.
+  const showSso =
+    SSO_ENABLED && (isAppleSignInSupported() || isGoogleSignInSupported());
 
   const loginMutation = useMutation<LoginResponse, Error>({
     mutationFn: async () => {
@@ -156,6 +166,71 @@ export function AuthScreen({
       );
     },
   });
+
+  // Shared by both the sign-in and sign-up tabs, and by both entry points
+  // (app/sign-in.tsx, app/onboarding.tsx) — "Continue with Apple/Google"
+  // means the same thing regardless of which tab was showing when it was
+  // tapped, so routing branches on the backend response, not on `isLogin`.
+  const handleSsoSuccess = async (
+    response: SsoLoginResponse,
+    identity: SsoIdentity,
+    provider: "apple" | "google",
+  ) => {
+    // role is null for a brand-new/role-less account — omit it so
+    // setAuthTokens leaves the stored role untouched (already null there).
+    await setAuthTokens(
+      response.access_token,
+      response.refresh_token,
+      response.role ?? undefined,
+    );
+    seedSessionEmail(response.email);
+
+    if (response.needs_onboarding) {
+      // Authenticated but no role/profile yet. Stash the identity so the
+      // questionnaire calls authApi.completeSsoOnboarding() instead of
+      // createProfile() and skips the password field — then let this
+      // screen's normal "proceed" routing take over: onboarding.tsx's auth
+      // step goes to the questionnaire (role already known there);
+      // sign-in.tsx's onComplete goes to /choose-role (role NOT known
+      // there) — both are exactly "this user still needs a role."
+      setSsoSession({
+        provider,
+        email: identity.email ?? response.email,
+        givenName: identity.givenName,
+        familyName: identity.familyName,
+      });
+      const prefill = {
+        firstName: identity.givenName ?? "",
+        lastName: identity.familyName ?? "",
+        email: identity.email ?? response.email,
+      };
+      if (userType === "sponsor") {
+        updateSponsorData(prefill);
+      } else {
+        updateApplicantData(prefill);
+      }
+      onComplete();
+      return;
+    }
+
+    // Existing, fully-onboarded account — same "log them straight in" path
+    // as the password login mutation above.
+    const role: "applicant" | "sponsor" =
+      response.role === "Sponsor" ? "sponsor" : "applicant";
+    identifyUser({
+      userId: String(response.user_id),
+      userType: role,
+      email: response.email,
+    });
+    trackLoginSucceeded(role);
+    rcIdentifyUser(String(response.user_id));
+    showToast("Welcome back!", "success");
+    if (onLoginComplete) {
+      onLoginComplete();
+    } else {
+      onComplete();
+    }
+  };
 
   const forgotPasswordMutation = useMutation<{ message: string }, Error>({
     mutationFn: async () => {
@@ -406,6 +481,26 @@ export function AuthScreen({
                 </TouchableOpacity>
               </View>
 
+              {showSso && (
+                <View style={styles.ssoSection}>
+                  <View style={styles.dividerRow}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+                  <SSOButtons
+                    onSuccess={handleSsoSuccess}
+                    onError={() =>
+                      showToast(
+                        "Sign-in failed. Please try again.",
+                        "error",
+                      )
+                    }
+                    disabled={loginMutation.isPending}
+                  />
+                </View>
+              )}
+
               {/* Toggle Mode */}
               <TouchableOpacity
                 onPress={() => {
@@ -640,6 +735,26 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 18,
     fontWeight: "700",
+  },
+  ssoSection: {
+    marginTop: 20,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#EEE",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+    textTransform: "uppercase",
   },
   toggleBtn: {
     marginTop: 24,
