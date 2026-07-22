@@ -1,28 +1,12 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-21 (after the backend's §P/§Q/§O/§M/§G/§R backlog-sprint drop — see `Backchannel-backend/.../docs/FRONTEND_HANDOFF_2026-07-21.md`; all six wired frontend-side same day)
+**Last updated:** 2026-07-21 (§P/§Q/§O/§M/§G/§R all shipped by the backend and wired frontend-side same day — removed from this doc; see the backend's `KNOWN_ISSUES.md` "Recently fixed" for the record)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
 > **Open items:** **§S** — SSO (Apple/Google/LinkedIn) research ticket; the backend delivered a proposal (`docs/SSO_PROPOSAL.md`) but **no endpoint exists** — do not build/wire until product explicitly green-lights against it (App Store Guideline 4.8 means Apple becomes mandatory the moment any third-party login ships, so this is a product+scope call, not just an engineering one). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
-
-## ✅ Resolved (2026-07-06 second backend drop — was §N1, §N2, §D, §B, change_email)
-
-- **§N1 — report/block a user**: `POST /api/reports/` shipped exactly to our spec (`reported_user_id`/`reason`/`detail`/`conversation_id`, same reason enum), and reporting now implies a full bidirectional block (unmatch, close conversations, withdraw likes, hidden from each other's decks/matches going forward) — no separate "Block" action needed. **Zero frontend changes required** — `reportUser()` already called this exact contract.
-- **§N2 — referral check-in stage**: `GET /api/referrals/` (list + detail) now returns `CHECKIN_STAGE`/`CHECKIN_UPDATED_AT` via a join on the latest `referral_checkins` row. **Zero frontend changes required** — `MatchesView.tsx` already preferred `r.CHECKIN_STAGE` over the local mirror; this just lit up automatically.
-- **§D — notify applicant on profile like**: backend sends `notif_type='profile_like'` on the non-match path, mirroring `notify_sponsor_of_like`. **Frontend wiring shipped** (commit `8308418`): `MainApp.tsx` now invalidates the Matches cache on this push type, and `NotificationsView.tsx` got an icon + tap-routing to the Matches tab (previously would've silently no-opped).
-- **§B — act on unsponsor reason**: `posting_expired`/`role_filled` now skip the waitlist revert, and `posting_expired` additionally deactivates the shared `ats.silver_jobs` row so the dead listing stops surfacing for everyone. **Zero frontend changes required** — the reason was already being sent.
-- **`change_email`**: no longer a 501 stub — `POST /api/auth/change-email/` verifies the password, mints a single-use 24h token, and emails a confirmation link to the **new** address (change isn't live until that link is clicked). **Frontend UI shipped too** (commit `9c8f24b`): a "Change Email" step in `PrivacySecurityScreen`, next to Change Password — submits new email + password, then shows a "check your new inbox" confirmation screen instead of an instant success toast.
-
-## ✅ Resolved (2026-07-06 first backend drop — was §C, §E, §H, §I, §J, §K)
-
-§C (real account deletion — **frontend cutover shipped too**: password-confirmed delete step in `PrivacySecurityScreen` → `POST /api/account/delete/`), §E (`POST /api/profiles/like/` 500 — confirmed fixed by the matching rework, re-verified against the originally-failing account), §H (email case normalization + `EMAIL_HOST` prod hard-fail), §I (server-side company lock, 409), §J (self-like, `like_type` discriminator), §K (unsponsor cache invalidation). Details in the backend's `KNOWN_ISSUES.md` "Recently fixed".
-
-Match-state cutover (reading `/api/matches/*` instead of the derived like `STATUS`, per `FRONTEND_MATCH_CUTOVER.md`) is still a pending frontend release — not urgent, no backend action needed.
-
----
 
 ## §S — SSO sign-in (Apple, Google, LinkedIn) 🔵 Research item — scope what it takes before we commit
 
@@ -55,21 +39,6 @@ A short written proposal: chosen table design, the `POST /api/auth/sso/` contrac
 
 ---
 
-## ✅ Resolved (2026-07-21 backend drop — was §P §Q §O §M §G §R)
-
-Full details: backend's `docs/FRONTEND_HANDOFF_2026-07-21.md` and `docs/HANDOFF_2026-07-21.md`. All six items below landed in the same backend drop and were wired frontend-side the same day.
-
-- **§P — original posting URL threading**: `sponsor_job` now selects and passes `JOB_URL` from the silver job; `get_liked_jobs_for_user` now selects `j.URL`. **Zero frontend changes needed** — `extractDisplayDomain()` + `JobOpportunity.url` (`likedJob.URL || likedJob.url`) were already wired opportunistically, so "View original posting" now lights up on ATS-sponsored jobs and the liked-jobs list with no app change. **Pending an on-device smoke test** (sponsor an ATS listing → open your own job detail → link should show the ATS domain; like it as an applicant → same link on the liked-job detail).
-- **§O — create-from-URL logo reuse**: `create_job_from_url` now reuses `ats.silver_jobs.ORGANIZATION_LOGO` / an existing posting's logo before falling back to a domain-aware Logo.dev lookup; `LOGO_DEV_TOKEN` confirmed live on both prod and dev. **Zero frontend changes needed** — `getMyJobs()` already renders whatever `LOGO_URL` the backend persists. **Pending the same on-device smoke test** (paste a careers URL for a company with a known ATS logo, e.g. Snowflake → the new job's logo should match, not be blank).
-- **§M — empty name guard**: `PATCH /api/profile/update/` now ignores/rejects empty `first_name`/`last_name` server-side (reported via `ignored_fields`), plus length caps and http(s) validation on `photo_url`/`linked_in`/`portfolio_url`. Prod swept: 0 affected non-demo rows remaining. **Zero frontend changes needed** — the seeding bug that caused this was already fixed on our side.
-- **§Q — applicant email on the referral packet**: `GET /api/referrals/` and `/api/referrals/<id>/` now include `APPLICANT_EMAIL`, sponsor-only (stripped for the applicant; never on the public profile). **Frontend wired**: `lib/api.ts` (`listReferrals`/`getReferralDetail` types) and `matches/matchesQueries.ts` (`Referral.applicantEmail`) now carry the field; an Email row shows on the sponsor's permanent packet (`SponsorReferralDetailModal`) and on the submission receipt (`ReferralSigningScreen`, via a background follow-up `getReferralDetail` call once the referral exists — the submit response itself doesn't carry it).
-- **§G — ATS organization search**: `GET /api/ats/organizations/?q=&limit=` is live (substring + pg_trgm fuzzy match, ranked prefix → similarity → job count, 5-min cache). **Frontend fixed**: `lib/api.ts → searchAtsOrganizations()` was reading the wrong case — it expected lowercase `organization`/`job_count`/`logo_url` against the backend's UPPERCASE `ORGANIZATION`/`JOB_COUNT`/`ORGANIZATION_LOGO` payload, so every row was silently dropped and the feature looked dead even though the endpoint worked. Now maps correctly. Lights up sponsor-signup company autocomplete (`CompanyAutocomplete.tsx`) and `JobsView.tsx`'s "did you mean…" on an empty board.
-- **§R — applicant job browse**: `GET /api/jobs/browse/` is now role-aware — sponsors unchanged (own-company filter), applicants get cross-company search (`title` matches title, organization, or skills) with `IS_SPONSORED`, `SILVER_JOB_ID`, and real `limit`+`offset` pagination per row. **Frontend wired** (`ApplicantJobsBrowseView.tsx`, `lib/api.ts → browseJobs`, `types/jobs.ts`): the sample-listing fallback now triggers only on a hard failure (network/non-2xx) — a genuinely empty search shows the real "No roles found" state instead of demo data; "View more" sends real `offset` and appends results instead of refetching a growing `limit`; `SILVER_JOB_ID` added to the type (unused today — the browse row already carries full description/skills/salary inline, so no separate detail fetch is needed yet, but it's there for when one is).
-
-**Known non-blocking product decision from §R (not a bug):** when multiple sponsors reference the same ATS listing, `IS_SPONSORED` and the likeable `JOB_ID` come from the **latest active posting** — that sponsor receives the like. Revisit if a different attribution rule (e.g. best-match sponsor) is wanted later.
-
----
-
 ## §L — Unused profile fields — collected/stored but never read 🟢 Low priority (cleanup + PII minimization)
 
 **Context (updated 2026-07-08 against the current codebase):** The onboarding/profile rework audited every field the applicant profile collects against the two things that actually consume profile data — the matching algorithm (`services/scoring.py`: skills, role, experience, location) and the sponsor-facing card (name, photo, title, bio, city/state, experience, education, certifications, languages, achievements, skills, insights, industry). Several collected fields feed neither.
@@ -99,7 +68,7 @@ Full details: backend's `docs/FRONTEND_HANDOFF_2026-07-21.md` and `docs/HANDOFF_
 
 # 🆕 New Features — Backend Support Needed
 
-> This section tracks backend work for entirely new product features proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). **§N1** (report/block, Phase 4) and **§N2** (referral check-in stage, Phase 5) both shipped — see the "✅ Resolved" block near the top. Remaining entries below are the phases that needed no backend work at all.
+> This section tracks backend work for entirely new product features proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). **§N1** (report/block, Phase 4) and **§N2** (referral check-in stage, Phase 5) both shipped — see the backend's `KNOWN_ISSUES.md` "Recently fixed" for details. Remaining entries below are the phases that needed no backend work at all.
 
 ## UX Plan Phase 6 — Retention: no backend work needed
 
@@ -125,7 +94,7 @@ All three Phase 7 items (conversation starters, in-thread referral prompt, spons
 
 ## UX Plan Phase 8 — Agency & growth
 
-Phase 8's applicant job browse (**8.1**) is merged to main — `components/ApplicantJobsBrowseView.tsx`, reachable from the Jobs tab (no longer sponsor-only); its backend question (**§R**) shipped and is wired — see the "✅ Resolved (2026-07-21…)" block above. The share-a-job item (8.2) was descoped by product.
+Phase 8's applicant job browse (**8.1**) is merged to main — `components/ApplicantJobsBrowseView.tsx`, reachable from the Jobs tab (no longer sponsor-only); its backend question (**§R**) shipped 2026-07-21 and is wired frontend-side. The share-a-job item (8.2) was descoped by product.
 
 - **8.3 — Sponsor-request follow-through** — the "N employees notified" message a sponsor-request returns is never persisted server-side, so (same shape as §N2's check-in-stage gap) it's mirrored client-side (`utils/sponsorRequestCache.ts`) and shown later on the Waitlisted-job detail in `MatchesView.tsx`, plus a "Nudge again" button that re-sends the request once a waitlisted job has gone 5+ days without being picked up. This is a client-only local mirror with the same limitation as §N2 — it only reflects what THIS device requested, not a durable record. No backend ticket filed for this one since the existing `request-sponsor` endpoint already supports being called again (re-notifying), which is all "nudge again" needs.
 
