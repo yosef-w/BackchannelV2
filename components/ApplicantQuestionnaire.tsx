@@ -257,6 +257,11 @@ export function ApplicantQuestionnaire({
   const [locationManual, setLocationManual] = useState(false);
 
   const applicantData = useOnboardingStore((state) => state.applicantData);
+  // Set by AuthScreen when this account was created via "Continue with
+  // Apple/Google" and is still role-less — routes the résumé step's
+  // account-creation call to completeSsoOnboarding() instead of
+  // createProfile(), since this user already has tokens and no password.
+  const ssoSession = useOnboardingStore((state) => state.ssoSession);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
@@ -276,12 +281,18 @@ export function ApplicantQuestionnaire({
     clearOnboardingData();
     trackOnboardingCompleted("applicant");
     setIsSubmitting(false);
+    // Captured before onComplete()/clearOnboardingData() run, since
+    // ssoSession is about to be cleared from the store.
+    const wasSso = !!ssoSession;
     onComplete();
-    // Backend sends a verification email automatically on register (PR #38).
-    // Verification isn't enforced — we just surface it, after the transition.
+    // Backend sends a verification email automatically on register (PR #38)
+    // — not applicable to SSO signups: there's no register call, and the
+    // provider already verified the email.
     setTimeout(() => {
       showToast(
-        "Welcome! We sent a verification email — check your inbox and spam folder.",
+        wasSso
+          ? "Welcome! Your profile is ready."
+          : "Welcome! We sent a verification email — check your inbox and spam folder.",
         "success",
       );
     }, 500);
@@ -499,6 +510,64 @@ export function ApplicantQuestionnaire({
     },
   });
 
+  // SSO counterpart to createProfileMutation above — fires at the same point
+  // (the résumé step) for a user who already authenticated via "Continue
+  // with Apple/Google" and just needs a role + profile row attached. Sent
+  // empty/placeholder like createProfileMutation's payload: the résumé
+  // classify + handleFinalize's PATCH (via updateApplicantProfile) fill in
+  // the real data afterward, identically for both signup paths.
+  const completeSsoOnboardingMutation = useMutation({
+    mutationFn: async () => {
+      return authApi.completeSsoOnboarding({
+        role: "applicant",
+        skills: [],
+        insights: [],
+        work_preferences: [],
+      });
+    },
+    onSuccess: async () => {
+      // Guarded by handleResumeStep only ever calling this mutation when
+      // ssoSession is set — but narrow the type here rather than assert.
+      if (!ssoSession) return;
+
+      identifyUser({
+        userId: ssoSession.userId,
+        userType: "applicant",
+        email: applicantData.email ?? null,
+        firstName: applicantData.firstName ?? null,
+        lastName: applicantData.lastName ?? null,
+        currentRole: answers["currentRole"] ?? null,
+      });
+      trackSignUpSucceeded("applicant");
+      AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
+      rcIdentifyUser(ssoSession.userId);
+
+      await loadFromProfile({
+        firstName: applicantData.firstName,
+        lastName: applicantData.lastName,
+        email: applicantData.email,
+        profileData: {
+          targetIndustry: undefined,
+          currentRole: undefined,
+          seekingPosition: undefined,
+          skills: [],
+          insights: [],
+          workPreferences: [],
+          resumeUrl: undefined,
+        },
+      });
+    },
+    onError: (error: Error) => {
+      console.warn(
+        "[ApplicantQuestionnaire] SSO onboarding completion failed:",
+        error,
+      );
+      setIsSubmitting(false);
+      trackSignUpFailed("applicant", error.message || "unknown");
+      showToast(`Couldn't finish setting up your account: ${error.message}`, "error");
+    },
+  });
+
   const filteredSkills = useMemo(() => {
     const selectedIndustry = answers["industry"] || "Other";
     const industrySkills =
@@ -517,10 +586,21 @@ export function ApplicantQuestionnaire({
     setIsSubmitting(true);
     if (!registeredRef.current) {
       try {
-        await createProfileMutation.mutateAsync();
+        if (ssoSession) {
+          // Already authenticated — attach the role instead of registering.
+          await completeSsoOnboardingMutation.mutateAsync();
+        } else {
+          await createProfileMutation.mutateAsync();
+        }
         registeredRef.current = true;
       } catch (err) {
         setIsSubmitting(false);
+        // "Already registered" only means something for the password path
+        // (createProfile creating a brand-new account); an SSO user hitting
+        // an error here is already authenticated as themselves, so there's
+        // no "sign in instead" recovery to offer — onError already showed
+        // a toast for that case.
+        if (ssoSession) return;
         // If the failure is an already-registered email, send them straight
         // to Sign In (pre-filled with what they typed) instead of dropping
         // them back on the sign-up form they were just rejected from.

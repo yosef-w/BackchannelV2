@@ -79,7 +79,7 @@ export type CompleteSsoOnboardingRequest =
       current_role?: string;
       positions?: string[];
       skills?: string[];
-      insights?: unknown[];
+      insights?: { question: string; answer: string }[];
       work_preferences?: string[];
     }
   | {
@@ -87,10 +87,14 @@ export type CompleteSsoOnboardingRequest =
       company?: string;
       job_title?: string;
       duration?: string;
-      open_to_referrals?: boolean;
-      referral_experience?: boolean;
+      // Free-text select answers (e.g. "Yes, absolutely", "A few times"),
+      // NOT booleans — mirrors what SponsorQuestionnaire's answers[3]/[4]
+      // already are and what createProfile() already sends as
+      // openToReferrals/pastReferrals.
+      open_to_referrals?: string;
+      referral_experience?: string;
       financial_reward?: string;
-      insights?: unknown[];
+      insights?: { question: string; answer: string }[];
       work_email?: string;
     };
 
@@ -139,7 +143,7 @@ export interface UpdateProfileRequest {
     disability?: string;
   };
   skills?: string[];
-  insights?: Array<{ question: string; answer: string }>;
+  insights?: { question: string; answer: string }[];
   resumeUrl?: string | null;
 }
 

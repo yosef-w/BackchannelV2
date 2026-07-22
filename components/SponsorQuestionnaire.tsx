@@ -214,6 +214,11 @@ export function SponsorQuestionnaire({
   const sponsorData = useOnboardingStore((state) => state.sponsorData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
+  // Set by AuthScreen when this account was created via "Continue with
+  // Apple/Google" and is still role-less — routes final submission to
+  // completeSsoOnboarding() instead of createProfile(), since this user
+  // already has tokens and no password.
+  const ssoSession = useOnboardingStore((state) => state.ssoSession);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
@@ -227,6 +232,12 @@ export function SponsorQuestionnaire({
   // an abandoned signup's draft no longer leaks into the next signup on
   // this device.
   const hydratedRef = useRef(false);
+  // finishOnboarding() can run much later than afterAccountReady() — after
+  // the cold-start role-picker interaction — by which point
+  // clearOnboardingData() has already wiped ssoSession from the store and
+  // this component has re-rendered with it null. A ref survives that gap;
+  // a plain closure over the hook value would not.
+  const wasSsoRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -265,6 +276,81 @@ export function SponsorQuestionnaire({
     });
   }, [answers, selectedInsights, bioText, currentQuestion, sponsorData.email]);
 
+  // Shared by createProfileMutation and completeSsoOnboardingMutation below
+  // — everything downstream of "the account now has a role + profile row"
+  // is identical regardless of which endpoint created it.
+  const afterAccountReady = async (userId: string) => {
+    wasSsoRef.current = !!ssoSession;
+
+    // Identify the new sponsor for the rest of their session and stamp
+    // basic profile attributes onto Mixpanel's People record. The work
+    // email is collected here but `work_email_verified` is currently a
+    // cosmetic flag (see BACKEND_CHANGES_NEEDED.md §1).
+    identifyUser({
+      userId,
+      userType: "sponsor",
+      email: sponsorData.email ?? null,
+      firstName: sponsorData.firstName ?? null,
+      lastName: sponsorData.lastName ?? null,
+      company: answers[0] ?? null,
+      jobTitle: answers[1] ?? null,
+      workEmailVerified: false,
+    });
+    trackSignUpSucceeded("sponsor");
+    trackOnboardingCompleted("sponsor");
+    // Show the first-run Home intro once on their first Home view.
+    AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
+    // Link this backend user ID to their RevenueCat customer record.
+    rcIdentifyUser(userId);
+
+    // Load profile data into local store
+    await loadFromProfile({
+      firstName: sponsorData.firstName,
+      lastName: sponsorData.lastName,
+      email: sponsorData.email,
+      profileData: {
+        company: answers[0],
+        jobTitle: answers[1],
+        yearsAtCompany: answers[2],
+        openToReferrals: answers[3],
+        pastReferrals: answers[4],
+        referralBonus: answers[5],
+        insights: selectedInsights,
+        workEmail: answers[7],
+      },
+    });
+
+    // Clear onboarding data + the saved draft (stop autosaving first).
+    clearOnboardingData();
+    hydratedRef.current = false;
+    clearOnboardingDraft(SPONSOR_DRAFT_KEY);
+
+    // Sponsor cold-start fix — now that registration + auth are done, the
+    // company-scoped browse endpoint actually works. If there are open
+    // roles, offer to sponsor one right now instead of dropping the
+    // sponsor onto an empty "Build your deck" quest. finishOnboarding()
+    // (the rest of the pre-existing success flow) runs once this either
+    // completes or is skipped, from the role-picker overlay's handlers.
+    try {
+      const response = await browseJobs({ limit: 10 });
+      const jobs = response.jobs || [];
+      if (jobs.length > 0) {
+        setRoleOptions(jobs);
+        setRolePickerStep("pick");
+        setShowRolePicker(true);
+        setIsSubmitting(false);
+        return;
+      }
+    } catch (err) {
+      console.warn(
+        "[SponsorQuestionnaire] Failed to fetch roles for cold-start picker:",
+        err,
+      );
+    }
+
+    finishOnboarding();
+  };
+
   const createProfileMutation = useMutation({
     mutationFn: async () => {
       console.log("[SponsorQuestionnaire] Starting registration...");
@@ -292,73 +378,7 @@ export function SponsorQuestionnaire({
       // Save auth tokens
       await setAuthTokens(data.access_token, data.refresh_token, "Sponsor");
 
-      // Identify the new sponsor for the rest of their session and stamp
-      // basic profile attributes onto Mixpanel's People record. The work
-      // email is collected here but `work_email_verified` is currently a
-      // cosmetic flag (see BACKEND_CHANGES_NEEDED.md §1).
-      identifyUser({
-        userId: String(data.user_id),
-        userType: "sponsor",
-        email: sponsorData.email ?? null,
-        firstName: sponsorData.firstName ?? null,
-        lastName: sponsorData.lastName ?? null,
-        company: answers[0] ?? null,
-        jobTitle: answers[1] ?? null,
-        workEmailVerified: false,
-      });
-      trackSignUpSucceeded("sponsor");
-      trackOnboardingCompleted("sponsor");
-      // Show the first-run Home intro once on their first Home view.
-      AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
-      // Link this backend user ID to their RevenueCat customer record.
-      rcIdentifyUser(String(data.user_id));
-
-      // Load profile data into local store
-      await loadFromProfile({
-        firstName: sponsorData.firstName,
-        lastName: sponsorData.lastName,
-        email: sponsorData.email,
-        profileData: {
-          company: answers[0],
-          jobTitle: answers[1],
-          yearsAtCompany: answers[2],
-          openToReferrals: answers[3],
-          pastReferrals: answers[4],
-          referralBonus: answers[5],
-          insights: selectedInsights,
-          workEmail: answers[7],
-        },
-      });
-
-      // Clear onboarding data + the saved draft (stop autosaving first).
-      clearOnboardingData();
-      hydratedRef.current = false;
-      clearOnboardingDraft(SPONSOR_DRAFT_KEY);
-
-      // Sponsor cold-start fix — now that registration + auth are done, the
-      // company-scoped browse endpoint actually works. If there are open
-      // roles, offer to sponsor one right now instead of dropping the
-      // sponsor onto an empty "Build your deck" quest. finishOnboarding()
-      // (the rest of the pre-existing success flow) runs once this either
-      // completes or is skipped, from the role-picker overlay's handlers.
-      try {
-        const response = await browseJobs({ limit: 10 });
-        const jobs = response.jobs || [];
-        if (jobs.length > 0) {
-          setRoleOptions(jobs);
-          setRolePickerStep("pick");
-          setShowRolePicker(true);
-          setIsSubmitting(false);
-          return;
-        }
-      } catch (err) {
-        console.warn(
-          "[SponsorQuestionnaire] Failed to fetch roles for cold-start picker:",
-          err,
-        );
-      }
-
-      finishOnboarding();
+      await afterAccountReady(String(data.user_id));
     },
     onError: (error: Error) => {
       console.warn("[SponsorQuestionnaire] Registration failed:", error);
@@ -388,10 +408,48 @@ export function SponsorQuestionnaire({
     },
   });
 
+  // SSO counterpart to createProfileMutation — fires for a user who already
+  // authenticated via "Continue with Apple/Google" and just needs a role +
+  // profile row attached. Sends the full questionnaire payload in one shot,
+  // same as createProfile() does here (unlike the applicant flow, sponsor
+  // registration was always a single end-of-flow call, not resume-first).
+  const completeSsoOnboardingMutation = useMutation({
+    mutationFn: async () => {
+      return authApi.completeSsoOnboarding({
+        role: "sponsor",
+        company: answers[0],
+        job_title: answers[1],
+        duration: answers[2],
+        open_to_referrals: answers[3],
+        referral_experience: answers[4],
+        financial_reward: answers[5],
+        insights: selectedInsights,
+        work_email: answers[7],
+      });
+    },
+    onSuccess: async () => {
+      if (!ssoSession) return;
+      await afterAccountReady(ssoSession.userId);
+    },
+    onError: (error: Error) => {
+      console.warn(
+        "[SponsorQuestionnaire] SSO onboarding completion failed:",
+        error,
+      );
+      setIsSubmitting(false);
+      trackSignUpFailed("sponsor", error.message || "unknown");
+      showToast(`Couldn't finish setting up your account: ${error.message}`, "error");
+    },
+  });
+
   const handleFinalSubmit = () => {
     Keyboard.dismiss();
     setIsSubmitting(true);
-    createProfileMutation.mutate();
+    if (ssoSession) {
+      completeSsoOnboardingMutation.mutate();
+    } else {
+      createProfileMutation.mutate();
+    }
   };
 
   // The success animation + best-effort photo/bio save + work-email
@@ -472,12 +530,16 @@ export function SponsorQuestionnaire({
     setTimeout(() => {
       setIsSubmitting(false);
       onComplete();
-      // Delay toast until after the navigation transition finishes. Two
-      // emails are now in flight: the login-email verification (PR #38)
-      // and the work-email verification we just kicked off (PR #42).
+      // Delay toast until after the navigation transition finishes. For a
+      // password signup, two emails are in flight: the login-email
+      // verification (PR #38) and the work-email one we just kicked off
+      // (PR #42). An SSO signup only ever triggers the work-email one — the
+      // provider already verified the login email.
       setTimeout(() => {
         showToast(
-          "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
+          wasSsoRef.current
+            ? "Welcome! We sent a work email verification link — check your inbox and spam folder."
+            : "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
           "success",
         );
       }, 500);

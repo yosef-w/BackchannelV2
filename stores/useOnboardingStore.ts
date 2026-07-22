@@ -51,6 +51,11 @@ export interface SponsorProfileData {
  */
 export interface SsoSession {
   provider: "apple" | "google";
+  /** From POST /api/auth/sso/'s response — completeSsoOnboarding's response
+   * doesn't echo it back, so this is the only place the questionnaires can
+   * get it for the identifyUser()/RevenueCat calls they make once a role is
+   * attached. */
+  userId: string;
   email: string;
   givenName: string | null;
   familyName: string | null;

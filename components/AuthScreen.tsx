@@ -195,6 +195,7 @@ export function AuthScreen({
       // there) — both are exactly "this user still needs a role."
       setSsoSession({
         provider,
+        userId: String(response.user_id),
         email: identity.email ?? response.email,
         givenName: identity.givenName,
         familyName: identity.familyName,
