@@ -1,16 +1,16 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-21 (§P/§Q/§O/§M/§G/§R all shipped by the backend and wired frontend-side same day — removed from this doc; see the backend's `KNOWN_ISSUES.md` "Recently fixed" for the record)
+**Last updated:** 2026-07-28 (§S — frontend build is done and gated off; see below for exactly what's now blocking on the backend)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§S** — SSO (Apple + Google only — product green-lit, LinkedIn dropped); the frontend is building against the proposal's `POST /api/auth/sso/` contract now, but that endpoint **does not exist yet**, and one more endpoint is needed beyond what the proposal covers (§S below) before the new-user path can go live — see "Still needed" in §S. **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
+> **Open items:** **§S** — SSO (Apple + Google only — product green-lit, LinkedIn dropped); **the frontend build is fully done and merged**, gated behind `SSO_ENABLED = false`. Two endpoints are now the entire remaining blocker: `POST /api/auth/sso/` (per the original proposal) and `POST /api/auth/complete-onboarding/` (a gap the proposal didn't cover, requested below) — **neither exists yet**. See "Still needed" and "Frontend status" in §S for exact specs and what's already built. **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
-## §S — SSO sign-in (Apple + Google) 🟡 Medium priority — scoped and green-lit, one endpoint gap before launch
+## §S — SSO sign-in (Apple + Google) 🟡 Medium priority — frontend done and gated off; **both endpoints below are now the only blocker**
 
-**Status (2026-07-21): scoped, frontend build underway on `feature/sso-apple-google`.** Product decision on the proposal's two open questions:
+**Status (2026-07-28): the entire frontend is built and merged into `feature/sso-apple-google`, sitting behind `SSO_ENABLED = false`.** Nothing here can go live, and nothing can be tested end-to-end, until `POST /api/auth/sso/` and `POST /api/auth/complete-onboarding/` (below) both exist. Everything else — UI, routing, native build config — is done. Product decision on the proposal's two open questions:
 
 1. **Providers: Apple + Google only.** LinkedIn is dropped — not worth the third integration (flakiest of the three APIs, forces nothing extra on iOS since Apple's mandatory the moment Google ships anyway).
 2. **Sponsor work-email flow: unchanged.** An SSO sponsor signs up with their personal Apple/Google account (verified by the provider), then runs the **existing** sponsor questionnaire exactly as a password sponsor does today, including the existing work-email verification step at the end. No new flow needed here — confirmed the frontend's `sendWorkEmailVerification` call already fires unconditionally regardless of how the account was authenticated.
@@ -25,6 +25,8 @@ The proposal's §3/§6 describe SSO creating a **role-less** user and routing th
 
 Two applicant/sponsor fields worth double-checking land correctly through this new path: `industry`/`current_role`/`positions`/`skills`/`insights`/`work_preferences` (applicant) and `company`/`job_title`/`duration`/`open_to_referrals`/`referral_experience`/`financial_reward`/`insights`/`work_email` (sponsor) — i.e. the exact same field sets `authApi.createProfile()` sends today, since the frontend questionnaires are unchanged and will send the identical payload shape to whichever endpoint they're pointed at.
 
+**Field-type trap worth flagging explicitly, since it's easy to guess wrong from the names alone:** `open_to_referrals` and `referral_experience` read like yes/no questions but are **free-text strings**, not booleans — e.g. `"Yes, absolutely"` / `"Case by case basis"` / `"Not at this time"` for the former, `"Frequently"` / `"A few times"` / `"Not yet"` for the latter (they're the sponsor questionnaire's raw select-option labels, unchanged from what `register-sponsor` already accepts today). The frontend's own TS type for this payload was actually wrong as `boolean` until this was caught while wiring the real questionnaire data through — worth a copy-paste check against whatever `register-sponsor` already does with these two fields, since if that path already stores them as free text, `complete-onboarding` just needs to do the same.
+
 ### Acceptance tests
 
 - `POST /api/auth/sso/` with a valid Apple/Google identity token for a brand-new identity → creates a role-less user, returns `is_new_user: true`, `needs_onboarding: true`, valid tokens.
@@ -34,7 +36,17 @@ Two applicant/sponsor fields worth double-checking land correctly through this n
 
 ### Frontend status
 
-In progress on `feature/sso-apple-google`: native Apple/Google SDKs, the `lib/auth-api.ts` client methods (`ssoLogin`, `completeSsoOnboarding` — the latter calls the endpoint requested above), the button UI, and the login/signup routing are being built now, all behind a `SSO_ENABLED` feature flag (default `false`, same pattern as `PREMIUM_ENABLED`) so nothing ships live until both this endpoint exists and real Apple/Google console credentials are configured. Nothing here is end-to-end testable until `POST /api/auth/sso/` itself is live — that's the harder blocker; the `complete-onboarding` gap just needs to be known before that day, not necessarily built first.
+**Done, on `feature/sso-apple-google`, all behind `SSO_ENABLED = false`** (same pattern as `PREMIUM_ENABLED` — flipping it is the only step needed to go live once the rest below is ready):
+
+- Native Apple/Google SDKs installed, guarded so a binary built before they're linked can't crash on import (same pattern used for `expo-clipboard` previously).
+- `lib/auth-api.ts` client methods (`ssoLogin`, `completeSsoOnboarding` — the latter calls the endpoint requested above).
+- Official Apple/Google button UI on both the sign-in and sign-up screens (`components/auth/SSOButtons.tsx`).
+- Full login/signup routing, branching on the response's `needs_onboarding` flag: a role-less new user is routed into the existing role-choice + questionnaire flow (no password field shown), a fully-onboarded user is logged straight in. Both questionnaires call `completeSsoOnboarding()` instead of `createProfile()` when the session came from SSO.
+- **New since last update:** the native build itself. `@react-native-google-signin/google-signin`'s dependencies (`GoogleUtilities`/`RecaptchaInterop`/`AppCheckCore`) don't compile as static libraries by default — this project's default linkage — so `pod install` hard-fails the moment the package is present without a modular-headers fix. Solved with a small Expo config plugin (`plugins/withGoogleSigninModularHeaders.js`) that patches the generated Podfile on every `prebuild`, so this survives EAS builds too, not just a local one-off. Verified with a real local iOS build (prebuild → pod install → simulator run).
+
+**Not frontend or backend — in progress separately, in parallel, not blocking either side's code:** enabling the "Sign in with Apple" capability on the app's App ID in the Apple Developer portal, and creating the 3 Google Cloud OAuth client IDs (iOS/Web/Android). Purely account-admin tasks, no bearing on when either endpoint below can be built or tested — the backend can build and the frontend can wire in real values independently of when these finish.
+
+Nothing here is end-to-end testable until `POST /api/auth/sso/` itself is live — that's the harder blocker; `complete-onboarding` just needs to be known about and ideally land around the same time, since the new-user path needs both.
 
 ---
 

@@ -70,7 +70,8 @@
           "project": "react-native"
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "./plugins/withGoogleSigninModularHeaders"
     ],
     "experiments": {
       "typedRoutes": true,
