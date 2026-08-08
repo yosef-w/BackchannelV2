@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
+import { Colors } from "@/constants/theme";
 
 interface ApplicantPublicProfileViewProps {
   userData: PublicProfileUserData;
@@ -172,7 +173,7 @@ export function ApplicantPublicProfileView({
 
           {locationStr ? (
             <View style={styles.infoRow}>
-              <MapPin color="#BBB" size={14} strokeWidth={2} />
+              <MapPin color={Colors.faint} size={14} strokeWidth={2} />
               <Text style={styles.locationText}>{locationStr}</Text>
             </View>
           ) : null}
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
   },
   name: {
     fontSize: 28,
@@ -468,12 +469,12 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 14,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "500",
   },
   bio: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
@@ -493,7 +494,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   whiteBtnText: {
     color: "#000",
@@ -502,7 +503,7 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 24,
     padding: 24,
     marginBottom: 32,
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#BBB",
+    color: Colors.faint,
     marginTop: 4,
     letterSpacing: 1,
   },
@@ -533,7 +534,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
   section: {
@@ -542,7 +543,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#BBB",
+    color: Colors.faint,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -558,7 +559,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#FFF",
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   tagText: {
     fontSize: 14,
@@ -576,7 +577,7 @@ const styles = StyleSheet.create({
   preferenceText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
   },
   roleTag: {
     flexDirection: "row",
@@ -605,7 +606,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   resumeCardRow: {
     flexDirection: "row",
@@ -623,7 +624,7 @@ const styles = StyleSheet.create({
   resumeCardDate: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
   },
   resumeCardSubtitle: {
     fontSize: 14,
@@ -633,7 +634,7 @@ const styles = StyleSheet.create({
   },
   resumeCardBody: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginTop: 4,
   },
@@ -648,7 +649,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 4,
   },
   certName: {
@@ -668,7 +669,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     alignItems: "center",
     marginBottom: 4,
   },
@@ -688,7 +689,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   achievementsText: {
     fontSize: 14,
@@ -721,12 +722,12 @@ const styles = StyleSheet.create({
   connectedCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 18,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   connectedIconCircle: {
     width: 40,
@@ -744,7 +745,7 @@ const styles = StyleSheet.create({
   connectedCompany: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: "#666",
+    color: Colors.body,
     marginTop: 2,
   },
 });

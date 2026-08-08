@@ -115,11 +115,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   // Count pill on a header icon — says HOW MUCH is waiting, not just that
   // something is. Same black count-pill language as section headers on

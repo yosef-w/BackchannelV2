@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface MatchSectionProps {
   title: string;
@@ -67,7 +68,7 @@ export function MatchSection({
       <View style={styles.group}>
         {loading ? (
           <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color="#999" />
+            <ActivityIndicator size="small" color={Colors.muted} />
           </View>
         ) : (
           <>
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
   countText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
   subtitle: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     marginBottom: 10,
     lineHeight: 16,
   },
@@ -129,10 +130,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   group: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     overflow: "hidden",
   },
   loadingRow: {

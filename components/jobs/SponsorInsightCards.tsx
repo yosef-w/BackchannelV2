@@ -17,6 +17,7 @@ import {
     View,
 } from "react-native";
 import { CharCounter } from "../ui/CharCounter";
+import { Colors } from "@/constants/theme";
 
 // ─── Sponsor insight prompts ──────────────────────────────────────────────
 // The four open-ended questions a sponsor answers when sponsoring a job.
@@ -152,7 +153,7 @@ export function SponsorInsightCards({
               style={engaged ? styles.siIconCircleActive : styles.siIconCircle}
             >
               <Icon
-                color={engaged ? "#FFF" : "#999"}
+                color={engaged ? "#FFF" : Colors.muted}
                 size={16}
                 strokeWidth={2.2}
               />
@@ -172,7 +173,7 @@ export function SponsorInsightCards({
                 onPress={collapse}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <ChevronUp color="#999" size={20} strokeWidth={2.2} />
+                <ChevronUp color={Colors.muted} size={20} strokeWidth={2.2} />
               </TouchableOpacity>
             ) : filled ? (
               <Text style={styles.siEditText}>Edit</Text>
@@ -192,7 +193,7 @@ export function SponsorInsightCards({
               <TextInput
                 style={styles.siInput}
                 placeholder={field.placeholder}
-                placeholderTextColor="#AAA"
+                placeholderTextColor={Colors.faint}
                 value={value}
                 onChangeText={(t) => onChange(field.key, t)}
                 multiline
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
   siProgress: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#AAA",
+    color: Colors.faint,
     letterSpacing: 0.3,
     marginBottom: 2,
   },
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
     color: "#111",
     letterSpacing: -0.2,
   },
-  siSubtitle: { fontSize: 13, color: "#999", marginTop: 2, lineHeight: 18 },
+  siSubtitle: { fontSize: 13, color: Colors.muted, marginTop: 2, lineHeight: 18 },
   siPreview: {
     fontSize: 14,
     color: "#333",
@@ -353,12 +354,12 @@ const styles = StyleSheet.create({
     color: "#000",
     lineHeight: 22,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   siChipHint: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
     marginTop: 16,
     marginBottom: 2,
   },

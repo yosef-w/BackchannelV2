@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 export type StatusTone = "active" | "waiting" | "muted";
 
@@ -12,9 +13,9 @@ const TONE_STYLES: Record<
   // old referral badge used ("referralBadgeReferred").
   active: { bg: "#F4F4F5", border: "#E5E5E5", dot: "#000", text: "#000" },
   // Sitting in a queue, nothing to do but wait — "Pending", "Waitlisted".
-  waiting: { bg: "#F0F0F0", border: "#E5E5E5", dot: "#999", text: "#666" },
+  waiting: { bg: Colors.border, border: "#E5E5E5", dot: Colors.muted, text: Colors.body },
   // Terminal / de-emphasized — "Withdrawn", "Didn't move forward".
-  muted: { bg: "#F5F5F5", border: "#E0E0E0", dot: "#BBB", text: "#999" },
+  muted: { bg: Colors.surface, border: "#E0E0E0", dot: Colors.faint, text: Colors.muted },
 };
 
 interface StatusChipProps {

@@ -91,7 +91,7 @@ export function OpportunityRow({
             </View>
           )
         ) : (
-          (right ?? <ChevronRight size={18} color="#CCC" />)
+          (right ?? <ChevronRight size={18} color={Colors.faint} />)
         )}
       </View>
     </TouchableOpacity>
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   info: { flex: 1, gap: 2 },
   title: { fontSize: 15, fontWeight: "700", color: Colors.ink },

@@ -63,17 +63,17 @@ export function JobCard({
           }}
           activeOpacity={0.7}
         >
-          <MoreHorizontal color="#999" size={20} />
+          <MoreHorizontal color={Colors.muted} size={20} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.tagsRow}>
         <View style={styles.tag}>
-          <MapPin size={10} color="#666" />
+          <MapPin size={10} color={Colors.body} />
           <Text style={styles.tagText}>{job.location}</Text>
         </View>
         <View style={styles.tag}>
-          <DollarSign size={10} color="#666" />
+          <DollarSign size={10} color={Colors.body} />
           <Text style={styles.tagText}>{job.salary}</Text>
         </View>
       </View>
@@ -117,10 +117,10 @@ export function JobCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 14,
     padding: 16,
   },
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
@@ -173,13 +173,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: Colors.border,
   },
   applicantBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,

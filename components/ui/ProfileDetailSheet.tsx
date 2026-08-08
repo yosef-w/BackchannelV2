@@ -39,6 +39,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { DismissibleSheet, SheetScrollView } from "./DismissibleSheet";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   capPill: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
   // Light chips — chips are information, not the star; black is reserved
   // for display type and the CTA pill.
   darkChip: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
   insightQ: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#AAA",
+    color: Colors.faint,
     letterSpacing: 0.8,
     marginBottom: 6,
     textTransform: "uppercase",
@@ -482,7 +483,7 @@ const styles = StyleSheet.create({
   },
   fallbackText: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "500",
     lineHeight: 19,
   },

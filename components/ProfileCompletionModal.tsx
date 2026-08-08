@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { ProfileCompletenessResult } from "@/utils/profileCompletion";
+import { Colors } from "@/constants/theme";
 
 interface ProfileCompletionModalProps {
   visible: boolean;
@@ -49,7 +50,7 @@ export function ProfileCompletionModal({
           style={styles.modalContent}
         >
         <View style={styles.iconContainer}>
-          <AlertCircle color="#666" size={48} />
+          <AlertCircle color={Colors.body} size={48} />
         </View>
 
         <Text style={styles.title}>Complete Your Profile</Text>
@@ -136,13 +137,13 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   missingFieldsContainer: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#666",
+    backgroundColor: Colors.body,
     marginRight: 12,
   },
   missingText: {
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   },
   moreFields: {
     fontSize: 14,
-    color: "#999",
+    color: Colors.muted,
     fontStyle: "italic",
     marginTop: 4,
     marginLeft: 18,
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButtonText: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   testerButtonText: {
-    color: "#999",
+    color: Colors.muted,
     fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",

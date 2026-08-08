@@ -21,6 +21,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface StageTrackProps {
   /** Pipeline stages in order (terminal value excluded — see terminalLabel). */
@@ -226,7 +227,7 @@ const styles = StyleSheet.create({
   rail: {
     flex: 1,
     height: 2,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     marginTop: 8,
     marginHorizontal: -8,
     borderRadius: 1,
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   labelMuted: {
-    color: "#AAA",
+    color: Colors.faint,
   },
   terminal: {
     alignSelf: "center",
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
   terminalText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     textDecorationLine: "underline",
   },
   terminalTextSelected: {

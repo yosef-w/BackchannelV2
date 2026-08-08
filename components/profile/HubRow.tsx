@@ -1,6 +1,7 @@
 import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface HubRowProps {
   icon: React.ReactNode;
@@ -51,7 +52,7 @@ export function HubRow({
           <Text style={styles.badgeText}>{badgeCount}</Text>
         </View>
       )}
-      {!destructive && <ChevronRight size={18} color="#CCC" />}
+      {!destructive && <ChevronRight size={18} color={Colors.faint} />}
     </TouchableOpacity>
   );
 }
@@ -66,13 +67,13 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   iconTile: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
   },
   badge: {

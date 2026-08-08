@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   headerBtn: {
     width: 40,

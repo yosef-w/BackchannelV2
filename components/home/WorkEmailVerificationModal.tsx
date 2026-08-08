@@ -21,6 +21,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { Colors } from "@/constants/theme";
 
 interface WorkEmailVerificationModalProps {
   visible: boolean;
@@ -113,7 +114,7 @@ export function WorkEmailVerificationModal({
               value={editedWorkEmail}
               onChangeText={setEditedWorkEmail}
               placeholder="name@company.com"
-              placeholderTextColor="#BBB"
+              placeholderTextColor={Colors.faint}
               style={styles.emailVerifEditInput}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -221,7 +222,7 @@ export function WorkEmailVerificationModal({
         )}
 
         <View style={styles.emailVerifSpamHint}>
-          <Info color="#999" size={13} strokeWidth={2} />
+          <Info color={Colors.muted} size={13} strokeWidth={2} />
           <Text style={styles.emailVerifSpamHintText}>
             Don't see it? Check your spam or junk folder — it can take a
             minute to arrive.
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   },
   emailVerifSubtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
@@ -389,21 +390,21 @@ const styles = StyleSheet.create({
   emailVerifSpamHintText: {
     flex: 1,
     fontSize: 12.5,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     lineHeight: 17,
   },
   emailVerifInfoBox: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 20,
     marginBottom: 28,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   emailVerifInfoText: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     textAlign: "center",
   },
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emailVerifTesterBtnText: {
-    color: "#999",
+    color: Colors.muted,
     fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
   // the modal's neutral palette (no bright accent — the existing primary CTA
   // already owns the visual emphasis).
   emailVerifEditLink: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",
@@ -472,7 +473,7 @@ const styles = StyleSheet.create({
   emailVerifEditLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
     letterSpacing: 0.6,
     textTransform: "uppercase",
     marginBottom: 8,
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     color: "#000",
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E5E5",
@@ -504,7 +505,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   emailVerifEditCancelText: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 14,
     fontWeight: "600",
   },

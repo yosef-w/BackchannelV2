@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface GetSponsorModalProps {
   visible: boolean;
@@ -103,9 +104,9 @@ export function GetSponsorModal({
                   </Text>
                 </View>
                 {isRequestingSponsor ? (
-                  <ActivityIndicator size="small" color="#999" />
+                  <ActivityIndicator size="small" color={Colors.muted} />
                 ) : (
-                  <ChevronRight color="#CCC" size={20} />
+                  <ChevronRight color={Colors.faint} size={20} />
                 )}
               </TouchableOpacity>
             </View>
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -161,7 +162,7 @@ const styles = StyleSheet.create({
   applyModalTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
   applyModalSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F9FB",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   modalOptionIcon: {
     width: 48,
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 4,
   },
-  modalOptionDesc: { fontSize: 13, color: "#666", lineHeight: 18 },
+  modalOptionDesc: { fontSize: 13, color: Colors.body, lineHeight: 18 },
 
   successContainer: { alignItems: "center", paddingVertical: 32 },
   successCircleLarge: {
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
   },
   successMessage: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 32,

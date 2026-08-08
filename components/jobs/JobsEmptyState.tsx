@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface JobsEmptyStateProps {
   icon: React.ReactNode;
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
   },

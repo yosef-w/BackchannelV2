@@ -17,6 +17,7 @@ import { CompanyLogo } from "../ui/CompanyLogo";
 import { ExpandableText } from "../ui/ExpandableText";
 import { extractDisplayDomain } from "../jobs/jobTransforms";
 import { cardStyles } from "./cardStyles";
+import { Colors } from "@/constants/theme";
 
 /**
  * Turns a raw relevance score (either a 0-1 fraction or an already-scaled
@@ -156,7 +157,7 @@ export function JobCardContent({
           {"location" in currentData &&
             !!currentData.location && (
               <View style={cardStyles.heroPill}>
-                <MapPin color="#666" size={11} />
+                <MapPin color={Colors.body} size={11} />
                 <Text style={cardStyles.heroPillText}>
                   {currentData.location}
                 </Text>
@@ -164,7 +165,7 @@ export function JobCardContent({
             )}
           {"salary" in currentData && !!currentData.salary && (
             <View style={cardStyles.heroPill}>
-              <DollarSign color="#666" size={11} />
+              <DollarSign color={Colors.body} size={11} />
               <Text style={cardStyles.heroPillText}>
                 {currentData.salary}
               </Text>
@@ -172,7 +173,7 @@ export function JobCardContent({
           )}
           {"type" in currentData && !!currentData.type && (
             <View style={cardStyles.heroPill}>
-              <Briefcase color="#666" size={11} />
+              <Briefcase color={Colors.body} size={11} />
               <Text style={cardStyles.heroPillText}>
                 {currentData.type}
               </Text>
@@ -351,7 +352,7 @@ export function JobCardContent({
               onPress={() => Linking.openURL(currentData.url).catch(() => {})}
               activeOpacity={0.7}
             >
-              <ExternalLink size={14} color="#666" strokeWidth={2} />
+              <ExternalLink size={14} color={Colors.body} strokeWidth={2} />
               <Text style={cardStyles.originalPostingText}>
                 {extractDisplayDomain(currentData.url)}
               </Text>
@@ -531,7 +532,7 @@ export function JobCardContent({
                       >
                         {!!si.yearsAtCompany && (
                           <View style={cardStyles.heroPill}>
-                            <Calendar color="#666" size={11} />
+                            <Calendar color={Colors.body} size={11} />
                             <Text style={cardStyles.heroPillText}>
                               {si.yearsAtCompany} here
                             </Text>
@@ -540,7 +541,7 @@ export function JobCardContent({
                         {si.canRefer && (
                           <View style={cardStyles.heroPill}>
                             <Check
-                              color="#666"
+                              color={Colors.body}
                               size={11}
                               strokeWidth={3}
                             />

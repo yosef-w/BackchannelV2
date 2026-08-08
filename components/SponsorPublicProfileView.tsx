@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
+import { Colors } from "@/constants/theme";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
@@ -141,7 +142,7 @@ export function SponsorPublicProfileView({
 
           {locationStr ? (
             <View style={styles.infoRow}>
-              <MapPin color="#BBB" size={14} strokeWidth={2} />
+              <MapPin color={Colors.faint} size={14} strokeWidth={2} />
               <Text style={styles.locationText}>{locationStr}</Text>
             </View>
           ) : null}
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
   },
   avatarFallback: {
     alignItems: "center",
@@ -331,12 +332,12 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 14,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "500",
   },
   bio: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
   // ── Stats Grid ────────────────────────────────────────────────────────────
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 24,
     padding: 24,
     marginBottom: 32,
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#BBB",
+    color: Colors.faint,
     marginTop: 4,
     letterSpacing: 1,
     textAlign: "center",
@@ -395,7 +396,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
 
@@ -412,7 +413,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#BBB",
+    color: Colors.faint,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -422,12 +423,12 @@ const styles = StyleSheet.create({
   connectedCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 18,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   connectedIconCircle: {
     width: 40,
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
   connectedCompany: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
     marginTop: 2,
   },
   statusPill: {
@@ -480,7 +481,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   insightQuestionRow: {
     flexDirection: "row",
@@ -513,17 +514,17 @@ const styles = StyleSheet.create({
     paddingLeft: 36,
   },
   emptyCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginTop: 12,
   },
   emptyCardText: {
     fontSize: 14,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "600",
   },
 
@@ -540,13 +541,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1.5,
     borderColor: "#E5E5E5",
   },
   companyText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
   },
 });

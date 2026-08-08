@@ -1539,7 +1539,7 @@ export function HomeView({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
             >
-              <Info color="#999" size={16} strokeWidth={2.4} />
+              <Info color={Colors.muted} size={16} strokeWidth={2.4} />
             </TouchableOpacity>
           </Animated.View>
 
@@ -2280,7 +2280,7 @@ const styles = StyleSheet.create({
   progressTotal: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: -0.1,
   },
   progressDotsRow: {
@@ -2478,7 +2478,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -2571,7 +2571,7 @@ const styles = StyleSheet.create({
   sponsorEmptySubtitle: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 26,
@@ -2667,7 +2667,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -2684,7 +2684,7 @@ const styles = StyleSheet.create({
   sponsorWaitingJobCompany: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     marginTop: 3,
   },
 

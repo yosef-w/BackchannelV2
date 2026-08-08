@@ -992,7 +992,7 @@ export function MatchesView({
                 No update in over a week — check in now
               </Text>
             </View>
-            <ChevronRight size={18} color="#999" />
+            <ChevronRight size={18} color={Colors.muted} />
           </TouchableOpacity>
         )}
 
@@ -1458,9 +1458,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     borderRadius: 16,
     padding: 14,
     marginBottom: 30,
@@ -1471,7 +1471,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1482,7 +1482,7 @@ const styles = StyleSheet.create({
   },
   staleReferralSubtitle: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 2,
   },
   undoToast: {

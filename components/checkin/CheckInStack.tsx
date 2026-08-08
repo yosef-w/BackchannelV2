@@ -37,6 +37,7 @@ import {
   type SessionResults,
 } from "./checkInSession";
 import { StageTrack } from "./StageTrack";
+import { Colors } from "@/constants/theme";
 
 const NOTE_MAX = 500;
 
@@ -454,7 +455,7 @@ export function CheckInStack({
                 accessibilityRole="button"
                 accessibilityLabel="See all referrals"
               >
-                <List color="#999" size={18} strokeWidth={2.2} />
+                <List color={Colors.muted} size={18} strokeWidth={2.2} />
               </TouchableOpacity>
             </View>
           )}
@@ -508,7 +509,7 @@ export function CheckInStack({
                 <TextInput
                   style={styles.noteInput}
                   placeholder={notePlaceholder ?? "Add a note (optional)"}
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   multiline
                   value={note}
                   onChangeText={setNote}
@@ -593,7 +594,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   progressSegmentCurrent: {
-    backgroundColor: "#BBB",
+    backgroundColor: Colors.faint,
   },
 
   cardScroll: {
@@ -608,7 +609,7 @@ const styles = StyleSheet.create({
   positionText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -635,10 +636,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -659,7 +660,7 @@ const styles = StyleSheet.create({
   overviewPending: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
   },
   bulkBtn: {
     backgroundColor: "#000",
@@ -688,7 +689,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
   },
   stalePill: {
@@ -704,13 +705,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.6,
-    color: "#666",
+    color: Colors.body,
   },
 
   promptText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -725,7 +726,7 @@ const styles = StyleSheet.create({
   noteToggleText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
   },
   noteWrap: {
     marginTop: 16,
@@ -735,7 +736,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F8F8",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     padding: 14,
     fontSize: 14,
     color: "#000",
@@ -760,7 +761,7 @@ const styles = StyleSheet.create({
   skipBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
   },
   sendBtn: {
     flex: 1,
@@ -773,7 +774,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   sendBtnDisabled: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
   },
   sendBtnText: {
     color: "#FFF",
@@ -781,7 +782,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   sendBtnTextDisabled: {
-    color: "#BBB",
+    color: Colors.faint,
   },
 
   // Recap
@@ -808,7 +809,7 @@ const styles = StyleSheet.create({
   },
   recapSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 22,
@@ -824,10 +825,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -854,7 +855,7 @@ const styles = StyleSheet.create({
   recapRowSkipped: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
   },
   primaryBtn: {
     alignSelf: "stretch",

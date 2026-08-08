@@ -2,6 +2,7 @@ import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { Colors } from "@/constants/theme";
 
 interface ThreadContextStripProps {
   jobTitle?: string;
@@ -42,7 +43,7 @@ export function ThreadContextStrip({
       <Text style={styles.label} numberOfLines={1}>
         {label}
       </Text>
-      <ChevronRight size={14} color="#BBB" />
+      <ChevronRight size={14} color={Colors.faint} />
     </TouchableOpacity>
   );
 }
@@ -54,14 +55,14 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   label: {
     flex: 1,
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
   },
 });

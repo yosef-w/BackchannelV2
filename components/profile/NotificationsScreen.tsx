@@ -183,10 +183,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   group: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 28,
     overflow: "hidden",
   },
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   rowLabel: {
     fontSize: 15,

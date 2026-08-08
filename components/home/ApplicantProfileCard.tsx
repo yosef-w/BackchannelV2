@@ -8,6 +8,7 @@ import { Image } from "expo-image";
 import React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { cardStyles } from "./cardStyles";
+import { Colors } from "@/constants/theme";
 
 interface ApplicantProfileCardProps {
   /** The current sponsor-side profile pack entry (the transformed deck
@@ -92,7 +93,7 @@ export function ApplicantProfileCard({
           {"company" in currentData &&
             !!currentData.company && (
               <View style={cardStyles.heroPill}>
-                <Briefcase color="#666" size={11} />
+                <Briefcase color={Colors.body} size={11} />
                 <Text style={cardStyles.heroPillText}>
                   {currentData.company}
                 </Text>
@@ -101,7 +102,7 @@ export function ApplicantProfileCard({
           {"location" in currentData &&
             !!currentData.location && (
               <View style={cardStyles.heroPill}>
-                <MapPin color="#666" size={11} />
+                <MapPin color={Colors.body} size={11} />
                 <Text style={cardStyles.heroPillText}>
                   {currentData.location}
                 </Text>
@@ -159,7 +160,7 @@ export function ApplicantProfileCard({
                   paddingVertical: 4,
                 }}
               >
-                <ActivityIndicator color="#999" />
+                <ActivityIndicator color={Colors.muted} />
               </View>
             </View>
           );

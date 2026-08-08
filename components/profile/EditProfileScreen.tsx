@@ -264,11 +264,11 @@ export function EditProfileScreen({
           />
         ) : (
           <View style={styles.locationInputWrap}>
-            <MapPin color="#AAA" size={18} />
+            <MapPin color={Colors.faint} size={18} />
             <TextInput
               style={styles.locationInput}
               placeholder="e.g., San Francisco, CA"
-              placeholderTextColor="#BBB"
+              placeholderTextColor={Colors.faint}
               value={local.location}
               onChangeText={set("location")}
               onBlur={() => run(() => onSaveLocation(local.location))}
@@ -444,7 +444,7 @@ function LockedField({
       </View>
       <View style={[styles.input, styles.lockedInput]}>
         <Text style={styles.lockedText}>{value}</Text>
-        <Lock color="#999" size={16} />
+        <Lock color={Colors.muted} size={16} />
       </View>
       <Text style={styles.note}>{note}</Text>
     </View>
@@ -454,7 +454,7 @@ function LockedField({
 const styles = StyleSheet.create({
   progressContainer: { marginBottom: 24 },
   progressText: { fontSize: 12, color: Colors.muted, marginBottom: 8, lineHeight: 17 },
-  progressBar: { height: 4, backgroundColor: "#F0F0F0", borderRadius: 2, overflow: "hidden" },
+  progressBar: { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
   progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 2 },
   groupLabel: {
     fontSize: 12,
@@ -469,10 +469,10 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 11, fontWeight: "800", color: Colors.muted, letterSpacing: 0.6 },
   requiredStar: { fontSize: 13, color: "#DC2626", fontWeight: "700" },
   input: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -483,10 +483,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
   },
   locationInput: {
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -522,10 +522,10 @@ const styles = StyleSheet.create({
   addTagRow: { flexDirection: "row", gap: 8 },
   tagInput: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import type { ReportReason } from "@/lib/api";
+import { Colors } from "@/constants/theme";
 
 interface ThreadMenuSheetProps {
   visible: boolean;
@@ -173,7 +174,7 @@ export function ThreadMenuSheet({
             <TextInput
               style={styles.reportDetailInput}
               placeholder="Add details (optional)"
-              placeholderTextColor="#AAA"
+              placeholderTextColor={Colors.faint}
               value={reportDetail}
               onChangeText={setReportDetail}
               multiline
@@ -294,9 +295,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   reportReasonRowSelected: {
     backgroundColor: "#000",
@@ -311,9 +312,9 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   reportDetailInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,

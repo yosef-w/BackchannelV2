@@ -30,6 +30,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { Colors } from "@/constants/theme";
 
 // expo-clipboard's NATIVE module may be missing from the running binary
 // (dev client / TestFlight build compiled before the package was linked).
@@ -101,7 +102,7 @@ export function SheetCloseButton({ onPress }: { onPress: () => void }) {
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityLabel="Close"
     >
-      <X size={16} color="#666" strokeWidth={2.5} />
+      <X size={16} color={Colors.body} strokeWidth={2.5} />
     </TouchableOpacity>
   );
 }
@@ -720,7 +721,7 @@ export function QuietAction({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={destructive ? "#DC2626" : "#999"}
+          color={destructive ? "#DC2626" : Colors.muted}
         />
       ) : (
         <Text
@@ -1135,7 +1136,7 @@ const g = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 6,
   },
-  quietActionText: { fontSize: 14, fontWeight: "600", color: "#999" },
+  quietActionText: { fontSize: 14, fontWeight: "600", color: Colors.muted },
   skelBar: {
     height: 12,
     borderRadius: 6,
@@ -1258,6 +1259,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#999",
+    backgroundColor: Colors.muted,
   },
 });

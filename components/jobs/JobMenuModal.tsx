@@ -18,6 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { UNSPONSOR_REASONS } from "./jobTransforms";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -128,7 +129,7 @@ export function JobMenuModal({
             <TextInput
               style={styles.reasonOtherInput}
               placeholder="https://example.com/logo.png"
-              placeholderTextColor="#BBB"
+              placeholderTextColor={Colors.faint}
               value={logoUrlInput}
               onChangeText={onSetLogoUrlInput}
               autoCapitalize="none"
@@ -191,7 +192,7 @@ export function JobMenuModal({
                 <TextInput
                   style={styles.reasonOtherInput}
                   placeholder="Tell us more (optional)"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={unsponsorReasonDetail}
                   onChangeText={onSetUnsponsorReasonDetail}
                   multiline
@@ -227,7 +228,7 @@ export function JobMenuModal({
                   activeOpacity={0.7}
                 >
                   <View style={styles.menuIconContainer}>
-                    <ImageIcon size={18} color="#666" />
+                    <ImageIcon size={18} color={Colors.body} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.menuOptionTitle}>Replace Logo</Text>
@@ -242,7 +243,7 @@ export function JobMenuModal({
                   activeOpacity={0.7}
                 >
                   <View style={styles.menuIconContainer}>
-                    <Trash2 size={18} color="#666" />
+                    <Trash2 size={18} color={Colors.body} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
@@ -259,7 +260,7 @@ export function JobMenuModal({
                 activeOpacity={0.7}
               >
                 <View style={styles.menuIconContainer}>
-                  <ThumbsDown size={18} color="#666" />
+                  <ThumbsDown size={18} color={Colors.body} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.menuOptionTitle}>Not Interested</Text>
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
   menuSheetJobHeader: {
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
     marginBottom: 16,
   },
   menuSheetJobTitle: {
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   },
   menuSheetJobCompany: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "500",
   },
   unsponsorReasonHeading: {
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
   },
   unsponsorReasonSub: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "500",
     marginBottom: 10,
   },
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F9FB",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     padding: 14,
     fontSize: 14,
     color: "#000",
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: Colors.surface,
   },
   radioOuter: {
     width: 22,
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   menuIconContainer: {
     width: 40,
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   menuOptionTitle: {
     fontSize: 16,
@@ -387,5 +388,5 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 2,
   },
-  menuOptionDesc: { fontSize: 13, color: "#666", fontWeight: "500" },
+  menuOptionDesc: { fontSize: 13, color: Colors.body, fontWeight: "500" },
 });

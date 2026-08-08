@@ -18,6 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -132,7 +133,7 @@ export function RolePickerModal({
                           .join(" · ")}
                       </Text>
                     </View>
-                    <ChevronRight color="#CCC" size={18} strokeWidth={2.2} />
+                    <ChevronRight color={Colors.faint} size={18} strokeWidth={2.2} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.rolePickerMsgBtn}
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
   rolePickerName: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
   rolePickerSub: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     marginTop: 3,
     lineHeight: 18,
   },
@@ -206,7 +207,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rolePickerRole: { fontSize: 15, fontWeight: "700", color: "#000" },
-  rolePickerMeta: { fontSize: 13, color: "#999", marginTop: 2 },
+  rolePickerMeta: { fontSize: 13, color: Colors.muted, marginTop: 2 },
   rolePickerMsgBtn: {
     width: 44,
     height: 44,

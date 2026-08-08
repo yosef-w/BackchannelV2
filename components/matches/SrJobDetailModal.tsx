@@ -26,6 +26,7 @@ import { parseSkillsField } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
 import type { SilverJobDetail } from "@/lib/api";
+import { Colors } from "@/constants/theme";
 
 interface SrJobDetailModalProps {
   visible: boolean;
@@ -192,7 +193,7 @@ const styles = StyleSheet.create({
   },
   errorSub: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 4,
     textAlign: "center",
     lineHeight: 19,

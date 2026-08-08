@@ -2,12 +2,13 @@ import { Check } from "@/components/ui/icons";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import type { SaveStatus } from "./useAutosaveStatus";
+import { Colors } from "@/constants/theme";
 
 /** Header-slot indicator for the EditorScreen shell — renders nothing at idle. */
 export function SaveStatusPill({ status }: { status: SaveStatus }) {
   if (status === "idle") return null;
   if (status === "saving") {
-    return <ActivityIndicator size="small" color="#999" />;
+    return <ActivityIndicator size="small" color={Colors.muted} />;
   }
   if (status === "error") {
     return <Text style={styles.errorText}>Couldn&apos;t save</Text>;

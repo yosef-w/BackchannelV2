@@ -748,7 +748,7 @@ export function JobsView() {
             entering={FadeIn.duration(300)}
             style={styles.loadingContainer}
           >
-            <ActivityIndicator size="small" color="#999" />
+            <ActivityIndicator size="small" color={Colors.muted} />
             <Text style={styles.loadingText}>Finding opportunities...</Text>
           </Animated.View>
         ) : error ? (
@@ -1188,7 +1188,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
   actionBar: {
@@ -1201,7 +1201,7 @@ const styles = StyleSheet.create({
   segmentedControl: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     borderRadius: 12,
     padding: 3,
   },
@@ -1221,7 +1221,7 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
     letterSpacing: -0.2,
   },
   segmentTextActive: {
@@ -1241,7 +1241,7 @@ const styles = StyleSheet.create({
   segmentBadgeText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: Colors.body,
   },
   segmentBadgeTextActive: {
     color: "#FFF",

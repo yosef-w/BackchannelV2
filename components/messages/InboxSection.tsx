@@ -1,6 +1,7 @@
 import { ChevronRight } from "@/components/ui/icons";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface InboxSectionProps {
   title: string;
@@ -59,7 +60,7 @@ export function InboxSection({
           <View style={{ flex: 1 }} />
           <ChevronRight
             size={16}
-            color="#BBB"
+            color={Colors.faint}
             style={!collapsed && { transform: [{ rotate: "90deg" }] }}
           />
         </TouchableOpacity>
@@ -82,7 +83,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -97,10 +98,10 @@ const styles = StyleSheet.create({
   },
   countText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
   group: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     overflow: "hidden",
   },
 });

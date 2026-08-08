@@ -212,12 +212,12 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 32,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   textSection: {
     width: "100%",
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   dotInactive: {
     width: 8,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
   },
   nextButton: {
     backgroundColor: "#000",

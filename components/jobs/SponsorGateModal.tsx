@@ -3,6 +3,7 @@ import { BlurView } from "expo-blur";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface SponsorGateModalProps {
   onSponsorNow: () => void;
@@ -33,7 +34,7 @@ export function SponsorGateModal({
         style={styles.gateModalContent}
       >
         <TouchableOpacity style={styles.gateCloseBtn} onPress={onClose}>
-          <X color="#666" size={20} />
+          <X color={Colors.body} size={20} />
         </TouchableOpacity>
 
         <View style={styles.gateIconContainer}>
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -109,7 +110,7 @@ const styles = StyleSheet.create({
   },
   gateDesc: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
@@ -124,5 +125,5 @@ const styles = StyleSheet.create({
   },
   gateBtnPrimaryText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
   gateBtnSecondary: { paddingVertical: 12, alignItems: "center" },
-  gateBtnSecondaryText: { color: "#666", fontSize: 15, fontWeight: "600" },
+  gateBtnSecondaryText: { color: Colors.body, fontSize: 15, fontWeight: "600" },
 });

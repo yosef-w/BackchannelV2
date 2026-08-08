@@ -35,6 +35,7 @@ import {
     trackResetPasswordSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { Colors } from "@/constants/theme";
 
 type Status = "form" | "missingToken" | "success";
 
@@ -126,7 +127,7 @@ export default function ResetPasswordRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="New password"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
@@ -137,7 +138,7 @@ export default function ResetPasswordRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm new password"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 12,
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: Colors.faint,
   },
   primaryButtonText: {
     color: "#FFF",

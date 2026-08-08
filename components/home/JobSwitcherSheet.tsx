@@ -14,6 +14,7 @@ import {
     DismissibleSheet,
     SheetScrollView,
 } from "../ui/DismissibleSheet";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginTop: 6,
     marginBottom: 12,
@@ -153,8 +154,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    backgroundColor: "#F9F9F9",
+    borderColor: Colors.border,
+    backgroundColor: Colors.offWhite,
     marginBottom: 8,
   },
   rowActive: {
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   rowTitle: { fontSize: 15, fontWeight: "700", color: "#000" },
-  rowCompany: { fontSize: 13, fontWeight: "500", color: "#666", marginTop: 2 },
+  rowCompany: { fontSize: 13, fontWeight: "500", color: Colors.body, marginTop: 2 },
   countBadge: {
     backgroundColor: "#000",
     borderRadius: 10,
@@ -172,12 +173,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  countBadgeMuted: { backgroundColor: "#F0F0F0" },
+  countBadgeMuted: { backgroundColor: Colors.border },
   countBadgeText: {
     color: "#FFF",
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: -0.2,
   },
-  countBadgeTextMuted: { color: "#999" },
+  countBadgeTextMuted: { color: Colors.muted },
 });

@@ -1,6 +1,7 @@
 import { ChevronLeft, X } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface CreateJobStepHeaderProps {
   title: string;
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   headerBtn: {
     width: 40,

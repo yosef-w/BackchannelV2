@@ -488,10 +488,10 @@ export function AuthScreen({
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>First Name</Text>
                       <View style={styles.inputWrapper}>
-                        <User color="#AAA" size={18} style={styles.inputIcon} />
+                        <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="First Name"
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={Colors.faint}
                           value={firstName}
                           onChangeText={setFirstName}
                           autoCapitalize="words"
@@ -503,10 +503,10 @@ export function AuthScreen({
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>Last Name</Text>
                       <View style={styles.inputWrapper}>
-                        <User color="#AAA" size={18} style={styles.inputIcon} />
+                        <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="Last Name"
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={Colors.faint}
                           value={lastName}
                           onChangeText={setLastName}
                           autoCapitalize="words"
@@ -520,10 +520,10 @@ export function AuthScreen({
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email Address</Text>
                   <View style={styles.inputWrapper}>
-                    <Mail color="#AAA" size={18} style={styles.inputIcon} />
+                    <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={email}
                       onChangeText={setEmail}
                       keyboardType="email-address"
@@ -536,10 +536,10 @@ export function AuthScreen({
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Password</Text>
                   <View style={styles.inputWrapper}>
-                    <Lock color="#AAA" size={18} style={styles.inputIcon} />
+                    <Lock color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Password"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
@@ -556,9 +556,9 @@ export function AuthScreen({
                       }
                     >
                       {showPassword ? (
-                        <EyeOff color="#AAA" size={18} />
+                        <EyeOff color={Colors.faint} size={18} />
                       ) : (
-                        <Eye color="#AAA" size={18} />
+                        <Eye color={Colors.faint} size={18} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -636,10 +636,10 @@ export function AuthScreen({
                   </Text>
 
                   <View style={styles.modalInputWrapper}>
-                    <Mail color="#AAA" size={18} style={styles.inputIcon} />
+                    <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email Address"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={forgotPasswordEmail}
                       onChangeText={setForgotPasswordEmail}
                       keyboardType="email-address"
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     gap: 12,
     marginBottom: 20,
   },
@@ -780,11 +780,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: 56,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   inputIcon: {
     marginRight: 12,
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "500",
   },
   submitButton: {
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
   },
   toggleHighlight: {
     color: "#000",
@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
   },
   modalSpamHint: {
     fontSize: 12.5,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     textAlign: "center",
     lineHeight: 17,
@@ -903,11 +903,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: 56,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 20,
   },
   modalButton: {
@@ -934,14 +934,14 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
   },
   successIconWrapper: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",

@@ -85,10 +85,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   group: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     overflow: "hidden",
   },
 });

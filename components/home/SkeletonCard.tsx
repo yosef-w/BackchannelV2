@@ -7,6 +7,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 /**
  * Shimmering placeholder shown while a profile/job card is loading.
@@ -107,7 +108,7 @@ export function SkeletonCard() {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }}
       />
 
       {/* ── ABOUT section ────────────────────────────────────────── */}
@@ -116,7 +117,7 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Colors.border,
               width: "28%",
               height: 11,
               borderRadius: 4,
@@ -155,7 +156,7 @@ export function SkeletonCard() {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }}
       />
 
       {/* ── AT-A-GLANCE stats strip ───────────────────────────────── */}
@@ -163,7 +164,7 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Colors.border,
               width: "38%",
               height: 11,
               borderRadius: 4,
@@ -188,7 +189,7 @@ export function SkeletonCard() {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }}
       />
 
       {/* ── INSIGHTS section ─────────────────────────────────────── */}
@@ -196,7 +197,7 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Colors.border,
               width: "32%",
               height: 11,
               borderRadius: 4,
@@ -233,7 +234,7 @@ export function SkeletonCard() {
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <View
-        style={{ height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 }}
+        style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }}
       />
 
       {/* ── TOP SKILLS chips ─────────────────────────────────────── */}
@@ -241,7 +242,7 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F0F0F0",
+              backgroundColor: Colors.border,
               width: "30%",
               height: 11,
               borderRadius: 4,

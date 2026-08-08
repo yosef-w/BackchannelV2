@@ -1,6 +1,7 @@
 import { Heart } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface MatchesEmptyStateProps {
   userType: "applicant" | "sponsor";
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: "800", color: "#000", marginBottom: 6 },
   subtitle: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
   },

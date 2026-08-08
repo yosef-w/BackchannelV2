@@ -306,7 +306,7 @@ function GroupRow({
               <PreviewText conv={conv} variant={variant} />
             </View>
             <View style={styles.rolesPill}>
-              <Briefcase size={11} color="#666" />
+              <Briefcase size={11} color={Colors.body} />
               <Text style={styles.rolesPillText}>
                 {group.items.length} roles
               </Text>
@@ -315,7 +315,7 @@ function GroupRow({
         </View>
         <ChevronRight
           size={18}
-          color="#BBB"
+          color={Colors.faint}
           style={[
             styles.groupChevron,
             expanded && { transform: [{ rotate: "90deg" }] },
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   avatarWrapper: { position: "relative" },
   avatarHidden: { opacity: 0.55 },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#000",
     borderWidth: 2,
-    borderColor: "#F9F9F9",
+    borderColor: Colors.offWhite,
   },
   main: { flex: 1 },
   rowHeader: {
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   rolesPillText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#666",
+    color: Colors.body,
     letterSpacing: 0.3,
   },
   groupChevron: { marginLeft: -4 },

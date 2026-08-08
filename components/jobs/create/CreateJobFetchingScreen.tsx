@@ -11,6 +11,7 @@ import {
 import { WebView } from "react-native-webview";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { JobPreviewCard, type JobPreviewFields } from "./JobPreviewCard";
+import { Colors } from "@/constants/theme";
 
 export interface ScrapedJobData {
   url: string;
@@ -271,7 +272,7 @@ export function CreateJobFetchingScreen({
           onPress={() => setShowRawView(true)}
           activeOpacity={0.7}
         >
-          <Eye size={14} color="#999" />
+          <Eye size={14} color={Colors.muted} />
           <Text style={styles.rawLinkText}>View original posting</Text>
         </TouchableOpacity>
       </View>
@@ -321,7 +322,7 @@ export function CreateJobFetchingScreen({
                 <ChevronLeft color="#000" size={22} />
               </TouchableOpacity>
               <View style={styles.rawViewUrlWrap}>
-                <Globe color="#999" size={13} />
+                <Globe color={Colors.muted} size={13} />
                 <Text style={styles.rawViewUrlText} numberOfLines={1}>
                   {url}
                 </Text>
@@ -334,7 +335,7 @@ export function CreateJobFetchingScreen({
                   activeOpacity={0.7}
                 >
                   <ChevronLeft
-                    color={rawCanGoBack ? "#000" : "#CCC"}
+                    color={rawCanGoBack ? "#000" : Colors.faint}
                     size={20}
                   />
                 </TouchableOpacity>
@@ -345,7 +346,7 @@ export function CreateJobFetchingScreen({
                   activeOpacity={0.7}
                 >
                   <ChevronRight
-                    color={rawCanGoForward ? "#000" : "#CCC"}
+                    color={rawCanGoForward ? "#000" : Colors.faint}
                     size={20}
                   />
                 </TouchableOpacity>
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
   statusRow: { marginTop: 20, alignItems: "center", paddingHorizontal: 8 },
   statusText: {
     fontSize: 14,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     textAlign: "center",
     lineHeight: 20,
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
   rawLinkText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
   },
   footer: {
     paddingHorizontal: 24,
@@ -425,7 +426,7 @@ const styles = StyleSheet.create({
   skipBtnText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     textDecorationLine: "underline",
   },
   hiddenWebview: {
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
     gap: 8,
   },
   rawViewNavBtn: {
@@ -453,14 +454,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 18,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
   },
   rawViewUrlWrap: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,

@@ -56,7 +56,7 @@ export function ProfileIdentityCard({
                   <Text style={styles.avatarInitials}>{initials}</Text>
                 ) : (
                   <View style={styles.avatarPlaceholder}>
-                    <Camera color="#999" size={28} strokeWidth={1.5} />
+                    <Camera color={Colors.muted} size={28} strokeWidth={1.5} />
                   </View>
                 )}
               </View>
@@ -85,7 +85,7 @@ export function ProfileIdentityCard({
       </View>
 
       <View style={styles.infoRow}>
-        <MapPin color="#BBB" size={14} strokeWidth={2} />
+        <MapPin color={Colors.faint} size={14} strokeWidth={2} />
         {location ? (
           <Text style={styles.locationText}>{location}</Text>
         ) : (
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     width: 104,
     height: 104,
     borderRadius: 52,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -166,15 +166,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   infoText: { fontSize: 15, fontWeight: "600", color: "#000" },
-  locationText: { fontSize: 14, color: "#BBB", fontWeight: "500" },
+  locationText: { fontSize: 14, color: Colors.faint, fontWeight: "500" },
   emptyHint: {
     fontSize: 13,
-    color: "#BBB",
+    color: Colors.faint,
     fontStyle: "italic",
   },
   bio: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 20,
     marginTop: 12,

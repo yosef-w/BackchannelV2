@@ -834,7 +834,7 @@ export function SponsorQuestionnaire({
                     ) : initials ? (
                       <Text style={styles.photoInitials}>{initials}</Text>
                     ) : (
-                      <Camera color="#BBB" size={40} />
+                      <Camera color={Colors.faint} size={40} />
                     )}
                   </TouchableOpacity>
                   <View style={styles.photoBtnRow}>
@@ -866,7 +866,7 @@ export function SponsorQuestionnaire({
                 <View style={styles.bioWrapper}>
                   <TextInput
                     placeholder="A sentence or two about you"
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={Colors.faint}
                     value={bioText}
                     onChangeText={setBioText}
                     style={styles.bioInput}
@@ -879,11 +879,11 @@ export function SponsorQuestionnaire({
                 <View>
                   <View style={styles.inputWrapper}>
                     {question.type === "email" && (
-                      <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                      <Mail color={Colors.faint} size={20} style={{ marginRight: 12 }} />
                     )}
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={answers[currentQuestion] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [currentQuestion]: v })
@@ -1010,7 +1010,7 @@ export function SponsorQuestionnaire({
                             </Text>
                           )}
                         </View>
-                        <ChevronRight size={18} color="#CCC" />
+                        <ChevronRight size={18} color={Colors.faint} />
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -1081,7 +1081,7 @@ export function SponsorQuestionnaire({
                     <TextInput
                       style={styles.rolePickerNoteInput}
                       placeholder="e.g. what the team is like, what we look for..."
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={roleInsiderNote}
                       onChangeText={setRoleInsiderNote}
                       multiline
@@ -1175,7 +1175,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  progressBarBg: { height: 2, backgroundColor: "#F0F0F0", width: "100%" },
+  progressBarBg: { height: 2, backgroundColor: Colors.border, width: "100%" },
   progressBar: { height: "100%", backgroundColor: "#000" },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   questionText: {
@@ -1190,26 +1190,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     height: 64,
   },
   textInput: { flex: 1, fontSize: 18, color: "#000", fontWeight: "500" },
   companyHelper: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     lineHeight: 18,
     marginTop: 12,
@@ -1270,23 +1270,23 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     backgroundColor: "#F4F4F5",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   photoImage: { width: "100%", height: "100%" },
-  photoInitials: { fontSize: 52, fontWeight: "800", color: "#999" },
+  photoInitials: { fontSize: 52, fontWeight: "800", color: Colors.muted },
   photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
   photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
   photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
-  photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
+  photoSkipText: { fontSize: 14, fontWeight: "600", color: Colors.faint },
   bioWrapper: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -1319,7 +1319,7 @@ const styles = StyleSheet.create({
   },
   rolePickerSub: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginTop: 8,
   },
@@ -1333,7 +1333,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 10,
@@ -1345,7 +1345,7 @@ const styles = StyleSheet.create({
   },
   rolePickerRowSub: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 2,
   },
   rolePickerFooter: {
@@ -1364,7 +1364,7 @@ const styles = StyleSheet.create({
   rolePickerSkipText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
   },
   rolePickerBackBtn: {
     paddingVertical: 17,
@@ -1402,9 +1402,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     alignItems: "center",
   },
   rolePickerChoiceBtnSelected: {
@@ -1420,9 +1420,9 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   rolePickerNoteInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,

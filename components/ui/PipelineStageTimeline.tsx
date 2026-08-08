@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 // Shared "on track" stage sequence — a superset of both
 // APPLICANT_CHECKIN_STAGES and SPONSOR_CHECKIN_STAGES minus their
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
   stageLabel: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
     marginTop: 4,
   },
   offTrackRow: {
@@ -100,11 +101,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#BBB",
+    backgroundColor: Colors.faint,
   },
   offTrackText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#999",
+    color: Colors.muted,
   },
 });

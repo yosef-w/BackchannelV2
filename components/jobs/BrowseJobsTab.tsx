@@ -19,6 +19,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { JobCard } from "./JobCard";
 import { JobsEmptyState } from "./JobsEmptyState";
+import { Colors } from "@/constants/theme";
 
 interface BrowseJobsTabProps {
   jobs: Job[];
@@ -116,7 +117,7 @@ export function BrowseJobsTab({
                   {applying ? (
                     <ActivityIndicator size="small" color="#000" />
                   ) : (
-                    <ChevronRight size={18} color="#BBB" />
+                    <ChevronRight size={18} color={Colors.faint} />
                   )}
                 </TouchableOpacity>
               );
@@ -161,11 +162,11 @@ export function BrowseJobsTab({
   return (
     <>
       <View style={styles.searchWrap}>
-        <Search size={16} color="#999" />
+        <Search size={16} color={Colors.muted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search roles or locations"
-          placeholderTextColor="#BBB"
+          placeholderTextColor={Colors.faint}
           value={searchQuery}
           onChangeText={onSetSearchQuery}
           autoCapitalize="none"
@@ -177,7 +178,7 @@ export function BrowseJobsTab({
             onPress={() => onSetSearchQuery("")}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <X size={16} color="#999" />
+            <X size={16} color={Colors.muted} />
           </TouchableOpacity>
         )}
       </View>
@@ -247,7 +248,7 @@ export function BrowseJobsTab({
                 <View style={{ flex: 1 }} />
                 <ChevronRight
                   size={16}
-                  color="#BBB"
+                  color={Colors.faint}
                   style={
                     showSponsoredInBrowse && {
                       transform: [{ rotate: "90deg" }],
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
   },
   didYouMeanSub: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 22,
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     overflow: "hidden",
   },
   didYouMeanRow: {
@@ -321,19 +322,19 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   didYouMeanRowText: { flex: 1, minWidth: 0 },
   didYouMeanRowName: { fontSize: 15, fontWeight: "700", color: "#111" },
   didYouMeanRowMeta: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     marginTop: 1,
   },
   didYouMeanFootnote: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
     marginTop: 22,
@@ -356,17 +357,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 12,
     height: 42,
     marginBottom: 16,
   },
   searchInput: { flex: 1, fontSize: 14, color: "#000" },
   noMatchesWrap: { paddingVertical: 32, alignItems: "center" },
-  noMatchesText: { fontSize: 14, color: "#999", fontWeight: "600" },
+  noMatchesText: { fontSize: 14, color: Colors.muted, fontWeight: "600" },
   loadMoreBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -398,7 +399,7 @@ const styles = StyleSheet.create({
   sponsoredToggleText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
   },
   sponsoredTogglePill: {

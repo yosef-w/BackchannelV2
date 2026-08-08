@@ -18,6 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { SponsorInsightCards } from "./SponsorInsightCards";
+import { Colors } from "@/constants/theme";
 
 export interface SponsorFlowState {
   step: number;
@@ -327,33 +328,33 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   radioCircle: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#CCC",
+    borderColor: Colors.faint,
   },
   radioCircleActive: { borderColor: "#000", borderWidth: 6 },
   radioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   radioOption: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     padding: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     marginBottom: 12,
   },
-  radioText: { fontSize: 15, color: "#666", fontWeight: "600" },
+  radioText: { fontSize: 15, color: Colors.body, fontWeight: "600" },
   radioTextActive: { color: "#000", fontWeight: "600" },
   sideBySide: { flexDirection: "row", gap: 12 },
   successDesc: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 30,

@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, Text } from "react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { JobsEmptyState } from "./JobsEmptyState";
 import { SponsoredJobCard } from "./SponsoredJobCard";
+import { Colors } from "@/constants/theme";
 
 interface SponsoredJobsTabProps {
   myJobs: Job[];
@@ -33,7 +34,7 @@ export function SponsoredJobsTab({
         entering={FadeIn.duration(300)}
         style={styles.loadingContainer}
       >
-        <ActivityIndicator size="small" color="#999" />
+        <ActivityIndicator size="small" color={Colors.muted} />
         <Text style={styles.loadingText}>Loading your sponsored jobs...</Text>
       </Animated.View>
     );
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
 });

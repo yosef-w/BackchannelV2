@@ -87,6 +87,7 @@ import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
 import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
 import { PromptsIntake } from "./ui/PromptsIntake";
+import { Colors } from "@/constants/theme";
 
 interface ProfileViewProps {
   userType: "applicant" | "sponsor";
@@ -1002,10 +1003,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1042,7 +1043,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateCertification(index, { name: text })
                 }
                 placeholder="e.g., AWS Solutions Architect"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1074,7 +1075,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateCertification(index, { organization: text })
                 }
                 placeholder="e.g., Amazon Web Services"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1106,7 +1107,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateCertification(index, { year: text })
                 }
                 placeholder="e.g., 2023"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 keyboardType="numeric"
               />
             </View>
@@ -1182,10 +1183,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1225,7 +1226,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateLanguage(index, { language: text })
                 }
                 placeholder="e.g., Spanish"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1260,7 +1261,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateLanguage(index, { proficiency: text })
                 }
                 placeholder="e.g., Native, Fluent, Conversational"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1560,10 +1561,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1603,7 +1604,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { jobTitle: text })
                 }
                 placeholder="e.g., Senior Product Manager"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1638,7 +1639,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { company: text })
                 }
                 placeholder="e.g., Google"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1673,7 +1674,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { startDate: text })
                 }
                 placeholder="e.g., Jan 2022"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1702,7 +1703,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     handleUpdateExperience(experience.id, { endDate: text })
                   }
                   placeholder="e.g., Dec 2024"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={Colors.muted}
                 />
               </View>
             )}
@@ -1720,7 +1721,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { description: text })
                 }
                 placeholder="Describe your responsibilities and achievements..."
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 multiline
                 numberOfLines={4}
               />
@@ -1794,10 +1795,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1834,7 +1835,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { degree: text })
                 }
                 placeholder="e.g., Bachelor of Science, MBA"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1848,7 +1849,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { major: text })
                 }
                 placeholder="e.g., Computer Science"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1883,7 +1884,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { university: text })
                 }
                 placeholder="e.g., Stanford University"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1918,7 +1919,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { graduationYear: text })
                 }
                 placeholder="e.g., 2020"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 keyboardType="numeric"
               />
             </View>
@@ -1933,7 +1934,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { gpa: text })
                 }
                 placeholder="e.g., 3.9"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -2082,7 +2083,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     }}
                   >
                     <Text style={styles.docEditText}>Edit details</Text>
-                    <ChevronRight size={14} color="#BBB" />
+                    <ChevronRight size={14} color={Colors.faint} />
                   </TouchableOpacity>
                 </View>
               </>
@@ -2141,7 +2142,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onPress={cancelResumeUpload}
                 activeOpacity={0.7}
               >
-                <X size={12} color="#666" strokeWidth={2.5} />
+                <X size={12} color={Colors.body} strokeWidth={2.5} />
                 <Text style={styles.resumeCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -2175,7 +2176,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 onPress={cancelResumeUpload}
                 activeOpacity={0.7}
               >
-                <X size={12} color="#666" strokeWidth={2.5} />
+                <X size={12} color={Colors.body} strokeWidth={2.5} />
                 <Text style={styles.resumeCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -2212,7 +2213,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={styles.resumeUploadAgainBtn}
                 onPress={() => setResumeUploadStep("idle")}
               >
-                <RefreshCw size={14} color="#666" strokeWidth={2} />
+                <RefreshCw size={14} color={Colors.body} strokeWidth={2} />
                 <Text style={styles.resumeUploadAgainText}>Upload again</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -2491,7 +2492,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   entryCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E5E5E5",
@@ -2517,7 +2518,7 @@ const styles = StyleSheet.create({
   entryCardSubText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
   },
   entryCardActions: {
     flexDirection: "row",
@@ -2535,7 +2536,7 @@ const styles = StyleSheet.create({
   entryFieldLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: Colors.body,
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginBottom: 4,
@@ -2566,7 +2567,7 @@ const styles = StyleSheet.create({
   resumeSectionLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 14,
@@ -2575,10 +2576,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     padding: 16,
   },
   docGlyph: {
@@ -2593,10 +2594,10 @@ const styles = StyleSheet.create({
   },
   docInfo: { flex: 1, gap: 3 },
   docTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
-  docMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  docMeta: { fontSize: 13, color: Colors.muted, fontWeight: "500" },
   docCaption: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 18,
     marginTop: 12,
   },
@@ -2624,7 +2625,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
-  docEditText: { fontSize: 14, fontWeight: "600", color: "#666" },
+  docEditText: { fontSize: 14, fontWeight: "600", color: Colors.body },
   docManualLink: { alignSelf: "center", marginTop: 16, paddingVertical: 6 },
   dropzone: {
     borderWidth: 1.5,
@@ -2641,17 +2642,17 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
   },
   dropzoneTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
-  dropzoneSub: { fontSize: 13, color: "#999", marginTop: 6 },
+  dropzoneSub: { fontSize: 13, color: Colors.muted, marginTop: 6 },
   resumeProgressCard: {
     flexDirection: "column",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
@@ -2673,13 +2674,13 @@ const styles = StyleSheet.create({
   },
   resumeProgressSub: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
   resumeElapsedText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#BBB",
+    color: Colors.faint,
     minWidth: 28,
     textAlign: "right",
   },
@@ -2698,7 +2699,7 @@ const styles = StyleSheet.create({
   resumeCancelText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
   },
   resumeSuccessCard: {
     backgroundColor: "#F4F4F5",
@@ -2750,14 +2751,14 @@ const styles = StyleSheet.create({
   },
   resumeUploadAgainText: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
   },
   resumeErrorCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
     borderColor: "#E5E5E5",
     borderRadius: 14,
@@ -2771,7 +2772,7 @@ const styles = StyleSheet.create({
   },
   resumeErrorSub: {
     fontSize: 12,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
   },
   resumeRetryBtn: {

@@ -97,19 +97,19 @@ export function JobPreviewCard({ fields, pending }: JobPreviewCardProps) {
 
       <View style={styles.tagsRow}>
         <PreviewTag
-          icon={<MapPin size={10} color="#666" />}
+          icon={<MapPin size={10} color={Colors.body} />}
           text={fields.location}
           pending={pending.location}
           placeholder="Location"
         />
         <PreviewTag
-          icon={<DollarSign size={10} color="#666" />}
+          icon={<DollarSign size={10} color={Colors.body} />}
           text={fields.salary}
           pending={pending.salary}
           placeholder="Competitive"
         />
         <PreviewTag
-          icon={<Briefcase size={10} color="#666" />}
+          icon={<Briefcase size={10} color={Colors.body} />}
           text={fields.type}
           pending={pending.type}
           placeholder="Full-time"
@@ -158,10 +158,10 @@ function PreviewTag({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     padding: 20,
   },
   header: {
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,

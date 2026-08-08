@@ -32,6 +32,7 @@ import {
     trackVerifyEmailSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { Colors } from "@/constants/theme";
 
 type Status = "loading" | "success" | "alreadyVerified" | "error";
 
@@ -172,7 +173,7 @@ export default function VerifyEmailRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={resendEmail}
                   onChangeText={setResendEmail}
                   keyboardType="email-address"
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
   },
-  loadingText: { fontSize: 14, color: "#666", marginTop: 12 },
+  loadingText: { fontSize: 14, color: Colors.body, marginTop: 12 },
   iconCircle: {
     width: 80,
     height: 80,
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 12,
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: Colors.faint,
   },
   primaryButtonText: {
     color: "#FFF",
@@ -278,7 +279,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   secondaryButtonText: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 14,
     fontWeight: "600",
   },

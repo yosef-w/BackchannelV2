@@ -9,6 +9,7 @@
 
 import React from "react";
 import { StyleSheet, type StyleProp, Text, type TextStyle } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface CharCounterProps {
   count: number;
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 11,
     fontWeight: "500",
-    color: "#AAA",
+    color: Colors.faint,
   },
   near: { color: "#D97706" }, // amber — getting close
   atLimit: { color: "#DC2626", fontWeight: "700" }, // red — stopped accepting

@@ -473,13 +473,13 @@ export function NotificationsView({
       {isLoading && (
         <View style={styles.centeredState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={28} strokeWidth={2} />
+            <Bell color={Colors.faint} size={28} strokeWidth={2} />
           </View>
           <Text
             style={{
               fontSize: 14,
               fontWeight: "600",
-              color: "#AAA",
+              color: Colors.faint,
               marginTop: 4,
             }}
           >
@@ -492,7 +492,7 @@ export function NotificationsView({
       {!isLoading && error && (
         <View style={styles.centeredState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={28} strokeWidth={2} />
+            <Bell color={Colors.faint} size={28} strokeWidth={2} />
           </View>
           <Text style={styles.errorText}>Couldn&apos;t load notifications</Text>
           <TouchableOpacity
@@ -510,7 +510,7 @@ export function NotificationsView({
       {!isLoading && !error && notifications.length === 0 && (
         <View style={styles.emptyState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={30} strokeWidth={2} />
+            <Bell color={Colors.faint} size={30} strokeWidth={2} />
           </View>
           <Text style={styles.emptyStateTitle}>No notifications yet</Text>
           <Text style={styles.emptyStateText}>
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 8,
@@ -820,18 +820,18 @@ const styles = StyleSheet.create({
   rowTime: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#CCC",
+    backgroundColor: Colors.faint,
   },
   rowContext: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
     flexShrink: 1,
   },
   unreadDot: {
@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 20,
     paddingHorizontal: 40,

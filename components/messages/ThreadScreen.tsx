@@ -48,6 +48,7 @@ import { ReferralSigningScreen } from "./ReferralSigningScreen";
 import { ThreadContextStrip } from "./ThreadContextStrip";
 import { ThreadMenuSheet } from "./ThreadMenuSheet";
 import { threadScreenStyles as styles } from "./threadScreenStyles";
+import { Colors } from "@/constants/theme";
 
 function getConversationStarters(
   conversation: Conversation | null | undefined,
@@ -425,9 +426,9 @@ if (!conversation) {
             marginBottom: 12,
           }}
         >
-          <MessageCircle color="#BBB" size={28} strokeWidth={2} />
+          <MessageCircle color={Colors.faint} size={28} strokeWidth={2} />
         </View>
-        <Text style={{ fontSize: 14, fontWeight: "600", color: "#AAA" }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: Colors.faint }}>
           Loading conversation…
         </Text>
       </View>
@@ -443,7 +444,7 @@ if (!conversation) {
         padding: 20,
       }}
     >
-      <Text style={{ fontSize: 16, color: "#666" }}>
+      <Text style={{ fontSize: 16, color: Colors.body }}>
         Conversation not found
       </Text>
       <TouchableOpacity
@@ -593,7 +594,7 @@ return (
       >
         {messagesLoading ? (
           <View style={{ padding: 40, alignItems: "center" }}>
-            <Text style={{ color: "#999", fontSize: 15 }}>
+            <Text style={{ color: Colors.muted, fontSize: 15 }}>
               Loading messages...
             </Text>
           </View>
@@ -605,19 +606,19 @@ return (
               Failed to load messages
             </Text>
             <Text
-              style={{ color: "#999", fontSize: 13, textAlign: "center" }}
+              style={{ color: Colors.muted, fontSize: 13, textAlign: "center" }}
             >
               {messagesError}
             </Text>
           </View>
         ) : messages.length === 0 ? (
           <View style={{ padding: 28, alignItems: "center" }}>
-            <Text style={{ color: "#999", fontSize: 15 }}>
+            <Text style={{ color: Colors.muted, fontSize: 15 }}>
               No messages yet
             </Text>
             <Text
               style={{
-                color: "#BBB",
+                color: Colors.faint,
                 fontSize: 13,
                 marginTop: 8,
                 marginBottom: 20,
@@ -800,7 +801,7 @@ return (
                   Tap to refer them for the role
                 </Text>
               </View>
-              <ChevronRight size={18} color="#999" />
+              <ChevronRight size={18} color={Colors.muted} />
             </TouchableOpacity>
           )}
           {/* Only surface the counter as you approach the 2000-char cap so
@@ -817,7 +818,7 @@ return (
             value={messageText}
             onChangeText={setMessageText}
             placeholder="Write a message..."
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             style={styles.textInput}
             multiline
             maxLength={2000}

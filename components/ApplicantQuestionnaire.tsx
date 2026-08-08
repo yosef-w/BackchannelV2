@@ -948,7 +948,7 @@ export function ApplicantQuestionnaire({
                   <View style={styles.inputWrapper}>
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={answers[question.key] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [question.key]: v })
@@ -964,13 +964,13 @@ export function ApplicantQuestionnaire({
                   <View>
                     <View style={styles.searchWrapper}>
                       <Search
-                        color="#AAA"
+                        color={Colors.faint}
                         size={20}
                         style={{ marginRight: 10 }}
                       />
                       <TextInput
                         placeholder="Search skills..."
-                        placeholderTextColor="#BBB"
+                        placeholderTextColor={Colors.faint}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         autoCapitalize="none"
@@ -1081,7 +1081,7 @@ export function ApplicantQuestionnaire({
                         // Friendlier default than a bare icon — their initials.
                         <Text style={styles.photoInitials}>{initials}</Text>
                       ) : (
-                        <Camera color="#BBB" size={40} />
+                        <Camera color={Colors.faint} size={40} />
                       )}
                     </TouchableOpacity>
                     <View style={styles.photoBtnRow}>
@@ -1137,10 +1137,10 @@ export function ApplicantQuestionnaire({
                       />
                     ) : (
                       <View style={styles.locationInputWrap}>
-                        <MapPin color="#BBB" size={20} />
+                        <MapPin color={Colors.faint} size={20} />
                         <TextInput
                           placeholder="e.g., San Francisco, CA"
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={Colors.faint}
                           value={locationText}
                           onChangeText={setLocationText}
                           autoCapitalize="words"
@@ -1210,7 +1210,7 @@ export function ApplicantQuestionnaire({
                             }}
                             activeOpacity={0.7}
                           >
-                            <X size={16} color="#666" strokeWidth={2.5} />
+                            <X size={16} color={Colors.body} strokeWidth={2.5} />
                           </TouchableOpacity>
                         </View>
 
@@ -1430,7 +1430,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  progressBarBg: { height: 2, backgroundColor: "#F0F0F0", width: "100%" },
+  progressBarBg: { height: 2, backgroundColor: Colors.border, width: "100%" },
   progressBar: { height: "100%", backgroundColor: "#000" },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   content: { flex: 1 },
@@ -1455,26 +1455,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
-  optionCardDisabled: { backgroundColor: "#FAFAFA", borderColor: "#F0F0F0" },
+  optionCardDisabled: { backgroundColor: "#FAFAFA", borderColor: Colors.border },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
   optionTextDisabled: { color: "#C8C8C8" },
   comingSoonNote: {
     marginTop: 12,
     fontSize: 13,
-    color: "#AAAAAA",
+    color: Colors.faint,
     textAlign: "center",
     lineHeight: 18,
   },
   inputWrapper: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     height: 64,
     justifyContent: "center",
@@ -1495,7 +1495,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -1507,12 +1507,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textAlign: "center",
   },
-  fileSubtitle: { fontSize: 13, color: "#AAA", textAlign: "center" },
+  fileSubtitle: { fontSize: 13, color: Colors.faint, textAlign: "center" },
   fileConfirmCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
@@ -1534,7 +1534,7 @@ const styles = StyleSheet.create({
     color: "#000",
     lineHeight: 20,
   },
-  fileConfirmMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  fileConfirmMeta: { fontSize: 13, color: Colors.muted, fontWeight: "500" },
   fileRemoveBtn: {
     width: 32,
     height: 32,
@@ -1563,18 +1563,18 @@ const styles = StyleSheet.create({
   fileChangeLink: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
     textDecorationLine: "underline",
   },
   searchWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 54,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 24,
   },
   searchInput: { flex: 1, fontSize: 16, color: "#000", fontWeight: "500" },
@@ -1593,13 +1593,13 @@ const styles = StyleSheet.create({
   selectionCount: {
     marginTop: 24,
     fontSize: 14,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "600",
     textAlign: "center",
   },
   insightsSubtitle: {
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     marginBottom: 32,
     lineHeight: 24,
   },
@@ -1659,25 +1659,25 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     backgroundColor: "#F4F4F5",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   photoImage: { width: "100%", height: "100%" },
-  photoInitials: { fontSize: 52, fontWeight: "800", color: "#999" },
+  photoInitials: { fontSize: 52, fontWeight: "800", color: Colors.muted },
   photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
   photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
   photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
-  photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
+  photoSkipText: { fontSize: 14, fontWeight: "600", color: Colors.faint },
   inputContainer: { paddingTop: 8 },
   locationInputWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -1719,7 +1719,7 @@ const styles = StyleSheet.create({
   },
   reviewSub: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 21,
     marginTop: 10,
   },
@@ -1732,7 +1732,7 @@ const styles = StyleSheet.create({
   reviewSectionLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 1,
     marginBottom: 12,
   },
@@ -1740,7 +1740,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     padding: 16,
     marginBottom: 10,
   },
@@ -1751,7 +1751,7 @@ const styles = StyleSheet.create({
   },
   reviewCardSub: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     marginTop: 4,
   },
   reviewChips: {
@@ -1763,7 +1763,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
@@ -1777,7 +1777,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: Colors.border,
   },
   reviewPrimaryBtn: {
     flexDirection: "row",
@@ -1795,7 +1795,7 @@ const styles = StyleSheet.create({
   },
   reviewFootnote: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     marginTop: 12,
   },

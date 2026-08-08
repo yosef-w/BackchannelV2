@@ -104,7 +104,7 @@ export function ResumeScreen({
       <Text style={styles.groupLabel}>PROFESSIONAL EXPERIENCE</Text>
       {professionalExperiences.length === 0 && (
         <View style={styles.emptyStateCard}>
-          <Briefcase size={32} color="#999" />
+          <Briefcase size={32} color={Colors.muted} />
           <Text style={styles.emptyStateText}>
             No work experience added yet.{"\n"}
             Add your professional experience here.
@@ -124,7 +124,7 @@ export function ResumeScreen({
       <Text style={styles.groupLabel}>EDUCATION</Text>
       {educationEntries.length === 0 && (
         <View style={styles.emptyStateCard}>
-          <GraduationCap size={32} color="#999" />
+          <GraduationCap size={32} color={Colors.muted} />
           <Text style={styles.emptyStateText}>
             No education added yet.{"\n"}
             Add your degrees and schools here.
@@ -184,7 +184,7 @@ export function ResumeScreen({
             onPress={() => handleEditField("achievements", achievements)}
           >
             <Text style={styles.fieldText}>{achievements || "Not set"}</Text>
-            <Edit color="#666" size={16} />
+            <Edit color={Colors.body} size={16} />
           </TouchableOpacity>
         )}
       </View>
@@ -195,7 +195,7 @@ export function ResumeScreen({
 const styles = StyleSheet.create({
   progressContainer: { marginBottom: 24 },
   progressText: { fontSize: 12, color: Colors.muted, marginBottom: 8, lineHeight: 17 },
-  progressBar: { height: 4, backgroundColor: "#F0F0F0", borderRadius: 2, overflow: "hidden" },
+  progressBar: { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
   progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 2 },
   groupLabel: {
     fontSize: 12,
@@ -206,10 +206,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   emptyStateCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingVertical: 28,
     alignItems: "center",
     gap: 10,
@@ -246,20 +246,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 12,
   },
   fieldText: { flex: 1, fontSize: 14, color: "#000", lineHeight: 20 },
   bioInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,

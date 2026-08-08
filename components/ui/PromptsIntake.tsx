@@ -162,13 +162,13 @@ export function PromptsIntake({
                 onPress={() => openEditorForExisting(index)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Pencil size={16} color="#999" />
+                <Pencil size={16} color={Colors.muted} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => removeAt(index)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <X size={16} color="#999" />
+                <X size={16} color={Colors.muted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -193,7 +193,7 @@ export function PromptsIntake({
             <Plus size={18} color="#000" />
           </View>
           <Text style={styles.emptyText}>{emptySlotLabel}</Text>
-          <ChevronRight size={18} color="#CCC" />
+          <ChevronRight size={18} color={Colors.faint} />
         </TouchableOpacity>
       ))}
 
@@ -204,7 +204,7 @@ export function PromptsIntake({
           activeOpacity={0.7}
           onPress={openLibraryForNew}
         >
-          <Plus size={16} color="#666" />
+          <Plus size={16} color={Colors.body} />
           <Text style={styles.addAnotherText}>Add another prompt</Text>
         </TouchableOpacity>
       ) : null}
@@ -240,10 +240,10 @@ export function PromptsIntake({
             </View>
 
             <View style={styles.searchWrap}>
-              <Search size={18} color="#AAA" />
+              <Search size={18} color={Colors.faint} />
               <TextInput
                 placeholder="Search prompts…"
-                placeholderTextColor="#BBB"
+                placeholderTextColor={Colors.faint}
                 value={search}
                 onChangeText={setSearch}
                 style={styles.searchInput}
@@ -269,7 +269,7 @@ export function PromptsIntake({
                       onPress={() => selectPrompt(prompt)}
                     >
                       <Text style={styles.promptRowText}>{prompt}</Text>
-                      <ChevronRight size={18} color="#CCC" />
+                      <ChevronRight size={18} color={Colors.faint} />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -364,17 +364,17 @@ export function PromptsIntake({
 const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 24,
     marginBottom: 28,
   },
 
   // Filled prompt card
   filledCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     padding: 18,
     marginBottom: 14,
   },
@@ -437,12 +437,12 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
   },
-  addAnotherText: { fontSize: 14, fontWeight: "600", color: "#666" },
+  addAnotherText: { fontSize: 14, fontWeight: "600", color: Colors.body },
 
   progress: {
     marginTop: 8,
     fontSize: 14,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "600",
     textAlign: "center",
   },
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 48,
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   promptRowText: {
     fontSize: 15,
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     flex: 1,
   },
-  noResults: { fontSize: 15, color: "#999", textAlign: "center", marginTop: 24 },
+  noResults: { fontSize: 15, color: Colors.muted, textAlign: "center", marginTop: 24 },
 
   // Answer editor
   editorSafe: { flex: 1, backgroundColor: "#FFF" },
@@ -554,10 +554,10 @@ const styles = StyleSheet.create({
   changePromptText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
     textDecorationLine: "underline",
   },
-  charCount: { fontSize: 13, color: "#BBB", fontWeight: "500" },
+  charCount: { fontSize: 13, color: Colors.faint, fontWeight: "500" },
   editorFooter: { paddingHorizontal: 28, paddingBottom: 16, paddingTop: 8 },
   saveBtn: {
     backgroundColor: "#000",

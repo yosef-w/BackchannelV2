@@ -11,6 +11,7 @@ import {
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { JobPreviewCard } from "./JobPreviewCard";
 import { useKeyboardVisible } from "./useKeyboardVisible";
+import { Colors } from "@/constants/theme";
 
 export interface EditableJobFields {
   title: string;
@@ -188,7 +189,7 @@ function Field({
         style={[styles.input, style]}
         value={value}
         onChangeText={onChangeText}
-        placeholderTextColor="#BBB"
+        placeholderTextColor={Colors.faint}
         {...inputProps}
       />
     </View>
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 48 },
   helperText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 16,
     marginBottom: 24,
     lineHeight: 19,
@@ -218,15 +219,15 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.6,
   },
   requiredStar: { fontSize: 13, color: "#DC2626", fontWeight: "700" },
   input: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: Colors.border,
   },
   // The 24px bottom padding clears the home indicator when the keyboard is
   // down; once the keyboard is docked at the bottom, that same padding reads
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  continueBtnDisabled: { backgroundColor: "#F0F0F0" },
+  continueBtnDisabled: { backgroundColor: Colors.border },
   continueBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  continueBtnTextDisabled: { color: "#BBB" },
+  continueBtnTextDisabled: { color: Colors.faint },
 });

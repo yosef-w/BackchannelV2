@@ -11,6 +11,7 @@ import {
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import { BarFooter, canvasSheet, QuietAction } from "./JobSheetKit";
 import type { Referral } from "./matchesQueries";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
   },
   withdrawModalSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     fontWeight: "500",

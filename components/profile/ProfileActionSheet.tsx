@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   whiteBtnText: {
     color: "#000",

@@ -16,6 +16,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { Applicant } from "./jobTransforms";
+import { Colors } from "@/constants/theme";
 
 interface TopApplicantsModalProps {
   applicants: Applicant[];
@@ -77,7 +78,7 @@ export function TopApplicantsModal({
               <Text
                 style={{
                   marginTop: 12,
-                  color: "#999",
+                  color: Colors.muted,
                   fontSize: 13,
                   fontWeight: "600",
                 }}
@@ -100,7 +101,7 @@ export function TopApplicantsModal({
             </View>
           ) : applicants.length === 0 ? (
             <View style={{ padding: 20, alignItems: "center" }}>
-              <Text style={{ textAlign: "center", color: "#999", fontSize: 16 }}>
+              <Text style={{ textAlign: "center", color: Colors.muted, fontSize: 16 }}>
                 No applicants yet.
               </Text>
             </View>
@@ -181,16 +182,16 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: Colors.surface,
   },
   applicantAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
   },
   applicantName: { fontSize: 16, fontWeight: "700", color: "#000" },
-  applicantRole: { fontSize: 13, color: "#666", marginTop: 2 },
+  applicantRole: { fontSize: 13, color: Colors.body, marginTop: 2 },
   applicantMatchedTag: {
     flexDirection: "row",
     alignItems: "center",

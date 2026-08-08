@@ -33,6 +33,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { extractDisplayDomain } from "./jobTransforms";
 import { jobsModalStyles } from "./jobsModalStyles";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -97,7 +98,7 @@ export function JobDetailsModal({
               <Text style={styles.jobModalHeroCompany}>{job.company}</Text>
               {!!job.location && (
                 <View style={styles.jobModalLocationRow}>
-                  <MapPin size={13} color="#999" />
+                  <MapPin size={13} color={Colors.muted} />
                   <Text style={styles.jobModalLocationText}>
                     {job.location}
                   </Text>
@@ -249,7 +250,7 @@ export function JobDetailsModal({
                   onPress={() => Linking.openURL(job.url).catch(() => {})}
                   activeOpacity={0.7}
                 >
-                  <ExternalLink size={14} color="#666" strokeWidth={2} />
+                  <ExternalLink size={14} color={Colors.body} strokeWidth={2} />
                   <Text style={cardStyles.originalPostingText}>
                     {extractDisplayDomain(job.url)}
                   </Text>
@@ -405,7 +406,7 @@ const styles = StyleSheet.create({
   },
   jobModalLocationText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
   },
   jobRemoteBadge: {
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEEEEE",
+    borderColor: Colors.border,
   },
   jobModalCompCell: {
     flex: 1,
@@ -440,12 +441,12 @@ const styles = StyleSheet.create({
   },
   jobModalCompCellBorder: {
     borderLeftWidth: 1,
-    borderLeftColor: "#EEEEEE",
+    borderLeftColor: Colors.border,
   },
   jobModalCompLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: Colors.faint,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#EEEEEE",
+    borderColor: Colors.border,
   },
   jobDetailText: {
     fontSize: 14,
@@ -503,7 +504,7 @@ const styles = StyleSheet.create({
   skillBadge: {
     backgroundColor: "#F8F9FB",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -537,7 +538,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   sponsorCardHeader: {
     flexDirection: "row",
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
   sponsorCardName: { fontSize: 14, fontWeight: "800", color: "#000" },
   sponsorCardRole: {
     fontSize: 12,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -573,7 +574,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   unsponsorBtn: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
     borderColor: "#E5E5E5",
     paddingVertical: 16,

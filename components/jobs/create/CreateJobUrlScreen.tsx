@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { useKeyboardVisible } from "./useKeyboardVisible";
+import { Colors } from "@/constants/theme";
 
 interface CreateJobUrlScreenProps {
   visible: boolean;
@@ -100,11 +101,11 @@ export function CreateJobUrlScreen({
           )}
 
           <View style={styles.inputContainer}>
-            <Globe color="#999" size={18} />
+            <Globe color={Colors.muted} size={18} />
             <TextInput
               style={styles.textInput}
               placeholder="https://jobs.company.com/role"
-              placeholderTextColor="#999"
+              placeholderTextColor={Colors.muted}
               value={url}
               onChangeText={onSetUrl}
               keyboardType="url"
@@ -119,7 +120,7 @@ export function CreateJobUrlScreen({
                 onPress={() => onSetUrl("")}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <X color="#999" size={16} />
+                <X color={Colors.muted} size={16} />
               </TouchableOpacity>
             )}
           </View>
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   },
   subheading: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 21,
     marginBottom: 24,
   },
@@ -189,9 +190,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 2,
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 10,
     fontWeight: "500",
     lineHeight: 18,
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
   },
-  continueBtnDisabled: { backgroundColor: "#F0F0F0" },
+  continueBtnDisabled: { backgroundColor: Colors.border },
   continueBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  continueBtnTextDisabled: { color: "#BBB" },
+  continueBtnTextDisabled: { color: Colors.faint },
 });

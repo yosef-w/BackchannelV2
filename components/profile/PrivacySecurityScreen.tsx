@@ -293,11 +293,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Enter current password"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry
@@ -307,11 +307,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>NEW PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Enter new password"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
@@ -321,11 +321,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>CONFIRM NEW PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Re-enter new password"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -412,11 +412,11 @@ export function PrivacySecurityScreen({
 
             <Text style={styles.fieldLabel}>NEW EMAIL</Text>
             <View style={styles.inputWrapper}>
-              <Mail color="#AAA" size={18} />
+              <Mail color={Colors.faint} size={18} />
               <TextInput
                 style={styles.input}
                 placeholder="name@example.com"
-                placeholderTextColor="#BBB"
+                placeholderTextColor={Colors.faint}
                 value={newEmail}
                 onChangeText={setNewEmail}
                 keyboardType="email-address"
@@ -427,11 +427,11 @@ export function PrivacySecurityScreen({
 
             <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
             <View style={styles.inputWrapper}>
-              <Lock color="#AAA" size={18} />
+              <Lock color={Colors.faint} size={18} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your password to confirm"
-                placeholderTextColor="#BBB"
+                placeholderTextColor={Colors.faint}
                 value={emailPassword}
                 onChangeText={setEmailPassword}
                 secureTextEntry
@@ -518,11 +518,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>CONFIRM YOUR PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Enter your password to continue"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={deletePassword}
             onChangeText={(t) => {
               setDeletePassword(t);
@@ -602,7 +602,7 @@ export function PrivacySecurityScreen({
                 : "Create a password for your account"}
             </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionRow, { borderBottomWidth: 0 }]}
@@ -614,7 +614,7 @@ export function PrivacySecurityScreen({
               Update the email you log in with
             </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
       </View>
 
@@ -631,7 +631,7 @@ export function PrivacySecurityScreen({
             <Text style={styles.rowLabel}>Terms of Service</Text>
             <Text style={styles.rowDescription}>Read our terms of service</Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionRow, { borderBottomWidth: 0 }]}
@@ -644,7 +644,7 @@ export function PrivacySecurityScreen({
             <Text style={styles.rowLabel}>Privacy Policy</Text>
             <Text style={styles.rowDescription}>How we handle your data</Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
       </View>
 
@@ -660,7 +660,7 @@ export function PrivacySecurityScreen({
             Remove your account permanently
           </Text>
         </View>
-        <ChevronRight color="#BBB" size={20} />
+        <ChevronRight color={Colors.faint} size={20} />
       </TouchableOpacity>
     </EditorScreen>
   );
@@ -676,10 +676,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   group: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 28,
     overflow: "hidden",
   },
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   rowLabel: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   rowDescription: {
@@ -708,10 +708,10 @@ const styles = StyleSheet.create({
   deleteRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
@@ -734,10 +734,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     height: 48,
     marginBottom: 20,
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -791,10 +791,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   deleteWarningCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     padding: 16,
     marginBottom: 24,
     gap: 10,

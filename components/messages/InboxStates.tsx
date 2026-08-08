@@ -12,7 +12,7 @@ import { Colors } from "@/constants/theme";
 export function InboxLoading() {
   return (
     <View style={styles.center}>
-      <ActivityIndicator size="small" color="#999" />
+      <ActivityIndicator size="small" color={Colors.muted} />
     </View>
   );
 }
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorDetail: {
-    color: "#999",
+    color: Colors.muted,
     fontSize: 13,
     textAlign: "center",
     paddingHorizontal: 20,
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
   },

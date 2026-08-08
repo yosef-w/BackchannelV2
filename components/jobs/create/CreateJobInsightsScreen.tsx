@@ -17,6 +17,7 @@ import {
     View,
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
+import { Colors } from "@/constants/theme";
 
 interface CreateJobInsightsScreenProps {
   visible: boolean;
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
     gap: 14,
     backgroundColor: "#F8F9FB",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 18,
     padding: 16,
     marginBottom: 24,
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   },
   payoffSubtitle: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 19,
   },
   footer: {
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: Colors.border,
   },
   publishBtn: {
     flexDirection: "row",
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
   skipBtnText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     textDecorationLine: "underline",
   },
   successContent: {
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
   },
   successSubtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
   },

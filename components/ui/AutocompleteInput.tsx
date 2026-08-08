@@ -12,6 +12,7 @@ import {
     type StyleProp,
     type TextStyle,
 } from "react-native";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const DROPDOWN_MAX_HEIGHT = 200;
@@ -128,7 +129,7 @@ export function AutocompleteInput({
         onChangeText={handleChangeText}
         onBlur={onBlur}
         placeholder={placeholder}
-        placeholderTextColor="#999"
+        placeholderTextColor={Colors.muted}
         autoFocus={autoFocus}
         autoCorrect={false}
         autoCapitalize="words"
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E5E5",
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   suggestionText: {
     fontSize: 15,

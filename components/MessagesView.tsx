@@ -1185,7 +1185,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -1216,7 +1216,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 20,
   },
-  jobRefLabel: { fontSize: 10, fontWeight: "900", color: "#999" },
+  jobRefLabel: { fontSize: 10, fontWeight: "900", color: Colors.muted },
   jobRefBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1234,7 +1234,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#F8F9FB",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   pagination: {
     flexDirection: "row",
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
   modalAvatar: { width: 55, height: 55, borderRadius: 27 },
   modalName: { fontSize: 20, fontWeight: "800" },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
+  locationText: { fontSize: 12, color: Colors.faint, fontWeight: "600" },
   bioText: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 15 },
   skillsContainer: { flexDirection: "row", gap: 8, marginBottom: 15 },
   skillChip: {
@@ -1263,9 +1263,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
-  skillText: { fontSize: 11, fontWeight: "700", color: "#666" },
+  skillText: { fontSize: 11, fontWeight: "700", color: Colors.body },
   statsRow: { flexDirection: "row", gap: 8 },
   statItem: {
     flexDirection: "row",
@@ -1276,7 +1276,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   statLabel: { fontSize: 11, fontWeight: "800" },
   resumeBtn: {
@@ -1295,7 +1295,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   promptIconRowInModal: {
     flexDirection: "row",
@@ -1307,7 +1307,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1320,7 +1320,7 @@ const styles = StyleSheet.create({
   promptAnswerInModal: {
     fontSize: 14,
     fontWeight: "400",
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
   },
   fullProfileBtn: {
@@ -1351,14 +1351,14 @@ const styles = StyleSheet.create({
   /* ── Sponsor profile (applicant view) ── */
   sponsorTitleText: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     marginTop: 2,
     fontWeight: "500",
   },
   sponsorReferringRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 12,
     marginTop: 14,
@@ -1408,7 +1408,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1420,7 +1420,7 @@ const styles = StyleSheet.create({
   },
   sponsorTipText: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     lineHeight: 18,
     marginTop: 14,
     textAlign: "center",
@@ -1458,12 +1458,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   summaryLabel: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#AAA",
+    color: Colors.faint,
     letterSpacing: 1,
     marginBottom: 4,
   },
@@ -1474,5 +1474,5 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   summarySkills: { flexDirection: "row", flexWrap: "wrap" },
-  summarySkillText: { fontSize: 13, color: "#666", fontWeight: "600" },
+  summarySkillText: { fontSize: 13, color: Colors.body, fontWeight: "600" },
 });

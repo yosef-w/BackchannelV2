@@ -35,6 +35,7 @@ import {
 } from "./JobSheetKit";
 import { SponsorRequest } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
+import { Colors } from "@/constants/theme";
 
 interface SrJobDetailPreview {
   organization_logo?: string | null;
@@ -138,7 +139,7 @@ export function SponsorRequestModal({
                   onPress={() => onSetStep(step - 1)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <ChevronLeft size={20} color="#999" />
+                  <ChevronLeft size={20} color={Colors.muted} />
                 </TouchableOpacity>
                 <View style={styles.srSegments}>
                   <View style={[styles.srSegment, styles.srSegmentActive]} />
@@ -344,7 +345,7 @@ export function SponsorRequestModal({
                       <TextInput
                         style={styles.srTextInput}
                         placeholder={placeholder}
-                        placeholderTextColor="#999"
+                        placeholderTextColor={Colors.muted}
                         value={value}
                         onChangeText={setter}
                         multiline
@@ -484,12 +485,12 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
   },
   srSegmentActive: { backgroundColor: "#000" },
   srFieldHint: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginBottom: 12,
     lineHeight: 18,
   },
@@ -517,7 +518,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#CCC",
+    borderColor: Colors.faint,
   },
   srRadioCircleActive: { borderColor: "#000", borderWidth: 6 },
   srRadioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -529,10 +530,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(15,23,42,0.06)",
     marginBottom: 12,
   },
-  srRadioText: { fontSize: 15, color: "#666", fontWeight: "600" },
+  srRadioText: { fontSize: 15, color: Colors.body, fontWeight: "600" },
   srRadioTextActive: { color: "#000", fontWeight: "600" },
   srSideBySide: { flexDirection: "row", gap: 12 },
-  srStepLabel: { fontSize: 12, fontWeight: "700", color: "#999" },
+  srStepLabel: { fontSize: 12, fontWeight: "700", color: Colors.muted },
   srStepRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -541,7 +542,7 @@ const styles = StyleSheet.create({
   },
   srStepSub: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -558,7 +559,7 @@ const styles = StyleSheet.create({
   },
   srSuccessDesc: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 30,

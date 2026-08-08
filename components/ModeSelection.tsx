@@ -114,7 +114,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
                   </View>
                 </View>
                 <ChevronRight
-                  color={selected === "applicant" ? "#FFF" : "#CCC"}
+                  color={selected === "applicant" ? "#FFF" : Colors.faint}
                   size={18}
                 />
               </TouchableOpacity>
@@ -165,7 +165,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
                   </View>
                 </View>
                 <ChevronRight
-                  color={selected === "sponsor" ? "#FFF" : "#CCC"}
+                  color={selected === "sponsor" ? "#FFF" : Colors.faint}
                   size={18}
                 />
               </TouchableOpacity>
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     justifyContent: "space-between",
   },
   cardSelected: {
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   iconCircleSelected: {
     backgroundColor: "#222", // Slightly lighter black for icon visibility
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   textSelectedMuted: {
-    color: "#AAAAAA",
+    color: Colors.faint,
   },
   footer: {
     alignItems: "center",

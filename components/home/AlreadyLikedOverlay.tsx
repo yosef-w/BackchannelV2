@@ -2,6 +2,7 @@ import { Check, ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface AlreadyLikedOverlayProps {
   userType: "applicant" | "sponsor";
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,

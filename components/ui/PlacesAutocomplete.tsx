@@ -31,6 +31,7 @@ import {
   ParsedAddress,
   parseAddressComponents,
 } from "@/lib/addressParser";
+import { Colors } from "@/constants/theme";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL_BASE = "https://places.googleapis.com/v1/places";
@@ -279,7 +280,7 @@ export function PlacesAutocomplete({
             value={query}
             onChangeText={setQuery}
             placeholder={placeholder}
-            placeholderTextColor="#999"
+            placeholderTextColor={Colors.muted}
             autoFocus={autoFocus}
             autoCorrect={false}
             autoCapitalize="words"
@@ -288,7 +289,7 @@ export function PlacesAutocomplete({
           {(loading || resolving) && (
             <ActivityIndicator
               size="small"
-              color="#666"
+              color={Colors.body}
               style={styles.spinner}
             />
           )}
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E5E5",
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   suggestionMain: {
     fontSize: 15,
@@ -408,7 +409,7 @@ const styles = StyleSheet.create({
   },
   suggestionSecondary: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     marginTop: 2,
   },
   manualLink: {
@@ -416,7 +417,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   manualLinkText: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 12,
     textDecorationLine: "underline",
   },
