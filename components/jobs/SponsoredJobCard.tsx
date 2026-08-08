@@ -9,6 +9,7 @@ import {
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { Colors } from "@/constants/theme";
 
 interface SponsoredJobCardProps {
   job: Job;
@@ -125,15 +126,16 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.muted,
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  // Below the serif's ~18px floor in a dense list context.
   jobTitleText: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.4,
   },
   moreBtn: { padding: 12, margin: -8, alignSelf: "flex-start" },

@@ -1,6 +1,7 @@
 import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface OpportunityRowProps {
   onPress: () => void;
@@ -120,10 +121,10 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   info: { flex: 1, gap: 2 },
-  title: { fontSize: 15, fontWeight: "700", color: "#000" },
-  titleMuted: { color: "#999" },
-  subtitle: { fontSize: 12, color: "#888", fontWeight: "500" },
-  subtitleMuted: { color: "#BBB" },
+  title: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  titleMuted: { color: Colors.muted },
+  subtitle: { fontSize: 12, color: Colors.muted, fontWeight: "500" },
+  subtitleMuted: { color: Colors.faint },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -138,5 +139,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   ctaText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
-  metaText: { fontSize: 11, color: "#999", fontWeight: "600" },
+  metaText: { fontSize: 11, color: Colors.muted, fontWeight: "600" },
 });

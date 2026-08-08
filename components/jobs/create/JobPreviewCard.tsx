@@ -9,6 +9,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../../ui/CompanyLogo";
+import { Colors } from "@/constants/theme";
 
 export interface JobPreviewFields {
   title: string;
@@ -183,14 +184,16 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.muted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  // Matches JobCard/SponsoredJobCard's jobTitleText — same element, kept
+  // consistent (system font) rather than serif at a 2px-larger size.
   jobTitleText: {
     fontSize: 19,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.4,
     marginTop: 3,
   },

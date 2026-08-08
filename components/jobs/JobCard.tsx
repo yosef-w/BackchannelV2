@@ -4,6 +4,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { StatusChip } from "../ui/StatusChip";
+import { Colors } from "@/constants/theme";
 
 interface JobCardProps {
   job: Job;
@@ -131,18 +132,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerInfo: { flex: 1 },
+  // Matches the site's uppercase-label convention (.setup-key/.eyebrow).
   companyName: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.muted,
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  // Below the serif's ~18px floor in a dense list context — system font,
+  // token color only.
   jobTitleText: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.4,
   },
   moreBtn: { padding: 12, margin: -8, alignSelf: "flex-start" },

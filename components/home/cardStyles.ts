@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { Colors, Type } from "@/constants/theme";
 
 /**
  * Shared style cluster for the Hinge-style profile/job cards rendered by
@@ -34,18 +35,21 @@ export const cardStyles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFF",
   },
+  // The card's primary identity — a person's name or a job title — is
+  // this screen's headline. Same treatment as a person's name elsewhere
+  // (ProfileIdentityCard).
   hingeHeroName: {
+    ...Type.heading,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
+    lineHeight: 30,
+    color: Colors.ink,
     marginTop: 16,
     textAlign: "center",
   },
   hingeHeroSubtitle: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 4,
   },
@@ -76,7 +80,7 @@ export const cardStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.8,
-    color: "#999",
+    color: Colors.muted,
     marginBottom: 10,
   },
   hingeBodyText: {
@@ -121,7 +125,7 @@ export const cardStyles = StyleSheet.create({
   hingeInsightQuestion: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 1.0,
     marginBottom: 10,
     textTransform: "uppercase",
@@ -320,7 +324,7 @@ export const cardStyles = StyleSheet.create({
   sponsorZoneQALabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 10,
   },
@@ -358,16 +362,18 @@ export const cardStyles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFF",
   },
+  // A person's name — same "names are headline-tier" rule as
+  // ProfileIdentityCard/hingeHeroName, just embedded inline here.
   sponsorMeetName: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 19,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.3,
   },
   sponsorMeetRole: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     marginTop: 2,
   },
 
@@ -456,7 +462,7 @@ export const cardStyles = StyleSheet.create({
   heroStatusMutedText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.2,
   },
 
@@ -495,10 +501,11 @@ export const cardStyles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
+  // Below the serif's ~18px floor — system font, token color only.
   noSponsorHeadline: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 6,
     textAlign: "center",
     letterSpacing: -0.2,

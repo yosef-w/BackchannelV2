@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface HubSectionProps {
   title: string;
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
   countText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
   subtitle: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     marginBottom: 10,
     lineHeight: 16,
   },

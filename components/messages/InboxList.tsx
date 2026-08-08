@@ -4,6 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Avatar } from "../ui/Avatar";
 import { StatusChip } from "../ui/StatusChip";
+import { Colors } from "@/constants/theme";
 
 /**
  * The grouped Inbox list for one section (active / past / hidden).
@@ -406,17 +407,17 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 3,
   },
-  name: { fontSize: 15, fontWeight: "700", color: "#000", flexShrink: 1 },
-  nameHidden: { color: "#999" },
+  name: { fontSize: 15, fontWeight: "700", color: Colors.ink, flexShrink: 1 },
+  nameHidden: { color: Colors.muted },
   contextLine: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
     marginBottom: 2,
   },
-  time: { fontSize: 10, fontWeight: "800", color: "#BBB" },
-  preview: { fontSize: 13, color: "#888" },
-  previewHidden: { color: "#AAA" },
+  time: { fontSize: 10, fontWeight: "800", color: Colors.faint },
+  preview: { fontSize: 13, color: Colors.muted },
+  previewHidden: { color: Colors.faint },
   previewUnread: { color: "#000", fontWeight: "600" },
   previewRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   rolesPill: {
