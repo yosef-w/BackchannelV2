@@ -58,14 +58,15 @@ const STAGE_H = 320;
 
 // Premium curves: explosive start, long luxurious deceleration for
 // entrances; committed acceleration for exits. Evaluated directly in
-// worklets via bezierFn.
+// worklets — bezierFn's returned closure is itself a worklet (defined
+// with a worklet directive inside Reanimated), so it's safe to call from
+// useAnimatedStyle. Any plain JS wrapper around these is NOT (a
+// non-worklet arrow here previously aborted the whole app with the
+// worklet callGuard the moment this screen mounted).
 const easeOut = Easing.bezierFn(0.16, 1, 0.3, 1);
 const easeIn = Easing.bezierFn(0.55, 0, 0.8, 0.2);
 const easeInOut = Easing.bezierFn(0.65, 0, 0.35, 1);
-const backOut = (s: number) => {
-  const f = Easing.bezierFn(0.34, 1.56, 0.64, 1);
-  return f(s);
-};
+const backOut = Easing.bezierFn(0.34, 1.56, 0.64, 1);
 
 /** Windowed sub-progress: 0 before `a`, 1 after `b`, linear between. */
 const win = (t: number, a: number, b: number): number => {
