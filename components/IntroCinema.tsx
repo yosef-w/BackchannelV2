@@ -529,7 +529,7 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
             master={master}
             enter={0.72}
             out={[0.888, 0.909]}
-            segments={[{ text: 'They refer you — for real.' }]}
+            segments={[{ text: 'A real referral, from a real person.' }]}
             textStyle={styles.caption}
           />
           <CinemaCaption
