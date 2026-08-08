@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     marginRight: 14,
     paddingLeft: 14,
     borderLeftWidth: 1,
-    borderLeftColor: "#EDEDED",
+    borderLeftColor: Colors.surface,
     marginBottom: 10,
   },
   subRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },

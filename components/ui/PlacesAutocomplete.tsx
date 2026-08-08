@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   spinner: {
     marginLeft: 8,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     maxHeight: 240,
     ...Platform.select({
       ios: {

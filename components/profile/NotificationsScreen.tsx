@@ -14,9 +14,9 @@ import { useAutosaveStatus } from "./useAutosaveStatus";
 import { Colors } from "@/constants/theme";
 
 const SWITCH_COLORS = {
-  trackColor: { false: "#B0B3BA", true: "#000" },
+  trackColor: { false: Colors.faint, true: "#000" },
   thumbColor: "#FFF",
-  ios_backgroundColor: "#B0B3BA",
+  ios_backgroundColor: Colors.faint,
 } as const;
 
 type NotifKey =

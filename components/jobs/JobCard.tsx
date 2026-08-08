@@ -160,10 +160,10 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
   },
-  tagText: { fontSize: 12, fontWeight: "600", color: "#444" },
+  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
   cardDescription: {
     fontSize: 14,
-    color: "#555",
+    color: Colors.body,
     lineHeight: 20,
     marginBottom: 12,
   },

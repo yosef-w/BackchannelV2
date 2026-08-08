@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     backgroundColor: "#FFF",
     alignItems: "center",
     justifyContent: "center",
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 9.5,
     fontWeight: "600",
-    color: "#555",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 12,
     // Wider render box than the 46pt node column (negative margins keep the

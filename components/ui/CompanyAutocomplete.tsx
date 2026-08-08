@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Colors.offWhite,
   },
   input: {
     flex: 1,
@@ -228,6 +228,6 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   rowText: { flex: 1, minWidth: 0 },
-  rowName: { fontSize: 15, fontWeight: "700", color: "#111" },
+  rowName: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   rowMeta: { fontSize: 12, color: Colors.muted, fontWeight: "500", marginTop: 1 },
 });

@@ -175,10 +175,10 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Colors.border,
   },
   textShimmer: {
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Colors.border,
     borderRadius: 4,
   },
   companyName: {
@@ -207,11 +207,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  tagText: { fontSize: 12, fontWeight: "600", color: "#444" },
+  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
   tagShimmer: {
     width: 76,
     height: 26,
     borderRadius: 8,
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Colors.border,
   },
 });

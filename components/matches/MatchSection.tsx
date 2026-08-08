@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   error: {
     fontSize: 12,
-    color: "#DC2626",
+    color: Colors.danger,
     marginBottom: 10,
   },
   group: {

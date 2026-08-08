@@ -11,11 +11,11 @@ const TONE_STYLES: Record<
   // Something moved forward / needs no further waiting — e.g. "Referred",
   // "Matched", "Now Sponsored". Bold black dot + text, same pattern the
   // old referral badge used ("referralBadgeReferred").
-  active: { bg: "#F4F4F5", border: "#E5E5E5", dot: "#000", text: "#000" },
+  active: { bg: Colors.surface, border: Colors.border, dot: "#000", text: "#000" },
   // Sitting in a queue, nothing to do but wait — "Pending", "Waitlisted".
-  waiting: { bg: Colors.border, border: "#E5E5E5", dot: Colors.muted, text: Colors.body },
+  waiting: { bg: Colors.border, border: Colors.border, dot: Colors.muted, text: Colors.body },
   // Terminal / de-emphasized — "Withdrawn", "Didn't move forward".
-  muted: { bg: Colors.surface, border: "#E0E0E0", dot: Colors.faint, text: Colors.muted },
+  muted: { bg: Colors.surface, border: Colors.border, dot: Colors.faint, text: Colors.muted },
 };
 
 interface StatusChipProps {

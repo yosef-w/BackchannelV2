@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

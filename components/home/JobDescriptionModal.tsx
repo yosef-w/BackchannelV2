@@ -141,7 +141,7 @@ export function JobDescriptionModal({
             style={{
               fontSize: 16,
               lineHeight: 26,
-              color: "#444",
+              color: Colors.body,
               fontWeight: "500",
               letterSpacing: -0.2,
             }}

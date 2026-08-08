@@ -100,9 +100,9 @@ interface ProfileViewProps {
 // `ios_backgroundColor` (NOT `trackColor.false`), which wasn't set at all. The
 // gray below frames the white thumb clearly while staying on-brand.
 const SWITCH_COLORS = {
-  trackColor: { false: "#B0B3BA", true: "#000" },
+  trackColor: { false: Colors.faint, true: "#000" },
   thumbColor: "#FFF",
-  ios_backgroundColor: "#B0B3BA",
+  ios_backgroundColor: Colors.faint,
 } as const;
 
 interface ApplicantProfile {
@@ -1023,7 +1023,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isNameMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1055,7 +1055,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isOrgMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1087,7 +1087,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1203,7 +1203,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isLanguageMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1238,7 +1238,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isProficiencyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1581,7 +1581,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isJobTitleMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1616,7 +1616,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isCompanyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1651,7 +1651,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isStartDateMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1815,7 +1815,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isDegreeMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1861,7 +1861,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isUniversityMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1896,7 +1896,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isGradYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -2495,7 +2495,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     marginBottom: 16,
     overflow: "hidden",
   },
@@ -2548,7 +2548,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#000",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   checkboxRow: {
     flexDirection: "row",
@@ -2588,7 +2588,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2630,13 +2630,13 @@ const styles = StyleSheet.create({
   dropzone: {
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     borderRadius: 18,
     paddingVertical: 32,
     paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Colors.offWhite,
   },
   dropzoneIcon: {
     width: 56,
@@ -2656,7 +2656,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   resumeProgressRow: {
     flexDirection: "row",
@@ -2693,7 +2693,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     backgroundColor: "#FFF",
   },
   resumeCancelText: {
@@ -2702,9 +2702,9 @@ const styles = StyleSheet.create({
     color: Colors.body,
   },
   resumeSuccessCard: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     borderRadius: 14,
     padding: 16,
     gap: 10,
@@ -2721,7 +2721,7 @@ const styles = StyleSheet.create({
   },
   resumeSuccessSubtitle: {
     fontSize: 13,
-    color: "#374151",
+    color: Colors.body,
     fontWeight: "600",
   },
   resumeUpdatedFields: {
@@ -2730,12 +2730,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   resumeFieldPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   resumeFieldPillText: {
     fontSize: 11,
@@ -2760,7 +2760,7 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     borderRadius: 14,
     padding: 14,
   },

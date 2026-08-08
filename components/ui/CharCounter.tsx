@@ -45,5 +45,5 @@ const styles = StyleSheet.create({
     color: Colors.faint,
   },
   near: { color: "#D97706" }, // amber — getting close
-  atLimit: { color: "#DC2626", fontWeight: "700" }, // red — stopped accepting
+  atLimit: { color: Colors.danger, fontWeight: "700" }, // red — stopped accepting
 });

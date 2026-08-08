@@ -571,9 +571,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
-    borderColor: "#F4F4F5",
+    borderColor: Colors.surface,
   },
   preferenceText: {
     fontSize: 14,
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   resumeCard: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   resumeCardSubtitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#444",
+    color: Colors.body,
     marginBottom: 6,
   },
   resumeCardBody: {
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   certBadge: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -660,12 +660,12 @@ const styles = StyleSheet.create({
   },
   certSub: {
     fontSize: 12,
-    color: "#888",
+    color: Colors.muted,
     fontWeight: "500",
     marginTop: 2,
   },
   langBadge: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -681,12 +681,12 @@ const styles = StyleSheet.create({
   },
   langSub: {
     fontSize: 12,
-    color: "#888",
+    color: Colors.muted,
     fontWeight: "500",
     marginTop: 2,
   },
   achievementsCard: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   },
   achievementsText: {
     fontSize: 14,
-    color: "#444",
+    color: Colors.body,
     lineHeight: 22,
     fontWeight: "500",
   },
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
   avatarFallback: {
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
   },
   avatarInitials: {
     fontSize: 40,
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   // ── Stats divider ──────────────────────────────────────────────────────────────
   statDivider: {
     width: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.border,
     marginVertical: 4,
     alignSelf: "stretch" as const,
   },
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },

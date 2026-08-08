@@ -188,7 +188,7 @@ export function SponsorPublicProfileView({
                 ]}
               >
                 {openToReferrals === false ? (
-                  <Award size={11} color="#DC2626" strokeWidth={2.5} />
+                  <Award size={11} color={Colors.danger} strokeWidth={2.5} />
                 ) : (
                   <ShieldCheck size={11} color="#000" strokeWidth={2.5} />
                 )}
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   avatarFallback: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
   },
   avatarInitials: {
     fontSize: 40,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.border,
     marginVertical: 4,
     alignSelf: "stretch" as const,
   },
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   statusPillOpen: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
   },
   statusPillClosed: {
     backgroundColor: "#FEF2F2",
@@ -472,12 +472,12 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   statusPillTextClosed: {
-    color: "#DC2626",
+    color: Colors.danger,
   },
 
   // ── Key Insights ──────────────────────────────────────────────────────────
   insightCard: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   },
   insightAnswer: {
     fontSize: 14,
-    color: "#444",
+    color: Colors.body,
     lineHeight: 22,
     fontWeight: "500",
     paddingLeft: 36,
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: Colors.offWhite,
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   companyText: {
     fontSize: 14,

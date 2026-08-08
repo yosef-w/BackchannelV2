@@ -470,10 +470,10 @@ const styles = StyleSheet.create({
   },
   interestedModalTagText: {
     fontSize: 12,
-    color: "#DC2626",
+    color: Colors.danger,
     fontWeight: "700",
   },
-  srCalloutText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  srCalloutText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
   // Segmented progress — same language as the check-in stack's bars.
   srSegments: {
     flex: 1,

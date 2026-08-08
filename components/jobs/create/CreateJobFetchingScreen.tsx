@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   rawViewUrlText: {
     flex: 1,
     fontSize: 12,
-    color: "#555",
+    color: Colors.body,
     fontWeight: "500",
   },
   rawViewNavGroup: { flexDirection: "row", alignItems: "center" },

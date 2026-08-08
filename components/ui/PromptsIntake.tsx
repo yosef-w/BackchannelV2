@@ -316,7 +316,7 @@ export function PromptsIntake({
                       (editorPrompt && examples[editorPrompt]) ||
                       "Share your answer…"
                     }
-                    placeholderTextColor="#A3A3A3"
+                    placeholderTextColor={Colors.faint}
                     value={draft}
                     onChangeText={setDraft}
                     style={styles.editorInput}
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     flexShrink: 1,
   },
   promptBadgeText: {
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     marginBottom: 20,
   },
   editorBadgeText: {

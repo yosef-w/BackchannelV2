@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   reasonOtherInput: {
     marginTop: 14,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   menuOptionCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     padding: 16,
     borderRadius: 16,
     flexDirection: "row",

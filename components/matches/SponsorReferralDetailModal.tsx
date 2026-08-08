@@ -166,7 +166,7 @@ export function SponsorReferralDetailModal({
                         : {
                             label: "Withdrawn",
                             color: Colors.body,
-                            bgColor: "#F0F2F7",
+                            bgColor: Colors.surface,
                           }
                     }
                     onClose={onClose}
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "italic",
     fontWeight: "500",
-    color: "#374151",
+    color: Colors.body,
     lineHeight: 21,
   },
 });

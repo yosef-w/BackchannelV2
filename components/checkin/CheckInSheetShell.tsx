@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 5,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: Colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,

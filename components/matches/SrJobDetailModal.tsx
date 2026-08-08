@@ -105,7 +105,7 @@ export function SrJobDetailModal({
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <AlertTriangle size={32} color="#DC2626" />
+            <AlertTriangle size={32} color={Colors.danger} />
             <Text style={styles.errorTitle}>Could not load role details</Text>
             <Text style={styles.errorSub}>{error}</Text>
           </View>
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#DC2626",
+    color: Colors.danger,
     marginTop: 12,
     textAlign: "center",
   },

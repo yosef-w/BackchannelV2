@@ -62,7 +62,7 @@ export function WithdrawReferralModal({
         {referral && (
           <View>
             <View style={styles.withdrawIconCircle}>
-              <AlertTriangle size={28} color="#DC2626" strokeWidth={2.5} />
+              <AlertTriangle size={28} color={Colors.danger} strokeWidth={2.5} />
             </View>
 
             <Text style={styles.withdrawModalTitle}>Withdraw referral?</Text>
@@ -170,13 +170,13 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     marginTop: 7,
   },
   withdrawWarningText: {
     flex: 1,
     fontSize: 13,
-    color: "#DC2626",
+    color: Colors.danger,
     lineHeight: 19,
     fontWeight: "600",
   },

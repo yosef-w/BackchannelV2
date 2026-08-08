@@ -120,7 +120,7 @@ function CardCloseButton({ onPress }: { onPress: () => void }) {
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityLabel="Close"
     >
-      <X size={15} color="#6B7280" strokeWidth={2.5} />
+      <X size={15} color={Colors.body} strokeWidth={2.5} />
     </TouchableOpacity>
   );
 }
@@ -284,7 +284,7 @@ export function PosterHero({
           activeOpacity={0.7}
           accessibilityLabel={`View original posting on ${domain}`}
         >
-          <ExternalLink size={11} color="#3B4353" strokeWidth={2.2} />
+          <ExternalLink size={11} color={Colors.ink} strokeWidth={2.2} />
           <Text style={g.sourcePillText}>{domain}</Text>
         </TouchableOpacity>
       )}
@@ -365,8 +365,8 @@ export function PersonHero({
             { marginTop: infoPill ? 8 : 10, backgroundColor: pill.bgColor ?? TINT },
           ]}
         >
-          <CheckCircle size={11} color={pill.color ?? "#3B4353"} />
-          <Text style={[g.tintPillText, { color: pill.color ?? "#3B4353" }]}>
+          <CheckCircle size={11} color={pill.color ?? Colors.ink} />
+          <Text style={[g.tintPillText, { color: pill.color ?? Colors.ink }]}>
             {pill.label}
           </Text>
         </View>
@@ -456,8 +456,8 @@ export function HostCard({
             red && { backgroundColor: "#FEF2F2" },
           ]}
         >
-          <CheckCircle size={11} color={red ? "#DC2626" : "#3B4353"} />
-          <Text style={[g.tintPillText, red && { color: "#DC2626" }]}>
+          <CheckCircle size={11} color={red ? Colors.danger : Colors.ink} />
+          <Text style={[g.tintPillText, red && { color: Colors.danger }]}>
             {pill.label}
           </Text>
         </View>
@@ -518,7 +518,7 @@ export function RoleTicket({
           </Text>
         )}
       </View>
-      {onPress && <ChevronRight color="#B6BCC8" size={18} strokeWidth={2.2} />}
+      {onPress && <ChevronRight color={Colors.faint} size={18} strokeWidth={2.2} />}
     </TouchableOpacity>
   );
 }
@@ -725,11 +725,11 @@ export function QuietAction({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={destructive ? "#DC2626" : Colors.muted}
+          color={destructive ? Colors.danger : Colors.muted}
         />
       ) : (
         <Text
-          style={[g.quietActionText, destructive && { color: "#DC2626" }]}
+          style={[g.quietActionText, destructive && { color: Colors.danger }]}
         >
           {label}
         </Text>
@@ -830,7 +830,7 @@ export function PacketCard({
           <Text style={g.packetValue} numberOfLines={2}>
             {f.value}
           </Text>
-          <Copy size={14} color="#9CA3AF" strokeWidth={2} />
+          <Copy size={14} color={Colors.muted} strokeWidth={2} />
         </TouchableOpacity>
       ))}
       <TouchableOpacity
@@ -991,7 +991,7 @@ const g = StyleSheet.create({
     fontSize: 14,
     fontStyle: "italic",
     fontWeight: "500",
-    color: "#374151",
+    color: Colors.body,
     lineHeight: 21,
     textAlign: "center",
   },
@@ -1046,7 +1046,7 @@ const g = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#FFF",
     borderWidth: 1.5,
-    borderColor: "#9CA3AF",
+    borderColor: Colors.muted,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,
@@ -1055,13 +1055,13 @@ const g = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: Colors.border,
     marginTop: 8,
   },
   tlLine: {
     flex: 1,
     width: 2,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: Colors.border,
     marginVertical: 3,
   },
   tlLineDone: { backgroundColor: "#000" },
@@ -1081,7 +1081,7 @@ const g = StyleSheet.create({
   tlSub: { fontSize: 12, fontWeight: "600", color: FAINT, marginLeft: 8 },
   emptySeat: {
     borderWidth: 1.5,
-    borderColor: "#D7DBE3",
+    borderColor: Colors.borderStrong,
     borderStyle: "dashed",
     backgroundColor: "transparent",
     ...Platform.select({
@@ -1142,7 +1142,7 @@ const g = StyleSheet.create({
   skelBar: {
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#E9ECF1",
+    backgroundColor: Colors.border,
     marginBottom: 10,
   },
   selectRow: {
@@ -1181,7 +1181,7 @@ const g = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#D1D5DB",
+    borderColor: Colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1243,7 +1243,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...cardShadow,
   },
-  bodyText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  bodyText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
   readMoreBtn: {
     flexDirection: "row",
     alignItems: "center",

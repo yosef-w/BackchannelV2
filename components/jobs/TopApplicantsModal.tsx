@@ -91,7 +91,7 @@ export function TopApplicantsModal({
               <Text
                 style={{
                   textAlign: "center",
-                  color: "#DC2626",
+                  color: Colors.danger,
                   fontSize: 14,
                   fontWeight: "600",
                 }}
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,

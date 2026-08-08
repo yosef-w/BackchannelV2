@@ -1153,7 +1153,7 @@ export function MatchesView({
           }}
           badge={{
             label: "Interested in Your Job",
-            color: "#DC2626",
+            color: Colors.danger,
             bgColor: "#FEF2F2",
           }}
           roleContext={
@@ -1260,7 +1260,7 @@ export function MatchesView({
             label: selectedInterestedSponsor.likedAt
               ? `Wants to connect · ${getRelativeTime(selectedInterestedSponsor.likedAt)}`
               : "Wants to connect with you",
-            color: "#DC2626",
+            color: Colors.danger,
             bgColor: "#FEF2F2",
           }}
           roleContext={
@@ -1490,7 +1490,7 @@ const styles = StyleSheet.create({
     bottom: 100,
     left: 20,
     right: 20,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: Colors.ink,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 20,

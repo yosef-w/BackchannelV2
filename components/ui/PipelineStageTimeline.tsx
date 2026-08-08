@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
   },
   segmentFilled: {
     backgroundColor: "#000",

@@ -1077,7 +1077,7 @@ export function JobsView() {
           badge={
             selectedApplicantForMessage.status === "MATCHED"
               ? // Monochrome to match the "Matched" tag on the list row.
-                { label: "Matched", color: "#000", bgColor: "#F4F4F5" }
+                { label: "Matched", color: "#000", bgColor: Colors.surface }
               : { label: "Liked your role" }
           }
           roleContext={
@@ -1231,7 +1231,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: Colors.border,
     minWidth: 20,
     alignItems: "center",
   },

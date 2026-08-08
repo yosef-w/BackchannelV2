@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   },
   emailVerifErrorText: {
     fontSize: 13,
-    color: "#DC2626",
+    color: Colors.danger,
     textAlign: "center",
     marginTop: 4,
     marginBottom: 4,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   emailVerifEditActions: {
     flexDirection: "row",
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },

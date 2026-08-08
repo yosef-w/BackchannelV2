@@ -43,7 +43,7 @@ export function InboxEmpty() {
 const styles = StyleSheet.create({
   center: { paddingVertical: 40, alignItems: "center" },
   errorTitle: {
-    color: "#DC2626",
+    color: Colors.danger,
     fontSize: 15,
     fontWeight: "600",
     marginBottom: 8,
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,

@@ -65,13 +65,13 @@ export function ProfileCompletionBanner({
 const styles = StyleSheet.create({
   banner: {
     flexDirection: "row",
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
     marginHorizontal: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   iconContainer: {
     width: 48,
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    color: "#78716C",
+    color: Colors.muted,
     lineHeight: 18,
     marginBottom: 12,
   },

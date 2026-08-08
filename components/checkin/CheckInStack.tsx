@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Colors.border,
   },
   progressSegmentDone: {
     backgroundColor: "#000",
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
   },
   overviewRowSub: {
     fontSize: 12,
-    color: "#888",
+    color: Colors.muted,
     fontWeight: "500",
   },
   overviewPending: {
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   subheading: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#444",
+    color: Colors.body,
   },
   metaText: {
     fontSize: 13,
@@ -695,9 +695,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#EBEBEB",
+    borderColor: Colors.border,
   },
   stalePillText: {
     fontSize: 10,
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     minHeight: 84,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -747,14 +747,14 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F2F2F2",
+    borderTopColor: Colors.surface,
   },
   skipBtn: {
     paddingVertical: 16,
     paddingHorizontal: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   skipBtnText: {
     fontSize: 14,

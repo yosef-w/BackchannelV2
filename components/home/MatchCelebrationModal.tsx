@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   // Matches the site's secondary/cancel-button convention (var(--muted)).
   matchSkipBtnText: {

@@ -583,7 +583,7 @@ export function NotificationsView({
               />
             ) : (
               <View style={styles.iconCircle}>
-                <Icon color="#1A1A1A" size={20} strokeWidth={2.3} />
+                <Icon color={Colors.ink} size={20} strokeWidth={2.3} />
               </View>
             )}
 
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   actionPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -709,7 +709,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
   // Unread lift — was #F5F6F8, a bluish gray that had become the only
   // off-palette color left in the app; #F4F4F5 is the system neutral.
   rowUnread: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
   },
   rowRead: {
     backgroundColor: "transparent",
@@ -779,13 +779,13 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#F2F2F2",
+    backgroundColor: Colors.surface,
   },
   iconCircle: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -802,12 +802,12 @@ const styles = StyleSheet.create({
   // Read rows soften the title so unread ones lead the eye.
   rowTitleRead: {
     fontWeight: "600",
-    color: "#444",
+    color: Colors.body,
   },
   rowBody: {
     fontSize: 13.5,
     fontWeight: "500",
-    color: "#777",
+    color: Colors.muted,
     lineHeight: 19,
     marginTop: 2,
   },
@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   swipeActionDelete: {
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     borderRadius: 18,
     flexDirection: "row",
     alignItems: "center",

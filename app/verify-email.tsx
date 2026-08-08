@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -291,11 +291,11 @@ const styles = StyleSheet.create({
   resendLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#444",
+    color: Colors.body,
     textAlign: "center",
   },
   input: {
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 50,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   resendSentText: {
     flex: 1,
     fontSize: 13,
-    color: "#333",
+    color: Colors.body,
     lineHeight: 18,
   },
 });

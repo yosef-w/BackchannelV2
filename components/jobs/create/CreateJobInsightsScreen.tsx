@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   payoffBanner: {
     flexDirection: "row",
     gap: 14,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 18,

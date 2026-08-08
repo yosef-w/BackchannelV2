@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 50,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: "#DC2626",
+    color: Colors.danger,
     textAlign: "center",
     lineHeight: 18,
   },

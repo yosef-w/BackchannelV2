@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   labelDestructive: {
-    color: "#DC2626",
+    color: Colors.danger,
     fontWeight: "700",
   },
   value: {

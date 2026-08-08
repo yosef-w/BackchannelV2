@@ -35,6 +35,7 @@ import {
   type SsoIdentity,
 } from "@/lib/sso";
 import { authApi, type SsoLoginResponse } from "@/lib/auth-api";
+import { Colors } from "@/constants/theme";
 
 // Lazy/guarded exactly like lib/sso.ts's native calls — this is the
 // PROVIDER'S OWN rendered button (a native view), so importing it eagerly
@@ -204,12 +205,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   appleButton: { width: "100%", height: BUTTON_HEIGHT },
+  // NOTE: the GoogleLogo SVG's four path fills above are Google's brand
+  // colors and must never be tokenized/changed (brand guideline).
   googleButton: {
     height: BUTTON_HEIGHT,
     borderRadius: BUTTON_HEIGHT / 2,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -218,7 +221,7 @@ const styles = StyleSheet.create({
   googleButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

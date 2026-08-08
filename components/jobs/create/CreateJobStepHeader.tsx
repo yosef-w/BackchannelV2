@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Colors.border,
   },
   dotActive: { backgroundColor: "#000" },
   dotCurrent: { width: 22 },

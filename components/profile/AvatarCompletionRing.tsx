@@ -1,6 +1,7 @@
 import React from "react";
 import { View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import { Colors } from "@/constants/theme";
 
 interface AvatarCompletionRingProps {
   /** Diameter of the avatar this ring wraps. */
@@ -43,7 +44,7 @@ export function AvatarCompletionRing({
             cx={svgSize / 2}
             cy={svgSize / 2}
             r={radius}
-            stroke="#EDEDED"
+            stroke={Colors.surface}
             strokeWidth={strokeWidth}
             fill="none"
           />

@@ -446,9 +446,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: Colors.border,
   },
-  capPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
+  capPillText: { fontSize: 11, fontWeight: "700", color: Colors.body },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   // Light chips — chips are information, not the star; black is reserved
   // for display type and the CTA pill.
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   // Inset tint deep enough to read as a distinct block inside a white
   // card — #F8F9FB was invisible against it.
   insightCard: {
-    backgroundColor: "#F3F5F9",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   insightA: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#222",
+    color: Colors.ink,
     lineHeight: 20,
   },
   fallbackText: {

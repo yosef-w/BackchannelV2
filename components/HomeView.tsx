@@ -1528,7 +1528,7 @@ export function HomeView({
                       </Text>
                     </View>
                   )}
-                <ChevronDown color="#555" size={14} strokeWidth={2.5} />
+                <ChevronDown color={Colors.body} size={14} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
 
@@ -2250,7 +2250,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2292,7 +2292,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.border,
   },
   progressDotFilled: {
     backgroundColor: "#000",
@@ -2312,7 +2312,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFF",
     borderWidth: 1.5,
-    borderColor: "#D0D0D0",
+    borderColor: Colors.borderStrong,
     paddingVertical: 9,
     paddingLeft: 14,
     paddingRight: 12,
@@ -2324,7 +2324,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 13,
     fontWeight: "700",
-    color: "#111",
+    color: Colors.ink,
     letterSpacing: -0.1,
   },
   roleSwitcherBadge: {
@@ -2542,7 +2542,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: "#FFF",
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   emptyDeckCardBack: {
     transform: [{ translateX: 18 }, { translateY: 10 }, { rotate: "8deg" }],
@@ -2553,8 +2553,8 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   emptyDeckCardFront: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#D9D9D9",
+    backgroundColor: Colors.surface,
+    borderColor: Colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },

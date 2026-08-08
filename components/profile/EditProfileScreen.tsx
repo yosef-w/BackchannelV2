@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   field: { marginBottom: 20 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
   fieldLabel: { fontSize: 11, fontWeight: "800", color: Colors.muted, letterSpacing: 0.6 },
-  requiredStar: { fontSize: 13, color: "#DC2626", fontWeight: "700" },
+  requiredStar: { fontSize: 13, color: Colors.danger, fontWeight: "700" },
   input: {
     backgroundColor: Colors.offWhite,
     borderRadius: 12,
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },

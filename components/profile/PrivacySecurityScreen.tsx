@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 15, color: "#000" },
   errorText: {
     fontSize: 13,
-    color: "#DC2626",
+    color: Colors.danger,
     fontWeight: "600",
     marginBottom: 16,
   },
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
   deleteWarningText: {
     flex: 1,
     fontSize: 13,
-    color: "#444",
+    color: Colors.body,
     lineHeight: 19,
     fontWeight: "600",
   },
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
   deleteCancelBtn: {
     height: 52,
     borderRadius: 14,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,

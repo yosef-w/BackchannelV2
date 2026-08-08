@@ -930,7 +930,7 @@ export function ApplicantQuestionnaire({
                             <Check color="#FFF" size={20} />
                           ) : (
                             <ChevronRight
-                              color={isEnabled ? "#CCC" : "#E0E0E0"}
+                              color={isEnabled ? Colors.faint : Colors.border}
                               size={18}
                             />
                           )}
@@ -1426,7 +1426,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     // #767676 is the minimum gray that passes WCAG AA contrast (4.5:1) on
     // white — #BBB (~2.3:1) failed for text conveying real progress state.
-    color: "#767676",
+    color: Colors.muted,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
@@ -1460,9 +1460,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
-  optionCardDisabled: { backgroundColor: "#FAFAFA", borderColor: Colors.border },
+  optionCardDisabled: { backgroundColor: Colors.offWhite, borderColor: Colors.border },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
-  optionTextDisabled: { color: "#C8C8C8" },
+  optionTextDisabled: { color: Colors.borderStrong },
   comingSoonNote: {
     marginTop: 12,
     fontSize: 13,
@@ -1483,13 +1483,13 @@ const styles = StyleSheet.create({
   fileContainer: {
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     borderRadius: 20,
     paddingVertical: 44,
     paddingHorizontal: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Colors.offWhite,
   },
   fileUploadIconWrap: {
     width: 64,
@@ -1516,7 +1516,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   fileIconCircle: {
     width: 52,
@@ -1539,7 +1539,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#EFEFEF",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1657,7 +1657,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: "center",
@@ -1706,7 +1706,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,

@@ -149,7 +149,7 @@ export function SponsorMatchesSections({
         meta={
           applicant.likedAt ? (
             <MetaLine
-              icon={<Heart size={10} color="#DC2626" />}
+              icon={<Heart size={10} color={Colors.danger} />}
               text={getRelativeTime(applicant.likedAt)}
             />
           ) : undefined
@@ -208,7 +208,7 @@ export function SponsorMatchesSections({
         right={
           isReferred ? (
             isWithdrawing ? (
-              <ActivityIndicator size="small" color="#DC2626" />
+              <ActivityIndicator size="small" color={Colors.danger} />
             ) : (
               <TouchableOpacity
                 style={styles.withdrawBtn}

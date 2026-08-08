@@ -24,5 +24,5 @@ export function SaveStatusPill({ status }: { status: SaveStatus }) {
 const styles = StyleSheet.create({
   savedRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   savedText: { fontSize: 12, fontWeight: "700", color: "#0A8A3E" },
-  errorText: { fontSize: 11, fontWeight: "700", color: "#DC2626" },
+  errorText: { fontSize: 11, fontWeight: "700", color: Colors.danger },
 });

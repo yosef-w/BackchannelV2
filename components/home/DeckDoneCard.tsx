@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   recapDivider: {
     width: 1,
     height: 32,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Colors.border,
   },
   primary: {
     flexDirection: "row",
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 10,
     borderWidth: 1.5,
-    borderColor: "#E6E6E6",
+    borderColor: Colors.border,
   },
   secondaryAlone: {
     marginTop: 0,

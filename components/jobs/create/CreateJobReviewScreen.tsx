@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     letterSpacing: 0.6,
   },
-  requiredStar: { fontSize: 13, color: "#DC2626", fontWeight: "700" },
+  requiredStar: { fontSize: 13, color: Colors.danger, fontWeight: "700" },
   input: {
     backgroundColor: Colors.offWhite,
     borderRadius: 12,

@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Colors } from "@/constants/theme";
 
 /**
  * Renders a person's avatar photo, falling back to a black tile with their
@@ -54,7 +55,7 @@ export function Avatar({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: showImage ? "#F4F4F5" : backgroundColor,
+    backgroundColor: showImage ? Colors.surface : backgroundColor,
   };
 
   return (

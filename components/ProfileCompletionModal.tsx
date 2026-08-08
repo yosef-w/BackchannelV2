@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   missingText: {
     fontSize: 15,
-    color: "#333",
+    color: Colors.body,
     fontWeight: "500",
   },
   moreFields: {

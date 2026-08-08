@@ -414,11 +414,11 @@ export function ApplicantJobsBrowseView() {
             hunt for. */}
         <View style={styles.searchStack}>
           <View style={styles.searchInputWrap}>
-            <Search size={17} color="#6B7280" strokeWidth={2.2} />
+            <Search size={17} color={Colors.body} strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
               placeholder="Role, company, or skill"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.muted}
               value={titleQuery}
               onChangeText={setTitleQuery}
               returnKeyType="search"
@@ -431,16 +431,16 @@ export function ApplicantJobsBrowseView() {
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="Clear role search"
               >
-                <X size={15} color="#9CA3AF" />
+                <X size={15} color={Colors.muted} />
               </TouchableOpacity>
             )}
           </View>
           <View style={styles.searchInputWrap}>
-            <MapPin size={17} color="#6B7280" strokeWidth={2.2} />
+            <MapPin size={17} color={Colors.body} strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
               placeholder={'Location (or "remote")'}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.muted}
               value={locationQuery}
               onChangeText={setLocationQuery}
               returnKeyType="search"
@@ -453,7 +453,7 @@ export function ApplicantJobsBrowseView() {
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="Clear location search"
               >
-                <X size={15} color="#9CA3AF" />
+                <X size={15} color={Colors.muted} />
               </TouchableOpacity>
             )}
           </View>
@@ -463,7 +463,7 @@ export function ApplicantJobsBrowseView() {
             applicant callers. */}
         {showingSamples && !loading && jobs.length > 0 && (
           <Animated.View entering={FadeIn} style={styles.sampleBanner}>
-            <Info size={13} color="#6B7280" strokeWidth={2.2} />
+            <Info size={13} color={Colors.body} strokeWidth={2.2} />
             <Text style={styles.sampleBannerText}>
               Sample listings — live roles are coming soon.
             </Text>
@@ -479,7 +479,7 @@ export function ApplicantJobsBrowseView() {
         ) : jobs.length === 0 ? (
           <View style={styles.centerBlock}>
             <View style={styles.emptyIconCircle}>
-              <Search size={26} color="#9CA3AF" strokeWidth={2} />
+              <Search size={26} color={Colors.muted} strokeWidth={2} />
             </View>
             <Text style={styles.emptyTitle}>No roles found</Text>
             <Text style={styles.emptySub}>
@@ -533,7 +533,7 @@ export function ApplicantJobsBrowseView() {
                   </View>
                   {isDone && (
                     <View style={styles.waitlistedPill}>
-                      <Check size={10} color="#3B4353" strokeWidth={3} />
+                      <Check size={10} color={Colors.ink} strokeWidth={3} />
                       <Text style={styles.waitlistedPillText}>
                         {doneLabel}
                       </Text>
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F3F5F9",
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: "rgba(15,23,42,0.10)",
     borderRadius: 16,
@@ -739,13 +739,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     alignSelf: "flex-start",
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
     marginBottom: 12,
   },
-  sampleBannerText: { fontSize: 12, fontWeight: "700", color: "#6B7280" },
+  sampleBannerText: { fontSize: 12, fontWeight: "700", color: Colors.body },
   centerBlock: {
     alignItems: "center",
     paddingVertical: 60,
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: "800", color: Colors.ink },
   emptySub: {
     fontSize: 13,
-    color: "#6B7280",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 6,
     lineHeight: 18,
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6F7F9",
   },
   jobCardTitle: { fontSize: 15, fontWeight: "800", color: "#000" },
-  jobCardCompany: { fontSize: 12.5, color: "#6B7280", marginTop: 2 },
+  jobCardCompany: { fontSize: 12.5, color: Colors.body, marginTop: 2 },
   jobCardSalary: {
     fontSize: 12.5,
     fontWeight: "700",
@@ -805,12 +805,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
-  waitlistedPillText: { fontSize: 10, fontWeight: "800", color: "#3B4353" },
+  waitlistedPillText: { fontSize: 10, fontWeight: "800", color: Colors.ink },
   detailOverlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 999,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     marginTop: 4,
   },
   viewMoreText: { fontSize: 13, fontWeight: "800", color: "#000" },
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
   skillBadge: {
     paddingHorizontal: 11,
     paddingVertical: 5,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
   },
   skillBadgeText: { fontSize: 11, fontWeight: "700", color: "#000" },

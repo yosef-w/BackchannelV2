@@ -41,7 +41,7 @@ export function YourMoveStrip({ userType, onPress }: YourMoveStripProps) {
         accessibilityRole="button"
         accessibilityLabel={`${count} sponsor${count === 1 ? "" : "s"} interested in you — view in Matches`}
       >
-        <Heart color="#DC2626" size={14} strokeWidth={2.5} />
+        <Heart color={Colors.danger} size={14} strokeWidth={2.5} />
         <Text style={styles.text} numberOfLines={1}>
           {count === 1
             ? "1 sponsor is interested in you"

@@ -420,7 +420,7 @@ if (!conversation) {
             width: 64,
             height: 64,
             borderRadius: 32,
-            backgroundColor: "#F4F4F5",
+            backgroundColor: Colors.surface,
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 12,
@@ -601,7 +601,7 @@ return (
         ) : messagesError ? (
           <View style={{ padding: 40, alignItems: "center" }}>
             <Text
-              style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}
+              style={{ color: Colors.danger, fontSize: 15, marginBottom: 8 }}
             >
               Failed to load messages
             </Text>

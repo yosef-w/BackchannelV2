@@ -48,7 +48,7 @@ export function SkeletonCard() {
               width: 96,
               height: 96,
               borderRadius: 48,
-              backgroundColor: "#EBEBEB",
+              backgroundColor: Colors.border,
             },
             shimmerStyle,
           ]}
@@ -57,7 +57,7 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#EBEBEB",
+              backgroundColor: Colors.border,
               width: "58%",
               height: 26,
               borderRadius: 6,
@@ -70,7 +70,7 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#EBEBEB",
+              backgroundColor: Colors.border,
               width: "38%",
               height: 16,
               borderRadius: 4,
@@ -94,7 +94,7 @@ export function SkeletonCard() {
               key={i}
               style={[
                 {
-                  backgroundColor: "#EBEBEB",
+                  backgroundColor: Colors.border,
                   width: w,
                   height: 28,
                   borderRadius: 999,
@@ -130,20 +130,20 @@ export function SkeletonCard() {
         <View style={{ gap: 8 }}>
           <Animated.View
             style={[
-              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              { backgroundColor: Colors.border, height: 15, borderRadius: 4 },
               shimmerStyle,
             ]}
           />
           <Animated.View
             style={[
-              { backgroundColor: "#EBEBEB", height: 15, borderRadius: 4 },
+              { backgroundColor: Colors.border, height: 15, borderRadius: 4 },
               shimmerStyle,
             ]}
           />
           <Animated.View
             style={[
               {
-                backgroundColor: "#EBEBEB",
+                backgroundColor: Colors.border,
                 width: "70%",
                 height: 15,
                 borderRadius: 4,
@@ -177,7 +177,7 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: Colors.surface,
               borderRadius: 16,
               height: 64,
               overflow: "hidden",
@@ -209,11 +209,11 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: Colors.surface,
               borderRadius: 14,
               height: 80,
               borderWidth: 1,
-              borderColor: "#EFEFEF",
+              borderColor: Colors.border,
             },
             shimmerStyle,
           ]}
@@ -221,11 +221,11 @@ export function SkeletonCard() {
         <Animated.View
           style={[
             {
-              backgroundColor: "#F4F4F5",
+              backgroundColor: Colors.surface,
               borderRadius: 14,
               height: 80,
               borderWidth: 1,
-              borderColor: "#EFEFEF",
+              borderColor: Colors.border,
             },
             shimmerStyle,
           ]}
@@ -257,7 +257,7 @@ export function SkeletonCard() {
               key={i}
               style={[
                 {
-                  backgroundColor: "#EBEBEB",
+                  backgroundColor: Colors.border,
                   width: w,
                   height: 30,
                   borderRadius: 999,

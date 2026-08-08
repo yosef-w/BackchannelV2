@@ -114,7 +114,7 @@ export function JobDetailsModal({
             {/* Compensation Strip */}
             <View style={styles.jobModalCompStrip}>
               <View style={styles.jobModalCompCell}>
-                <DollarSign size={14} color="#555" />
+                <DollarSign size={14} color={Colors.body} />
                 <View style={{ flex: 1, flexShrink: 1 }}>
                   <Text style={styles.jobModalCompLabel}>SALARY</Text>
                   <Text style={styles.jobModalCompValue}>
@@ -135,7 +135,7 @@ export function JobDetailsModal({
                     styles.jobModalCompCellBorder,
                   ]}
                 >
-                  <Briefcase size={14} color="#555" />
+                  <Briefcase size={14} color={Colors.body} />
                   <View style={{ flex: 1, flexShrink: 1 }}>
                     <Text style={styles.jobModalCompLabel}>EXPERIENCE</Text>
                     <Text style={styles.jobModalCompValue}>
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   jobModalHeroCompany: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#555",
+    color: Colors.body,
     marginBottom: 8,
   },
   jobModalLocationRow: {
@@ -408,9 +408,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   jobRemoteBadge: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   },
   jobModalCompStrip: {
     flexDirection: "row",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 18,
     marginBottom: 24,
     overflow: "hidden",
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   jobDetailCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -495,12 +495,12 @@ const styles = StyleSheet.create({
   },
   jobDetailText: {
     fontSize: 14,
-    color: "#333",
+    color: Colors.body,
     lineHeight: 21,
     fontWeight: "500",
   },
   skillBadge: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 12,
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 10,
   },
-  benefitText: { fontSize: 14, color: "#555", fontWeight: "500" },
+  benefitText: { fontSize: 14, color: Colors.body, fontWeight: "500" },
   jobSection: { marginBottom: 24 },
   jobSectionTitle: {
     fontSize: 12,
@@ -529,9 +529,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: 0.5,
   },
-  jobSectionText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  jobSectionText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
   sponsorInfoCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     padding: 16,
     borderRadius: 16,
     marginBottom: 24,
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
   unsponsorBtn: {
     backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     paddingVertical: 16,
     borderRadius: 18,
     flexDirection: "row",

@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   },
   unmatchSheetSubtitle: {
     fontSize: 14,
-    color: "#888",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 28,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   },
   unmatchCancelBtn: {
     paddingVertical: 17,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.surface,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",

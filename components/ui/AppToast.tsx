@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
+import { Colors } from "@/constants/theme";
 
 const ICON_SIZE = 18;
 
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 9999,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: Colors.ink,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   dismissText: {
-    color: "#888",
+    color: Colors.muted,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.3,

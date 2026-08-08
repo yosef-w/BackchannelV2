@@ -536,7 +536,7 @@ export function ReferralSigningScreen({
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   accessibilityLabel="About referrals"
                 >
-                  <Info size={18} color="#9CA3AF" strokeWidth={2.2} />
+                  <Info size={18} color={Colors.muted} strokeWidth={2.2} />
                 </TouchableOpacity>
               ) : (
                 <View style={{ width: 18 }} />
@@ -926,7 +926,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: Colors.border,
     overflow: "hidden",
   },
   progressTrackDark: { backgroundColor: "rgba(255,255,255,0.18)" },
@@ -953,7 +953,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 24,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 22,
@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: Colors.borderStrong,
   },
   introDotOn: { backgroundColor: "#000", width: 18 },
   // ── Candidate ──
@@ -995,7 +995,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   candidatePhotoFallback: {
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1062,7 +1062,7 @@ const styles = StyleSheet.create({
   skillBadge: {
     paddingHorizontal: 11,
     paddingVertical: 5,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
   },
   skillBadgeText: { fontSize: 11, fontWeight: "700", color: Colors.ink },
@@ -1083,7 +1083,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 26,
@@ -1135,7 +1135,7 @@ const styles = StyleSheet.create({
   },
   signAvatar: { width: 64, height: 64, borderRadius: 32, marginBottom: 10 },
   signAvatarFallback: {
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },

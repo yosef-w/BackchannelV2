@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   suggestionsContainer: {
     position: "absolute",
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     maxHeight: DROPDOWN_MAX_HEIGHT,
     ...Platform.select({
       ios: {
