@@ -31,7 +31,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 const { width: W } = Dimensions.get('window');
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-const TOTAL_MS = 14000;
+const TOTAL_MS = 16500;
 const STAGE_H = 320;
 
 /** Windowed sub-progress: 0 before `a`, 1 after `b`, linear between. */
@@ -337,23 +337,29 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
           </Animated.View>
         </View>
 
-        {/* ── Captions ── */}
+        {/* ── Captions ──
+            Copy strategy: open with the belief (why this app exists),
+            let the film carry the mechanics with as few words as
+            possible, close with the promise. */}
         <View style={styles.captionArea}>
           <Animated.Text style={[styles.caption, caption1]}>
-            Every day, a fresh deck of jobs.
+            Your next job comes from someone inside.
           </Animated.Text>
           <Animated.Text style={[styles.caption, caption2]}>
-            Pass — or Connect with the ones you want.
+            Connect with the jobs you want.
           </Animated.Text>
           <Animated.Text style={[styles.caption, caption3]}>
-            Match with someone on the inside.
+            Meet your sponsor.
           </Animated.Text>
           <Animated.Text style={[styles.caption, caption4]}>
-            They vouch for you. Referred — for real.
+            They refer you — for real.
           </Animated.Text>
-          <Animated.Text style={[styles.caption, styles.captionFinale, caption5]}>
-            That’s <Text style={styles.captionFinaleAccent}>BackChannel.</Text>
-          </Animated.Text>
+          <Animated.View style={[styles.finaleWrap, caption5]}>
+            <Text style={styles.captionFinale}>
+              That’s <Text style={styles.captionFinaleAccent}>BackChannel.</Text>
+            </Text>
+            <Text style={styles.finaleSub}>Here to get you hired.</Text>
+          </Animated.View>
         </View>
 
         {/* ── CTA ── */}
@@ -634,7 +640,7 @@ const styles = StyleSheet.create({
   },
   // ── Captions ──────────────────────────────────────────────────────────
   captionArea: {
-    height: 64,
+    height: 78,
     marginTop: 8,
     justifyContent: 'center',
   },
@@ -648,15 +654,30 @@ const styles = StyleSheet.create({
     lineHeight: 25,
     color: Colors.body,
   },
+  finaleWrap: {
+    position: 'absolute',
+    left: 40,
+    right: 40,
+    alignItems: 'center',
+    gap: 5,
+  },
   captionFinale: {
     fontFamily: Fonts.serif,
     fontSize: 24,
     lineHeight: 30,
     color: Colors.ink,
+    textAlign: 'center',
   },
   captionFinaleAccent: {
     fontFamily: Fonts.serifItalic,
     color: Colors.muted,
+  },
+  // The promise, landed under the brand line — five words, light sans.
+  finaleSub: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 15,
+    color: Colors.body,
+    textAlign: 'center',
   },
   // ── CTA ───────────────────────────────────────────────────────────────
   footer: {
