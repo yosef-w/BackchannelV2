@@ -76,13 +76,9 @@ const GHOST_CARDS: GhostCardSpec[] = [
     monogram: 'A', title: 'Backend Engineer',
     company: 'Atlas Health · NYC', chips: ['Python', '$150k+'],
   },
-  // Low-left, behind the footer's whitespace, faintest.
-  {
-    bottom: 190, left: -55, rotate: '4deg', scale: 0.85,
-    driftY: -12, driftX: 5, durationMs: 17000, opacity: 0.5,
-    monogram: 'F', title: 'Growth Marketer',
-    company: 'Foundry · Hybrid', chips: ['B2B', 'SF'],
-  },
+  // (A third, lower-left card was tried and cut — the footer's
+  // whitespace reads better clean, and two cards keep the tease in one
+  // glance-zone at the top.)
 ];
 
 function GhostCard({ spec }: { spec: GhostCardSpec }) {
