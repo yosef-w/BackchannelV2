@@ -36,6 +36,7 @@ import { InboxList } from "./messages/InboxList";
 import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
 import { ThreadScreen } from "./messages/ThreadScreen";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -1149,8 +1150,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
   headerTitleContainer: { marginBottom: 32 },
-  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.2 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
+  title: { ...Type.title, color: Colors.ink },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    color: Colors.body,
+    marginTop: 8,
+  },
   loadMoreBtn: {
     marginVertical: 16,
     paddingVertical: 14,

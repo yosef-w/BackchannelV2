@@ -22,6 +22,7 @@ import {
 } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useJobsStore } from "@/stores/useJobsStore";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { Job } from "@/types/jobs";
@@ -1162,8 +1163,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  title: { fontSize: 32, fontWeight: "800", color: "#000", letterSpacing: -1 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 6, fontWeight: "500" },
+  title: { ...Type.title, color: Colors.ink },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    color: Colors.body,
+    marginTop: 6,
+  },
   createAction: {
     flexDirection: "row",
     alignItems: "center",

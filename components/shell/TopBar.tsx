@@ -7,6 +7,7 @@ import { Bell, ClipboardCheck } from "@/components/ui/icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface TopBarProps {
   /** Contextual — the check-in icon only renders when there are live
@@ -96,11 +97,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
+  // Matches the site's .nav-wordmark exactly: small, uppercase, wide
+  // positive tracking — a persistent utility mark, not a headline (that's
+  // what the marketing hero's big serif treatment is for).
   appTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13,
+    color: Colors.ink,
+    letterSpacing: 2.2, // ~0.12em at this size
+    textTransform: "uppercase",
   },
   topBarButtons: {
     flexDirection: "row",

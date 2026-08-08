@@ -97,6 +97,7 @@ import { YourMoveStrip } from "./home/YourMoveStrip";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
 function parseVariant<T>(v: string | T[] | null | undefined): T[] {
@@ -2459,10 +2460,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 20,
   },
-  celebrationTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  celebrationTitle: { ...Type.heading, color: Colors.ink },
   celebrationSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
@@ -2481,10 +2483,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 20,
   },
-  emptyTitle: { fontSize: 24, fontWeight: "800", marginBottom: 8 },
+  emptyTitle: { ...Type.heading, color: Colors.ink, marginBottom: 8 },
   emptySub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginBottom: 30,
   },

@@ -1,6 +1,7 @@
 import { MessageCircle } from "@/components/ui/icons";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 /**
  * Inbox loading / error / empty states, styled to match the equivalent
@@ -67,10 +68,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 16,
   },
+  // Below the serif's ~18px floor — system font, token color only.
   emptyTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 6,
   },
   emptySubtitle: {

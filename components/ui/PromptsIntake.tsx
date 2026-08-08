@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import type { PromptCategory } from "@/constants/prompts";
+import { Colors, Type } from "@/constants/theme";
 
 export interface PromptAnswer {
   question: string;
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
   },
-  sheetTitle: { fontSize: 24, fontWeight: "800", color: "#000", letterSpacing: -0.5 },
+  sheetTitle: { ...Type.heading, color: Colors.ink },
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",

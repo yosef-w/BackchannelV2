@@ -4,6 +4,7 @@ import {
     trackReferralWithdrawn,
     trackSponsorLikedBack,
 } from "@/lib/analytics/mixpanel";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import {
     getJobDetail,
     type SilverJobDetail,
@@ -1446,8 +1447,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 100 },
   header: { marginBottom: 30 },
-  title: { fontSize: 32, fontWeight: "800", letterSpacing: -1 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 4 },
+  title: { ...Type.title, color: Colors.ink },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    color: Colors.body,
+    marginTop: 4,
+  },
   staleReferralBanner: {
     flexDirection: "row",
     alignItems: "center",

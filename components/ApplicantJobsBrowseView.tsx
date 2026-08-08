@@ -57,6 +57,7 @@ import {
   SheetScrollView,
 } from "./ui/DismissibleSheet";
 import { CompanyLogo } from "./ui/CompanyLogo";
+import { Colors } from "@/constants/theme";
 
 function parseSkillsField(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -753,7 +754,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 17, fontWeight: "800", color: "#000" },
+  // Below the serif's ~18px floor (constants/theme.ts) — too small to read
+  // cleanly in DM Serif Display, so this keeps the system font, token color only.
+  emptyTitle: { fontSize: 17, fontWeight: "800", color: Colors.ink },
   emptySub: {
     fontSize: 13,
     color: "#6B7280",

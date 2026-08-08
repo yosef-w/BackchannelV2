@@ -10,6 +10,7 @@ import {
     View,
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ProfileActionSheetProps {
   visible: boolean;
@@ -116,13 +117,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
   },
   modalSubtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     marginBottom: 24,
     lineHeight: 20,
   },

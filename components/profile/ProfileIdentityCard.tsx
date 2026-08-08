@@ -2,6 +2,7 @@ import { Briefcase, Camera, Edit, MapPin } from "@/components/ui/icons";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AvatarCompletionRing } from "./AvatarCompletionRing";
+import { Colors, Type } from "@/constants/theme";
 
 interface ProfileIdentityCardProps {
   profileImage: string | null;
@@ -146,16 +147,16 @@ const styles = StyleSheet.create({
     borderColor: "#FFF",
   },
   editFabHighlight: { backgroundColor: "#000" },
+  // The user's own name IS this screen's headline — no separate "Account"
+  // title exists (or should — a generic label would be redundant here).
   name: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    ...Type.heading,
+    color: Colors.ink,
   },
   completionText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#999",
+    color: Colors.muted,
     marginTop: 3,
   },
   infoRow: {

@@ -38,6 +38,7 @@ import {
     markNotificationAsRead,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
+import { Colors, Type } from "@/constants/theme";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // React Query key for the notifications list. Caching it means the screen
@@ -674,15 +675,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
+    ...Type.title,
     fontSize: 30,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.8,
+    lineHeight: 34,
+    color: Colors.ink,
   },
   subtitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     marginTop: 3,
   },
   actionPill: {
@@ -868,10 +869,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 70,
   },
+  // Below the serif's ~18px floor — system font, token color only.
   emptyStateTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.3,
     marginBottom: 6,
   },

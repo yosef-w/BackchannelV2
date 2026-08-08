@@ -6,6 +6,7 @@
 // Role-aware copy; one-time per role (the caller persists the flag).
 
 import { ArrowRight } from "@/components/ui/icons";
+import { Fonts } from "@/constants/theme";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
@@ -266,9 +267,12 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
     marginBottom: 18,
   },
+  // Font only — this is a dark first-run overlay, a distinct UI moment
+  // from the rest of the (light) app; its background/color scheme is a
+  // separate decision from the font migration, left untouched here.
   headline: {
+    fontFamily: Fonts.serif,
     fontSize: 44,
-    fontWeight: "800",
     color: "#FFF",
     letterSpacing: -1.4,
     lineHeight: 48,
