@@ -14,7 +14,19 @@ import {
     QueryClient,
     QueryClientProvider,
 } from "@tanstack/react-query";
+// Imported from each weight's own subpath, NOT the package's barrel index
+// — the barrel unconditionally `require()`s every weight (100–900, each
+// with an italic), so importing from it bundles ~1MB of fonts this app
+// never uses. Subpath imports pull in only the four weights below.
+import { DMSans_400Regular } from "@expo-google-fonts/dm-sans/400Regular";
+import { DMSans_500Medium } from "@expo-google-fonts/dm-sans/500Medium";
+import { DMSans_600SemiBold } from "@expo-google-fonts/dm-sans/600SemiBold";
+import { DMSans_700Bold } from "@expo-google-fonts/dm-sans/700Bold";
+import { DMSerifDisplay_400Regular } from "@expo-google-fonts/dm-serif-display/400Regular";
+import { DMSerifDisplay_400Regular_Italic } from "@expo-google-fonts/dm-serif-display/400Regular_Italic";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { AppState, AppStateStatus, StyleSheet } from "react-native";
@@ -25,11 +37,41 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 // EXPO_PUBLIC_SENTRY_DSN is unset (see lib/sentry.ts).
 initSentry();
 
+// Hold the native launch screen up until the design-system fonts
+// (constants/theme.ts's Fonts.serif/.sans) are loaded — without this, RN
+// briefly renders headlines in the platform default font, then swaps to
+// the serif once loading finishes (a visible flash-of-unstyled-text on
+// every cold start). Paired with the hideAsync() call below. Failing to
+// call this before it auto-hides would just mean losing the hold — never
+// a crash — so this is safe even if it somehow runs twice.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 /**
  * Create ONE QueryClient for the entire app.
  * useRef ensures it persists across re-renders.
  */
 function RootLayout() {
+  // Keys here MUST match constants/theme.ts's Fonts values exactly — that
+  // file documents which weight is for what, this just supplies the bytes.
+  const [fontsLoaded, fontError] = useFonts({
+    DMSerifDisplay_400Regular,
+    DMSerifDisplay_400Regular_Italic,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+  });
+
+  useEffect(() => {
+    // Release the native launch screen once fonts resolve either way — a
+    // font-load failure (fontError) must not strand the user on the
+    // launch screen forever; RN falls back to the platform default font
+    // in that case, which is a visual regression, not a broken app.
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
+
   const queryClientRef = useRef<QueryClient | null>(null);
 
   if (!queryClientRef.current) {
@@ -139,6 +181,14 @@ function RootLayout() {
         });
     }
   }, [accessToken, fetchFromBackend, flushSyncNow]);
+
+  // Nothing renders until fonts resolve — the native launch screen (held
+  // open above) covers this gap, so there's no visible blank frame. Safe
+  // to early-return here: every hook above runs unconditionally regardless
+  // of this branch, so hook order never changes between renders.
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   return (
     <QueryClientProvider client={queryClientRef.current}>

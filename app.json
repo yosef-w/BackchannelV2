@@ -76,7 +76,8 @@
           "iosUrlScheme": "com.googleusercontent.apps.1047376390212-jnqdni1pj3i1s75rokf2qe94d58s0r41"
         }
       ],
-      "./plugins/withGoogleSigninModularHeaders"
+      "./plugins/withGoogleSigninModularHeaders",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
