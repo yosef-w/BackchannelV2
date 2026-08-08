@@ -33,6 +33,7 @@ import { PlacesAutocomplete } from "../ui/PlacesAutocomplete";
 import { EditorScreen } from "./EditorScreen";
 import { SaveStatusPill } from "./SaveStatusPill";
 import { useAutosaveStatus } from "./useAutosaveStatus";
+import { Colors } from "@/constants/theme";
 
 interface Props {
   visible: boolean;
@@ -452,20 +453,20 @@ function LockedField({
 
 const styles = StyleSheet.create({
   progressContainer: { marginBottom: 24 },
-  progressText: { fontSize: 12, color: "#999", marginBottom: 8, lineHeight: 17 },
+  progressText: { fontSize: 12, color: Colors.muted, marginBottom: 8, lineHeight: 17 },
   progressBar: { height: 4, backgroundColor: "#F0F0F0", borderRadius: 2, overflow: "hidden" },
   progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 2 },
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 10,
     marginTop: 20,
   },
   field: { marginBottom: 20 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
-  fieldLabel: { fontSize: 11, fontWeight: "800", color: "#999", letterSpacing: 0.6 },
+  fieldLabel: { fontSize: 11, fontWeight: "800", color: Colors.muted, letterSpacing: 0.6 },
   requiredStar: { fontSize: 13, color: "#DC2626", fontWeight: "700" },
   input: {
     backgroundColor: "#F9F9F9",
@@ -505,8 +506,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     opacity: 0.6,
   },
-  lockedText: { fontSize: 15, color: "#000" },
-  note: { fontSize: 11, color: "#999", marginTop: 4, fontStyle: "italic" },
+  lockedText: { fontSize: 15, color: Colors.ink },
+  note: { fontSize: 11, color: Colors.muted, marginTop: 4, fontStyle: "italic" },
   tagsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   tag: {
     flexDirection: "row",

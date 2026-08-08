@@ -28,6 +28,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
+import { Colors, Type } from "@/constants/theme";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
@@ -669,7 +670,7 @@ const styles = StyleSheet.create({
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 10,
     marginTop: 4,
@@ -696,9 +697,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
-  rowLabel: { fontSize: 15, fontWeight: "700", color: "#000" },
-  rowDescription: { fontSize: 12, color: "#999", marginTop: 2, lineHeight: 16 },
-  rowValue: { fontSize: 14, fontWeight: "700", color: "#999" },
+  rowLabel: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  rowDescription: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  rowValue: { fontSize: 14, fontWeight: "700", color: Colors.muted },
   deleteRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -710,12 +716,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 12,
   },
-  deleteTitle: { fontSize: 15, fontWeight: "700", color: "#000" },
-  subtitle: { fontSize: 13, color: "#999", marginBottom: 20, lineHeight: 18 },
+  deleteTitle: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  subtitle: {
+    fontSize: 13,
+    color: Colors.muted,
+    marginBottom: 20,
+    lineHeight: 18,
+  },
   fieldLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.6,
     marginBottom: 8,
   },
@@ -762,17 +773,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 18,
   },
+  // Also used by the "Set a password first" gate (same modal shell) —
+  // 22px, above the serif floor, same tier as the other modal titles.
   deleteHeadline: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.5,
     marginBottom: 10,
   },
   deleteSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     fontWeight: "500",

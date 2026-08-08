@@ -11,6 +11,7 @@ import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
 import { SaveStatusPill } from "./SaveStatusPill";
 import { useAutosaveStatus } from "./useAutosaveStatus";
+import { Colors } from "@/constants/theme";
 
 const SWITCH_COLORS = {
   trackColor: { false: "#B0B3BA", true: "#000" },
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 10,
     marginTop: 4,
@@ -200,11 +201,11 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   rowDescription: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 2,
     lineHeight: 16,
   },

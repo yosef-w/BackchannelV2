@@ -24,6 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface EditorScreenProps {
   visible: boolean;
@@ -116,11 +117,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
   },
+  // Compact nav-bar title (17px) — below the serif's readability floor,
+  // system font kept, token color only. Shared by every settings
+  // sub-screen (Change Password, Privacy & Security, Notifications, etc.).
   title: {
     flex: 1,
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
     letterSpacing: -0.3,
   },
