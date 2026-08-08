@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { Platform, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming
 } from 'react-native-reanimated';
+import { Colors, Fonts } from '@/constants/theme';
 
 interface SplashScreenProps {
   onGetStarted: () => void;
@@ -44,16 +45,19 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
+      <StatusBar barStyle="dark-content" />
+
       <View style={styles.centerContent}>
         <Animated.View style={[styles.brandWrapper, titleStyle]}>
+          {/* Matches the marketing site's hero exactly (index.html):
+              "Welcome to" in plain serif ink, the brand name itself as
+              the italic muted-gray accent — the site's own convention
+              for the highlighted word in a headline. */}
           <Text style={styles.brandName}>
-            BACK<Text style={styles.brandSerif}>CHANNEL</Text>
+            Welcome to{"\n"}
+            <Text style={styles.brandSerif}>BackChannel.</Text>
           </Text>
-          
-          <View style={styles.horizontalRule} />
-          
+
           <Text style={styles.tagline}>
             Get referred. Get hired. Get ahead.
           </Text>
@@ -89,40 +93,42 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.paper,
   },
   centerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 40,
   },
   brandWrapper: {
     alignItems: 'center',
   },
+  // "Welcome to" — matches the site's .hero-title (serif, ink, tight
+  // line-height, negative tracking).
   brandName: {
-    fontSize: 34,
-    fontWeight: '300',
-    color: '#FFFFFF',
-    letterSpacing: 6, // High-end spacing
-  },
-  brandSerif: {
-    // Professional Serif contrast
-    fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif',
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  horizontalRule: {
-    width: 28,
-    height: 1.5,
-    backgroundColor: '#333',
-    marginVertical: 24,
-  },
-  tagline: {
-    fontSize: 15,
-    color: '#999999',
-    fontWeight: '400',
-    letterSpacing: -0.2,
+    fontFamily: Fonts.serif,
+    fontSize: 42,
+    lineHeight: 46,
+    color: Colors.ink,
+    letterSpacing: -0.8,
     textAlign: 'center',
+  },
+  // "BackChannel." — the italic muted-gray accent, matching the site's
+  // .hero-title em rule exactly (color: var(--muted), font-style: italic).
+  brandSerif: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  // Matches the site's .hero-body (light weight, body-gray, relaxed
+  // line-height).
+  tagline: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    lineHeight: 24,
+    color: Colors.body,
+    textAlign: 'center',
+    marginTop: 20,
   },
   footer: {
     alignItems: 'center',
@@ -132,19 +138,15 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
+  // Matches the site's primary-button convention (ink background, paper
+  // text — .submit-btn/.modal-btn-primary/.export-btn all share this).
   button: {
     width: '65%',
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.ink,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    // Elegant shadow for depth
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
     marginBottom: 20,
   },
   signInLink: {
@@ -153,19 +155,19 @@ const styles = StyleSheet.create({
     marginBottom: 44,
   },
   signInLinkText: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
-    color: '#999999',
-    fontWeight: '500',
+    color: Colors.muted,
     textAlign: 'center',
   },
   signInLinkHighlight: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    fontFamily: Fonts.sansBold,
+    color: Colors.ink,
   },
   buttonText: {
-    color: '#000000',
+    fontFamily: Fonts.sansSemiBold,
+    color: Colors.paper,
     fontSize: 16,
-    fontWeight: '700',
     letterSpacing: -0.2,
   },
 });

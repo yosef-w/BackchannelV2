@@ -19,6 +19,7 @@ import {
   trackSignUpRoleSelected,
 } from "@/lib/analytics/mixpanel";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ModeSelectionProps {
   onSelect: (mode: "applicant" | "sponsor") => void;
@@ -203,17 +204,16 @@ const styles = StyleSheet.create({
     marginBottom: 44,
   },
   title: {
-    fontSize: 34,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1.2,
-    lineHeight: 40,
+    ...Type.display,
+    color: Colors.ink,
   },
+  // Matches the site's .hero-body treatment.
   subtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 17,
-    color: "#666",
+    lineHeight: 25,
+    color: Colors.body,
     marginTop: 12,
-    fontWeight: "400",
   },
   cardsContainer: {
     gap: 12,
@@ -261,9 +261,10 @@ const styles = StyleSheet.create({
     color: "#000",
     letterSpacing: -0.3,
   },
+  // Matches the site's .role-desc treatment.
   cardDescription: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     marginTop: 4,
     lineHeight: 20,
   },
@@ -277,9 +278,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: 24,
   },
+  // Matches the site's faint/label token.
   footerText: {
     fontSize: 11,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 1.5,

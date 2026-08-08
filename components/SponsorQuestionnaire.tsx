@@ -13,6 +13,7 @@ import {
   uploadProfileImage,
 } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import type { BrowseJobResponse } from "@/types/jobs";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -1178,11 +1179,8 @@ const styles = StyleSheet.create({
   progressBar: { height: "100%", backgroundColor: "#000" },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   questionText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 38,
+    ...Type.title,
+    color: Colors.ink,
     marginBottom: 40,
   },
   optionsContainer: { gap: 12 },
@@ -1251,14 +1249,14 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   successTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.title,
+    color: Colors.ink,
     textAlign: "center",
   },
   successSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,

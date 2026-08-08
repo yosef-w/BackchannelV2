@@ -30,6 +30,8 @@ export const Fonts = {
   /** The italic accent style used throughout the marketing pages for a
    * highlighted word inside a headline (e.g. "Welcome to *BackChannel*"). */
   serifItalic: "DMSerifDisplay_400Regular_Italic",
+  /** The marketing pages' body-copy weight (hero-body, final-sub, etc.). */
+  sansLight: "DMSans_300Light",
   sans: "DMSans_400Regular",
   sansMedium: "DMSans_500Medium",
   sansSemiBold: "DMSans_600SemiBold",

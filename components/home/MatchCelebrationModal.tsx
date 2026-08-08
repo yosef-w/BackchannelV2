@@ -14,6 +14,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 export interface MatchedUser {
   name: string;
@@ -275,16 +276,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   matchTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    ...Type.title,
+    color: Colors.ink,
     marginBottom: 8,
     textAlign: "center",
   },
   matchSubtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     marginBottom: 28,
@@ -316,8 +316,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E5E5E5",
   },
+  // Matches the site's secondary/cancel-button convention (var(--muted)).
   matchSkipBtnText: {
-    color: "#666",
+    color: Colors.muted,
     fontSize: 15,
     fontWeight: "600",
   },

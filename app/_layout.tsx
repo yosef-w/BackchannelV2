@@ -17,7 +17,8 @@ import {
 // Imported from each weight's own subpath, NOT the package's barrel index
 // — the barrel unconditionally `require()`s every weight (100–900, each
 // with an italic), so importing from it bundles ~1MB of fonts this app
-// never uses. Subpath imports pull in only the four weights below.
+// never uses. Subpath imports pull in only the five weights below.
+import { DMSans_300Light } from "@expo-google-fonts/dm-sans/300Light";
 import { DMSans_400Regular } from "@expo-google-fonts/dm-sans/400Regular";
 import { DMSans_500Medium } from "@expo-google-fonts/dm-sans/500Medium";
 import { DMSans_600SemiBold } from "@expo-google-fonts/dm-sans/600SemiBold";
@@ -56,6 +57,7 @@ function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     DMSerifDisplay_400Regular,
     DMSerifDisplay_400Regular_Italic,
+    DMSans_300Light,
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_600SemiBold,

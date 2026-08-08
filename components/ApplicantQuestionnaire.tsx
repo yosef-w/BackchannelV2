@@ -42,6 +42,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY } from "@/constants/config";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import {
   APPLICANT_PROMPT_CATEGORIES,
   APPLICANT_PROMPT_EXAMPLES,
@@ -1434,16 +1435,15 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   content: { flex: 1 },
   questionText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 38,
+    ...Type.title,
+    color: Colors.ink,
     marginBottom: 40,
   },
+  // Matches the site's .hero-body treatment.
   stepSubtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 22,
     marginTop: -28,
     marginBottom: 32,
@@ -1637,14 +1637,14 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   successTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.title,
+    color: Colors.ink,
     textAlign: "center",
   },
   successSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,

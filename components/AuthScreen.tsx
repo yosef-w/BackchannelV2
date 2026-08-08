@@ -29,6 +29,7 @@ import { authApi, LoginResponse, SsoLoginResponse } from "@/lib/auth-api";
 import { isAppleSignInSupported, isGoogleSignInSupported, SsoIdentity } from "@/lib/sso";
 import { isValidEmail } from "@/lib/validation";
 import { SSO_ENABLED } from "@/constants/config";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
@@ -737,14 +738,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
+    ...Type.title,
+    color: Colors.ink,
   },
+  // Matches the site's .hero-body treatment (light weight, body-gray).
   subtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    lineHeight: 24,
+    color: Colors.body,
     marginTop: 8,
   },
   socialButton: {

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import { trackScreenViewed } from "@/lib/analytics/mixpanel";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import {
     Dimensions,
     SafeAreaView,
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 16,
-    color: "#666",
+    color: Colors.muted,
     fontWeight: "500",
     padding: 8,
   },
@@ -222,18 +223,16 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 38,
+    ...Type.title,
+    color: Colors.ink,
     marginBottom: 16,
   },
+  // Matches the site's .hero-body treatment.
   description: {
+    fontFamily: Fonts.sansLight,
     fontSize: 18,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 26,
-    fontWeight: "400",
   },
   footer: {
     paddingHorizontal: 32,
