@@ -28,12 +28,15 @@ interface SplashScreenProps {
 }
 
 // ── Ghost card layer ────────────────────────────────────────────────────
-// "Living product tease" (Hinge-style): abstracted, whisper-gray job-card
-// skeletons drift almost imperceptibly behind the headline — showing what
-// the app IS before sign-up without competing with the type. Restraint
-// rules: monochrome surface tones only, slow multi-second drift, slight
-// rotations, pointerEvents off, and everything stays clear of the
-// headline's center band.
+// "Living product tease" (Hinge-style): real-looking job cards drift
+// almost imperceptibly behind the headline — showing what the app IS
+// before sign-up without competing with the type. The content is REAL
+// (plausible titles, companies, chips) rather than skeleton bars, but set
+// entirely in muted/faint grays: from a distance it's texture, and only
+// when the eye lands on a card does it resolve into an actual job.
+// Restraint rules: no motion beyond the one slow drift per card, no color
+// darker than Colors.muted, pointerEvents off, and everything stays clear
+// of the headline's center band.
 
 interface GhostCardSpec {
   top?: number;
@@ -46,15 +49,40 @@ interface GhostCardSpec {
   driftX: number;
   durationMs: number;
   opacity: number;
+  // Content — invented-but-plausible (no real company names on a
+  // marketing surface).
+  monogram: string;
+  title: string;
+  company: string;
+  chips: string[];
+  /** Shown on the most visible card only — the product's differentiator,
+   * whispered: a tiny avatar + "N sponsors inside" row. */
+  sponsorsNote?: string;
 }
 
 const GHOST_CARDS: GhostCardSpec[] = [
-  // Upper-left, mostly on-screen.
-  { top: 90, left: -24, rotate: '-7deg', scale: 1, driftY: -14, driftX: 6, durationMs: 11000, opacity: 0.65 },
+  // Upper-left, most visible — carries the sponsors note.
+  {
+    top: 90, left: -24, rotate: '-7deg', scale: 1,
+    driftY: -14, driftX: 6, durationMs: 11000, opacity: 0.8,
+    monogram: 'M', title: 'Senior Product Designer',
+    company: 'Meridian Labs · Remote', chips: ['$130–160k', 'Design'],
+    sponsorsNote: '3 sponsors inside',
+  },
   // Upper-right, peeking off the edge.
-  { top: 170, right: -70, rotate: '5deg', scale: 0.92, driftY: -10, driftX: -8, durationMs: 14000, opacity: 0.55 },
+  {
+    top: 170, right: -70, rotate: '5deg', scale: 0.92,
+    driftY: -10, driftX: -8, durationMs: 14000, opacity: 0.65,
+    monogram: 'A', title: 'Backend Engineer',
+    company: 'Atlas Health · NYC', chips: ['Python', '$150k+'],
+  },
   // Low-left, behind the footer's whitespace, faintest.
-  { bottom: 190, left: -55, rotate: '4deg', scale: 0.85, driftY: -12, driftX: 5, durationMs: 17000, opacity: 0.45 },
+  {
+    bottom: 190, left: -55, rotate: '4deg', scale: 0.85,
+    driftY: -12, driftX: 5, durationMs: 17000, opacity: 0.5,
+    monogram: 'F', title: 'Growth Marketer',
+    company: 'Foundry · Hybrid', chips: ['B2B', 'SF'],
+  },
 ];
 
 function GhostCard({ spec }: { spec: GhostCardSpec }) {
@@ -97,16 +125,31 @@ function GhostCard({ spec }: { spec: GhostCardSpec }) {
       ]}
     >
       <View style={styles.ghostHeader}>
-        <View style={styles.ghostLogo} />
+        <View style={styles.ghostLogo}>
+          <Text style={styles.ghostMonogram}>{spec.monogram}</Text>
+        </View>
         <View style={styles.ghostHeaderText}>
-          <View style={styles.ghostTitleBar} />
-          <View style={styles.ghostSubBar} />
+          <Text style={styles.ghostTitle} numberOfLines={1}>
+            {spec.title}
+          </Text>
+          <Text style={styles.ghostCompany} numberOfLines={1}>
+            {spec.company}
+          </Text>
         </View>
       </View>
       <View style={styles.ghostPillRow}>
-        <View style={[styles.ghostPill, { width: 58 }]} />
-        <View style={[styles.ghostPill, { width: 42 }]} />
+        {spec.chips.map((chip) => (
+          <View key={chip} style={styles.ghostPill}>
+            <Text style={styles.ghostPillText}>{chip}</Text>
+          </View>
+        ))}
       </View>
+      {spec.sponsorsNote && (
+        <View style={styles.ghostSponsorRow}>
+          <View style={styles.ghostSponsorAvatar} />
+          <Text style={styles.ghostSponsorText}>{spec.sponsorsNote}</Text>
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -274,35 +317,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   ghostLogo: {
     width: 34,
     height: 34,
     borderRadius: 10,
     backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  ghostHeaderText: { flex: 1, gap: 7 },
-  ghostTitleBar: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.surface,
-    width: '85%',
+  // Serif monogram in the logo tile — reads as a company mark.
+  ghostMonogram: {
+    fontFamily: Fonts.serif,
+    fontSize: 17,
+    color: Colors.muted,
   },
-  ghostSubBar: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.surface,
-    width: '55%',
+  ghostHeaderText: { flex: 1, gap: 2 },
+  // Real content, but never darker than muted — texture from afar,
+  // legible up close.
+  ghostTitle: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13,
+    color: Colors.muted,
+  },
+  ghostCompany: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    color: Colors.faint,
   },
   ghostPillRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   ghostPill: {
-    height: 18,
     borderRadius: 999,
     backgroundColor: Colors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  ghostPillText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 10,
+    color: Colors.muted,
+  },
+  // The whispered differentiator: tiny avatar dot + "N sponsors inside".
+  ghostSponsorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 12,
+    paddingTop: 11,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surface,
+  },
+  ghostSponsorAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  ghostSponsorText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 10.5,
+    color: Colors.muted,
   },
   centerContent: {
     flex: 1,
