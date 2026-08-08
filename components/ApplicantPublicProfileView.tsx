@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ApplicantPublicProfileViewProps {
   userData: PublicProfileUserData;
@@ -451,10 +451,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.offWhite,
   },
   name: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    lineHeight: 32,
+    color: Colors.ink,
   },
   infoRow: {
     flexDirection: "row",
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   locationText: {
     fontSize: 14,
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   whiteBtnText: {
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "700",
     fontSize: 14,
   },
@@ -512,10 +512,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
+  // Matches the site's .stat-num (serif for stat/count displays).
   statValue: {
+    fontFamily: Fonts.serif,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   statLabel: {
     fontSize: 10,
@@ -707,7 +708,7 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 40,
     fontWeight: "800" as const,
-    color: "#000",
+    color: Colors.ink,
   },
 
   // ── Stats divider ──────────────────────────────────────────────────────────────

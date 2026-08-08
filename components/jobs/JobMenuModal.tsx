@@ -18,7 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { UNSPONSOR_REASONS } from "./jobTransforms";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -285,9 +285,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   menuSheetJobTitle: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 2,
   },
   menuSheetJobCompany: {
@@ -296,9 +296,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   unsponsorReasonHeading: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 4,
   },
   unsponsorReasonSub: {

@@ -21,6 +21,7 @@ import {
 } from "./matchesQueries";
 import { MatchSection } from "./MatchSection";
 import { MetaLine, OpportunityRow } from "./OpportunityRow";
+import { Colors } from "@/constants/theme";
 
 const MATCH_SECTION_ROW_CAP = 4;
 
@@ -311,6 +312,6 @@ const styles = StyleSheet.create({
   withdrawBtnText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#DC2626",
+    color: Colors.danger,
   },
 });

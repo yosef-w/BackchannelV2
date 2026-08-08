@@ -18,7 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { SponsorInsightCards } from "./SponsorInsightCards";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 export interface SponsorFlowState {
   step: number;
@@ -370,5 +370,5 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   successStep: { alignItems: "center", paddingVertical: 20, width: "100%" },
-  successTitle: { fontSize: 22, fontWeight: "800", marginBottom: 10 },
+  successTitle: { ...Type.heading, color: Colors.ink, marginBottom: 10 },
 });

@@ -21,7 +21,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface WorkEmailVerificationModalProps {
   visible: boolean;
@@ -361,9 +361,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emailVerifTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 12,
   },

@@ -7,7 +7,7 @@ import {
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface DeckDoneCardProps {
   userType: "applicant" | "sponsor";
@@ -178,10 +178,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   title: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 10,
   },
@@ -207,11 +207,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
+  // Matches the site's .stat-num (serif for stat/count displays).
   recapValue: {
+    fontFamily: Fonts.serif,
     fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    color: Colors.ink,
   },
   recapLabel: {
     fontSize: 12,

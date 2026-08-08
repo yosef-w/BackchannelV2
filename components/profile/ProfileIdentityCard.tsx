@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 34,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: 1,
   },
   avatarPlaceholder: { alignItems: "center", justifyContent: "center" },

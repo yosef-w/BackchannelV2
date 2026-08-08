@@ -73,6 +73,7 @@ import {
 } from "../matches/JobSheetKit";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import type { Conversation } from "../MessagesView";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -958,17 +959,17 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   introTitle: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    lineHeight: 32,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 12,
   },
   introBody: {
+    fontFamily: Fonts.sansLight,
     fontSize: 15,
-    color: "#4B5563",
-    fontWeight: "500",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 23,
   },
@@ -998,18 +999,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  candidatePhotoInitial: { fontSize: 44, fontWeight: "800", color: "#3B4353" },
+  candidatePhotoInitial: { fontSize: 44, fontWeight: "800", color: Colors.ink },
+  // "You know [Name]." reads as one headline unit, same lead+accent
+  // construction as the splash's "Welcome to *BackChannel*" — plain serif
+  // lead, then the payoff. Kept the existing size architecture (32/34)
+  // rather than Type's presets, which don't have a matching two-size pair.
   candidateLead: {
+    fontFamily: Fonts.serif,
     fontSize: 32,
-    fontWeight: "800",
-    color: "#9CA3AF",
+    color: Colors.muted,
     letterSpacing: -0.8,
     lineHeight: 38,
   },
   candidateName: {
+    fontFamily: Fonts.serif,
     fontSize: 34,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.9,
     lineHeight: 40,
     marginBottom: 8,
@@ -1017,7 +1022,7 @@ const styles = StyleSheet.create({
   candidateMeta: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6B7280",
+    color: Colors.body,
     marginBottom: 18,
   },
   roleRow: {
@@ -1034,12 +1039,13 @@ const styles = StyleSheet.create({
   roleLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#9CA3AF",
+    color: Colors.muted,
     letterSpacing: 1,
     marginBottom: 3,
   },
-  roleTitle: { fontSize: 15, fontWeight: "800", color: "#000" },
-  sectionBody: { fontSize: 14, color: "#4B5563", lineHeight: 21 },
+  // 15px — below the serif's ~18px floor, system font kept.
+  roleTitle: { fontSize: 15, fontWeight: "800", color: Colors.ink },
+  sectionBody: { fontSize: 14, color: Colors.body, lineHeight: 21 },
   entryRow: { paddingVertical: 8 },
   entryDivider: {
     borderTopWidth: 1,
@@ -1048,10 +1054,10 @@ const styles = StyleSheet.create({
   entryTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 2,
   },
-  entryMeta: { fontSize: 13, color: "#6B7280" },
+  entryMeta: { fontSize: 13, color: Colors.muted },
   skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   skillBadge: {
     paddingHorizontal: 11,
@@ -1059,11 +1065,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0F2F7",
     borderRadius: 999,
   },
-  skillBadgeText: { fontSize: 11, fontWeight: "700", color: "#000" },
+  skillBadgeText: { fontSize: 11, fontWeight: "700", color: Colors.ink },
   portfolioLink: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     textDecorationLine: "underline",
   },
   // ── Vouch ──
@@ -1083,11 +1089,10 @@ const styles = StyleSheet.create({
     marginBottom: 26,
   },
   statementQuote: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
     lineHeight: 37,
+    color: Colors.ink,
     textAlign: "center",
   },
   stamp: {
@@ -1107,9 +1112,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 28,
   },
+  // Dark section (rootDark) — same treatment as HomeIntro's overlay
+  // headline: font only, color intentionally untouched (a deliberate dark
+  // moment, not a light-theme text color to tokenize).
   signLead: {
+    fontFamily: Fonts.serif,
     fontSize: 26,
-    fontWeight: "800",
     color: "#FFF",
     letterSpacing: -0.6,
     textAlign: "center",
@@ -1131,12 +1139,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  signAvatarInitial: { fontSize: 24, fontWeight: "800", color: "#3B4353" },
-  signName: { fontSize: 18, fontWeight: "800", color: "#000" },
+  signAvatarInitial: { fontSize: 24, fontWeight: "800", color: Colors.ink },
+  // A person's name — same headline-tier rule as elsewhere
+  // (ProfileIdentityCard, cardStyles.sponsorMeetName).
+  signName: {
+    fontFamily: Type.heading.fontFamily,
+    fontSize: 18,
+    color: Colors.ink,
+  },
   signRole: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B7280",
+    color: Colors.body,
     marginTop: 3,
     textAlign: "center",
   },
@@ -1172,23 +1186,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   receiptTitle: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 8,
   },
   receiptSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 14,
-    color: "#6B7280",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     paddingHorizontal: 12,
   },
   receiptNext: {
     fontSize: 13,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 19,
@@ -1198,7 +1213,7 @@ const styles = StyleSheet.create({
   },
   savedHint: {
     fontSize: 13,
-    color: "#6B7280",
+    color: Colors.body,
     fontWeight: "600",
     textAlign: "center",
     marginTop: 4,

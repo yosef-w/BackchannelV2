@@ -1252,7 +1252,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   modalAvatar: { width: 55, height: 55, borderRadius: 27 },
-  modalName: { fontSize: 20, fontWeight: "800" },
+  modalName: { fontFamily: Type.heading.fontFamily, fontSize: 20, color: Colors.ink },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   locationText: { fontSize: 12, color: Colors.faint, fontWeight: "600" },
   bioText: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 15 },

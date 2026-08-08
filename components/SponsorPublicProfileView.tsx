@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
@@ -310,13 +310,13 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 40,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   name: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    lineHeight: 32,
+    color: Colors.ink,
     textAlign: "center",
   },
   infoRow: {
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   locationText: {
     fontSize: 14,
@@ -356,18 +356,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 8,
   },
+  // Matches the site's .stat-num (serif for stat/count displays).
   statValue: {
+    fontFamily: Fonts.serif,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
   },
   statValueOpen: {
-    color: "#000",
+    color: Colors.ink,
     fontSize: 18,
   },
   statValueClosed: {
-    color: "#DC2626",
+    color: Colors.danger,
     fontSize: 18,
   },
   statLabel: {

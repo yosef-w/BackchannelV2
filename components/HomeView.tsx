@@ -2271,11 +2271,11 @@ const styles = StyleSheet.create({
     gap: 2,
     marginBottom: 8,
   },
+  // Matches the site's .stat-num (serif for stat/count displays).
   progressCurrent: {
+    fontFamily: Fonts.serif,
     fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    color: Colors.ink,
   },
   progressTotal: {
     fontSize: 13,
@@ -2561,10 +2561,10 @@ const styles = StyleSheet.create({
 
   // Hero typography shared by both sponsor empty states.
   sponsorEmptyTitle: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 10,
   },

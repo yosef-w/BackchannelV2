@@ -35,7 +35,7 @@ import {
 } from "./JobSheetKit";
 import { SponsorRequest } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface SrJobDetailPreview {
   organization_logo?: string | null;
@@ -547,9 +547,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   srStepTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     marginBottom: 6,
   },
   srSuccessContainer: {
@@ -575,10 +574,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   srSuccessTitle: {
-    fontSize: 22,
-    fontWeight: "800",
+    ...Type.heading,
     marginBottom: 10,
-    color: "#000",
+    color: Colors.ink,
   },
   srTextInput: {
     backgroundColor: "#FFF",

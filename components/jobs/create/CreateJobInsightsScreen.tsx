@@ -17,7 +17,7 @@ import {
     View,
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface CreateJobInsightsScreenProps {
   visible: boolean;
@@ -240,11 +240,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   successTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     marginBottom: 10,
-    letterSpacing: -0.5,
   },
   successSubtitle: {
     fontSize: 15,

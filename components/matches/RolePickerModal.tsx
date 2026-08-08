@@ -18,7 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rolePickerAvatar: { width: 52, height: 52, borderRadius: 26 },
-  rolePickerName: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
+  rolePickerName: { fontFamily: Type.heading.fontFamily, fontSize: 20, color: Colors.ink },
   rolePickerSub: {
     fontSize: 13,
     color: Colors.body,

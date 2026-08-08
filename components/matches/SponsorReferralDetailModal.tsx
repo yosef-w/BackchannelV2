@@ -31,6 +31,7 @@ import {
 } from "./JobSheetKit";
 import { Referral } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
+import { Colors } from "@/constants/theme";
 
 interface SponsorReferralDetailModalProps {
   /** The submitted referral being viewed, or null when closed. */
@@ -164,7 +165,7 @@ export function SponsorReferralDetailModal({
                         ? { label: "Referred" }
                         : {
                             label: "Withdrawn",
-                            color: "#6B7280",
+                            color: Colors.body,
                             bgColor: "#F0F2F7",
                           }
                     }

@@ -13,7 +13,7 @@ import {
   DismissibleSheet,
   SheetScrollView,
 } from "../ui/DismissibleSheet";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface JobDescriptionModalProps {
   visible: boolean;
@@ -86,10 +86,8 @@ export function JobDescriptionModal({
             <View>
               <Text
                 style={{
-                  fontSize: 22,
-                  fontWeight: "800",
-                  color: "#000",
-                  letterSpacing: -0.5,
+                  ...Type.heading,
+                  color: Colors.ink,
                 }}
               >
                 About the Role

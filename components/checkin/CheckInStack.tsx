@@ -37,7 +37,7 @@ import {
   type SessionResults,
 } from "./checkInSession";
 import { StageTrack } from "./StageTrack";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 const NOTE_MAX = 500;
 
@@ -622,10 +622,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   overviewTitle: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
+    color: Colors.ink,
   },
   overviewList: {
     gap: 8,
@@ -675,12 +674,11 @@ const styles = StyleSheet.create({
     gap: 4,
     marginBottom: 22,
   },
+  // The referral's name/company — headline-tier, same rule as elsewhere.
   heading: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
+    ...Type.heading,
     marginTop: 10,
+    color: Colors.ink,
   },
   subheading: {
     fontSize: 15,
@@ -801,10 +799,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   recapTitle: {
+    ...Type.heading,
     fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
+    color: Colors.ink,
     marginBottom: 6,
   },
   recapSubtitle: {

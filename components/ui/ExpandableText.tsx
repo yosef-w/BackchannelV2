@@ -16,6 +16,7 @@ import {
   type TextStyle,
   TouchableOpacity,
 } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface ExpandableTextProps {
   children: string;
@@ -85,6 +86,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
 });

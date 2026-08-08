@@ -14,7 +14,7 @@ import {
     DismissibleSheet,
     SheetScrollView,
 } from "../ui/DismissibleSheet";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -133,10 +133,8 @@ const styles = StyleSheet.create({
     maxHeight: SCREEN_HEIGHT * 0.7,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
+    ...Type.heading,
+    color: Colors.ink,
     marginTop: 4,
   },
   subtitle: {

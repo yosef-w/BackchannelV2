@@ -3,7 +3,7 @@ import { BlurView } from "expo-blur";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface SponsorGateModalProps {
   onSponsorNow: () => void;
@@ -102,9 +102,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   gateTitle: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     marginBottom: 12,
     textAlign: "center",
   },

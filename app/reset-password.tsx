@@ -35,7 +35,7 @@ import {
     trackResetPasswordSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 type Status = "form" | "missingToken" | "success";
 
@@ -247,11 +247,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   title: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,

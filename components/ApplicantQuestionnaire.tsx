@@ -1712,10 +1712,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reviewTitle: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    ...Type.title,
+    color: Colors.ink,
   },
   reviewSub: {
     fontSize: 15,

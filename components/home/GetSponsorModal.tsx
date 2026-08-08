@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface GetSponsorModalProps {
   visible: boolean;
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  applyModalTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  applyModalTitle: { ...Type.heading, color: Colors.ink },
   applyModalSubtitle: {
     fontSize: 14,
     color: Colors.body,

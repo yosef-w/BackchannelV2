@@ -57,7 +57,7 @@ import {
   SheetScrollView,
 } from "./ui/DismissibleSheet";
 import { CompanyLogo } from "./ui/CompanyLogo";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 function parseSkillsField(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -696,12 +696,18 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
   header: { marginBottom: 18 },
   title: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.8,
+    lineHeight: 32,
+    color: Colors.ink,
   },
-  subtitle: { fontSize: 14, color: "#6B7280", marginTop: 6, lineHeight: 20 },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 14,
+    color: Colors.body,
+    marginTop: 6,
+    lineHeight: 20,
+  },
   searchStack: { gap: 8, marginBottom: 14 },
   // Filled + visibly bordered so the fields read as THE control on a
   // white screen instead of blending into the result cards around them.

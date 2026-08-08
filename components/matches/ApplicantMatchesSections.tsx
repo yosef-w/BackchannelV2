@@ -17,6 +17,7 @@ import {
 } from "./matchesQueries";
 import { MatchSection } from "./MatchSection";
 import { MetaLine, OpportunityRow } from "./OpportunityRow";
+import { Colors } from "@/constants/theme";
 
 const MATCH_SECTION_ROW_CAP = 4;
 
@@ -127,7 +128,7 @@ export function ApplicantMatchesSections({
         meta={
           sponsor.likedAt ? (
             <MetaLine
-              icon={<Heart size={10} color="#DC2626" />}
+              icon={<Heart size={10} color={Colors.danger} />}
               text={getRelativeTime(sponsor.likedAt)}
             />
           ) : undefined

@@ -1279,7 +1279,7 @@ const styles = StyleSheet.create({
   photoInitials: { fontSize: 52, fontWeight: "800", color: Colors.muted },
   photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
   photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
-  photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  photoPickText: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
   photoSkipText: { fontSize: 14, fontWeight: "600", color: Colors.faint },
   bioWrapper: {
@@ -1292,7 +1292,7 @@ const styles = StyleSheet.create({
   },
   bioInput: {
     fontSize: 18,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "500",
     minHeight: 120,
     textAlignVertical: "top",
@@ -1311,11 +1311,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   rolePickerTitle: {
+    ...Type.heading,
     fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
     lineHeight: 30,
+    color: Colors.ink,
   },
   rolePickerSub: {
     fontSize: 14,

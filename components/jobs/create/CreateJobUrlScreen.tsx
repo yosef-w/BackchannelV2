@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { useKeyboardVisible } from "./useKeyboardVisible";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface CreateJobUrlScreenProps {
   visible: boolean;
@@ -157,10 +157,10 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
   heading: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
+    lineHeight: 30,
+    color: Colors.ink,
     marginBottom: 8,
   },
   subheading: {

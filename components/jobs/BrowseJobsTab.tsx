@@ -19,7 +19,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { JobCard } from "./JobCard";
 import { JobsEmptyState } from "./JobsEmptyState";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface BrowseJobsTabProps {
   jobs: Job[];
@@ -291,11 +291,10 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   didYouMeanTitle: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 19,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.3,
     marginBottom: 8,
     paddingHorizontal: 12,
   },

@@ -533,12 +533,12 @@ const styles = StyleSheet.create({
   editorBadgeText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: 0.5,
   },
   editorInput: {
     fontSize: 22,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "500",
     lineHeight: 30,
     minHeight: 140,

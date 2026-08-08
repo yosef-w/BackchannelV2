@@ -30,7 +30,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 // expo-clipboard's NATIVE module may be missing from the running binary
 // (dev client / TestFlight build compiled before the package was linked).
@@ -60,9 +60,13 @@ try {
 /** Sheet background — the soft canvas white cards float on. */
 export const CANVAS = "#F6F7F9";
 const HAIRLINE = "rgba(15,23,42,0.06)";
-const SUB = "#6B7280";
-const FAINT = "#9CA3AF";
-const TINT = "#F0F2F7";
+// Consolidated onto the shared palette (constants/theme.ts) — these were
+// a separate local Tailwind-gray scale duplicating Colors.body/.muted/
+// .surface under different names. Kept as local aliases (not exported,
+// used nowhere else) rather than touching every call site individually.
+const SUB = Colors.body;
+const FAINT = Colors.muted;
+const TINT = Colors.surface;
 
 /** Bottom inset of a canvas sheet — BarFooter extends its background
  * through it so the bar reads as anchored, not floating. */
@@ -899,17 +903,15 @@ const g = StyleSheet.create({
     marginBottom: 14,
   },
   posterTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 4,
   },
   posterCompany: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#555",
+    color: SUB,
     textAlign: "center",
   },
   posterMetaRow: {
@@ -929,7 +931,7 @@ const g = StyleSheet.create({
     borderRadius: 999,
     marginLeft: 4,
   },
-  tintPillText: { fontSize: 11, fontWeight: "800", color: "#3B4353" },
+  tintPillText: { fontSize: 11, fontWeight: "800", color: Colors.ink },
   sourcePill: {
     flexDirection: "row",
     alignItems: "center",
@@ -943,7 +945,7 @@ const g = StyleSheet.create({
   sourcePillText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#3B4353",
+    color: Colors.ink,
   },
   personAvatar: {
     width: 88,
@@ -956,19 +958,19 @@ const g = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  personAvatarInitial: { fontSize: 32, fontWeight: "800", color: "#3B4353" },
+  personAvatarInitial: { fontSize: 32, fontWeight: "800", color: Colors.ink },
   hostAvatar: {
     width: 76,
     height: 76,
     borderRadius: 38,
     marginBottom: 10,
   },
-  hostAvatarInitial: { fontSize: 28, fontWeight: "800", color: "#3B4353" },
+  hostAvatarInitial: { fontSize: 28, fontWeight: "800", color: Colors.ink },
+  // A person's name — same headline-tier rule used elsewhere.
   hostName: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
+    color: Colors.ink,
     textAlign: "center",
   },
   hostRole: {

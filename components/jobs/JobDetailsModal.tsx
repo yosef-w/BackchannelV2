@@ -33,7 +33,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { extractDisplayDomain } from "./jobTransforms";
 import { jobsModalStyles } from "./jobsModalStyles";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -385,12 +385,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   jobModalHeroTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 6,
-    letterSpacing: -0.5,
   },
   jobModalHeroCompany: {
     fontSize: 15,

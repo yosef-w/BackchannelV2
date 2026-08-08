@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import type { ReportReason } from "@/lib/api";
-import { Colors } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface ThreadMenuSheetProps {
   visible: boolean;
@@ -221,9 +221,9 @@ const styles = StyleSheet.create({
     paddingBottom: 52,
   },
   unmatchSheetTitle: {
+    ...Type.heading,
     fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 8,
     marginTop: 4,
