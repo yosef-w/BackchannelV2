@@ -158,14 +158,33 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
     };
   });
 
-  // The ATS scan line sweeping down over the heap.
-  const scanLine = useAnimatedStyle(() => {
+  // The AI screen: corner brackets lock onto the résumé, a soft band
+  // sweeps down INSIDE the document (clipped by the card), and a labeled
+  // chip explains what's happening — then the verdict slaps on.
+  const scanBrackets = useAnimatedStyle(() => {
     const t = master.value;
-    const sweep = easeInOut(win(t, 0.125, 0.16));
-    const vis = win(t, 0.12, 0.13) * (1 - win(t, 0.155, 0.165));
+    const inP = easeOut(win(t, 0.112, 0.124));
+    const out = win(t, 0.163, 0.172);
+    return { opacity: inP * (1 - out) };
+  });
+
+  const scanBand = useAnimatedStyle(() => {
+    const t = master.value;
+    const sweep = easeInOut(win(t, 0.125, 0.162));
+    const vis = win(t, 0.122, 0.13) * (1 - win(t, 0.158, 0.166));
     return {
-      opacity: vis * 0.9,
-      transform: [{ translateY: -70 + sweep * 150 }],
+      opacity: vis,
+      transform: [{ translateY: -34 + sweep * 158 }],
+    };
+  });
+
+  const aiChip = useAnimatedStyle(() => {
+    const t = master.value;
+    const inP = easeOut(win(t, 0.112, 0.128));
+    const out = win(t, 0.162, 0.172);
+    return {
+      opacity: inP * (1 - out),
+      transform: [{ translateY: (1 - inP) * 6 }],
     };
   });
 
@@ -379,21 +398,48 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
 
         {/* ── The stage ── */}
         <View style={styles.stage}>
-          {/* Act 0: the pile, your application, the scan, the verdict */}
+          {/* Act 0: the pile, your résumé, the AI screen, the verdict */}
           <Animated.View style={[styles.centerSlot, pileGroup]}>
             {PILE_DOCS.map((doc, i) => (
               <PileDoc key={i} doc={doc} index={i} master={master} />
             ))}
             <Animated.View style={[styles.yourDoc, yourDoc]}>
-              <View style={styles.yourDocBar} />
-              <View style={[styles.yourDocLine, { width: '72%' }]} />
-              <View style={[styles.yourDocLine, { width: '52%' }]} />
-              <View style={[styles.yourDocLine, { width: '62%' }]} />
+              {/* A real document, not a skeleton: header identity row +
+                  micro-typography sections. */}
+              <View style={styles.resumeHeader}>
+                <View style={styles.resumeAvatar} />
+                <View style={styles.resumeHeaderText}>
+                  <Text style={styles.resumeName}>Your résumé</Text>
+                  <Text style={styles.resumeMeta}>PDF · 2 pages</Text>
+                </View>
+              </View>
+              <Text style={styles.resumeSection}>EXPERIENCE</Text>
+              <View style={[styles.resumeLine, { width: '86%' }]} />
+              <View style={[styles.resumeLine, { width: '68%' }]} />
+              <Text style={styles.resumeSection}>SKILLS</Text>
+              <View style={[styles.resumeLine, { width: '58%' }]} />
+              {/* The scan band sweeps inside the card (clipped). */}
+              <Animated.View style={[styles.scanBand, scanBand]}>
+                <View style={styles.scanBandEdge} />
+              </Animated.View>
+              {/* Scanner lock-on brackets. */}
+              <Animated.View
+                pointerEvents="none"
+                style={[StyleSheet.absoluteFill, scanBrackets]}
+              >
+                <View style={[styles.bracket, styles.bracketTL]} />
+                <View style={[styles.bracket, styles.bracketTR]} />
+                <View style={[styles.bracket, styles.bracketBL]} />
+                <View style={[styles.bracket, styles.bracketBR]} />
+              </Animated.View>
               <Animated.View style={[styles.rejectStamp, rejectStamp]}>
                 <Text style={styles.rejectStampText}>✕ AUTO-REJECTED</Text>
               </Animated.View>
             </Animated.View>
-            <Animated.View style={[styles.scanLine, scanLine]} />
+            {/* What's happening, labeled — floats above the document. */}
+            <Animated.View style={[styles.aiChip, aiChip]}>
+              <Text style={styles.aiChipText}>AI SCREENING</Text>
+            </Animated.View>
           </Animated.View>
 
           {/* Act 1: the deck (C under B under A) */}
@@ -490,7 +536,7 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
             master={master}
             enter={0.02}
             out={[0.135, 0.16]}
-            segments={[{ text: 'Hundreds of applicants. Every posting.' }]}
+            segments={[{ text: 'The old way of applying is broken.' }]}
             textStyle={styles.captionCold}
           />
           <CinemaCaption
@@ -676,8 +722,12 @@ function PileDoc({
 
   return (
     <Animated.View style={[styles.pileDoc, style]}>
-      <View style={[styles.pileDocLine, { width: '70%' }]} />
-      <View style={[styles.pileDocLine, { width: '50%' }]} />
+      <View style={styles.pileDocHeader}>
+        <View style={styles.pileDocAvatar} />
+        <View style={[styles.pileDocLine, { flex: 1 }]} />
+      </View>
+      <View style={[styles.pileDocLine, { width: '78%' }]} />
+      <View style={[styles.pileDocLine, { width: '55%' }]} />
     </Animated.View>
   );
 }
@@ -767,60 +817,147 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // ── Act 0: the pile ───────────────────────────────────────────────────
-  // Anonymous applications — small, featureless, all alike on purpose.
+  // Other people's résumés — small but real: an identity dot and text
+  // lines, on true paper with a whisper of shadow.
   pileDoc: {
     position: 'absolute',
-    width: 44,
-    height: 56,
-    borderRadius: 7,
-    backgroundColor: Colors.offWhite,
+    width: 48,
+    height: 58,
+    borderRadius: 8,
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 7,
+    padding: 8,
+    gap: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  pileDocHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+  },
+  pileDocAvatar: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: Colors.border,
   },
   pileDocLine: {
     height: 4,
     borderRadius: 2,
     backgroundColor: Colors.surface,
   },
-  // Yours — bigger, real enough to care about, doomed anyway.
+  // Yours — a real document with a name on it, doomed anyway.
   yourDoc: {
     position: 'absolute',
-    width: 120,
-    height: 130,
-    marginTop: -60,
+    width: 138,
+    height: 148,
+    marginTop: -62,
     borderRadius: 14,
     backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
     padding: 14,
-    gap: 8,
+    overflow: 'hidden', // clips the scan band to the page
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.07,
     shadowRadius: 16,
     elevation: 4,
   },
-  yourDocBar: {
-    height: 9,
-    width: '55%',
-    borderRadius: 4,
-    backgroundColor: Colors.border,
-    marginBottom: 2,
+  resumeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
   },
-  yourDocLine: {
-    height: 5,
-    borderRadius: 2.5,
+  resumeAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  scanLine: {
+  resumeHeaderText: { flex: 1, gap: 1 },
+  resumeName: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 10.5,
+    color: Colors.ink,
+  },
+  resumeMeta: {
+    fontFamily: Fonts.sans,
+    fontSize: 8,
+    color: Colors.faint,
+  },
+  // Micro-typography section labels — real document anatomy.
+  resumeSection: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 6.5,
+    letterSpacing: 0.8,
+    color: Colors.faint,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  resumeLine: {
+    height: 4.5,
+    borderRadius: 2.25,
+    backgroundColor: Colors.surface,
+    marginBottom: 4,
+  },
+  // The scan band: a soft tinted region with a reading edge, swept
+  // through the page interior.
+  scanBand: {
     position: 'absolute',
-    left: '18%',
-    right: '18%',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 30,
+    backgroundColor: 'rgba(10, 10, 10, 0.045)',
+    justifyContent: 'flex-end',
+  },
+  scanBandEdge: {
     height: 1.5,
-    borderRadius: 1,
     backgroundColor: Colors.muted,
+    opacity: 0.7,
+  },
+  // Scanner lock-on brackets at the page corners.
+  bracket: {
+    position: 'absolute',
+    width: 13,
+    height: 13,
+    borderColor: Colors.muted,
+  },
+  bracketTL: { top: 5, left: 5, borderTopWidth: 2, borderLeftWidth: 2, borderTopLeftRadius: 3 },
+  bracketTR: { top: 5, right: 5, borderTopWidth: 2, borderRightWidth: 2, borderTopRightRadius: 3 },
+  bracketBL: { bottom: 5, left: 5, borderBottomWidth: 2, borderLeftWidth: 2, borderBottomLeftRadius: 3 },
+  bracketBR: { bottom: 5, right: 5, borderBottomWidth: 2, borderRightWidth: 2, borderBottomRightRadius: 3 },
+  // "AI SCREENING" — floats above the document while the band sweeps.
+  aiChip: {
+    position: 'absolute',
+    marginTop: -168,
+    alignSelf: 'center',
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  aiChipText: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 8.5,
+    letterSpacing: 1.2,
+    color: Colors.muted,
   },
   rejectStamp: {
     position: 'absolute',
