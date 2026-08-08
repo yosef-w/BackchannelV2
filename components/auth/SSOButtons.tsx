@@ -98,7 +98,20 @@ export function SSOButtons({ onSuccess, onError, disabled }: SSOButtonsProps) {
         provider,
         identity.identityToken,
         provider === "apple"
-          ? { givenName: identity.givenName, familyName: identity.familyName }
+          ? {
+              // Only meaningful on the user's first-ever authorization —
+              // both null afterward, and ssoLogin omits null fields.
+              fullName:
+                identity.givenName || identity.familyName
+                  ? {
+                      givenName: identity.givenName,
+                      familyName: identity.familyName,
+                    }
+                  : undefined,
+              // Sent every time — backend exchanges it so it can revoke
+              // Apple credentials on account deletion (Apple mandate).
+              authorizationCode: identity.authorizationCode,
+            }
           : undefined,
       );
       onSuccess(response, identity, provider);

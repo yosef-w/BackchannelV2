@@ -416,13 +416,27 @@ export function SponsorQuestionnaire({
   const completeSsoOnboardingMutation = useMutation({
     mutationFn: async () => {
       return authApi.completeSsoOnboarding({
-        role: "sponsor",
+        // Capitalized per the backend's validation — it rejects anything
+        // but exactly 'Applicant'/'Sponsor'.
+        role: "Sponsor",
+        // The SSO exchange usually stored the name already, but Apple only
+        // sends it once ever — forward anything the flow captured.
+        ...(sponsorData.firstName?.trim()
+          ? { first_name: sponsorData.firstName.trim() }
+          : {}),
+        ...(sponsorData.lastName?.trim()
+          ? { last_name: sponsorData.lastName.trim() }
+          : {}),
         company: answers[0],
         job_title: answers[1],
         duration: answers[2],
-        open_to_referrals: answers[3],
-        referral_experience: answers[4],
-        financial_reward: answers[5],
+        // Same select-answer → wire-format conversions createProfile()
+        // applies for /api/register-sponsor/ — the backend treats this
+        // endpoint's fields identically (booleans; financial_reward is the
+        // literal string "yes"/"no", compared == 'yes' server-side).
+        open_to_referrals: answers[3] === "Yes, absolutely",
+        referral_experience: answers[4] === "Frequently",
+        financial_reward: answers[5] === "Yes" ? "yes" : "no",
         insights: selectedInsights,
         work_email: answers[7],
       });

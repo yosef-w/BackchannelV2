@@ -37,18 +37,17 @@ export interface CreateProfileRequest {
 }
 
 /**
- * SSO (docs/BACKEND_CHANGES_NEEDED.md §S) — response from
- * `POST /api/auth/sso/`, per `docs/SSO_PROPOSAL.md` §3 in the backend repo.
+ * SSO — response from `POST /api/auth/sso/`. Shape verified against the
+ * implemented backend (`services/sso.py` on their develop branch, PR #152;
+ * frontend contract doc: their `docs/FRONTEND_SSO_HANDOFF_2026-08-04.md`).
  * Deliberately login-shaped (same token pair `LoginResponse` carries) plus
- * two routing flags: `is_new_user` distinguishes "just created" from
- * "found and logged in" (analytics only — the app doesn't branch on it
- * directly); `needs_onboarding` is what the app actually routes on — true
- * for a role-less account (brand new, or an existing SSO identity that
- * somehow never finished onboarding), false once a role is attached.
- *
- * NOT LIVE YET — see the SSO_ENABLED gate in constants/config.ts. Every
- * field here mirrors the proposal's documented shape; nothing has been
- * verified against a real response because the endpoint doesn't exist.
+ * routing flags: `is_new_user` distinguishes "just created" from "found
+ * and logged in" (analytics only); `needs_onboarding` is what the app
+ * actually routes on — true for a role-less account, false once a role is
+ * attached. `has_password` drives the Privacy & Security screen's
+ * "Set a Password" UX (a pure-SSO account can't use the password-gated
+ * change-email/change-password/delete flows until one is set via the
+ * forgot-password flow).
  */
 export interface SsoLoginResponse {
   user_id: string;
@@ -59,22 +58,28 @@ export interface SsoLoginResponse {
   refresh_token: string;
   is_new_user: boolean;
   needs_onboarding: boolean;
+  has_password: boolean;
 }
 
 /**
- * Payload for `POST /api/auth/complete-onboarding/` — the endpoint
- * REQUESTED but not yet built (docs/BACKEND_CHANGES_NEEDED.md §S "Still
- * needed"). Field names deliberately match what `createProfile()` below
- * already sends to `/api/register/` / `/api/register-sponsor/`, minus the
- * identity fields (`username`/`first_name`/`last_name`/`email`/`password`)
- * an authenticated SSO session already has server-side. If the backend
- * ships this endpoint with different field names, this is the only type
- * that needs to change — the questionnaires build this shape once and
- * don't otherwise know which endpoint receives it.
+ * Payload for `POST /api/auth/complete-onboarding/` — verified against the
+ * implemented backend (`services/sso.py:complete_onboarding`, PR #152).
+ * `role` is CAPITALIZED (the backend rejects anything but exactly
+ * 'Applicant'/'Sponsor'), and the sponsor answer fields use the SAME wire
+ * conventions `createProfile()` below already sends to
+ * `/api/register-sponsor/`: `open_to_referrals`/`referral_experience` are
+ * booleans, `financial_reward` is the literal string "yes"/"no" (the
+ * backend compares `== 'yes'`). `first_name`/`last_name` are optional
+ * top-ups: the SSO exchange usually stored them already, but Apple only
+ * sends the name once ever, so anything captured in the questionnaire is
+ * worth forwarding. Sponsor `company` + `job_title` are REQUIRED (400
+ * without them).
  */
 export type CompleteSsoOnboardingRequest =
   | {
-      role: "applicant";
+      role: "Applicant";
+      first_name?: string;
+      last_name?: string;
       industry?: string;
       current_role?: string;
       positions?: string[];
@@ -83,20 +88,26 @@ export type CompleteSsoOnboardingRequest =
       work_preferences?: string[];
     }
   | {
-      role: "sponsor";
-      company?: string;
-      job_title?: string;
+      role: "Sponsor";
+      first_name?: string;
+      last_name?: string;
+      company: string;
+      job_title: string;
       duration?: string;
-      // Free-text select answers (e.g. "Yes, absolutely", "A few times"),
-      // NOT booleans — mirrors what SponsorQuestionnaire's answers[3]/[4]
-      // already are and what createProfile() already sends as
-      // openToReferrals/pastReferrals.
-      open_to_referrals?: string;
-      referral_experience?: string;
-      financial_reward?: string;
+      open_to_referrals?: boolean;
+      referral_experience?: boolean;
+      financial_reward?: "yes" | "no";
       insights?: { question: string; answer: string }[];
       work_email?: string;
     };
+
+/** `POST /api/auth/complete-onboarding/`'s 201 body. */
+export interface CompleteSsoOnboardingResponse {
+  user_id: string;
+  profile_id: string;
+  role: "Applicant" | "Sponsor";
+  message: string;
+}
 
 export interface UpdateProfileRequest {
   personal?: {
@@ -252,40 +263,56 @@ export const authApi = {
   },
 
   /**
-   * SSO sign-in/sign-up (§S) — NOT LIVE, see SsoLoginResponse's doc comment.
-   * `identityToken` is the provider's JWT/OIDC token from the native SDK
-   * (never anything we construct client-side — the backend verifies it
-   * against the provider's public keys before trusting any claim in it).
-   * `fullName` is Apple-only, and only ever populated on a user's FIRST
-   * authorization with this app — the caller must capture and use it
-   * immediately (e.g. pre-filling the questionnaire's name fields); a
-   * second Apple sign-in will not send it again.
+   * SSO sign-in/sign-up. `identityToken` is the provider's JWT/OIDC token
+   * from the native SDK (never anything we construct client-side — the
+   * backend verifies it against the provider's public keys before trusting
+   * any claim in it). `fullName` is Apple-only, and only ever populated on
+   * a user's FIRST authorization with this app — always forwarded when
+   * present since it cannot be recovered later. `authorizationCode` is
+   * Apple-only but sent on EVERY sign-in: the backend exchanges it for a
+   * refresh token so it can honor Apple's mandated credential revoke when
+   * the user deletes their account.
+   *
+   * Error statuses worth knowing (all bodies are `{error: string}`, which
+   * lib/api.ts surfaces as the thrown Error's message): 400 Apple-shared-
+   * no-email (message contains recovery steps), 401 bad token, 409 email
+   * exists but provider didn't verify it (log in with password instead),
+   * 503 provider not configured server-side.
    */
   ssoLogin: async (
     provider: "apple" | "google",
     identityToken: string,
-    fullName?: { givenName?: string | null; familyName?: string | null },
+    apple?: {
+      fullName?: { givenName?: string | null; familyName?: string | null };
+      authorizationCode?: string | null;
+    },
   ): Promise<SsoLoginResponse> => {
     return api.post<SsoLoginResponse>(
       "/api/auth/sso/",
-      { provider, identity_token: identityToken, full_name: fullName },
+      {
+        provider,
+        identity_token: identityToken,
+        ...(apple?.fullName ? { full_name: apple.fullName } : {}),
+        ...(apple?.authorizationCode
+          ? { authorization_code: apple.authorizationCode }
+          : {}),
+      },
       true, // Skip auth header — this call IS the auth
     );
   },
 
   /**
    * Attaches a role + role-profile to an already-authenticated, role-less
-   * SSO account — the endpoint requested in docs/BACKEND_CHANGES_NEEDED.md
-   * §S "Still needed", NOT YET BUILT. Deliberately mirrors createProfile()
-   * below (same field names) so the questionnaires can build one payload
-   * shape and route it to whichever call applies. Authenticated (no
-   * skipAuth) — the tokens from ssoLogin() are already in the store by the
-   * time this is called.
+   * SSO account (built backend-side in PR #152). One-shot: returns 400
+   * ("Onboarding is already complete for this account") once a role is
+   * set. Authenticated (no skipAuth) — the tokens from ssoLogin() are
+   * already in the store by the time this is called. No token refresh
+   * needed afterward: the backend reads roles server-side per request.
    */
   completeSsoOnboarding: async (
     payload: CompleteSsoOnboardingRequest,
-  ): Promise<{ role: "Applicant" | "Sponsor" }> => {
-    return api.post<{ role: "Applicant" | "Sponsor" }>(
+  ): Promise<CompleteSsoOnboardingResponse> => {
+    return api.post<CompleteSsoOnboardingResponse>(
       "/api/auth/complete-onboarding/",
       payload,
     );

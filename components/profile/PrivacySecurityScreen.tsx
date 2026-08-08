@@ -26,6 +26,7 @@ import { authApi } from "@/lib/auth-api";
 import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
@@ -66,7 +67,75 @@ export function PrivacySecurityScreen({
   // a "check your inbox" message rather than a success toast.
   const [emailRequestSent, setEmailRequestSent] = useState(false);
   const refreshToken = useAuthStore((s) => s.refreshToken);
+  // False only for a pure-SSO (Apple/Google) account. The three password-
+  // gated flows on this screen (change password/email, delete) all 400
+  // server-side without one, so each swaps its form for a "set a password
+  // first" gate that emails the existing forgot-password link.
+  const hasPassword = useAuthStore((s) => s.hasPassword);
+  const accountEmail = useUserProfileStore((s) => s.data.personal.email);
+  const [setupLinkSending, setSetupLinkSending] = useState(false);
+  const [setupLinkSent, setSetupLinkSent] = useState(false);
   const showToast = useToastStore((s) => s.showToast);
+
+  const handleSendSetupLink = async () => {
+    if (!accountEmail || setupLinkSending) return;
+    setSetupLinkSending(true);
+    try {
+      await authApi.forgotPassword(accountEmail);
+      setSetupLinkSent(true);
+    } catch (err) {
+      showToast(
+        (err instanceof Error && err.message) ||
+          "Couldn't send the setup link. Please try again.",
+        "error",
+      );
+    } finally {
+      setSetupLinkSending(false);
+    }
+  };
+
+  /**
+   * Shown in place of any password-gated form while the account has no
+   * password (pure-SSO). Sends the existing forgot-password email, which
+   * doubles as "create your first password" for a passwordless account.
+   */
+  const renderSetPasswordGate = (headline: string, subtitle: string) => (
+    <>
+      <View style={styles.deleteIconCircle}>
+        <Lock color="#000" size={26} strokeWidth={2.2} />
+      </View>
+      {setupLinkSent ? (
+        <>
+          <Text style={styles.deleteHeadline}>Check your inbox</Text>
+          <Text style={styles.deleteSubtitle}>
+            We sent a password setup link to {accountEmail}. Open it to
+            create your password, then come back here — don&apos;t forget
+            the spam folder if it doesn&apos;t show up in a minute.
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.deleteHeadline}>{headline}</Text>
+          <Text style={styles.deleteSubtitle}>{subtitle}</Text>
+          <TouchableOpacity
+            style={[
+              styles.updateBtn,
+              (setupLinkSending || !accountEmail) && { opacity: 0.6 },
+            ]}
+            onPress={handleSendSetupLink}
+            disabled={setupLinkSending || !accountEmail}
+            activeOpacity={0.8}
+          >
+            {setupLinkSending ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Text style={styles.updateBtnText}>Email Me a Setup Link</Text>
+            )}
+          </TouchableOpacity>
+        </>
+      )}
+    </>
+  );
 
   const resetPasswordFields = () => {
     setCurrentPassword("");
@@ -91,6 +160,7 @@ export function PrivacySecurityScreen({
     resetPasswordFields();
     resetDeleteFields();
     resetEmailFields();
+    setSetupLinkSent(false);
     setStep("main");
     onClose();
   };
@@ -186,6 +256,26 @@ export function PrivacySecurityScreen({
   };
 
   if (step === "password") {
+    if (!hasPassword) {
+      return (
+        <EditorScreen
+          visible={visible}
+          onClose={handleClose}
+          onBack={() => {
+            setSetupLinkSent(false);
+            setStep("main");
+          }}
+          title="Set a Password"
+        >
+          {renderSetPasswordGate(
+            "Set a password",
+            "You signed in with Apple or Google, so this account doesn't " +
+              "have a password yet. We'll email you a link to create one — " +
+              "after that, both sign-in methods work.",
+          )}
+        </EditorScreen>
+      );
+    }
     return (
       <EditorScreen
         visible={visible}
@@ -260,6 +350,26 @@ export function PrivacySecurityScreen({
   }
 
   if (step === "email") {
+    if (!hasPassword) {
+      return (
+        <EditorScreen
+          visible={visible}
+          onClose={handleClose}
+          onBack={() => {
+            setSetupLinkSent(false);
+            setStep("main");
+          }}
+          title="Change Email"
+        >
+          {renderSetPasswordGate(
+            "Set a password first",
+            "Changing your email requires confirming a password, and this " +
+              "account doesn't have one yet — you signed in with Apple or " +
+              "Google. We'll email you a link to create one.",
+          )}
+        </EditorScreen>
+      );
+    }
     return (
       <EditorScreen
         visible={visible}
@@ -350,6 +460,27 @@ export function PrivacySecurityScreen({
   }
 
   if (step === "delete") {
+    if (!hasPassword) {
+      return (
+        <EditorScreen
+          visible={visible}
+          onClose={handleClose}
+          onBack={() => {
+            setSetupLinkSent(false);
+            setStep("main");
+          }}
+          title="Delete Account"
+        >
+          {renderSetPasswordGate(
+            "Set a password first",
+            "Deleting your account requires confirming a password, and " +
+              "this account doesn't have one yet — you signed in with " +
+              "Apple or Google. We'll email you a link to create one; once " +
+              "it's set, come back here to delete your account.",
+          )}
+        </EditorScreen>
+      );
+    }
     return (
       <EditorScreen
         visible={visible}
@@ -461,8 +592,14 @@ export function PrivacySecurityScreen({
           onPress={() => setStep("password")}
         >
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.rowLabel}>Change Password</Text>
-            <Text style={styles.rowDescription}>Update your password</Text>
+            <Text style={styles.rowLabel}>
+              {hasPassword ? "Change Password" : "Set a Password"}
+            </Text>
+            <Text style={styles.rowDescription}>
+              {hasPassword
+                ? "Update your password"
+                : "Create a password for your account"}
+            </Text>
           </View>
           <ChevronRight color="#BBB" size={20} />
         </TouchableOpacity>

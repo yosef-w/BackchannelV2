@@ -45,6 +45,11 @@ try {
  * endpoint and, for a brand-new user, pre-fill the questionnaire. */
 export interface SsoIdentity {
   identityToken: string;
+  /** Apple only (null for Google). The backend wants this on EVERY Apple
+   * sign-in, not just the first: it exchanges it for a refresh token so it
+   * can honor Apple's mandated token revoke when the user later deletes
+   * their account (FRONTEND_SSO_HANDOFF_2026-08-04.md §1.2). */
+  authorizationCode: string | null;
   email: string | null;
   givenName: string | null;
   familyName: string | null;
@@ -90,6 +95,7 @@ export async function signInWithApple(): Promise<SsoIdentity | null> {
     }
     return {
       identityToken: credential.identityToken,
+      authorizationCode: credential.authorizationCode ?? null,
       email: credential.email ?? null,
       givenName: credential.fullName?.givenName ?? null,
       familyName: credential.fullName?.familyName ?? null,
@@ -157,6 +163,7 @@ export async function signInWithGoogle(): Promise<SsoIdentity | null> {
   }
   return {
     identityToken: data.idToken,
+    authorizationCode: null, // Apple-only concept — see SsoIdentity
     email: data.user.email ?? null,
     givenName: data.user.givenName ?? null,
     familyName: data.user.familyName ?? null,

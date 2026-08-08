@@ -519,7 +519,18 @@ export function ApplicantQuestionnaire({
   const completeSsoOnboardingMutation = useMutation({
     mutationFn: async () => {
       return authApi.completeSsoOnboarding({
-        role: "applicant",
+        // Capitalized per the backend's validation — it rejects anything
+        // but exactly 'Applicant'/'Sponsor'.
+        role: "Applicant",
+        // The SSO exchange usually stored the name already, but Apple only
+        // sends it once ever — forward anything the flow captured so a
+        // questionnaire-entered name isn't lost.
+        ...(applicantData.firstName?.trim()
+          ? { first_name: applicantData.firstName.trim() }
+          : {}),
+        ...(applicantData.lastName?.trim()
+          ? { last_name: applicantData.lastName.trim() }
+          : {}),
         skills: [],
         insights: [],
         work_preferences: [],

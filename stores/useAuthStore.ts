@@ -4,6 +4,7 @@ import { create } from "zustand";
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const ROLE_KEY = "user_role";
+const HAS_PASSWORD_KEY = "has_password";
 
 /**
  * Base URL used for direct token refresh calls.
@@ -51,6 +52,17 @@ interface AuthState {
   /** Role returned by the login endpoint (PR #19). Null until first login. */
   role: "Applicant" | "Sponsor" | null;
   /**
+   * Whether this account has a password set. False only for a pure-SSO
+   * account (backend's `has_password` on the SSO response) — drives the
+   * Privacy & Security screen's "Set a Password" UX, since the password-
+   * gated flows there (change password/email, delete account) return 400
+   * for a passwordless account. Defaults true: every non-SSO path
+   * (password login, registration) implies one, and treating an unknown as
+   * "has one" degrades to the backend's own guidance message rather than
+   * hiding a working flow.
+   */
+  hasPassword: boolean;
+  /**
    * Expo push token registered with the backend for this device.
    * Set after a successful registerDevice() call; cleared on logout.
    * Not persisted to SecureStore — re-registered on every app launch.
@@ -70,6 +82,8 @@ interface AuthState {
     refreshToken: string,
     role?: "Applicant" | "Sponsor",
   ) => Promise<void>;
+  /** Persist the has-password flag (SSO sign-in responses carry it). */
+  setHasPassword: (hasPassword: boolean) => Promise<void>;
   /** Store the Expo push token after a successful registerDevice() call. */
   setDeviceToken: (token: string | null) => void;
   clearAuth: () => Promise<void>;
@@ -84,6 +98,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
   role: null,
+  hasPassword: true,
   deviceToken: null,
   isAuthenticated: false,
   isLoading: true,
@@ -116,6 +131,24 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
+  /**
+   * Persist whether the account has a password. Set false from an SSO
+   * response's `has_password`; set true on any password login (self-
+   * evident) and on the next SSO sign-in after the user sets one via the
+   * forgot-password flow.
+   */
+  setHasPassword: async (hasPassword: boolean) => {
+    try {
+      await SecureStore.setItemAsync(
+        HAS_PASSWORD_KEY,
+        hasPassword ? "true" : "false",
+      );
+    } catch (error) {
+      console.warn("[Auth] Failed to persist has_password:", error);
+    }
+    set({ hasPassword });
+  },
+
   /** Update the stored Expo push token (called after registerDevice succeeds). */
   setDeviceToken: (token: string | null) => {
     set({ deviceToken: token });
@@ -129,6 +162,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
       await SecureStore.deleteItemAsync(ROLE_KEY);
+      await SecureStore.deleteItemAsync(HAS_PASSWORD_KEY);
     } catch (error) {
       console.warn("[Auth] Failed to clear tokens:", error);
     }
@@ -136,6 +170,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken: null,
       refreshToken: null,
       role: null,
+      hasPassword: true,
       deviceToken: null,
       isAuthenticated: false,
     });
@@ -151,17 +186,22 @@ export const useAuthStore = create<AuthState>((set) => ({
    */
   loadTokens: async () => {
     try {
-      const [accessToken, refreshToken, storedRole] = await Promise.all([
-        SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
-        SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
-        SecureStore.getItemAsync(ROLE_KEY),
-      ]);
+      const [accessToken, refreshToken, storedRole, storedHasPassword] =
+        await Promise.all([
+          SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
+          SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+          SecureStore.getItemAsync(ROLE_KEY),
+          SecureStore.getItemAsync(HAS_PASSWORD_KEY),
+        ]);
 
       // Validate the stored role string against the union type.
       const role: "Applicant" | "Sponsor" | null =
         storedRole === "Applicant" || storedRole === "Sponsor"
           ? storedRole
           : null;
+      // Only an explicit stored "false" means passwordless — absent (every
+      // pre-SSO install) defaults to true, matching the field's contract.
+      const hasPassword = storedHasPassword !== "false";
 
       if (!accessToken || !refreshToken) {
         set({
@@ -176,7 +216,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (isTokenExpired(accessToken)) {
         // Stage the refresh token + role so refreshAccessToken() can read them.
-        set({ refreshToken, role });
+        set({ refreshToken, role, hasPassword });
         const refreshed = await useAuthStore.getState().refreshAccessToken();
         if (!refreshed) {
           // Both tokens are expired — the user must log in again.
@@ -198,6 +238,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         accessToken,
         refreshToken,
         role,
+        hasPassword,
         isAuthenticated: true,
         isLoading: false,
       });

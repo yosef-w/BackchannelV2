@@ -67,6 +67,7 @@ export function AuthScreen({
   onRequestSignUp,
 }: AuthScreenProps) {
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
+  const setHasPassword = useAuthStore((state) => state.setHasPassword);
   const storeUserType = useOnboardingStore((state) => state.userType);
   // Prefer the prop (set from URL params by onboarding.tsx) over the store value,
   // so sign-up works correctly even if the Zustand store was reset mid-flow.
@@ -123,6 +124,9 @@ export function AuthScreen({
     onSuccess: async (data) => {
       // Store real tokens + role from backend (PR #19)
       await setAuthTokens(data.access_token, data.refresh_token, data.role);
+      // Logging in WITH a password is proof one exists — clears a stale
+      // `false` left by a previous pure-SSO session on this device.
+      await setHasPassword(true);
 
       // Backend doesn't return profile info in login response — seed just
       // the email locally; fetchFromBackend() (fired by _layout.tsx as soon
@@ -183,6 +187,9 @@ export function AuthScreen({
       response.refresh_token,
       response.role ?? undefined,
     );
+    // False for a pure-SSO account — drives the Privacy & Security
+    // screen's "Set a Password" UX (password-gated flows 400 without one).
+    await setHasPassword(response.has_password);
     seedSessionEmail(response.email);
 
     if (response.needs_onboarding) {
@@ -491,9 +498,13 @@ export function AuthScreen({
                   </View>
                   <SSOButtons
                     onSuccess={handleSsoSuccess}
-                    onError={() =>
+                    // Backend SSO errors carry user-appropriate guidance in
+                    // the message (e.g. 409 "log in with password instead",
+                    // Apple's no-email recovery steps) — show it verbatim,
+                    // fall back to a generic line for network-level throws.
+                    onError={(error) =>
                       showToast(
-                        "Sign-in failed. Please try again.",
+                        error.message || "Sign-in failed. Please try again.",
                         "error",
                       )
                     }
