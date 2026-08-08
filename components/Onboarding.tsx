@@ -30,22 +30,28 @@ interface OnboardingProps {
   userType: "applicant" | "sponsor";
 }
 
+// Titles split into [plain, accent] halves so the closing phrase renders
+// in the site's italic-muted accent style (.hero-title em) — the payoff
+// words carry the emphasis, per the marketing pages.
 const applicantSlides = [
   {
     Icon: UserCheck,
-    title: "Connect with insiders who can refer you",
+    title: "Connect with insiders ",
+    titleAccent: "who can refer you",
     description:
       "Build authentic relationships with professionals who work at your dream companies.",
   },
   {
     Icon: Rocket,
-    title: "Skip the resume black hole",
+    title: "Skip the resume ",
+    titleAccent: "black hole",
     description:
       "Get your application directly in front of hiring managers through employee referrals.",
   },
   {
     Icon: TrendingUp,
-    title: "Land interviews faster",
+    title: "Land interviews ",
+    titleAccent: "faster",
     description:
       "Referred candidates are significantly more likely to get interviews and offers.",
   },
@@ -54,19 +60,22 @@ const applicantSlides = [
 const sponsorSlides = [
   {
     Icon: HandHeart,
-    title: "Help talented people break into great companies",
+    title: "Help talented people ",
+    titleAccent: "break into great companies",
     description:
       "Use your position to open doors for deserving candidates at your company.",
   },
   {
     Icon: Building2,
-    title: "Shape your future team",
+    title: "Shape your ",
+    titleAccent: "future team",
     description:
       "Strengthen your organization by referring peers who align with your company's high standards.",
   },
   {
     Icon: Network,
-    title: "Expand your professional network",
+    title: "Expand your ",
+    titleAccent: "professional network",
     description:
       "Build lasting relationships with top talent and grow your influence across the industry.",
   },
@@ -134,7 +143,12 @@ export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
             </View>
 
             <View style={styles.textSection}>
-              <Text style={styles.title}>{currentSlideData.title}</Text>
+              <Text style={styles.title}>
+                {currentSlideData.title}
+                <Text style={styles.titleAccent}>
+                  {currentSlideData.titleAccent}
+                </Text>
+              </Text>
               <Text style={styles.description}>
                 {currentSlideData.description}
               </Text>
@@ -226,6 +240,11 @@ const styles = StyleSheet.create({
     ...Type.title,
     color: Colors.ink,
     marginBottom: 16,
+  },
+  // The site's .hero-title em rule — italic muted accent phrase.
+  titleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   // Matches the site's .hero-body treatment.
   description: {

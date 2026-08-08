@@ -52,7 +52,9 @@ export function DeckDoneCard({
         </Text>
       </View>
 
-      <Text style={styles.title}>You&apos;re all caught up</Text>
+      <Text style={styles.title}>
+        You&apos;re all <Text style={styles.titleAccent}>caught up</Text>
+      </Text>
       <Text style={styles.sub}>
         You&apos;ve reviewed all {deckSize} cards in today&apos;s deck —
         that&apos;s your daily allotment. A fresh set unlocks tomorrow.
@@ -184,6 +186,10 @@ const styles = StyleSheet.create({
     color: Colors.ink,
     textAlign: "center",
     marginBottom: 10,
+  },
+  titleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   sub: {
     fontSize: 15,

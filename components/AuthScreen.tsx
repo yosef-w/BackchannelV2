@@ -36,6 +36,7 @@ import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { SSOButtons } from "@/components/auth/SSOButtons";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -405,7 +406,10 @@ export function AuthScreen({
               >
                 <View style={styles.header}>
                   <Text style={styles.title}>
-                    {isLogin ? "Welcome back" : "Create your account"}
+                    {isLogin ? "Welcome " : "Create your "}
+                    <Text style={styles.titleAccent}>
+                      {isLogin ? "back" : "account"}
+                    </Text>
                   </Text>
                   <Text style={styles.subtitle}>
                     {isLogin
@@ -433,10 +437,10 @@ export function AuthScreen({
                 </Animated.View>
 
                 <Animated.View entering={FadeInDown.duration(600).delay(160)}>
-                  <TouchableOpacity
+                  <PressableScale
+                    pressedScale={0.97}
                     style={styles.emailButton}
                     onPress={() => setView("form")}
-                    activeOpacity={0.8}
                     accessibilityRole="button"
                     accessibilityLabel={
                       isLogin ? "Sign in with email" : "Sign up with email"
@@ -446,7 +450,7 @@ export function AuthScreen({
                     <Text style={styles.emailButtonText}>
                       {isLogin ? "Sign in with email" : "Sign up with email"}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 </Animated.View>
 
                 <TouchableOpacity
@@ -472,7 +476,10 @@ export function AuthScreen({
               {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.title}>
-                  {isLogin ? "Welcome back" : "Create your account"}
+                  {isLogin ? "Welcome " : "Create your "}
+                  <Text style={styles.titleAccent}>
+                    {isLogin ? "back" : "account"}
+                  </Text>
                 </Text>
                 <Text style={styles.subtitle}>
                   {isLogin
@@ -740,6 +747,11 @@ const styles = StyleSheet.create({
   title: {
     ...Type.title,
     color: Colors.ink,
+  },
+  // The site's .hero-title em rule — italic muted accent word.
+  titleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   // Matches the site's .hero-body treatment (light weight, body-gray).
   subtitle: {

@@ -454,7 +454,8 @@ function LockedField({
 const styles = StyleSheet.create({
   progressContainer: { marginBottom: 24 },
   progressText: { fontSize: 12, color: Colors.muted, marginBottom: 8, lineHeight: 17 },
-  progressBar: { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
+  // Hairline, matching the site's .nav-bar/.sec-bar 2px progress language.
+  progressBar: { height: 2, backgroundColor: Colors.border, borderRadius: 1, overflow: "hidden" },
   progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 2 },
   groupLabel: {
     fontSize: 12,

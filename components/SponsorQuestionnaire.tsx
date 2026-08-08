@@ -1139,7 +1139,7 @@ export function SponsorQuestionnaire({
                 entering={FadeInDown.delay(400)}
                 style={styles.successTitle}
               >
-                Profile Complete
+                Profile <Text style={styles.successTitleAccent}>Complete</Text>
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.delay(600)}
@@ -1252,6 +1252,10 @@ const styles = StyleSheet.create({
     ...Type.title,
     color: Colors.ink,
     textAlign: "center",
+  },
+  successTitleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   successSub: {
     fontFamily: Fonts.sansLight,

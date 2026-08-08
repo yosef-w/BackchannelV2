@@ -40,6 +40,7 @@ import {
     View,
 } from "react-native";
 import Animated, {
+    FadeInDown,
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
@@ -957,7 +958,7 @@ export function MatchesView({
           />
         }
       >
-        <View style={styles.header}>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           {/* Renamed from "Opportunities" to match the "Matches" bottom-nav
               label — the screen and the tab that opens it should say the
               same thing. */}
@@ -967,7 +968,7 @@ export function MatchesView({
               ? "Your active opportunities & sponsors"
               : "Talent you are sponsoring"}
           </Text>
-        </View>
+        </Animated.View>
 
         {/* Stale-referral nudge — see the staleReferrals memo above for
             exactly what counts. Only rendered when there's something to

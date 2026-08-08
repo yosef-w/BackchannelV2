@@ -147,7 +147,9 @@ export function MatchCelebrationModal({
 
             {/* Title */}
             <Animated.View entering={FadeInUp.delay(300).duration(400)}>
-              <Text style={styles.matchTitle}>It’s a Match!</Text>
+              <Text style={styles.matchTitle}>
+                It’s a <Text style={styles.matchTitleAccent}>Match!</Text>
+              </Text>
             </Animated.View>
 
             {/* Subtitle */}
@@ -280,6 +282,11 @@ const styles = StyleSheet.create({
     color: Colors.ink,
     marginBottom: 8,
     textAlign: "center",
+  },
+  // The site's .hero-title em rule — italic muted accent word.
+  matchTitleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   matchSubtitle: {
     fontFamily: Fonts.sansLight,

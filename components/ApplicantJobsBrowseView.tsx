@@ -41,7 +41,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
 import {
   BarFooter,
@@ -402,13 +402,13 @@ export function ApplicantJobsBrowseView() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           <Text style={styles.title}>Browse Jobs</Text>
           <Text style={styles.subtitle}>
             Search beyond your daily deck — join a waitlist or request a
             sponsor for any open role.
           </Text>
-        </View>
+        </Animated.View>
 
         {/* Search — as-you-type, with clear buttons; no Search button to
             hunt for. */}

@@ -39,6 +39,9 @@ interface SlideData {
   num: string;
   eyebrow: string;
   headline: string;
+  /** Second line of the headline, rendered in the site's italic muted
+   * accent style (.hero-title em) — the payoff phrase. */
+  headlineAccent: string;
   body: string;
 }
 
@@ -53,19 +56,22 @@ const SLIDES: Record<"applicant" | "sponsor", SlideData[]> = {
     {
       num: "01",
       eyebrow: "WELCOME",
-      headline: "Get\nreferred.",
+      headline: "Get",
+      headlineAccent: "referred.",
       body: "BackChannel connects you with people inside companies who can refer you to open roles.",
     },
     {
       num: "02",
       eyebrow: "YOUR DECK",
-      headline: "10 jobs\na day.",
+      headline: "10 jobs",
+      headlineAccent: "a day.",
       body: "A fresh set of 10 jobs each day — with the insiders who can refer you in.",
     },
     {
       num: "03",
       eyebrow: "HOW IT WORKS",
-      headline: "Connect\nor pass.",
+      headline: "Connect",
+      headlineAccent: "or pass.",
       body: "Tap Connect on the ones you want, Pass on the rest. If they connect back, you match and can message.",
     },
   ],
@@ -73,19 +79,22 @@ const SLIDES: Record<"applicant" | "sponsor", SlideData[]> = {
     {
       num: "01",
       eyebrow: "WELCOME",
-      headline: "Refer\ntalent.",
+      headline: "Refer",
+      headlineAccent: "talent.",
       body: "BackChannel connects you with people who want a referral into your company.",
     },
     {
       num: "02",
       eyebrow: "YOUR DECK",
-      headline: "10 applicants\na day.",
+      headline: "10 applicants",
+      headlineAccent: "a day.",
       body: "A fresh set of 10 applicants each day, qualified for roles you're sponsoring.",
     },
     {
       num: "03",
       eyebrow: "HOW IT WORKS",
-      headline: "Connect\nor pass.",
+      headline: "Connect",
+      headlineAccent: "or pass.",
       body: "Tap Connect on applicants you'd vouch for, Pass on the rest. If they connect back, you match and can message.",
     },
   ],
@@ -142,7 +151,11 @@ function Slide({
       <View style={styles.slideContent}>
         <Animated.View style={headStyle}>
           <Text style={styles.eyebrow}>{slide.eyebrow}</Text>
-          <Text style={styles.headline}>{slide.headline}</Text>
+          <Text style={styles.headline}>
+            {slide.headline}
+            {"\n"}
+            <Text style={styles.headlineAccent}>{slide.headlineAccent}</Text>
+          </Text>
         </Animated.View>
         <Animated.Text style={[styles.body, bodyStyle]}>
           {slide.body}
@@ -276,6 +289,12 @@ const styles = StyleSheet.create({
     color: "#FFF",
     letterSpacing: -1.4,
     lineHeight: 48,
+  },
+  // The site's .hero-title em rule, adapted for the dark surface — the
+  // payoff line in italic muted gray against the white lead line.
+  headlineAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: "#999999",
   },
   body: {
     fontSize: 16.5,

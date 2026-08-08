@@ -40,7 +40,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { JobsEmptyState } from "./jobs/JobsEmptyState";
 import {
   type Applicant,
@@ -720,7 +720,7 @@ export function JobsView() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           <View style={styles.headerRow}>
             {/* "Jobs" matches the bottom-nav label — the screen and the tab
                 that opens it should say the same thing. Create Listing is a
@@ -741,7 +741,7 @@ export function JobsView() {
           <Text style={styles.subtitle}>
             Manage your listings and find the right talent
           </Text>
-        </View>
+        </Animated.View>
 
         {isLoading && jobs.length === 0 ? (
           <Animated.View

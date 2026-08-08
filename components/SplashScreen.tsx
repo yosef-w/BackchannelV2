@@ -1,12 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
+  withSequence,
   withTiming
 } from 'react-native-reanimated';
 import { Colors, Fonts } from '@/constants/theme';
+import { PressableScale } from '@/components/ui/PressableScale';
+
+// The site's hero typewriter (index.html): "BackChannel." types itself out
+// with a blinking cursor that fades once typing settles.
+const BRAND_TEXT = 'BackChannel.';
+const TYPE_START_DELAY_MS = 900;
+const TYPE_INTERVAL_MS = 75;
 
 interface SplashScreenProps {
   onGetStarted: () => void;
@@ -23,15 +32,63 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
   const titleScale = useSharedValue(0.98);
   const buttonOpacity = useSharedValue(0);
   const buttonTranslateY = useSharedValue(15);
+  const cursorOpacity = useSharedValue(0);
+
+  const [typedCount, setTypedCount] = useState(0);
+  const typingDone = typedCount >= BRAND_TEXT.length;
 
   useEffect(() => {
     // Smooth, elegant entrance
     titleOpacity.value = withTiming(1, { duration: 1500 });
     titleScale.value = withTiming(1, { duration: 1500 });
-    
+
     buttonOpacity.value = withDelay(1000, withTiming(1, { duration: 800 }));
     buttonTranslateY.value = withDelay(1000, withTiming(0, { duration: 800 }));
+  }, [buttonOpacity, buttonTranslateY, titleOpacity, titleScale]);
+
+  // Typewriter: after a beat, type the brand name character by character.
+  // Interval-driven so a returning user being auto-routed away (splash.tsx
+  // redirects once auth loads) just unmounts and cleans up mid-word.
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const start = setTimeout(() => {
+      interval = setInterval(() => {
+        setTypedCount((n) => {
+          if (n >= BRAND_TEXT.length) {
+            if (interval) clearInterval(interval);
+            return n;
+          }
+          return n + 1;
+        });
+      }, TYPE_INTERVAL_MS);
+    }, TYPE_START_DELAY_MS);
+    return () => {
+      clearTimeout(start);
+      if (interval) clearInterval(interval);
+    };
   }, []);
+
+  // Cursor: appears with typing, blinks a few times after the word lands,
+  // then fades out for good — same choreography as the site's hero.
+  useEffect(() => {
+    if (!typingDone) {
+      cursorOpacity.value = withDelay(
+        TYPE_START_DELAY_MS - 200,
+        withTiming(1, { duration: 150 }),
+      );
+      return;
+    }
+    cursorOpacity.value = withSequence(
+      withRepeat(
+        withSequence(
+          withTiming(0, { duration: 400 }),
+          withTiming(1, { duration: 400 }),
+        ),
+        3,
+      ),
+      withTiming(0, { duration: 300 }),
+    );
+  }, [typingDone, cursorOpacity]);
 
   const titleStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
@@ -41,6 +98,10 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
   const buttonStyle = useAnimatedStyle(() => ({
     opacity: buttonOpacity.value,
     transform: [{ translateY: buttonTranslateY.value }],
+  }));
+
+  const cursorStyle = useAnimatedStyle(() => ({
+    opacity: cursorOpacity.value,
   }));
 
   return (
@@ -55,7 +116,10 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
               for the highlighted word in a headline. */}
           <Text style={styles.brandName}>
             Welcome to{"\n"}
-            <Text style={styles.brandSerif}>BackChannel.</Text>
+            <Text style={styles.brandSerif}>
+              {BRAND_TEXT.slice(0, typedCount)}
+            </Text>
+            <Animated.Text style={[styles.cursor, cursorStyle]}>▍</Animated.Text>
           </Text>
 
           <Text style={styles.tagline}>
@@ -66,13 +130,14 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
 
       <SafeAreaView style={styles.footer}>
         <Animated.View style={[styles.buttonContainer, buttonStyle]}>
-          <TouchableOpacity
-            activeOpacity={0.85}
+          <PressableScale
+            pressedScale={0.97}
             onPress={onGetStarted}
             style={styles.button}
+            accessibilityRole="button"
           >
             <Text style={styles.buttonText}>Get Connected</Text>
-          </TouchableOpacity>
+          </PressableScale>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={onSignIn}
@@ -118,6 +183,13 @@ const styles = StyleSheet.create({
   // .hero-title em rule exactly (color: var(--muted), font-style: italic).
   brandSerif: {
     fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  // Typewriter caret — muted like the site's .cursor, slightly smaller
+  // than the glyphs so it reads as a caret rather than a block.
+  cursor: {
+    fontFamily: Fonts.serif,
+    fontSize: 34,
     color: Colors.muted,
   },
   // Matches the site's .hero-body (light weight, body-gray, relaxed

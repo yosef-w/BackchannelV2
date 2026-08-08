@@ -27,7 +27,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import {
+import Animated, {
+    FadeInDown,
     useAnimatedKeyboard,
     useAnimatedStyle,
 } from "react-native-reanimated";
@@ -1063,10 +1064,10 @@ export function MessagesView({
           if (expandedGroups.size) setExpandedGroups(new Set());
         }}
       >
-        <View style={styles.headerTitleContainer}>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.headerTitleContainer}>
           <Text style={styles.title}>Inbox</Text>
           <Text style={styles.subtitle}>Direct lines to your connections</Text>
-        </View>
+        </Animated.View>
 
       {conversationsLoading ? (
         <InboxLoading />
