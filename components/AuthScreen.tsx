@@ -592,25 +592,24 @@ export function AuthScreen({
                 </TouchableOpacity>
               </View>
 
-              {/* Toggle Mode — hidden when the picker owns mode switching
-                  (the form is a sub-step there; switching modes happens on
-                  the picker, and showing it twice invites loops). */}
-              {!showSso && (
-                <TouchableOpacity
-                  onPress={handleToggleMode}
-                  style={styles.toggleBtn}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.toggleText}>
-                    {isLogin
-                      ? "New to BackChannel? "
-                      : "Already have an account? "}
-                    <Text style={styles.toggleHighlight}>
-                      {isLogin ? "Sign up" : "Sign in"}
-                    </Text>
+              {/* Toggle Mode — kept on the form step too, so someone who
+                  tapped "Sign up with email" and then remembers they
+                  already have an account can flip straight to sign-in
+                  without backing out to the picker. */}
+              <TouchableOpacity
+                onPress={handleToggleMode}
+                style={styles.toggleBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.toggleText}>
+                  {isLogin
+                    ? "New to BackChannel? "
+                    : "Already have an account? "}
+                  <Text style={styles.toggleHighlight}>
+                    {isLogin ? "Sign up" : "Sign in"}
                   </Text>
-                </TouchableOpacity>
-              )}
+                </Text>
+              </TouchableOpacity>
             </Animated.View>
             )}
           </ScrollView>
