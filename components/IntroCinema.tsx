@@ -354,12 +354,9 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
           <Animated.Text style={[styles.caption, caption4]}>
             They refer you — for real.
           </Animated.Text>
-          <Animated.View style={[styles.finaleWrap, caption5]}>
-            <Text style={styles.captionFinale}>
-              That’s <Text style={styles.captionFinaleAccent}>BackChannel.</Text>
-            </Text>
-            <Text style={styles.finaleSub}>Here to get you hired.</Text>
-          </Animated.View>
+          <Animated.Text style={[styles.caption, styles.captionFinale, caption5]}>
+            That’s <Text style={styles.captionFinaleAccent}>BackChannel.</Text>
+          </Animated.Text>
         </View>
 
         {/* ── CTA ── */}
@@ -654,30 +651,15 @@ const styles = StyleSheet.create({
     lineHeight: 25,
     color: Colors.body,
   },
-  finaleWrap: {
-    position: 'absolute',
-    left: 40,
-    right: 40,
-    alignItems: 'center',
-    gap: 5,
-  },
   captionFinale: {
     fontFamily: Fonts.serif,
     fontSize: 24,
     lineHeight: 30,
     color: Colors.ink,
-    textAlign: 'center',
   },
   captionFinaleAccent: {
     fontFamily: Fonts.serifItalic,
     color: Colors.muted,
-  },
-  // The promise, landed under the brand line — five words, light sans.
-  finaleSub: {
-    fontFamily: Fonts.sansLight,
-    fontSize: 15,
-    color: Colors.body,
-    textAlign: 'center',
   },
   // ── CTA ───────────────────────────────────────────────────────────────
   footer: {
