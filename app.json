@@ -70,7 +70,12 @@
           "project": "react-native"
         }
       ],
-      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.1047376390212-jnqdni1pj3i1s75rokf2qe94d58s0r41"
+        }
+      ],
       "./plugins/withGoogleSigninModularHeaders"
     ],
     "experiments": {

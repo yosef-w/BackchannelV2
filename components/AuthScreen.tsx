@@ -113,9 +113,41 @@ export function AuthScreen({
   // Gate on the feature flag AND whether either provider can actually
   // render here, so a build with SSO_ENABLED true but no supported
   // provider (e.g. Android with no Google client IDs configured yet)
-  // doesn't show a divider with nothing underneath it.
+  // doesn't show a picker with nothing but an email button on it.
   const showSso =
     SSO_ENABLED && (isAppleSignInSupported() || isGoogleSignInSupported());
+
+  // "The Front Door": when SSO is available this screen opens as a method
+  // picker — Apple / Google / email as three equal pills — and the typed
+  // form becomes its own step (the SSO-first pattern used by Notion/
+  // Airbnb). This also gives Apple's button the top-of-screen prominence
+  // App Store guideline 4.8 asks for. When SSO isn't available (flag off,
+  // Expo Go, unsupported platform) a picker would be a pointless extra
+  // tap, so the screen opens directly on the form — exactly the pre-SSO
+  // behavior.
+  const [view, setView] = useState<"picker" | "form">(
+    showSso ? "picker" : "form",
+  );
+
+  const handleScreenBack = () => {
+    if (showSso && view === "form") {
+      // The form is a sub-step of the picker — back returns there rather
+      // than leaving the screen.
+      setView("picker");
+      return;
+    }
+    onBack();
+  };
+
+  const handleToggleMode = () => {
+    if (isLogin && onRequestSignUp) {
+      // No role chosen yet (direct sign-in entry) — send them to role
+      // selection instead of guessing applicant/sponsor.
+      onRequestSignUp();
+    } else {
+      setIsLogin(!isLogin);
+    }
+  };
 
   const loginMutation = useMutation<LoginResponse, Error>({
     mutationFn: async () => {
@@ -343,7 +375,7 @@ export function AuthScreen({
         {/* Navigation */}
         <View style={styles.topNav}>
           <TouchableOpacity
-            onPress={onBack}
+            onPress={handleScreenBack}
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Back"
@@ -361,6 +393,77 @@ export function AuthScreen({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            {view === "picker" ? (
+              /* ── The Front Door — method picker ─────────────────────
+                 Headline + three equal pills (Apple, Google, email).
+                 No typed fields on this step at all; the form is one
+                 tap away for those who want it. */
+              <Animated.View
+                entering={FadeInDown.duration(600)}
+                style={styles.content}
+              >
+                <View style={styles.header}>
+                  <Text style={styles.title}>
+                    {isLogin ? "Welcome back" : "Create your account"}
+                  </Text>
+                  <Text style={styles.subtitle}>
+                    {isLogin
+                      ? "Sign in to continue"
+                      : userType === "sponsor"
+                        ? "Help great people get in — and get rewarded for it."
+                        : "Your next job comes from someone already inside."}
+                  </Text>
+                </View>
+
+                <Animated.View entering={FadeInDown.duration(600).delay(80)}>
+                  <SSOButtons
+                    onSuccess={handleSsoSuccess}
+                    // Backend SSO errors carry user-appropriate guidance
+                    // in the message (e.g. 409 "log in with password
+                    // instead", Apple no-email recovery steps) — show it
+                    // verbatim, generic line for network-level throws.
+                    onError={(error) =>
+                      showToast(
+                        error.message || "Sign-in failed. Please try again.",
+                        "error",
+                      )
+                    }
+                  />
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.duration(600).delay(160)}>
+                  <TouchableOpacity
+                    style={styles.emailButton}
+                    onPress={() => setView("form")}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isLogin ? "Sign in with email" : "Sign up with email"
+                    }
+                  >
+                    <Mail color="#000" size={18} />
+                    <Text style={styles.emailButtonText}>
+                      {isLogin ? "Sign in with email" : "Sign up with email"}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
+
+                <TouchableOpacity
+                  onPress={handleToggleMode}
+                  style={styles.toggleBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.toggleText}>
+                    {isLogin
+                      ? "New to BackChannel? "
+                      : "Already have an account? "}
+                    <Text style={styles.toggleHighlight}>
+                      {isLogin ? "Sign up" : "Sign in"}
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ) : (
             <Animated.View
               entering={FadeInDown.duration(600)}
               style={styles.content}
@@ -489,54 +592,27 @@ export function AuthScreen({
                 </TouchableOpacity>
               </View>
 
-              {showSso && (
-                <View style={styles.ssoSection}>
-                  <View style={styles.dividerRow}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>or</Text>
-                    <View style={styles.dividerLine} />
-                  </View>
-                  <SSOButtons
-                    onSuccess={handleSsoSuccess}
-                    // Backend SSO errors carry user-appropriate guidance in
-                    // the message (e.g. 409 "log in with password instead",
-                    // Apple's no-email recovery steps) — show it verbatim,
-                    // fall back to a generic line for network-level throws.
-                    onError={(error) =>
-                      showToast(
-                        error.message || "Sign-in failed. Please try again.",
-                        "error",
-                      )
-                    }
-                    disabled={loginMutation.isPending}
-                  />
-                </View>
-              )}
-
-              {/* Toggle Mode */}
-              <TouchableOpacity
-                onPress={() => {
-                  if (isLogin && onRequestSignUp) {
-                    // No role chosen yet (direct sign-in entry) — send them
-                    // to role selection instead of guessing applicant/sponsor.
-                    onRequestSignUp();
-                  } else {
-                    setIsLogin(!isLogin);
-                  }
-                }}
-                style={styles.toggleBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.toggleText}>
-                  {isLogin
-                    ? "New to BackChannel? "
-                    : "Already have an account? "}
-                  <Text style={styles.toggleHighlight}>
-                    {isLogin ? "Sign up" : "Sign in"}
+              {/* Toggle Mode — hidden when the picker owns mode switching
+                  (the form is a sub-step there; switching modes happens on
+                  the picker, and showing it twice invites loops). */}
+              {!showSso && (
+                <TouchableOpacity
+                  onPress={handleToggleMode}
+                  style={styles.toggleBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.toggleText}>
+                    {isLogin
+                      ? "New to BackChannel? "
+                      : "Already have an account? "}
+                    <Text style={styles.toggleHighlight}>
+                      {isLogin ? "Sign up" : "Sign in"}
+                    </Text>
                   </Text>
-                </Text>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              )}
             </Animated.View>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
 
@@ -748,25 +824,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
-  ssoSection: {
-    marginTop: 20,
-  },
-  dividerRow: {
+  // "Sign up/in with email" — third pill on the method picker. Same
+  // 50pt pill as the SSO buttons (they read as three equal options), with
+  // the app's standard hairline border treatment.
+  emailButton: {
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 12,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#EEE",
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 13,
+  emailButtonText: {
+    fontSize: 16,
     fontWeight: "600",
-    color: "#999",
-    textTransform: "uppercase",
+    color: "#000",
   },
   toggleBtn: {
     marginTop: 24,
