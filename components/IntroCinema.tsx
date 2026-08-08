@@ -6,7 +6,7 @@
 //     line sweeps it and YOUR application gets auto-rejected — the broken
 //     status quo (job boards, ATS screens, no human ever looking).
 //   The turn: the pile sweeps away. "Your next job comes from someone
-//     inside." — the thesis.
+//     inside." — the thesis, in the brand serif.
 //   Act 1 (the deck): a job card gets passed, the next gets connected.
 //   Act 2 (the match): avatars spring together; "It's a Match".
 //   Act 3 (the referral): a company tile joins, the backchannel line
@@ -14,15 +14,26 @@
 //
 // Engineering shape: ONE master clock (a 0→1 shared value on an infinite
 // linear repeat) drives every element through windowed interpolations in
-// UI-thread worklets — no timeout chains, no JS-state choreography, and
-// the loop restarts seamlessly because t=0 and t=1 render identical
-// (empty) stages. Per-window easing is applied to the windowed
-// sub-progress, so individual beats can spring while the clock stays
-// linear. The dash-march on the referral line is the only independent
-// loop (it must flow continuously, unsynced with the film).
+// UI-thread worklets — no timeout chains, and the loop restarts seamlessly
+// because t=0 and t=1 render identical (empty) stages.
+//
+// Premium-motion layer (deliberate, per design review):
+// - Expo-style bezier eases (fast start, long deceleration) instead of
+//   stock cubics — the "expensive" curve Apple/Stripe pieces run on.
+// - Anticipation & impact: cards wind up before flying and arc through
+//   the air; stamps make their card recoil; the auto-reject shakes the
+//   whole pile.
+// - Idle life: a slow breathing float on staged actors so no frame is
+//   ever frozen.
+// - A slow per-act camera push-in (the frame itself moves).
+// - A pulse ring on the avatars' contact (the Apple Pay payoff beat).
+// - Captions reveal WORD BY WORD (spoken, not slabbed), exit along their
+//   direction of travel, and carry typographic voices per act: cold
+//   muted problem lines, the thesis in serif with the italic accent,
+//   light mechanics, serif finale.
 
-import React, { useEffect } from 'react';
-import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View, type TextStyle } from 'react-native';
 import Animated, {
   Easing,
   type SharedValue,
@@ -30,6 +41,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -40,10 +52,20 @@ const { width: W } = Dimensions.get('window');
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 // The solution acts kept their approved pacing (≈16.5s) — the problem act
-// occupies the first ~30% of a longer reel, so nothing the user already
-// signed off on plays faster.
+// occupies the first ~30% of the reel.
 const TOTAL_MS = 23500;
 const STAGE_H = 320;
+
+// Premium curves: explosive start, long luxurious deceleration for
+// entrances; committed acceleration for exits. Evaluated directly in
+// worklets via bezierFn.
+const easeOut = Easing.bezierFn(0.16, 1, 0.3, 1);
+const easeIn = Easing.bezierFn(0.55, 0, 0.8, 0.2);
+const easeInOut = Easing.bezierFn(0.65, 0, 0.35, 1);
+const backOut = (s: number) => {
+  const f = Easing.bezierFn(0.34, 1.56, 0.64, 1);
+  return f(s);
+};
 
 /** Windowed sub-progress: 0 before `a`, 1 after `b`, linear between. */
 const win = (t: number, a: number, b: number): number => {
@@ -83,6 +105,8 @@ interface IntroCinemaProps {
 export function IntroCinema({ onContinue }: IntroCinemaProps) {
   const master = useSharedValue(0);
   const march = useSharedValue(0);
+  // Idle life: a slow sine breath applied to staged actors (±1 → ±2px).
+  const breath = useSharedValue(0);
 
   useEffect(() => {
     master.value = withRepeat(
@@ -93,39 +117,50 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
       withTiming(-240, { duration: 16000, easing: Easing.linear }),
       -1,
     );
-  }, [master, march]);
+    breath.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+    );
+  }, [master, march, breath]);
 
   // ── Act 0: the problem ────────────────────────────────────────────────
-  // Docs rain into a heap; YOUR application lands on top; a scan line
-  // sweeps it; an auto-reject verdict slaps on; the whole pile drops away.
 
-  // Whole-pile container: exits downward during the turn.
+  // Whole-pile container: slow camera push across the act; shakes on the
+  // rejection; exits downward during the turn.
   const pileGroup = useAnimatedStyle(() => {
     const t = master.value;
-    const out = Easing.in(Easing.cubic)(win(t, 0.26, 0.305));
+    const push = 1 + 0.04 * win(t, 0.0, 0.26);
+    const shakeP = win(t, 0.165, 0.19);
+    const shake = Math.sin(shakeP * Math.PI * 3) * 2.5 * (1 - shakeP);
+    const out = easeIn(win(t, 0.26, 0.305));
     return {
       opacity: 1 - out,
-      transform: [{ translateY: out * 60 }],
+      transform: [
+        { translateX: shake },
+        { translateY: out * 60 },
+        { scale: push },
+      ],
     };
   });
 
-  // Your application — falls last, lands on top of the heap.
+  // Your application — falls last, lands on top of the heap with a
+  // follow-through settle.
   const yourDoc = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.cubic)(win(t, 0.085, 0.115));
+    const p = easeOut(win(t, 0.085, 0.125));
     return {
-      opacity: p,
-      transform: [
-        { translateY: (1 - p) * -260 },
-        { rotate: `${-2 + p * 0}deg` },
-      ],
+      opacity: Math.min(1, p * 2),
+      transform: [{ translateY: (1 - p) * -260 }],
     };
   });
 
   // The ATS scan line sweeping down over the heap.
   const scanLine = useAnimatedStyle(() => {
     const t = master.value;
-    const sweep = win(t, 0.125, 0.16);
+    const sweep = easeInOut(win(t, 0.125, 0.16));
     const vis = win(t, 0.12, 0.13) * (1 - win(t, 0.155, 0.165));
     return {
       opacity: vis * 0.9,
@@ -135,7 +170,7 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
 
   const rejectStamp = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(1.7))(win(t, 0.165, 0.19));
+    const p = backOut(win(t, 0.165, 0.19));
     return { opacity: p, transform: [{ scale: 0.7 + p * 0.3 }, { rotate: '-6deg' }] };
   });
 
@@ -145,53 +180,72 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
 
   const stackIn = useAnimatedStyle(() => {
     const t = master.value;
-    const inP = Easing.out(Easing.cubic)(win(t, 0.30, 0.342));
-    return { opacity: inP, transform: [{ translateY: (1 - inP) * 24 }] };
+    const inP = easeOut(win(t, 0.30, 0.348));
+    const push = 1 + 0.03 * win(t, 0.30, 0.58);
+    return {
+      opacity: inP,
+      transform: [
+        { translateY: (1 - inP) * 28 + (breath.value * 2 - 1) * 2 },
+        { scale: push },
+      ],
+    };
   });
 
   const cardA = useAnimatedStyle(() => {
     const t = master.value;
-    const fly = Easing.in(Easing.cubic)(win(t, 0.377, 0.433));
+    // Impact recoil while the Pass mark lands, wind-up lift, then an
+    // arcing fly-off (parabolic rise mid-flight).
+    const stampP = win(t, 0.356, 0.374);
+    const recoil = Math.sin(stampP * Math.PI) * 0.015;
+    const windup = easeOut(win(t, 0.368, 0.377));
+    const fly = easeIn(win(t, 0.377, 0.437));
+    const arc = fly * (1 - fly) * 4; // 0→1→0 parabola
     return {
-      opacity: 1 - win(t, 0.419, 0.433),
+      opacity: 1 - win(t, 0.423, 0.437),
       transform: [
-        { translateX: -fly * (W * 0.9) },
-        { rotate: `${-2 - fly * 16}deg` },
+        { translateX: -fly * (W * 0.95) },
+        { translateY: -windup * 6 - arc * 34 },
+        { rotate: `${-2 - fly * 17}deg` },
+        { scale: 1 - recoil },
       ],
     };
   });
 
   const passStamp = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(1.6))(win(t, 0.356, 0.374));
+    const p = backOut(win(t, 0.356, 0.374));
     return { opacity: p, transform: [{ scale: 0.6 + p * 0.4 }] };
   });
 
   const cardB = useAnimatedStyle(() => {
     const t = master.value;
-    const promote = win(t, 0.419, 0.447);
-    const fly = Easing.in(Easing.cubic)(win(t, 0.468, 0.524));
+    const promote = easeOut(win(t, 0.419, 0.451));
+    const stampP = win(t, 0.447, 0.465);
+    const recoil = Math.sin(stampP * Math.PI) * 0.015;
+    const windup = easeOut(win(t, 0.459, 0.468));
+    const fly = easeIn(win(t, 0.468, 0.528));
+    const arc = fly * (1 - fly) * 4;
     return {
-      opacity: 1 - win(t, 0.51, 0.524),
+      opacity: 1 - win(t, 0.514, 0.528),
       transform: [
-        { translateY: 8 - promote * 8 },
-        { translateX: fly * (W * 0.9) },
-        { rotate: `${3 - promote * 3 + fly * 14}deg` },
-        { scale: 0.97 + promote * 0.03 },
+        { translateY: 8 - promote * 8 - windup * 6 - arc * 34 },
+        { translateX: fly * (W * 0.95) },
+        { rotate: `${3 - promote * 3 + fly * 15}deg` },
+        { scale: 0.97 + promote * 0.03 - recoil },
       ],
     };
   });
 
   const connectStamp = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(1.6))(win(t, 0.447, 0.465));
+    const p = backOut(win(t, 0.447, 0.465));
     return { opacity: p, transform: [{ scale: 0.6 + p * 0.4 }] };
   });
 
   const cardC = useAnimatedStyle(() => {
     const t = master.value;
-    const promote = win(t, 0.51, 0.538);
-    const out = win(t, 0.538, 0.58);
+    const promote = easeOut(win(t, 0.51, 0.542));
+    const out = easeIn(win(t, 0.538, 0.58));
     return {
       opacity: 1 - out,
       transform: [
@@ -201,7 +255,21 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
     };
   });
 
-  // ── Act 2: the match ──────────────────────────────────────────────────
+  // ── Acts 2 + 3 share one "scene group" so the camera can push into the
+  // whole match-and-referral tableau together. ──────────────────────────
+
+  const sceneGroup = useAnimatedStyle(() => {
+    const t = master.value;
+    const push = 1 + 0.025 * win(t, 0.545, 0.95);
+    const out = win(t, 0.972, 1);
+    return {
+      opacity: 1 - out,
+      transform: [
+        { translateY: (breath.value * 2 - 1) * -2 },
+        { scale: push },
+      ],
+    };
+  });
 
   const AV_APART = 120;
   const AV_MEET = 34; // overlap distance from center once met
@@ -209,10 +277,9 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
   const avatarsGroup = useAnimatedStyle(() => {
     const t = master.value;
     const inP = win(t, 0.545, 0.601);
-    const shift = Easing.inOut(Easing.cubic)(win(t, 0.706, 0.755));
-    const out = win(t, 0.972, 1);
+    const shift = easeInOut(win(t, 0.706, 0.755));
     return {
-      opacity: inP * (1 - out),
+      opacity: inP,
       transform: [
         { translateX: -shift * 90 },
         { scale: 1 - shift * 0.22 },
@@ -222,41 +289,48 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
 
   const avatarLeft = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(1.4))(win(t, 0.545, 0.601));
+    const p = backOut(win(t, 0.545, 0.601));
     return { transform: [{ translateX: -AV_APART + p * (AV_APART - AV_MEET) }] };
   });
 
   const avatarRight = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(1.4))(win(t, 0.545, 0.601));
+    const p = backOut(win(t, 0.545, 0.601));
     return { transform: [{ translateX: AV_APART - p * (AV_APART - AV_MEET) }] };
+  });
+
+  // The contact payoff: a soft ring pulses outward the moment they meet.
+  const pulseRing = useAnimatedStyle(() => {
+    const t = master.value;
+    const p = easeOut(win(t, 0.598, 0.645));
+    return {
+      opacity: (1 - p) * 0.5 * win(t, 0.598, 0.602),
+      transform: [{ scale: 0.6 + p * 1.3 }],
+    };
   });
 
   const matchBadge = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(2))(win(t, 0.601, 0.619));
+    const p = backOut(win(t, 0.601, 0.619));
     const shift = win(t, 0.706, 0.755);
     return { opacity: p * (1 - shift), transform: [{ scale: p }] };
   });
 
   const matchText = useAnimatedStyle(() => {
     const t = master.value;
-    const inP = Easing.out(Easing.cubic)(win(t, 0.608, 0.65));
+    const inP = easeOut(win(t, 0.608, 0.655));
     const out = win(t, 0.692, 0.727);
     return {
       opacity: inP * (1 - out),
-      transform: [{ translateY: (1 - inP) * 10 }],
+      transform: [{ translateY: (1 - inP) * 12 - out * 6 }],
     };
   });
 
-  // ── Act 3: the referral ───────────────────────────────────────────────
-
   const companyTile = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(1.4))(win(t, 0.713, 0.762));
-    const out = win(t, 0.972, 1);
+    const p = backOut(win(t, 0.713, 0.762));
     return {
-      opacity: p * (1 - out),
+      opacity: p,
       transform: [{ translateX: 90 + (1 - p) * 60 }, { scale: 0.8 + p * 0.2 }],
     };
   });
@@ -264,8 +338,7 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
   const lineStyle = useAnimatedStyle(() => {
     const t = master.value;
     const p = win(t, 0.762, 0.811);
-    const out = win(t, 0.972, 1);
-    return { opacity: p * (1 - out) };
+    return { opacity: p };
   });
 
   const lineProps = useAnimatedProps(() => ({
@@ -274,38 +347,12 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
 
   const referredChip = useAnimatedStyle(() => {
     const t = master.value;
-    const p = Easing.out(Easing.back(1.8))(win(t, 0.818, 0.846));
-    const out = win(t, 0.972, 1);
+    const p = backOut(win(t, 0.818, 0.85));
     return {
-      opacity: p * (1 - out),
-      transform: [{ scale: 0.7 + p * 0.3 }, { translateY: (1 - p) * 8 }],
+      opacity: p,
+      transform: [{ scale: 0.7 + p * 0.3 }, { translateY: (1 - p) * 10 }],
     };
   });
-
-  // ── Captions ──────────────────────────────────────────────────────────
-  // Copy strategy: name the problem in two beats, pivot on the thesis,
-  // then minimal words while the film carries the mechanics.
-
-  // Custom hook (called unconditionally, fixed count/order per render) —
-  // each caption fades up in its own master-clock window.
-  const useCaptionStyle = (a: number, b: number, outA: number, outB: number) =>
-    useAnimatedStyle(() => {
-      const t = master.value;
-      const inP = Easing.out(Easing.cubic)(win(t, a, b));
-      const out = win(t, outA, outB);
-      return {
-        opacity: inP * (1 - out),
-        transform: [{ translateY: (1 - inP) * 8 }],
-      };
-    });
-
-  const caption0a = useCaptionStyle(0.02, 0.06, 0.135, 0.16);
-  const caption0b = useCaptionStyle(0.165, 0.205, 0.275, 0.30);
-  const caption1 = useCaptionStyle(0.321, 0.356, 0.419, 0.44);
-  const caption2 = useCaptionStyle(0.44, 0.475, 0.538, 0.559);
-  const caption3 = useCaptionStyle(0.566, 0.601, 0.685, 0.706);
-  const caption4 = useCaptionStyle(0.72, 0.755, 0.888, 0.909);
-  const caption5 = useCaptionStyle(0.916, 0.944, 0.979, 1.0);
 
   // Backchannel line geometry: from the (shifted) avatar pair to the
   // company tile, dipping gently below their shared centerline.
@@ -348,24 +395,6 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
             <Animated.View style={[styles.scanLine, scanLine]} />
           </Animated.View>
 
-          {/* Act 3: backchannel line (under the actors) */}
-          <Animated.View
-            pointerEvents="none"
-            style={[StyleSheet.absoluteFill, lineStyle]}
-          >
-            <Svg width="100%" height="100%">
-              <AnimatedPath
-                d={lineD}
-                stroke={Colors.faint}
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeDasharray="4 8"
-                fill="none"
-                animatedProps={lineProps}
-              />
-            </Svg>
-          </Animated.View>
-
           {/* Act 1: the deck (C under B under A) */}
           <Animated.View style={[styles.cardSlot, stackIn]}>
             <Animated.View style={[styles.miniCard, cardC]}>
@@ -400,58 +429,119 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
             </Animated.View>
           </Animated.View>
 
-          {/* Act 2: the match */}
-          <Animated.View style={[styles.centerSlot, avatarsGroup]}>
-            <Animated.View style={[styles.avatar, avatarLeft]}>
-              <Text style={styles.avatarInitial}>Y</Text>
+          {/* Acts 2+3: match & referral, under one camera */}
+          <Animated.View style={[styles.centerSlot, sceneGroup]}>
+            {/* Backchannel line (under the actors) */}
+            <Animated.View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, lineStyle]}
+            >
+              <Svg width="100%" height="100%">
+                <AnimatedPath
+                  d={lineD}
+                  stroke={Colors.faint}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeDasharray="4 8"
+                  fill="none"
+                  animatedProps={lineProps}
+                />
+              </Svg>
             </Animated.View>
-            <Animated.View style={[styles.avatar, styles.avatarSponsor, avatarRight]}>
-              <Text style={styles.avatarInitial}>S</Text>
-            </Animated.View>
-            <Animated.View style={[styles.matchBadge, matchBadge]}>
-              <Text style={styles.matchBadgeText}>✓</Text>
-            </Animated.View>
-          </Animated.View>
-          <Animated.View style={[styles.matchTextWrap, matchText]}>
-            <Text style={styles.matchText}>
-              It’s a <Text style={styles.matchTextAccent}>Match</Text>
-            </Text>
-          </Animated.View>
 
-          {/* Act 3: the company + the referral */}
-          <Animated.View style={[styles.centerSlot, companyTile]}>
-            <View style={styles.companyTile}>
-              <Text style={styles.companyMonogram}>M</Text>
-            </View>
-          </Animated.View>
-          <Animated.View style={[styles.referredChip, referredChip]}>
-            <Text style={styles.referredChipText}>Referred ✓</Text>
+            <Animated.View style={[styles.centerSlot, avatarsGroup]}>
+              <Animated.View style={[styles.pulseRing, pulseRing]} />
+              <Animated.View style={[styles.avatar, avatarLeft]}>
+                <Text style={styles.avatarInitial}>Y</Text>
+              </Animated.View>
+              <Animated.View style={[styles.avatar, styles.avatarSponsor, avatarRight]}>
+                <Text style={styles.avatarInitial}>S</Text>
+              </Animated.View>
+              <Animated.View style={[styles.matchBadge, matchBadge]}>
+                <Text style={styles.matchBadgeText}>✓</Text>
+              </Animated.View>
+            </Animated.View>
+            <Animated.View style={[styles.matchTextWrap, matchText]}>
+              <Text style={styles.matchText}>
+                It’s a <Text style={styles.matchTextAccent}>Match</Text>
+              </Text>
+            </Animated.View>
+
+            <Animated.View style={[styles.centerSlot, companyTile]}>
+              <View style={styles.companyTile}>
+                <Text style={styles.companyMonogram}>M</Text>
+              </View>
+            </Animated.View>
+            <Animated.View style={[styles.referredChipWrap, referredChip]}>
+              <View style={styles.referredChip}>
+                <Text style={styles.referredChipText}>Referred ✓</Text>
+              </View>
+            </Animated.View>
           </Animated.View>
         </View>
 
-        {/* ── Captions ── */}
+        {/* ── Captions ──
+            Word-by-word reveals with per-act typographic voices: cold
+            muted problem lines, the thesis in serif + italic accent,
+            light mechanics, serif finale. */}
         <View style={styles.captionArea}>
-          <Animated.Text style={[styles.caption, caption0a]}>
-            Hundreds of applicants. Every posting.
-          </Animated.Text>
-          <Animated.Text style={[styles.caption, caption0b]}>
-            Screened out before a human sees you.
-          </Animated.Text>
-          <Animated.Text style={[styles.caption, caption1]}>
-            Your next job comes from someone inside.
-          </Animated.Text>
-          <Animated.Text style={[styles.caption, caption2]}>
-            Connect with the jobs you want.
-          </Animated.Text>
-          <Animated.Text style={[styles.caption, caption3]}>
-            Meet your sponsor.
-          </Animated.Text>
-          <Animated.Text style={[styles.caption, caption4]}>
-            They refer you — for real.
-          </Animated.Text>
-          <Animated.Text style={[styles.caption, styles.captionFinale, caption5]}>
-            That’s <Text style={styles.captionFinaleAccent}>BackChannel.</Text>
-          </Animated.Text>
+          <CinemaCaption
+            master={master}
+            enter={0.02}
+            out={[0.135, 0.16]}
+            segments={[{ text: 'Hundreds of applicants. Every posting.' }]}
+            textStyle={styles.captionCold}
+          />
+          <CinemaCaption
+            master={master}
+            enter={0.165}
+            out={[0.275, 0.30]}
+            segments={[{ text: 'Screened out before a human sees you.' }]}
+            textStyle={styles.captionCold}
+          />
+          <CinemaCaption
+            master={master}
+            enter={0.315}
+            out={[0.419, 0.44]}
+            segments={[
+              { text: 'Your next job comes from' },
+              { text: 'someone inside.', accent: true },
+            ]}
+            textStyle={styles.captionThesis}
+            accentStyle={styles.captionThesisAccent}
+          />
+          <CinemaCaption
+            master={master}
+            enter={0.44}
+            out={[0.538, 0.559]}
+            segments={[{ text: 'Connect with the jobs you want.' }]}
+            textStyle={styles.caption}
+          />
+          <CinemaCaption
+            master={master}
+            enter={0.566}
+            out={[0.685, 0.706]}
+            segments={[{ text: 'Meet your sponsor.' }]}
+            textStyle={styles.caption}
+          />
+          <CinemaCaption
+            master={master}
+            enter={0.72}
+            out={[0.888, 0.909]}
+            segments={[{ text: 'They refer you — for real.' }]}
+            textStyle={styles.caption}
+          />
+          <CinemaCaption
+            master={master}
+            enter={0.916}
+            out={[0.979, 1.0]}
+            segments={[
+              { text: 'That’s' },
+              { text: 'BackChannel.', accent: true },
+            ]}
+            textStyle={styles.captionFinale}
+            accentStyle={styles.captionFinaleAccent}
+          />
         </View>
 
         {/* ── CTA ── */}
@@ -470,6 +560,95 @@ export function IntroCinema({ onContinue }: IntroCinemaProps) {
   );
 }
 
+// ── Caption engine ──────────────────────────────────────────────────────
+// Words reveal one after another (~100ms apart, each on the premium
+// decel curve), and the whole line exits by continuing its upward travel
+// while fading — motion has one direction, so nothing feels like it
+// bounces back where it came from.
+
+const WORD_STAGGER = 0.0045; // ≈105ms between word starts
+const WORD_LEN = 0.024; // ≈565ms per word reveal
+
+interface CaptionSegment {
+  text: string;
+  accent?: boolean;
+}
+
+function CinemaCaption({
+  master,
+  enter,
+  out,
+  segments,
+  textStyle,
+  accentStyle,
+}: {
+  master: SharedValue<number>;
+  enter: number;
+  out: [number, number];
+  segments: CaptionSegment[];
+  textStyle: TextStyle;
+  accentStyle?: TextStyle;
+}) {
+  const words = useMemo(
+    () =>
+      segments.flatMap((seg) =>
+        seg.text
+          .split(' ')
+          .filter(Boolean)
+          .map((word) => ({ word, accent: seg.accent })),
+      ),
+    [segments],
+  );
+
+  const containerStyle = useAnimatedStyle(() => {
+    const o = easeIn(win(master.value, out[0], out[1]));
+    return { opacity: 1 - o, transform: [{ translateY: -o * 10 }] };
+  });
+
+  return (
+    <Animated.View style={[styles.captionRow, containerStyle]}>
+      {words.map((w, i) => (
+        <CaptionWord
+          key={`${w.word}-${i}`}
+          master={master}
+          start={enter + i * WORD_STAGGER}
+          baseStyle={textStyle}
+          accentStyle={w.accent ? accentStyle : undefined}
+          word={w.word}
+        />
+      ))}
+    </Animated.View>
+  );
+}
+
+function CaptionWord({
+  master,
+  start,
+  word,
+  baseStyle,
+  accentStyle,
+}: {
+  master: SharedValue<number>;
+  start: number;
+  word: string;
+  baseStyle: TextStyle;
+  accentStyle?: TextStyle;
+}) {
+  const style = useAnimatedStyle(() => {
+    const p = easeOut(win(master.value, start, start + WORD_LEN));
+    return {
+      opacity: p,
+      transform: [{ translateY: (1 - p) * 12 }],
+    };
+  });
+
+  return (
+    <Animated.Text style={[baseStyle, accentStyle, style]}>
+      {word}{' '}
+    </Animated.Text>
+  );
+}
+
 /** One anonymous application in the pile — falls in on its index's window. */
 function PileDoc({
   doc,
@@ -483,7 +662,7 @@ function PileDoc({
   const style = useAnimatedStyle(() => {
     const t = master.value;
     const a = DOC_FALL_START + index * DOC_FALL_STAGGER;
-    const p = Easing.out(Easing.cubic)(win(t, a, a + DOC_FALL_LEN));
+    const p = easeOut(win(t, a, a + DOC_FALL_LEN));
     return {
       opacity: p * 0.9,
       transform: [
@@ -659,7 +838,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.6,
   },
-  // ── Solution-act props (unchanged from the approved cut) ──────────────
+  // ── Solution-act props ────────────────────────────────────────────────
   // Real-contrast mini job card — this is the demo, not the splash's
   // ghost texture, so it renders at full card fidelity.
   miniCard: {
@@ -774,6 +953,15 @@ const styles = StyleSheet.create({
     fontSize: 26,
     color: Colors.body,
   },
+  // The contact payoff — an expanding, fading ring at the meet point.
+  pulseRing: {
+    position: 'absolute',
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 1.5,
+    borderColor: Colors.muted,
+  },
   matchBadge: {
     position: 'absolute',
     bottom: '50%',
@@ -820,11 +1008,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: Colors.body,
   },
-  referredChip: {
+  referredChipWrap: {
     position: 'absolute',
     top: '50%',
+    left: 0,
+    right: 0,
     marginTop: 58,
-    alignSelf: 'center',
+    alignItems: 'center',
+  },
+  referredChip: {
     backgroundColor: Colors.ink,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -838,24 +1030,47 @@ const styles = StyleSheet.create({
   },
   // ── Captions ──────────────────────────────────────────────────────────
   captionArea: {
-    height: 78,
+    height: 84,
     marginTop: 8,
     justifyContent: 'center',
   },
-  caption: {
+  captionRow: {
     position: 'absolute',
-    left: 40,
-    right: 40,
-    textAlign: 'center',
+    left: 36,
+    right: 36,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  // Mechanics voice — light, warm.
+  caption: {
     fontFamily: Fonts.sansLight,
     fontSize: 17,
-    lineHeight: 25,
+    lineHeight: 26,
     color: Colors.body,
+  },
+  // Problem voice — colder, quieter.
+  captionCold: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    lineHeight: 24,
+    color: Colors.muted,
+  },
+  // The thesis — the film's most important sentence, in the brand serif.
+  captionThesis: {
+    fontFamily: Fonts.serif,
+    fontSize: 21,
+    lineHeight: 28,
+    color: Colors.ink,
+  },
+  captionThesisAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   captionFinale: {
     fontFamily: Fonts.serif,
     fontSize: 24,
-    lineHeight: 30,
+    lineHeight: 31,
     color: Colors.ink,
   },
   captionFinaleAccent: {
