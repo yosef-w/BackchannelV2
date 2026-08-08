@@ -27,6 +27,90 @@ interface SplashScreenProps {
   onSignIn: () => void;
 }
 
+// ── Ghost card layer ────────────────────────────────────────────────────
+// "Living product tease" (Hinge-style): abstracted, whisper-gray job-card
+// skeletons drift almost imperceptibly behind the headline — showing what
+// the app IS before sign-up without competing with the type. Restraint
+// rules: monochrome surface tones only, slow multi-second drift, slight
+// rotations, pointerEvents off, and everything stays clear of the
+// headline's center band.
+
+interface GhostCardSpec {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+  rotate: string;
+  scale: number;
+  driftY: number;
+  driftX: number;
+  durationMs: number;
+  opacity: number;
+}
+
+const GHOST_CARDS: GhostCardSpec[] = [
+  // Upper-left, mostly on-screen.
+  { top: 90, left: -24, rotate: '-7deg', scale: 1, driftY: -14, driftX: 6, durationMs: 11000, opacity: 0.65 },
+  // Upper-right, peeking off the edge.
+  { top: 170, right: -70, rotate: '5deg', scale: 0.92, driftY: -10, driftX: -8, durationMs: 14000, opacity: 0.55 },
+  // Low-left, behind the footer's whitespace, faintest.
+  { bottom: 190, left: -55, rotate: '4deg', scale: 0.85, driftY: -12, driftX: 5, durationMs: 17000, opacity: 0.45 },
+];
+
+function GhostCard({ spec }: { spec: GhostCardSpec }) {
+  const drift = useSharedValue(0);
+  const appear = useSharedValue(0);
+
+  useEffect(() => {
+    appear.value = withDelay(500, withTiming(1, { duration: 1400 }));
+    drift.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: spec.durationMs }),
+        withTiming(0, { duration: spec.durationMs }),
+      ),
+      -1,
+    );
+  }, [appear, drift, spec.durationMs]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: appear.value * spec.opacity,
+    transform: [
+      { translateY: drift.value * spec.driftY },
+      { translateX: drift.value * spec.driftX },
+      { rotate: spec.rotate },
+      { scale: spec.scale },
+    ],
+  }));
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.ghostCard,
+        {
+          top: spec.top,
+          bottom: spec.bottom,
+          left: spec.left,
+          right: spec.right,
+        },
+        animStyle,
+      ]}
+    >
+      <View style={styles.ghostHeader}>
+        <View style={styles.ghostLogo} />
+        <View style={styles.ghostHeaderText}>
+          <View style={styles.ghostTitleBar} />
+          <View style={styles.ghostSubBar} />
+        </View>
+      </View>
+      <View style={styles.ghostPillRow}>
+        <View style={[styles.ghostPill, { width: 58 }]} />
+        <View style={[styles.ghostPill, { width: 42 }]} />
+      </View>
+    </Animated.View>
+  );
+}
+
 export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
   const titleOpacity = useSharedValue(0);
   const titleScale = useSharedValue(0.98);
@@ -108,6 +192,11 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Ghost job cards drifting behind everything. */}
+      {GHOST_CARDS.map((spec, i) => (
+        <GhostCard key={i} spec={spec} />
+      ))}
+
       <View style={styles.centerContent}>
         <Animated.View style={[styles.brandWrapper, titleStyle]}>
           {/* Matches the marketing site's hero exactly (index.html):
@@ -119,7 +208,10 @@ export const SplashScreen = ({ onGetStarted, onSignIn }: SplashScreenProps) => {
             <Text style={styles.brandSerif}>
               {BRAND_TEXT.slice(0, typedCount)}
             </Text>
-            <Animated.Text style={[styles.cursor, cursorStyle]}>▍</Animated.Text>
+            {/* Thin caret bar, matching the site's .cursor (3px × 0.85em)
+                — an inline View inside Text baseline-aligns with the
+                glyphs, unlike a block character which reads too heavy. */}
+            <Animated.View style={[styles.cursor, cursorStyle]} />
           </Text>
 
           <Text style={styles.tagline}>
@@ -160,6 +252,58 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.paper,
   },
+  // ── Ghost card skeleton ──────────────────────────────────────────────
+  // Whisper-gray abstraction of the app's real job cards: logo tile, two
+  // text bars, two chips. All surface/border tones — never darker — so
+  // the serif headline stays unchallenged.
+  ghostCard: {
+    position: 'absolute',
+    width: 210,
+    backgroundColor: Colors.paper,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  ghostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  ghostLogo: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+  },
+  ghostHeaderText: { flex: 1, gap: 7 },
+  ghostTitleBar: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.surface,
+    width: '85%',
+  },
+  ghostSubBar: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.surface,
+    width: '55%',
+  },
+  ghostPillRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ghostPill: {
+    height: 18,
+    borderRadius: 999,
+    backgroundColor: Colors.surface,
+  },
   centerContent: {
     flex: 1,
     justifyContent: 'center',
@@ -185,12 +329,14 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.serifItalic,
     color: Colors.muted,
   },
-  // Typewriter caret — muted like the site's .cursor, slightly smaller
-  // than the glyphs so it reads as a caret rather than a block.
+  // Typewriter caret — the site's .cursor: a thin muted bar (~3px wide,
+  // 0.85em tall), not a block glyph.
   cursor: {
-    fontFamily: Fonts.serif,
-    fontSize: 34,
-    color: Colors.muted,
+    width: 3,
+    height: 30,
+    borderRadius: 1.5,
+    backgroundColor: Colors.muted,
+    marginLeft: 3,
   },
   // Matches the site's .hero-body (light weight, body-gray, relaxed
   // line-height).
