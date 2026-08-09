@@ -729,6 +729,12 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         email: profileData.email || "",
         phone: profileData.phone || "",
         portfolio: profileData.portfolio || "",
+        // Signup payloads never carry a photo (it's uploaded separately,
+        // after registration) — carry the store's existing value through
+        // this whole-object set() instead of dropping the key. Omitting
+        // it wiped any already-saved photo; only questionnaire call
+        // ordering (seed first, photo upload after) masked that.
+        profileImage: get().data.personal.profileImage,
         workEmail: profileData.profileData?.workEmail || "",
         address: {
           street: profileData.address?.street || "",
@@ -1057,7 +1063,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
             existing.professional.yearsExperience,
           // BIO is saved via PATCH but not yet returned by GET /api/profile/.
           // Falls back to existing local value; will auto-populate once backend
-          // starts returning the field (BACKEND_CHANGES_NEEDED.md #5).
+          // starts returning the field (docs/BACKEND_CHANGES_NEEDED.md §B).
           summary: profile.BIO || existing.professional.summary,
           desiredSalary: existing.professional.desiredSalary,
           availableStartDate: existing.professional.availableStartDate,
