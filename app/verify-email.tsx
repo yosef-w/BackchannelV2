@@ -16,6 +16,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Mail, X } from "@/components/ui/icons";
 import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -162,8 +163,8 @@ export default function VerifyEmailRoute() {
             <Text style={styles.subtitle}>{errorMessage}</Text>
 
             {resendSent ? (
-              <View style={styles.resendSent}>
-                <Mail color="#000" size={20} strokeWidth={2} />
+              <View style={styles.resendSentBlock}>
+                <ConfirmPop size={56} icon={<Mail color="#FFF" size={22} />} />
                 <Text style={styles.resendSentText}>
                   If an account exists for that address, a new verification
                   email is on its way.
@@ -313,15 +314,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#000",
   },
-  resendSent: {
-    flexDirection: "row",
+  // Column layout — the ConfirmPop sits above the copy (the old row put
+  // a static Mail icon beside it).
+  resendSentBlock: {
     alignItems: "center",
-    gap: 10,
+    gap: 4,
     backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    marginTop: 12,
+    marginTop: 4,
   },
   resendSentText: {
     flex: 1,
