@@ -476,13 +476,16 @@ export function ApplicantQuestionnaire({
     onSuccess: async (data) => {
       console.log("[ApplicantQuestionnaire] Registration successful:", data);
 
+      // The user is about to become authenticated with a still-mostly-empty
+      // profile — flag that BEFORE flipping auth state, and await it, so
+      // anything that reacts to isAuthenticated (splash's cold-start
+      // redirect) is guaranteed to see the flag and route an interrupted
+      // signup back here instead of the dashboard. Cleared in
+      // completeOnboarding.
+      await markOnboardingRegistered("applicant");
       // Save auth tokens so the subsequent authed calls (classify, PATCH,
       // image upload) work.
       await setAuthTokens(data.access_token, data.refresh_token, "Applicant");
-      // From this point the user is authenticated but the profile is still
-      // mostly empty — flags that so splash routes an interrupted signup
-      // back here instead of the dashboard. Cleared in completeOnboarding.
-      markOnboardingRegistered("applicant");
 
       identifyUser({
         userId: String(data.user_id),
@@ -568,10 +571,11 @@ export function ApplicantQuestionnaire({
       // Guarded by handleResumeStep only ever calling this mutation when
       // ssoSession is set — but narrow the type here rather than assert.
       if (!ssoSession) return;
-      // From this point the user is authenticated but the profile is still
-      // mostly empty — flags that so splash routes an interrupted signup
-      // back here instead of the dashboard. Cleared in completeOnboarding.
-      markOnboardingRegistered("applicant");
+      // This SSO user is authenticated with a still-mostly-empty profile —
+      // flag it (awaited, durably) so splash's cold-start redirect routes
+      // an interrupted signup back here instead of the dashboard. Cleared
+      // in completeOnboarding.
+      await markOnboardingRegistered("applicant");
 
       identifyUser({
         userId: ssoSession.userId,
