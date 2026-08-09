@@ -2011,6 +2011,187 @@ export function ProfileView({ userType }: ProfileViewProps) {
     });
   }
 
+  // Résumé upload/replace pipeline — lives INSIDE the résumé editor now
+  // (the hub's ledger RÉSUMÉ row is the single entry point; the old
+  // standalone hub section duplicated it). All state/handlers stay in
+  // this component (useResumePipeline above); only the JSX moved.
+  const resumeUploadSection =
+    userType === "applicant" ? (
+      <View style={styles.resumeSection}>
+                <Text style={styles.resumeSectionLabel}>RÉSUMÉ</Text>
+
+                {/* Idle — document card (on file) or dropzone (none) */}
+                {resumeUploadStep === "idle" &&
+                  (resumeLastUpdated ? (
+                    <>
+                      <View style={styles.docCard}>
+                        <View style={styles.docGlyph}>
+                          <FileText size={22} color="#000" strokeWidth={1.75} />
+                        </View>
+                        <View style={styles.docInfo}>
+                          <Text style={styles.docTitle}>Your résumé</Text>
+                          <Text style={styles.docMeta}>
+                            Updated {formatRelativeTime(resumeLastUpdated)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.docCaption}>
+                        AI keeps your profile in sync with your résumé.
+                      </Text>
+                      <View style={styles.docActions}>
+                        <TouchableOpacity
+                          style={styles.docReplaceBtn}
+                          onPress={handleResumeUpload}
+                          activeOpacity={0.75}
+                        >
+                          <Upload size={15} color="#000" strokeWidth={2} />
+                          <Text style={styles.docReplaceText}>Replace</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={styles.dropzone}
+                        onPress={handleResumeUpload}
+                        activeOpacity={0.75}
+                      >
+                        <View style={styles.dropzoneIcon}>
+                          <Upload size={24} color="#000" strokeWidth={2} />
+                        </View>
+                        <Text style={styles.dropzoneTitle}>Upload your résumé</Text>
+                        <Text style={styles.dropzoneSub}>
+                          AI auto-fills your profile · PDF
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.docCaption}>
+                        Or enter your details manually below.
+                      </Text>
+                    </>
+                  ))}
+
+                {/* Uploading state */}
+                {resumeUploadStep === "uploading" && (
+                  <View style={styles.resumeProgressCard}>
+                    <View style={styles.resumeProgressRow}>
+                      <ActivityIndicator color="#000" size="small" />
+                      <View style={styles.resumeProgressTextCol}>
+                        <Text style={styles.resumeProgressTitle}>
+                          Uploading your resume...
+                        </Text>
+                        <Text style={styles.resumeProgressSub}>
+                          {resumeElapsedSecs < 6
+                            ? "Reading your file..."
+                            : resumeElapsedSecs < 20
+                              ? "Extracting text..."
+                              : "Taking a bit longer than usual..."}
+                        </Text>
+                      </View>
+                      <Text style={styles.resumeElapsedText}>
+                        {resumeElapsedSecs}s
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.resumeCancelBtn}
+                      onPress={cancelResumeUpload}
+                      activeOpacity={0.7}
+                    >
+                      <X size={12} color={Colors.body} strokeWidth={2.5} />
+                      <Text style={styles.resumeCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Analyzing state */}
+                {resumeUploadStep === "analyzing" && (
+                  <View style={styles.resumeProgressCard}>
+                    <View style={styles.resumeProgressRow}>
+                      <ActivityIndicator color="#000" size="small" />
+                      <View style={styles.resumeProgressTextCol}>
+                        <Text style={styles.resumeProgressTitle}>
+                          AI is analyzing your resume...
+                        </Text>
+                        <Text style={styles.resumeProgressSub}>
+                          {resumeElapsedSecs < 10
+                            ? "Auto-filling your profile..."
+                            : resumeElapsedSecs < 30
+                              ? "Classifying your experience..."
+                              : resumeElapsedSecs < 60
+                                ? "Almost done..."
+                                : "Hang tight, deep analysis takes a moment..."}
+                        </Text>
+                      </View>
+                      <Text style={styles.resumeElapsedText}>
+                        {resumeElapsedSecs}s
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.resumeCancelBtn}
+                      onPress={cancelResumeUpload}
+                      activeOpacity={0.7}
+                    >
+                      <X size={12} color={Colors.body} strokeWidth={2.5} />
+                      <Text style={styles.resumeCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Done state */}
+                {resumeUploadStep === "done" && (
+                  <Animated.View
+                    entering={FadeInUp.duration(400)}
+                    style={styles.resumeSuccessCard}
+                  >
+                    <View style={styles.resumeSuccessHeader}>
+                      <CheckCircle2 size={20} color="#000" strokeWidth={2.5} />
+                      <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
+                    </View>
+                    {resumeFieldsUpdated.length > 0 && (
+                      <>
+                        <Text style={styles.resumeSuccessSubtitle}>
+                          AI filled in {resumeFieldsUpdated.length} field
+                          {resumeFieldsUpdated.length !== 1 ? "s" : ""}:
+                        </Text>
+                        <View style={styles.resumeUpdatedFields}>
+                          {resumeFieldsUpdated.map((field) => (
+                            <View key={field} style={styles.resumeFieldPill}>
+                              <Text style={styles.resumeFieldPillText}>
+                                {formatFieldName(field)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    )}
+                    <TouchableOpacity
+                      style={styles.resumeUploadAgainBtn}
+                      onPress={() => setResumeUploadStep("idle")}
+                    >
+                      <RefreshCw size={14} color={Colors.body} strokeWidth={2} />
+                      <Text style={styles.resumeUploadAgainText}>Upload again</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+
+                {/* Error state */}
+                {resumeUploadStep === "error" && (
+                  <View style={styles.resumeErrorCard}>
+                    <AlertCircle size={18} color="#000" strokeWidth={2} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resumeErrorTitle}>Upload failed</Text>
+                      <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.resumeRetryBtn}
+                      onPress={() => setResumeUploadStep("idle")}
+                    >
+                      <Text style={styles.resumeRetryText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+    ) : null;
+
   // ── PREVIEW tab data — the live deck card, fed straight from this
   // screen's own store-backed state. Same shapes the sponsor deck uses
   // (ProfileDeckCard + EnrichedApplicantProfile), so the preview is the
@@ -2277,201 +2458,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         ))}
       </HubSection>
 
-      {/* Resume Upload Section — Applicant Only */}
-      {userType === "applicant" && (
-        <View style={styles.resumeSection}>
-          <Text style={styles.resumeSectionLabel}>RÉSUMÉ</Text>
-
-          {/* Idle — document card (on file) or dropzone (none) */}
-          {resumeUploadStep === "idle" &&
-            (resumeLastUpdated ? (
-              <>
-                <View style={styles.docCard}>
-                  <View style={styles.docGlyph}>
-                    <FileText size={22} color="#000" strokeWidth={1.75} />
-                  </View>
-                  <View style={styles.docInfo}>
-                    <Text style={styles.docTitle}>Your résumé</Text>
-                    <Text style={styles.docMeta}>
-                      Updated {formatRelativeTime(resumeLastUpdated)}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.docCaption}>
-                  AI keeps your profile in sync with your résumé.
-                </Text>
-                <View style={styles.docActions}>
-                  <TouchableOpacity
-                    style={styles.docReplaceBtn}
-                    onPress={handleResumeUpload}
-                    activeOpacity={0.75}
-                  >
-                    <Upload size={15} color="#000" strokeWidth={2} />
-                    <Text style={styles.docReplaceText}>Replace</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.docEditLink}
-                    onPress={() => {
-                      trackProfileEditOpened({ section: "resume" });
-                      setShowEditResume(true);
-                    }}
-                  >
-                    <Text style={styles.docEditText}>Edit details</Text>
-                    <ChevronRight size={14} color={Colors.faint} />
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={styles.dropzone}
-                  onPress={handleResumeUpload}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.dropzoneIcon}>
-                    <Upload size={24} color="#000" strokeWidth={2} />
-                  </View>
-                  <Text style={styles.dropzoneTitle}>Upload your résumé</Text>
-                  <Text style={styles.dropzoneSub}>
-                    AI auto-fills your profile · PDF
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.docManualLink}
-                  onPress={() => {
-                    trackProfileEditOpened({ section: "resume" });
-                    setShowEditResume(true);
-                  }}
-                >
-                  <Text style={styles.docEditText}>
-                    Or enter details manually
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ))}
-
-          {/* Uploading state */}
-          {resumeUploadStep === "uploading" && (
-            <View style={styles.resumeProgressCard}>
-              <View style={styles.resumeProgressRow}>
-                <ActivityIndicator color="#000" size="small" />
-                <View style={styles.resumeProgressTextCol}>
-                  <Text style={styles.resumeProgressTitle}>
-                    Uploading your resume...
-                  </Text>
-                  <Text style={styles.resumeProgressSub}>
-                    {resumeElapsedSecs < 6
-                      ? "Reading your file..."
-                      : resumeElapsedSecs < 20
-                        ? "Extracting text..."
-                        : "Taking a bit longer than usual..."}
-                  </Text>
-                </View>
-                <Text style={styles.resumeElapsedText}>
-                  {resumeElapsedSecs}s
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.resumeCancelBtn}
-                onPress={cancelResumeUpload}
-                activeOpacity={0.7}
-              >
-                <X size={12} color={Colors.body} strokeWidth={2.5} />
-                <Text style={styles.resumeCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Analyzing state */}
-          {resumeUploadStep === "analyzing" && (
-            <View style={styles.resumeProgressCard}>
-              <View style={styles.resumeProgressRow}>
-                <ActivityIndicator color="#000" size="small" />
-                <View style={styles.resumeProgressTextCol}>
-                  <Text style={styles.resumeProgressTitle}>
-                    AI is analyzing your resume...
-                  </Text>
-                  <Text style={styles.resumeProgressSub}>
-                    {resumeElapsedSecs < 10
-                      ? "Auto-filling your profile..."
-                      : resumeElapsedSecs < 30
-                        ? "Classifying your experience..."
-                        : resumeElapsedSecs < 60
-                          ? "Almost done..."
-                          : "Hang tight, deep analysis takes a moment..."}
-                  </Text>
-                </View>
-                <Text style={styles.resumeElapsedText}>
-                  {resumeElapsedSecs}s
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.resumeCancelBtn}
-                onPress={cancelResumeUpload}
-                activeOpacity={0.7}
-              >
-                <X size={12} color={Colors.body} strokeWidth={2.5} />
-                <Text style={styles.resumeCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Done state */}
-          {resumeUploadStep === "done" && (
-            <Animated.View
-              entering={FadeInUp.duration(400)}
-              style={styles.resumeSuccessCard}
-            >
-              <View style={styles.resumeSuccessHeader}>
-                <CheckCircle2 size={20} color="#000" strokeWidth={2.5} />
-                <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
-              </View>
-              {resumeFieldsUpdated.length > 0 && (
-                <>
-                  <Text style={styles.resumeSuccessSubtitle}>
-                    AI filled in {resumeFieldsUpdated.length} field
-                    {resumeFieldsUpdated.length !== 1 ? "s" : ""}:
-                  </Text>
-                  <View style={styles.resumeUpdatedFields}>
-                    {resumeFieldsUpdated.map((field) => (
-                      <View key={field} style={styles.resumeFieldPill}>
-                        <Text style={styles.resumeFieldPillText}>
-                          {formatFieldName(field)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
-              <TouchableOpacity
-                style={styles.resumeUploadAgainBtn}
-                onPress={() => setResumeUploadStep("idle")}
-              >
-                <RefreshCw size={14} color={Colors.body} strokeWidth={2} />
-                <Text style={styles.resumeUploadAgainText}>Upload again</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-
-          {/* Error state */}
-          {resumeUploadStep === "error" && (
-            <View style={styles.resumeErrorCard}>
-              <AlertCircle size={18} color="#000" strokeWidth={2} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.resumeErrorTitle}>Upload failed</Text>
-                <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.resumeRetryBtn}
-                onPress={() => setResumeUploadStep("idle")}
-              >
-                <Text style={styles.resumeRetryText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
-
       {/* Prompts + résumé editing moved up into the status ledger; this
           group holds the personal-details editor entry. */}
       <HubSection title="Profile">
@@ -2594,6 +2580,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <ResumeScreen
         visible={showEditResume}
         onClose={() => setShowEditResume(false)}
+        uploadSection={resumeUploadSection}
         professionalMissingCount={professionalMissingCount}
         missingFieldLabels={
           profileCompletion.missingFields
@@ -2931,16 +2918,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   docReplaceText: { fontSize: 14, fontWeight: "700", color: "#000" },
-  docEditLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    marginLeft: "auto",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  docEditText: { fontSize: 14, fontWeight: "600", color: Colors.body },
-  docManualLink: { alignSelf: "center", marginTop: 16, paddingVertical: 6 },
   dropzone: {
     borderWidth: 1.5,
     borderStyle: "dashed",

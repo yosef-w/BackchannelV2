@@ -27,6 +27,11 @@ import { Colors } from "@/constants/theme";
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** The résumé upload/replace pipeline (dropzone, progress, success,
+   * error states) — built and stateful in ProfileView, rendered at the
+   * top of this editor. The hub's ledger row is the only other résumé
+   * surface. */
+  uploadSection?: React.ReactNode;
   professionalMissingCount: number;
   missingFieldLabels: string[];
   professionalExperiences: ProfessionalExperience[];
@@ -58,6 +63,7 @@ interface Props {
 export function ResumeScreen({
   visible,
   onClose,
+  uploadSection,
   professionalMissingCount,
   missingFieldLabels,
   professionalExperiences,
@@ -100,6 +106,8 @@ export function ResumeScreen({
           </View>
         </View>
       )}
+
+      {uploadSection}
 
       <Text style={styles.groupLabel}>PROFESSIONAL EXPERIENCE</Text>
       {professionalExperiences.length === 0 && (
