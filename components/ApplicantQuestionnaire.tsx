@@ -1777,14 +1777,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
+  // Matches the pill shape (radius = height/2) every other CTA in the
+  // sign-up flow uses — this one was squared off (radius 16) before.
   reviewPrimaryBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#000",
-    borderRadius: 16,
-    paddingVertical: 18,
+    height: 56,
+    borderRadius: 28,
   },
   reviewPrimaryText: {
     fontSize: 16,

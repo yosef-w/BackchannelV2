@@ -1369,10 +1369,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.muted,
   },
+  // Matches the pill shape (radius = height/2) every other CTA in the
+  // sign-up flow uses — both were squared off (radius 18) before.
   rolePickerBackBtn: {
-    paddingVertical: 17,
+    height: 56,
     paddingHorizontal: 20,
-    borderRadius: 18,
+    borderRadius: 28,
     backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
@@ -1384,8 +1386,8 @@ const styles = StyleSheet.create({
   },
   rolePickerSponsorBtn: {
     flex: 1,
-    paddingVertical: 17,
-    borderRadius: 18,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
