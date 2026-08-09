@@ -348,17 +348,22 @@ export const cardStyles = StyleSheet.create({
   // facts as outlined ink chips (VERIFIED is the single filled accent),
   // the sponsor's remaining Q&A as flat quote bands, and the role-spec
   // insights as labeled passages. No box, no shadow, no green.
+  // Sizes here are the preview mock's values scaled ~1.2× — the mock's
+  // phone frame is 320px wide vs ~390pt on device, so a literal px copy
+  // renders visibly smaller and tighter than the approved preview. Line
+  // heights get extra headroom on top of that: DM Serif Display sits
+  // taller than the mock's Georgia.
   vouchSection: {
-    marginTop: 6,
+    marginTop: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    paddingTop: 22,
-    paddingBottom: 4,
+    paddingTop: 26,
+    paddingBottom: 8,
   },
   vouchStatement: {
     fontFamily: Fonts.serif,
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 31,
     color: Colors.ink,
     letterSpacing: -0.2,
   },
@@ -369,58 +374,58 @@ export const cardStyles = StyleSheet.create({
   vouchIdRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 13,
-    marginTop: 16,
+    gap: 14,
+    marginTop: 18,
   },
   vouchAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     backgroundColor: Colors.surface,
   },
   vouchAvatarFallback: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   vouchAvatarInitial: {
     fontFamily: Fonts.serif,
-    fontSize: 18,
+    fontSize: 21,
     color: Colors.paper,
   },
   vouchName: {
     fontFamily: Fonts.sansBold,
-    fontSize: 15.5,
+    fontSize: 16.5,
     color: Colors.ink,
     letterSpacing: -0.2,
   },
   vouchRole: {
-    fontSize: 12.5,
+    fontSize: 13.5,
     fontWeight: "500",
     color: Colors.body,
-    marginTop: 2,
+    marginTop: 3,
   },
   vouchChipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
-    marginTop: 14,
+    gap: 7,
+    marginTop: 16,
   },
   vouchChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
     borderWidth: 1.2,
     borderColor: Colors.ink,
     borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
   },
   vouchChipText: {
-    fontSize: 9.5,
+    fontSize: 10.5,
     fontWeight: "800",
     letterSpacing: 0.8,
     color: Colors.ink,
@@ -429,25 +434,25 @@ export const cardStyles = StyleSheet.create({
     backgroundColor: Colors.ink,
   },
   vouchChipFillText: {
-    fontSize: 9.5,
+    fontSize: 10.5,
     fontWeight: "800",
     letterSpacing: 0.8,
     color: Colors.paper,
   },
   vouchQuote: {
-    marginTop: 18,
+    marginTop: 22,
   },
   vouchQuoteMark: {
     fontFamily: Fonts.serif,
-    fontSize: 32,
-    lineHeight: 34,
+    fontSize: 36,
+    lineHeight: 38,
     color: Colors.faint,
     marginBottom: -8,
   },
   vouchQuoteText: {
     fontFamily: Fonts.serifItalic,
-    fontSize: 16.5,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 26,
     color: Colors.ink,
   },
   // Passage headers for the sponsor's role-spec insights — 12px floor
@@ -458,8 +463,8 @@ export const cardStyles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1.2,
     color: Colors.muted,
-    marginTop: 18,
-    marginBottom: 6,
+    marginTop: 22,
+    marginBottom: 8,
   },
 
   // ── "No sponsor yet" inline block (applicant view) ────────────────
