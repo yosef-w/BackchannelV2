@@ -137,7 +137,7 @@ export function useCinemaClock(
 // jumps (large deltas) deliberately fire nothing — haptics only accompany
 // motion the viewer actually watched happen.
 
-export type CinemaBeatKind = 'tick' | 'impact' | 'success';
+export type CinemaBeatKind = 'tick' | 'impact' | 'heavy' | 'success';
 
 export interface CinemaBeat {
   at: number;
@@ -151,6 +151,9 @@ function fireBeat(kind: CinemaBeatKind): void {
       break;
     case 'impact':
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      break;
+    case 'heavy':
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       break;
     case 'success':
       Haptics.notificationAsync(

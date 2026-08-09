@@ -1,4 +1,5 @@
 import { AppToast } from "@/components/ui/AppToast";
+import { PremiumCelebration } from "@/components/cinema/PremiumCelebration";
 import {
     initAnalytics,
     setUserProperties,
@@ -40,6 +41,27 @@ import { KeyboardProvider } from "@/components/ui/keyboard";
 // even crashes during the very first render are captured. No-ops when
 // EXPO_PUBLIC_SENTRY_DSN is unset (see lib/sentry.ts).
 initSentry();
+
+/**
+ * Bridges the subscription store's post-purchase flag to the celebration
+ * overlay. Lives here (not in a screen) so any paywall entry point —
+ * the deck's "unlock more", the profile upgrade, future ones — triggers
+ * the same moment without per-screen wiring.
+ */
+function PremiumCelebrationHost() {
+  const celebrationPending = useSubscriptionStore(
+    (state) => state.celebrationPending,
+  );
+  const dismissCelebration = useSubscriptionStore(
+    (state) => state.dismissCelebration,
+  );
+  return (
+    <PremiumCelebration
+      visible={celebrationPending}
+      onDone={dismissCelebration}
+    />
+  );
+}
 
 // Hold the native launch screen up until the design-system fonts
 // (constants/theme.ts's Fonts.serif/.sans) are loaded — without this, RN
@@ -251,6 +273,12 @@ function RootLayout() {
 
             {/* Global toast — overlays all screens */}
             <AppToast />
+
+            {/* Post-purchase celebration — global so every paywall entry
+                point (deck, profile, future ones) gets it. Renders in an
+                RN Modal, so stack position is irrelevant; dormant while
+                PREMIUM_ENABLED is off (the pending flag can't be set). */}
+            <PremiumCelebrationHost />
           </KeyboardProvider>
         </GestureHandlerRootView>
       </ThemeProvider>
