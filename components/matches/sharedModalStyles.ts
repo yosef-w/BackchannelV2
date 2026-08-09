@@ -28,6 +28,19 @@ export const modalStyles = StyleSheet.create({
     // content-sized, and a % maxHeight against it would collapse to nothing.
     maxHeight: SCREEN_HEIGHT * 0.88,
   },
+  /**
+   * Fixed-height variant for the enrichment-backed detail sheets (job,
+   * referral, SR job). Those open with basics + a skeleton and grow when
+   * the full posting lands — and a content-sized sheet repeatedly failed
+   * to re-clamp/scroll after that growth ("the modal is stuck"). A fixed
+   * height sidesteps the growth relayout entirely: the sheet presents
+   * full-height from the first frame (standard detail-sheet behavior),
+   * the skeleton breathes in the space, and the scroll area is stable.
+   * Merge AFTER modalContent + canvasSheet.
+   */
+  modalContentTall: {
+    height: SCREEN_HEIGHT * 0.88,
+  },
   applyBtnLarge: {
     backgroundColor: "#000",
     paddingVertical: 16,

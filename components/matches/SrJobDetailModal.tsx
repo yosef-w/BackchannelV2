@@ -87,7 +87,11 @@ export function SrJobDetailModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onBack}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[
+          modalStyles.modalContent,
+          canvasSheet,
+          modalStyles.modalContentTall,
+        ]}
       >
         {/* Header row — drill-in affordance back to the request. */}
         <TouchableOpacity
@@ -162,9 +166,9 @@ export function SrJobDetailModal({
 }
 
 const styles = StyleSheet.create({
-  // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned action bar; scrolls the overflow.
-  scroll: { flexShrink: 1 },
+  // flex: 1 (not just shrink) — the sheet is fixed-height now, so the
+  // scroll fills it and the action bar stays pinned to the bottom.
+  scroll: { flex: 1 },
   backRow: {
     flexDirection: "row",
     alignItems: "center",

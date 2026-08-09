@@ -72,7 +72,7 @@ export function InboxSection({
 const styles = StyleSheet.create({
   // Active gets clear air before the archived drawers; the drawers
   // themselves stack flush so their top rules read as one ruled block.
-  container: { marginBottom: 34 },
+  container: { marginBottom: 36 },
   containerDrawer: { marginBottom: 0 },
   header: {
     flexDirection: "row",

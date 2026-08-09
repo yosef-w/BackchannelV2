@@ -134,7 +134,11 @@ export function JobDetailModal({
         scrollDismiss
         instant={instant}
         onDismiss={onClose}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[
+          modalStyles.modalContent,
+          canvasSheet,
+          modalStyles.modalContentTall,
+        ]}
       >
         {job && (
           <>
@@ -286,7 +290,7 @@ export function JobDetailModal({
 }
 
 const styles = StyleSheet.create({
-  // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned action bar; scrolls the overflow.
-  scroll: { flexShrink: 1 },
+  // flex: 1 (not just shrink) — the sheet is fixed-height now, so the
+  // scroll fills it and the action bar stays pinned to the bottom.
+  scroll: { flex: 1 },
 });

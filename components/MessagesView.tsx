@@ -1093,6 +1093,15 @@ export function MessagesView({
             />
           </InboxSection>
 
+          {/* The archive block — a caps eyebrow introduces the collapsed
+              drawers as their own species, so Past/Hidden stop reading as
+              a continuation of the Active rows (tester feedback: the
+              sections blended / felt crowded). */}
+          {(pastConversations.length > 0 ||
+            hiddenConversations.length > 0) && (
+            <Text style={styles.archiveEyebrow}>ARCHIVE</Text>
+          )}
+
           {/* Past Connections — unmatched conversations (status === 'CLOSED').
               Visually muted so they read as "archived". Still tappable so
               users can review the prior thread, but the send-message input
@@ -1155,6 +1164,14 @@ const styles = StyleSheet.create({
   headerTitleContainer: { marginBottom: 32 },
   title: { ...Type.title, color: Colors.ink },
   titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
+  archiveEyebrow: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.6,
+    color: Colors.faint,
+    marginTop: 14,
+    marginBottom: 8,
+  },
   subtitle: {
     fontFamily: Fonts.sansLight,
     fontSize: 16,
