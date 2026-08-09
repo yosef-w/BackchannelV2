@@ -34,7 +34,7 @@ interface WorkEmailVerificationModalProps {
 /**
  * Soft gate blocking sponsor swiping until their work email is verified.
  * Extracted from HomeView as a self-contained modal: isEditingWorkEmail/
- * editedWorkEmail/emailVerifyError/emailVerifyLoading have zero readers
+ * editedWorkEmail/emailVerifStatus/emailVerifyLoading have zero readers
  * outside this UI (confirmed by a state-ownership audit before extraction).
  * pendingWorkEmail, profileData, fetchFromBackend, and updatePersonalStore
  * all come straight from useUserProfileStore, so this component reads them
@@ -61,7 +61,15 @@ export function WorkEmailVerificationModal({
 
   const [isEditingWorkEmail, setIsEditingWorkEmail] = useState(false);
   const [editedWorkEmail, setEditedWorkEmail] = useState("");
-  const [emailVerifyError, setEmailVerifyError] = useState("");
+  // One status line under the buttons, but with a TONE — "Sent!" used to
+  // render in the same danger red as real failures because everything
+  // funneled through a single error string (PM: success reading as
+  // "something went wrong"). No green exists in this palette by design,
+  // so success = ink, info = body gray, error = danger.
+  const [emailVerifStatus, setEmailVerifStatus] = useState<{
+    text: string;
+    tone: "error" | "success" | "info";
+  } | null>(null);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
 
   // Clear any stale error message whenever the gate re-opens — mirrors the
@@ -69,13 +77,13 @@ export function WorkEmailVerificationModal({
   // setting the modal visible (the Modal's `visible` prop toggles without
   // unmounting this component, so state would otherwise persist).
   useEffect(() => {
-    if (visible) setEmailVerifyError("");
+    if (visible) setEmailVerifStatus(null);
   }, [visible]);
 
   const resetAndClose = () => {
     setIsEditingWorkEmail(false);
     setEditedWorkEmail("");
-    setEmailVerifyError("");
+    setEmailVerifStatus(null);
     onClose();
   };
 
@@ -126,7 +134,7 @@ export function WorkEmailVerificationModal({
                 onPress={() => {
                   setIsEditingWorkEmail(false);
                   setEditedWorkEmail("");
-                  setEmailVerifyError("");
+                  setEmailVerifStatus(null);
                 }}
                 style={styles.emailVerifEditCancel}
                 activeOpacity={0.7}
@@ -138,13 +146,14 @@ export function WorkEmailVerificationModal({
                 onPress={async () => {
                   const trimmed = editedWorkEmail.trim();
                   if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
-                    setEmailVerifyError(
-                      "That doesn't look like a valid email.",
-                    );
+                    setEmailVerifStatus({
+                      text: "That doesn't look like a valid email.",
+                      tone: "error",
+                    });
                     return;
                   }
                   setEmailVerifyLoading(true);
-                  setEmailVerifyError("");
+                  setEmailVerifStatus(null);
                   try {
                     // Two coordinated backend calls + a local mirror:
                     //   1. PATCH sponsor profile so the backend
@@ -169,17 +178,19 @@ export function WorkEmailVerificationModal({
                     await updatePersonalStore({ workEmail: trimmed });
                     setIsEditingWorkEmail(false);
                     setEditedWorkEmail("");
-                    setEmailVerifyError(
-                      `Sent! Check ${trimmed} — including your spam folder.`,
-                    );
+                    setEmailVerifStatus({
+                      text: `Sent! Check ${trimmed} — including your spam folder.`,
+                      tone: "success",
+                    });
                   } catch (err) {
                     const msg =
                       err instanceof Error ? err.message : "Couldn't send.";
-                    setEmailVerifyError(
-                      msg.toLowerCase().includes("rate")
+                    setEmailVerifStatus({
+                      text: msg.toLowerCase().includes("rate")
                         ? "Too many sends — please wait a bit and try again."
                         : "Couldn't send to that address. Please try again.",
-                    );
+                      tone: "error",
+                    });
                   } finally {
                     setEmailVerifyLoading(false);
                   }
@@ -210,7 +221,7 @@ export function WorkEmailVerificationModal({
               onPress={() => {
                 setEditedWorkEmail(displayedEmail);
                 setIsEditingWorkEmail(true);
-                setEmailVerifyError("");
+                setEmailVerifStatus(null);
               }}
               activeOpacity={0.7}
             >
@@ -249,7 +260,7 @@ export function WorkEmailVerificationModal({
           style={styles.emailVerifSecondaryBtn}
           onPress={async () => {
             setEmailVerifyLoading(true);
-            setEmailVerifyError("");
+            setEmailVerifStatus(null);
             try {
               await fetchFromBackend();
               const isNowVerified =
@@ -258,12 +269,16 @@ export function WorkEmailVerificationModal({
               if (isNowVerified) {
                 onClose();
               } else {
-                setEmailVerifyError(
-                  "Still pending — please click the link in your inbox.",
-                );
+                setEmailVerifStatus({
+                  text: "Still pending — please click the link in your inbox.",
+                  tone: "info",
+                });
               }
             } catch {
-              setEmailVerifyError("Could not check status. Please try again.");
+              setEmailVerifStatus({
+                text: "Could not check status. Please try again.",
+                tone: "error",
+              });
             } finally {
               setEmailVerifyLoading(false);
             }
@@ -280,8 +295,19 @@ export function WorkEmailVerificationModal({
           )}
         </TouchableOpacity>
 
-        {emailVerifyError ? (
-          <Text style={styles.emailVerifErrorText}>{emailVerifyError}</Text>
+        {emailVerifStatus ? (
+          <Text
+            style={[
+              styles.emailVerifStatusText,
+              emailVerifStatus.tone === "error"
+                ? styles.emailVerifStatusError
+                : emailVerifStatus.tone === "success"
+                  ? styles.emailVerifStatusSuccess
+                  : styles.emailVerifStatusInfo,
+            ]}
+          >
+            {emailVerifStatus.text}
+          </Text>
         ) : null}
 
         {/* Resend (PR #42) — re-trigger the verification email if the user
@@ -293,23 +319,28 @@ export function WorkEmailVerificationModal({
           onPress={async () => {
             const workEmail = pendingWorkEmail ?? profileData?.personal?.workEmail;
             if (!workEmail) {
-              setEmailVerifyError(
-                "We don't have a work email on file. Tap 'Update it' to add one.",
-              );
+              setEmailVerifStatus({
+                text: "We don't have a work email on file. Tap 'Update it' to add one.",
+                tone: "error",
+              });
               return;
             }
-            setEmailVerifyError("");
+            setEmailVerifStatus(null);
             try {
               await authApi.sendWorkEmailVerification(workEmail);
               trackWorkEmailResendRequested();
-              setEmailVerifyError("Sent! Check your inbox and spam folder.");
+              setEmailVerifStatus({
+                text: "Sent! Check your inbox and spam folder.",
+                tone: "success",
+              });
             } catch (err) {
               const msg = err instanceof Error ? err.message : "Couldn't resend.";
-              setEmailVerifyError(
-                msg.toLowerCase().includes("rate")
+              setEmailVerifStatus({
+                text: msg.toLowerCase().includes("rate")
                   ? "Too many resends — please wait a bit and try again."
                   : "Couldn't resend. Please try again.",
-              );
+                tone: "error",
+              });
             }
           }}
           activeOpacity={0.8}
@@ -347,7 +378,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 44,
   },
   emailVerifIconCircle: {
@@ -432,13 +466,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  emailVerifErrorText: {
+  emailVerifStatusText: {
     fontSize: 13,
-    color: Colors.danger,
     textAlign: "center",
     marginTop: 4,
     marginBottom: 4,
   },
+  emailVerifStatusError: { color: Colors.danger },
+  emailVerifStatusSuccess: { color: Colors.ink, fontWeight: "600" },
+  emailVerifStatusInfo: { color: Colors.body },
   emailVerifTesterBtn: {
     height: 44,
     alignItems: "center",

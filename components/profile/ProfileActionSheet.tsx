@@ -104,7 +104,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 32,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 32,
+    paddingBottom: 32,
     // Absolute px — a % maxHeight resolves against DismissibleSheet's
     // content-sized gesture-root wrapper, mis-measures, and floats the
     // sheet off the bottom of the screen.
