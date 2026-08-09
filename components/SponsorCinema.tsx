@@ -308,6 +308,31 @@ export function SponsorCinema({
     return { transform: [{ translateX: AV_APART - p * (AV_APART - AV_MEET) }] };
   });
 
+  // Name-tag labels revealed just after contact (same beat as the match
+  // badge) — spells out who's who without touching the avatar circles
+  // themselves, so the "two people meeting" shape stays intact.
+  const avatarLeftLabel = useAnimatedStyle(() => {
+    const t = master.value;
+    const meetP = backOut(win(t, 0.545, 0.601));
+    const revealP = backOut(win(t, 0.601, 0.619));
+    const shift = win(t, 0.706, 0.755);
+    return {
+      opacity: revealP * (1 - shift),
+      transform: [{ translateX: -AV_APART + meetP * (AV_APART - AV_MEET) }],
+    };
+  });
+
+  const avatarRightLabel = useAnimatedStyle(() => {
+    const t = master.value;
+    const meetP = backOut(win(t, 0.545, 0.601));
+    const revealP = backOut(win(t, 0.601, 0.619));
+    const shift = win(t, 0.706, 0.755);
+    return {
+      opacity: revealP * (1 - shift),
+      transform: [{ translateX: AV_APART - meetP * (AV_APART - AV_MEET) }],
+    };
+  });
+
   // Quieter than the referral's ring — the energy must peak at the climax.
   const pulseRing = useAnimatedStyle(() => {
     const t = master.value;
@@ -508,6 +533,16 @@ export function SponsorCinema({
               <Animated.View style={[styles.avatar, avatarRight]}>
                 <Text style={styles.avatarInitial}>D</Text>
               </Animated.View>
+              <Animated.Text
+                style={[styles.avatarLabel, styles.avatarLabelText, avatarLeftLabel]}
+              >
+                YOU
+              </Animated.Text>
+              <Animated.Text
+                style={[styles.avatarLabel, styles.avatarLabelText, avatarRightLabel]}
+              >
+                DEVON
+              </Animated.Text>
               <Animated.View style={[styles.matchBadge, matchBadge]}>
                 <Text style={styles.matchBadgeText}>✓</Text>
               </Animated.View>
@@ -520,7 +555,7 @@ export function SponsorCinema({
 
             <Animated.View style={[styles.centerSlot, companyTile]}>
               <View style={styles.companyTile}>
-                <Text style={styles.companyMonogram}>A</Text>
+                <Text style={styles.companyTileLabel}>JOB</Text>
               </View>
             </Animated.View>
             <View style={styles.referredChipWrap} pointerEvents="none">
@@ -1018,6 +1053,23 @@ const styles = StyleSheet.create({
     fontSize: 26,
     color: Colors.body,
   },
+  // Name-tag beneath each avatar — spans the full width and gets
+  // recentered per-avatar by the same translateX the circle above it
+  // uses, so it always lands directly under its circle.
+  avatarLabel: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    marginTop: 42,
+    textAlign: 'center',
+  },
+  avatarLabelText: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 9,
+    letterSpacing: 1.1,
+    color: Colors.muted,
+  },
   pulseRing: {
     position: 'absolute',
     width: 92,
@@ -1067,9 +1119,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  companyMonogram: {
-    fontFamily: Fonts.serif,
-    fontSize: 24,
+  // A plain word instead of a company monogram — the tile is a generic
+  // "the opportunity" slot in the diagram, not tied to any specific deck
+  // card, so there's nothing for it to mismatch.
+  companyTileLabel: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13,
+    letterSpacing: 0.6,
     color: Colors.body,
   },
   referredChipWrap: {

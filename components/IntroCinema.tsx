@@ -346,6 +346,31 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
     return { transform: [{ translateX: AV_APART - p * (AV_APART - AV_MEET) }] };
   });
 
+  // Name-tag labels revealed just after contact (same beat as the match
+  // badge) — spells out who's who without touching the avatar circles
+  // themselves, so the "two people meeting" shape stays intact.
+  const avatarLeftLabel = useAnimatedStyle(() => {
+    const t = master.value;
+    const meetP = backOut(win(t, 0.545, 0.601));
+    const revealP = backOut(win(t, 0.601, 0.619));
+    const shift = win(t, 0.706, 0.755);
+    return {
+      opacity: revealP * (1 - shift),
+      transform: [{ translateX: -AV_APART + meetP * (AV_APART - AV_MEET) }],
+    };
+  });
+
+  const avatarRightLabel = useAnimatedStyle(() => {
+    const t = master.value;
+    const meetP = backOut(win(t, 0.545, 0.601));
+    const revealP = backOut(win(t, 0.601, 0.619));
+    const shift = win(t, 0.706, 0.755);
+    return {
+      opacity: revealP * (1 - shift),
+      transform: [{ translateX: AV_APART - meetP * (AV_APART - AV_MEET) }],
+    };
+  });
+
   // The contact payoff: a soft ring pulses outward the moment they meet.
   // Deliberately quieter than the referral's ring — the match is a step,
   // the referral is the destination, and the film's energy must peak there.
@@ -563,6 +588,16 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
               <Animated.View style={[styles.avatar, styles.avatarSponsor, avatarRight]}>
                 <Text style={styles.avatarInitial}>S</Text>
               </Animated.View>
+              <Animated.Text
+                style={[styles.avatarLabel, styles.avatarLabelText, avatarLeftLabel]}
+              >
+                YOU
+              </Animated.Text>
+              <Animated.Text
+                style={[styles.avatarLabel, styles.avatarLabelText, avatarRightLabel]}
+              >
+                SPONSOR
+              </Animated.Text>
               <Animated.View style={[styles.matchBadge, matchBadge]}>
                 <Text style={styles.matchBadgeText}>✓</Text>
               </Animated.View>
@@ -575,7 +610,7 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
 
             <Animated.View style={[styles.centerSlot, companyTile]}>
               <View style={styles.companyTile}>
-                <Text style={styles.companyMonogram}>M</Text>
+                <Text style={styles.companyTileLabel}>JOB</Text>
               </View>
             </Animated.View>
             <View style={styles.referredChipWrap} pointerEvents="none">
@@ -1080,6 +1115,23 @@ const styles = StyleSheet.create({
     fontSize: 26,
     color: Colors.body,
   },
+  // Name-tag beneath each avatar — spans the full width and gets
+  // recentered per-avatar by the same translateX the circle above it
+  // uses, so it always lands directly under its circle.
+  avatarLabel: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    marginTop: 42,
+    textAlign: 'center',
+  },
+  avatarLabelText: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 9,
+    letterSpacing: 1.1,
+    color: Colors.muted,
+  },
   // The contact payoff — an expanding, fading ring at the meet point.
   pulseRing: {
     position: 'absolute',
@@ -1130,9 +1182,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  companyMonogram: {
-    fontFamily: Fonts.serif,
-    fontSize: 24,
+  // A plain word instead of a company monogram — the tile is a generic
+  // "the opportunity" slot in the diagram, not tied to any specific deck
+  // card, so there's nothing for it to mismatch.
+  companyTileLabel: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13,
+    letterSpacing: 0.6,
     color: Colors.body,
   },
   referredChipWrap: {
