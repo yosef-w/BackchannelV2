@@ -17,7 +17,10 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 import {
   DRAFT_MAX_AGE_MS,
   clearOnboardingDraft,
+  clearOnboardingRegistered,
+  getPendingOnboardingRole,
   loadOnboardingDraft,
+  markOnboardingRegistered,
   saveOnboardingDraft,
 } from "../onboardingDraft";
 
@@ -120,5 +123,38 @@ describe("clearOnboardingDraft", () => {
     await saveOnboardingDraft(KEY, "sarah@example.com", draftData);
     await clearOnboardingDraft(KEY);
     expect(await AsyncStorage.getItem(KEY)).toBeNull();
+  });
+});
+
+// Registration happens at the questionnaire's FIRST step, well before the
+// profile is actually filled out — this flag is what lets splash.tsx tell
+// "authenticated + done" apart from "authenticated + app restarted
+// mid-questionnaire" so it can route the latter back to finish instead of
+// stranding them on a half-filled dashboard.
+describe("pending registration flag", () => {
+  it("has no pending role until one is marked", async () => {
+    expect(await getPendingOnboardingRole()).toBeNull();
+  });
+
+  it("reports the marked role", async () => {
+    await markOnboardingRegistered("applicant");
+    expect(await getPendingOnboardingRole()).toBe("applicant");
+  });
+
+  it("a later mark for a different role overwrites the earlier one", async () => {
+    await markOnboardingRegistered("applicant");
+    await markOnboardingRegistered("sponsor");
+    expect(await getPendingOnboardingRole()).toBe("sponsor");
+  });
+
+  it("clearing removes the pending role", async () => {
+    await markOnboardingRegistered("applicant");
+    await clearOnboardingRegistered();
+    expect(await getPendingOnboardingRole()).toBeNull();
+  });
+
+  it("ignores a corrupt/unexpected stored value", async () => {
+    await AsyncStorage.setItem("@bc/onboardingPendingRole", "garbage");
+    expect(await getPendingOnboardingRole()).toBeNull();
   });
 });

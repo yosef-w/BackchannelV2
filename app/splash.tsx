@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import React, { useEffect } from "react";
 import { SplashScreen } from "../components/SplashScreen";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { getPendingOnboardingRole } from "@/utils/onboardingDraft";
 
 export default function SplashRoute() {
   // Tokens are loaded (and silently refreshed if stale) by RootLayout on
@@ -13,9 +14,26 @@ export default function SplashRoute() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard");
-    }
+    if (isLoading || !isAuthenticated) return;
+    (async () => {
+      // Authenticated ≠ done signing up: the applicant questionnaire
+      // registers the account at its FIRST step, well before the rest of
+      // the profile is collected, so someone whose app restarted
+      // mid-questionnaire is already "authenticated" here. Sending them
+      // straight to the dashboard would silently strand them with a
+      // permanently half-filled profile and no way back to the remaining
+      // questions. Route them back to finish instead — see
+      // markOnboardingRegistered for where this flag is set/cleared.
+      const pendingRole = await getPendingOnboardingRole();
+      if (pendingRole) {
+        router.replace({
+          pathname: "/onboarding",
+          params: { mode: pendingRole, resume: "1" },
+        });
+      } else {
+        router.replace("/dashboard");
+      }
+    })();
   }, [isLoading, isAuthenticated]);
 
   return (

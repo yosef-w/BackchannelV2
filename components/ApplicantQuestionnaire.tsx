@@ -78,7 +78,9 @@ import {
 } from "@/stores/useUserProfileStore";
 import {
   clearOnboardingDraft,
+  clearOnboardingRegistered,
   loadOnboardingDraft,
+  markOnboardingRegistered,
   saveOnboardingDraft,
 } from "@/utils/onboardingDraft";
 
@@ -206,8 +208,15 @@ export function ApplicantQuestionnaire({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   // True once the résumé has been parsed + classified — hides the steps it fills.
   const [resumeFilled, setResumeFilled] = useState(false);
-  // Guards against double-registration (registration now fires at the résumé step).
-  const registeredRef = useRef(false);
+  // Guards against double-registration (registration now fires at the résumé
+  // step). Seeded from the global auth state, not just `false` — a user
+  // resuming an interrupted signup (see markOnboardingRegistered) is
+  // ALREADY authenticated when this component (re)mounts, and re-running
+  // registration for them would either 401 or hit "email already
+  // registered". isAuthenticated is read once at mount here deliberately;
+  // see its declaration below.
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const registeredRef = useRef(isAuthenticated);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileAsset, setSelectedFileAsset] = useState<{
     name: string;
@@ -266,6 +275,14 @@ export function ApplicantQuestionnaire({
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
+  // useOnboardingStore is in-memory only — a resumed session (app restarted
+  // mid-questionnaire, see markOnboardingRegistered) mounts with
+  // applicantData.email empty. useUserProfileStore IS persisted to
+  // AsyncStorage and gets seeded with the email the moment registration
+  // succeeds (loadFromProfile, below), so it survives the restart — falling
+  // back to it is what lets a resumed session find its own saved draft.
+  const persistedEmail = useUserProfileStore((state) => state.data.personal.email);
+  const identityEmail = applicantData.email || persistedEmail;
   const fetchFromBackend = useUserProfileStore(
     (state) => state.fetchFromBackend,
   );
@@ -279,6 +296,7 @@ export function ApplicantQuestionnaire({
     // in-memory onboarding data (auth basics no longer needed).
     hydratedRef.current = false;
     clearOnboardingDraft(APPLICANT_DRAFT_KEY);
+    clearOnboardingRegistered();
     clearOnboardingData();
     trackOnboardingCompleted("applicant");
     setIsSubmitting(false);
@@ -358,11 +376,13 @@ export function ApplicantQuestionnaire({
   // the initial empty state before the restore has run.
   //
   // Drafts are identity-scoped (utils/onboardingDraft.ts): stamped with the
-  // signup email from the AuthScreen and only restored for the SAME email.
-  // A new signup session with a different identity discards any old draft
-  // instead of hydrating it — previously an abandoned signup's junk answers
-  // leaked into the next signup on the same device and looked like broken
-  // resume auto-fill.
+  // signup email and only restored for the SAME email. A new signup session
+  // with a different identity discards any old draft instead of hydrating
+  // it — previously an abandoned signup's junk answers leaked into the next
+  // signup on the same device and looked like broken resume auto-fill.
+  // Uses `identityEmail` (not applicantData.email directly) so this still
+  // resolves after an app restart mid-questionnaire, when the in-memory
+  // onboarding store has reset but the persisted profile store hasn't.
   const hydratedRef = useRef(false);
 
   useEffect(() => {
@@ -374,7 +394,7 @@ export function ApplicantQuestionnaire({
           selectedInsights?: typeof selectedInsights;
           selectedWorkPreferences?: string[];
           locationText?: string;
-        }>(APPLICANT_DRAFT_KEY, applicantData.email);
+        }>(APPLICANT_DRAFT_KEY, identityEmail);
         if (d) {
           if (d.answers) setAnswers(d.answers);
           if (Array.isArray(d.selectedSkills)) setSelectedSkills(d.selectedSkills);
@@ -393,13 +413,16 @@ export function ApplicantQuestionnaire({
         hydratedRef.current = true;
       }
     })();
-    // Run once on mount (the signup email is fixed before this screen mounts).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Depends on identityEmail rather than running once: for a brand-new
+    // signup it's stable from the first render (no extra runs), but for a
+    // resumed session it can start empty and resolve a beat later once the
+    // persisted profile store finishes loading — this re-attempts the load
+    // once that happens instead of missing the draft.
+  }, [identityEmail]);
 
   useEffect(() => {
     if (!hydratedRef.current) return;
-    saveOnboardingDraft(APPLICANT_DRAFT_KEY, applicantData.email, {
+    saveOnboardingDraft(APPLICANT_DRAFT_KEY, identityEmail, {
       answers,
       selectedSkills,
       selectedInsights,
@@ -412,7 +435,7 @@ export function ApplicantQuestionnaire({
     selectedInsights,
     selectedWorkPreferences,
     locationText,
-    applicantData.email,
+    identityEmail,
   ]);
 
   const createProfileMutation = useMutation({
@@ -456,6 +479,10 @@ export function ApplicantQuestionnaire({
       // Save auth tokens so the subsequent authed calls (classify, PATCH,
       // image upload) work.
       await setAuthTokens(data.access_token, data.refresh_token, "Applicant");
+      // From this point the user is authenticated but the profile is still
+      // mostly empty — flags that so splash routes an interrupted signup
+      // back here instead of the dashboard. Cleared in completeOnboarding.
+      markOnboardingRegistered("applicant");
 
       identifyUser({
         userId: String(data.user_id),
@@ -541,6 +568,10 @@ export function ApplicantQuestionnaire({
       // Guarded by handleResumeStep only ever calling this mutation when
       // ssoSession is set — but narrow the type here rather than assert.
       if (!ssoSession) return;
+      // From this point the user is authenticated but the profile is still
+      // mostly empty — flags that so splash routes an interrupted signup
+      // back here instead of the dashboard. Cleared in completeOnboarding.
+      markOnboardingRegistered("applicant");
 
       identifyUser({
         userId: ssoSession.userId,

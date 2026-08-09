@@ -10,7 +10,7 @@ type UserType = "applicant" | "sponsor";
 type Step = "auth" | "questionnaire";
 
 export default function OnboardingScreen() {
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; resume?: string }>();
   const userType: UserType = useMemo(() => {
     return params.mode === "sponsor" ? "sponsor" : "applicant";
   }, [params.mode]);
@@ -34,9 +34,20 @@ export default function OnboardingScreen() {
   // once: setAuthTokens for that path doesn't fire until registration
   // succeeds inside the questionnaire itself, well after this component's
   // initial render, so this can't misfire for them.
+  //
+  // The `resume=1` param covers a second, non-SSO way to already be
+  // authenticated here: the applicant questionnaire registers the account
+  // at its FIRST step (résumé), before the rest of the profile is filled
+  // out — so an app restart between that step and "Complete Profile"
+  // leaves someone authenticated with a half-finished profile. splash.tsx
+  // detects that (see utils/onboardingDraft's markOnboardingRegistered)
+  // and routes here with resume=1 instead of sending them to the
+  // dashboard. ApplicantQuestionnaire's own registeredRef (seeded from
+  // isAuthenticated) skips re-registration for them.
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const ssoSession = useOnboardingStore((state) => state.ssoSession);
-  const skipToQuestionnaire = isAuthenticated && !!ssoSession;
+  const skipToQuestionnaire =
+    isAuthenticated && (!!ssoSession || params.resume === "1");
 
   const [step, setStep] = useState<Step>(
     skipToQuestionnaire ? "questionnaire" : "auth",

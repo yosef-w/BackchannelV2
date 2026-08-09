@@ -105,3 +105,39 @@ export async function saveOnboardingDraft<T>(
 export async function clearOnboardingDraft(key: string): Promise<void> {
   await AsyncStorage.removeItem(key).catch(() => {});
 }
+
+// ── Pending registration ────────────────────────────────────────────────
+// Registration (and auth tokens) are issued at the very FIRST questionnaire
+// step — the résumé step — specifically so an abandoned signup still has an
+// account instead of losing the lead entirely. That means a user can be
+// fully "authenticated" while their profile is still mostly empty. Without
+// this flag, splash.tsx's "authenticated → dashboard" redirect can't tell
+// the difference and drops them on the dashboard with a permanently
+// half-filled profile the moment the app restarts mid-questionnaire —
+// this flag is what lets splash send them back to finish instead.
+
+const PENDING_ROLE_KEY = "@bc/onboardingPendingRole";
+
+/** Registration succeeded but the questionnaire isn't finished yet. */
+export async function markOnboardingRegistered(
+  role: "applicant" | "sponsor",
+): Promise<void> {
+  await AsyncStorage.setItem(PENDING_ROLE_KEY, role).catch(() => {});
+}
+
+/** The questionnaire finished (or was explicitly abandoned) — clear it. */
+export async function clearOnboardingRegistered(): Promise<void> {
+  await AsyncStorage.removeItem(PENDING_ROLE_KEY).catch(() => {});
+}
+
+/** Which role, if any, has a registered-but-incomplete signup pending. */
+export async function getPendingOnboardingRole(): Promise<
+  "applicant" | "sponsor" | null
+> {
+  try {
+    const value = await AsyncStorage.getItem(PENDING_ROLE_KEY);
+    return value === "applicant" || value === "sponsor" ? value : null;
+  } catch {
+    return null;
+  }
+}
