@@ -1,8 +1,16 @@
 // Onboarding slides — the practical, role-tailored "how your day works"
-// beat, played AFTER the role's intro film (choose-role → film → here →
-// auth). The film sold the belief at macro scale; these three slides zoom
-// into the mechanics the film couldn't linger on: the daily ten-card
-// deck, mutual interest → match → chat, and the tracked referral.
+// beat. Rendered in TWO places, sharing this one component and slide
+// content so the brand only has one slide language, not two:
+//   1. Pre-signup (choose-role → film → HERE → auth) — pushed as a route,
+//      with a back arrow to the film and Skip falling through to auth.
+//   2. Post-signup first Home view (components/ui/HomeIntro.tsx wraps
+//      this in a Modal) — no back arrow (nothing to go back to), Skip and
+//      Complete both just dismiss the modal, and it's replayable later
+//      from the Home header "?".
+// `onBack` therefore optional (hides the back arrow when absent) and
+// `onSkip` optional (Skip falls back to onComplete when absent, matching
+// the original pre-signup behavior where Skip and Continue were the same
+// action).
 //
 // Rebuilt to the rebrand's editorial language and the films' fidelity
 // bar: no abstract icon circles — each slide stages a small LIVE product
@@ -42,8 +50,13 @@ const { width: W } = Dimensions.get("window");
 
 interface OnboardingProps {
   onComplete: () => void;
-  onBack: () => void;
+  /** Omit to hide the back arrow entirely (e.g. the post-signup modal). */
+  onBack?: () => void;
+  /** Defaults to onComplete — Skip and finishing the deck go the same place. */
+  onSkip?: () => void;
   userType: "applicant" | "sponsor";
+  /** Mixpanel screen_name — lets the two call sites stay distinguishable. */
+  screenName?: string;
 }
 
 type VignetteKind = "deck" | "match" | "track";
@@ -106,10 +119,16 @@ const sponsorSlides: Slide[] = [
   },
 ];
 
-export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
+export function Onboarding({
+  onComplete,
+  onBack,
+  onSkip,
+  userType,
+  screenName = "onboarding_intro",
+}: OnboardingProps) {
   useEffect(() => {
-    trackScreenViewed("onboarding_intro");
-  }, []);
+    trackScreenViewed(screenName);
+  }, [screenName]);
 
   const slides = userType === "applicant" ? applicantSlides : sponsorSlides;
 
@@ -148,25 +167,29 @@ export function Onboarding({ onComplete, onBack, userType }: OnboardingProps) {
 
   const prevSlide = () => {
     if (index > 0) goTo(index - 1);
-    else onBack();
+    else onBack?.();
   };
+
+  const handleSkip = onSkip ?? onComplete;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
         {/* Top Navigation */}
-        <View style={styles.topNav}>
+        <View style={[styles.topNav, !onBack && styles.topNavNoBack]}>
+          {onBack && (
+            <TouchableOpacity
+              onPress={prevSlide}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+            >
+              <ArrowLeft color={Colors.ink} size={24} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            onPress={prevSlide}
-            style={styles.iconBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-          >
-            <ArrowLeft color={Colors.ink} size={24} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={onComplete}
+            onPress={handleSkip}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel="Skip onboarding"
@@ -532,6 +555,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 10,
+  },
+  // No back arrow (post-signup modal, nothing to go back to) — Skip sits
+  // alone on the right instead of leaving a hole on the left.
+  topNavNoBack: {
+    justifyContent: "flex-end",
   },
   iconBtn: {
     padding: 8,
