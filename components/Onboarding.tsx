@@ -1,16 +1,12 @@
 // Onboarding slides — the practical, role-tailored "how your day works"
-// beat. Rendered in TWO places, sharing this one component and slide
-// content so the brand only has one slide language, not two:
-//   1. Pre-signup (choose-role → film → HERE → auth) — pushed as a route,
-//      with a back arrow to the film and Skip falling through to auth.
-//   2. Post-signup first Home view (components/ui/HomeIntro.tsx wraps
-//      this in a Modal) — no back arrow (nothing to go back to), Skip and
-//      Complete both just dismiss the modal, and it's replayable later
-//      from the Home header "?".
-// `onBack` therefore optional (hides the back arrow when absent) and
-// `onSkip` optional (Skip falls back to onComplete when absent, matching
-// the original pre-signup behavior where Skip and Continue were the same
-// action).
+// beat. Shown exactly once, post-signup, on a new user's first Home view
+// (components/ui/HomeIntro.tsx wraps this in a full-screen Modal) and
+// replayable later from the Home header "?". There's no pre-signup
+// appearance of these slides anymore — the role's film (IntroCinema /
+// SponsorCinema) sells the belief at macro scale, and a user goes
+// straight from the film into sign-up; these slides are the "welcome,
+// here's how your day actually works" beat that greets them once they
+// have a real dashboard to look at.
 //
 // Rebuilt to the rebrand's editorial language and the films' fidelity
 // bar: no abstract icon circles — each slide stages a small LIVE product
@@ -18,7 +14,7 @@
 // tracker), swiped as a real pager with parallax depth, breathing idle
 // motion, and the serif/italic-accent typography of the marketing site.
 
-import { ArrowLeft, ArrowRight } from "@/components/ui/icons";
+import { ArrowRight } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import { trackScreenViewed } from "@/lib/analytics/mixpanel";
 import { Colors, Fonts, Type } from "@/constants/theme";
@@ -49,13 +45,12 @@ import { PressableScale } from "@/components/ui/PressableScale";
 const { width: W } = Dimensions.get("window");
 
 interface OnboardingProps {
+  /** Finishing the deck (the last slide's CTA). */
   onComplete: () => void;
-  /** Omit to hide the back arrow entirely (e.g. the post-signup modal). */
-  onBack?: () => void;
-  /** Defaults to onComplete — Skip and finishing the deck go the same place. */
-  onSkip?: () => void;
+  /** The header Skip tap — tracked separately from onComplete. */
+  onSkip: () => void;
   userType: "applicant" | "sponsor";
-  /** Mixpanel screen_name — lets the two call sites stay distinguishable. */
+  /** Mixpanel screen_name. */
   screenName?: string;
 }
 
@@ -121,7 +116,6 @@ const sponsorSlides: Slide[] = [
 
 export function Onboarding({
   onComplete,
-  onBack,
   onSkip,
   userType,
   screenName = "onboarding_intro",
@@ -165,31 +159,16 @@ export function Onboarding({
     else onComplete();
   };
 
-  const prevSlide = () => {
-    if (index > 0) goTo(index - 1);
-    else onBack?.();
-  };
-
-  const handleSkip = onSkip ?? onComplete;
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
-        {/* Top Navigation */}
-        <View style={[styles.topNav, !onBack && styles.topNavNoBack]}>
-          {onBack && (
-            <TouchableOpacity
-              onPress={prevSlide}
-              style={styles.iconBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-            >
-              <ArrowLeft color={Colors.ink} size={24} />
-            </TouchableOpacity>
-          )}
+        {/* Top Navigation — no back arrow: there's nothing before this
+            (it's the first thing a new user sees on their dashboard), and
+            the pager itself is still swipeable in both directions. */}
+        <View style={styles.topNav}>
           <TouchableOpacity
-            onPress={handleSkip}
+            onPress={onSkip}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel="Skip onboarding"
@@ -551,18 +530,10 @@ const styles = StyleSheet.create({
   },
   topNav: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 10,
-  },
-  // No back arrow (post-signup modal, nothing to go back to) — Skip sits
-  // alone on the right instead of leaving a hole on the left.
-  topNavNoBack: {
-    justifyContent: "flex-end",
-  },
-  iconBtn: {
-    padding: 8,
   },
   skipText: {
     fontFamily: Fonts.sansMedium,

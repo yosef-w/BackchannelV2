@@ -1,5 +1,5 @@
 // IntroCinema — the applicant's pre-signup film (choose-role → here →
-// onboarding slides; SponsorCinema is its deliberate mirror for sponsors).
+// sign-up; SponsorCinema is its deliberate mirror for sponsors).
 // Instead of telling, the app demos ITSELF as a scripted, auto-playing
 // film with the classic problem → turn → solution arc:
 //
@@ -120,7 +120,7 @@ const DOC_FALL_STAGGER = 0.006;
 const DOC_FALL_LEN = 0.035;
 
 interface IntroCinemaProps {
-  /** Advance the funnel (both the CTA and Skip land on the slides). */
+  /** Advance the funnel (both the CTA and Skip continue to sign-up). */
   onContinue: () => void;
   /** Escape hatch for returning users who wandered into the new-user path. */
   onSignIn: () => void;

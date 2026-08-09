@@ -1,13 +1,12 @@
-// HomeIntro — the first-run product tour shown once, right before a
-// newly-signed-up user sees their real dashboard. Presented as a
-// full-screen Modal over Home (a one-time overlay, not real navigation —
-// dismissing it just resumes the Home screen underneath).
+// HomeIntro — the first-run product tour shown once, right after a
+// newly-signed-up user lands on their real dashboard for the first time.
+// Presented as a full-screen Modal over Home (a one-time overlay, not
+// real navigation — dismissing it just resumes the Home screen
+// underneath).
 //
-// Reuses the SAME rebranded slides pager as the pre-signup onboarding
-// step (components/Onboarding.tsx) instead of a second, differently
-// -styled tour — one slide language across the whole funnel. No back
-// arrow here (nothing to go back to); Skip and finishing the deck both
-// just dismiss.
+// Wraps components/Onboarding.tsx, whose only appearance in the app is
+// here — the pre-signup funnel goes straight from the role's film into
+// sign-up with no slides in between.
 //
 // Role-aware copy; one-time per role (the caller persists the flag),
 // replayable via the Home header "?".

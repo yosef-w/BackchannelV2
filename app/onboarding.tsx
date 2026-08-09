@@ -2,13 +2,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ApplicantQuestionnaire } from "../components/ApplicantQuestionnaire";
 import { AuthScreen } from "../components/AuthScreen";
-import { Onboarding } from "../components/Onboarding";
 import { SponsorQuestionnaire } from "../components/SponsorQuestionnaire";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 
 type UserType = "applicant" | "sponsor";
-type Step = "onboarding" | "auth" | "questionnaire";
+type Step = "auth" | "questionnaire";
 
 export default function OnboardingScreen() {
   const params = useLocalSearchParams<{ mode?: string }>();
@@ -29,18 +28,18 @@ export default function OnboardingScreen() {
   // (app/sign-in.tsx's "Continue with Apple/Google", role unknown there)
   // and got routed to /choose-role -> here still needing a role. They
   // already have tokens (useAuthStore.isAuthenticated) and a pending
-  // identity (useOnboardingStore.ssoSession) — showing them the intro
-  // slides and a sign-up form again would be a confusing detour after
-  // they already completed the "sign up" gesture. A password-signup user
-  // is never both of these at once: setAuthTokens for that path doesn't
-  // fire until registration succeeds inside the questionnaire itself, well
-  // after this component's initial render, so this can't misfire for them.
+  // identity (useOnboardingStore.ssoSession) — showing them a sign-up form
+  // again would be a confusing detour after they already completed the
+  // "sign up" gesture. A password-signup user is never both of these at
+  // once: setAuthTokens for that path doesn't fire until registration
+  // succeeds inside the questionnaire itself, well after this component's
+  // initial render, so this can't misfire for them.
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const ssoSession = useOnboardingStore((state) => state.ssoSession);
   const skipToQuestionnaire = isAuthenticated && !!ssoSession;
 
   const [step, setStep] = useState<Step>(
-    skipToQuestionnaire ? "questionnaire" : "onboarding",
+    skipToQuestionnaire ? "questionnaire" : "auth",
   );
   // Normally the auth step defaults to sign-up (this route is the new-user
   // path). But if registration later fails because the email is already
@@ -55,34 +54,23 @@ export default function OnboardingScreen() {
     setStep("auth");
   };
 
-  if (step === "onboarding") {
-    return (
-      <Onboarding
-        // Normal history is splash → choose-role → intro film → here, so
-        // back returns into the flow the user actually walked. The
-        // replace() fallback covers deep links / hot reloads with no stack.
-        onBack={() =>
-          router.canGoBack() ? router.back() : router.replace("/choose-role")
-        }
-        onComplete={() => setStep("auth")}
-        userType={userType}
-      />
-    );
-  }
-
   if (step === "auth") {
     return (
       <AuthScreen
         userType={userType}
         // This route is only reached via the new-user path (choose-role →
-        // onboarding slides → "Get Started"), so default to sign-up. A user
-        // who already has an account can still tap "Sign in" on this screen,
-        // or use the splash screen's direct sign-in link to skip this flow
-        // entirely.
+        // the role's film → "Find your way in"), so default to sign-up. A
+        // user who already has an account can still tap "Sign in" on this
+        // screen, or use the splash screen's direct sign-in link (or the
+        // film's own sign-in link) to skip this flow entirely.
         initialIsLogin={authInitialIsLogin}
         onBack={() => {
           setAuthInitialIsLogin(false);
-          setStep("onboarding");
+          // No earlier step on this route anymore — return into the route
+          // history (the role's film). The replace() fallback covers deep
+          // links / hot reloads with no stack.
+          if (router.canGoBack()) router.back();
+          else router.replace("/choose-role");
         }}
         onComplete={() => setStep("questionnaire")}
         onLoginComplete={() =>

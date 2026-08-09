@@ -1,5 +1,5 @@
 // SponsorCinema — the sponsor's pre-signup film (choose-role → here →
-// onboarding slides), the deliberate mirror of IntroCinema: same arc,
+// sign-up), the deliberate mirror of IntroCinema: same arc,
 // same clock, same motion vocabulary, same premium finish — but this
 // time the viewer is the person INSIDE, and the story is theirs:
 //
@@ -105,7 +105,7 @@ const BURY_BUBBLES: { x: number; y: number; r: string; at: number }[] = [
 ];
 
 interface SponsorCinemaProps {
-  /** Advance the funnel (both the CTA and Skip land on the slides). */
+  /** Advance the funnel (both the CTA and Skip continue to sign-up). */
   onContinue: () => void;
   /** Escape hatch for returning users who wandered into the new-user path. */
   onSignIn: () => void;

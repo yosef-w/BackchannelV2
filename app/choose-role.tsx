@@ -5,8 +5,8 @@ import { hasSeenIntroFilm } from "@/lib/introFilmSeen";
 
 export default function ChooseRoleScreen() {
   // First pass plays the role's intro film; a user who has already watched
-  // it goes straight to the onboarding slides. Pushed (not replaced) so
-  // iOS swipe-back from the film/slides returns to role selection.
+  // it goes straight to sign-up. Pushed (not replaced) so iOS swipe-back
+  // from the film/sign-up returns to role selection.
   const handleSelect = async (mode: "applicant" | "sponsor") => {
     const seen = await hasSeenIntroFilm(mode);
     router.push({

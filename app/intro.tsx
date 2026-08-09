@@ -2,10 +2,12 @@
  * /intro — the pre-signup product film, played right AFTER role selection
  * so each audience gets its own cut: IntroCinema for applicants,
  * SponsorCinema for sponsors (deliberate mirrors — same arc, same feel).
- * Both Skip and the CTA continue to the role's onboarding slides; the
+ * Both Skip and the CTA continue straight to sign-up — there's no slides
+ * step in between; the "10 a day / match / referred" slides only appear
+ * once, post-signup, on the user's first Home view (see HomeIntro). The
  * sign-in link rescues returning users who wandered into the new-user
  * path. Watching once sets a seen-flag so choose-role routes straight to
- * the slides on later passes. iOS swipe-back returns to role selection
+ * sign-up on later passes. iOS swipe-back returns to role selection
  * (pushed, not replaced).
  */
 
@@ -19,7 +21,7 @@ export default function IntroRoute() {
   const params = useLocalSearchParams<{ mode?: string }>();
   const role = params.mode === "sponsor" ? "sponsor" : "applicant";
 
-  const continueToSlides = () => {
+  const continueToSignup = () => {
     markIntroFilmSeen(role); // fire-and-forget
     router.push({ pathname: "/onboarding", params: { mode: role } });
   };
@@ -32,7 +34,7 @@ export default function IntroRoute() {
   if (role === "sponsor") {
     return (
       <SponsorCinema
-        onContinue={continueToSlides}
+        onContinue={continueToSignup}
         onSignIn={signIn}
         onBack={back}
       />
@@ -40,7 +42,7 @@ export default function IntroRoute() {
   }
   return (
     <IntroCinema
-      onContinue={continueToSlides}
+      onContinue={continueToSignup}
       onSignIn={signIn}
       onBack={back}
     />

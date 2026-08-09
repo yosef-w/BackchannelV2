@@ -211,11 +211,13 @@ function RootLayout() {
             <Stack.Screen name="splash" options={{ headerShown: false }} />
             <Stack.Screen name="choose-role" options={{ headerShown: false }} />
             {/* Role-tailored product films — splash → choose-role → intro
-                (IntroCinema or SponsorCinema by ?mode=) → onboarding. */}
+                (IntroCinema or SponsorCinema by ?mode=) → onboarding
+                (sign-up; the "10 a day" slides only appear post-signup,
+                on first Home view — see components/ui/HomeIntro.tsx). */}
             <Stack.Screen name="intro" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             {/* Direct sign-in entry for returning users — skips role
-                selection and the onboarding slides. */}
+                selection and the intro film. */}
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             {/* Legacy alias — redirects into the (tabs) shell, preserving
                 ?tab= / ?mode= params from older navigation call sites. */}
