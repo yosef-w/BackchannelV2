@@ -53,6 +53,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
+  Pressable,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -63,10 +64,8 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
-  FadeOut,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -279,6 +278,12 @@ export function HomeView({
     return userType === "applicant" ? jobs.length === 0 : false;
   });
   const [showCelebration, setShowCelebration] = useState(false);
+  // Auto-dismiss timer for the "Interest Sent!" moment; null = nothing in
+  // flight. finishCelebration's null guard makes the timer and
+  // tap-anywhere-to-continue idempotent (the loser of the race no-ops).
+  const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [matchedUser, setMatchedUser] = useState<{
     name: string;
     image: string;
@@ -1088,10 +1093,7 @@ export function HomeView({
       } else if (!didMatch) {
         // Standard swipe-right toast — only shown when there is no mutual match
         setShowCelebration(true);
-        setTimeout(() => {
-          setShowCelebration(false);
-          nextProfile(true);
-        }, 1800);
+        celebrationTimerRef.current = setTimeout(finishCelebration, 1800);
       }
       // When didMatch=true, nextProfile is called when the match modal is dismissed
     } else {
@@ -1130,6 +1132,17 @@ export function HomeView({
       }
       nextProfile(false);
     }
+  };
+
+  // Completes the "Interest Sent!" moment exactly once — fired by the
+  // 1.8s auto-dismiss timer or by tap-anywhere-to-continue, whichever
+  // comes first.
+  const finishCelebration = () => {
+    if (celebrationTimerRef.current === null) return;
+    clearTimeout(celebrationTimerRef.current);
+    celebrationTimerRef.current = null;
+    setShowCelebration(false);
+    nextProfile(true);
   };
 
   // Hinge-style profile transition. The card-flip metaphor is gone, so
@@ -2010,34 +2023,48 @@ export function HomeView({
         </View>
       </SafeAreaView>
 
-      {/* Celebration Message */}
+      {/* Celebration Message — in a transparent Modal so the frost covers
+          the ENTIRE screen, header and tab bar included (PM feedback: the
+          confirmation should be the sole focus, with every other action
+          blocked). Tap anywhere to continue early; otherwise the 1.8s
+          timer completes the moment. Never overlaps the match modal —
+          didMatch and this branch are mutually exclusive. */}
       {showCelebration && (
-        <Animated.View
-          entering={FadeIn}
-          exiting={FadeOut}
-          style={StyleSheet.absoluteFill}
+        <Modal
+          visible
+          transparent
+          statusBarTranslucent
+          animationType="fade"
+          onRequestClose={finishCelebration}
         >
-          <BlurView
-            intensity={80}
+          <Pressable
             style={StyleSheet.absoluteFill}
-            tint="light"
-          />
-          <View style={styles.overlayCenter}>
-            <Animated.View
-              entering={ZoomIn.duration(400)}
-              style={styles.celebrationCard}
-            >
-              {/* Quiet tick, not success — this fires up to 10x/day. */}
-              <ConfirmPop size={60} haptic="tick" />
-              <Text style={styles.celebrationTitle}>Interest Sent!</Text>
-              <Text style={styles.celebrationSub}>
-                {userType === "sponsor"
-                  ? `You've shown interest in ${"name" in currentData ? currentData.name : "this applicant"} — we'll let you know if they connect back.`
-                  : `You've shown interest in ${"title" in currentData ? currentData.title : "this role"} — we'll let you know if the sponsor connects.`}
-              </Text>
-            </Animated.View>
-          </View>
-        </Animated.View>
+            onPress={finishCelebration}
+            accessibilityRole="button"
+            accessibilityLabel="Continue"
+          >
+            <BlurView
+              intensity={80}
+              style={StyleSheet.absoluteFill}
+              tint="light"
+            />
+            <View style={styles.overlayCenter} pointerEvents="none">
+              <Animated.View
+                entering={ZoomIn.duration(400)}
+                style={styles.celebrationCard}
+              >
+                {/* Quiet tick, not success — this fires up to 10x/day. */}
+                <ConfirmPop size={60} haptic="tick" />
+                <Text style={styles.celebrationTitle}>Interest Sent!</Text>
+                <Text style={styles.celebrationSub}>
+                  {userType === "sponsor"
+                    ? `You've shown interest in ${"name" in currentData ? currentData.name : "this applicant"} — we'll let you know if they connect back.`
+                    : `You've shown interest in ${"title" in currentData ? currentData.title : "this role"} — we'll let you know if the sponsor connects.`}
+                </Text>
+              </Animated.View>
+            </View>
+          </Pressable>
+        </Modal>
       )}
 
       <MatchCelebrationModal
