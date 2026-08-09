@@ -32,6 +32,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { AppState, AppStateStatus, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 // Initialize crash reporting at module scope — before any UI mounts — so
 // even crashes during the very first render are captured. No-ops when
@@ -204,47 +205,51 @@ function RootLayout() {
           until the app actually supports dark mode end-to-end. */}
       <ThemeProvider value={DefaultTheme}>
         <GestureHandlerRootView style={styles.root}>
-          <StatusBar style="dark" />
+          {/* Powers KeyboardAwareScrollView (AuthScreen's sign-up/sign-in
+              form) — auto-scrolls the focused field above the keyboard. */}
+          <KeyboardProvider>
+            <StatusBar style="dark" />
 
-          {/* Main navigation stack for BackChannel */}
-          <Stack initialRouteName="splash">
-            <Stack.Screen name="splash" options={{ headerShown: false }} />
-            <Stack.Screen name="choose-role" options={{ headerShown: false }} />
-            {/* Role-tailored product films — splash → choose-role → intro
-                (IntroCinema or SponsorCinema by ?mode=) → onboarding
-                (sign-up; the "10 a day" slides only appear post-signup,
-                on first Home view — see components/ui/HomeIntro.tsx). */}
-            <Stack.Screen name="intro" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            {/* Direct sign-in entry for returning users — skips role
-                selection and the intro film. */}
-            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-            {/* Legacy alias — redirects into the (tabs) shell, preserving
-                ?tab= / ?mode= params from older navigation call sites. */}
-            <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="(tabs)"
-              options={{
-                headerShown: false,
-                // Prevent iOS swipe-back from ever leaving the authenticated
-                // shell — tab switching happens inside the Tabs navigator.
-                gestureEnabled: false,
-              }}
-            />
-            {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
-            <Stack.Screen
-              name="verify-email"
-              options={{ headerShown: false }}
-            />
-            {/* Deep-link target for `backchannelv2://reset-password?token=…` */}
-            <Stack.Screen
-              name="reset-password"
-              options={{ headerShown: false }}
-            />
-          </Stack>
+            {/* Main navigation stack for BackChannel */}
+            <Stack initialRouteName="splash">
+              <Stack.Screen name="splash" options={{ headerShown: false }} />
+              <Stack.Screen name="choose-role" options={{ headerShown: false }} />
+              {/* Role-tailored product films — splash → choose-role → intro
+                  (IntroCinema or SponsorCinema by ?mode=) → onboarding
+                  (sign-up; the "10 a day" slides only appear post-signup,
+                  on first Home view — see components/ui/HomeIntro.tsx). */}
+              <Stack.Screen name="intro" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              {/* Direct sign-in entry for returning users — skips role
+                  selection and the intro film. */}
+              <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+              {/* Legacy alias — redirects into the (tabs) shell, preserving
+                  ?tab= / ?mode= params from older navigation call sites. */}
+              <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="(tabs)"
+                options={{
+                  headerShown: false,
+                  // Prevent iOS swipe-back from ever leaving the authenticated
+                  // shell — tab switching happens inside the Tabs navigator.
+                  gestureEnabled: false,
+                }}
+              />
+              {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
+              <Stack.Screen
+                name="verify-email"
+                options={{ headerShown: false }}
+              />
+              {/* Deep-link target for `backchannelv2://reset-password?token=…` */}
+              <Stack.Screen
+                name="reset-password"
+                options={{ headerShown: false }}
+              />
+            </Stack>
 
-          {/* Global toast — overlays all screens */}
-          <AppToast />
+            {/* Global toast — overlays all screens */}
+            <AppToast />
+          </KeyboardProvider>
         </GestureHandlerRootView>
       </ThemeProvider>
     </QueryClientProvider>

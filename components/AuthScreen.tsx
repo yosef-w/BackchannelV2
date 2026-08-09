@@ -4,10 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
-    KeyboardAvoidingView,
-    Platform,
     SafeAreaView,
-    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -15,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import {
     identifyUser,
@@ -107,6 +105,14 @@ export function AuthScreen({
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Drives the focused-input visual affordance below — no field name here
+  // ever collides with another, so a single tracker covers the main form
+  // and the forgot-password modal's email field alike.
+  const [focusedField, setFocusedField] = useState<
+    "firstName" | "lastName" | "email" | "password" | "forgotEmail" | null
+  >(null);
+  const clearFocus = (field: string) =>
+    setFocusedField((f) => (f === field ? null : f));
   const seedSessionEmail = useUserProfileStore(
     (state) => state.seedSessionEmail,
   );
@@ -386,15 +392,17 @@ export function AuthScreen({
           </TouchableOpacity>
         </View>
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        {/* Auto-scrolls whichever field is focused (and the submit button
+            below it) above the keyboard as you type — plain ScrollView +
+            KeyboardAvoidingView only resize the available space, they
+            don't know to chase a specific focused input. */}
+        <KeyboardAwareScrollView
           style={styles.keyboardView}
+          bottomOffset={24}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
             {view === "picker" ? (
               /* ── The Front Door — method picker ─────────────────────
                  Headline + three equal pills (Apple, Google, email).
@@ -494,7 +502,12 @@ export function AuthScreen({
                   <>
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>First Name</Text>
-                      <View style={styles.inputWrapper}>
+                      <View
+                        style={[
+                          styles.inputWrapper,
+                          focusedField === "firstName" && styles.inputWrapperFocused,
+                        ]}
+                      >
                         <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="First Name"
@@ -502,6 +515,8 @@ export function AuthScreen({
                           value={firstName}
                           onChangeText={setFirstName}
                           autoCapitalize="words"
+                          onFocus={() => setFocusedField("firstName")}
+                          onBlur={() => clearFocus("firstName")}
                           style={styles.input}
                         />
                       </View>
@@ -509,7 +524,12 @@ export function AuthScreen({
 
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>Last Name</Text>
-                      <View style={styles.inputWrapper}>
+                      <View
+                        style={[
+                          styles.inputWrapper,
+                          focusedField === "lastName" && styles.inputWrapperFocused,
+                        ]}
+                      >
                         <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="Last Name"
@@ -517,6 +537,8 @@ export function AuthScreen({
                           value={lastName}
                           onChangeText={setLastName}
                           autoCapitalize="words"
+                          onFocus={() => setFocusedField("lastName")}
+                          onBlur={() => clearFocus("lastName")}
                           style={styles.input}
                         />
                       </View>
@@ -526,7 +548,12 @@ export function AuthScreen({
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email Address</Text>
-                  <View style={styles.inputWrapper}>
+                  <View
+                    style={[
+                      styles.inputWrapper,
+                      focusedField === "email" && styles.inputWrapperFocused,
+                    ]}
+                  >
                     <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email"
@@ -535,6 +562,8 @@ export function AuthScreen({
                       onChangeText={setEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => clearFocus("email")}
                       style={styles.input}
                     />
                   </View>
@@ -542,7 +571,12 @@ export function AuthScreen({
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Password</Text>
-                  <View style={styles.inputWrapper}>
+                  <View
+                    style={[
+                      styles.inputWrapper,
+                      focusedField === "password" && styles.inputWrapperFocused,
+                    ]}
+                  >
                     <Lock color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Password"
@@ -551,6 +585,8 @@ export function AuthScreen({
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => clearFocus("password")}
                       style={styles.input}
                     />
                     <TouchableOpacity
@@ -620,8 +656,7 @@ export function AuthScreen({
               </TouchableOpacity>
             </Animated.View>
             )}
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
 
         {showForgotPasswordModal && (
           <View style={styles.modalOverlay}>
@@ -642,7 +677,12 @@ export function AuthScreen({
                     password.
                   </Text>
 
-                  <View style={styles.modalInputWrapper}>
+                  <View
+                    style={[
+                      styles.modalInputWrapper,
+                      focusedField === "forgotEmail" && styles.inputWrapperFocused,
+                    ]}
+                  >
                     <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email Address"
@@ -651,6 +691,8 @@ export function AuthScreen({
                       onChangeText={setForgotPasswordEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      onFocus={() => setFocusedField("forgotEmail")}
+                      onBlur={() => clearFocus("forgotEmail")}
                       style={styles.input}
                     />
                   </View>
@@ -797,6 +839,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  // The "you are here" affordance the PM flagged as missing — applied on
+  // top of inputWrapper/modalInputWrapper for whichever field is focused.
+  inputWrapperFocused: {
+    borderColor: Colors.ink,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   inputIcon: {
     marginRight: 12,
