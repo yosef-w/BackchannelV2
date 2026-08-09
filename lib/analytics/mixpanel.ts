@@ -301,7 +301,7 @@ export function trackIntroFilmViewed(role: AnalyticsUserType): void {
  */
 export function trackIntroFilmDismissed(args: {
   role: AnalyticsUserType;
-  action: "skip" | "cta" | "sign_in";
+  action: "skip" | "cta" | "sign_in" | "back";
   watchSeconds: number;
   completedFirstPlay: boolean;
 }): void {

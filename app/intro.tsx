@@ -24,9 +24,25 @@ export default function IntroRoute() {
     router.push({ pathname: "/onboarding", params: { mode: role } });
   };
   const signIn = () => router.push("/sign-in");
+  // Wrong role? Back returns to role selection (the normal history), with
+  // a replace() fallback for deep links / hot reloads that have no stack.
+  const back = () =>
+    router.canGoBack() ? router.back() : router.replace("/choose-role");
 
   if (role === "sponsor") {
-    return <SponsorCinema onContinue={continueToSlides} onSignIn={signIn} />;
+    return (
+      <SponsorCinema
+        onContinue={continueToSlides}
+        onSignIn={signIn}
+        onBack={back}
+      />
+    );
   }
-  return <IntroCinema onContinue={continueToSlides} onSignIn={signIn} />;
+  return (
+    <IntroCinema
+      onContinue={continueToSlides}
+      onSignIn={signIn}
+      onBack={back}
+    />
+  );
 }

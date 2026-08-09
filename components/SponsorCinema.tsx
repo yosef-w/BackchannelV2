@@ -30,6 +30,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Colors, Fonts, Type } from '@/constants/theme';
+import { ArrowLeft } from '@/components/ui/icons';
 import { PressableScale } from '@/components/ui/PressableScale';
 import {
   ActProgress,
@@ -108,9 +109,15 @@ interface SponsorCinemaProps {
   onContinue: () => void;
   /** Escape hatch for returning users who wandered into the new-user path. */
   onSignIn: () => void;
+  /** Return to role selection — for users who picked the wrong role. */
+  onBack: () => void;
 }
 
-export function SponsorCinema({ onContinue, onSignIn }: SponsorCinemaProps) {
+export function SponsorCinema({
+  onContinue,
+  onSignIn,
+  onBack,
+}: SponsorCinemaProps) {
   const { master, breath, march, advance } = useCinemaClock(
     TOTAL_MS,
     LOOP_START,
@@ -123,7 +130,7 @@ export function SponsorCinema({ onContinue, onSignIn }: SponsorCinemaProps) {
   useEffect(() => {
     trackIntroFilmViewed('sponsor');
   }, []);
-  const dismiss = (action: 'skip' | 'cta' | 'sign_in') => {
+  const dismiss = (action: 'skip' | 'cta' | 'sign_in' | 'back') => {
     const watchMs = Date.now() - mountedAt.current;
     trackIntroFilmDismissed({
       role: 'sponsor',
@@ -132,6 +139,7 @@ export function SponsorCinema({ onContinue, onSignIn }: SponsorCinemaProps) {
       completedFirstPlay: watchMs >= TOTAL_MS,
     });
     if (action === 'sign_in') onSignIn();
+    else if (action === 'back') onBack();
     else onContinue();
   };
 
@@ -372,9 +380,19 @@ export function SponsorCinema({ onContinue, onSignIn }: SponsorCinemaProps) {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Header: eyebrow + Skip */}
+        {/* Header: back (wrong role? escape hatch) + eyebrow + Skip */}
         <View style={styles.topRow}>
-          <Text style={styles.eyebrow}>HOW IT WORKS</Text>
+          <View style={styles.topLeft}>
+            <TouchableOpacity
+              onPress={() => dismiss('back')}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel="Back to role selection"
+            >
+              <ArrowLeft color={Colors.muted} size={22} />
+            </TouchableOpacity>
+            <Text style={styles.eyebrow}>HOW IT WORKS</Text>
+          </View>
           <TouchableOpacity
             onPress={() => dismiss('skip')}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -721,6 +739,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 28,
     paddingTop: 18,
+  },
+  topLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   eyebrow: {
     fontFamily: Fonts.sansSemiBold,
