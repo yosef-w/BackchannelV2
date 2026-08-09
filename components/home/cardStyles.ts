@@ -92,13 +92,17 @@ export const cardStyles = StyleSheet.create({
   },
   // 11px floor (not the app's 12px section-header floor: these are table
   // keys, not section headers) with a fixed key column so values align
-  // into a scannable ledger. Width fits the longest key, COMPENSATION.
+  // into a scannable ledger. Width is sized off the longest key
+  // (COMPENSATION ≈ 101px at this size/tracking) with real headroom —
+  // a wrapped key orphans its last letter onto a second line, which is
+  // exactly the widow bug this width exists to prevent. Call sites also
+  // set numberOfLines={1} as the backstop.
   kLedgerKey: {
-    width: 106,
+    width: 118,
     flexShrink: 0,
     fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     color: Colors.muted,
     paddingTop: 2,
   },

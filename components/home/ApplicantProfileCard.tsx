@@ -165,7 +165,9 @@ export function ApplicantProfileCard({
           <View style={cardStyles.kLedger}>
             {ledger.map((row) => (
               <View key={row.key} style={cardStyles.kLedgerRow}>
-                <Text style={cardStyles.kLedgerKey}>{row.key}</Text>
+                <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+                  {row.key}
+                </Text>
                 <View style={cardStyles.kLedgerValueWrap}>
                   <Text style={cardStyles.kLedgerValue} numberOfLines={2}>
                     {row.value}

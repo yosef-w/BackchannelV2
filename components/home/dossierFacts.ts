@@ -91,7 +91,11 @@ export function deriveExperienceFact(
 /**
  * Experience-level field for the "THE SETUP" row. The backend sends
  * either a label ("Senior") or bare digits ("5+", "3-5") — digits get
- * the "years experience" suffix so they read as a phrase.
+ * the "years experience" suffix so they read as a phrase. The suffix is
+ * glued with non-breaking spaces (and any spaces inside the digit range
+ * are converted too) so a wrapping ledger value can never orphan
+ * "experience" onto its own line — the joined SETUP value breaks at its
+ * " · " separators instead.
  */
 export function formatExperienceLevelLabel(
   value?: string | null,
@@ -99,6 +103,6 @@ export function formatExperienceLevelLabel(
   const trimmed = (value || "").trim();
   if (!trimmed) return null;
   return /^[\d+\-\s]+$/.test(trimmed)
-    ? `${trimmed} years experience`
+    ? `${trimmed.replace(/\s+/g, " ")} years experience`
     : trimmed;
 }

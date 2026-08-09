@@ -119,16 +119,19 @@ export function JobCardContent({
   const ledger: { key: string; value: string; sub?: string }[] = [];
   if (salary) ledger.push({ key: "COMPENSATION", value: salary });
   if (setup) ledger.push({ key: "THE SETUP", value: setup });
+  // Fixed phrases below use non-breaking spaces ( ) so a wrap can
+  // never orphan the last word of a phrase onto its own line — multi-part
+  // values break at the " · " separators instead.
   if (fitPercent !== null)
     ledger.push({
       key: "YOUR FIT",
-      value: `${fitPercent}% match, by our read`,
+      value: `${fitPercent}% match, by our read`,
     });
   if (isSponsored === false) {
     ledger.push({
       key: "YOUR SPONSOR",
       value: "No one yet",
-      sub: "You'll be notified the moment someone signs on",
+      sub: "You'll be notified the moment someone signs on",
     });
   } else if (si && (si.name || "").trim()) {
     ledger.push({
@@ -136,8 +139,10 @@ export function JobCardContent({
       value: si.name,
       sub: joinFacts([
         si.role,
-        si.yearsAtCompany ? `${si.yearsAtCompany} here` : "",
-        si.canRefer ? "Can refer directly" : "",
+        si.yearsAtCompany
+          ? `${String(si.yearsAtCompany).trim().replace(/\s+/g, " ")} here`
+          : "",
+        si.canRefer ? "Can refer directly" : "",
       ]),
     });
   }
@@ -199,7 +204,9 @@ export function JobCardContent({
           <View style={cardStyles.kLedger}>
             {ledger.map((row) => (
               <View key={row.key} style={cardStyles.kLedgerRow}>
-                <Text style={cardStyles.kLedgerKey}>{row.key}</Text>
+                <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+                  {row.key}
+                </Text>
                 <View style={cardStyles.kLedgerValueWrap}>
                   <Text style={cardStyles.kLedgerValue} numberOfLines={2}>
                     {row.value}

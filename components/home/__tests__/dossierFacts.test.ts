@@ -138,9 +138,13 @@ describe("deriveExperienceFact", () => {
 });
 
 describe("formatExperienceLevelLabel", () => {
-  it("suffixes bare digit ranges and passes labels through", () => {
-    expect(formatExperienceLevelLabel("5+")).toBe("5+ years experience");
-    expect(formatExperienceLevelLabel("3-5")).toBe("3-5 years experience");
+  it("suffixes bare digit ranges (NBSP-glued against widows) and passes labels through", () => {
+    expect(formatExperienceLevelLabel("5+")).toBe(
+      "5+ years experience",
+    );
+    expect(formatExperienceLevelLabel("3 - 5")).toBe(
+      "3 - 5 years experience",
+    );
     expect(formatExperienceLevelLabel("Senior")).toBe("Senior");
   });
 
