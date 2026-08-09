@@ -4,6 +4,22 @@ import { SplashScreen } from "../components/SplashScreen";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { getPendingOnboardingRole } from "@/utils/onboardingDraft";
 
+// One auto-route decision per app LAUNCH (module-level so it survives
+// splash unmount/remount). The focus effect below exists to catch the
+// cold-start case — restore tokens, then forward a returning or
+// mid-onboarding user off the splash. Without this latch it also fired
+// every time the user deliberately backed INTO splash: the funnel's
+// back-button fallbacks replace() to /splash with no stack, splash
+// gained focus, saw "authenticated + onboarding unfinished", and
+// instantly bounced them forward to /onboarding again — an inescapable
+// résumé-screen ⇄ role-picker loop for anyone whose account was
+// registered mid-questionnaire, with splash unreachable. The latch is
+// set on the first definitive evaluation (auth finished loading) OR on
+// splash's first focus loss, whichever comes first — so the redirect
+// can only ever happen while splash has been continuously focused since
+// launch.
+let autoRouteDecided = false;
+
 export default function SplashRoute() {
   // Tokens are loaded (and silently refreshed if stale) by RootLayout on
   // startup. Once that finishes, send returning users straight to the
@@ -29,7 +45,14 @@ export default function SplashRoute() {
   useFocusEffect(
     useCallback(() => {
       redirectingRef.current = false;
-      if (isLoading || !isAuthenticated) return;
+      // Backed-into splash (or any focus after the launch window): show
+      // the screen, never auto-forward. See autoRouteDecided above.
+      if (autoRouteDecided) return;
+      if (isLoading) return;
+      // Auth state is definitive — this launch's one routing decision
+      // happens now, redirect or not.
+      autoRouteDecided = true;
+      if (!isAuthenticated) return;
       (async () => {
         // Authenticated ≠ done signing up: the applicant questionnaire
         // registers the account at its FIRST step, well before the rest
@@ -54,6 +77,11 @@ export default function SplashRoute() {
       return () => {
         // Focus lost — anything still in flight must not navigate.
         redirectingRef.current = true;
+        // The cold-start window is over the moment splash first loses
+        // focus, even if auth was still loading when the user moved on
+        // (e.g. a fast "Get Started" tap) — otherwise a later back-into-
+        // splash would evaluate as if it were the launch focus.
+        autoRouteDecided = true;
       };
     }, [isLoading, isAuthenticated]),
   );
