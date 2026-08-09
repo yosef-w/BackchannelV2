@@ -39,77 +39,97 @@ export function SkeletonCard() {
       showsVerticalScrollIndicator={false}
       scrollEnabled={false}
     >
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 24 }}>
-        {/* 96×96 circular avatar */}
-        <Animated.View
-          style={[
-            {
-              width: 96,
-              height: 96,
-              borderRadius: 48,
-              backgroundColor: Colors.border,
-            },
-            shimmerStyle,
-          ]}
-        />
-        {/* Name shimmer ~60% */}
-        <Animated.View
-          style={[
-            {
-              backgroundColor: Colors.border,
-              width: "58%",
-              height: 26,
-              borderRadius: 6,
-              marginTop: 16,
-            },
-            shimmerStyle,
-          ]}
-        />
-        {/* Subtitle shimmer ~38% */}
-        <Animated.View
-          style={[
-            {
-              backgroundColor: Colors.border,
-              width: "38%",
-              height: 16,
-              borderRadius: 4,
-              marginTop: 8,
-            },
-            shimmerStyle,
-          ]}
-        />
-        {/* Fact-pill row */}
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 7,
-            marginTop: 14,
-            justifyContent: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          {([80, 90, 75, 65] as number[]).map((w, i) => (
+      {/* ── Hero — dossier ID block (square photo + identity lines) ── */}
+      <View style={{ paddingTop: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+          {/* 96×96 square ID photo */}
+          <Animated.View
+            style={[
+              {
+                width: 96,
+                height: 96,
+                borderRadius: 18,
+                backgroundColor: Colors.border,
+              },
+              shimmerStyle,
+            ]}
+          />
+          <View style={{ flex: 1 }}>
+            {/* Name shimmer */}
             <Animated.View
-              key={i}
               style={[
                 {
                   backgroundColor: Colors.border,
-                  width: w,
-                  height: 28,
-                  borderRadius: 999,
+                  width: "78%",
+                  height: 24,
+                  borderRadius: 6,
                 },
                 shimmerStyle,
               ]}
             />
+            {/* Sub-line shimmer */}
+            <Animated.View
+              style={[
+                {
+                  backgroundColor: Colors.border,
+                  width: "55%",
+                  height: 14,
+                  borderRadius: 4,
+                  marginTop: 9,
+                },
+                shimmerStyle,
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Ledger rows — key stub + value stub between hairlines */}
+        <View
+          style={{
+            marginTop: 18,
+            borderTopWidth: 1,
+            borderTopColor: Colors.border,
+          }}
+        >
+          {([62, 78, 70] as number[]).map((w, i) => (
+            <View
+              key={i}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                paddingVertical: 13,
+                borderBottomWidth: 1,
+                borderBottomColor: Colors.border,
+              }}
+            >
+              <Animated.View
+                style={[
+                  {
+                    backgroundColor: Colors.border,
+                    width: 84,
+                    height: 11,
+                    borderRadius: 4,
+                  },
+                  shimmerStyle,
+                ]}
+              />
+              <Animated.View
+                style={[
+                  {
+                    backgroundColor: Colors.border,
+                    width: `${w}%` as const,
+                    height: 13,
+                    borderRadius: 4,
+                    flexShrink: 1,
+                  },
+                  shimmerStyle,
+                ]}
+              />
+            </View>
           ))}
         </View>
       </View>
-
-      {/* ── Divider ──────────────────────────────────────────────── */}
-      <View
-        style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }}
-      />
 
       {/* ── ABOUT section ────────────────────────────────────────── */}
       <View style={{ paddingVertical: 18 }}>

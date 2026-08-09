@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 /**
  * Shared style cluster for the Hinge-style profile/job cards rendered by
@@ -10,71 +10,159 @@ import { Colors, Type } from "@/constants/theme";
  * split and stay shared now.
  */
 export const cardStyles = StyleSheet.create({
-  // ── Hero (applicant identity / job identity) ──────────────────────
-  hingeHero: {
-    alignItems: "center",
+  // ── Hero — "Dossier" ID block (2026-08 K redesign) ────────────────
+  // PM feedback: the old centered avatar hero surfaced only photo, name,
+  // and title, burying the standout facts below the fold. The dossier
+  // hero is a passport-style ID row (modest square photo beside the
+  // identity — deliberately not a dating-app portrait) followed by a
+  // hairline LEDGER of the facts that decide the swipe. Shared verbatim
+  // by both decks: applicant cards (EXPERIENCE / SHARPEST AT / KNOWN
+  // FOR) and job cards (COMPENSATION / THE SETUP / YOUR FIT / YOUR
+  // SPONSOR).
+  kHero: {
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: 4,
   },
-  hingeHeroAvatar: {
+  kIdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  kIdPhoto: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    backgroundColor: "#F0F0F0",
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
   },
-  hingeHeroAvatarFallback: {
+  kIdPhotoFallback: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    backgroundColor: "#000",
+    borderRadius: 18,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  hingeHeroAvatarInitial: {
+  kIdPhotoInitial: {
+    fontFamily: Fonts.serif,
     fontSize: 36,
-    fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
   },
-  // The card's primary identity — a person's name or a job title — is
-  // this screen's headline. Same treatment as a person's name elsewhere
-  // (ProfileIdentityCard).
-  hingeHeroName: {
-    ...Type.heading,
-    fontSize: 26,
-    lineHeight: 30,
+  kIdText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  // Names and job titles are headline-tier (serif), same rule as
+  // ProfileIdentityCard — sized for a column beside the ID photo, with
+  // numberOfLines at the call site handling the long tail.
+  kIdName: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    lineHeight: 29,
     color: Colors.ink,
-    marginTop: 16,
-    textAlign: "center",
+    letterSpacing: -0.3,
   },
-  hingeHeroSubtitle: {
-    fontSize: 15,
+  kIdSub: {
+    fontSize: 13.5,
     fontWeight: "500",
     color: Colors.body,
-    textAlign: "center",
-    marginTop: 4,
+    lineHeight: 19,
+    marginTop: 5,
   },
-  hingeHeroPillRow: {
+  // The italic accent inside the sub-line (desired role / company) —
+  // the site's signature serif-italic-muted emphasis.
+  kIdSubEm: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 14.5,
+    color: Colors.muted,
+  },
+  // The hairline ledger. Rows own their bottom rule, and the top rule
+  // closes the box — so the ledger also replaces the old hero divider.
+  kLedger: {
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  kLedgerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  // 11px floor (not the app's 12px section-header floor: these are table
+  // keys, not section headers) with a fixed key column so values align
+  // into a scannable ledger. Width fits the longest key, COMPENSATION.
+  kLedgerKey: {
+    width: 106,
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: Colors.muted,
+    paddingTop: 2,
+  },
+  kLedgerValueWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  kLedgerValue: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13.5,
+    color: Colors.ink,
+    lineHeight: 19,
+  },
+  kLedgerValueSub: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: Colors.muted,
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  // Pull-quote — the candidate's/sponsor's own words promoted from the
+  // buried Q&A list to right under the ledger. "In their own words" is
+  // the product's differentiator; it reads as editorial, not résumé.
+  kQuote: {
+    paddingTop: 22,
+    paddingBottom: 4,
+  },
+  kQuoteMark: {
+    fontFamily: Fonts.serif,
+    fontSize: 40,
+    lineHeight: 42,
+    color: Colors.faint,
+    marginBottom: -10,
+  },
+  kQuoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 19,
+    lineHeight: 27,
+    color: Colors.ink,
+  },
+  kQuoteAttr: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: Colors.muted,
+    marginTop: 10,
+  },
+  // Top-of-card badge row (status pills + SPONSORED ROLE) — left-aligned
+  // to match the dossier hero's left rag.
+  kBadgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    marginTop: 14,
+    gap: 6,
+    marginBottom: 12,
   },
 
   // ── "Liked your role" top-of-card pill ────────────────────────────
   likedYourRoleRow: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     marginBottom: 8,
   },
 
   // ── Section primitives ────────────────────────────────────────────
-  hingeDivider: {
-    height: 1,
-    backgroundColor: "#F0F0F0",
-    marginVertical: 4,
-  },
   hingeSection: { paddingVertical: 18 },
   hingeSectionLabel: {
     fontSize: 12,
@@ -273,12 +361,8 @@ export const cardStyles = StyleSheet.create({
     marginTop: 3,
   },
 
-  // ── Status banner (waitlisted / applied / sponsor-requested) ──────
-  statusBannerRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
+  // ── Status pills (waitlisted / applied / sponsored role) — rendered
+  // inside kBadgeRow at the top of the card ──────────────────────────
   statusBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -416,56 +500,6 @@ export const cardStyles = StyleSheet.create({
     color: "#333",
     letterSpacing: -0.1,
   },
-  // Accent pill — used for the AI-match score. Black so it stands apart
-  // from the neutral fact pills.
-  heroPillAccent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#000",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  heroPillAccentText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: -0.1,
-  },
-  // Sponsorship status pill (job cards only).
-  heroStatusSponsored: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginTop: 10,
-  },
-  heroStatusSponsoredText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 0.2,
-  },
-  heroStatusMuted: {
-    backgroundColor: "#F2F2F2",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginTop: 10,
-  },
-  heroStatusMutedText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: Colors.muted,
-    letterSpacing: 0.2,
-  },
-
   // ── Referral Check-in Banner ───────────────────────────────────────────────
   canReferTag: {
     flexDirection: "row",
@@ -517,24 +551,6 @@ export const cardStyles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
-  },
-
-  // Relevance badge & requirements summary
-  roleDetailChip: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 5,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  roleDetailChipText: {
-    fontSize: 13,
-    color: "#000",
-    fontWeight: "500" as const,
   },
 
   // "View original posting" row — shows the sponsor's pasted domain
