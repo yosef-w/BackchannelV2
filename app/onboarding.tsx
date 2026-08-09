@@ -58,7 +58,12 @@ export default function OnboardingScreen() {
   if (step === "onboarding") {
     return (
       <Onboarding
-        onBack={() => router.replace("/choose-role")}
+        // Normal history is splash → choose-role → intro film → here, so
+        // back returns into the flow the user actually walked. The
+        // replace() fallback covers deep links / hot reloads with no stack.
+        onBack={() =>
+          router.canGoBack() ? router.back() : router.replace("/choose-role")
+        }
         onComplete={() => setStep("auth")}
         userType={userType}
       />

@@ -1,42 +1,25 @@
-// IntroCinema — the applicant's pre-signup film (choose-role → here →
-// onboarding slides; SponsorCinema is its deliberate mirror for sponsors).
-// Instead of telling, the app demos ITSELF as a scripted, auto-playing
-// film with the classic problem → turn → solution arc:
+// SponsorCinema — the sponsor's pre-signup film (choose-role → here →
+// onboarding slides), the deliberate mirror of IntroCinema: same arc,
+// same clock, same motion vocabulary, same premium finish — but this
+// time the viewer is the person INSIDE, and the story is theirs:
 //
-//   Act 0 (the problem): applications rain into an anonymous pile; a scan
-//     line sweeps it and YOUR application gets auto-rejected — the broken
-//     status quo (job boards, ATS screens, no human ever looking).
-//   The turn: the pile sweeps away. "Your next job comes from someone
-//     inside." — the thesis, in the brand serif.
-//   Act 1 (the deck): a job card gets passed, the next gets connected.
-//   Act 2 (the match): avatars spring together; "It's a Match".
-//   Act 3 (the referral): a company tile joins, the backchannel line
-//     flows, "Referred ✓" lands — the film's true climax (the ring, the
-//     success haptic). Finale: "That's BackChannel."
+//   Act 0 (the problem): cold referral asks rain into an inbox pile; one
+//     lands front and center — a stranger, nothing to go on — and more
+//     keep burying it. The verdict slaps on: you CAN'T vouch for someone
+//     you don't know. That's the broken status quo of referring.
+//   The turn: the pile sweeps away. "Someone's next job comes from you."
+//     — the sponsor thesis, in the brand serif.
+//   Act 1 (the deck): candidate cards — real people who want in where
+//     the sponsor already is — get passed and connected.
+//   Act 2 (the match): sponsor and candidate spring together.
+//   Act 3 (the referral): the company tile joins, the backchannel line
+//     flows, "Referred ✓" lands — the climax (a door only they could
+//     open). Finale: "That's BackChannel."
 //
-// Engineering shape: ONE master clock (a 0→1 shared value, run by the
-// shared cinema engine) drives every element through windowed
-// interpolations in UI-thread worklets — no timeout chains. The problem
-// act plays ONCE; every loop after the first rewinds to LOOP_START (the
-// stage is empty there, so the cut is invisible) and replays only the
-// solution acts — the story resolves once and stays resolved.
-// Tapping the stage hard-cuts to the next act; each act crossing lands a
-// haptic beat; a stories-style hairline shows reel progress.
-//
-// Premium-motion layer (deliberate, per design review):
-// - Expo-style bezier eases (fast start, long deceleration) instead of
-//   stock cubics — the "expensive" curve Apple/Stripe pieces run on.
-// - Anticipation & impact: cards wind up before flying and arc through
-//   the air; stamps make their card recoil; the auto-reject shakes the
-//   whole pile.
-// - Idle life: a slow breathing float on staged actors so no frame is
-//   ever frozen.
-// - A slow per-act camera push-in (the frame itself moves).
-// - A pulse ring on the avatars' contact (the Apple Pay payoff beat).
-// - Captions reveal WORD BY WORD (spoken, not slabbed), exit along their
-//   direction of travel, and carry typographic voices per act: cold
-//   muted problem lines, the thesis in serif with the italic accent,
-//   light mechanics, serif finale.
+// Engineering shape is identical to IntroCinema (see its header comment):
+// one master clock from the shared cinema engine, windowed worklet
+// interpolations, problem act plays once then solution acts loop,
+// tap-to-advance, haptic beats, act-progress hairline.
 
 import React, { useEffect, useRef } from 'react';
 import { Dimensions, Pressable, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -68,17 +51,11 @@ import {
 const { width: W } = Dimensions.get('window');
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-// The solution acts kept their approved pacing (≈16.5s) — the problem act
-// occupies the first ~30% of the reel.
+// Same reel geometry as the applicant film — the two films are cut to the
+// exact same rhythm, so the brand feels like one hand made both.
 const TOTAL_MS = 23500;
 const STAGE_H = 320;
-
-// After the first full play the reel rewinds here (the pile has fully
-// exited, the deck hasn't entered — an empty stage, so the cut is
-// invisible) and loops the solution acts only.
 const LOOP_START = 0.305;
-// Act starts: the turn/deck, the match, the referral. Used for
-// tap-to-advance and the progress hairline (act 1 = the problem, from 0).
 const ACT_STARTS = [LOOP_START, 0.545, 0.706] as const;
 const ACTS = [
   [0, LOOP_START],
@@ -87,8 +64,8 @@ const ACTS = [
   [0.706, 1],
 ] as const;
 
-// Felt beats: the rejection slap, the Connect stamp, the avatars meeting,
-// and — heaviest of all — the referral landing (the film's climax).
+// Felt beats, mirroring the applicant reel: the can't-vouch slap, the
+// Connect stamp, the meeting, and — heaviest — the referral landing.
 const BEATS: readonly CinemaBeat[] = [
   { at: 0.172, kind: 'impact' },
   { at: 0.452, kind: 'tick' },
@@ -97,10 +74,10 @@ const BEATS: readonly CinemaBeat[] = [
 ];
 
 // ── Act 0 set dressing ──────────────────────────────────────────────────
-// The anonymous pile: small doc cards that rain in and heap up. Fixed,
-// hand-scattered positions (x/y relative to stage center, deg rotation);
-// index order = fall order.
-const PILE_DOCS: { x: number; y: number; r: string }[] = [
+// The inbox pile: cold referral requests (chat-bubble cards) that rain in
+// and heap up. Same scatter/fall choreography as the applicant's résumé
+// pile — a different pile, the same suffocation.
+const REQUEST_BUBBLES: { x: number; y: number; r: string }[] = [
   { x: -78, y: 52, r: '-9deg' },
   { x: 44, y: 64, r: '7deg' },
   { x: -18, y: 70, r: '3deg' },
@@ -114,18 +91,26 @@ const PILE_DOCS: { x: number; y: number; r: string }[] = [
   { x: 28, y: 58, r: '9deg' },
   { x: -34, y: 56, r: '-7deg' },
 ];
-const DOC_FALL_START = 0.012;
-const DOC_FALL_STAGGER = 0.006;
-const DOC_FALL_LEN = 0.035;
+const BUBBLE_FALL_START = 0.012;
+const BUBBLE_FALL_STAGGER = 0.006;
+const BUBBLE_FALL_LEN = 0.035;
 
-interface IntroCinemaProps {
+// While the focused ask sits center-stage, more keep landing ON it — the
+// volume is the point. These fall late, during the would-be reading beat.
+const BURY_BUBBLES: { x: number; y: number; r: string; at: number }[] = [
+  { x: -46, y: -26, r: '-8deg', at: 0.128 },
+  { x: 40, y: -4, r: '6deg', at: 0.14 },
+  { x: -8, y: 14, r: '-3deg', at: 0.152 },
+];
+
+interface SponsorCinemaProps {
   /** Advance the funnel (both the CTA and Skip land on the slides). */
   onContinue: () => void;
   /** Escape hatch for returning users who wandered into the new-user path. */
   onSignIn: () => void;
 }
 
-export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
+export function SponsorCinema({ onContinue, onSignIn }: SponsorCinemaProps) {
   const { master, breath, march, advance } = useCinemaClock(
     TOTAL_MS,
     LOOP_START,
@@ -136,12 +121,12 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
   // Watch-time analytics: one dismissal event, whichever exit is taken.
   const mountedAt = useRef(Date.now());
   useEffect(() => {
-    trackIntroFilmViewed('applicant');
+    trackIntroFilmViewed('sponsor');
   }, []);
   const dismiss = (action: 'skip' | 'cta' | 'sign_in') => {
     const watchMs = Date.now() - mountedAt.current;
     trackIntroFilmDismissed({
-      role: 'applicant',
+      role: 'sponsor',
       action,
       watchSeconds: Math.round(watchMs / 1000),
       completedFirstPlay: watchMs >= TOTAL_MS,
@@ -152,8 +137,6 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
 
   // ── Act 0: the problem ────────────────────────────────────────────────
 
-  // Whole-pile container: slow camera push across the act; shakes on the
-  // rejection; exits downward during the turn.
   const pileGroup = useAnimatedStyle(() => {
     const t = master.value;
     const push = 1 + 0.04 * win(t, 0.0, 0.26);
@@ -170,9 +153,8 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
     };
   });
 
-  // Your application — falls last, lands on top of the heap with a
-  // follow-through settle.
-  const yourDoc = useAnimatedStyle(() => {
+  // The focused cold ask — falls last, lands front and center.
+  const yourAsk = useAnimatedStyle(() => {
     const t = master.value;
     const p = easeOut(win(t, 0.085, 0.125));
     return {
@@ -181,27 +163,7 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
     };
   });
 
-  // The AI screen: corner brackets lock onto the résumé, a soft band
-  // sweeps down INSIDE the document (clipped by the card), and a labeled
-  // chip explains what's happening — then the verdict slaps on.
-  const scanBrackets = useAnimatedStyle(() => {
-    const t = master.value;
-    const inP = easeOut(win(t, 0.112, 0.124));
-    const out = win(t, 0.163, 0.172);
-    return { opacity: inP * (1 - out) };
-  });
-
-  const scanBand = useAnimatedStyle(() => {
-    const t = master.value;
-    const sweep = easeInOut(win(t, 0.125, 0.162));
-    const vis = win(t, 0.122, 0.13) * (1 - win(t, 0.158, 0.166));
-    return {
-      opacity: vis,
-      transform: [{ translateY: -34 + sweep * 158 }],
-    };
-  });
-
-  const aiChip = useAnimatedStyle(() => {
+  const requestChip = useAnimatedStyle(() => {
     const t = master.value;
     const inP = easeOut(win(t, 0.112, 0.128));
     const out = win(t, 0.162, 0.172);
@@ -211,15 +173,14 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
     };
   });
 
-  const rejectStamp = useAnimatedStyle(() => {
+  const vouchStamp = useAnimatedStyle(() => {
     const t = master.value;
     const p = backOut(win(t, 0.165, 0.19));
     return { opacity: p, transform: [{ scale: 0.7 + p * 0.3 }, { rotate: '-6deg' }] };
   });
 
   // ── Act 1: the deck ───────────────────────────────────────────────────
-  // (All solution-act windows are the approved 16.5s choreography,
-  // linearly remapped into [0.30, 1.0] of the longer reel.)
+  // Identical choreography to the applicant reel; the props are people.
 
   const stackIn = useAnimatedStyle(() => {
     const t = master.value;
@@ -236,13 +197,11 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
 
   const cardA = useAnimatedStyle(() => {
     const t = master.value;
-    // Impact recoil while the Pass mark lands, wind-up lift, then an
-    // arcing fly-off (parabolic rise mid-flight).
     const stampP = win(t, 0.356, 0.374);
     const recoil = Math.sin(stampP * Math.PI) * 0.015;
     const windup = easeOut(win(t, 0.368, 0.377));
     const fly = easeIn(win(t, 0.377, 0.437));
-    const arc = fly * (1 - fly) * 4; // 0→1→0 parabola
+    const arc = fly * (1 - fly) * 4;
     return {
       opacity: 1 - win(t, 0.423, 0.437),
       transform: [
@@ -298,8 +257,7 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
     };
   });
 
-  // ── Acts 2 + 3 share one "scene group" so the camera can push into the
-  // whole match-and-referral tableau together. ──────────────────────────
+  // ── Acts 2 + 3: match & referral under one camera ─────────────────────
 
   const sceneGroup = useAnimatedStyle(() => {
     const t = master.value;
@@ -315,7 +273,7 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
   });
 
   const AV_APART = 120;
-  const AV_MEET = 34; // overlap distance from center once met
+  const AV_MEET = 34;
 
   const avatarsGroup = useAnimatedStyle(() => {
     const t = master.value;
@@ -342,9 +300,7 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
     return { transform: [{ translateX: AV_APART - p * (AV_APART - AV_MEET) }] };
   });
 
-  // The contact payoff: a soft ring pulses outward the moment they meet.
-  // Deliberately quieter than the referral's ring — the match is a step,
-  // the referral is the destination, and the film's energy must peak there.
+  // Quieter than the referral's ring — the energy must peak at the climax.
   const pulseRing = useAnimatedStyle(() => {
     const t = master.value;
     const p = easeOut(win(t, 0.598, 0.645));
@@ -399,9 +355,7 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
     };
   });
 
-  // The film's climax ring: bigger, brighter, and slower than the match's
-  // pulse — "Referred ✓" is the whole promise of the product, so it lands
-  // with the loudest payoff of the reel (paired with the success haptic).
+  // The climax ring — the referral is the door only the sponsor can open.
   const referralRing = useAnimatedStyle(() => {
     const t = master.value;
     const p = easeOut(win(t, 0.828, 0.905));
@@ -411,8 +365,6 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
     };
   });
 
-  // Backchannel line geometry: from the (shifted) avatar pair to the
-  // company tile, dipping gently below their shared centerline.
   const cx = W / 2;
   const cy = STAGE_H / 2;
   const lineD = `M ${cx - 52} ${cy + 6} Q ${cx} ${cy + 44} ${cx + 56} ${cy + 6}`;
@@ -443,77 +395,66 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
           accessibilityRole="button"
           accessibilityLabel="Skip to next scene"
         >
-          {/* Act 0: the pile, your résumé, the AI screen, the verdict */}
+          {/* Act 0: the inbox pile, the cold ask, the verdict */}
           <Animated.View style={[styles.centerSlot, pileGroup]}>
-            {PILE_DOCS.map((doc, i) => (
-              <PileDoc key={i} doc={doc} index={i} master={master} />
+            {REQUEST_BUBBLES.map((bubble, i) => (
+              <RequestBubble key={i} bubble={bubble} index={i} master={master} />
             ))}
-            <Animated.View style={[styles.yourDoc, yourDoc]}>
-              {/* A real document, not a skeleton: header identity row +
-                  micro-typography sections. */}
-              <View style={styles.resumeHeader}>
-                <View style={styles.resumeAvatar} />
-                <View style={styles.resumeHeaderText}>
-                  <Text style={styles.resumeName}>Your résumé</Text>
-                  <Text style={styles.resumeMeta}>PDF · 2 pages</Text>
+            <Animated.View style={[styles.yourAsk, yourAsk]}>
+              {/* A real message, not a skeleton: sender you don't know,
+                  the ask you can't act on. */}
+              <View style={styles.askHeader}>
+                <View style={styles.askAvatar} />
+                <View style={styles.askHeaderText}>
+                  <Text style={styles.askSender}>Unknown sender</Text>
+                  <Text style={styles.askMeta}>2nd degree · just now</Text>
                 </View>
               </View>
-              <Text style={styles.resumeSection}>EXPERIENCE</Text>
-              <View style={[styles.resumeLine, { width: '86%' }]} />
-              <View style={[styles.resumeLine, { width: '68%' }]} />
-              <Text style={styles.resumeSection}>SKILLS</Text>
-              <View style={[styles.resumeLine, { width: '58%' }]} />
-              {/* The scan band sweeps inside the card (clipped). */}
-              <Animated.View style={[styles.scanBand, scanBand]}>
-                <View style={styles.scanBandEdge} />
-              </Animated.View>
-              {/* Scanner lock-on brackets. */}
-              <Animated.View
-                pointerEvents="none"
-                style={[StyleSheet.absoluteFill, scanBrackets]}
-              >
-                <View style={[styles.bracket, styles.bracketTL]} />
-                <View style={[styles.bracket, styles.bracketTR]} />
-                <View style={[styles.bracket, styles.bracketBL]} />
-                <View style={[styles.bracket, styles.bracketBR]} />
-              </Animated.View>
-              <Animated.View style={[styles.rejectStamp, rejectStamp]}>
-                <Text style={styles.rejectStampText}>✕ AUTO-REJECTED</Text>
+              <Text style={styles.askBody}>
+                “Hi! We haven’t met, but could you refer me for a role at
+                your company?”
+              </Text>
+              <Animated.View style={[styles.vouchStamp, vouchStamp]}>
+                <Text style={styles.vouchStampText}>✕ CAN’T VOUCH</Text>
               </Animated.View>
             </Animated.View>
-            {/* What's happening, labeled — floats above the document. */}
-            <Animated.View style={[styles.aiChip, aiChip]}>
-              <Text style={styles.aiChipText}>AI SCREENING</Text>
+            {/* More keep landing on top of the one you're reading. */}
+            {BURY_BUBBLES.map((bubble, i) => (
+              <BuryBubble key={i} bubble={bubble} master={master} />
+            ))}
+            {/* What's happening, labeled — floats above the inbox. */}
+            <Animated.View style={[styles.requestChip, requestChip]}>
+              <Text style={styles.requestChipText}>REQUESTS · 47 THIS WEEK</Text>
             </Animated.View>
           </Animated.View>
 
-          {/* Act 1: the deck (C under B under A) */}
+          {/* Act 1: the deck of candidates (C under B under A) */}
           <Animated.View style={[styles.cardSlot, stackIn]}>
             <Animated.View style={[styles.miniCard, cardC]}>
-              <MiniCardContent
-                monogram="N"
-                title="Data Scientist"
-                company="Northport · Remote"
-                chips={['ML', '$165k+']}
+              <MiniPersonContent
+                monogram="S"
+                name="Sana Iqbal"
+                detail="Data Scientist · Northport"
+                chips={['ML', '5 yrs']}
               />
             </Animated.View>
             <Animated.View style={[styles.miniCard, cardB]}>
-              <MiniCardContent
-                monogram="A"
-                title="Backend Engineer"
-                company="Atlas Health · NYC"
-                chips={['Python', '$150k+']}
+              <MiniPersonContent
+                monogram="D"
+                name="Devon Park"
+                detail="Backend Engineer · Atlas Health"
+                chips={['Python', '4 yrs']}
               />
               <Animated.View style={[styles.connectStamp, connectStamp]}>
                 <Text style={styles.connectStampText}>Connect ✓</Text>
               </Animated.View>
             </Animated.View>
             <Animated.View style={[styles.miniCard, cardA]}>
-              <MiniCardContent
+              <MiniPersonContent
                 monogram="M"
-                title="Senior Product Designer"
-                company="Meridian Labs · Remote"
-                chips={['$130–160k', 'Design']}
+                name="Maya Chen"
+                detail="Product Designer · Meridian Labs"
+                chips={['Figma', '6 yrs']}
               />
               <Animated.View style={[styles.passStamp, passStamp]}>
                 <Text style={styles.passStampText}>✕</Text>
@@ -523,7 +464,6 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
 
           {/* Acts 2+3: match & referral, under one camera */}
           <Animated.View style={[styles.centerSlot, sceneGroup]}>
-            {/* Backchannel line (under the actors) */}
             <Animated.View
               pointerEvents="none"
               style={[StyleSheet.absoluteFill, lineStyle]}
@@ -543,11 +483,12 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
 
             <Animated.View style={[styles.centerSlot, avatarsGroup]}>
               <Animated.View style={[styles.pulseRing, pulseRing]} />
-              <Animated.View style={[styles.avatar, avatarLeft]}>
+              {/* You — the sponsor — on the left, in the darker tone. */}
+              <Animated.View style={[styles.avatar, styles.avatarYou, avatarLeft]}>
                 <Text style={styles.avatarInitial}>Y</Text>
               </Animated.View>
-              <Animated.View style={[styles.avatar, styles.avatarSponsor, avatarRight]}>
-                <Text style={styles.avatarInitial}>S</Text>
+              <Animated.View style={[styles.avatar, avatarRight]}>
+                <Text style={styles.avatarInitial}>D</Text>
               </Animated.View>
               <Animated.View style={[styles.matchBadge, matchBadge]}>
                 <Text style={styles.matchBadgeText}>✓</Text>
@@ -561,7 +502,7 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
 
             <Animated.View style={[styles.centerSlot, companyTile]}>
               <View style={styles.companyTile}>
-                <Text style={styles.companyMonogram}>M</Text>
+                <Text style={styles.companyMonogram}>A</Text>
               </View>
             </Animated.View>
             <View style={styles.referredChipWrap} pointerEvents="none">
@@ -575,23 +516,23 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
           </Animated.View>
         </Pressable>
 
-        {/* ── Captions ──
-            Word-by-word reveals with per-act typographic voices: cold
-            muted problem lines, the thesis in serif + italic accent,
-            light mechanics, serif finale. */}
+        {/* ── Captions ── mirrored voices: cold problem lines, the sponsor
+            thesis in serif + italic accent, light mechanics, serif finale. */}
         <View style={styles.captionArea}>
           <CinemaCaption
             master={master}
             enter={0.02}
             out={[0.135, 0.16]}
-            segments={[{ text: 'The old way of applying is broken.' }]}
+            segments={[{ text: 'The old way of referring is broken.' }]}
             textStyle={styles.captionCold}
           />
           <CinemaCaption
             master={master}
             enter={0.165}
             out={[0.275, 0.30]}
-            segments={[{ text: 'Screened out before a human sees you.' }]}
+            segments={[
+              { text: 'Cold asks from strangers you can’t vouch for.' },
+            ]}
             textStyle={styles.captionCold}
           />
           <CinemaCaption
@@ -599,8 +540,8 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
             enter={0.315}
             out={[0.419, 0.44]}
             segments={[
-              { text: 'Your next job comes from' },
-              { text: 'someone inside.', accent: true },
+              { text: 'Someone’s next job comes from' },
+              { text: 'you.', accent: true },
             ]}
             textStyle={styles.captionThesis}
             accentStyle={styles.captionThesisAccent}
@@ -609,21 +550,21 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
             master={master}
             enter={0.44}
             out={[0.538, 0.559]}
-            segments={[{ text: 'Connect with the jobs you want.' }]}
+            segments={[{ text: 'Connect with talent worth your name.' }]}
             textStyle={styles.caption}
           />
           <CinemaCaption
             master={master}
             enter={0.566}
             out={[0.685, 0.706]}
-            segments={[{ text: 'Meet your sponsor.' }]}
+            segments={[{ text: 'Meet your candidate.' }]}
             textStyle={styles.caption}
           />
           <CinemaCaption
             master={master}
             enter={0.72}
             out={[0.888, 0.909]}
-            segments={[{ text: 'A real referral, from a real person.' }]}
+            segments={[{ text: 'A door only you can open.' }]}
             textStyle={styles.caption}
           />
           <CinemaCaption
@@ -647,7 +588,7 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
             style={styles.cta}
             accessibilityRole="button"
           >
-            <Text style={styles.ctaText}>Find your way in</Text>
+            <Text style={styles.ctaText}>Be someone’s way in</Text>
           </PressableScale>
           <TouchableOpacity
             onPress={() => dismiss('sign_in')}
@@ -666,65 +607,97 @@ export function IntroCinema({ onContinue, onSignIn }: IntroCinemaProps) {
   );
 }
 
-/** One anonymous application in the pile — falls in on its index's window. */
-function PileDoc({
-  doc,
+/** One cold referral request in the pile — falls in on its index's window. */
+function RequestBubble({
+  bubble,
   index,
   master,
 }: {
-  doc: { x: number; y: number; r: string };
+  bubble: { x: number; y: number; r: string };
   index: number;
   master: SharedValue<number>;
 }) {
   const style = useAnimatedStyle(() => {
     const t = master.value;
-    const a = DOC_FALL_START + index * DOC_FALL_STAGGER;
-    const p = easeOut(win(t, a, a + DOC_FALL_LEN));
+    const a = BUBBLE_FALL_START + index * BUBBLE_FALL_STAGGER;
+    const p = easeOut(win(t, a, a + BUBBLE_FALL_LEN));
     return {
       opacity: p * 0.9,
       transform: [
-        { translateX: doc.x },
-        { translateY: doc.y + (1 - p) * -260 },
-        { rotate: doc.r },
+        { translateX: bubble.x },
+        { translateY: bubble.y + (1 - p) * -260 },
+        { rotate: bubble.r },
       ],
     };
   });
 
   return (
-    <Animated.View style={[styles.pileDoc, style]}>
-      <View style={styles.pileDocHeader}>
-        <View style={styles.pileDocAvatar} />
-        <View style={[styles.pileDocLine, { flex: 1 }]} />
+    <Animated.View style={[styles.requestBubble, style]}>
+      <View style={styles.requestBubbleHeader}>
+        <View style={styles.requestBubbleAvatar} />
+        <View style={[styles.requestBubbleLine, { flex: 1 }]} />
       </View>
-      <View style={[styles.pileDocLine, { width: '78%' }]} />
-      <View style={[styles.pileDocLine, { width: '55%' }]} />
+      <View style={[styles.requestBubbleLine, { width: '72%' }]} />
     </Animated.View>
   );
 }
 
-function MiniCardContent({
+/** A late request that lands ON the one being read — the volume beat. */
+function BuryBubble({
+  bubble,
+  master,
+}: {
+  bubble: { x: number; y: number; r: string; at: number };
+  master: SharedValue<number>;
+}) {
+  const style = useAnimatedStyle(() => {
+    const t = master.value;
+    const p = easeOut(win(t, bubble.at, bubble.at + 0.03));
+    return {
+      opacity: p,
+      transform: [
+        { translateX: bubble.x },
+        { translateY: bubble.y - 44 + (1 - p) * -220 },
+        { rotate: bubble.r },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.requestBubble, style]}>
+      <View style={styles.requestBubbleHeader}>
+        <View style={styles.requestBubbleAvatar} />
+        <View style={[styles.requestBubbleLine, { flex: 1 }]} />
+      </View>
+      <View style={[styles.requestBubbleLine, { width: '72%' }]} />
+    </Animated.View>
+  );
+}
+
+function MiniPersonContent({
   monogram,
-  title,
-  company,
+  name,
+  detail,
   chips,
 }: {
   monogram: string;
-  title: string;
-  company: string;
+  name: string;
+  detail: string;
   chips: string[];
 }) {
   return (
     <>
       <View style={styles.miniHeader}>
-        <View style={styles.miniLogo}>
+        {/* Round avatar — a person, not a company tile. */}
+        <View style={styles.miniAvatar}>
           <Text style={styles.miniMonogram}>{monogram}</Text>
         </View>
         <View style={styles.miniHeaderText}>
           <Text style={styles.miniTitle} numberOfLines={1}>
-            {title}
+            {name}
           </Text>
           <Text style={styles.miniCompany} numberOfLines={1}>
-            {company}
+            {detail}
           </Text>
         </View>
       </View>
@@ -786,14 +759,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // ── Act 0: the pile ───────────────────────────────────────────────────
-  // Other people's résumés — small but real: an identity dot and text
-  // lines, on true paper with a whisper of shadow.
-  pileDoc: {
+  // ── Act 0: the inbox pile ─────────────────────────────────────────────
+  // Cold asks as small speech-bubble cards: an identity dot you don't
+  // recognize and lines you'll never get to read.
+  requestBubble: {
     position: 'absolute',
-    width: 48,
-    height: 58,
-    borderRadius: 8,
+    width: 54,
+    height: 42,
+    borderRadius: 10,
+    borderBottomLeftRadius: 3,
     backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -805,47 +779,46 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  pileDocHeader: {
+  requestBubbleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  pileDocAvatar: {
+  requestBubbleAvatar: {
     width: 9,
     height: 9,
     borderRadius: 4.5,
     backgroundColor: Colors.border,
   },
-  pileDocLine: {
+  requestBubbleLine: {
     height: 4,
     borderRadius: 2,
     backgroundColor: Colors.surface,
   },
-  // Yours — a real document with a name on it, doomed anyway.
-  yourDoc: {
+  // The focused ask — a real message from nobody you know.
+  yourAsk: {
     position: 'absolute',
-    width: 138,
-    height: 148,
-    marginTop: -62,
+    width: 168,
+    marginTop: -58,
     borderRadius: 14,
+    borderBottomLeftRadius: 4,
     backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
     padding: 14,
-    overflow: 'hidden', // clips the scan band to the page
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.07,
     shadowRadius: 16,
     elevation: 4,
   },
-  resumeHeader: {
+  askHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  resumeAvatar: {
+  askAvatar: {
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -853,61 +826,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  resumeHeaderText: { flex: 1, gap: 1 },
-  resumeName: {
+  askHeaderText: { flex: 1, gap: 1 },
+  askSender: {
     fontFamily: Fonts.sansSemiBold,
     fontSize: 10.5,
     color: Colors.ink,
   },
-  resumeMeta: {
+  askMeta: {
     fontFamily: Fonts.sans,
     fontSize: 8,
     color: Colors.faint,
   },
-  // Micro-typography section labels — real document anatomy.
-  resumeSection: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 6.5,
-    letterSpacing: 0.8,
-    color: Colors.faint,
-    marginTop: 6,
-    marginBottom: 4,
+  askBody: {
+    fontFamily: Fonts.sans,
+    fontSize: 9.5,
+    lineHeight: 14,
+    color: Colors.body,
   },
-  resumeLine: {
-    height: 4.5,
-    borderRadius: 2.25,
-    backgroundColor: Colors.surface,
-    marginBottom: 4,
-  },
-  // The scan band: a soft tinted region with a reading edge, swept
-  // through the page interior.
-  scanBand: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 30,
-    backgroundColor: 'rgba(10, 10, 10, 0.045)',
-    justifyContent: 'flex-end',
-  },
-  scanBandEdge: {
-    height: 1.5,
-    backgroundColor: Colors.muted,
-    opacity: 0.7,
-  },
-  // Scanner lock-on brackets at the page corners.
-  bracket: {
-    position: 'absolute',
-    width: 13,
-    height: 13,
-    borderColor: Colors.muted,
-  },
-  bracketTL: { top: 5, left: 5, borderTopWidth: 2, borderLeftWidth: 2, borderTopLeftRadius: 3 },
-  bracketTR: { top: 5, right: 5, borderTopWidth: 2, borderRightWidth: 2, borderTopRightRadius: 3 },
-  bracketBL: { bottom: 5, left: 5, borderBottomWidth: 2, borderLeftWidth: 2, borderBottomLeftRadius: 3 },
-  bracketBR: { bottom: 5, right: 5, borderBottomWidth: 2, borderRightWidth: 2, borderBottomRightRadius: 3 },
-  // "AI SCREENING" — floats above the document while the band sweeps.
-  aiChip: {
+  // "REQUESTS · 47 THIS WEEK" — floats above the inbox.
+  requestChip: {
     position: 'absolute',
     marginTop: -168,
     alignSelf: 'center',
@@ -923,15 +860,15 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  aiChipText: {
+  requestChipText: {
     fontFamily: Fonts.sansSemiBold,
     fontSize: 8.5,
     letterSpacing: 1.2,
     color: Colors.muted,
   },
-  rejectStamp: {
+  vouchStamp: {
     position: 'absolute',
-    top: '42%',
+    top: '40%',
     alignSelf: 'center',
     backgroundColor: Colors.paper,
     borderWidth: 1.5,
@@ -940,15 +877,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  rejectStampText: {
+  vouchStampText: {
     color: Colors.danger,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   // ── Solution-act props ────────────────────────────────────────────────
-  // Real-contrast mini job card — this is the demo, not the splash's
-  // ghost texture, so it renders at full card fidelity.
   miniCard: {
     position: 'absolute',
     width: 250,
@@ -969,10 +904,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 12,
   },
-  miniLogo: {
+  miniAvatar: {
     width: 38,
     height: 38,
-    borderRadius: 11,
+    borderRadius: 19,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1005,7 +940,6 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: Colors.body,
   },
-  // Swipe stamps.
   passStamp: {
     position: 'absolute',
     top: 12,
@@ -1055,13 +989,12 @@ const styles = StyleSheet.create({
     elevation: 3,
     position: 'absolute',
   },
-  avatarSponsor: { backgroundColor: Colors.border },
+  avatarYou: { backgroundColor: Colors.border },
   avatarInitial: {
     fontFamily: Fonts.serif,
     fontSize: 26,
     color: Colors.body,
   },
-  // The contact payoff — an expanding, fading ring at the meet point.
   pulseRing: {
     position: 'absolute',
     width: 92,
@@ -1136,7 +1069,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  // The climax ring — expands out from behind the Referred chip.
   referralRing: {
     position: 'absolute',
     width: 110,
@@ -1152,21 +1084,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     justifyContent: 'center',
   },
-  // Mechanics voice — light, warm.
   caption: {
     fontFamily: Fonts.sansLight,
     fontSize: 17,
     lineHeight: 26,
     color: Colors.body,
   },
-  // Problem voice — colder, quieter.
   captionCold: {
     fontFamily: Fonts.sansLight,
     fontSize: 16,
     lineHeight: 24,
     color: Colors.muted,
   },
-  // The thesis — the film's most important sentence, in the brand serif.
   captionThesis: {
     fontFamily: Fonts.serif,
     fontSize: 21,

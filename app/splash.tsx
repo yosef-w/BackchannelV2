@@ -20,9 +20,10 @@ export default function SplashRoute() {
 
   return (
     <SplashScreen
-      // Pushed (not replaced) so iOS swipe-back from the intro demo
-      // returns here rather than exiting.
-      onGetStarted={() => router.push("/intro")}
+      // Role selection comes first now — the intro films are role-tailored
+      // and play right after the user picks a side. Pushed (not replaced)
+      // so iOS swipe-back returns here rather than exiting.
+      onGetStarted={() => router.push("/choose-role")}
       onSignIn={() => router.push("/sign-in")}
     />
   );
