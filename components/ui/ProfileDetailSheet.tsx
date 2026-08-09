@@ -24,6 +24,7 @@ import {
   RoleTicket,
   SectionCard,
   SkeletonCard,
+  SkillChips,
 } from "@/components/matches/JobSheetKit";
 import React, { useEffect, useState } from "react";
 import {
@@ -333,13 +334,7 @@ export function ProfileDetailSheet({
                   {/* Applicant skills */}
                   {variant === "applicant" && skills.length > 0 && (
                     <SectionCard title="Skills">
-                      <View style={styles.chipRow}>
-                        {skills.map((s, i) => (
-                          <View key={i} style={styles.darkChip}>
-                            <Text style={styles.darkChipText}>{s}</Text>
-                          </View>
-                        ))}
-                      </View>
+                      <SkillChips skills={skills} />
                     </SectionCard>
                   )}
 

@@ -195,18 +195,6 @@ export const modalStyles = StyleSheet.create({
     borderRadius: 8,
   },
   roleDetailChipText: { fontSize: 13, fontWeight: "600", color: "#000" },
-  skillBadge: {
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  skillsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
   sponsorCardAvatar: { width: 40, height: 40, borderRadius: 20 },
   sponsorCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
   sponsorCardHeader: {

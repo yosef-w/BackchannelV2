@@ -55,12 +55,10 @@ export function MatchSection({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        {!loading && count > 0 && (
-          <View style={styles.countPill}>
-            <Text style={styles.countText}>{count}</Text>
-          </View>
-        )}
+        <Text style={styles.title}>
+          {title}
+          {!loading && count > 0 ? ` · ${count}` : ""}
+        </Text>
       </View>
       {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       {!!error && <Text style={styles.error}>{error}</Text>}
@@ -108,16 +106,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
-  countPill: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 5,
-    borderRadius: 9,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  countText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
   subtitle: {
     fontSize: 12,
     color: Colors.muted,
@@ -129,12 +117,11 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     marginBottom: 10,
   },
+  // Flat hairline group — the Docket rebrand: rows sit on the paper
+  // between rules, no recessed box.
   group: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   loadingRow: {
     paddingVertical: 20,
@@ -147,6 +134,6 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
 });

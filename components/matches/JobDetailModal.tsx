@@ -21,6 +21,7 @@ import {
     ReadMoreText,
     SectionCard,
     SkeletonCard,
+    SkillChips,
     StatStrip,
     Timeline,
 } from "./JobSheetKit";
@@ -215,13 +216,7 @@ export function JobDetailModal({
 
               {job.skills.length > 0 && (
                 <SectionCard title="Skills">
-                  <View style={modalStyles.skillsRow}>
-                    {job.skills.map((skill, idx) => (
-                      <View key={idx} style={modalStyles.skillBadge}>
-                        <Text style={modalStyles.skillBadgeText}>{skill}</Text>
-                      </View>
-                    ))}
-                  </View>
+                  <SkillChips skills={job.skills} />
                 </SectionCard>
               )}
 

@@ -7,7 +7,6 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
 } from "react-native";
 import {
     DismissibleSheet,
@@ -21,6 +20,7 @@ import {
     ReadMoreText,
     SectionCard,
     SkeletonCard,
+    SkillChips,
     StatStrip,
     Timeline,
 } from "./JobSheetKit";
@@ -210,15 +210,7 @@ export function ReferralDetailModal({
                   )}
                   {!!enriched?.skills?.length && (
                     <SectionCard title="Skills">
-                      <View style={modalStyles.skillsRow}>
-                        {enriched.skills.map((skill, idx) => (
-                          <View key={idx} style={modalStyles.skillBadge}>
-                            <Text style={modalStyles.skillBadgeText}>
-                              {skill}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
+                      <SkillChips skills={enriched.skills} />
                     </SectionCard>
                   )}
                 </SheetScrollView>

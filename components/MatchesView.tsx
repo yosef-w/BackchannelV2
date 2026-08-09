@@ -982,7 +982,9 @@ export function MatchesView({
           {/* Renamed from "Opportunities" to match the "Matches" bottom-nav
               label — the screen and the tab that opens it should say the
               same thing. */}
-          <Text style={styles.title}>Matches</Text>
+          <Text style={styles.title}>
+            Your <Text style={styles.titleEm}>matches.</Text>
+          </Text>
           <Text style={styles.subtitle}>
             {userType === "applicant"
               ? "Your active opportunities & sponsors"
@@ -1489,6 +1491,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 100 },
   header: { marginBottom: 30 },
   title: { ...Type.title, color: Colors.ink },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   subtitle: {
     fontFamily: Fonts.sansLight,
     fontSize: 16,

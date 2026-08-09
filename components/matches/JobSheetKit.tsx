@@ -7,7 +7,6 @@ import {
     Copy,
     ExternalLink,
     Handshake,
-    MapPin,
     X,
 } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
@@ -15,7 +14,6 @@ import {
     ActivityIndicator,
     Image,
     Linking,
-    Platform,
     Share,
     StyleSheet,
     Text,
@@ -30,7 +28,7 @@ import Animated, { FadeIn,
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 // expo-clipboard's NATIVE module may be missing from the running binary
 // (dev client / TestFlight build compiled before the package was linked).
@@ -47,48 +45,34 @@ try {
 }
 
 /**
- * The shared vocabulary of the Matches-surface sheets — the "Gallery"
- * system: a soft off-white canvas with floating white cards, where depth
- * (elevation + tint) carries hierarchy instead of black fills. Black is
- * reserved for display typography and the CTA pill. Reference points:
- * App Store stat strips and buy bars, Airbnb's host card, Shop's vertical
- * order timeline, Hinge's prompt cards.
+ * The shared vocabulary of the Matches-surface sheets — the "Docket"
+ * system (2026-08 rebrand, replacing the floating-card Gallery): flat
+ * sections on paper divided by hairlines, serif identity blocks with
+ * square tiles, facts as a caps-key ledger (the deck cards' exact
+ * language), and one filled ink pill per surface for the primary action.
+ * No canvas tint, no card shadows — depth retired in favor of rules.
  */
 
-// ── Gallery tokens ──────────────────────────────────────────────────────
+// ── Docket tokens ───────────────────────────────────────────────────────
 
-/** Sheet background — the soft canvas white cards float on. */
-export const CANVAS = "#F6F7F9";
-const HAIRLINE = "rgba(15,23,42,0.06)";
-// Consolidated onto the shared palette (constants/theme.ts) — these were
-// a separate local Tailwind-gray scale duplicating Colors.body/.muted/
-// .surface under different names. Kept as local aliases (not exported,
-// used nowhere else) rather than touching every call site individually.
+/** Sheet background. The Gallery's soft canvas is gone — sheets sit on
+ * paper; kept exported under the old name for the call sites. */
+export const CANVAS = Colors.paper;
+const HAIRLINE = Colors.border;
 const SUB = Colors.body;
 const FAINT = Colors.muted;
 const TINT = Colors.surface;
 
-/** Bottom inset of a canvas sheet — BarFooter extends its background
- * through it so the bar reads as anchored, not floating. */
+/** Bottom inset of a sheet — BarFooter extends its background through it
+ * so the bar reads as anchored, not floating. */
 const SHEET_BOTTOM = 36;
 
-/** Merge into the sheet's content style to put it on the Gallery canvas. */
+/** Merge into the sheet's content style. */
 export const canvasSheet: ViewStyle = {
-  backgroundColor: CANVAS,
+  backgroundColor: Colors.paper,
   padding: 20,
   paddingBottom: SHEET_BOTTOM,
 };
-
-/** Elevation shared by every floating card. */
-const cardShadow: ViewStyle = Platform.select({
-  ios: {
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-  },
-  android: { elevation: 3 },
-})!;
 
 // ── Close affordances ───────────────────────────────────────────────────
 
@@ -111,7 +95,7 @@ export function SheetCloseButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Close affordance in a hero card's corner — scrolls with the content. */
+/** Close affordance in a hero block's corner — scrolls with the content. */
 function CardCloseButton({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity
@@ -168,13 +152,66 @@ export function ReadMoreText({
             {expanded ? "Show less" : "Read more"}
           </Text>
           {expanded ? (
-            <ChevronUp size={14} color="#000" strokeWidth={2.5} />
+            <ChevronUp size={14} color={Colors.ink} strokeWidth={2.5} />
           ) : (
-            <ChevronDown size={14} color="#000" strokeWidth={2.5} />
+            <ChevronDown size={14} color={Colors.ink} strokeWidth={2.5} />
           )}
         </TouchableOpacity>
       )}
     </>
+  );
+}
+
+
+// ── Skills (capped) ─────────────────────────────────────────────────────
+
+/**
+ * Skill chips capped at `initialCount` with a dashed "+N more" expander —
+ * ATS jobs ship 15-20 skills and an unbounded wall of chips dominated the
+ * scroll (PM feedback). Shared by every sheet that lists skills.
+ */
+export function SkillChips({
+  skills,
+  initialCount = 8,
+}: {
+  skills: string[];
+  initialCount?: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => setExpanded(false), [skills]);
+  if (skills.length === 0) return null;
+  const shown = expanded ? skills : skills.slice(0, initialCount);
+  const hiddenCount = skills.length - shown.length;
+  return (
+    <View style={g.skillsWrap}>
+      {shown.map((skill, idx) => (
+        <View key={`${skill}-${idx}`} style={g.skillChip}>
+          <Text style={g.skillChipText}>{skill}</Text>
+        </View>
+      ))}
+      {hiddenCount > 0 && (
+        <TouchableOpacity
+          style={g.skillMore}
+          onPress={() => setExpanded(true)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Show ${hiddenCount} more skills`}
+        >
+          <Text style={g.skillMoreText}>+{hiddenCount} more</Text>
+        </TouchableOpacity>
+      )}
+      {expanded && skills.length > initialCount && (
+        <TouchableOpacity
+          style={g.skillMore}
+          onPress={() => setExpanded(false)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Show fewer skills"
+        >
+          <Text style={g.skillMoreText}>Show fewer</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -192,9 +229,9 @@ export function PulsingDot() {
 }
 
 
-// ═══ Gallery components ═════════════════════════════════════════════════
+// ═══ Docket components ══════════════════════════════════════════════════
 
-/** A floating white card — the Gallery's basic unit of content. */
+/** A flat content section between hairlines — the Docket's basic unit. */
 export function Card({
   style,
   children,
@@ -205,7 +242,7 @@ export function Card({
   return <View style={[g.card, style]}>{children}</View>;
 }
 
-/** A titled floating card for a content section. */
+/** A titled flat section. */
 export function SectionCard({
   title,
   children,
@@ -222,8 +259,9 @@ export function SectionCard({
 }
 
 /**
- * The job's stage — a poster card: framed logo, display title, location,
- * and the original-posting link as a small trust pill.
+ * The job's identity — a dossier ID block: square logo tile beside the
+ * serif title and company · location line, with the original-posting
+ * domain as a quiet trust row.
  */
 export function PosterHero({
   logoUrl,
@@ -242,57 +280,51 @@ export function PosterHero({
   location?: string;
   remote?: boolean;
   sourceUrl?: string;
-  /** Close affordance in the card's corner — scrolls with the content. */
+  /** Close affordance in the block's corner — scrolls with the content. */
   onClose?: () => void;
 }) {
   const domain = sourceUrl ? extractDomainForPill(sourceUrl) : null;
+  const placeLine = joinDot([location, remote ? "Remote-friendly" : ""]);
   return (
-    <View style={[g.card, g.posterCard]}>
+    <View style={g.hero}>
       {onClose && <CardCloseButton onPress={onClose} />}
-      <View style={g.posterLogoTile}>
+      <View style={g.heroRow}>
         <CompanyLogo
           logoUrl={logoUrl}
           name={logoName || company || title}
           size={64}
-          borderRadius={18}
+          borderRadius={16}
           initialFontSize={26}
         />
-      </View>
-      <Text style={g.posterTitle}>{title}</Text>
-      {!!company && <Text style={g.posterCompany}>{company}</Text>}
-      {(!!location || remote) && (
-        <View style={g.posterMetaRow}>
-          {!!location && (
-            <>
-              <MapPin size={12} color={FAINT} />
-              <Text style={g.posterMetaText} numberOfLines={1}>
-                {location}
-              </Text>
-            </>
-          )}
-          {remote && (
-            <View style={g.tintPill}>
-              <Text style={g.tintPillText}>Remote</Text>
-            </View>
+        <View style={g.heroText}>
+          <Text style={g.heroTitle} numberOfLines={3}>
+            {title}
+          </Text>
+          {!!(company || placeLine) && (
+            <Text style={g.heroSub} numberOfLines={2}>
+              {!!company && <Text style={g.heroSubEm}>{company}</Text>}
+              {company && placeLine ? " · " : ""}
+              {placeLine}
+            </Text>
           )}
         </View>
-      )}
+      </View>
       {!!domain && (
         <TouchableOpacity
-          style={g.sourcePill}
+          style={g.sourceRow}
           onPress={() => Linking.openURL(sourceUrl!).catch(() => {})}
           activeOpacity={0.7}
           accessibilityLabel={`View original posting on ${domain}`}
         >
-          <ExternalLink size={11} color={Colors.ink} strokeWidth={2.2} />
-          <Text style={g.sourcePillText}>{domain}</Text>
+          <ExternalLink size={12} color={SUB} strokeWidth={2.2} />
+          <Text style={g.sourceRowText}>{domain}</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
-// Local, dependency-free domain trim for the source pill (jobTransforms'
+// Local, dependency-free domain trim for the source row (jobTransforms'
 // extractDisplayDomain lives with the jobs feature; the kit stays leaf).
 function extractDomainForPill(url: string): string | null {
   try {
@@ -303,10 +335,15 @@ function extractDomainForPill(url: string): string | null {
   }
 }
 
+/** " · "-joins the present parts. */
+function joinDot(parts: (string | undefined | null)[]): string {
+  return parts.filter((p) => !!p && p.trim().length > 0).join(" · ");
+}
+
 /**
- * A person's stage — photo-forward centered hero for profile sheets.
- * The status pill keeps whatever accent the caller passes (e.g. the red
- * "Wants to connect").
+ * A person's identity — the same dossier ID block with a square photo.
+ * Status chips render as outlined caps chips under the identity (the
+ * caller's accent color carries through for e.g. "Wants to connect").
  */
 export function PersonHero({
   name,
@@ -321,54 +358,50 @@ export function PersonHero({
   image?: string;
   meta?: string;
   location?: string;
-  /**
-   * Quiet neutral fact pill between the location and the status pill —
-   * e.g. tenure ("3-5 years at Snowflake") or experience. Detail facts
-   * belong on the person's card, not floating between content cards.
-   */
+  /** Quiet extra fact line under the meta — e.g. tenure or experience. */
   infoPill?: string;
   pill?: { label: string; color?: string; bgColor?: string };
-  /** Close affordance in the card's corner — scrolls with the content. */
+  /** Close affordance in the block's corner — scrolls with the content. */
   onClose?: () => void;
 }) {
+  const accent = pill?.color ?? Colors.ink;
   return (
-    <View style={[g.card, g.posterCard]}>
+    <View style={g.hero}>
       {onClose && <CardCloseButton onPress={onClose} />}
-      {image ? (
-        <Image source={{ uri: image }} style={g.personAvatar} />
-      ) : (
-        <View style={[g.personAvatar, g.personAvatarFallback]}>
-          <Text style={g.personAvatarInitial}>
-            {(name || "?")[0].toUpperCase()}
+      <View style={g.heroRow}>
+        {image ? (
+          <Image source={{ uri: image }} style={g.personAvatar} />
+        ) : (
+          <View style={[g.personAvatar, g.personAvatarFallback]}>
+            <Text style={g.personAvatarInitial}>
+              {(name || "?")[0].toUpperCase()}
+            </Text>
+          </View>
+        )}
+        <View style={g.heroText}>
+          <Text style={g.heroTitle} numberOfLines={2}>
+            {name}
           </Text>
+          {!!(meta || location) && (
+            <Text style={g.heroSub} numberOfLines={2}>
+              {joinDot([meta, location])}
+            </Text>
+          )}
+          {!!infoPill && (
+            <Text style={g.heroFact} numberOfLines={1}>
+              {infoPill}
+            </Text>
+          )}
         </View>
-      )}
-      <Text style={g.posterTitle}>{name}</Text>
-      {!!meta && <Text style={g.posterCompany}>{meta}</Text>}
-      {!!location && (
-        <View style={g.posterMetaRow}>
-          <MapPin size={12} color={FAINT} />
-          <Text style={g.posterMetaText} numberOfLines={1}>
-            {location}
-          </Text>
-        </View>
-      )}
-      {!!infoPill && (
-        <View style={[g.tintPill, { marginTop: 10 }]}>
-          <Text style={g.tintPillText}>{infoPill}</Text>
-        </View>
-      )}
+      </View>
       {pill && (
-        <View
-          style={[
-            g.tintPill,
-            { marginTop: infoPill ? 8 : 10, backgroundColor: pill.bgColor ?? TINT },
-          ]}
-        >
-          <CheckCircle size={11} color={pill.color ?? Colors.ink} />
-          <Text style={[g.tintPillText, { color: pill.color ?? Colors.ink }]}>
-            {pill.label}
-          </Text>
+        <View style={g.heroChipRow}>
+          <View style={[g.capsChip, { borderColor: accent }]}>
+            <CheckCircle size={11} color={accent} />
+            <Text style={[g.capsChipText, { color: accent }]}>
+              {pill.label.toUpperCase()}
+            </Text>
+          </View>
         </View>
       )}
     </View>
@@ -376,8 +409,8 @@ export function PersonHero({
 }
 
 /**
- * App-Store-style fact strip — one card, equal cells, hairline dividers,
- * big values over tiny labels.
+ * Fact ledger — the deck cards' caps-key rows (was the App-Store stat
+ * strip). Same {label, value} API; labels become ledger keys.
  */
 export function StatStrip({
   stats,
@@ -386,31 +419,24 @@ export function StatStrip({
 }) {
   if (stats.length === 0) return null;
   return (
-    <View style={[g.card, g.statStrip]}>
-      {stats.map((s, i) => (
-        <React.Fragment key={s.label}>
-          {i > 0 && <View style={g.statDivider} />}
-          <View style={g.statCell}>
-            <Text
-              style={g.statValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-            >
-              {s.value}
-            </Text>
-            <Text style={g.statLabel}>{s.label.toUpperCase()}</Text>
-          </View>
-        </React.Fragment>
+    <View style={g.ledger}>
+      {stats.map((s) => (
+        <View key={s.label} style={g.ledgerRow}>
+          <Text style={g.ledgerKey} numberOfLines={1}>
+            {s.label.toUpperCase()}
+          </Text>
+          <Text style={g.ledgerValue} numberOfLines={2}>
+            {s.value}
+          </Text>
+        </View>
       ))}
     </View>
   );
 }
 
 /**
- * Airbnb-host-style person card — the human gets physical size (oversized
- * avatar, display name) on a white card, not a black slab. Optional quote
- * renders as a soft inset block (their referral note, their ask).
+ * The insider block — flat identity row under a caps label, with their
+ * words as a serif quote (the Vouch voice) when a note is present.
  */
 export function HostCard({
   label,
@@ -430,41 +456,45 @@ export function HostCard({
   children?: React.ReactNode;
 }) {
   const red = pill?.tone === "red";
+  const accent = red ? Colors.danger : Colors.ink;
   return (
-    <View style={[g.card, g.posterCard]}>
+    <View style={g.card}>
       <Text style={g.sectionTitle}>{label.toUpperCase()}</Text>
-      {image ? (
-        <Image source={{ uri: image }} style={g.hostAvatar} />
-      ) : (
-        <View style={[g.hostAvatar, g.personAvatarFallback]}>
-          <Text style={g.hostAvatarInitial}>
-            {(name || "?")[0].toUpperCase()}
+      <View style={g.hostRow}>
+        {image ? (
+          <Image source={{ uri: image }} style={g.hostAvatar} />
+        ) : (
+          <View style={[g.hostAvatar, g.personAvatarFallback]}>
+            <Text style={g.hostAvatarInitial}>
+              {(name || "?")[0].toUpperCase()}
+            </Text>
+          </View>
+        )}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={g.hostName} numberOfLines={1}>
+            {name}
           </Text>
+          {!!role && (
+            <Text style={g.hostRole} numberOfLines={2}>
+              {role}
+            </Text>
+          )}
         </View>
-      )}
-      <Text style={g.hostName}>{name}</Text>
-      {!!role && (
-        <Text style={g.hostRole} numberOfLines={2}>
-          {role}
-        </Text>
-      )}
+      </View>
       {pill && (
-        <View
-          style={[
-            g.tintPill,
-            { marginTop: 10 },
-            red && { backgroundColor: "#FEF2F2" },
-          ]}
-        >
-          <CheckCircle size={11} color={red ? Colors.danger : Colors.ink} />
-          <Text style={[g.tintPillText, red && { color: Colors.danger }]}>
-            {pill.label}
-          </Text>
+        <View style={g.heroChipRow}>
+          <View style={[g.capsChip, { borderColor: accent }]}>
+            <CheckCircle size={11} color={accent} />
+            <Text style={[g.capsChipText, { color: accent }]}>
+              {pill.label.toUpperCase()}
+            </Text>
+          </View>
         </View>
       )}
       {!!note && (
-        <View style={g.hostNoteBox}>
-          <Text style={g.hostNoteText}>&ldquo;{note}&rdquo;</Text>
+        <View style={g.hostQuote}>
+          <Text style={g.hostQuoteMark}>“</Text>
+          <Text style={g.hostQuoteText}>{note}</Text>
         </View>
       )}
       {children}
@@ -474,7 +504,8 @@ export function HostCard({
 
 /**
  * A tappable role object — logo tile, label, title, chevron. The person
- * sheet's doorway into the job sheet.
+ * sheet's doorway into the job sheet. Stays a bounded object (it's a
+ * button, not a section).
  */
 export function RoleTicket({
   label,
@@ -491,24 +522,22 @@ export function RoleTicket({
 }) {
   return (
     <TouchableOpacity
-      style={[g.card, g.ticketRow]}
+      style={g.ticketRow}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={0.75}
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={onPress ? `View job: ${title}` : undefined}
     >
-      <View style={g.ticketLogoTile}>
-        <CompanyLogo
-          logoUrl={logoUrl || undefined}
-          name={company || title}
-          size={40}
-          borderRadius={12}
-          initialFontSize={17}
-        />
-      </View>
+      <CompanyLogo
+        logoUrl={logoUrl || undefined}
+        name={company || title}
+        size={44}
+        borderRadius={12}
+        initialFontSize={18}
+      />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={g.sectionTitle}>{label.toUpperCase()}</Text>
+        <Text style={g.ticketLabel}>{label.toUpperCase()}</Text>
         <Text style={g.ticketTitle} numberOfLines={1}>
           {title}
         </Text>
@@ -518,24 +547,26 @@ export function RoleTicket({
           </Text>
         )}
       </View>
-      {onPress && <ChevronRight color={Colors.faint} size={18} strokeWidth={2.2} />}
+      {onPress && (
+        <ChevronRight color={Colors.faint} size={18} strokeWidth={2.2} />
+      )}
     </TouchableOpacity>
   );
 }
 
 /**
- * Shop-style vertical timeline in a card — each stage a row with a dot
- * rail; the active stage gets a tinted highlight.
+ * Journey timeline — flat rows on a dot rail; done stages fill ink,
+ * the active stage breathes, todo stages stay hollow.
  */
 export function Timeline({ steps }: { steps: JourneyStep[] }) {
   return (
-    <View style={[g.card, { paddingVertical: 12 }]}>
+    <View style={[g.card, { paddingVertical: 14 }]}>
       {steps.map((s, i) => (
         <View key={s.label} style={g.tlRow}>
           <View style={g.tlRail}>
             {s.state === "done" ? (
               <View style={g.tlDotDone}>
-                <Check size={9} color="#FFF" strokeWidth={3.5} />
+                <Check size={9} color={Colors.paper} strokeWidth={3.5} />
               </View>
             ) : s.state === "active" ? (
               <View style={g.tlDotActive}>
@@ -553,9 +584,9 @@ export function Timeline({ steps }: { steps: JourneyStep[] }) {
               />
             )}
           </View>
-          <View style={[g.tlContent, s.state === "active" && g.tlContentActive]}>
+          <View style={g.tlContent}>
             <Text
-              style={[g.tlLabel, s.state === "todo" && { color: FAINT }]}
+              style={[g.tlLabel, s.state === "todo" && { color: Colors.faint }]}
               numberOfLines={1}
             >
               {s.label}
@@ -569,8 +600,8 @@ export function Timeline({ steps }: { steps: JourneyStep[] }) {
 }
 
 /**
- * The insider seat, still empty — a soft dashed card, quiet not dark.
- * `filled` flips it solid white when someone arrives.
+ * The insider seat, still empty — a quiet dashed frame. `filled` flips
+ * it solid when someone arrives.
  */
 export function EmptySeatCard({
   title,
@@ -582,21 +613,21 @@ export function EmptySeatCard({
   filled?: boolean;
 }) {
   return (
-    <View style={[g.card, g.posterCard, !filled && g.emptySeat]}>
-      <View style={[g.hostAvatar, g.personAvatarFallback]}>
+    <View style={[g.emptySeat, filled && g.emptySeatFilled]}>
+      <View style={g.emptySeatIcon}>
         {filled ? (
-          <CheckCircle size={30} color="#000" strokeWidth={2.2} />
+          <CheckCircle size={26} color={Colors.ink} strokeWidth={2.2} />
         ) : (
-          <Handshake size={30} color={FAINT} strokeWidth={1.8} />
+          <Handshake size={26} color={FAINT} strokeWidth={1.8} />
         )}
       </View>
-      <Text style={g.hostName}>{title}</Text>
-      <Text style={[g.hostRole, { textAlign: "center" }]}>{body}</Text>
+      <Text style={g.emptySeatTitle}>{title}</Text>
+      <Text style={g.emptySeatBody}>{body}</Text>
     </View>
   );
 }
 
-/** Black CTA pill (or outline variant). */
+/** Ink CTA pill (or outline variant). */
 export function PillButton({
   label,
   icon,
@@ -630,11 +661,14 @@ export function PillButton({
       activeOpacity={0.85}
     >
       {loading && spinnerOnLoading ? (
-        <ActivityIndicator size="small" color={outline ? "#000" : "#FFF"} />
+        <ActivityIndicator
+          size="small"
+          color={outline ? Colors.ink : Colors.paper}
+        />
       ) : (
         <>
           {icon}
-          <Text style={[g.pillBtnText, outline && { color: "#000" }]}>
+          <Text style={[g.pillBtnText, outline && { color: Colors.ink }]}>
             {label}
           </Text>
         </>
@@ -644,10 +678,10 @@ export function PillButton({
 }
 
 /**
- * App-Store-style action bar pinned under the scroll — context on the
- * left (with waiting/done affordances), a compact pill on the right.
- * With no context the pill stretches full width. `children` renders
- * below the row for quiet secondary actions.
+ * Action bar pinned under the scroll — context on the left (with
+ * waiting/done affordances), a compact pill on the right. With no
+ * context the pill stretches full width. `children` renders below the
+ * row for quiet secondary actions.
  */
 export function BarFooter({
   context,
@@ -679,7 +713,7 @@ export function BarFooter({
             <View style={g.footerTitleRow}>
               {context.waiting && <PulsingDot />}
               {context.done && (
-                <CheckCircle size={13} color="#000" strokeWidth={2.5} />
+                <CheckCircle size={13} color={Colors.ink} strokeWidth={2.5} />
               )}
               <Text style={g.footerTitle} numberOfLines={1}>
                 {context.title}
@@ -747,7 +781,7 @@ export function QuietAction({
 /**
  * Whole-surface selection card — an attestation/choice the user commits to
  * by tapping ANYWHERE on the card (testers didn't recognize bare text rows
- * as tappable). Selected state flips the border black and fills the check.
+ * as tappable). Stays a bounded object; selected flips the border ink.
  */
 export function SelectionCard({
   icon,
@@ -764,7 +798,7 @@ export function SelectionCard({
 }) {
   return (
     <TouchableOpacity
-      style={[g.card, g.selectRow, selected && g.selectRowSelected]}
+      style={[g.selectRow, selected && g.selectRowSelected]}
       onPress={onToggle}
       activeOpacity={0.75}
       accessibilityRole="checkbox"
@@ -779,7 +813,7 @@ export function SelectionCard({
         )}
       </View>
       <View style={[g.selectCheck, selected && g.selectCheckOn]}>
-        {selected && <Check size={13} color="#FFF" strokeWidth={3.5} />}
+        {selected && <Check size={13} color={Colors.paper} strokeWidth={3.5} />}
       </View>
     </TouchableOpacity>
   );
@@ -792,9 +826,9 @@ export interface PacketField {
 
 /**
  * The referral packet — the applicant's details a sponsor types into their
- * company's ATS portal. Every row tap-copies its value (Cash-App-receipt
- * energy); Copy All puts the whole packet on the clipboard as label: value
- * lines. `onCopied` lets the caller toast.
+ * company's ATS portal. Every row tap-copies its value; Copy All puts the
+ * whole packet on the clipboard as label: value lines. `onCopied` lets the
+ * caller toast.
  */
 export function PacketCard({
   title = "Referral Packet",
@@ -846,14 +880,14 @@ export function PacketCard({
         accessibilityRole="button"
         accessibilityLabel="Copy the whole packet"
       >
-        <Copy size={13} color="#000" strokeWidth={2.2} />
+        <Copy size={13} color={Colors.ink} strokeWidth={2.2} />
         <Text style={g.packetCopyAllText}>Copy All</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-/** Pulsing placeholder card for content that's still loading. */
+/** Pulsing placeholder section for content that's still loading. */
 export function SkeletonCard({ title }: { title?: string }) {
   const opacity = useSharedValue(0.9);
   useEffect(() => {
@@ -873,230 +907,337 @@ export function SkeletonCard({ title }: { title?: string }) {
 }
 
 const g = StyleSheet.create({
+  // A flat section between hairlines — bg/shadow/radius retired.
   card: {
-    backgroundColor: "#FFF",
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: HAIRLINE,
-    ...cardShadow,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIRLINE,
   },
+  // 12px floor per the section-header accessibility feedback.
   sectionTitle: {
-    fontSize: 10,
-    fontWeight: "900",
+    fontSize: 12,
+    fontWeight: "800",
     color: FAINT,
     letterSpacing: 1.2,
     marginBottom: 10,
   },
-  posterCard: { alignItems: "center", paddingVertical: 24 },
   cardClose: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 0,
+    right: 0,
     zIndex: 2,
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: CANVAS,
+    backgroundColor: TINT,
     alignItems: "center",
     justifyContent: "center",
   },
-  posterLogoTile: {
-    padding: 12,
-    borderRadius: 26,
-    backgroundColor: CANVAS,
-    marginBottom: 14,
+
+  // ── Hero ID blocks ────────────────────────────────────────────────
+  hero: { paddingTop: 8, paddingBottom: 16 },
+  heroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    // Keep the identity clear of the corner close affordance.
+    paddingRight: 26,
   },
-  posterTitle: {
-    ...Type.heading,
+  heroText: { flex: 1, minWidth: 0 },
+  heroTitle: {
+    fontFamily: Type.heading.fontFamily,
+    fontSize: 22,
+    lineHeight: 27,
     color: Colors.ink,
-    textAlign: "center",
-    marginBottom: 4,
+    letterSpacing: -0.3,
   },
-  posterCompany: {
-    fontSize: 15,
+  heroSub: {
+    fontSize: 13.5,
+    fontWeight: "500",
+    color: SUB,
+    lineHeight: 19,
+    marginTop: 5,
+  },
+  heroSubEm: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 14.5,
+    color: Colors.muted,
+  },
+  heroFact: {
+    fontSize: 12.5,
+    fontWeight: "500",
+    color: Colors.muted,
+    marginTop: 3,
+  },
+  heroChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 12,
+  },
+  capsChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1.2,
+    borderColor: Colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+  },
+  capsChipText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.ink,
+  },
+  sourceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+    alignSelf: "flex-start",
+  },
+  sourceRowText: {
+    fontSize: 13,
     fontWeight: "600",
     color: SUB,
-    textAlign: "center",
-  },
-  posterMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 6,
-  },
-  posterMetaText: { fontSize: 13, color: FAINT, fontWeight: "500" },
-  tintPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: TINT,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginLeft: 4,
-  },
-  tintPillText: { fontSize: 11, fontWeight: "800", color: Colors.ink },
-  sourcePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: TINT,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    marginTop: 14,
-  },
-  sourcePillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: Colors.ink,
   },
   personAvatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    marginBottom: 12,
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: TINT,
   },
   personAvatarFallback: {
     backgroundColor: TINT,
+    borderWidth: 1,
+    borderColor: HAIRLINE,
     alignItems: "center",
     justifyContent: "center",
   },
-  personAvatarInitial: { fontSize: 32, fontWeight: "800", color: Colors.ink },
-  hostAvatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    marginBottom: 10,
+  personAvatarInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    color: Colors.muted,
   },
-  hostAvatarInitial: { fontSize: 28, fontWeight: "800", color: Colors.ink },
-  // A person's name — same headline-tier rule used elsewhere.
-  hostName: {
-    fontFamily: Type.heading.fontFamily,
-    fontSize: 18,
+
+  // ── Ledger (was the stat strip) ───────────────────────────────────
+  ledger: { borderTopWidth: 1, borderTopColor: HAIRLINE },
+  ledgerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIRLINE,
+  },
+  ledgerKey: {
+    width: 106,
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: FAINT,
+    paddingTop: 2,
+  },
+  ledgerValue: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13.5,
     color: Colors.ink,
-    textAlign: "center",
+    lineHeight: 19,
   },
-  hostRole: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: SUB,
-    marginTop: 3,
-    textAlign: "center",
-  },
-  hostNoteBox: {
-    backgroundColor: CANVAS,
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 14,
-    alignSelf: "stretch",
-  },
-  hostNoteText: {
-    fontSize: 14,
-    fontStyle: "italic",
-    fontWeight: "500",
-    color: Colors.body,
-    lineHeight: 21,
-    textAlign: "center",
-  },
-  statStrip: {
+
+  // ── Insider block ─────────────────────────────────────────────────
+  hostRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    gap: 13,
   },
-  statCell: { flex: 1, alignItems: "center", paddingHorizontal: 6 },
-  statDivider: { width: 1, alignSelf: "stretch", backgroundColor: HAIRLINE },
-  statValue: { fontSize: 15, fontWeight: "800", color: "#000" },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: FAINT,
-    letterSpacing: 0.8,
-    marginTop: 3,
+  hostAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: TINT,
   },
+  hostAvatarInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 18,
+    color: Colors.muted,
+  },
+  hostName: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 15.5,
+    color: Colors.ink,
+    letterSpacing: -0.2,
+  },
+  hostRole: {
+    fontSize: 12.5,
+    fontWeight: "500",
+    color: SUB,
+    marginTop: 2,
+  },
+  hostQuote: { marginTop: 14 },
+  hostQuoteMark: {
+    fontFamily: Fonts.serif,
+    fontSize: 30,
+    lineHeight: 32,
+    color: Colors.faint,
+    marginBottom: -8,
+  },
+  hostQuoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 16,
+    lineHeight: 23,
+    color: Colors.ink,
+  },
+
+  // ── Role ticket (bounded button) ──────────────────────────────────
   ticketRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 14,
-  },
-  ticketLogoTile: {
-    padding: 6,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: HAIRLINE,
     borderRadius: 16,
-    backgroundColor: CANVAS,
+    padding: 13,
+    marginVertical: 8,
+  },
+  ticketLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: FAINT,
+    marginBottom: 2,
   },
   ticketTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-    marginTop: -4,
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.ink,
   },
-  ticketCompany: { fontSize: 13, fontWeight: "500", color: SUB, marginTop: 1 },
-  tlRow: { flexDirection: "row", minHeight: 48 },
-  tlRail: { width: 26, alignItems: "center" },
+  ticketCompany: { fontSize: 12.5, fontWeight: "500", color: SUB, marginTop: 1 },
+
+  // ── Timeline ──────────────────────────────────────────────────────
+  tlRow: { flexDirection: "row", minHeight: 44 },
+  tlRail: { width: 24, alignItems: "center" },
   tlDotDone: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#000",
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
+    marginTop: 5,
   },
   tlDotActive: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#FFF",
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: Colors.paper,
     borderWidth: 1.5,
-    borderColor: Colors.muted,
+    borderColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
+    marginTop: 5,
   },
   tlDotTodo: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Colors.border,
-    marginTop: 8,
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: Colors.paper,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    marginTop: 5,
   },
   tlLine: {
     flex: 1,
-    width: 2,
+    width: 1.5,
     backgroundColor: Colors.border,
     marginVertical: 3,
   },
-  tlLineDone: { backgroundColor: "#000" },
+  tlLineDone: { backgroundColor: Colors.ink },
   tlContent: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginLeft: 8,
-    marginBottom: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
+    marginLeft: 10,
+    paddingVertical: 3,
+    marginBottom: 8,
   },
-  tlContentActive: { backgroundColor: TINT },
-  tlLabel: { fontSize: 14, fontWeight: "700", color: "#000", flexShrink: 1 },
-  tlSub: { fontSize: 12, fontWeight: "600", color: FAINT, marginLeft: 8 },
+  tlLabel: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 14,
+    color: Colors.ink,
+    flexShrink: 1,
+  },
+  tlSub: { fontSize: 12, fontWeight: "500", color: FAINT, marginLeft: 8 },
+
+  // ── Empty seat ────────────────────────────────────────────────────
   emptySeat: {
+    alignItems: "center",
     borderWidth: 1.5,
     borderColor: Colors.borderStrong,
     borderStyle: "dashed",
-    backgroundColor: "transparent",
-    ...Platform.select({
-      ios: { shadowOpacity: 0 },
-      android: { elevation: 0 },
-    }),
+    borderRadius: 18,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    marginVertical: 8,
   },
+  emptySeatFilled: {
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: HAIRLINE,
+  },
+  emptySeatIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: TINT,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  emptySeatTitle: {
+    fontFamily: Type.heading.fontFamily,
+    fontSize: 18,
+    color: Colors.ink,
+    textAlign: "center",
+  },
+  emptySeatBody: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: SUB,
+    marginTop: 4,
+    textAlign: "center",
+    lineHeight: 19,
+  },
+
+  // ── Skills ────────────────────────────────────────────────────────
+  skillsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  skillChip: {
+    backgroundColor: TINT,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  skillChipText: { fontSize: 12.5, fontWeight: "600", color: SUB },
+  skillMore: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: Colors.faint,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  skillMoreText: { fontSize: 12.5, fontWeight: "700", color: Colors.muted },
+
+  // ── CTA / footer ──────────────────────────────────────────────────
   pillBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     borderRadius: 999,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -1106,16 +1247,19 @@ const g = StyleSheet.create({
     gap: 8,
   },
   pillBtnOutline: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: Colors.ink,
   },
-  pillBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
+  pillBtnText: {
+    fontFamily: Fonts.sansSemiBold,
+    color: Colors.paper,
+    fontSize: 15,
+    letterSpacing: -0.2,
+  },
   footer: {
     // Bleed through the sheet's padding on all three closed sides so the
-    // bar's white runs edge-to-edge AND down to the screen bottom — the
-    // sheet's canvas showing beneath the bar made the spacing look uneven
-    // and the bar look like it was floating.
+    // bar's paper runs edge-to-edge AND down to the screen bottom.
     marginHorizontal: -20,
     marginBottom: -SHEET_BOTTOM,
     paddingHorizontal: 20,
@@ -1123,7 +1267,7 @@ const g = StyleSheet.create({
     paddingBottom: SHEET_BOTTOM,
     borderTopWidth: 1,
     borderTopColor: HAIRLINE,
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: Colors.paper,
   },
   footerRow: {
     flexDirection: "row",
@@ -1134,7 +1278,7 @@ const g = StyleSheet.create({
   footerTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     flexShrink: 1,
   },
   footerSub: { fontSize: 12, fontWeight: "500", color: SUB, marginTop: 2 },
@@ -1151,21 +1295,27 @@ const g = StyleSheet.create({
     backgroundColor: Colors.border,
     marginBottom: 10,
   },
+
+  // ── Selection / packet ────────────────────────────────────────────
   selectRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: HAIRLINE,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 10,
   },
   selectRowSelected: {
-    borderColor: "#000",
+    borderColor: Colors.ink,
     borderWidth: 1.5,
   },
   selectIcon: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: TINT,
     alignItems: "center",
     justifyContent: "center",
@@ -1173,7 +1323,7 @@ const g = StyleSheet.create({
   selectTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   selectDescription: {
     fontSize: 12,
@@ -1192,8 +1342,8 @@ const g = StyleSheet.create({
     justifyContent: "center",
   },
   selectCheckOn: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.ink,
+    borderColor: Colors.ink,
   },
   packetRow: {
     flexDirection: "row",
@@ -1205,8 +1355,8 @@ const g = StyleSheet.create({
   },
   packetLabel: {
     width: 86,
-    fontSize: 9,
-    fontWeight: "900",
+    fontSize: 10,
+    fontWeight: "800",
     color: FAINT,
     letterSpacing: 0.8,
   },
@@ -1214,7 +1364,7 @@ const g = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   packetCopyAll: {
     flexDirection: "row",
@@ -1224,12 +1374,14 @@ const g = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 11,
     borderRadius: 999,
-    backgroundColor: TINT,
+    borderWidth: 1.5,
+    borderColor: Colors.ink,
+    backgroundColor: Colors.paper,
   },
   packetCopyAllText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
 });
 
@@ -1242,12 +1394,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: HAIRLINE,
     alignItems: "center",
     justifyContent: "center",
-    ...cardShadow,
   },
   bodyText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
   readMoreBtn: {
@@ -1261,7 +1412,7 @@ const styles = StyleSheet.create({
   readMoreText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   pulseDot: {
     width: 8,

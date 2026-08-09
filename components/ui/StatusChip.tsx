@@ -4,18 +4,14 @@ import { Colors } from "@/constants/theme";
 
 export type StatusTone = "active" | "waiting" | "muted";
 
-const TONE_STYLES: Record<
-  StatusTone,
-  { bg: string; border: string; dot: string; text: string }
-> = {
+const TONE_STYLES: Record<StatusTone, { dot: string; text: string }> = {
   // Something moved forward / needs no further waiting — e.g. "Referred",
-  // "Matched", "Now Sponsored". Bold black dot + text, same pattern the
-  // old referral badge used ("referralBadgeReferred").
-  active: { bg: Colors.surface, border: Colors.border, dot: "#000", text: "#000" },
+  // "Matched", "Now Sponsored".
+  active: { dot: Colors.ink, text: Colors.ink },
   // Sitting in a queue, nothing to do but wait — "Pending", "Waitlisted".
-  waiting: { bg: Colors.border, border: Colors.border, dot: Colors.muted, text: Colors.body },
+  waiting: { dot: Colors.muted, text: Colors.muted },
   // Terminal / de-emphasized — "Withdrawn", "Didn't move forward".
-  muted: { bg: Colors.surface, border: Colors.border, dot: Colors.faint, text: Colors.muted },
+  muted: { dot: Colors.faint, text: Colors.faint },
 };
 
 interface StatusChipProps {
@@ -25,11 +21,15 @@ interface StatusChipProps {
   icon?: React.ReactNode;
 }
 
-/** Small pill used on Matches rows to show passive/waiting state at a glance. */
+/**
+ * Passive/waiting state at a glance — Docket rebrand: a flat caps
+ * micro-status (dot + tracked caps text), no chip box. Filled pills are
+ * reserved for the row's single action.
+ */
 export function StatusChip({ label, tone = "waiting", icon }: StatusChipProps) {
   const t = TONE_STYLES[tone];
   return (
-    <View style={[styles.chip, { backgroundColor: t.bg, borderColor: t.border }]}>
+    <View style={styles.chip}>
       {icon ?? <View style={[styles.dot, { backgroundColor: t.dot }]} />}
       <Text style={[styles.label, { color: t.text }]} numberOfLines={1}>
         {label}
@@ -43,12 +43,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
     alignSelf: "flex-start",
   },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  label: { fontSize: 11, fontWeight: "700" },
+  dot: { width: 5, height: 5, borderRadius: 2.5 },
+  label: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
 });

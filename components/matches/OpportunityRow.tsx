@@ -109,19 +109,19 @@ export function MetaLine({ icon, text }: { icon?: React.ReactNode; text: string 
 }
 
 const styles = StyleSheet.create({
+  // Docket rebrand — flat rows on the paper; every row keeps its bottom
+  // rule so the group reads as a ledger.
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
     gap: 12,
-  },
-  rowDivider: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  rowDivider: {},
   info: { flex: 1, gap: 2 },
-  title: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  title: { fontSize: 14.5, fontWeight: "700", color: Colors.ink },
   titleMuted: { color: Colors.muted },
   subtitle: { fontSize: 12, color: Colors.muted, fontWeight: "500" },
   subtitleMuted: { color: Colors.faint },
@@ -132,12 +132,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   trailing: { alignItems: "flex-end", justifyContent: "center" },
+  // The row's one filled accent — caps micro-pill.
   ctaPill: {
-    backgroundColor: "#000",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: Colors.ink,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 999,
   },
-  ctaText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  ctaText: {
+    color: Colors.paper,
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
   metaText: { fontSize: 11, color: Colors.muted, fontWeight: "600" },
 });

@@ -20,6 +20,7 @@ import {
     ReadMoreText,
     SectionCard,
     SkeletonCard,
+    SkillChips,
     StatStrip,
 } from "./JobSheetKit";
 import { parseSkillsField } from "./matchesQueries";
@@ -130,22 +131,18 @@ export function SrJobDetailModal({
 
               <StatStrip stats={stats} />
 
-              {skills.length > 0 && (
-                <SectionCard title="Skills">
-                  <View style={modalStyles.skillsRow}>
-                    {skills.map((skill: string, idx: number) => (
-                      <View key={idx} style={modalStyles.skillBadge}>
-                        <Text style={modalStyles.skillBadgeText}>{skill}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </SectionCard>
-              )}
-
-              {/* Description — silver descriptions run LONG; collapse. */}
+              {/* Description first — the role itself is what a candidate
+                  reads to decide (PM feedback: it was buried under a long
+                  ATS skill list). Silver descriptions run LONG; collapse. */}
               {!!detail.DESCRIPTION_TEXT && (
                 <SectionCard title="About the Role">
                   <ReadMoreText text={detail.DESCRIPTION_TEXT} />
+                </SectionCard>
+              )}
+
+              {skills.length > 0 && (
+                <SectionCard title="Skills">
+                  <SkillChips skills={skills} />
                 </SectionCard>
               )}
             </SheetScrollView>
