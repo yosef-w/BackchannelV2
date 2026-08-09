@@ -97,6 +97,7 @@ import { YourMoveStrip } from "./home/YourMoveStrip";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
@@ -2042,9 +2043,8 @@ export function HomeView({
               entering={ZoomIn.duration(400)}
               style={styles.celebrationCard}
             >
-              <View style={styles.successCircle}>
-                <Check color="#FFF" size={32} strokeWidth={3} />
-              </View>
+              {/* Quiet tick, not success — this fires up to 10x/day. */}
+              <ConfirmPop size={60} haptic="tick" />
               <Text style={styles.celebrationTitle}>Interest Sent!</Text>
               <Text style={styles.celebrationSub}>
                 {userType === "sponsor"
@@ -2457,15 +2457,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 25,
     elevation: 15,
-  },
-  successCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
   },
   celebrationTitle: { ...Type.heading, color: Colors.ink },
   celebrationSub: {

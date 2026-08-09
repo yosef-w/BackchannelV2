@@ -14,7 +14,8 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Mail, X } from "@/components/ui/icons";
+import { Mail, X } from "@/components/ui/icons";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -125,22 +126,25 @@ export default function VerifyEmailRoute() {
         )}
 
         {(status === "success" || status === "alreadyVerified") && (
-          <View style={styles.center}>
-            <View style={styles.iconCircle}>
-              <Check color="#FFF" size={36} strokeWidth={3} />
-            </View>
-            <Text style={styles.title}>
-              {status === "success"
-                ? "Email verified!"
-                : "Already verified"}
-            </Text>
-            <Text style={styles.subtitle}>
-              {status === "success"
-                ? "Thanks for confirming. You're all set."
-                : "Your email was already verified — nothing else to do."}
-            </Text>
+          <View style={styles.broadcastFill}>
+            {/* Milestone confirmation on the shared Broadcast — freshly
+                verified gets the full moment; "already verified" is old
+                news, so its beat plays silently (no haptics). */}
+            <BroadcastMoment
+              haptics={status === "success"}
+              words={
+                status === "success"
+                  ? [{ word: "Email" }, { word: "verified.", accent: true }]
+                  : [{ word: "Already" }, { word: "verified.", accent: true }]
+              }
+              subtitle={
+                status === "success"
+                  ? "Thanks for confirming. You're all set."
+                  : "Your email was already verified — nothing else to do."
+              }
+            />
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[styles.primaryButton, styles.broadcastCta]}
               onPress={handleContinue}
               activeOpacity={0.8}
             >
@@ -222,6 +226,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
   },
+  // Full-bleed container for BroadcastMoment (it manages its own
+  // centering) with the Continue button beneath its caption zone.
+  broadcastFill: {
+    flex: 1,
+    alignItems: "stretch",
+  },
+  broadcastCta: { alignSelf: "center", marginBottom: 8 },
   loadingText: { fontSize: 14, color: Colors.body, marginTop: 12 },
   iconCircle: {
     width: 80,

@@ -1,5 +1,4 @@
 import {
-  Check,
   ChevronRight,
   RefreshCcw,
   Zap,
@@ -7,6 +6,7 @@ import {
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface DeckDoneCardProps {
@@ -40,10 +40,10 @@ export function DeckDoneCard({
 }: DeckDoneCardProps) {
   return (
     <Animated.View entering={FadeInUp} style={styles.card}>
-      {/* Accomplishment badge */}
-      <View style={styles.badge}>
-        <Check color="#FFF" size={30} strokeWidth={3} />
-      </View>
+      {/* Accomplishment badge — silent pop: this card also shows
+          passively when returning to a finished deck, so a haptic here
+          would misfire. */}
+      <ConfirmPop size={64} haptic={null} />
 
       {/* Context pill — makes the daily-allotment limit explicit */}
       <View style={styles.pill}>

@@ -1,4 +1,3 @@
-import { Check } from "@/components/ui/icons";
 import {
     PromptsIntake,
     type PromptAnswer,
@@ -7,7 +6,7 @@ import {
     JOB_PROMPT_CATEGORIES,
     JOB_PROMPT_EXAMPLES,
 } from "@/constants/prompts";
-import React, { useEffect } from "react";
+import React from "react";
 import {
     ActivityIndicator,
     ScrollView,
@@ -16,20 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import Animated, {
-    Easing,
-    type SharedValue,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-} from "react-native-reanimated";
-import {
-    backOut,
-    type CinemaBeat,
-    easeOut,
-    useCinemaHaptics,
-    win,
-} from "@/components/cinema/engine";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { Colors, Fonts } from "@/constants/theme";
 
@@ -143,74 +129,11 @@ export function CreateJobInsightsScreen({
   );
 }
 
-// ── "The Broadcast" — the publish-success moment ────────────────────────
-// One 2.6s one-shot clock (0→1) drives everything through windowed
-// worklet interpolations — the intro films' engine (curves, win, haptic
-// beats) at confirmation scale. The check arrives with the films'
-// overshoot, three pulse rings broadcast outward (your role is now out
-// in front of candidates), the headline lands word by word in the brand
-// serif, and each beat is felt: a success haptic on the pop, soft ticks
-// as the later rings fire. The CTA is present throughout — a moment,
+// "The Broadcast" — the publish-success moment, running on the shared
+// BroadcastMoment primitive (components/cinema/BroadcastMoment.tsx, which
+// was extracted FROM this screen and now serves every milestone
+// confirmation in the app). The CTA is present throughout — a moment,
 // not a gate.
-const SUCCESS_MS = 2600;
-const SUCCESS_BEATS: readonly CinemaBeat[] = [
-  { at: 0.18, kind: "success" },
-  { at: 0.28, kind: "tick" },
-  { at: 0.37, kind: "tick" },
-];
-// Headline words: start / stagger / reveal-length as fractions of the
-// 2.6s clock (≈750ms in, ≈105ms apart, ≈560ms per word — the films'
-// caption rhythm rescaled to this clock).
-const SUCCESS_WORDS: { word: string; accent?: boolean }[] = [
-  { word: "Your" },
-  { word: "role" },
-  { word: "is" },
-  { word: "live.", accent: true },
-];
-const SW_START = 0.288;
-const SW_STAGGER = 0.0404;
-const SW_LEN = 0.215;
-
-function SuccessWord({
-  t,
-  index,
-  word,
-  accent,
-}: {
-  t: SharedValue<number>;
-  index: number;
-  word: string;
-  accent?: boolean;
-}) {
-  const start = SW_START + index * SW_STAGGER;
-  const style = useAnimatedStyle(() => {
-    const p = easeOut(win(t.value, start, start + SW_LEN));
-    return { opacity: p, transform: [{ translateY: (1 - p) * 12 }] };
-  });
-  return (
-    <Animated.Text
-      style={[
-        styles.successHeadline,
-        accent && styles.successHeadlineAccent,
-        style,
-      ]}
-    >
-      {word}{" "}
-    </Animated.Text>
-  );
-}
-
-function BroadcastRing({ t, at }: { t: SharedValue<number>; at: number }) {
-  const style = useAnimatedStyle(() => {
-    const p = easeOut(win(t.value, at, at + 0.385));
-    return {
-      opacity: (1 - p) * 0.45 * win(t.value, at, at + 0.02),
-      transform: [{ scale: 0.6 + p * 1.75 }],
-    };
-  });
-  return <Animated.View style={[styles.broadcastRing, style]} />;
-}
-
 export function CreateJobSuccessScreen({
   visible,
   jobTitle,
@@ -220,66 +143,20 @@ export function CreateJobSuccessScreen({
   jobTitle: string;
   onDone: () => void;
 }) {
-  // Inner component mounts fresh each time the screen shows, so the
-  // one-shot clock always starts from zero.
+  // Mounts fresh each time the screen shows, so the one-shot clock
+  // always starts from zero.
   if (!visible) return null;
-  return <BroadcastSuccess jobTitle={jobTitle} onDone={onDone} />;
-}
-
-function BroadcastSuccess({
-  jobTitle,
-  onDone,
-}: {
-  jobTitle: string;
-  onDone: () => void;
-}) {
-  const t = useSharedValue(0);
-  useEffect(() => {
-    t.value = withTiming(1, { duration: SUCCESS_MS, easing: Easing.linear });
-  }, [t]);
-  useCinemaHaptics(t, SUCCESS_BEATS);
-
-  const check = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.046, 0.277));
-    return {
-      opacity: Math.min(1, p * 2),
-      transform: [{ scale: p }],
-    };
-  });
-
-  const subtitle = useAnimatedStyle(() => {
-    const p = easeOut(win(t.value, 0.635, 0.865));
-    return { opacity: p, transform: [{ translateY: (1 - p) * 8 }] };
-  });
-
   return (
     <View style={styles.screen}>
-      <View style={styles.successStage}>
-        <View style={styles.broadcastCore}>
-          <BroadcastRing t={t} at={0.177} />
-          <BroadcastRing t={t} at={0.273} />
-          <BroadcastRing t={t} at={0.369} />
-          <Animated.View style={[styles.successIconCircle, check]}>
-            <Check color="#FFF" size={36} strokeWidth={3} />
-          </Animated.View>
-        </View>
-      </View>
-      <View style={styles.successCaptionZone}>
-        <View style={styles.successHeadlineRow}>
-          {SUCCESS_WORDS.map((w, i) => (
-            <SuccessWord
-              key={w.word}
-              t={t}
-              index={i}
-              word={w.word}
-              accent={w.accent}
-            />
-          ))}
-        </View>
-        <Animated.Text style={[styles.successSubtitle, subtitle]}>
-          Applicants can start swiping on {jobTitle || "it"} right now.
-        </Animated.Text>
-      </View>
+      <BroadcastMoment
+        words={[
+          { word: "Your" },
+          { word: "role" },
+          { word: "is" },
+          { word: "live.", accent: true },
+        ]}
+        subtitle={`Applicants can start swiping on ${jobTitle || "it"} right now.`}
+      />
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.publishBtn}
@@ -340,65 +217,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.muted,
     textDecorationLine: "underline",
-  },
-  // ── The Broadcast ─────────────────────────────────────────────────────
-  successStage: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // Relative anchor so the rings expand from the check's exact center.
-  broadcastCore: {
-    width: 110,
-    height: 110,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  broadcastRing: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 55,
-    borderWidth: 1.5,
-    borderColor: Colors.muted,
-  },
-  successIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  successCaptionZone: {
-    alignItems: "center",
-    paddingHorizontal: 32,
-    paddingBottom: 36,
-    minHeight: 128,
-  },
-  successHeadlineRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  successHeadline: {
-    fontFamily: Fonts.serif,
-    fontSize: 26,
-    lineHeight: 33,
-    color: Colors.ink,
-  },
-  successHeadlineAccent: {
-    fontFamily: Fonts.serifItalic,
-    color: Colors.muted,
-  },
-  successSubtitle: {
-    fontFamily: Fonts.sansLight,
-    fontSize: 15,
-    color: Colors.body,
-    textAlign: "center",
-    lineHeight: 22,
-    marginTop: 10,
   },
 });

@@ -1,5 +1,6 @@
 import { BlurView } from "expo-blur";
-import { BellRing, Check, ChevronRight, X } from "@/components/ui/icons";
+import { BellRing, ChevronRight, X } from "@/components/ui/icons";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React from "react";
 import {
   ActivityIndicator,
@@ -114,9 +115,7 @@ export function GetSponsorModal({
 
           {applyStep === "requested" && (
             <View style={styles.successContainer}>
-              <View style={styles.successCircleLarge}>
-                <Check color="#FFF" size={40} strokeWidth={3} />
-              </View>
+              <ConfirmPop size={72} />
               <Text style={styles.successMessage}>
                 {`This role doesn't have a dedicated sponsor yet, but your request has been sent to everyone we have available at ${companyName ?? "this company"}. If someone is able to sponsor you for this role, you'll be notified right away.`}
               </Text>
@@ -149,7 +148,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (matches the DismissibleSheet-wide fix).
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
     maxHeight: "90%",
   },
@@ -199,15 +200,6 @@ const styles = StyleSheet.create({
   modalOptionDesc: { fontSize: 13, color: Colors.body, lineHeight: 18 },
 
   successContainer: { alignItems: "center", paddingVertical: 32 },
-  successCircleLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
   successMessage: {
     fontSize: 14,
     color: Colors.body,

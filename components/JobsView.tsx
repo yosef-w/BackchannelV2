@@ -665,16 +665,18 @@ export function JobsView() {
 
       setPublished(true);
 
-      // If the backend used the LLM fallback path (no JSON-LD on the page),
-      // nudge the sponsor to double-check the auto-extracted fields. The
-      // structured path is high-confidence and doesn't need this hint.
+      // The Broadcast success screen (setPublished above) is the
+      // celebration now — a "published" toast on top of it was a double
+      // confirmation, so it's gone. The LLM-fallback caveat survives as
+      // an info nudge (it carries real guidance, not celebration), timed
+      // to land as the Broadcast finishes rather than over it.
       if (response.source === "llm") {
-        showToast(
-          "Job published. Auto-extracted by AI — review the listing in My Jobs.",
-          "success",
-        );
-      } else {
-        showToast("Job listing published.", "success");
+        setTimeout(() => {
+          showToast(
+            "Auto-extracted by AI — review the listing in My Jobs.",
+            "info",
+          );
+        }, 2700);
       }
     } catch (err) {
       console.warn("[JobsView] Failed to create job from URL:", err);

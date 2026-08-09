@@ -21,6 +21,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { Colors, Type } from "@/constants/theme";
 
 interface WorkEmailVerificationModalProps {
@@ -71,6 +72,9 @@ export function WorkEmailVerificationModal({
     tone: "error" | "success" | "info";
   } | null>(null);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  // Brief "you're in" beat between verification confirming and the gate
+  // closing itself — see the "I've Verified" handler.
+  const [showVerifiedBeat, setShowVerifiedBeat] = useState(false);
 
   // Clear any stale error message whenever the gate re-opens — mirrors the
   // original handleSwipe() call site, which cleared this right before
@@ -81,6 +85,7 @@ export function WorkEmailVerificationModal({
   }, [visible]);
 
   const resetAndClose = () => {
+    setShowVerifiedBeat(false);
     setIsEditingWorkEmail(false);
     setEditedWorkEmail("");
     setEmailVerifStatus(null);
@@ -107,6 +112,18 @@ export function WorkEmailVerificationModal({
         fullSheetGesture
         style={styles.emailVerifModal}
       >
+        {showVerifiedBeat ? (
+          /* The unlock beat — replaces the whole sheet body for ~1.4s
+             before the gate closes itself. */
+          <View style={styles.verifiedBeat}>
+            <ConfirmPop size={72} />
+            <Text style={styles.emailVerifTitle}>Verified — you&apos;re in.</Text>
+            <Text style={styles.verifiedBeatSub}>
+              Your applicant deck is unlocked.
+            </Text>
+          </View>
+        ) : (
+          <>
         <View style={styles.emailVerifIconCircle}>
           <Mail color="#FFF" size={32} strokeWidth={1.5} />
         </View>
@@ -267,7 +284,11 @@ export function WorkEmailVerificationModal({
                 useUserProfileStore.getState().workEmailVerified;
               trackWorkEmailVerifyChecked({ verified: isNowVerified });
               if (isNowVerified) {
-                onClose();
+                // A real unlock (sponsor swiping opens up) deserves a
+                // beat, not a silent close — brief verified state, then
+                // the gate lifts.
+                setShowVerifiedBeat(true);
+                setTimeout(onClose, 1400);
               } else {
                 setEmailVerifStatus({
                   text: "Still pending — please click the link in your inbox.",
@@ -367,6 +388,8 @@ export function WorkEmailVerificationModal({
             </Text>
           </TouchableOpacity>
         )}
+          </>
+        )}
       </DismissibleSheet>
     </KeyboardAvoidingView>
   );
@@ -393,6 +416,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "center",
     marginBottom: 20,
+  },
+  verifiedBeat: {
+    alignItems: "center",
+    paddingVertical: 24,
+    gap: 4,
+  },
+  verifiedBeatSub: {
+    fontSize: 14,
+    color: Colors.body,
+    textAlign: "center",
   },
   emailVerifTitle: {
     ...Type.heading,

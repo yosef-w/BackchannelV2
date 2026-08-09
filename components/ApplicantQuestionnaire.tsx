@@ -83,6 +83,7 @@ import {
   markOnboardingRegistered,
   saveOnboardingDraft,
 } from "@/utils/onboardingDraft";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -91,6 +92,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 // call and can occasionally be slow; a new user must never be trapped on a
 // spinner, so we race it against this timeout and finish gracefully either way.
 const RESUME_PROCESS_TIMEOUT_MS = 25000;
+
+// Length of the post-completion Broadcast beat — the moment plays fully,
+// then navigation to the dashboard fires.
+const DONE_BEAT_MS = 1900;
 
 // AsyncStorage key for the in-progress applicant questionnaire, so a user who
 // backgrounds/kills the app mid-signup doesn't lose their answers. We store
@@ -228,6 +233,9 @@ export function ApplicantQuestionnaire({
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  // The post-completion Broadcast beat — separate from showSuccess, which
+  // doubles as a network-bound loading overlay.
+  const [showDoneBeat, setShowDoneBeat] = useState(false);
   // Distinguishes the two loading beats behind the success overlay: the résumé
   // parse (after step 1) vs. the final save (last step).
   const [finalizing, setFinalizing] = useState(false);
@@ -291,7 +299,18 @@ export function ApplicantQuestionnaire({
 
   // Final exit from onboarding → dashboard. Shared by the no-resume path, the
   // resume-processing fallbacks, and the review screen's confirm button.
+  // Plays the Broadcast beat (the signup's one true celebration — the
+  // loading overlay above it is a spinner, not a confirmation) and then
+  // finishes for real after the beat completes.
   const completeOnboarding = () => {
+    setShowSuccess(false);
+    setShowReview(false);
+    setIsSubmitting(false);
+    setShowDoneBeat(true);
+    setTimeout(finishOnboardingNow, DONE_BEAT_MS);
+  };
+
+  const finishOnboardingNow = () => {
     // Onboarding finished — stop autosaving, discard the draft, clear the
     // in-memory onboarding data (auth basics no longer needed).
     hydratedRef.current = false;
@@ -299,7 +318,6 @@ export function ApplicantQuestionnaire({
     clearOnboardingRegistered();
     clearOnboardingData();
     trackOnboardingCompleted("applicant");
-    setIsSubmitting(false);
     // Captured before onComplete()/clearOnboardingData() run, since
     // ssoSession is about to be cleared from the store.
     const wasSso = !!ssoSession;
@@ -1440,6 +1458,27 @@ export function ApplicantQuestionnaire({
           </BlurView>
         </Animated.View>
       )}
+
+      {/* Last sibling so it covers both the questionnaire and the review
+          screen. The Broadcast at signup scale — the beat length matches
+          completeOnboarding's navigation timer. */}
+      {showDoneBeat && (
+        <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
+          <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
+            <View style={styles.doneBeatContainer}>
+              <BroadcastMoment
+                durationMs={DONE_BEAT_MS}
+                icon={<UserCheck color="#FFF" size={38} />}
+                words={[
+                  { word: "Profile" },
+                  { word: "complete.", accent: true },
+                ]}
+                subtitle="Sponsors can find you now."
+              />
+            </View>
+          </BlurView>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -1661,6 +1700,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 40,
+  },
+  // Full-bleed container for BroadcastMoment (which manages its own
+  // centering) — no alignItems here or the stage would shrink-wrap.
+  doneBeatContainer: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingBottom: 40,
   },
   successIconBox: {
     width: 100,

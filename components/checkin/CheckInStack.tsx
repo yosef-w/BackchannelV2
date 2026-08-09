@@ -28,6 +28,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn, SlideInRight, ZoomIn } from "react-native-reanimated";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { CharCounter } from "../ui/CharCounter";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import {
@@ -268,9 +269,9 @@ export function CheckInStack({
         : "Done";
     return (
       <Animated.View entering={ZoomIn.duration(280)} style={styles.recap}>
-        <View style={styles.recapBadge}>
-          <Check color="#FFF" size={30} strokeWidth={3} />
-        </View>
+        {/* Silent — the submit interaction already landed the success
+            haptic; doubling it here would buzz twice for one action. */}
+        <ConfirmPop size={64} haptic={null} />
         <Text style={styles.recapTitle}>
           {summary.updated > 0 ? "All caught up" : "Nothing updated"}
         </Text>
@@ -788,15 +789,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 28,
     flex: 1,
-  },
-  recapBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
   },
   recapTitle: {
     ...Type.heading,

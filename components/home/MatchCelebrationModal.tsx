@@ -1,4 +1,5 @@
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import { Heart, MessageCircle } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -58,6 +59,11 @@ export function MatchCelebrationModal({
   // Pulse-ring that radiates outward from both avatars when a mutual match fires
   useEffect(() => {
     if (matchedUser) {
+      // The app's biggest moment finally lands physically too — it was
+      // the one celebration with no haptic.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
       matchRingScale.value = 0.8;
       matchRingOpacity.value = 0;
       matchRingScale.value = withTiming(1.9, { duration: 750 });

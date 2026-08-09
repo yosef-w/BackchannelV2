@@ -11,6 +11,7 @@ import {
 import { Image } from "expo-image";
 import React from "react";
 import { Linking, Text, TouchableOpacity, View } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import type { Job } from "@/types/jobs";
 import type { EnrichedSponsorProfile } from "@/types/profiles";
 import { CompanyLogo } from "../ui/CompanyLogo";
@@ -73,7 +74,10 @@ export function JobCardContent({
         (waitlistedJobIds.has(String(currentData.id)) ||
           requestedSponsorJobIds.has(String(currentData.id)) ||
           appliedJobIds.has(String(currentData.id))) && (
-          <View style={cardStyles.statusBannerRow}>
+          <Animated.View
+            entering={FadeIn.duration(220)}
+            style={cardStyles.statusBannerRow}
+          >
             {waitlistedJobIds.has(String(currentData.id)) ? (
               <View style={cardStyles.statusBanner}>
                 <Check color="#FFF" size={13} strokeWidth={3} />
@@ -98,7 +102,7 @@ export function JobCardContent({
                 </Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         )}
     
       {/* HERO — company logo + role identity */}

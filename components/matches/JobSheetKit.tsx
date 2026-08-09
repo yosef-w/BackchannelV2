@@ -23,7 +23,7 @@ import {
     View,
     type ViewStyle,
 } from "react-native";
-import Animated, {
+import Animated, { FadeIn,
     useAnimatedStyle,
     useSharedValue,
     withRepeat,
@@ -669,7 +669,13 @@ export function BarFooter({
     <View style={g.footer}>
       <View style={g.footerRow}>
         {context && (
-          <View style={{ flex: 1, paddingRight: 12 }}>
+          /* Keyed on done so the pending→done swap fades in rather than
+             hard-cutting (the check + message appear as a confirmation). */
+          <Animated.View
+            key={context.done ? "done" : "pending"}
+            entering={FadeIn.duration(220)}
+            style={{ flex: 1, paddingRight: 12 }}
+          >
             <View style={g.footerTitleRow}>
               {context.waiting && <PulsingDot />}
               {context.done && (
@@ -684,7 +690,7 @@ export function BarFooter({
                 {context.sub}
               </Text>
             )}
-          </View>
+          </Animated.View>
         )}
         {button && (
           <PillButton

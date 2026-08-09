@@ -41,7 +41,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, {
+  ZoomIn, FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
 import {
   BarFooter,
@@ -535,12 +536,15 @@ export function ApplicantJobsBrowseView() {
                     )}
                   </View>
                   {isDone && (
-                    <View style={styles.waitlistedPill}>
+                    <Animated.View
+                      entering={ZoomIn.duration(240)}
+                      style={styles.waitlistedPill}
+                    >
                       <Check size={10} color={Colors.ink} strokeWidth={3} />
                       <Text style={styles.waitlistedPillText}>
                         {doneLabel}
                       </Text>
-                    </View>
+                    </Animated.View>
                   )}
                 </TouchableOpacity>
               </Animated.View>

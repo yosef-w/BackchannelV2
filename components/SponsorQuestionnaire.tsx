@@ -13,7 +13,8 @@ import {
   uploadProfileImage,
 } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
+import { Colors, Type } from "@/constants/theme";
 import type { BrowseJobResponse } from "@/types/jobs";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -62,7 +63,6 @@ import Animated, {
   Layout,
   useAnimatedStyle,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import {
   SPONSOR_PROMPT_CATEGORIES,
@@ -1128,25 +1128,20 @@ export function SponsorQuestionnaire({
       {showSuccess && (
         <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
+            {/* The Broadcast at signup scale — durationMs matches the
+                2.2s navigation beat in finishOnboarding, so the moment
+                completes just as the dashboard arrives. */}
             <View style={styles.successContainer}>
-              <Animated.View
-                entering={ZoomIn.delay(200).duration(600)}
-                style={styles.successIconBox}
-              >
-                <UserCheck color="#000" size={48} />
-              </Animated.View>
-              <Animated.Text
-                entering={FadeInDown.delay(400)}
-                style={styles.successTitle}
-              >
-                Profile <Text style={styles.successTitleAccent}>Complete</Text>
-              </Animated.Text>
-              <Animated.Text
-                entering={FadeInDown.delay(600)}
-                style={styles.successSub}
-              >
-                Your sponsor account is ready. Welcome to the network.
-              </Animated.Text>
+              <BroadcastMoment
+                durationMs={2200}
+                icon={<UserCheck color="#FFF" size={38} />}
+                words={[
+                  { word: "Welcome" },
+                  { word: "to" },
+                  { word: "BackChannel.", accent: true },
+                ]}
+                subtitle="Your sponsor account is ready."
+              />
             </View>
           </BlurView>
         </Animated.View>
@@ -1231,41 +1226,12 @@ const styles = StyleSheet.create({
   nextButtonDisabled: { opacity: 0.3 },
   nextButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   textWhite: { color: "#FFF" },
+  // Full-bleed container for BroadcastMoment (which manages its own
+  // centering) — no alignItems here or the stage would shrink-wrap.
   successContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-  },
-  successIconBox: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-  },
-  successTitle: {
-    ...Type.title,
-    color: Colors.ink,
-    textAlign: "center",
-  },
-  successTitleAccent: {
-    fontFamily: Fonts.serifItalic,
-    color: Colors.muted,
-  },
-  successSub: {
-    fontFamily: Fonts.sansLight,
-    fontSize: 16,
-    color: Colors.body,
-    textAlign: "center",
-    marginTop: 12,
-    lineHeight: 22,
+    paddingHorizontal: 12,
+    paddingBottom: 40,
   },
 
   // ── Photo + bio steps ────────────────────────────────────────────────────

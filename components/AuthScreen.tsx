@@ -38,6 +38,7 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { SSOButtons } from "@/components/auth/SSOButtons";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -288,9 +289,11 @@ export function AuthScreen({
       return authApi.forgotPassword(forgotPasswordEmail);
     },
     onSuccess: () => {
+      // Show the modal's own "Check Your Email" state — previously this
+      // ALSO closed the modal on the next line, which made that state
+      // unreachable dead UI and left only a toast. The in-modal state
+      // carries the address + spam hint, so no toast needed on top.
       setForgotPasswordSent(true);
-      showToast("Password reset email sent. Check your inbox.", "success");
-      handleCloseForgotPasswordModal();
     },
     onError: (error) => {
       showToast(
@@ -706,8 +709,11 @@ export function AuthScreen({
                 </>
               ) : (
                 <>
-                  <View style={styles.successIconWrapper}>
-                    <Mail color="#000" size={32} />
+                  <View style={styles.successPopWrap}>
+                    <ConfirmPop
+                      size={64}
+                      icon={<Mail color="#FFF" size={26} />}
+                    />
                   </View>
                   <Text style={styles.modalTitle}>Check Your Email</Text>
                   <Text style={styles.modalSubtitle}>
@@ -1011,15 +1017,9 @@ const styles = StyleSheet.create({
     color: Colors.body,
     fontWeight: "600",
   },
-  successIconWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
+  successPopWrap: {
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   emailHighlight: {
     fontWeight: "700",

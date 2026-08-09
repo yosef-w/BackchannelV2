@@ -1,4 +1,5 @@
-import { Check, X } from "@/components/ui/icons";
+import { X } from "@/components/ui/icons";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import type { Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import React from "react";
@@ -289,9 +290,7 @@ export function SponsorJobModal({
           </>
         ) : (
           <Animated.View entering={FadeIn} style={styles.successStep}>
-            <View style={styles.successIconCircle}>
-              <Check color="#FFF" size={32} strokeWidth={3} />
-            </View>
+            <ConfirmPop size={72} />
             <Text style={styles.successTitle}>Sponsorship Confirmed!</Text>
             <Text style={styles.successDesc}>
               You are now sponsoring {job?.title}. Applicants will be able to
@@ -359,15 +358,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 30,
     paddingHorizontal: 20,
-  },
-  successIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
   },
   successStep: { alignItems: "center", paddingVertical: 20, width: "100%" },
   successTitle: { ...Type.heading, color: Colors.ink, marginBottom: 10 },

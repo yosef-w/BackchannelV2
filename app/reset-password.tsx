@@ -16,7 +16,8 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Lock, X } from "@/components/ui/icons";
+import { Lock, X } from "@/components/ui/icons";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -194,17 +195,17 @@ export default function ResetPasswordRoute() {
           )}
 
           {status === "success" && (
-            <View style={styles.center}>
-              <View style={styles.iconCircle}>
-                <Check color="#FFF" size={36} strokeWidth={3} />
-              </View>
-              <Text style={styles.title}>Password updated</Text>
-              <Text style={styles.subtitle}>
-                Your password has been reset. Sign in with your new password
-                to continue.
-              </Text>
+            <View style={styles.broadcastFill}>
+              {/* Milestone confirmation on the shared Broadcast. */}
+              <BroadcastMoment
+                words={[
+                  { word: "Password" },
+                  { word: "updated.", accent: true },
+                ]}
+                subtitle="Your password has been reset. Sign in with your new password to continue."
+              />
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, styles.broadcastCta]}
                 onPress={handleGoToSignIn}
                 activeOpacity={0.8}
               >
@@ -222,6 +223,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   flex: { flex: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
+  // Full-bleed container for BroadcastMoment (it manages its own
+  // centering) with the CTA beneath its caption zone.
+  broadcastFill: { flex: 1, alignItems: "stretch" },
+  broadcastCta: { alignSelf: "center", marginBottom: 8 },
   center: {
     flex: 1,
     alignItems: "center",

@@ -1,4 +1,5 @@
 import { CharCounter } from "@/components/ui/CharCounter";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import {
     BellRing,
     Briefcase,
@@ -367,9 +368,7 @@ export function SponsorRequestModal({
                   entering={FadeIn}
                   style={styles.srSuccessContainer}
                 >
-                  <View style={styles.srSuccessIconCircle}>
-                    <Check color="#FFF" size={36} strokeWidth={3} />
-                  </View>
+                  <ConfirmPop size={72} />
                   <Text style={styles.srSuccessTitle}>
                     Sponsorship Confirmed!
                   </Text>
@@ -563,15 +562,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 30,
     paddingHorizontal: 20,
-  },
-  srSuccessIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
   },
   srSuccessTitle: {
     ...Type.heading,
