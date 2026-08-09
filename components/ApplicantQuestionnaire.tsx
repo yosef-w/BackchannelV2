@@ -1459,7 +1459,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
+  optionCardSelected: { backgroundColor: Colors.body, borderColor: Colors.body },
   optionCardDisabled: { backgroundColor: Colors.offWhite, borderColor: Colors.border },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
   optionTextDisabled: { color: Colors.borderStrong },
@@ -1588,7 +1590,9 @@ const styles = StyleSheet.create({
     borderColor: "#000",
     marginBottom: 4,
   },
-  skillItemSelected: { backgroundColor: "#000" },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
+  skillItemSelected: { backgroundColor: Colors.body },
   skillText: { fontSize: 14, fontWeight: "600", color: "#000" },
   selectionCount: {
     marginTop: 24,

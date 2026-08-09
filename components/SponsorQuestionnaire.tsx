@@ -1194,7 +1194,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
+  optionCardSelected: { backgroundColor: Colors.body, borderColor: Colors.body },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
   inputWrapper: {
     flexDirection: "row",
@@ -1412,9 +1414,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     alignItems: "center",
   },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
   rolePickerChoiceBtnSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.body,
+    borderColor: Colors.body,
   },
   rolePickerChoiceText: {
     fontSize: 14,
