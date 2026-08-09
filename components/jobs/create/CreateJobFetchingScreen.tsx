@@ -230,8 +230,11 @@ export function CreateJobFetchingScreen({
 
   return (
     <View style={styles.screen}>
+      {/* Header names the USER's job on this screen (review the extracted
+          fields) — the transient machine action is narrated by the status
+          line below, not the title. */}
       <CreateJobStepHeader
-        title="Reading the Posting"
+        title="Review the Posting"
         step={2}
         totalSteps={4}
         onBack={onBack}
