@@ -424,8 +424,14 @@ export function HomeView({
     String(currentItemId) !== leavingItemId;
 
   // True only when real cards are loaded and being displayed.
-  // Used to dim the progress bar + show an em-dash placeholder
-  // when the deck isn't active (empty/error/loading states).
+  // Used to HIDE the deck progress counter when the deck isn't active
+  // (empty/error/loading states). It used to dim to 30% instead, but a
+  // ghosted "0/10" over the sponsor's "Build your deck" empty state read
+  // as an unfinished checklist ("did I not finish something?" — PM
+  // feedback), especially right after the 10-step signup questionnaire's
+  // own progress header. If there's no deck, deck progress says nothing —
+  // so it says nothing. Opacity (not unmount) keeps the flex layout
+  // stable so the role-switcher pill doesn't shift.
   const deckIsActive =
     !isDeckFinished &&
     !isLoading &&
@@ -1464,12 +1470,12 @@ export function HomeView({
             }}
             style={[styles.headerRow, headerAnimatedStyle]}
           >
-            {/* Progress indicator — dims + shows "–/10" when the deck
-                isn't active (empty/error/loading states). */}
+            {/* Progress indicator — hidden entirely (opacity 0, layout
+                preserved) when the deck isn't active; see deckIsActive. */}
             <View
               style={[
                 styles.progressHeaderContainer,
-                !deckIsActive && { opacity: 0.3 },
+                !deckIsActive && styles.progressHeaderHidden,
               ]}
             >
               <View style={styles.progressLabelRow}>
@@ -2255,6 +2261,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   progressHeaderContainer: { flex: 1 },
+  progressHeaderHidden: { opacity: 0 },
   // 2026-05-27 redesign — progress indicator typography + segmented dots.
   //
   // The label row stacks a large bold current-card number against a thin
