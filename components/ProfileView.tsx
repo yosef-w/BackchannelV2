@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
@@ -11,6 +12,7 @@ import {
     Edit,
     FileText,
     GraduationCap,
+    Heart,
     ImageIcon,
     Lock,
     LogOut,
@@ -87,7 +89,13 @@ import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
 import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
 import { PromptsIntake } from "./ui/PromptsIntake";
-import { Colors } from "@/constants/theme";
+import { ApplicantProfileCard } from "./home/ApplicantProfileCard";
+import { cardStyles } from "./home/cardStyles";
+import type {
+    EnrichedApplicantProfile,
+    ProfileDeckCard,
+} from "@/types/profiles";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface ProfileViewProps {
   userType: "applicant" | "sponsor";
@@ -187,6 +195,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.updateEducationEntries,
   );
 
+  // "Two Faces": EDIT is the management hub, PREVIEW renders the live
+  // deck card exactly as the other side sees it.
+  const [profileTab, setProfileTab] = useState<"edit" | "preview">("edit");
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
@@ -2000,6 +2011,36 @@ export function ProfileView({ userType }: ProfileViewProps) {
     });
   }
 
+  // ── PREVIEW tab data — the live deck card, fed straight from this
+  // screen's own store-backed state. Same shapes the sponsor deck uses
+  // (ProfileDeckCard + EnrichedApplicantProfile), so the preview is the
+  // real component and can never drift from what sponsors actually see.
+  // Key "me" only needs to match between card and cache.
+  const previewCard: ProfileDeckCard = {
+    id: "me",
+    USER_ID: "me",
+    name,
+    location: profileData.location,
+    skills: expertise,
+    desiredRole: desiredRoles[0] || role || "",
+    bio,
+    prompts: profileInsights,
+    image: profileImage || "",
+    company: "",
+  };
+  const previewCache: Record<string, EnrichedApplicantProfile> = {
+    me: {
+      experiences: professionalExperiences,
+      education: educationEntries,
+      certifications,
+      languages,
+      achievements,
+      prompts: profileInsights,
+      bio,
+      skills: expertise,
+    },
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -2007,6 +2048,135 @@ export function ProfileView({ userType }: ProfileViewProps) {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="always"
     >
+      {/* Page head — serif title + EDIT/PREVIEW segmented control */}
+      <Text style={styles.pageTitle}>
+        Your <Text style={styles.pageTitleEm}>profile.</Text>
+      </Text>
+      <View style={styles.segTrack}>
+        {(["edit", "preview"] as const).map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.segBtn, profileTab === tab && styles.segBtnOn]}
+            onPress={() => setProfileTab(tab)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: profileTab === tab }}
+          >
+            <Text
+              style={[styles.segText, profileTab === tab && styles.segTextOn]}
+            >
+              {tab === "edit" ? "EDIT" : "PREVIEW"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {profileTab === "preview" ? (
+        /* ── PREVIEW — the live card, exactly as the other side sees it ── */
+        <>
+          <View style={styles.liveBand}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveBandText}>
+              {userType === "applicant"
+                ? "LIVE — EXACTLY AS SPONSORS SEE IT"
+                : "LIVE — HOW APPLICANTS SEE YOU"}
+            </Text>
+          </View>
+          {userType === "applicant" ? (
+            <>
+              <ApplicantProfileCard
+                currentData={previewCard}
+                fullProfileCache={previewCache}
+                fullProfileLoading={false}
+              />
+              <View style={styles.ghostBar}>
+                <View style={styles.ghostAct}>
+                  <X color={Colors.faint} size={20} strokeWidth={2} />
+                </View>
+                <View style={styles.ghostAct}>
+                  <Heart color={Colors.faint} size={20} strokeWidth={2} />
+                </View>
+              </View>
+              <Text style={styles.previewFootnote}>
+                The buttons are for show — this is your card as it deals in
+                sponsor decks.
+              </Text>
+            </>
+          ) : (
+            /* Sponsors appear on their roles' cards as the Vouch — render
+               that section with their real data. */
+            <>
+              <View style={cardStyles.vouchSection}>
+                <Text style={cardStyles.vouchStatement}>
+                  You put your{" "}
+                  <Text style={cardStyles.vouchStatementEm}>name</Text>
+                  {" on the roles you sponsor."}
+                </Text>
+                <View style={cardStyles.vouchIdRow}>
+                  {profileImage ? (
+                    <Image
+                      source={{ uri: profileImage }}
+                      style={cardStyles.vouchAvatar}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View style={cardStyles.vouchAvatarFallback}>
+                      <Text style={cardStyles.vouchAvatarInitial}>
+                        {(name || "?")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={cardStyles.vouchName} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    {!!(sponsorData.role || sponsorData.company) && (
+                      <Text style={cardStyles.vouchRole} numberOfLines={1}>
+                        {sponsorData.role}
+                        {sponsorData.role && sponsorData.company ? " · " : ""}
+                        {sponsorData.company}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                {workEmailVerified && (
+                  <View style={cardStyles.vouchChipsRow}>
+                    <View
+                      style={[
+                        cardStyles.vouchChip,
+                        cardStyles.vouchChipFill,
+                      ]}
+                    >
+                      <Check color={Colors.paper} size={10} strokeWidth={3} />
+                      <Text style={cardStyles.vouchChipFillText}>
+                        VERIFIED
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {profileInsights
+                  .filter((i) => i.question && i.answer)
+                  .map((item) => (
+                    <View key={item.question} style={cardStyles.vouchQuote}>
+                      <Text style={cardStyles.vouchQuoteMark}>“</Text>
+                      <Text style={cardStyles.vouchQuoteText}>
+                        {item.answer}
+                      </Text>
+                      <Text style={cardStyles.kQuoteAttr} numberOfLines={2}>
+                        {item.question.toUpperCase()}
+                      </Text>
+                    </View>
+                  ))}
+              </View>
+              <Text style={styles.previewFootnote}>
+                This vouch appears on every role you sponsor, beneath the job
+                details.
+              </Text>
+            </>
+          )}
+        </>
+      ) : (
+        <>
       <ProfileIdentityCard
         profileImage={profileImage}
         initials={getUserInitials()}
@@ -2017,16 +2187,80 @@ export function ProfileView({ userType }: ProfileViewProps) {
             : applicantData.role
         }
         location={profileData.location}
-        bio={profileData.bio}
-        completionPercentage={profileCompletion.percentage}
-        personalMissingCount={personalMissingCount}
         onOpenImagePicker={openImagePicker}
-        onEditProfile={() => {
-          trackProfileEditOpened({ section: "personal" });
-          setShowEditProfile(true);
-        }}
         photoMissing={isFieldMissing("profileImage")}
       />
+
+      {/* Status ledger — the deck cards' hairline vocabulary. STRENGTH
+          replaces the old avatar completion ring; RÉSUMÉ and PROMPTS are
+          the status + entry points for their editors (the upload
+          pipeline itself stays in the RÉSUMÉ section below). */}
+      <View style={[cardStyles.kLedger, styles.profileLedger]}>
+        <View style={cardStyles.kLedgerRow}>
+          <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+            STRENGTH
+          </Text>
+          <View style={cardStyles.kLedgerValueWrap}>
+            <Text style={cardStyles.kLedgerValue}>
+              {profileCompletion.percentage}%
+            </Text>
+            <Text style={cardStyles.kLedgerValueSub} numberOfLines={2}>
+              {profileCompletion.isComplete
+                ? "Complete — your card deals in full"
+                : `${profileCompletion.missingFields.length} item${
+                    profileCompletion.missingFields.length === 1 ? "" : "s"
+                  } left — finish below`}
+            </Text>
+          </View>
+        </View>
+        {userType === "applicant" && (
+          <TouchableOpacity
+            style={cardStyles.kLedgerRow}
+            onPress={() => {
+              trackProfileEditOpened({ section: "resume" });
+              setShowEditResume(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+              RÉSUMÉ
+            </Text>
+            <View style={cardStyles.kLedgerValueWrap}>
+              <Text style={cardStyles.kLedgerValue}>
+                {resumeLastUpdated ? "On file" : "Not uploaded yet"}
+              </Text>
+              {!!resumeLastUpdated && (
+                <Text style={cardStyles.kLedgerValueSub} numberOfLines={1}>
+                  Updated {formatRelativeTime(resumeLastUpdated)}
+                </Text>
+              )}
+            </View>
+            <View style={{ alignSelf: "center" }}>
+              <ChevronRight size={16} color={Colors.faint} />
+            </View>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={cardStyles.kLedgerRow}
+          onPress={() => {
+            trackProfileEditOpened({ section: "insights" });
+            setShowEditInsights(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+            PROMPTS
+          </Text>
+          <View style={cardStyles.kLedgerValueWrap}>
+            <Text style={cardStyles.kLedgerValue}>
+              {profileInsights.length} of 3 answered
+            </Text>
+          </View>
+          <View style={{ alignSelf: "center" }}>
+            <ChevronRight size={16} color={Colors.faint} />
+          </View>
+        </TouchableOpacity>
+      </View>
 
       <HubSection
         title="Finish Your Profile"
@@ -2238,27 +2472,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
         </View>
       )}
 
+      {/* Prompts + résumé editing moved up into the status ledger; this
+          group holds the personal-details editor entry. */}
       <HubSection title="Profile">
         <HubRow
-          icon={<MessageSquareQuote color="#000" size={16} strokeWidth={2} />}
-          label="Profile Prompts"
-          value={`${profileInsights.length}/3`}
+          icon={<Edit color="#000" size={16} strokeWidth={2} />}
+          label="Personal Details"
+          badgeCount={personalMissingCount}
           onPress={() => {
-            trackProfileEditOpened({ section: "insights" });
-            setShowEditInsights(true);
+            trackProfileEditOpened({ section: "personal" });
+            setShowEditProfile(true);
           }}
         />
-        {userType === "applicant" && (
-          <HubRow
-            icon={<FileText color="#000" size={16} strokeWidth={2} />}
-            label="Edit Resume Information"
-            badgeCount={professionalMissingCount}
-            onPress={() => {
-              trackProfileEditOpened({ section: "resume" });
-              setShowEditResume(true);
-            }}
-          />
-        )}
       </HubSection>
 
       <HubSection title="Settings">
@@ -2295,6 +2520,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <LogOut color="#000" size={16} strokeWidth={2} />
         <Text style={styles.logOutText}>Log Out</Text>
       </TouchableOpacity>
+        </>
+      )}
 
       {/* IMAGE PICKER MODAL */}
       <ProfileActionSheet
@@ -2458,6 +2685,93 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 140,
+  },
+  // ── "Two Faces" page head ─────────────────────────────────────────
+  pageTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 28,
+    lineHeight: 34,
+    color: Colors.ink,
+    letterSpacing: -0.3,
+  },
+  pageTitleEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  segTrack: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    borderRadius: 999,
+    padding: 3,
+    marginTop: 16,
+  },
+  segBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+  segBtnOn: {
+    backgroundColor: Colors.ink,
+  },
+  segText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.muted,
+  },
+  segTextOn: {
+    color: Colors.paper,
+  },
+  profileLedger: {
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  // ── PREVIEW tab chrome ────────────────────────────────────────────
+  liveBand: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.ink,
+  },
+  liveBandText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.6,
+    color: Colors.muted,
+  },
+  ghostBar: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 18,
+    marginTop: 26,
+  },
+  ghostAct: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: Colors.faint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewFootnote: {
+    fontSize: 12.5,
+    fontWeight: "500",
+    color: Colors.muted,
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 14,
+    paddingHorizontal: 12,
   },
   blackBtn: {
     flexDirection: "row",
