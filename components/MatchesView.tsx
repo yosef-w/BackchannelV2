@@ -1140,6 +1140,7 @@ export function MatchesView({
       {selectedProfile && (
         <Modal visible={!!matchedProfileJob} transparent animationType="none">
           <JobDetailModal
+            instant
             job={matchedProfileJob}
             enriching={enrichingMatchedProfileJob}
             // The person to message is the profile being viewed — for a
@@ -1328,6 +1329,7 @@ export function MatchesView({
           animationType="none"
         >
           <JobDetailModal
+            instant
             job={interestedSponsorJob}
             enriching={enrichingSponsorJob}
             onClose={() => setInterestedSponsorJob(null)}

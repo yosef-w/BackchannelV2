@@ -60,6 +60,9 @@ interface JobDetailModalProps {
    * matched applicant, not themselves.
    */
   messageName?: string;
+  /** Skip the sheet's slide-in — pass when this modal is LAYERED over
+   * another sheet (see DismissibleSheet.instant). */
+  instant?: boolean;
 }
 
 /**
@@ -75,6 +78,7 @@ export function JobDetailModal({
   cta,
   enriching,
   messageName,
+  instant,
 }: JobDetailModalProps) {
   const matched = job?.status === "MATCHED";
   const counterpartFirstName =
@@ -127,6 +131,7 @@ export function JobDetailModal({
 
       <DismissibleSheet
         scrollDismiss
+        instant={instant}
         onDismiss={onClose}
         style={[modalStyles.modalContent, canvasSheet]}
       >
@@ -149,7 +154,45 @@ export function JobDetailModal({
 
               <StatStrip stats={stats} />
 
-              {/* The insider — the human way in gets the host-card stage. */}
+              {/* Enrichment skeleton — holds the details area's place while
+                  the full posting loads. */}
+              {showSkeleton && <SkeletonCard title="About the Role" />}
+
+              {!!job.description && (
+                <SectionCard title="About the Role">
+                  <ReadMoreText text={job.description} />
+                </SectionCard>
+              )}
+
+              {!!job.coreResponsibilities && (
+                <SectionCard title="What You'll Do">
+                  <Text style={modalStyles.jobSectionText}>
+                    {job.coreResponsibilities}
+                  </Text>
+                </SectionCard>
+              )}
+
+              {job.skills.length > 0 && (
+                <SectionCard title="Skills">
+                  <SkillChips skills={job.skills} />
+                </SectionCard>
+              )}
+
+              {job.benefits.length > 0 && (
+                <SectionCard title="Highlights">
+                  {job.benefits.map((benefit, idx) => (
+                    <View key={idx} style={modalStyles.benefitRow}>
+                      <Check size={14} color="#000" />
+                      <Text style={modalStyles.benefitText}>{benefit}</Text>
+                    </View>
+                  ))}
+                </SectionCard>
+              )}
+
+              {/* The insider + journey close the sheet (PM feedback: the
+                  role description is what a candidate reads first — it
+                  moved up under the stats; the human context and the
+                  progression state read as the wrap-up). */}
               <HostCard
                 label="Your Insider"
                 name={job.sponsorInfo.name}
@@ -194,41 +237,6 @@ export function JobDetailModal({
                     },
                   ]}
                 />
-              )}
-
-              {/* Enrichment skeleton — holds the details area's place while
-                  the full posting loads. */}
-              {showSkeleton && <SkeletonCard title="About the Role" />}
-
-              {!!job.description && (
-                <SectionCard title="About the Role">
-                  <ReadMoreText text={job.description} />
-                </SectionCard>
-              )}
-
-              {!!job.coreResponsibilities && (
-                <SectionCard title="What You'll Do">
-                  <Text style={modalStyles.jobSectionText}>
-                    {job.coreResponsibilities}
-                  </Text>
-                </SectionCard>
-              )}
-
-              {job.skills.length > 0 && (
-                <SectionCard title="Skills">
-                  <SkillChips skills={job.skills} />
-                </SectionCard>
-              )}
-
-              {job.benefits.length > 0 && (
-                <SectionCard title="Highlights">
-                  {job.benefits.map((benefit, idx) => (
-                    <View key={idx} style={modalStyles.benefitRow}>
-                      <Check size={14} color="#000" />
-                      <Text style={modalStyles.benefitText}>{benefit}</Text>
-                    </View>
-                  ))}
-                </SectionCard>
               )}
             </SheetScrollView>
 
