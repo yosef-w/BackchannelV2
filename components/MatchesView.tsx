@@ -28,6 +28,10 @@ import {
 } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  MatchCelebrationModal,
+  type MatchedUser,
+} from "@/components/home/MatchCelebrationModal";
+import {
     Dimensions,
     Modal,
     NativeScrollEvent,
@@ -173,6 +177,11 @@ export function MatchesView({
     activeModal?.kind === "interestedSponsor" ? activeModal.sponsor : null;
   // likeId of the sponsor we're currently "liking back" (shows a spinner)
   const [likingBackSponsorId, setLikingBackSponsorId] = useState<string | null>(
+    null,
+  );
+  // Mutual match born from a like-back — drives the same celebration
+  // modal the swipe deck uses, instead of the old toast-only treatment.
+  const [celebratedMatch, setCelebratedMatch] = useState<MatchedUser | null>(
     null,
   );
   // Job detail layered OVER the interested-sponsor profile sheet — the
@@ -850,6 +859,7 @@ export function MatchesView({
     try {
       const res = await likeBackSponsor(sponsor.likeId);
       trackSponsorLikedBack({ likeId: sponsor.likeId });
+      closeAllModals();
       if (res.matched) {
         // Pull them out of "Interested in You" and re-fetch matches so they
         // appear under "Matched Opportunities".
@@ -857,9 +867,19 @@ export function MatchesView({
           prev.filter((s) => s.likeId !== sponsor.likeId),
         );
         refreshMatchSections();
+        // The app's core moment gets its celebration here too — this used
+        // to be the one match path that only showed a toast.
+        setCelebratedMatch({
+          name: sponsor.name,
+          image: sponsor.image,
+          role: sponsor.role,
+          jobTitle: sponsor.jobTitle || undefined,
+          jobId: res.job_id ?? sponsor.jobId,
+          userId: sponsor.userId,
+        });
+      } else {
+        showToast(res.message, "info");
       }
-      closeAllModals();
-      showToast(res.message, res.matched ? "success" : "info");
     } catch (err) {
       console.warn("[MatchesView] Failed to like back sponsor:", err);
       showToast("Couldn't do that right now. Please try again.", "error");
@@ -1440,6 +1460,26 @@ export function MatchesView({
           </TouchableOpacity>
         </Animated.View>
       )}
+
+      <MatchCelebrationModal
+        matchedUser={celebratedMatch}
+        userType={userType}
+        onDismiss={() => setCelebratedMatch(null)}
+        onMessage={() => {
+          const m = celebratedMatch;
+          setCelebratedMatch(null);
+          if (m?.jobId) {
+            onNavigateToMessages?.(m.jobId, m.userId);
+          } else {
+            // Legacy likes can arrive without a job to thread on — the
+            // match itself is real, so point at where it now lives.
+            showToast(
+              "You're matched — find them under Matched Opportunities.",
+              "info",
+            );
+          }
+        }}
+      />
     </View>
   );
 }

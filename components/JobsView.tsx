@@ -27,6 +27,11 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { Job } from "@/types/jobs";
 import { CheckCircle, Plus, Zap } from "@/components/ui/icons";
+import { useShell } from "@/components/shell/ShellContext";
+import {
+  MatchCelebrationModal,
+  type MatchedUser,
+} from "@/components/home/MatchCelebrationModal";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -104,6 +109,7 @@ export function JobsView() {
   const setMyJobsLoading = useJobsStore((state) => state.setMyJobsLoading);
   const removeMyJob = useJobsStore((state) => state.removeMyJob);
   const showToast = useToastStore((state) => state.showToast);
+  const shell = useShell();
 
   // Sponsor's company drives the ATS browse filter. We read it here so an
   // empty board can offer "did you mean…" corrections, and write it back when
@@ -162,6 +168,11 @@ export function JobsView() {
   // sponsor opens the Top Applicants list and preserved through to the
   // messaging modal's Match button.
   const [matchJobPostingsId, setMatchJobPostingsId] = useState<string | null>(
+    null,
+  );
+  // Mutual match from liking an applicant here — celebration modal
+  // instead of the old toast-only treatment.
+  const [celebratedMatch, setCelebratedMatch] = useState<MatchedUser | null>(
     null,
   );
   const [isMatching, setIsMatching] = useState(false);
@@ -1119,13 +1130,17 @@ export function JobsView() {
                         applicant.id,
                         matchJobPostingsId,
                       );
-                      const firstName =
-                        applicant.name.split(" ")[0] || "this applicant";
                       if (result.matched) {
-                        showToast(
-                          `Matched with ${firstName}! Find them in your Matches.`,
-                          "success",
-                        );
+                        // Celebration modal, not a toast — the same moment
+                        // applicants get on the deck.
+                        setCelebratedMatch({
+                          name: applicant.name,
+                          image: applicant.image,
+                          role: applicant.role,
+                          jobTitle: applicant.appliedRole || undefined,
+                          jobId: matchJobPostingsId,
+                          userId: applicant.id,
+                        });
                       } else {
                         showToast(
                           result.message || "Interest sent.",
@@ -1152,6 +1167,17 @@ export function JobsView() {
           }
         />
       )}
+
+      <MatchCelebrationModal
+        matchedUser={celebratedMatch}
+        userType="sponsor"
+        onDismiss={() => setCelebratedMatch(null)}
+        onMessage={() => {
+          const m = celebratedMatch;
+          setCelebratedMatch(null);
+          if (m?.jobId) shell.navigateToMessages(m.jobId, m.userId);
+        }}
+      />
     </View>
   );
 }
