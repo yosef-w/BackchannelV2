@@ -1065,7 +1065,9 @@ export function MessagesView({
         }}
       >
         <Animated.View entering={FadeInDown.duration(350)} style={styles.headerTitleContainer}>
-          <Text style={styles.title}>Inbox</Text>
+          <Text style={styles.title}>
+            Your <Text style={styles.titleEm}>inbox.</Text>
+          </Text>
           <Text style={styles.subtitle}>Direct lines to your connections</Text>
         </Animated.View>
 
@@ -1152,6 +1154,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
   headerTitleContainer: { marginBottom: 32 },
   title: { ...Type.title, color: Colors.ink },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   subtitle: {
     fontFamily: Fonts.sansLight,
     fontSize: 16,

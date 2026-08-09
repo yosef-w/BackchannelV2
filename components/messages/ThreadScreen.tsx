@@ -48,7 +48,7 @@ import { ReferralSigningScreen } from "./ReferralSigningScreen";
 import { ThreadContextStrip } from "./ThreadContextStrip";
 import { ThreadMenuSheet } from "./ThreadMenuSheet";
 import { threadScreenStyles as styles } from "./threadScreenStyles";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts } from "@/constants/theme";
 
 function getConversationStarters(
   conversation: Conversation | null | undefined,
@@ -491,14 +491,20 @@ return (
               style={[
                 styles.headerImage,
                 {
-                  backgroundColor: "#000",
+                  backgroundColor: Colors.surface,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
                   alignItems: "center",
                   justifyContent: "center",
                 },
               ]}
             >
               <Text
-                style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
+                style={{
+                  fontFamily: Fonts.serif,
+                  fontSize: 16,
+                  color: Colors.muted,
+                }}
               >
                 {(conversation.otherParticipant.name ||
                   "?")[0].toUpperCase()}

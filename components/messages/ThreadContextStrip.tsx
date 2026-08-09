@@ -54,15 +54,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: Colors.offWhite,
+    paddingVertical: 9,
+    backgroundColor: Colors.paper,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  // The ledger-key voice — which role this thread is about.
   label: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
     color: Colors.body,
   },
 });

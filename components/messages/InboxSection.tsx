@@ -1,7 +1,7 @@
 import { ChevronRight } from "@/components/ui/icons";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface InboxSectionProps {
   title: string;
@@ -37,27 +37,19 @@ export function InboxSection({
 
   if (hidden) return null;
 
-  const header = (
-    <>
-      <Text style={styles.title}>{title}</Text>
-      {count > 0 && (
-        <View style={styles.countPill}>
-          <Text style={styles.countText}>{count}</Text>
-        </View>
-      )}
-    </>
-  );
-
   return (
     <View style={styles.container}>
       {collapsible ? (
+        /* Collapsed sections read as quiet hairline rows with a serif
+           count — the Docket's "archived drawer". */
         <TouchableOpacity
-          style={styles.header}
+          style={styles.collapsedRow}
           onPress={() => setCollapsed((c) => !c)}
           activeOpacity={0.7}
         >
-          {header}
+          <Text style={styles.title}>{title}</Text>
           <View style={{ flex: 1 }} />
+          {count > 0 && <Text style={styles.collapsedCount}>{count}</Text>}
           <ChevronRight
             size={16}
             color={Colors.faint}
@@ -65,7 +57,12 @@ export function InboxSection({
           />
         </TouchableOpacity>
       ) : (
-        <View style={styles.header}>{header}</View>
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            {title}
+            {count > 0 ? ` · ${count}` : ""}
+          </Text>
+        </View>
       )}
       {!collapsed && <View style={styles.group}>{children}</View>}
     </View>
@@ -73,12 +70,11 @@ export function InboxSection({
 }
 
 const styles = StyleSheet.create({
-  container: { marginBottom: 28 },
+  container: { marginBottom: 26 },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 10,
+    marginBottom: 0,
   },
   title: {
     fontSize: 12,
@@ -87,21 +83,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
-  countPill: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 5,
-    borderRadius: 9,
-    backgroundColor: "#000",
+  collapsedRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingVertical: 13,
   },
-  countText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
+  collapsedCount: {
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    color: Colors.faint,
+  },
+  // Flat hairline group — the Docket rebrand: rows sit on the paper
+  // between rules, no recessed box.
   group: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
 });

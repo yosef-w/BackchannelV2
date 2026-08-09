@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import type { ReportReason } from "@/lib/api";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ThreadMenuSheetProps {
   visible: boolean;
@@ -242,30 +242,33 @@ const styles = StyleSheet.create({
   // pattern (Match button, Send button, etc.). The destructive context is
   // communicated by the modal subtitle ("This cannot be undone."), not by
   // the button color — keeps the brand palette consistent across surfaces.
+  // Pill CTAs — the rebrand's primary-action shape.
   unmatchActionBtn: {
-    paddingVertical: 17,
-    borderRadius: 18,
-    backgroundColor: "#000",
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
   unmatchActionText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFF",
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 15.5,
+    letterSpacing: -0.2,
+    color: Colors.paper,
   },
   unmatchCancelBtn: {
-    paddingVertical: 17,
-    backgroundColor: Colors.surface,
-    borderRadius: 18,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   unmatchCancelText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   // Report — outlined (not filled) to sit visually below Unmatch's solid
   // black CTA without resorting to red; severity is communicated by copy
@@ -276,16 +279,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 16,
-    borderRadius: 18,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     marginBottom: 12,
   },
   reportActionText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   reportReasonList: {
     gap: 8,
@@ -303,16 +306,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   reportReasonRowSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.ink,
+    borderColor: Colors.ink,
   },
   reportReasonText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   reportReasonTextSelected: {
-    color: "#FFF",
+    color: Colors.paper,
   },
   reportDetailInput: {
     backgroundColor: Colors.offWhite,
@@ -322,7 +325,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     minHeight: 70,
     textAlignVertical: "top",
     marginBottom: 20,
