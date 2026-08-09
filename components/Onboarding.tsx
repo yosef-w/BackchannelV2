@@ -159,6 +159,8 @@ export function Onboarding({
     else onComplete();
   };
 
+  const isLastSlide = index === slides.length - 1;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -205,25 +207,41 @@ export function Onboarding({
           ))}
         </Animated.ScrollView>
 
-        {/* Footer Navigation */}
-        <View style={styles.footer}>
+        {/* Footer Navigation — the button's weight signals what this IS:
+            a couple of cards to flip through, not a step-wizard. Early
+            slides get a small, low-emphasis "Next" (a fallback for anyone
+            who doesn't discover swipe, without competing with it as THE
+            way to move through). Only the true commitment — finishing the
+            deck — gets the solid, full-weight pill. */}
+        <View style={isLastSlide ? styles.footer : styles.footerRow}>
           <View style={styles.dotsContainer}>
             {slides.map((_, i) => (
               <PagerDot key={i} index={i} scrollX={scrollX} />
             ))}
           </View>
 
-          <PressableScale
-            pressedScale={0.97}
-            onPress={nextSlide}
-            style={styles.nextButton}
-            accessibilityRole="button"
-          >
-            <Text style={styles.nextButtonText}>
-              {index === slides.length - 1 ? "Get Started" : "Continue"}
-            </Text>
-            <ArrowRight color="#FFF" size={20} />
-          </PressableScale>
+          {isLastSlide ? (
+            <PressableScale
+              pressedScale={0.97}
+              onPress={nextSlide}
+              style={styles.nextButton}
+              accessibilityRole="button"
+            >
+              <Text style={styles.nextButtonText}>Get Started</Text>
+              <ArrowRight color="#FFF" size={20} />
+            </PressableScale>
+          ) : (
+            <TouchableOpacity
+              onPress={nextSlide}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={styles.nextLink}
+              accessibilityRole="button"
+              accessibilityLabel="Next slide"
+            >
+              <Text style={styles.nextLinkText}>Next</Text>
+              <ArrowRight color={Colors.ink} size={16} strokeWidth={2.2} />
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     </View>
@@ -580,6 +598,16 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 28,
   },
+  // Non-final slides: dots + the low-emphasis "Next" link share a row
+  // instead of the dots-then-full-pill stack — visually lighter, reads
+  // as "flip through a couple more" rather than "complete this step."
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 32,
+    paddingBottom: 44,
+  },
   dotsContainer: {
     flexDirection: "row",
     gap: 8,
@@ -602,6 +630,19 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 17,
     letterSpacing: -0.2,
+  },
+  // The low-emphasis fallback on non-final slides — plain text + a small
+  // chevron, no filled pill, so it reads as a minor affordance next to
+  // swipe rather than the primary way to move through the deck.
+  nextLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  nextLinkText: {
+    fontFamily: Fonts.sansSemiBold,
+    color: Colors.ink,
+    fontSize: 15,
   },
   // ── Shared vignette atoms ─────────────────────────────────────────────
   vHeader: {
