@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   field: { marginBottom: 20 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
-  fieldLabel: { fontSize: 11, fontWeight: "800", color: Colors.muted, letterSpacing: 0.6 },
+  fieldLabel: { fontSize: 12, fontWeight: "800", color: Colors.muted, letterSpacing: 0.6 },
   requiredStar: { fontSize: 13, color: Colors.danger, fontWeight: "700" },
   input: {
     backgroundColor: Colors.offWhite,
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   lockedText: { fontSize: 15, color: Colors.ink },
-  note: { fontSize: 11, color: Colors.muted, marginTop: 4, fontStyle: "italic" },
+  note: { fontSize: 12, color: Colors.muted, marginTop: 4, fontStyle: "italic" },
   tagsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   tag: {
     flexDirection: "row",

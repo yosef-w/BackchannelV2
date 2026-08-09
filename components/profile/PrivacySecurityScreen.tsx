@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   fieldLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
     color: Colors.muted,
     letterSpacing: 0.6,

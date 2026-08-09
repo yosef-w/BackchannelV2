@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   addItemText: { fontSize: 14, fontWeight: "700", color: "#000" },
   field: { marginBottom: 24 },
   fieldLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
     color: Colors.muted,
     letterSpacing: 0.6,
