@@ -19,7 +19,13 @@ export default function SignInScreen() {
   return (
     <AuthScreen
       initialIsLogin
-      onBack={() => router.replace("/splash")}
+      // A real back() (not replace()) so the platform's native "pop"
+      // animation plays — replace() always animates like a forward push,
+      // which read as moving forward even though this is a back button.
+      // The replace() fallback only covers deep links with no history.
+      onBack={() =>
+        router.canGoBack() ? router.back() : router.replace("/splash")
+      }
       onLoginComplete={() => router.replace("/dashboard")}
       // Defensive fallback only — onRequestSignUp intercepts every "Sign up"
       // tap while isLogin is true, so the signup submit path below should

@@ -88,9 +88,21 @@ export default function OnboardingScreen() {
   // skipToQuestionnaire above — this covers both the cross-screen shortcut
   // and a normal in-place SSO signup on this screen's own auth step, which
   // also leaves the user authenticated with a pending ssoSession). Send
-  // them to role selection instead of a nonexistent password form.
-  const handleQuestionnaireBack = () =>
-    skipToQuestionnaire ? router.replace("/choose-role") : setStep("auth");
+  // them to role selection instead of a nonexistent password form. A real
+  // back() (not replace()) so the native "pop" animation plays — replace()
+  // always animates like a forward push, which reads as moving forward
+  // even though this is a back action. This user's stack always has
+  // /choose-role in its history (SSO on sign-in.tsx routes straight here
+  // with no intervening film), so the replace() fallback is only a
+  // deep-link/hot-reload safety net.
+  const handleQuestionnaireBack = () => {
+    if (!skipToQuestionnaire) {
+      setStep("auth");
+      return;
+    }
+    if (router.canGoBack()) router.back();
+    else router.replace("/choose-role");
+  };
 
   if (userType === "sponsor") {
     return (

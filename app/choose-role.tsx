@@ -17,7 +17,13 @@ export default function ChooseRoleScreen() {
 
   return (
     <ModeSelection
-      onBack={() => router.replace("/splash")}
+      // A real back() (not replace()) so the platform's native "pop"
+      // animation plays — replace() always animates like a forward push,
+      // which read as moving forward even though this is a back button.
+      // The replace() fallback only covers deep links with no history.
+      onBack={() =>
+        router.canGoBack() ? router.back() : router.replace("/splash")
+      }
       onSelect={handleSelect}
     />
   );
