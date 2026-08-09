@@ -47,7 +47,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Info,
   RefreshCcw,
   X,
 } from "@/components/ui/icons";
@@ -494,12 +493,6 @@ export function HomeView({
     setShowIntro(false);
     trackHomeIntroDismissed(action);
     AsyncStorage.removeItem(HOME_INTRO_PENDING_KEY).catch(() => {});
-  };
-
-  // Replay affordance (the header "?").
-  const handleReplayIntro = () => {
-    trackHomeIntroShown("replay");
-    setShowIntro(true);
   };
 
   // Hydrate deck-action state (waitlisted / applied / sponsor-requested)
@@ -1539,15 +1532,6 @@ export function HomeView({
               </TouchableOpacity>
             )}
 
-            {/* Replay the first-run "how it works" intro. */}
-            <TouchableOpacity
-              style={styles.introHelpBtn}
-              onPress={handleReplayIntro}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.7}
-            >
-              <Info color={Colors.muted} size={16} strokeWidth={2.4} />
-            </TouchableOpacity>
           </Animated.View>
 
           {/* "Sponsors are interested in you" teaser — reads the same
@@ -2251,18 +2235,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 28,
     gap: 12,
-  },
-  // Same flat letterpress language as the TopBar's icon buttons — paper
-  // fill + hairline instead of a gray recess.
-  introHelpBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.paper,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
   },
   progressHeaderContainer: { flex: 1 },
   progressHeaderHidden: { opacity: 0 },
