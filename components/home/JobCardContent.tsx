@@ -1,6 +1,5 @@
 import {
   BellRing,
-  Calendar,
   Check,
   ExternalLink,
 } from "@/components/ui/icons";
@@ -361,8 +360,14 @@ export function JobCardContent({
             )}
         </>
       ) : (
-        /* MEET YOUR SPONSOR — identity, trust, words; plus
-           the role's inside-story insights below it. */
+        /* THE VOUCH — the sponsor zone (2026-08 P redesign). The
+           product's core mechanic — a real person staking their name on
+           this role — leads as a serif statement, then the identity
+           row, trust facts as outlined ink chips (VERIFIED is the one
+           filled accent), the sponsor's remaining Q&A as flat quote
+           bands, and the role-spec insights as labeled passages. The
+           pre-rebrand gray inset card (shadows, green verified pill,
+           dark header strips) is gone. */
         si &&
         (() => {
           const ins =
@@ -391,178 +396,115 @@ export function JobCardContent({
               label: "EVERYTHING ELSE",
               text: ins.insiderInsights,
             });
+          const yearsChip = (si.yearsAtCompany || "").trim();
           return (
-            <>
-              {/* ── SPONSOR ZONE CARD ───────────────── */}
-              <View style={cardStyles.sponsorZoneOuter}>
-                <View style={cardStyles.sponsorZoneCard}>
-                  <View style={cardStyles.sponsorZoneBody}>
-                    {/* Subtle "SPONSORED BY" kicker */}
-                    <Text style={cardStyles.sponsorZoneQALabel}>
-                      SPONSORED BY
+            <View style={cardStyles.vouchSection}>
+              <Text style={cardStyles.vouchStatement}>
+                {sponsorFirstName || "Someone"} put their{" "}
+                <Text style={cardStyles.vouchStatementEm}>name</Text>
+                {" on this role."}
+              </Text>
+
+              {/* Identity row */}
+              <View style={cardStyles.vouchIdRow}>
+                {si.image ? (
+                  <Image
+                    source={{ uri: si.image }}
+                    style={cardStyles.vouchAvatar}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={150}
+                  />
+                ) : (
+                  <View style={cardStyles.vouchAvatarFallback}>
+                    <Text style={cardStyles.vouchAvatarInitial}>
+                      {(si.name || "?")[0].toUpperCase()}
                     </Text>
-
-                    {/* Identity row */}
-                    <View
-                      style={[cardStyles.sponsorMeetInline, { marginTop: 10 }]}
-                    >
-                      {si.image ? (
-                        <Image
-                          source={{ uri: si.image }}
-                          style={cardStyles.sponsorMeetAvatar}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          transition={150}
-                        />
-                      ) : (
-                        <View style={cardStyles.sponsorMeetAvatarFallback}>
-                          <Text style={cardStyles.sponsorMeetAvatarInitial}>
-                            {(si.name || "?")[0].toUpperCase()}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text
-                          style={cardStyles.sponsorMeetName}
-                          numberOfLines={1}
-                        >
-                          {si.name}
-                        </Text>
-                        {!!(si.role || company) && (
-                          <Text
-                            style={cardStyles.sponsorMeetRole}
-                            numberOfLines={1}
-                          >
-                            {si.role}
-                            {si.role && company ? " · " : ""}
-                            {company}
-                          </Text>
-                        )}
-                        {sponsorProfile?.verified && (
-                          <View
-                            style={[cardStyles.canReferTag, { marginTop: 6 }]}
-                          >
-                            <Check size={10} color="#000" strokeWidth={3} />
-                            <Text style={cardStyles.canReferTagText}>
-                              Verified employee
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Fact pills */}
-                    {(!!si.yearsAtCompany || si.canRefer) && (
-                      <View
-                        style={[cardStyles.hingeChipsWrap, { marginTop: 12 }]}
-                      >
-                        {!!si.yearsAtCompany && (
-                          <View style={cardStyles.heroPill}>
-                            <Calendar color={Colors.body} size={11} />
-                            <Text style={cardStyles.heroPillText}>
-                              {si.yearsAtCompany} here
-                            </Text>
-                          </View>
-                        )}
-                        {si.canRefer && (
-                          <View style={cardStyles.heroPill}>
-                            <Check
-                              color={Colors.body}
-                              size={11}
-                              strokeWidth={3}
-                            />
-                            <Text style={cardStyles.heroPillText}>
-                              Can refer directly
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-
-                    {/* Sponsor Q&A — the first answer runs as the hero
-                        pull-quote; any remaining answers keep the
-                        quote-style card treatment here so the sponsor's
-                        voice reads the same everywhere it appears. */}
-                    {zoneQA.length > 0 && (
-                      <>
-                        <View style={cardStyles.sponsorZoneDivider} />
-                        <Text style={cardStyles.sponsorZoneQALabel}>
-                          SPONSOR INSIGHTS
-                        </Text>
-                        {zoneQA.map((item, i) => (
-                          <View
-                            key={item.question}
-                            style={[
-                              cardStyles.hingeInsightCard,
-                              i > 0 && { marginTop: 12 },
-                            ]}
-                          >
-                            <View style={cardStyles.hingeInsightAccent} />
-                            <View style={cardStyles.hingeInsightBody}>
-                              <Text style={cardStyles.hingeInsightQuestion}>
-                                {item.question}
-                              </Text>
-                              <View style={cardStyles.hingeInsightAnswerRow}>
-                                <Text
-                                  style={cardStyles.hingeInsightQuoteMark}
-                                >
-                                  “
-                                </Text>
-                                <Text style={cardStyles.hingeInsightAnswer}>
-                                  {item.answer}
-                                </Text>
-                              </View>
-                            </View>
-                          </View>
-                        ))}
-                      </>
-                    )}
-
-                    {/* Job insights — role-specific
-                        spec written BY the sponsor
-                        ABOUT the role. Uses a
-                        documented "header strip" card
-                        (dark label band on top, body
-                        below) so it reads as a formal
-                        role brief rather than a
-                        personal quote — distinct from
-                        the SPONSOR INSIGHTS cards
-                        right above it. */}
-                    {jobInsights.length > 0 && (
-                      <>
-                        <View style={cardStyles.sponsorZoneDivider} />
-                        <Text style={cardStyles.sponsorZoneJobLabel}>
-                          JOB INSIGHTS
-                        </Text>
-                        {jobInsights.map((it, idx) => (
-                          <View
-                            key={it.label}
-                            style={[
-                              cardStyles.jobInsightCard,
-                              idx > 0 && { marginTop: 12 },
-                            ]}
-                          >
-                            <View style={cardStyles.jobInsightHeader}>
-                              <Text style={cardStyles.jobInsightHeaderLabel}>
-                                {it.label}
-                              </Text>
-                            </View>
-                            <View style={cardStyles.jobInsightBody}>
-                              <ExpandableText
-                                style={cardStyles.jobInsightBodyText}
-                                numberOfLines={6}
-                              >
-                                {it.text}
-                              </ExpandableText>
-                            </View>
-                          </View>
-                        ))}
-                      </>
-                    )}
                   </View>
+                )}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={cardStyles.vouchName} numberOfLines={1}>
+                    {si.name}
+                  </Text>
+                  {!!(si.role || company) && (
+                    <Text style={cardStyles.vouchRole} numberOfLines={1}>
+                      {si.role}
+                      {si.role && company ? " · " : ""}
+                      {company}
+                    </Text>
+                  )}
                 </View>
               </View>
-            </>
+
+              {/* Trust chips — verified arrives with the enrichment
+                  cache, same as it always has */}
+              {(sponsorProfile?.verified || !!yearsChip || si.canRefer) && (
+                <View style={cardStyles.vouchChipsRow}>
+                  {sponsorProfile?.verified && (
+                    <View
+                      style={[cardStyles.vouchChip, cardStyles.vouchChipFill]}
+                    >
+                      <Check color={Colors.paper} size={10} strokeWidth={3} />
+                      <Text
+                        style={cardStyles.vouchChipFillText}
+                        numberOfLines={1}
+                      >
+                        VERIFIED
+                      </Text>
+                    </View>
+                  )}
+                  {!!yearsChip && (
+                    <View style={cardStyles.vouchChip}>
+                      <Text style={cardStyles.vouchChipText} numberOfLines={1}>
+                        {`${yearsChip} here`.toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  {si.canRefer && (
+                    <View style={cardStyles.vouchChip}>
+                      <Text style={cardStyles.vouchChipText} numberOfLines={1}>
+                        CAN REFER
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Remaining Q&A — the first answer already runs as the
+                  hero pull-quote; the rest keep the same flat quote
+                  voice here, attributed by first name + question */}
+              {zoneQA.map((item) => (
+                <View key={item.question} style={cardStyles.vouchQuote}>
+                  <Text style={cardStyles.vouchQuoteMark}>“</Text>
+                  <ExpandableText
+                    style={cardStyles.vouchQuoteText}
+                    numberOfLines={6}
+                  >
+                    {item.answer ?? ""}
+                  </ExpandableText>
+                  <Text style={cardStyles.kQuoteAttr} numberOfLines={2}>
+                    {joinFacts([
+                      sponsorFirstName,
+                      item.question || "",
+                    ]).toUpperCase()}
+                  </Text>
+                </View>
+              ))}
+
+              {/* Job insights — role-specific spec written BY the
+                  sponsor ABOUT the role, as labeled passages */}
+              {jobInsights.map((it) => (
+                <View key={it.label}>
+                  <Text style={cardStyles.vouchInsightLabel}>{it.label}</Text>
+                  <ExpandableText
+                    style={cardStyles.hingeBodyText}
+                    numberOfLines={6}
+                  >
+                    {it.text}
+                  </ExpandableText>
+                </View>
+              ))}
+            </View>
           );
         })()
       )}

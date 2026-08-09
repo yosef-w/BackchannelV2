@@ -242,49 +242,6 @@ export const cardStyles = StyleSheet.create({
     lineHeight: 24,
   },
 
-  // ── Job-brief cards (role-spec insights from the sponsor) ─────────
-  // Same depth treatment as the sponsor's quote cards (white bg, soft
-  // shadow, hairline border), but a totally different visual rhythm:
-  // a dark "header strip" at the top carries the label, then body
-  // text below. Reads as a formal documented brief rather than a
-  // personal quote — distinct enough at a glance that the user knows
-  // this is "what the sponsor wrote ABOUT the role" vs. "what the
-  // sponsor said in their own words".
-  jobInsightCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  jobInsightHeader: {
-    backgroundColor: "#000",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  jobInsightHeaderLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-  jobInsightBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  jobInsightBodyText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#1A1A1A",
-    lineHeight: 23,
-  },
-
   // ── Chip wrapping (skills, credentials, role details) ─────────────
   hingeChipsWrap: {
     flexDirection: "row",
@@ -383,6 +340,128 @@ export const cardStyles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
+  // ── The Vouch — sponsor zone (2026-08 P redesign) ─────────────────
+  // The product's core mechanic — a real person staking their name on a
+  // role — rendered as typography instead of an inset gray card. A
+  // hairline rule opens the section, a serif statement leads ("Jordan
+  // put their *name* on this role."), then the identity row, trust
+  // facts as outlined ink chips (VERIFIED is the single filled accent),
+  // the sponsor's remaining Q&A as flat quote bands, and the role-spec
+  // insights as labeled passages. No box, no shadow, no green.
+  vouchSection: {
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 22,
+    paddingBottom: 4,
+  },
+  vouchStatement: {
+    fontFamily: Fonts.serif,
+    fontSize: 22,
+    lineHeight: 28,
+    color: Colors.ink,
+    letterSpacing: -0.2,
+  },
+  vouchStatementEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  vouchIdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 13,
+    marginTop: 16,
+  },
+  vouchAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+  },
+  vouchAvatarFallback: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vouchAvatarInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 18,
+    color: Colors.paper,
+  },
+  vouchName: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 15.5,
+    color: Colors.ink,
+    letterSpacing: -0.2,
+  },
+  vouchRole: {
+    fontSize: 12.5,
+    fontWeight: "500",
+    color: Colors.body,
+    marginTop: 2,
+  },
+  vouchChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 14,
+  },
+  vouchChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1.2,
+    borderColor: Colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+  },
+  vouchChipText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.ink,
+  },
+  vouchChipFill: {
+    backgroundColor: Colors.ink,
+  },
+  vouchChipFillText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.paper,
+  },
+  vouchQuote: {
+    marginTop: 18,
+  },
+  vouchQuoteMark: {
+    fontFamily: Fonts.serif,
+    fontSize: 32,
+    lineHeight: 34,
+    color: Colors.faint,
+    marginBottom: -8,
+  },
+  vouchQuoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 16.5,
+    lineHeight: 24,
+    color: Colors.ink,
+  },
+  // Passage headers for the sponsor's role-spec insights — 12px floor
+  // per the section-header accessibility feedback (they head passages,
+  // unlike the ledger's table keys).
+  vouchInsightLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: Colors.muted,
+    marginTop: 18,
+    marginBottom: 6,
+  },
+
   // ── "No sponsor yet" inline block (applicant view) ────────────────
   noSponsorInlineBlock: {
     alignItems: "center",
@@ -394,90 +473,17 @@ export const cardStyles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  // ── Sponsor zone card (sponsored jobs — distinct section) ─────────
-  sponsorZoneOuter: { paddingVertical: 18 },
-  sponsorZoneCard: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E8E8E8",
-  },
-  sponsorZoneBody: { padding: 16 },
-  sponsorZoneDivider: {
-    height: 1,
-    backgroundColor: "#E8E8E8",
-    marginVertical: 16,
-  },
-  // "SPONSOR INSIGHTS" sub-label — light gray, personal voice
-  sponsorZoneQALabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: Colors.muted,
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  // "JOB INSIGHTS" sub-label — darker to signal role data vs personal
-  sponsorZoneJobLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#444",
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-
-  // ── Meet your sponsor inline block ────────────────────────────────
-  sponsorMeetInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  sponsorMeetAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#F0F0F0",
-  },
-  sponsorMeetAvatarFallback: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sponsorMeetAvatarInitial: {
-    fontSize: 21,
-    fontWeight: "800",
-    color: "#FFF",
-  },
   // A person's name — same "names are headline-tier" rule as
-  // ProfileIdentityCard/hingeHeroName, just embedded inline here.
+  // ProfileIdentityCard, embedded inline. Still used by
+  // ReferralSigningScreen; the deck's sponsor zone now uses the vouch
+  // styles above.
   sponsorMeetName: {
     fontFamily: Type.heading.fontFamily,
     fontSize: 19,
     color: Colors.ink,
     letterSpacing: -0.3,
   },
-  sponsorMeetRole: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: Colors.body,
-    marginTop: 2,
-  },
 
-  // ── Centered-profile card front face (redesign) ──
-  // Circular avatar + centered identity + centered fact pills, with a
-  // left-aligned ABOUT block below. Shared by the sponsor view (applicant
-  // profile cards) and the applicant view (job cards).
-  heroPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F4F4F5",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
   // PR #56 — "Liked your role" badge at the top of a sponsor's profile-pack
   // card. Black accent pill so it visually anchors the high-conviction
   // signal above the neutral hero block.
@@ -497,28 +503,6 @@ export const cardStyles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFF",
     letterSpacing: 0.8,
-  },
-  heroPillText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#333",
-    letterSpacing: -0.1,
-  },
-  // ── Referral Check-in Banner ───────────────────────────────────────────────
-  canReferTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#E8FBEF",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  canReferTagText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#00CB54",
-    letterSpacing: 0.2,
   },
   benefitsList: { gap: 10, marginTop: 8 },
   benefitRow: { flexDirection: "row", alignItems: "center", gap: 8 },
