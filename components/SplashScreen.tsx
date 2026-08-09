@@ -385,6 +385,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    // Nudge the brand block below true center — optically it sat high
+    // against the CTA-weighted bottom. (Static transform here, not on
+    // brandWrapper, whose animated style would override it.)
+    transform: [{ translateY: 24 }],
   },
   brandWrapper: {
     alignItems: 'center',
