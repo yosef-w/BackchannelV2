@@ -32,7 +32,9 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { AppState, AppStateStatus, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
+// Wrapper, NOT the library directly — degrades to a no-op on binaries
+// built before the native module existed instead of crashing at import.
+import { KeyboardProvider } from "@/components/ui/keyboard";
 
 // Initialize crash reporting at module scope — before any UI mounts — so
 // even crashes during the very first render are captured. No-ops when

@@ -12,7 +12,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+// Wrapper, NOT the library directly — falls back to the previous
+// KeyboardAvoidingView+ScrollView behavior on binaries built before the
+// native module existed instead of crashing at import.
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import {
     identifyUser,
