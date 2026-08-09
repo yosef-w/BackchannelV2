@@ -38,7 +38,7 @@ export function InboxSection({
   if (hidden) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, collapsible && styles.containerDrawer]}>
       {collapsible ? (
         /* Collapsed sections read as quiet hairline rows with a serif
            count — the Docket's "archived drawer". */
@@ -70,7 +70,10 @@ export function InboxSection({
 }
 
 const styles = StyleSheet.create({
-  container: { marginBottom: 26 },
+  // Active gets clear air before the archived drawers; the drawers
+  // themselves stack flush so their top rules read as one ruled block.
+  container: { marginBottom: 34 },
+  containerDrawer: { marginBottom: 0 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -89,7 +92,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    paddingVertical: 13,
+    paddingVertical: 15,
   },
   collapsedCount: {
     fontFamily: Fonts.serif,
@@ -99,8 +102,9 @@ const styles = StyleSheet.create({
   // Flat hairline group — the Docket rebrand: rows sit on the paper
   // between rules, no recessed box.
   group: {
-    marginTop: 8,
+    marginTop: 6,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    marginBottom: 8,
   },
 });

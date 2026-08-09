@@ -2,8 +2,6 @@ import { Check, MessageCircle } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -117,10 +115,13 @@ export function JobDetailModal({
     job.benefits.length === 0;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={modalStyles.modalOverlay}
-    >
+    /* Plain View, deliberately NOT a KeyboardAvoidingView: this sheet has
+       no inputs, and opening it while the thread's keyboard was up made
+       the KAV compress the overlay while the sheet kept its full-screen
+       height cap — the bottom of the sheet (footer included) was clipped
+       OUTSIDE the scroll view, which read as "modal stuck / can't scroll
+       to the rest". Callers with a live keyboard also dismiss it. */
+    <View style={modalStyles.modalOverlay}>
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
@@ -280,7 +281,7 @@ export function JobDetailModal({
           </>
         )}
       </DismissibleSheet>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

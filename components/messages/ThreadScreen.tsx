@@ -23,6 +23,7 @@ import {
 import React, { useState } from "react";
 import {
   Image,
+  Keyboard,
   Modal,
   ScrollView,
   Text,
@@ -182,6 +183,9 @@ export function ThreadScreen({
    * the full posting (description, salary, skills, benefits) when the
    * background fetch lands. */
   const openJobContext = () => {
+    // The composer's keyboard may be up — drop it before presenting the
+    // sheet so nothing competes with the modal for the bottom half.
+    Keyboard.dismiss();
     if (!conversation) return;
     const ctx = conversation.jobContext;
     if (!ctx?.jobTitle && !ctx?.company) return;

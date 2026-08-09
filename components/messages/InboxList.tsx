@@ -119,15 +119,12 @@ function ConvAvatar({
   );
 }
 
-/** The unread signal — an ink bullet in the row's left margin, like a
- * marked line in a manuscript. Every row reserves the slot so avatars
- * stay aligned. */
+/** The unread signal — an ink bullet floating in the page's own left
+ * margin (absolutely positioned, so rows keep their full width and
+ * read rows carry no phantom gutter). */
 function MarginDot({ unread }: { unread?: boolean }) {
-  return (
-    <View style={styles.dotSlot}>
-      {unread && <View style={styles.marginDot} />}
-    </View>
-  );
+  if (!unread) return null;
+  return <View style={styles.marginDot} pointerEvents="none" />;
 }
 
 /** Right-hand slot of a row header: timestamp, or the Unmatched chip on past rows. */
@@ -388,25 +385,26 @@ export function InboxList({
 const styles = StyleSheet.create({
   // Docket/Correspondence rebrand — flat ruled rows on the paper, an ink
   // margin bullet for unread, previews in the serif quote voice.
+  // Every row keeps its bottom rule (ledger rhythm), so the Active group
+  // closes with a line before the collapsed drawers below it.
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 13,
+    paddingVertical: 14,
     gap: 12,
-  },
-  rowDivider: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    position: "relative",
   },
+  rowDivider: {},
   avatarWrapper: { position: "relative" },
   avatarHidden: { opacity: 0.55 },
-  dotSlot: {
-    width: 10,
-    alignItems: "flex-start",
-    justifyContent: "center",
-    alignSelf: "center",
-  },
+  // Floats in the screen's 28px content padding — rows stay full width.
   marginDot: {
+    position: "absolute",
+    left: -16,
+    top: "50%",
+    marginTop: -3.5,
     width: 7,
     height: 7,
     borderRadius: 3.5,
@@ -418,7 +416,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     gap: 8,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   name: { fontSize: 15, fontWeight: "700", color: Colors.ink, flexShrink: 1 },
   nameHidden: { color: Colors.muted },
@@ -429,7 +427,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: "uppercase",
     color: Colors.body,
-    marginBottom: 1,
+    marginBottom: 2,
   },
   time: { fontSize: 10, fontWeight: "800", color: Colors.faint },
   // Their words, in the serif quote voice.
@@ -453,11 +451,12 @@ const styles = StyleSheet.create({
   // Expanded per-role sub-threads, indented under the person row with a
   // hairline rail aligned to the avatar's right edge (dot slot + avatar).
   subList: {
-    marginLeft: 70,
+    marginLeft: 60,
     paddingLeft: 14,
     borderLeftWidth: 1,
     borderLeftColor: Colors.border,
-    marginBottom: 10,
+    marginTop: 2,
+    marginBottom: 12,
   },
   subRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
   subRowUnreadDot: {
