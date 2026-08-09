@@ -513,7 +513,10 @@ export function ApplicantJobsBrowseView() {
                     />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.jobCardTitle} numberOfLines={1}>
+                    {/* Two lines before truncating — real titles ("Senior
+                        Staff Software Engineer, Infrastructure") lose
+                        their meaning cut at one. */}
+                    <Text style={styles.jobCardTitle} numberOfLines={2}>
                       {job.TITLE}
                     </Text>
                     <Text style={styles.jobCardCompany} numberOfLines={1}>

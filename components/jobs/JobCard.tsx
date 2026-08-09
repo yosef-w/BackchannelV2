@@ -51,7 +51,10 @@ export function JobCard({
           <Text style={styles.companyName} numberOfLines={1}>
             {job.company}
           </Text>
-          <Text style={styles.jobTitleText} numberOfLines={1}>
+          {/* Two lines before truncating — real titles ("Senior Staff
+              Software Engineer, Infrastructure") lose their meaning cut
+              at one. */}
+          <Text style={styles.jobTitleText} numberOfLines={2}>
             {job.title}
           </Text>
         </View>
