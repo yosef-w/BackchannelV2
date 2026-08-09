@@ -505,12 +505,8 @@ export function AuthScreen({
                   <>
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>First Name</Text>
-                      <View
-                        style={[
-                          styles.inputWrapper,
-                          focusedField === "firstName" && styles.inputWrapperFocused,
-                        ]}
-                      >
+                      <View style={styles.inputWrapper}>
+                        <FocusRing active={focusedField === "firstName"} />
                         <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="First Name"
@@ -527,12 +523,8 @@ export function AuthScreen({
 
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>Last Name</Text>
-                      <View
-                        style={[
-                          styles.inputWrapper,
-                          focusedField === "lastName" && styles.inputWrapperFocused,
-                        ]}
-                      >
+                      <View style={styles.inputWrapper}>
+                        <FocusRing active={focusedField === "lastName"} />
                         <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="Last Name"
@@ -551,12 +543,8 @@ export function AuthScreen({
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email Address</Text>
-                  <View
-                    style={[
-                      styles.inputWrapper,
-                      focusedField === "email" && styles.inputWrapperFocused,
-                    ]}
-                  >
+                  <View style={styles.inputWrapper}>
+                    <FocusRing active={focusedField === "email"} />
                     <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email"
@@ -574,12 +562,8 @@ export function AuthScreen({
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Password</Text>
-                  <View
-                    style={[
-                      styles.inputWrapper,
-                      focusedField === "password" && styles.inputWrapperFocused,
-                    ]}
-                  >
+                  <View style={styles.inputWrapper}>
+                    <FocusRing active={focusedField === "password"} />
                     <Lock color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Password"
@@ -680,12 +664,8 @@ export function AuthScreen({
                     password.
                   </Text>
 
-                  <View
-                    style={[
-                      styles.modalInputWrapper,
-                      focusedField === "forgotEmail" && styles.inputWrapperFocused,
-                    ]}
-                  >
+                  <View style={styles.modalInputWrapper}>
+                    <FocusRing active={focusedField === "forgotEmail"} />
                     <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email Address"
@@ -756,6 +736,25 @@ export function AuthScreen({
         )}
       </SafeAreaView>
     </View>
+  );
+}
+
+/**
+ * The focused-input affordance, as an absolutely-positioned overlay whose
+ * opacity toggles — deliberately NOT a conditional style on the input's
+ * wrapper View. Under the New Architecture, mutating a TextInput
+ * ancestor's shadow/elevation styles on focus makes Fabric recreate the
+ * native view, which fires onBlur immediately after onFocus — the
+ * keyboard flashes up and instantly dismisses
+ * (facebook/react-native#45798). A sibling overlay isn't in the input's
+ * ancestor chain, so toggling it leaves focus untouched.
+ */
+function FocusRing({ active }: { active: boolean }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.focusRing, active && styles.focusRingActive]}
+    />
   );
 }
 
@@ -843,16 +842,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  // The "you are here" affordance the PM flagged as missing — applied on
-  // top of inputWrapper/modalInputWrapper for whichever field is focused.
-  inputWrapperFocused: {
+  // The "you are here" affordance the PM flagged as missing — rendered by
+  // FocusRing as an overlay (see its comment for why it must not be a
+  // conditional style on the wrapper). Sized -1 to sit exactly over the
+  // wrapper's own 1px hairline border; same 16px radius as both wrappers.
+  // No shadow: shadow/elevation on focus is precisely the Fabric trigger
+  // this replaces, and the ink ring alone reads clearly.
+  focusRing: {
+    position: "absolute",
+    top: -1,
+    left: -1,
+    right: -1,
+    bottom: -1,
+    borderRadius: 16,
+    borderWidth: 1.5,
     borderColor: Colors.ink,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    opacity: 0,
   },
+  focusRingActive: { opacity: 1 },
   inputIcon: {
     marginRight: 12,
   },
