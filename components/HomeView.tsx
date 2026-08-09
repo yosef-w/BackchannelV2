@@ -2252,11 +2252,15 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     gap: 12,
   },
+  // Same flat letterpress language as the TopBar's icon buttons — paper
+  // fill + hairline instead of a gray recess.
   introHelpBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2278,10 +2282,11 @@ const styles = StyleSheet.create({
     gap: 2,
     marginBottom: 8,
   },
-  // Matches the site's .stat-num (serif for stat/count displays).
+  // Matches the site's .stat-num (serif for stat/count displays) —
+  // sized up so the counter reads as a stat, not a caption.
   progressCurrent: {
     fontFamily: Fonts.serif,
-    fontSize: 18,
+    fontSize: 20,
     color: Colors.ink,
   },
   progressTotal: {
@@ -2302,7 +2307,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   progressDotFilled: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
 
   // 2026-05-27 redesign — Role switcher pill (sponsor-only).
@@ -2317,7 +2322,7 @@ const styles = StyleSheet.create({
   roleSwitcherPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1.5,
     borderColor: Colors.borderStrong,
     paddingVertical: 9,
@@ -2339,14 +2344,14 @@ const styles = StyleSheet.create({
     height: 18,
     paddingHorizontal: 6,
     borderRadius: 9,
-    backgroundColor: "#222",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   roleSwitcherBadgeText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
     letterSpacing: 0.2,
   },
   // Modal: bottom sheet, content-sized, listing all sponsored jobs.

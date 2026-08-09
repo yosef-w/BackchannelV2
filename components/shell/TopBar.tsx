@@ -31,7 +31,10 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <View style={styles.topBar}>
-      <Text style={styles.appTitle}>BackChannel</Text>
+      <Text style={styles.appTitle}>
+        BackChannel
+        <Text style={styles.appTitlePeriod}>.</Text>
+      </Text>
       <View style={styles.topBarButtons}>
         {activeReferralCount > 0 && (
           <TouchableOpacity
@@ -47,7 +50,7 @@ export function TopBar({
             accessibilityHint="Review and update the status of your referrals"
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
+            <ClipboardCheck color={Colors.ink} size={20} strokeWidth={1.5} />
             {staleReferralCount > 0 && (
               <View style={styles.headerCountPill}>
                 <Text style={styles.headerCountPillText}>
@@ -75,7 +78,7 @@ export function TopBar({
           }
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Bell color="#000" size={22} strokeWidth={1.5} />
+          <Bell color={Colors.ink} size={22} strokeWidth={1.5} />
           {unreadNotificationCount > 0 && (
             <View style={styles.headerCountPill}>
               <Text style={styles.headerCountPillText}>
@@ -97,25 +100,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
-  // Matches the site's .nav-wordmark exactly: small, uppercase, wide
-  // positive tracking — a persistent utility mark, not a headline (that's
-  // what the marketing hero's big serif treatment is for).
+  // The splash/hero wordmark, carried into the app chrome: DM Serif
+  // Display Italic — the same glyphs the splash types out — in ink, with
+  // the trailing period in muted (the site's em-accent nod). Ink rather
+  // than the splash's full muted because up here it's the standing brand
+  // anchor, not an accent word inside a sentence; full muted at this
+  // size reads disabled.
   appTitle: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 13,
+    fontFamily: Fonts.serifItalic,
+    fontSize: 22,
     color: Colors.ink,
-    letterSpacing: 2.2, // ~0.12em at this size
-    textTransform: "uppercase",
+    letterSpacing: -0.4,
+  },
+  appTitlePeriod: {
+    color: Colors.muted,
   },
   topBarButtons: {
     flexDirection: "row",
     gap: 12,
   },
+  // Flat letterpress buttons — paper fill with a hairline, not a gray
+  // recess; the chrome stays quiet so the wordmark carries the row.
   headerIconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.offWhite,
+    backgroundColor: Colors.paper,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -132,15 +142,15 @@ const styles = StyleSheet.create({
     height: 17,
     paddingHorizontal: 4,
     borderRadius: 9,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#FFF",
+    borderColor: Colors.paper,
   },
   headerCountPillText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
   },
 });
