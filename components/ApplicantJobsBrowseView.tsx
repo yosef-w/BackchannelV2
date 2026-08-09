@@ -58,6 +58,9 @@ import {
   SheetScrollView,
 } from "./ui/DismissibleSheet";
 import { CompanyLogo } from "./ui/CompanyLogo";
+import { MarketplaceGateModal } from "./jobs/MarketplaceGateModal";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { PREMIUM_ENABLED } from "@/constants/config";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
 function parseSkillsField(raw: string | null | undefined): string[] {
@@ -248,6 +251,20 @@ export function ApplicantJobsBrowseView() {
   );
   const [waitlistedIds, setWaitlistedIds] = useState<Set<string>>(new Set());
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  // Premium velvet rope: browsing/searching stays free — ACTIONS are the
+  // members' privilege. Non-null = the gate sheet is up, holding the
+  // action the user attempted; a successful in-gate purchase runs it.
+  // Inert while PREMIUM_ENABLED is false (isPremium is hardwired false
+  // then, but the guard checks the flag first so behavior is unchanged).
+  const [gateAction, setGateAction] = useState<(() => void) | null>(null);
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+  const guardPremium = (action: () => void) => {
+    if (PREMIUM_ENABLED && !isPremium) {
+      setGateAction(() => action);
+      return;
+    }
+    action();
+  };
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
   // total_count powers "View more"'s visibility + remaining-count label.
@@ -675,7 +692,8 @@ export function ApplicantJobsBrowseView() {
                     icon: <Heart color="#FFF" size={16} strokeWidth={2.5} />,
                     loading: isRequesting,
                     spinnerOnLoading: true,
-                    onPress: () => handleLikeSponsored(selectedJob),
+                    onPress: () =>
+                      guardPremium(() => handleLikeSponsored(selectedJob)),
                   }}
                 />
               ) : (
@@ -684,12 +702,21 @@ export function ApplicantJobsBrowseView() {
                     label: "Get a Sponsor",
                     loading: isRequesting,
                     spinnerOnLoading: true,
-                    onPress: () => handleRequestSponsor(selectedJob),
+                    onPress: () =>
+                      guardPremium(() => handleRequestSponsor(selectedJob)),
                   }}
                 />
               )}
             </DismissibleSheet>
           )}
+
+          {/* Rendered inside the detail Modal so it stacks above the
+              sheet (a sibling outside the Modal never would). */}
+          <MarketplaceGateModal
+            visible={!!gateAction}
+            onClose={() => setGateAction(null)}
+            onUnlocked={() => gateAction?.()}
+          />
         </View>
       </Modal>
     </View>

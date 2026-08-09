@@ -1,15 +1,15 @@
-// PremiumCelebration — "The Gate / Currency Band": the premium-purchase
-// moment, played once right after RevenueCat reports a completed
-// purchase (never for restores — restoring isn't buying).
+// PremiumCelebration — "The Two Doors": the premium-purchase moment,
+// played once right after RevenueCat reports a completed purchase
+// (never for restores — restoring isn't buying).
 //
-// The story, on one ~2.9s cinema clock: the daily deck sits banded like
-// a stack of banknotes by an ink currency strap printed DAILY LIMIT ·
-// 10. The strap strains twice against the cards (anticipation, soft
-// ticks), then TEARS — ragged paper edges, both halves tumbling away
-// (heavy impact) — and the deck springs open (backOut). A DECK UNLOCKED
-// chip stamps on (success), the serif headline lands word by word ("No
-// more waiting for tomorrow."), and the subtitle signs it: "Member
-// since today."
+// The story, on one ~3.4s cinema clock: the deck sits banded like a
+// stack of banknotes by an ink strap printed MEMBERS ONLY. The strap
+// strains twice (soft ticks), TEARS with ragged paper edges (heavy
+// impact) — and one tear reveals BOTH perks: the deck sweeps open to
+// the left while the job-marketplace tile springs in on the right,
+// twin chips stamping underneath (YOUR DECK / THE MARKET). The serif
+// headline lands word by word — "The whole floor is yours." — signed
+// "Member since today."
 //
 // Deliberately "quiet money": ink and paper, no confetti — a members
 // club stamps your card, it doesn't throw glitter.
@@ -19,6 +19,7 @@
 // while PREMIUM_ENABLED is true, since presentPaywall() short-circuits
 // otherwise. Dormant by construction when the flag is off.
 
+import { Search } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
@@ -39,18 +40,21 @@ import {
   win,
 } from "./engine";
 
-const TOTAL_MS = 2900;
+const TOTAL_MS = 3400;
 
-// Soft ticks as the band strains, a heavy hit as it gives way, success
-// as the chip lands — the films' anticipation-then-commit pattern.
+// Soft ticks as the band strains, a heavy hit as it gives way, a tick
+// and a success as the two unlock chips stamp on — the films'
+// anticipation-then-commit pattern.
 const BEATS: readonly CinemaBeat[] = [
-  { at: 0.16, kind: "tick" },
-  { at: 0.26, kind: "tick" },
-  { at: 0.35, kind: "heavy" },
-  { at: 0.56, kind: "success" },
+  { at: 0.135, kind: "tick" },
+  { at: 0.24, kind: "tick" },
+  { at: 0.3, kind: "heavy" },
+  { at: 0.45, kind: "tick" },
+  { at: 0.53, kind: "success" },
 ];
 
-// Deck geometry: packed positions under the band → sprung-open spread.
+// Deck geometry: packed under the band → swept open toward the LEFT,
+// clearing the stage's right side for the marketplace tile.
 const CARDS: {
   packed: number;
   r: number;
@@ -58,35 +62,33 @@ const CARDS: {
   lift: number;
   rs: number;
 }[] = [
-  { packed: -26, r: -4, spread: -84, lift: -6, rs: -9 },
-  { packed: -13, r: 2, spread: -42, lift: 2, rs: -4 },
-  { packed: 0, r: -1, spread: 0, lift: -8, rs: 0 },
-  { packed: 13, r: 3, spread: 42, lift: 3, rs: 4 },
-  { packed: 26, r: -2, spread: 84, lift: -5, rs: 9 },
+  { packed: -26, r: -4, spread: -92, lift: -26, rs: -10 },
+  { packed: -13, r: 2, spread: -64, lift: -18, rs: -5 },
+  { packed: 0, r: -1, spread: -36, lift: -28, rs: -2 },
+  { packed: 13, r: 3, spread: -14, lift: -16, rs: 2 },
+  { packed: 26, r: -2, spread: 8, lift: -24, rs: 6 },
 ];
-const SPREAD_A = 0.385;
-const SPREAD_B = 0.625;
+const SPREAD_A = 0.33;
+const SPREAD_B = 0.535;
 
-const BAND_W = 236;
-const BAND_H = 26;
+const BAND_W = 224;
+const BAND_H = 25;
 const HALF_W = BAND_W / 2;
 
-// Ragged tear edges — a zigzag on each half's inner side. Points
-// alternate 6px in/out across the band's height.
-const LEFT_TEAR_PATH = `M0 0 H${HALF_W - 6} L${HALF_W} 3.25 L${HALF_W - 6} 6.5 L${HALF_W} 9.75 L${HALF_W - 6} 13 L${HALF_W} 16.25 L${HALF_W - 6} 19.5 L${HALF_W} 22.75 L${HALF_W - 6} 26 H0 Z`;
-const RIGHT_TEAR_PATH = `M6 0 H${HALF_W} V26 H6 L0 22.75 L6 19.5 L0 16.25 L6 13 L0 9.75 L6 6.5 L0 3.25 Z`;
+// Ragged tear edges — a zigzag on each half's inner side.
+const LEFT_TEAR_PATH = `M0 0 H${HALF_W - 6} L${HALF_W} 3.1 L${HALF_W - 6} 6.2 L${HALF_W} 9.4 L${HALF_W - 6} 12.5 L${HALF_W} 15.6 L${HALF_W - 6} 18.8 L${HALF_W} 21.9 L${HALF_W - 6} 25 H0 Z`;
+const RIGHT_TEAR_PATH = `M6 0 H${HALF_W} V25 H6 L0 21.9 L6 18.8 L0 15.6 L6 12.5 L0 9.4 L6 6.2 L0 3.1 Z`;
 
-// Headline words — the films' caption rhythm rescaled to this clock.
 const WORDS: { word: string; accent?: boolean }[] = [
-  { word: "No" },
-  { word: "more" },
-  { word: "waiting" },
-  { word: "for" },
-  { word: "tomorrow.", accent: true },
+  { word: "The" },
+  { word: "whole" },
+  { word: "floor" },
+  { word: "is" },
+  { word: "yours.", accent: true },
 ];
-const WORD_START = 0.56;
-const WORD_STAGGER = 0.036;
-const WORD_LEN = 0.19;
+const WORD_START = 0.632;
+const WORD_STAGGER = 0.031;
+const WORD_LEN = 0.165;
 
 function CaptionWord({
   t,
@@ -122,7 +124,7 @@ function DeckCard({
 }) {
   const style = useAnimatedStyle(() => {
     const tv = t.value;
-    const inP = easeOut(win(tv, 0.02, 0.12));
+    const inP = easeOut(win(tv, 0.02, 0.1));
     const p = backOut(win(tv, SPREAD_A, SPREAD_B));
     const x = card.packed + (card.spread - card.packed) * p;
     const rot = card.r + (card.rs - card.r) * p;
@@ -167,18 +169,18 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   // The band strains twice (scaleX pulses) before it gives.
   const bandWrap = useAnimatedStyle(() => {
     const tv = t.value;
-    const p1 = win(tv, 0.145, 0.24);
-    const p2 = win(tv, 0.24, 0.335);
+    const p1 = win(tv, 0.124, 0.2);
+    const p2 = win(tv, 0.2, 0.287);
     const strain =
       Math.sin(p1 * Math.PI) * 0.028 + Math.sin(p2 * Math.PI) * 0.045;
-    const inP = easeOut(win(tv, 0.02, 0.12));
+    const inP = easeOut(win(tv, 0.02, 0.1));
     return { opacity: inP, transform: [{ scaleX: 1 + strain }] };
   });
 
   const tearLeft = useAnimatedStyle(() => {
-    const p = easeIn(win(t.value, 0.345, 0.535));
+    const p = easeIn(win(t.value, 0.294, 0.456));
     return {
-      opacity: 1 - win(t.value, 0.46, 0.535),
+      opacity: 1 - win(t.value, 0.39, 0.456),
       transform: [
         { translateX: -74 * p },
         { translateY: 64 * p },
@@ -188,9 +190,9 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   });
 
   const tearRight = useAnimatedStyle(() => {
-    const p = easeIn(win(t.value, 0.345, 0.535));
+    const p = easeIn(win(t.value, 0.294, 0.456));
     return {
-      opacity: 1 - win(t.value, 0.46, 0.535),
+      opacity: 1 - win(t.value, 0.39, 0.456),
       transform: [
         { translateX: 74 * p },
         { translateY: 58 * p },
@@ -199,8 +201,30 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
     };
   });
 
-  const chip = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.545, 0.72));
+  // The second door: the marketplace tile springs in on the right as
+  // the deck clears left.
+  const marketTile = useAnimatedStyle(() => {
+    const p = backOut(win(t.value, 0.456, 0.632));
+    return {
+      opacity: Math.min(1, p * 2),
+      transform: [
+        { translateY: (1 - p) * 26 },
+        { scale: 0.8 + p * 0.2 },
+        { rotate: `${4 - p * 2}deg` },
+      ],
+    };
+  });
+
+  const chipDeck = useAnimatedStyle(() => {
+    const p = backOut(win(t.value, 0.441, 0.588));
+    return {
+      opacity: Math.min(1, p * 2),
+      transform: [{ scale: 0.7 + p * 0.3 }],
+    };
+  });
+
+  const chipMarket = useAnimatedStyle(() => {
+    const p = backOut(win(t.value, 0.515, 0.662));
     return {
       opacity: Math.min(1, p * 2),
       transform: [{ scale: 0.7 + p * 0.3 }],
@@ -208,7 +232,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   });
 
   const subtitle = useAnimatedStyle(() => {
-    const p = easeOut(win(t.value, 0.845, 0.99));
+    const p = easeOut(win(t.value, 0.868, 0.985));
     return { opacity: p, transform: [{ translateY: (1 - p) * 8 }] };
   });
 
@@ -222,17 +246,17 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
             ))}
           </View>
 
-          {/* The currency band — two pre-split halves that render as one
-              strap until the tear sends them tumbling. Each half clips a
-              full-width label so the text splits mid-word, and carries a
-              ragged zigzag on its torn edge. */}
+          {/* The MEMBERS ONLY band — two pre-split halves that render as
+              one strap until the tear sends them tumbling. Each half
+              clips a full-width label so the text splits mid-word, and
+              carries a ragged zigzag on its torn edge. */}
           <Animated.View style={[styles.bandWrap, bandWrap]}>
             <Animated.View style={[styles.bandHalf, styles.bandLeft, tearLeft]}>
               <Svg width={HALF_W} height={BAND_H} style={StyleSheet.absoluteFill}>
                 <Path d={LEFT_TEAR_PATH} fill={Colors.ink} />
               </Svg>
               <View style={[styles.bandTextClip, { left: 0 }]}>
-                <Text style={styles.bandText}>DAILY LIMIT · 10</Text>
+                <Text style={styles.bandText}>MEMBERS ONLY</Text>
               </View>
             </Animated.View>
             <Animated.View
@@ -242,14 +266,30 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
                 <Path d={RIGHT_TEAR_PATH} fill={Colors.ink} />
               </Svg>
               <View style={[styles.bandTextClip, { left: -HALF_W }]}>
-                <Text style={styles.bandText}>DAILY LIMIT · 10</Text>
+                <Text style={styles.bandText}>MEMBERS ONLY</Text>
               </View>
             </Animated.View>
           </Animated.View>
 
-          <Animated.View style={[styles.chip, chip]}>
-            <Text style={styles.chipText}>DECK UNLOCKED</Text>
+          {/* The marketplace — search field + listing skeletons, the
+              middle-tab job search the purchase just unlocked. */}
+          <Animated.View style={[styles.marketTile, marketTile]}>
+            <View style={styles.marketSearch}>
+              <Search color={Colors.muted} size={10} strokeWidth={2.6} />
+              <Text style={styles.marketSearchText}>Search roles</Text>
+            </View>
+            <View style={[styles.marketRow, { width: "88%" }]} />
+            <View style={[styles.marketRow, { width: "64%" }]} />
           </Animated.View>
+
+          <View style={styles.chipRow}>
+            <Animated.View style={[styles.chip, chipDeck]}>
+              <Text style={styles.chipText}>YOUR DECK</Text>
+            </Animated.View>
+            <Animated.View style={[styles.chip, chipMarket]}>
+              <Text style={styles.chipText}>THE MARKET</Text>
+            </Animated.View>
+          </View>
         </View>
       </View>
 
@@ -276,7 +316,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
           onPress={onDone}
           activeOpacity={0.85}
         >
-          <Text style={styles.ctaText}>Keep Swiping</Text>
+          <Text style={styles.ctaText}>Start Exploring</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -288,19 +328,22 @@ const styles = StyleSheet.create({
   stage: { flex: 1, alignItems: "center", justifyContent: "center" },
   scene: {
     width: 280,
-    height: 220,
+    height: 250,
     alignItems: "center",
     justifyContent: "center",
   },
   cardsLayer: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: "40%",
     alignItems: "center",
-    justifyContent: "center",
   },
   card: {
     position: "absolute",
-    width: 62,
-    height: 84,
+    top: -39,
+    width: 58,
+    height: 78,
     borderRadius: 10,
     backgroundColor: Colors.paper,
     borderWidth: 1,
@@ -315,11 +358,13 @@ const styles = StyleSheet.create({
   },
   cardMonogram: {
     fontFamily: Fonts.serif,
-    fontSize: 18,
+    fontSize: 17,
     color: Colors.faint,
   },
   bandWrap: {
     position: "absolute",
+    top: "40%",
+    marginTop: -BAND_H / 2,
     width: BAND_W,
     height: BAND_H,
     flexDirection: "row",
@@ -348,23 +393,68 @@ const styles = StyleSheet.create({
   },
   bandText: {
     color: Colors.paper,
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "800",
     letterSpacing: 2,
   },
-  chip: {
+  marketTile: {
+    position: "absolute",
+    top: "54%",
+    right: 2,
+    width: 118,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    padding: 10,
+    zIndex: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 22,
+    elevation: 4,
+  },
+  marketSearch: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: Colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginBottom: 7,
+  },
+  marketSearchText: {
+    fontSize: 8.5,
+    color: Colors.muted,
+    fontWeight: "600",
+  },
+  marketRow: {
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: Colors.surface,
+    marginBottom: 5,
+  },
+  chipRow: {
     position: "absolute",
     bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  chip: {
     backgroundColor: Colors.ink,
     borderRadius: 999,
-    paddingHorizontal: 13,
+    paddingHorizontal: 12,
     paddingVertical: 6,
   },
   chipText: {
     color: Colors.paper,
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "800",
-    letterSpacing: 1.6,
+    letterSpacing: 1.3,
   },
   captionZone: {
     alignItems: "center",
