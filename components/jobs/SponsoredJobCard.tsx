@@ -100,14 +100,18 @@ export function SponsoredJobCard({
 }
 
 const styles = StyleSheet.create({
-  // Mid-weight management rows — see JobCard for the rationale.
+  // Mid-weight ticket rows — see JobCard for the rationale.
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 13,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    marginBottom: 10,
   },
   main: { flex: 1, minWidth: 0 },
   title: {

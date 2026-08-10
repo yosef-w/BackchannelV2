@@ -92,16 +92,17 @@ export function JobMenuModal({
           { maxHeight: SCREEN_HEIGHT * 0.9 },
         ]}
       >
-        {/* Job context — title + company so the user knows which card they tapped */}
-        {job && (
-          <View style={styles.menuSheetJobHeader}>
-            <Text style={styles.menuSheetJobTitle} numberOfLines={1}>
+        {/* Job context — centered serif title + subtitle, the same
+            decision-sheet language as the thread's menu. */}
+        {job && !showLogoEditor && !showUnsponsorReasons && (
+          <>
+            <Text style={styles.menuSheetJobTitle} numberOfLines={2}>
               {job.title}
             </Text>
             <Text style={styles.menuSheetJobCompany} numberOfLines={1}>
               {job.company}
             </Text>
-          </View>
+          </>
         )}
 
         {showLogoEditor ? (
@@ -219,57 +220,43 @@ export function JobMenuModal({
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={{ gap: 10, paddingBottom: 8 }}>
+          <View style={{ paddingBottom: 8 }}>
             {activeTab === "sponsored" && job ? (
               <>
                 <TouchableOpacity
-                  style={styles.menuOptionCard}
+                  style={styles.actionOutlineBtn}
                   onPress={onOpenLogoEditor}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.menuIconContainer}>
-                    <ImageIcon size={18} color={Colors.body} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuOptionTitle}>Replace Logo</Text>
-                    <Text style={styles.menuOptionDesc}>
-                      Override the auto-resolved company logo
-                    </Text>
-                  </View>
+                  <ImageIcon size={18} color={Colors.ink} strokeWidth={2} />
+                  <Text style={styles.actionOutlineText}>Replace Logo</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.menuOptionCard}
+                  style={styles.actionPrimaryBtn}
                   onPress={onShowUnsponsorReasons}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.menuIconContainer}>
-                    <Trash2 size={18} color={Colors.body} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
-                    <Text style={styles.menuOptionDesc}>
-                      Remove this listing from your sponsored jobs
-                    </Text>
-                  </View>
+                  <Trash2 size={18} color="#FFF" strokeWidth={2} />
+                  <Text style={styles.actionPrimaryText}>Unsponsor Job</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <TouchableOpacity
-                style={styles.menuOptionCard}
+                style={styles.actionPrimaryBtn}
                 onPress={onClose}
                 activeOpacity={0.7}
               >
-                <View style={styles.menuIconContainer}>
-                  <ThumbsDown size={18} color={Colors.body} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.menuOptionTitle}>Not Interested</Text>
-                  <Text style={styles.menuOptionDesc}>
-                    Hide this job from your feed
-                  </Text>
-                </View>
+                <ThumbsDown size={18} color="#FFF" strokeWidth={2} />
+                <Text style={styles.actionPrimaryText}>Not Interested</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={styles.actionCancelBtn}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionCancelText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         )}
       </DismissibleSheet>
@@ -278,30 +265,65 @@ export function JobMenuModal({
 }
 
 const styles = StyleSheet.create({
-  menuSheetJobHeader: {
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    marginBottom: 16,
-  },
+  // Centered decision-sheet header — matches ThreadMenuSheet.
   menuSheetJobTitle: {
     fontFamily: Type.heading.fontFamily,
-    fontSize: 18,
+    fontSize: 20,
     color: Colors.ink,
-    marginBottom: 2,
+    textAlign: "center",
+    marginTop: 4,
+    marginBottom: 4,
   },
   menuSheetJobCompany: {
     fontSize: 14,
-    color: Colors.body,
+    color: Colors.muted,
     fontWeight: "500",
+    textAlign: "center",
+    marginBottom: 24,
   },
+  // Stacked full-width actions — the thread menu's exact vocabulary:
+  // outlined secondary, ink primary, hairline cancel.
+  actionOutlineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1.5,
+    borderColor: Colors.ink,
+    marginBottom: 12,
+  },
+  actionOutlineText: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  actionPrimaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Colors.ink,
+    marginBottom: 12,
+  },
+  actionPrimaryText: { fontSize: 15, fontWeight: "700", color: "#FFF" },
+  actionCancelBtn: {
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionCancelText: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   unsponsorReasonHeading: {
+    textAlign: "center",
     fontFamily: Type.heading.fontFamily,
     fontSize: 18,
     color: Colors.ink,
     marginBottom: 4,
   },
   unsponsorReasonSub: {
+    textAlign: "center",
     fontSize: 13,
     color: Colors.body,
     fontWeight: "500",
@@ -362,31 +384,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
   },
-  menuOptionCard: {
-    backgroundColor: Colors.offWhite,
-    padding: 16,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  menuOptionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 2,
-  },
-  menuOptionDesc: { fontSize: 13, color: Colors.body, fontWeight: "500" },
 });

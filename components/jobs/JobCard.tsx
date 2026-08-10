@@ -109,15 +109,20 @@ export function JobCard({
 }
 
 const styles = StyleSheet.create({
-  // Mid-weight rows — flat hairline language, but with the old cards'
-  // substance (bigger tile, company overline, roomier rhythm).
+  // Mid-weight ticket rows — hairline-framed (rows carry actions, and
+  // testers wanted per-job separation), with the old cards' substance
+  // (52 tile, company overline) but no shadows or gray fills.
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 13,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    marginBottom: 10,
   },
   main: { flex: 1, minWidth: 0 },
   company: {

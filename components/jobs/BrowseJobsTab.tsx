@@ -201,6 +201,12 @@ export function BrowseJobsTab({
               </Text>
             </View>
           )}
+          {availableJobs.length > 0 && (
+            <Text style={styles.countLine} numberOfLines={1}>
+              {availableJobs.length} OPEN
+              {sponsorCompany ? ` AT ${sponsorCompany.toUpperCase()}` : " ROLES"}
+            </Text>
+          )}
           {availableJobs.slice(0, displayLimit).map((job, index) => (
             <Animated.View
               key={job.id}
@@ -359,7 +365,17 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     paddingHorizontal: 2,
     height: 46,
-    marginBottom: 6,
+    marginTop: 6,
+  },
+  // The market's size, stated — anchors where the list begins and keeps
+  // the search from bleeding into the rows.
+  countLine: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginTop: 20,
+    marginBottom: 12,
   },
   searchInput: { flex: 1, fontSize: 15, fontWeight: "500", color: Colors.ink },
   noMatchesWrap: { paddingVertical: 32, alignItems: "center" },
