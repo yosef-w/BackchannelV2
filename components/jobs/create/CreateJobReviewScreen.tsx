@@ -11,7 +11,7 @@ import {
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { JobPreviewCard } from "./JobPreviewCard";
 import { useKeyboardVisible } from "./useKeyboardVisible";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts } from "@/constants/theme";
 
 export interface EditableJobFields {
   title: string;
@@ -200,11 +200,13 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#FFF" },
   flex: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 48 },
+  // Serif-italic footnote — the house "honest aside" voice.
   helperText: {
-    fontSize: 13,
+    fontFamily: Fonts.serifItalic,
+    fontSize: 13.5,
     color: Colors.muted,
-    marginTop: 16,
-    marginBottom: 24,
+    marginTop: 14,
+    marginBottom: 22,
     lineHeight: 19,
   },
   row: { flexDirection: "row", gap: 12 },
@@ -220,20 +222,30 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     color: Colors.muted,
-    letterSpacing: 0.6,
+    letterSpacing: 1,
   },
   requiredStar: { fontSize: 13, color: Colors.danger, fontWeight: "700" },
+  // Letterpress rule-line inputs; the multiline description stays a
+  // bounded area (an underline can't hold a paragraph).
   input: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingHorizontal: 2,
+    paddingVertical: 11,
+    fontSize: 15,
+    color: Colors.ink,
+  },
+  descriptionInput: {
+    minHeight: 110,
+    textAlignVertical: "top",
     borderWidth: 1,
     borderColor: Colors.border,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 15,
-    color: "#000",
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  descriptionInput: { minHeight: 110, textAlignVertical: "top" },
   footer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
@@ -248,14 +260,14 @@ const styles = StyleSheet.create({
   footerKeyboard: { paddingBottom: 12 },
   continueBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
-    paddingVertical: 18,
-    borderRadius: 18,
+    backgroundColor: Colors.ink,
+    height: 54,
+    borderRadius: 27,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
   continueBtnDisabled: { backgroundColor: Colors.border },
-  continueBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  continueBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
   continueBtnTextDisabled: { color: Colors.faint },
 });

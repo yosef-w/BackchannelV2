@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   },
   statusTextDone: {
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "700",
     textAlign: "center",
   },
@@ -414,23 +414,23 @@ const styles = StyleSheet.create({
   },
   continueBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
-    paddingVertical: 18,
-    borderRadius: 18,
+    backgroundColor: Colors.ink,
+    height: 54,
+    borderRadius: 27,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
-  continueBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  continueBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
   skipBtn: {
     paddingVertical: 14,
     alignItems: "center",
   },
+  // Quiet link — the house secondary voice (no underline).
   skipBtnText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "600",
     color: Colors.muted,
-    textDecorationLine: "underline",
   },
   hiddenWebview: {
     ...StyleSheet.absoluteFillObject,

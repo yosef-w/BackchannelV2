@@ -157,12 +157,14 @@ function PreviewTag({
 }
 
 const styles = StyleSheet.create({
+  // The Desk's ticket — paper + hairline, matching the board rows this
+  // preview promises to become.
   card: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 20,
+    backgroundColor: Colors.paper,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 20,
+    padding: 18,
   },
   header: {
     flexDirection: "row",
@@ -188,10 +190,10 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  // Matches JobCard/SponsoredJobCard's jobTitleText — same element, kept
-  // consistent (system font) rather than serif at a 2px-larger size.
+  // Matches the board tickets' title (JobCard/SponsoredJobCard), one
+  // step up for the preview's hero role.
   jobTitleText: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: "800",
     color: Colors.ink,
     letterSpacing: -0.4,
@@ -202,16 +204,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: Colors.border,
-    paddingHorizontal: 10,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 11,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 999,
   },
   tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
   tagShimmer: {
     width: 76,
     height: 26,
-    borderRadius: 8,
+    borderRadius: 999,
     backgroundColor: Colors.border,
   },
 });
