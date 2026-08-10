@@ -21,7 +21,7 @@ interface JobCardProps {
 
 /**
  * A Browse-tab job listing — the old cards' anatomy (soft offWhite fill,
- * header → tag pills → description → footer action) in the rebrand's
+ * header → tag pills → footer action) in the rebrand's
  * language: hairline border, company caps overline, paper tag chips, an
  * outlined SPONSOR chip in the footer, and quiet "✓ SPONSORING" caps
  * once the role carries the sponsor's name (never a disabled-looking
@@ -90,12 +90,6 @@ export function JobCard({
           </View>
         )}
       </View>
-
-      {!!job.description && (
-        <Text style={styles.description} numberOfLines={2}>
-          {job.description}
-        </Text>
-      )}
 
       <View style={styles.cardFooter}>
         {isSponsored && !!onApplicantPress ? (
@@ -193,12 +187,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
-  description: {
-    fontSize: 13.5,
-    color: Colors.body,
-    lineHeight: 19,
-    marginBottom: 12,
-  },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",

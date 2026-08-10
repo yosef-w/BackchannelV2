@@ -52,6 +52,11 @@ export function SponsoredJobsTab({
   }
   return (
     <>
+      {/* The book's size, stated — same caps count line as Browse, and it
+          gives the first card air below the tabs' rule. */}
+      <Text style={styles.countLine} numberOfLines={1}>
+        {myJobs.length} CARRYING YOUR NAME
+      </Text>
       {myJobs.map((job, index) => (
         <Animated.View
           key={job.id}
@@ -72,6 +77,14 @@ export function SponsoredJobsTab({
 }
 
 const styles = StyleSheet.create({
+  countLine: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginTop: 20,
+    marginBottom: 12,
+  },
   loadingContainer: {
     paddingVertical: 48,
     alignItems: "center",
