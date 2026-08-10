@@ -1,5 +1,9 @@
 import type { Job } from "@/types/jobs";
-import { MoreHorizontal } from "@/components/ui/icons";
+import {
+  DollarSign,
+  MapPin,
+  MoreHorizontal,
+} from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
@@ -16,14 +20,12 @@ interface JobCardProps {
 }
 
 /**
- * A Browse-tab job listing — 2026-08 "Desk" rebrand: a flat classifieds
- * row between hairlines (the applicant marketplace's exact language —
- * one market, two sides), replacing the shadowed card. Square logo
- * tile, two-line title, location · salary in the caps ledger-key voice,
- * and the action on the right: an outlined SPONSOR chip, or quiet
- * "✓ SPONSORING" caps once the role carries the sponsor's name (never a
- * disabled-looking card). Sponsored rows keep their tappable applicant
- * count as a caps line under the meta.
+ * A Browse-tab job listing — the old cards' anatomy (soft offWhite fill,
+ * header → tag pills → description → footer action) in the rebrand's
+ * language: hairline border, company caps overline, paper tag chips, an
+ * outlined SPONSOR chip in the footer, and quiet "✓ SPONSORING" caps
+ * once the role carries the sponsor's name (never a disabled-looking
+ * card).
  */
 export function JobCard({
   job,
@@ -34,28 +36,69 @@ export function JobCard({
   onApplicantPress,
 }: JobCardProps) {
   return (
-    <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onPress}>
-      <CompanyLogo
-        logoUrl={job.image}
-        name={job.company}
-        size={52}
-        borderRadius={14}
-        initialFontSize={21}
-      />
-      <View style={styles.main}>
-        <Text style={styles.company} numberOfLines={1}>
-          {job.company}
+    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
+      <View style={styles.cardHeader}>
+        <CompanyLogo
+          logoUrl={job.image}
+          name={job.company}
+          size={52}
+          borderRadius={14}
+          initialFontSize={21}
+        />
+        <View style={styles.headerInfo}>
+          <Text style={styles.company} numberOfLines={1}>
+            {job.company}
+          </Text>
+          {/* Two lines before truncating — real titles ("Senior Staff
+              Software Engineer, Infrastructure") lose their meaning cut
+              at one. */}
+          <Text style={styles.title} numberOfLines={2}>
+            {job.title}
+          </Text>
+        </View>
+        {!!onMenu && (
+          <TouchableOpacity
+            style={styles.moreBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              onMenu();
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="More options"
+          >
+            <MoreHorizontal color={Colors.faint} size={18} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.tagsRow}>
+        {!!job.location && (
+          <View style={styles.tag}>
+            <MapPin size={10} color={Colors.body} />
+            <Text style={styles.tagText} numberOfLines={1}>
+              {job.location}
+            </Text>
+          </View>
+        )}
+        {!!job.salary && (
+          <View style={styles.tag}>
+            <DollarSign size={10} color={Colors.body} />
+            <Text style={styles.tagText} numberOfLines={1}>
+              {job.salary}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {!!job.description && (
+        <Text style={styles.description} numberOfLines={2}>
+          {job.description}
         </Text>
-        {/* Two lines before truncating — real titles ("Senior Staff
-            Software Engineer, Infrastructure") lose their meaning cut
-            at one. */}
-        <Text style={styles.title} numberOfLines={2}>
-          {job.title}
-        </Text>
-        <Text style={styles.meta} numberOfLines={1}>
-          {[job.location, job.salary].filter(Boolean).join(" · ")}
-        </Text>
-        {isSponsored && !!onApplicantPress && (
+      )}
+
+      <View style={styles.cardFooter}>
+        {isSponsored && !!onApplicantPress ? (
           <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation();
@@ -70,61 +113,46 @@ export function JobCard({
                 : `${job.applicants} APPLICANTS ›`}
             </Text>
           </TouchableOpacity>
+        ) : (
+          <View />
+        )}
+        {isSponsored ? (
+          <Text style={styles.sponsoringText}>✓ SPONSORING</Text>
+        ) : (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onSponsor?.();
+            }}
+            style={styles.sponsorChip}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Sponsor ${job.title}`}
+          >
+            <Text style={styles.sponsorChipText}>SPONSOR</Text>
+          </TouchableOpacity>
         )}
       </View>
-
-      {isSponsored ? (
-        <Text style={styles.sponsoringText}>✓ SPONSORING</Text>
-      ) : (
-        <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation();
-            onSponsor?.();
-          }}
-          style={styles.sponsorChip}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={`Sponsor ${job.title}`}
-        >
-          <Text style={styles.sponsorChipText}>SPONSOR</Text>
-        </TouchableOpacity>
-      )}
-
-      {!!onMenu && (
-        <TouchableOpacity
-          style={styles.moreBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            onMenu();
-          }}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-          accessibilityLabel="More options"
-        >
-          <MoreHorizontal color={Colors.faint} size={18} />
-        </TouchableOpacity>
-      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  // Mid-weight ticket rows — hairline-framed (rows carry actions, and
-  // testers wanted per-job separation), with the old cards' substance
-  // (52 tile, company overline) but no shadows or gray fills.
-  row: {
+  card: {
+    backgroundColor: Colors.offWhite,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    marginBottom: 12,
+  },
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 13,
-    backgroundColor: Colors.paper,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  main: { flex: 1, minWidth: 0 },
+  headerInfo: { flex: 1, minWidth: 0 },
   company: {
     fontSize: 10,
     fontWeight: "800",
@@ -134,38 +162,67 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   title: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
     color: Colors.ink,
-    lineHeight: 21,
-    letterSpacing: -0.3,
+    lineHeight: 22,
+    letterSpacing: -0.4,
   },
-  // Location · salary in the caps ledger-key voice.
-  meta: {
-    fontSize: 10.5,
-    fontWeight: "800",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
+  moreBtn: {
+    padding: 6,
+    marginTop: -6,
+    marginRight: -6,
+    alignSelf: "flex-start",
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  // Paper chips on the soft fill — the old tags, crisper.
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
+  description: {
+    fontSize: 13.5,
     color: Colors.body,
-    marginTop: 4,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   applicantsLink: {
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.6,
     color: Colors.ink,
-    marginTop: 4,
   },
-  // The row's action — outlined ink chip.
   sponsorChip: {
     borderWidth: 1.2,
     borderColor: Colors.ink,
     borderRadius: 999,
-    paddingHorizontal: 13,
-    paddingVertical: 6,
+    backgroundColor: Colors.paper,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
   },
   sponsorChipText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: "800",
     letterSpacing: 0.8,
     color: Colors.ink,
@@ -176,5 +233,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     color: Colors.muted,
   },
-  moreBtn: { padding: 4, marginLeft: -4 },
 });
