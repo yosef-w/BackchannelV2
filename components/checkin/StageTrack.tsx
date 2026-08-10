@@ -211,17 +211,17 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   dotCompleted: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.ink,
+    borderColor: Colors.ink,
   },
   dotActive: {
-    borderColor: "#000",
+    borderColor: Colors.ink,
   },
   dotCore: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   // Rails sit at dot-centre height (18/2 - 1) and stretch between nodes.
   rail: {
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   railFill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   label: {
     fontSize: 9.5,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -6,
   },
   labelActive: {
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "800",
   },
   labelMuted: {
@@ -266,8 +266,8 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   terminalSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.ink,
+    borderColor: Colors.ink,
   },
   terminalText: {
     fontSize: 13,

@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   progressSegmentDone: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   progressSegmentCurrent: {
     backgroundColor: Colors.faint,
@@ -663,8 +663,8 @@ const styles = StyleSheet.create({
     color: Colors.body,
   },
   bulkBtn: {
-    backgroundColor: "#000",
-    borderRadius: 16,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 10,
@@ -768,9 +768,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   sendBtnDisabled: {
     backgroundColor: Colors.border,
@@ -831,8 +831,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#000",
-    borderRadius: 10,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
@@ -848,8 +848,8 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     alignSelf: "stretch",
-    backgroundColor: "#000",
-    borderRadius: 16,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
   },

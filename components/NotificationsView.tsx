@@ -38,7 +38,7 @@ import {
     markNotificationAsRead,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // React Query key for the notifications list. Caching it means the screen
@@ -428,12 +428,14 @@ export function NotificationsView({
           style={styles.backButton}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ArrowLeft color="#000" size={24} strokeWidth={2.5} />
+          <ArrowLeft color={Colors.ink} size={24} strokeWidth={2.5} />
         </TouchableOpacity>
 
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Notifications</Text>
+            <Text style={styles.title}>
+            Your <Text style={styles.titleEm}>notifications.</Text>
+          </Text>
             <Text style={styles.subtitle}>
               {isLoading
                 ? "Loading…"
@@ -680,6 +682,7 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     color: Colors.ink,
   },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   subtitle: {
     fontSize: 13,
     fontWeight: "600",
@@ -695,7 +698,7 @@ const styles = StyleSheet.create({
   actionPillText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.1,
   },
 
@@ -717,7 +720,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -725,7 +728,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: 999,
@@ -775,16 +778,17 @@ const styles = StyleSheet.create({
   rowRead: {
     backgroundColor: "transparent",
   },
+  // Square tiles — the house ID language.
   avatar: {
     width: 46,
     height: 46,
-    borderRadius: 23,
+    borderRadius: 12,
     backgroundColor: Colors.surface,
   },
   iconCircle: {
     width: 46,
     height: 46,
-    borderRadius: 23,
+    borderRadius: 12,
     backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
@@ -796,7 +800,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.2,
   },
   // Read rows soften the title so unread ones lead the eye.
@@ -838,7 +842,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
 
   // ── Swipe-to-delete ──

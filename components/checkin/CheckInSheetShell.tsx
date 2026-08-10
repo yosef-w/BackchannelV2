@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 14,
     paddingHorizontal: 28,
-    borderRadius: 24,
-    backgroundColor: "#000",
+    borderRadius: 999,
+    backgroundColor: Colors.ink,
   },
   emptyDismissBtnText: {
     color: "#FFF",
