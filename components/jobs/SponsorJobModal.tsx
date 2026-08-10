@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: Colors.offWhite,
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   radioCircleActive: { borderColor: "#000", borderWidth: 6 },
   radioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   radioOption: {
-    backgroundColor: Colors.offWhite,
+    backgroundColor: Colors.paper,
     padding: 18,
     borderRadius: 16,
     borderWidth: 1,

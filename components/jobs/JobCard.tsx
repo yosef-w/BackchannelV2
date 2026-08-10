@@ -1,9 +1,8 @@
 import type { Job } from "@/types/jobs";
-import { DollarSign, MapPin, MoreHorizontal, Users } from "@/components/ui/icons";
+import { MoreHorizontal } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
-import { StatusChip } from "../ui/StatusChip";
 import { Colors } from "@/constants/theme";
 
 interface JobCardProps {
@@ -17,14 +16,14 @@ interface JobCardProps {
 }
 
 /**
- * A job listing card, shared by the Browse and My Sponsored tabs.
- *
- * Applicant counts only render on sponsored cards — the list is gated
- * behind sponsoring, and Browse data hardcodes the count to zero, so the
- * old always-on "0 Applicants" badge promised data that wasn't there.
- * Sponsored state reads as a StatusChip + black border instead of the old
- * banner + dimmed-card treatment, so "already sponsoring" no longer makes
- * a card look disabled.
+ * A Browse-tab job listing — 2026-08 "Desk" rebrand: a flat classifieds
+ * row between hairlines (the applicant marketplace's exact language —
+ * one market, two sides), replacing the shadowed card. Square logo
+ * tile, two-line title, location · salary in the caps ledger-key voice,
+ * and the action on the right: an outlined SPONSOR chip, or quiet
+ * "✓ SPONSORING" caps once the role carries the sponsor's name (never a
+ * disabled-looking card). Sponsored rows keep their tappable applicant
+ * count as a caps line under the meta.
  */
 export function JobCard({
   job,
@@ -35,168 +34,128 @@ export function JobCard({
   onApplicantPress,
 }: JobCardProps) {
   return (
-    <TouchableOpacity
-      style={[styles.card, isSponsored && styles.cardSponsored]}
-      activeOpacity={0.85}
-      onPress={onPress}
-    >
-      <View style={styles.cardHeader}>
-        <CompanyLogo
-          logoUrl={job.image}
-          name={job.company}
-          size={52}
-          borderRadius={16}
-        />
-        <View style={styles.headerInfo}>
-          <Text style={styles.companyName} numberOfLines={1}>
-            {job.company}
-          </Text>
-          {/* Two lines before truncating — real titles ("Senior Staff
-              Software Engineer, Infrastructure") lose their meaning cut
-              at one. */}
-          <Text style={styles.jobTitleText} numberOfLines={2}>
-            {job.title}
-          </Text>
-        </View>
+    <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onPress}>
+      <CompanyLogo
+        logoUrl={job.image}
+        name={job.company}
+        size={44}
+        borderRadius={12}
+        initialFontSize={18}
+      />
+      <View style={styles.main}>
+        {/* Two lines before truncating — real titles ("Senior Staff
+            Software Engineer, Infrastructure") lose their meaning cut
+            at one. */}
+        <Text style={styles.title} numberOfLines={2}>
+          {job.title}
+        </Text>
+        <Text style={styles.meta} numberOfLines={1}>
+          {[job.location, job.salary].filter(Boolean).join(" · ")}
+        </Text>
+        {isSponsored && !!onApplicantPress && (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onApplicantPress();
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 6, bottom: 6, left: 4, right: 12 }}
+          >
+            <Text style={styles.applicantsLink}>
+              {job.applicants === 1
+                ? "1 APPLICANT ›"
+                : `${job.applicants} APPLICANTS ›`}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {isSponsored ? (
+        <Text style={styles.sponsoringText}>✓ SPONSORING</Text>
+      ) : (
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            onSponsor?.();
+          }}
+          style={styles.sponsorChip}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Sponsor ${job.title}`}
+        >
+          <Text style={styles.sponsorChipText}>SPONSOR</Text>
+        </TouchableOpacity>
+      )}
+
+      {!!onMenu && (
         <TouchableOpacity
           style={styles.moreBtn}
           onPress={(e) => {
             e.stopPropagation();
-            onMenu?.();
+            onMenu();
           }}
           activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+          accessibilityLabel="More options"
         >
-          <MoreHorizontal color={Colors.muted} size={20} />
+          <MoreHorizontal color={Colors.faint} size={18} />
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.tagsRow}>
-        <View style={styles.tag}>
-          <MapPin size={10} color={Colors.body} />
-          <Text style={styles.tagText}>{job.location}</Text>
-        </View>
-        <View style={styles.tag}>
-          <DollarSign size={10} color={Colors.body} />
-          <Text style={styles.tagText}>{job.salary}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.cardDescription} numberOfLines={2}>
-        {job.description}
-      </Text>
-
-      <View style={styles.cardFooter}>
-        {isSponsored ? (
-          <TouchableOpacity
-            onPress={onApplicantPress}
-            activeOpacity={0.7}
-            style={styles.applicantBadge}
-          >
-            <Users color="#000" size={12} />
-            <Text style={styles.applicantText}>
-              {job.applicants} Applicants
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <View />
-        )}
-        {isSponsored ? (
-          <StatusChip label="Sponsoring" tone="active" />
-        ) : (
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onSponsor?.();
-            }}
-            style={styles.sponsorBtn}
-          >
-            <Text style={styles.sponsorBtnText}>Sponsor</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 14,
-    padding: 16,
-  },
-  cardSponsored: { borderColor: "#000", borderWidth: 1.5 },
-  cardHeader: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  headerInfo: { flex: 1 },
-  // Matches the site's uppercase-label convention (.setup-key/.eyebrow).
-  companyName: {
-    fontSize: 12,
+  main: { flex: 1, minWidth: 0 },
+  title: {
+    fontSize: 14.5,
     fontWeight: "700",
-    color: Colors.muted,
-    marginBottom: 2,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  // Below the serif's ~18px floor in a dense list context — system font,
-  // token color only.
-  jobTitleText: {
-    fontSize: 17,
-    fontWeight: "800",
     color: Colors.ink,
-    letterSpacing: -0.4,
+    lineHeight: 19,
   },
-  moreBtn: { padding: 12, margin: -8, alignSelf: "flex-start" },
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: Colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
-  cardDescription: {
-    fontSize: 14,
+  // Location · salary in the caps ledger-key voice.
+  meta: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
     color: Colors.body,
-    lineHeight: 20,
-    marginBottom: 12,
+    marginTop: 3,
   },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+  applicantsLink: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    color: Colors.ink,
+    marginTop: 4,
   },
-  applicantBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.border,
-    paddingHorizontal: 10,
+  // The row's action — outlined ink chip.
+  sponsorChip: {
+    borderWidth: 1.2,
+    borderColor: Colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 13,
     paddingVertical: 6,
-    borderRadius: 20,
   },
-  applicantText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  sponsorBtn: {
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#000",
-    paddingHorizontal: 20,
-    paddingVertical: 9,
-    borderRadius: 20,
-    minWidth: 100,
-    alignItems: "center",
+  sponsorChipText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.ink,
   },
-  sponsorBtnText: { fontSize: 13, fontWeight: "700", color: "#000" },
+  sponsoringText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.muted,
+  },
+  moreBtn: { padding: 4, marginLeft: -4 },
 });

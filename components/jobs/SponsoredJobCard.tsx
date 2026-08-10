@@ -1,15 +1,9 @@
 import type { Job } from "@/types/jobs";
-import {
-  ChevronRight,
-  DollarSign,
-  MapPin,
-  MoreHorizontal,
-  Users,
-} from "@/components/ui/icons";
+import { MoreHorizontal } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface SponsoredJobCardProps {
   job: Job;
@@ -19,13 +13,13 @@ interface SponsoredJobCardProps {
 }
 
 /**
- * A sponsored job as a management card — the My Sponsored tab is where a
- * sponsor runs their listings, so unlike the Browse JobCard this leads
- * with applicant activity: the real applicant count (LIKES_COUNT) and a
- * black "N new" pill for unactioned interest (PENDING_LIKES_COUNT), with
- * a View Applicants action. The 2-line description is dropped — the
- * sponsor knows their own job; what changed since they last looked is
- * the point.
+ * A sponsored job as a management row — 2026-08 "Desk" rebrand. The
+ * Sponsoring tab is where a sponsor runs their book, so the row leads
+ * with momentum: a serif applicant count sits where the marketplace
+ * puts the price (tappable — it opens the applicant list), an ink
+ * "N NEW" pill flags unactioned interest, and a role nobody has liked
+ * yet reads QUIET honestly. No description — the sponsor knows their
+ * own job; what changed since they last looked is the point.
  */
 export function SponsoredJobCard({
   job,
@@ -34,143 +28,133 @@ export function SponsoredJobCard({
   onApplicantPress,
 }: SponsoredJobCardProps) {
   const pending = job.pendingApplicants ?? 0;
+  const applicants = job.applicants ?? 0;
   return (
-    <TouchableOpacity
-      style={styles.card}
-      activeOpacity={0.85}
-      onPress={onPress}
-    >
-      <View style={styles.cardHeader}>
-        <CompanyLogo
-          logoUrl={job.image}
-          name={job.company}
-          size={52}
-          borderRadius={16}
-        />
-        <View style={styles.headerInfo}>
-          <Text style={styles.companyName} numberOfLines={1}>
-            {job.company}
-          </Text>
-          {/* Two lines before truncating — real titles ("Senior Staff
-              Software Engineer, Infrastructure") lose their meaning cut
-              at one. */}
-          <Text style={styles.jobTitleText} numberOfLines={2}>
-            {job.title}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.moreBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            onMenu?.();
-          }}
-          activeOpacity={0.7}
-        >
-          <MoreHorizontal color={Colors.muted} size={20} />
-        </TouchableOpacity>
+    <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onPress}>
+      <CompanyLogo
+        logoUrl={job.image}
+        name={job.company}
+        size={44}
+        borderRadius={12}
+        initialFontSize={18}
+      />
+      <View style={styles.main}>
+        {/* Two lines before truncating — real titles lose their meaning
+            cut at one. */}
+        <Text style={styles.title} numberOfLines={2}>
+          {job.title}
+        </Text>
+        <Text style={styles.meta} numberOfLines={1}>
+          {[job.location, job.salary].filter(Boolean).join(" · ")}
+        </Text>
+        {pending > 0 && (
+          <View style={styles.newPill}>
+            <Text style={styles.newPillText}>{pending} NEW</Text>
+          </View>
+        )}
       </View>
 
-      <View style={styles.tagsRow}>
-        <View style={styles.tag}>
-          <MapPin size={10} color={Colors.body} />
-          <Text style={styles.tagText}>{job.location}</Text>
-        </View>
-        <View style={styles.tag}>
-          <DollarSign size={10} color={Colors.body} />
-          <Text style={styles.tagText}>{job.salary}</Text>
-        </View>
-      </View>
-
+      {/* The row's "price": who wants this role. Tappable → applicants. */}
       <TouchableOpacity
-        style={styles.applicantsRow}
+        style={styles.countCol}
         onPress={(e) => {
           e.stopPropagation();
           onApplicantPress?.();
         }}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={
+          applicants === 1
+            ? "View 1 applicant"
+            : `View ${applicants} applicants`
+        }
       >
-        <Users color="#000" size={15} strokeWidth={2.2} />
-        <Text style={styles.applicantsText}>
-          {job.applicants === 1
-            ? "1 applicant"
-            : `${job.applicants} applicants`}
+        <Text style={[styles.countNum, applicants === 0 && styles.countZero]}>
+          {applicants}
         </Text>
-        {pending > 0 && (
-          <View style={styles.newPill}>
-            <Text style={styles.newPillText}>
-              {pending} new
-            </Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }} />
-        <Text style={styles.viewApplicantsText}>View</Text>
-        <ChevronRight size={16} color={Colors.muted} />
+        <Text style={styles.countLabel}>
+          {applicants === 0
+            ? "QUIET"
+            : applicants === 1
+              ? "APPLICANT"
+              : "APPLICANTS"}
+        </Text>
       </TouchableOpacity>
+
+      {!!onMenu && (
+        <TouchableOpacity
+          style={styles.moreBtn}
+          onPress={(e) => {
+            e.stopPropagation();
+            onMenu();
+          }}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+          accessibilityLabel="More options"
+        >
+          <MoreHorizontal color={Colors.faint} size={18} />
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 14,
-    padding: 16,
-  },
-  cardHeader: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  headerInfo: { flex: 1 },
-  companyName: {
-    fontSize: 12,
+  main: { flex: 1, minWidth: 0 },
+  title: {
+    fontSize: 14.5,
     fontWeight: "700",
-    color: Colors.muted,
-    marginBottom: 2,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  // Below the serif's ~18px floor in a dense list context.
-  jobTitleText: {
-    fontSize: 17,
-    fontWeight: "800",
     color: Colors.ink,
-    letterSpacing: -0.4,
+    lineHeight: 19,
   },
-  moreBtn: { padding: 12, margin: -8, alignSelf: "flex-start" },
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: Colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+  meta: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: Colors.body,
+    marginTop: 3,
   },
-  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
-  applicantsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  applicantsText: { fontSize: 14, fontWeight: "700", color: "#000" },
   newPill: {
-    backgroundColor: "#000",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    alignSelf: "flex-start",
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    marginTop: 7,
   },
-  newPillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
-  viewApplicantsText: { fontSize: 13, fontWeight: "700", color: Colors.body },
+  newPillText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.paper,
+  },
+  countCol: {
+    alignItems: "flex-end",
+    minWidth: 56,
+  },
+  // The serif stat-number voice.
+  countNum: {
+    fontFamily: Fonts.serif,
+    fontSize: 21,
+    lineHeight: 24,
+    color: Colors.ink,
+  },
+  countZero: { color: Colors.faint },
+  countLabel: {
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.faint,
+    marginTop: 2,
+  },
+  moreBtn: { padding: 4, marginLeft: -4 },
 });

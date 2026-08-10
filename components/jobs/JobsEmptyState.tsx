@@ -74,9 +74,9 @@ const styles = StyleSheet.create({
   actionBtn: {
     marginTop: 20,
     backgroundColor: "#000",
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 999,
   },
   actionText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
 });

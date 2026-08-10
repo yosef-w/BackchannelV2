@@ -16,7 +16,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { Applicant } from "./jobTransforms";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface TopApplicantsModalProps {
   applicants: Applicant[];
@@ -127,7 +127,8 @@ export function TopApplicantsModal({
                     style={[
                       styles.applicantAvatar,
                       {
-                        backgroundColor: "#000",
+                        borderWidth: 1,
+                        borderColor: Colors.border,
                         alignItems: "center",
                         justifyContent: "center",
                       },
@@ -135,9 +136,9 @@ export function TopApplicantsModal({
                   >
                     <Text
                       style={{
+                        fontFamily: Fonts.serif,
                         fontSize: 18,
-                        fontWeight: "800",
-                        color: "#FFF",
+                        color: Colors.muted,
                       }}
                     >
                       {(applicant.name || "?")[0].toUpperCase()}
@@ -187,8 +188,8 @@ const styles = StyleSheet.create({
   applicantAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.border,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
   },
   applicantName: { fontSize: 16, fontWeight: "700", color: "#000" },
   applicantRole: { fontSize: 13, color: Colors.body, marginTop: 2 },

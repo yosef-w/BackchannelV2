@@ -19,7 +19,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { JobCard } from "./JobCard";
 import { JobsEmptyState } from "./JobsEmptyState";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface BrowseJobsTabProps {
   jobs: Job[];
@@ -240,12 +240,10 @@ export function BrowseJobsTab({
                 <Text style={styles.sponsoredToggleText}>
                   ALREADY SPONSORING
                 </Text>
-                <View style={styles.sponsoredTogglePill}>
-                  <Text style={styles.sponsoredTogglePillText}>
-                    {sponsoredInBrowse.length}
-                  </Text>
-                </View>
                 <View style={{ flex: 1 }} />
+                <Text style={styles.sponsoredTogglePillText}>
+                  {sponsoredInBrowse.length}
+                </Text>
                 <ChevronRight
                   size={16}
                   color={Colors.faint}
@@ -352,48 +350,44 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.2,
   },
+  // Letterpress rule-line input — matches the applicant marketplace.
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.offWhite,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-    height: 42,
-    marginBottom: 16,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingHorizontal: 2,
+    height: 46,
+    marginBottom: 6,
   },
-  searchInput: { flex: 1, fontSize: 14, color: "#000" },
+  searchInput: { flex: 1, fontSize: 15, fontWeight: "500", color: Colors.ink },
   noMatchesWrap: { paddingVertical: 32, alignItems: "center" },
   noMatchesText: { fontSize: 14, color: Colors.muted, fontWeight: "600" },
+  // Quiet centered link — the ledger's "there is more" note.
   loadMoreBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
     paddingVertical: 16,
-    paddingHorizontal: 24,
-    backgroundColor: Colors.offWhite,
-    borderRadius: 12,
-    marginTop: 16,
-    marginBottom: 20,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
+    marginBottom: 8,
   },
   loadMoreText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    letterSpacing: -0.2,
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.muted,
   },
+  // Collapsed drawer row — the inbox archive's language (hairline top
+  // rule, serif count).
   sponsoredToggle: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 12,
-    marginTop: 8,
-    marginBottom: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingVertical: 14,
+    marginTop: 20,
   },
   sponsoredToggleText: {
     fontSize: 12,
@@ -401,14 +395,9 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     letterSpacing: 0.8,
   },
-  sponsoredTogglePill: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 5,
-    borderRadius: 9,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
+  sponsoredTogglePillText: {
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    color: Colors.faint,
   },
-  sponsoredTogglePillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
 });

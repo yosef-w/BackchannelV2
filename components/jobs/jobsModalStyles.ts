@@ -50,7 +50,7 @@ export const jobsModalStyles = StyleSheet.create({
   confirmBtn: {
     backgroundColor: "#000",
     paddingVertical: 18,
-    borderRadius: 18,
+    borderRadius: 999,
     alignItems: "center",
     width: "100%",
   },

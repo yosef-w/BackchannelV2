@@ -321,8 +321,8 @@ const styles = StyleSheet.create({
   },
   unsponsorConfirmBtn: {
     marginTop: 16,
-    backgroundColor: "#000",
-    borderRadius: 16,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",

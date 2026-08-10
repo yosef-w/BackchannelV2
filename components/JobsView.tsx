@@ -741,18 +741,21 @@ export function JobsView() {
                 is the primary path, creating is the fallback (it keeps its
                 full-size button inside the empty states, where it IS the
                 primary action). */}
-            <Text style={styles.title}>Jobs</Text>
+            <Text style={styles.title}>
+              The <Text style={styles.titleEm}>board.</Text>
+            </Text>
             <TouchableOpacity
               style={styles.createAction}
-              activeOpacity={0.85}
+              activeOpacity={0.7}
               onPress={openCreateModal}
             >
-              <Plus color="#FFF" size={15} strokeWidth={3} />
-              <Text style={styles.createActionText}>Create</Text>
+              <Plus color={Colors.ink} size={14} strokeWidth={3} />
+              <Text style={styles.createActionText}>CREATE</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.subtitle}>
-            Manage your listings and find the right talent
+            Sponsor roles at your company, and run the ones that carry your
+            name.
           </Text>
         </Animated.View>
 
@@ -795,76 +798,63 @@ export function JobsView() {
           />
         ) : (
           <>
-            {/* Action bar — iOS-style segmented control toggling the
-                Browse / My Sponsored tabs. */}
-            <View style={styles.actionBar}>
-              <View style={styles.segmentedControl}>
-                <TouchableOpacity
+            {/* Underline text-tabs with serif counts — the Desk's ledger
+                take on Browse / Sponsoring (replaces the iOS segmented
+                control). */}
+            <View style={styles.tabsRow}>
+              <TouchableOpacity
+                style={[styles.tabBtn, activeTab === "browse" && styles.tabBtnOn]}
+                onPress={() => setActiveTab("browse")}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === "browse" }}
+              >
+                <Text
                   style={[
-                    styles.segment,
-                    activeTab === "browse" && styles.segmentActive,
+                    styles.tabText,
+                    activeTab === "browse" && styles.tabTextOn,
                   ]}
-                  onPress={() => setActiveTab("browse")}
-                  activeOpacity={0.8}
                 >
+                  BROWSE
                   <Text
                     style={[
-                      styles.segmentText,
-                      activeTab === "browse" && styles.segmentTextActive,
+                      styles.tabCount,
+                      activeTab === "browse" && styles.tabCountOn,
                     ]}
                   >
-                    Browse
+                    {"  "}
+                    {jobs.length}
                   </Text>
-                  <View
-                    style={[
-                      styles.segmentBadge,
-                      activeTab === "browse" && styles.segmentBadgeActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentBadgeText,
-                        activeTab === "browse" && styles.segmentBadgeTextActive,
-                      ]}
-                    >
-                      {jobs.length}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tabBtn,
+                  activeTab === "sponsored" && styles.tabBtnOn,
+                ]}
+                onPress={() => setActiveTab("sponsored")}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === "sponsored" }}
+              >
+                <Text
                   style={[
-                    styles.segment,
-                    activeTab === "sponsored" && styles.segmentActive,
+                    styles.tabText,
+                    activeTab === "sponsored" && styles.tabTextOn,
                   ]}
-                  onPress={() => setActiveTab("sponsored")}
-                  activeOpacity={0.8}
                 >
+                  SPONSORING
                   <Text
                     style={[
-                      styles.segmentText,
-                      activeTab === "sponsored" && styles.segmentTextActive,
+                      styles.tabCount,
+                      activeTab === "sponsored" && styles.tabCountOn,
                     ]}
                   >
-                    My Sponsored
+                    {"  "}
+                    {myJobs.length}
                   </Text>
-                  <View
-                    style={[
-                      styles.segmentBadge,
-                      activeTab === "sponsored" && styles.segmentBadgeActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentBadgeText,
-                        activeTab === "sponsored" &&
-                          styles.segmentBadgeTextActive,
-                      ]}
-                    >
-                      {myJobs.length}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Browse Jobs Tab */}
@@ -1192,22 +1182,32 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   title: { ...Type.title, color: Colors.ink },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   subtitle: {
     fontFamily: Fonts.sansLight,
     fontSize: 16,
     color: Colors.body,
     marginTop: 6,
   },
+  // Hairline letterpress pill — sponsoring existing listings is the
+  // primary path; Create stays present but quiet.
   createAction: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#000",
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 18,
   },
-  createActionText: { color: "#FFF", fontSize: 13, fontWeight: "700" },
+  createActionText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.ink,
+  },
   loadingContainer: {
     paddingVertical: 48,
     alignItems: "center",
@@ -1219,59 +1219,41 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     fontWeight: "600",
   },
-  actionBar: {
+  // ── Underline text-tabs (the Desk) ────────────────────────────────
+  tabsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 24,
-    paddingHorizontal: 4,
+    gap: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: 4,
   },
-  segmentedControl: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: Colors.border,
-    borderRadius: 12,
-    padding: 3,
+  tabBtn: {
+    paddingTop: 6,
+    paddingBottom: 10,
   },
-  segment: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+  tabBtnOn: {
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.ink,
+    marginBottom: -1,
   },
-  segmentActive: {
-    backgroundColor: "#000",
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: Colors.body,
-    letterSpacing: -0.2,
-  },
-  segmentTextActive: {
-    color: "#FFF",
-  },
-  segmentBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-    borderRadius: 8,
-    backgroundColor: Colors.border,
-    minWidth: 20,
-    alignItems: "center",
-  },
-  segmentBadgeActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.22)",
-  },
-  segmentBadgeText: {
+  tabText: {
     fontSize: 11,
     fontWeight: "800",
-    color: Colors.body,
+    letterSpacing: 1.2,
+    color: Colors.muted,
   },
-  segmentBadgeTextActive: {
-    color: "#FFF",
+  tabTextOn: {
+    color: Colors.ink,
+  },
+  // Serif count beside the tab label — the stat-number voice.
+  tabCount: {
+    fontFamily: Fonts.serif,
+    fontSize: 13,
+    fontWeight: "400",
+    letterSpacing: 0,
+    color: Colors.faint,
+  },
+  tabCountOn: {
+    color: Colors.ink,
   },
 });
