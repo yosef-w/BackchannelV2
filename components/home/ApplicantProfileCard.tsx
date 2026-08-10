@@ -216,36 +216,26 @@ export function ApplicantProfileCard({
           </View>
         </View>
       ) : restPrompts.length > 0 ? (
+        /* Remaining prompts as flat serif quote bands — the same voice as
+           the hero pull-quote (one step smaller, so the hero keeps
+           primacy) and the Vouch. The shadowed insight cards retired with
+           the rebrand. */
         <View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>INSIGHTS</Text>
           {restPrompts.map((prompt, idx) => (
-            <View
-              key={idx}
-              style={[cardStyles.hingeInsightCard, idx > 0 && { marginTop: 14 }]}
-            >
-              {/* Vertical black accent stripe — pulls
-                  the eye to the content without
-                  introducing color into the monochrome
-                  palette. */}
-              <View style={cardStyles.hingeInsightAccent} />
-              <View style={cardStyles.hingeInsightBody}>
-                {!!prompt.question && (
-                  <Text style={cardStyles.hingeInsightQuestion}>
-                    {prompt.question}
-                  </Text>
-                )}
-                {/* Decorative opening quote — large
-                    serif-style mark sits flush with
-                    the answer's first line, giving
-                    the card its "in their own words"
-                    gravitas. */}
-                <View style={cardStyles.hingeInsightAnswerRow}>
-                  <Text style={cardStyles.hingeInsightQuoteMark}>“</Text>
-                  <Text style={cardStyles.hingeInsightAnswer}>
-                    {prompt.answer}
-                  </Text>
-                </View>
-              </View>
+            <View key={idx} style={idx > 0 ? cardStyles.kInsightQuoteGap : null}>
+              <Text style={cardStyles.kInsightQuoteMark}>“</Text>
+              <ExpandableText
+                style={cardStyles.kInsightQuoteText}
+                numberOfLines={6}
+              >
+                {prompt.answer ?? ""}
+              </ExpandableText>
+              {!!prompt.question && (
+                <Text style={cardStyles.kQuoteAttr} numberOfLines={2}>
+                  {prompt.question.toUpperCase()}
+                </Text>
+              )}
             </View>
           ))}
         </View>

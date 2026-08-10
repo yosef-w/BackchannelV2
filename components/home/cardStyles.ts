@@ -150,6 +150,22 @@ export const cardStyles = StyleSheet.create({
     color: Colors.muted,
     marginTop: 10,
   },
+  // INSIGHTS quote bands — the hero pull-quote's voice one step smaller,
+  // so the promoted first answer keeps primacy.
+  kInsightQuoteGap: { marginTop: 22 },
+  kInsightQuoteMark: {
+    fontFamily: Fonts.serif,
+    fontSize: 30,
+    lineHeight: 32,
+    color: Colors.faint,
+    marginBottom: -8,
+  },
+  kInsightQuoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 16.5,
+    lineHeight: 24,
+    color: Colors.ink,
+  },
   // Top-of-card badge row (status pills + SPONSORED ROLE) — left-aligned
   // to match the dossier hero's left rag.
   kBadgeRow: {
@@ -184,63 +200,6 @@ export const cardStyles = StyleSheet.create({
 
   // ── At-a-glance stats strip (sponsor view) ────────────────────────
 
-  // ── Insight Q&A cards — quote-style with vertical accent ──────────
-  // White card with a soft drop shadow + thin hairline border for
-  // depth (instead of the prior gray-on-gray look that disappeared
-  // into the page). A 3px black stripe runs the full height of the
-  // left edge as a brand accent — the only color is monochrome, but
-  // the stripe gives the card a strong sense of authorship ("here are
-  // the applicant's actual words"). A large opening quote mark next
-  // to the answer plays the same role typographically.
-  hingeInsightCard: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  hingeInsightAccent: {
-    width: 3,
-    backgroundColor: "#000",
-  },
-  hingeInsightBody: {
-    flex: 1,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-  },
-  hingeInsightQuestion: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: Colors.muted,
-    letterSpacing: 1.0,
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-  hingeInsightAnswerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  hingeInsightQuoteMark: {
-    fontSize: 36,
-    lineHeight: 30,
-    fontWeight: "800",
-    color: "#000",
-    marginRight: 8,
-    marginTop: -2,
-  },
-  hingeInsightAnswer: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1A1A1A",
-    lineHeight: 24,
-  },
 
   // ── Chip wrapping (skills, credentials, role details) ─────────────
   hingeChipsWrap: {
