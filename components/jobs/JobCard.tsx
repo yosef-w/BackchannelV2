@@ -38,11 +38,14 @@ export function JobCard({
       <CompanyLogo
         logoUrl={job.image}
         name={job.company}
-        size={44}
-        borderRadius={12}
-        initialFontSize={18}
+        size={52}
+        borderRadius={14}
+        initialFontSize={21}
       />
       <View style={styles.main}>
+        <Text style={styles.company} numberOfLines={1}>
+          {job.company}
+        </Text>
         {/* Two lines before truncating — real titles ("Senior Staff
             Software Engineer, Infrastructure") lose their meaning cut
             at one. */}
@@ -106,29 +109,40 @@ export function JobCard({
 }
 
 const styles = StyleSheet.create({
+  // Mid-weight rows — flat hairline language, but with the old cards'
+  // substance (bigger tile, company overline, roomier rhythm).
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 14,
+    gap: 13,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   main: { flex: 1, minWidth: 0 },
+  company: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: Colors.muted,
+    marginBottom: 3,
+  },
   title: {
-    fontSize: 14.5,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "800",
     color: Colors.ink,
-    lineHeight: 19,
+    lineHeight: 21,
+    letterSpacing: -0.3,
   },
   // Location · salary in the caps ledger-key voice.
   meta: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: "800",
     letterSpacing: 0.6,
     textTransform: "uppercase",
     color: Colors.body,
-    marginTop: 3,
+    marginTop: 4,
   },
   applicantsLink: {
     fontSize: 10,

@@ -34,9 +34,9 @@ export function SponsoredJobCard({
       <CompanyLogo
         logoUrl={job.image}
         name={job.company}
-        size={44}
-        borderRadius={12}
-        initialFontSize={18}
+        size={52}
+        borderRadius={14}
+        initialFontSize={21}
       />
       <View style={styles.main}>
         {/* Two lines before truncating — real titles lose their meaning
@@ -100,28 +100,30 @@ export function SponsoredJobCard({
 }
 
 const styles = StyleSheet.create({
+  // Mid-weight management rows — see JobCard for the rationale.
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 14,
+    gap: 13,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   main: { flex: 1, minWidth: 0 },
   title: {
-    fontSize: 14.5,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "800",
     color: Colors.ink,
-    lineHeight: 19,
+    lineHeight: 21,
+    letterSpacing: -0.3,
   },
   meta: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: "800",
     letterSpacing: 0.6,
     textTransform: "uppercase",
     color: Colors.body,
-    marginTop: 3,
+    marginTop: 4,
   },
   newPill: {
     alignSelf: "flex-start",
@@ -144,8 +146,8 @@ const styles = StyleSheet.create({
   // The serif stat-number voice.
   countNum: {
     fontFamily: Fonts.serif,
-    fontSize: 21,
-    lineHeight: 24,
+    fontSize: 24,
+    lineHeight: 27,
     color: Colors.ink,
   },
   countZero: { color: Colors.faint },
