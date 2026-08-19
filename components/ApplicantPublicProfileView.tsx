@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   roleTagText: {
     fontSize: 14,

@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   primaryButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 52,
     borderRadius: 26,
     paddingHorizontal: 32,

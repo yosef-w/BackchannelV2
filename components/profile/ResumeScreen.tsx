@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   progressText: { fontSize: 12, color: Colors.muted, marginBottom: 8, lineHeight: 17 },
   // Hairline, matching the site's .nav-bar/.sec-bar 2px progress language.
   progressBar: { height: 2, backgroundColor: Colors.border, borderRadius: 1, overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 2 },
+  progressFill: { height: "100%", backgroundColor: Colors.ink, borderRadius: 2 },
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",

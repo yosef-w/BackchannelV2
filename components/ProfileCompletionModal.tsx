@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     marginLeft: 18,
   },
   primaryButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",

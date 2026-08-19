@@ -2762,7 +2762,7 @@ const styles = StyleSheet.create({
   },
   blackBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -3067,7 +3067,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   resumeRetryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,

@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   messageApplicantBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     width: 40,
     height: 40,
     borderRadius: 20,

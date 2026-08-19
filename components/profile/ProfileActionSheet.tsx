@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   blackBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,

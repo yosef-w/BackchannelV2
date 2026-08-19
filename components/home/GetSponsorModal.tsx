@@ -73,7 +73,7 @@ export function GetSponsorModal({
 
         {applyStep === "select" && (
           <Text style={styles.applyModalSubtitle}>
-            This role at {companyName} doesn't have an active sponsor yet.
+            This role at {companyName} doesn&apos;t have an active sponsor yet.
           </Text>
         )}
 
@@ -100,7 +100,7 @@ export function GetSponsorModal({
                 <View style={styles.modalOptionContent}>
                   <Text style={styles.modalOptionTitle}>Get a Sponsor</Text>
                   <Text style={styles.modalOptionDesc}>
-                    We'll let employees at {companyName ?? "this company"} know
+                    We&apos;ll let employees at {companyName ?? "this company"} know
                     and notify you the moment someone signs on.
                   </Text>
                 </View>
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   successActionBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

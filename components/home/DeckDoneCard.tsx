@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 11,
-    fontWeight: "900",
+    fontWeight: "800",
     color: "#000",
     letterSpacing: 0.6,
   },
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
     borderRadius: 16,
     width: "100%",

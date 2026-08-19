@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   segmentFilled: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   stageLabel: {
     fontSize: 11,

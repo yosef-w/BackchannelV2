@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.muted,
   },
   circle: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },

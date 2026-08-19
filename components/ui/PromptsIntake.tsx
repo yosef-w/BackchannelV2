@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   // Matches the pill shape (radius = height/2) every other CTA in the
   // sign-up flow uses — this one was squared off (radius 16) before.
   saveBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 56,
     borderRadius: 28,
     alignItems: "center",

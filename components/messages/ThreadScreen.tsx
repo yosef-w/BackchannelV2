@@ -456,7 +456,7 @@ if (!conversation) {
         style={{
           marginTop: 16,
           padding: 12,
-          backgroundColor: "#000",
+          backgroundColor: Colors.ink,
           borderRadius: 12,
         }}
       >

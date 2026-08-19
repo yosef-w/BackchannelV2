@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: Colors.border,
   },
-  srSegmentActive: { backgroundColor: "#000" },
+  srSegmentActive: { backgroundColor: Colors.ink },
   srFieldHint: {
     fontSize: 13,
     color: Colors.muted,

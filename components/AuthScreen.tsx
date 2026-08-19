@@ -663,7 +663,7 @@ export function AuthScreen({
                 <>
                   <Text style={styles.modalTitle}>Reset Password</Text>
                   <Text style={styles.modalSubtitle}>
-                    Enter your email and we'll send you a link to reset your
+                    Enter your email and we&apos;ll send you a link to reset your
                     password.
                   </Text>
 
@@ -721,11 +721,11 @@ export function AuthScreen({
                     <Text style={styles.emailHighlight}>
                       {forgotPasswordEmail}
                     </Text>
-                    , we've sent a password reset link.
+                    , we&apos;ve sent a password reset link.
                   </Text>
 
                   <Text style={styles.modalSpamHint}>
-                    Don't see it? Check your spam or junk folder — it can take a
+                    Don&apos;t see it? Check your spam or junk folder — it can take a
                     minute to arrive.
                   </Text>
 
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   submitButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 60,
     borderRadius: 30,
     alignItems: "center",
@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 56,
     borderRadius: 28,
     alignItems: "center",

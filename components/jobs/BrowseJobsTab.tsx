@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   didYouMeanCreateBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 14,

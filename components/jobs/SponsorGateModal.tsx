@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   gateActions: { width: "100%", gap: 12 },
   gateBtnPrimary: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",

@@ -276,7 +276,7 @@ export function JobDetailsModal({
                           style={[
                             styles.sponsorCardAvatar,
                             {
-                              backgroundColor: "#000",
+                              backgroundColor: Colors.ink,
                               alignItems: "center",
                               justifyContent: "center",
                             },

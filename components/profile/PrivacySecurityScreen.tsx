@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   updateBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     borderRadius: 14,
     height: 52,
     alignItems: "center",
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     marginTop: 7,
   },
   deleteWarningText: {
@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   deleteConfirmBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     borderRadius: 14,
     height: 52,
     alignItems: "center",

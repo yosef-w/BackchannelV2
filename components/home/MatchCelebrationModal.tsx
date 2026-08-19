@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   matchLabelPill: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     borderColor: "#FFF",
   },
   matchAvatarInitial: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   matchMsgBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     borderRadius: 18,
     paddingVertical: 15,
     flexDirection: "row",

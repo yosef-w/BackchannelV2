@@ -80,7 +80,7 @@ export function RolePickerModal({
                   style={[
                     styles.rolePickerAvatar,
                     {
-                      backgroundColor: "#000",
+                      backgroundColor: Colors.ink,
                       alignItems: "center",
                       justifyContent: "center",
                     },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,

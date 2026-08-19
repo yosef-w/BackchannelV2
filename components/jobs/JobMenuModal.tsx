@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     width: 11,
     height: 11,
     borderRadius: 6,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   reasonLabel: {
     flex: 1,

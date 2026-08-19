@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     marginTop: 20,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 14,

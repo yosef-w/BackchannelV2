@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     marginRight: 11,
   },
   subRowDotSpacer: { width: 7, marginRight: 11 },

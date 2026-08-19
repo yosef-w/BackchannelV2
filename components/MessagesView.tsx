@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 20,
   },
-  jobRefLabel: { fontSize: 10, fontWeight: "900", color: Colors.muted },
+  jobRefLabel: { fontSize: 10, fontWeight: "800", color: Colors.muted },
   jobRefBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1264,7 +1264,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   dot: { height: 6, borderRadius: 3 },
-  dotActive: { width: 22, backgroundColor: "#000" },
+  dotActive: { width: 22, backgroundColor: Colors.ink },
   dotInactive: { width: 6, backgroundColor: Colors.borderStrong },
   infoCardHeader: {
     flexDirection: "row",
@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, fontWeight: "800" },
   resumeBtn: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1345,7 +1345,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   fullProfileBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1483,7 +1483,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 10,
-    fontWeight: "900",
+    fontWeight: "800",
     color: Colors.faint,
     letterSpacing: 1,
     marginBottom: 4,

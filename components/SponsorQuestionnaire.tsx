@@ -1171,7 +1171,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   progressBarBg: { height: 2, backgroundColor: Colors.border, width: "100%" },
-  progressBar: { height: "100%", backgroundColor: "#000" },
+  progressBar: { height: "100%", backgroundColor: Colors.ink },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   questionText: {
     ...Type.title,
@@ -1215,7 +1215,7 @@ const styles = StyleSheet.create({
 
   footer: { paddingHorizontal: 28, paddingBottom: 30, paddingTop: 20 },
   nextButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 60,
     borderRadius: 30,
     flexDirection: "row",
@@ -1356,7 +1356,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -252,14 +252,14 @@ export function WorkEmailVerificationModal({
         <View style={styles.emailVerifSpamHint}>
           <Info color={Colors.muted} size={13} strokeWidth={2} />
           <Text style={styles.emailVerifSpamHintText}>
-            Don't see it? Check your spam or junk folder — it can take a
+            Don&apos;t see it? Check your spam or junk folder — it can take a
             minute to arrive.
           </Text>
         </View>
 
         <View style={styles.emailVerifInfoBox}>
           <Text style={styles.emailVerifInfoText}>
-            This keeps the network trusted — every candidate knows they're
+            This keeps the network trusted — every candidate knows they&apos;re
             talking to a real, verified professional.
           </Text>
         </View>
@@ -311,7 +311,7 @@ export function WorkEmailVerificationModal({
             <ActivityIndicator size="small" color="#000" />
           ) : (
             <Text style={styles.emailVerifSecondaryBtnText}>
-              I've Verified My Email
+              I&apos;ve Verified My Email
             </Text>
           )}
         </TouchableOpacity>
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   emailVerifPrimaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },

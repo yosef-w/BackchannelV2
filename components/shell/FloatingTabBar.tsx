@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   navBar: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     width: SCREEN_WIDTH * 0.85,
     height: 70,
     borderRadius: 35,

@@ -2246,7 +2246,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -2498,7 +2498,7 @@ const styles = StyleSheet.create({
   // When premium hides the primary CTA, the "Review again" button is the only
   // action — drop the top margin that otherwise spaces it under the primary.
   primaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 30,
@@ -2590,7 +2590,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 999,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
