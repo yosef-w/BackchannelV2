@@ -209,13 +209,16 @@ function RootLayout() {
     }
   }, [accessToken, fetchFromBackend, flushSyncNow]);
 
-  // Nothing renders until fonts resolve — the native launch screen (held
-  // open above) covers this gap, so there's no visible blank frame. Safe
-  // to early-return here: every hook above runs unconditionally regardless
-  // of this branch, so hook order never changes between renders.
-  if (!fontsLoaded && !fontError) {
-    return null;
-  }
+  // Fonts still loading — the native launch screen (held open above)
+  // covers the gap, so there's no visible blank frame. Deliberately NOT an
+  // early return: GestureHandlerRootView must mount on the FIRST render so
+  // its native touch-responder chain is established before anything
+  // becomes visible. An early return here mounted GHRV late and re-created
+  // the iOS touch-responder race originally fixed in f1273ef (ui-redesign
+  // branch, June 2026) — taps on gesture/reanimated surfaces (the floating
+  // tab bar) landed on a dead responder and navigation silently ignored
+  // them. Only the inner tree below is gated on fonts.
+  const fontsReady = fontsLoaded || !!fontError;
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
@@ -234,6 +237,8 @@ function RootLayout() {
           <KeyboardProvider>
             <StatusBar style="dark" />
 
+            {!fontsReady ? null : (
+              <>
             {/* Main navigation stack for BackChannel */}
             <Stack initialRouteName="splash">
               <Stack.Screen name="splash" options={{ headerShown: false }} />
@@ -279,6 +284,8 @@ function RootLayout() {
                 RN Modal, so stack position is irrelevant; dormant while
                 PREMIUM_ENABLED is off (the pending flag can't be set). */}
             <PremiumCelebrationHost />
+              </>
+            )}
           </KeyboardProvider>
         </GestureHandlerRootView>
       </ThemeProvider>
