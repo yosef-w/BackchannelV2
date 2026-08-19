@@ -247,7 +247,7 @@ function HoldToSign({
             />
           </Svg>
           <View style={holdStyles.inner}>
-            <Check size={30} color="#000" strokeWidth={3} />
+            <Check size={30} color={Colors.ink} strokeWidth={3} />
           </View>
         </Animated.View>
       </TouchableOpacity>
@@ -889,7 +889,7 @@ export function ReferralSigningScreen({
                   onCopied={(what) => showToast(`${what} copied.`, "success")}
                 />
                 <Text style={styles.savedHint}>
-                  🔖 Saved — find this packet anytime in Matches → Referrals.
+                  Saved — find this packet anytime in Matches → Referrals.
                 </Text>
               </ScrollView>
               <View style={styles.footer}>
@@ -911,8 +911,10 @@ export function ReferralSigningScreen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F6F7F9" },
-  rootDark: { backgroundColor: "#000" },
+  // Paper, not the retired Gallery canvas; the sign act stays the app's
+  // one deliberate dark screen.
+  root: { flex: 1, backgroundColor: Colors.paper },
+  rootDark: { backgroundColor: Colors.ink },
   safe: { flex: 1 },
   header: {
     flexDirection: "row",
@@ -933,7 +935,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   progressFillDark: { backgroundColor: "#FFF" },
   body: { flex: 1 },
@@ -985,7 +987,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: Colors.borderStrong,
   },
-  introDotOn: { backgroundColor: "#000", width: 18 },
+  introDotOn: { backgroundColor: Colors.ink, width: 18 },
   // ── Candidate ──
   candidateScroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
   candidatePhoto: {
@@ -999,7 +1001,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  candidatePhotoInitial: { fontSize: 44, fontWeight: "800", color: Colors.ink },
+  candidatePhotoInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 44,
+    color: Colors.muted,
+  },
   // "You know [Name]." reads as one headline unit, same lead+accent
   // construction as the splash's "Welcome to *BackChannel*" — plain serif
   // lead, then the payoff. Kept the existing size architecture (32/34)
@@ -1029,18 +1035,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFF",
-    borderRadius: 18,
+    backgroundColor: Colors.paper,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
+    borderColor: Colors.border,
     padding: 14,
     marginBottom: 12,
   },
   roleLabel: {
-    fontSize: 9,
-    fontWeight: "900",
+    fontSize: 10,
+    fontWeight: "800",
     color: Colors.muted,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     marginBottom: 3,
   },
   // 15px — below the serif's ~18px floor, system font kept.
@@ -1049,7 +1055,7 @@ const styles = StyleSheet.create({
   entryRow: { paddingVertical: 8 },
   entryDivider: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(15,23,42,0.06)",
+    borderTopColor: Colors.border,
   },
   entryTitle: {
     fontSize: 14,
@@ -1101,7 +1107,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1133,13 +1139,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 34,
   },
-  signAvatar: { width: 64, height: 64, borderRadius: 32, marginBottom: 10 },
+  // Square ID tile — the house language, even on the dark act.
+  signAvatar: { width: 64, height: 64, borderRadius: 16, marginBottom: 10 },
   signAvatarFallback: {
     backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  signAvatarInitial: { fontSize: 24, fontWeight: "800", color: Colors.ink },
+  signAvatarInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    color: Colors.muted,
+  },
   // A person's name — same headline-tier rule as elsewhere
   // (ProfileIdentityCard, cardStyles.sponsorMeetName).
   signName: {
@@ -1179,7 +1190,7 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
