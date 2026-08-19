@@ -14,6 +14,7 @@ import {
     DismissibleSheet,
     SheetScrollView,
 } from "../ui/DismissibleSheet";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -65,7 +66,9 @@ export function JobSwitcherSheet({
           onDismiss={onClose}
           style={styles.sheet}
         >
-          <Text style={styles.title}>Switch role</Text>
+          <Text style={styles.title}>
+            Switch <Text style={styles.titleEm}>roles.</Text>
+          </Text>
           <Text style={styles.subtitle}>
             Pick which sponsored role to review applicants for. We&apos;ll
             match them with that role when you swipe right.
@@ -92,19 +95,19 @@ export function JobSwitcherSheet({
                       </Text>
                     )}
                   </View>
-                  <View
-                    style={[
-                      styles.countBadge,
-                      count === 0 && styles.countBadgeMuted,
-                    ]}
-                  >
+                  {/* Pending interest in the serif stat-number voice —
+                      the board cards' count language. */}
+                  <View style={styles.countCol}>
                     <Text
                       style={[
-                        styles.countBadgeText,
-                        count === 0 && styles.countBadgeTextMuted,
+                        styles.countNum,
+                        count === 0 && styles.countNumMuted,
                       ]}
                     >
                       {count}
+                    </Text>
+                    <Text style={styles.countLabel}>
+                      {count === 0 ? "QUIET" : "NEW"}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -123,7 +126,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
     // Absolute px (not "70%") because the sheet sits inside
     // DismissibleSheet's GestureHandlerRootView wrapper, which is
@@ -132,52 +138,60 @@ const styles = StyleSheet.create({
     maxHeight: SCREEN_HEIGHT * 0.7,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
+    ...Type.heading,
+    color: Colors.ink,
     marginTop: 4,
+  },
+  titleEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   subtitle: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginTop: 6,
     marginBottom: 12,
   },
+  // Bounded selection rows on paper — the SelectionCard language;
+  // active flips the border ink.
   row: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     paddingVertical: 14,
-    paddingHorizontal: 14,
+    paddingHorizontal: 15,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    backgroundColor: "#F9F9F9",
+    borderColor: Colors.border,
+    backgroundColor: Colors.paper,
     marginBottom: 8,
   },
   rowActive: {
-    borderColor: "#000",
-    borderWidth: 2,
+    borderColor: Colors.ink,
+    borderWidth: 1.5,
   },
-  rowTitle: { fontSize: 15, fontWeight: "700", color: "#000" },
-  rowCompany: { fontSize: 13, fontWeight: "500", color: "#666", marginTop: 2 },
-  countBadge: {
-    backgroundColor: "#000",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    minWidth: 26,
-    alignItems: "center",
-    justifyContent: "center",
+  rowTitle: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  rowCompany: {
+    fontSize: 12.5,
+    fontWeight: "500",
+    color: Colors.body,
+    marginTop: 2,
   },
-  countBadgeMuted: { backgroundColor: "#F0F0F0" },
-  countBadgeText: {
-    color: "#FFF",
-    fontSize: 12,
+  countCol: { alignItems: "flex-end", minWidth: 42 },
+  countNum: {
+    fontFamily: Fonts.serif,
+    fontSize: 20,
+    lineHeight: 23,
+    color: Colors.ink,
+  },
+  countNumMuted: { color: Colors.faint },
+  countLabel: {
+    fontSize: 7.5,
     fontWeight: "800",
-    letterSpacing: -0.2,
+    letterSpacing: 1,
+    color: Colors.faint,
+    marginTop: 1,
   },
-  countBadgeTextMuted: { color: "#999" },
 });

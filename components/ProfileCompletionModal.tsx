@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { ProfileCompletenessResult } from "@/utils/profileCompletion";
+import { Colors, Type } from "@/constants/theme";
 
 interface ProfileCompletionModalProps {
   visible: boolean;
@@ -49,7 +50,7 @@ export function ProfileCompletionModal({
           style={styles.modalContent}
         >
         <View style={styles.iconContainer}>
-          <AlertCircle color="#666" size={48} />
+          <AlertCircle color={Colors.body} size={48} />
         </View>
 
         <Text style={styles.title}>Complete Your Profile</Text>
@@ -114,35 +115,37 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
   },
   iconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     marginBottom: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   missingFieldsContainer: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -164,23 +167,23 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#666",
+    backgroundColor: Colors.body,
     marginRight: 12,
   },
   missingText: {
     fontSize: 15,
-    color: "#333",
+    color: Colors.body,
     fontWeight: "500",
   },
   moreFields: {
     fontSize: 14,
-    color: "#999",
+    color: Colors.muted,
     fontStyle: "italic",
     marginTop: 4,
     marginLeft: 18,
   },
   primaryButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",
@@ -200,7 +203,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButtonText: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -211,7 +214,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   testerButtonText: {
-    color: "#999",
+    color: Colors.muted,
     fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",

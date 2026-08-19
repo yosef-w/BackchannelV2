@@ -23,6 +23,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { useShell } from "./ShellContext";
+import { Colors } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -85,7 +86,7 @@ function TabItem({
     >
       <Animated.View style={animatedIconStyle}>
         <Icon
-          color={isActive ? "#FFF" : "#666"}
+          color={isActive ? "#FFF" : Colors.body}
           size={22}
           strokeWidth={isActive ? 2.5 : 1.5}
         />
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   },
   navBar: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     width: SCREEN_WIDTH * 0.85,
     height: 70,
     borderRadius: 35,
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   navLabel: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
     letterSpacing: -0.1,
   },
   navLabelActive: {

@@ -10,6 +10,7 @@ import {
     View,
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ProfileActionSheetProps {
   visible: boolean;
@@ -103,7 +104,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 32,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 32,
+    paddingBottom: 32,
     // Absolute px — a % maxHeight resolves against DismissibleSheet's
     // content-sized gesture-root wrapper, mis-measures, and floats the
     // sheet off the bottom of the screen.
@@ -116,19 +121,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
   },
   modalSubtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     marginBottom: 24,
     lineHeight: 20,
   },
   blackBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -150,7 +155,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   whiteBtnText: {
     color: "#000",

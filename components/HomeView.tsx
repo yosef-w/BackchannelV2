@@ -47,13 +47,13 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Info,
   RefreshCcw,
   X,
 } from "@/components/ui/icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
+  Pressable,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -64,10 +64,8 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
-  FadeOut,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -97,6 +95,8 @@ import { YourMoveStrip } from "./home/YourMoveStrip";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
 function parseVariant<T>(v: string | T[] | null | undefined): T[] {
@@ -278,6 +278,12 @@ export function HomeView({
     return userType === "applicant" ? jobs.length === 0 : false;
   });
   const [showCelebration, setShowCelebration] = useState(false);
+  // Auto-dismiss timer for the "Interest Sent!" moment; null = nothing in
+  // flight. finishCelebration's null guard makes the timer and
+  // tap-anywhere-to-continue idempotent (the loser of the race no-ops).
+  const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [matchedUser, setMatchedUser] = useState<{
     name: string;
     image: string;
@@ -423,8 +429,14 @@ export function HomeView({
     String(currentItemId) !== leavingItemId;
 
   // True only when real cards are loaded and being displayed.
-  // Used to dim the progress bar + show an em-dash placeholder
-  // when the deck isn't active (empty/error/loading states).
+  // Used to HIDE the deck progress counter when the deck isn't active
+  // (empty/error/loading states). It used to dim to 30% instead, but a
+  // ghosted "0/10" over the sponsor's "Build your deck" empty state read
+  // as an unfinished checklist ("did I not finish something?" — PM
+  // feedback), especially right after the 10-step signup questionnaire's
+  // own progress header. If there's no deck, deck progress says nothing —
+  // so it says nothing. Opacity (not unmount) keeps the flex layout
+  // stable so the role-switcher pill doesn't shift.
   const deckIsActive =
     !isDeckFinished &&
     !isLoading &&
@@ -486,12 +498,6 @@ export function HomeView({
     setShowIntro(false);
     trackHomeIntroDismissed(action);
     AsyncStorage.removeItem(HOME_INTRO_PENDING_KEY).catch(() => {});
-  };
-
-  // Replay affordance (the header "?").
-  const handleReplayIntro = () => {
-    trackHomeIntroShown("replay");
-    setShowIntro(true);
   };
 
   // Hydrate deck-action state (waitlisted / applied / sponsor-requested)
@@ -1087,10 +1093,7 @@ export function HomeView({
       } else if (!didMatch) {
         // Standard swipe-right toast — only shown when there is no mutual match
         setShowCelebration(true);
-        setTimeout(() => {
-          setShowCelebration(false);
-          nextProfile(true);
-        }, 1800);
+        celebrationTimerRef.current = setTimeout(finishCelebration, 1800);
       }
       // When didMatch=true, nextProfile is called when the match modal is dismissed
     } else {
@@ -1129,6 +1132,17 @@ export function HomeView({
       }
       nextProfile(false);
     }
+  };
+
+  // Completes the "Interest Sent!" moment exactly once — fired by the
+  // 1.8s auto-dismiss timer or by tap-anywhere-to-continue, whichever
+  // comes first.
+  const finishCelebration = () => {
+    if (celebrationTimerRef.current === null) return;
+    clearTimeout(celebrationTimerRef.current);
+    celebrationTimerRef.current = null;
+    setShowCelebration(false);
+    nextProfile(true);
   };
 
   // Hinge-style profile transition. The card-flip metaphor is gone, so
@@ -1463,12 +1477,12 @@ export function HomeView({
             }}
             style={[styles.headerRow, headerAnimatedStyle]}
           >
-            {/* Progress indicator — dims + shows "–/10" when the deck
-                isn't active (empty/error/loading states). */}
+            {/* Progress indicator — hidden entirely (opacity 0, layout
+                preserved) when the deck isn't active; see deckIsActive. */}
             <View
               style={[
                 styles.progressHeaderContainer,
-                !deckIsActive && { opacity: 0.3 },
+                !deckIsActive && styles.progressHeaderHidden,
               ]}
             >
               <View style={styles.progressLabelRow}>
@@ -1527,19 +1541,10 @@ export function HomeView({
                       </Text>
                     </View>
                   )}
-                <ChevronDown color="#555" size={14} strokeWidth={2.5} />
+                <ChevronDown color={Colors.body} size={14} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
 
-            {/* Replay the first-run "how it works" intro. */}
-            <TouchableOpacity
-              style={styles.introHelpBtn}
-              onPress={handleReplayIntro}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.7}
-            >
-              <Info color="#999" size={16} strokeWidth={2.4} />
-            </TouchableOpacity>
           </Animated.View>
 
           {/* "Sponsors are interested in you" teaser — reads the same
@@ -2018,35 +2023,48 @@ export function HomeView({
         </View>
       </SafeAreaView>
 
-      {/* Celebration Message */}
+      {/* Celebration Message — in a transparent Modal so the frost covers
+          the ENTIRE screen, header and tab bar included (PM feedback: the
+          confirmation should be the sole focus, with every other action
+          blocked). Tap anywhere to continue early; otherwise the 1.8s
+          timer completes the moment. Never overlaps the match modal —
+          didMatch and this branch are mutually exclusive. */}
       {showCelebration && (
-        <Animated.View
-          entering={FadeIn}
-          exiting={FadeOut}
-          style={StyleSheet.absoluteFill}
+        <Modal
+          visible
+          transparent
+          statusBarTranslucent
+          animationType="fade"
+          onRequestClose={finishCelebration}
         >
-          <BlurView
-            intensity={80}
+          <Pressable
             style={StyleSheet.absoluteFill}
-            tint="light"
-          />
-          <View style={styles.overlayCenter}>
-            <Animated.View
-              entering={ZoomIn.duration(400)}
-              style={styles.celebrationCard}
-            >
-              <View style={styles.successCircle}>
-                <Check color="#FFF" size={32} strokeWidth={3} />
-              </View>
-              <Text style={styles.celebrationTitle}>Interest Sent!</Text>
-              <Text style={styles.celebrationSub}>
-                {userType === "sponsor"
-                  ? `You've shown interest in ${"name" in currentData ? currentData.name : "this applicant"} — we'll let you know if they connect back.`
-                  : `You've shown interest in ${"title" in currentData ? currentData.title : "this role"} — we'll let you know if the sponsor connects.`}
-              </Text>
-            </Animated.View>
-          </View>
-        </Animated.View>
+            onPress={finishCelebration}
+            accessibilityRole="button"
+            accessibilityLabel="Continue"
+          >
+            <BlurView
+              intensity={80}
+              style={StyleSheet.absoluteFill}
+              tint="light"
+            />
+            <View style={styles.overlayCenter} pointerEvents="none">
+              <Animated.View
+                entering={ZoomIn.duration(400)}
+                style={styles.celebrationCard}
+              >
+                {/* Quiet tick, not success — this fires up to 10x/day. */}
+                <ConfirmPop size={60} haptic="tick" />
+                <Text style={styles.celebrationTitle}>Interest Sent!</Text>
+                <Text style={styles.celebrationSub}>
+                  {userType === "sponsor"
+                    ? `You've shown interest in ${"name" in currentData ? currentData.name : "this applicant"} — we'll let you know if they connect back.`
+                    : `You've shown interest in ${"title" in currentData ? currentData.title : "this role"} — we'll let you know if the sponsor connects.`}
+                </Text>
+              </Animated.View>
+            </View>
+          </Pressable>
+        </Modal>
       )}
 
       <MatchCelebrationModal
@@ -2228,7 +2246,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -2245,15 +2263,8 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     gap: 12,
   },
-  introHelpBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F4F4F5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   progressHeaderContainer: { flex: 1 },
+  progressHeaderHidden: { opacity: 0 },
   // 2026-05-27 redesign — progress indicator typography + segmented dots.
   //
   // The label row stacks a large bold current-card number against a thin
@@ -2270,16 +2281,17 @@ const styles = StyleSheet.create({
     gap: 2,
     marginBottom: 8,
   },
+  // Matches the site's .stat-num (serif for stat/count displays) —
+  // sized up so the counter reads as a stat, not a caption.
   progressCurrent: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    fontFamily: Fonts.serif,
+    fontSize: 20,
+    color: Colors.ink,
   },
   progressTotal: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: -0.1,
   },
   progressDotsRow: {
@@ -2291,10 +2303,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.border,
   },
   progressDotFilled: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
 
   // 2026-05-27 redesign — Role switcher pill (sponsor-only).
@@ -2309,9 +2321,9 @@ const styles = StyleSheet.create({
   roleSwitcherPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
-    borderWidth: 1.5,
-    borderColor: "#D0D0D0",
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingVertical: 9,
     paddingLeft: 14,
     paddingRight: 12,
@@ -2323,7 +2335,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 13,
     fontWeight: "700",
-    color: "#111",
+    color: Colors.ink,
     letterSpacing: -0.1,
   },
   roleSwitcherBadge: {
@@ -2331,14 +2343,14 @@ const styles = StyleSheet.create({
     height: 18,
     paddingHorizontal: 6,
     borderRadius: 9,
-    backgroundColor: "#222",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   roleSwitcherBadgeText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
     letterSpacing: 0.2,
   },
   // Modal: bottom sheet, content-sized, listing all sponsored jobs.
@@ -2450,19 +2462,11 @@ const styles = StyleSheet.create({
     shadowRadius: 25,
     elevation: 15,
   },
-  successCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  celebrationTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  celebrationTitle: { ...Type.heading, color: Colors.ink },
   celebrationSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
@@ -2476,15 +2480,16 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
-  emptyTitle: { fontSize: 24, fontWeight: "800", marginBottom: 8 },
+  emptyTitle: { ...Type.heading, color: Colors.ink, marginBottom: 8 },
   emptySub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginBottom: 30,
   },
@@ -2493,7 +2498,7 @@ const styles = StyleSheet.create({
   // When premium hides the primary CTA, the "Review again" button is the only
   // action — drop the top margin that otherwise spaces it under the primary.
   primaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 30,
@@ -2539,7 +2544,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: "#FFF",
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   emptyDeckCardBack: {
     transform: [{ translateX: 18 }, { translateY: 10 }, { rotate: "8deg" }],
@@ -2550,25 +2555,25 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   emptyDeckCardFront: {
-    backgroundColor: "#F4F4F5",
-    borderColor: "#D9D9D9",
+    backgroundColor: Colors.surface,
+    borderColor: Colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
 
   // Hero typography shared by both sponsor empty states.
   sponsorEmptyTitle: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 10,
   },
   sponsorEmptySubtitle: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 26,
@@ -2585,7 +2590,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 999,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
@@ -2664,7 +2669,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -2681,7 +2686,7 @@ const styles = StyleSheet.create({
   sponsorWaitingJobCompany: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#666",
+    color: Colors.body,
     marginTop: 3,
   },
 

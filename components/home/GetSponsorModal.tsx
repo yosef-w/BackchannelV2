@@ -1,5 +1,6 @@
 import { BlurView } from "expo-blur";
-import { BellRing, Check, ChevronRight, X } from "@/components/ui/icons";
+import { BellRing, ChevronRight, X } from "@/components/ui/icons";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React from "react";
 import {
   ActivityIndicator,
@@ -10,6 +11,7 @@ import {
   View,
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { Colors, Type } from "@/constants/theme";
 
 interface GetSponsorModalProps {
   visible: boolean;
@@ -71,7 +73,7 @@ export function GetSponsorModal({
 
         {applyStep === "select" && (
           <Text style={styles.applyModalSubtitle}>
-            This role at {companyName} doesn't have an active sponsor yet.
+            This role at {companyName} doesn&apos;t have an active sponsor yet.
           </Text>
         )}
 
@@ -98,14 +100,14 @@ export function GetSponsorModal({
                 <View style={styles.modalOptionContent}>
                   <Text style={styles.modalOptionTitle}>Get a Sponsor</Text>
                   <Text style={styles.modalOptionDesc}>
-                    We'll let employees at {companyName ?? "this company"} know
+                    We&apos;ll let employees at {companyName ?? "this company"} know
                     and notify you the moment someone signs on.
                   </Text>
                 </View>
                 {isRequestingSponsor ? (
-                  <ActivityIndicator size="small" color="#999" />
+                  <ActivityIndicator size="small" color={Colors.muted} />
                 ) : (
-                  <ChevronRight color="#CCC" size={20} />
+                  <ChevronRight color={Colors.faint} size={20} />
                 )}
               </TouchableOpacity>
             </View>
@@ -113,9 +115,7 @@ export function GetSponsorModal({
 
           {applyStep === "requested" && (
             <View style={styles.successContainer}>
-              <View style={styles.successCircleLarge}>
-                <Check color="#FFF" size={40} strokeWidth={3} />
-              </View>
+              <ConfirmPop size={72} />
               <Text style={styles.successMessage}>
                 {`This role doesn't have a dedicated sponsor yet, but your request has been sent to everyone we have available at ${companyName ?? "this company"}. If someone is able to sponsor you for this role, you'll be notified right away.`}
               </Text>
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -148,7 +148,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (matches the DismissibleSheet-wide fix).
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
     maxHeight: "90%",
   },
@@ -158,10 +160,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  applyModalTitle: { fontSize: 24, fontWeight: "800", color: "#000" },
+  applyModalTitle: { ...Type.heading, color: Colors.ink },
   applyModalSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -173,10 +175,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
     padding: 20,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   modalOptionIcon: {
     width: 48,
@@ -184,7 +186,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -195,28 +197,19 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 4,
   },
-  modalOptionDesc: { fontSize: 13, color: "#666", lineHeight: 18 },
+  modalOptionDesc: { fontSize: 13, color: Colors.body, lineHeight: 18 },
 
   successContainer: { alignItems: "center", paddingVertical: 32 },
-  successCircleLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
   successMessage: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 32,
     paddingHorizontal: 20,
   },
   successActionBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

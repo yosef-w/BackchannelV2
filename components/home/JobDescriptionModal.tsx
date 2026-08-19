@@ -13,6 +13,7 @@ import {
   DismissibleSheet,
   SheetScrollView,
 } from "../ui/DismissibleSheet";
+import { Colors, Type } from "@/constants/theme";
 
 interface JobDescriptionModalProps {
   visible: boolean;
@@ -75,7 +76,7 @@ export function JobDescriptionModal({
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                backgroundColor: "#F5F5F5",
+                backgroundColor: Colors.surface,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -85,10 +86,8 @@ export function JobDescriptionModal({
             <View>
               <Text
                 style={{
-                  fontSize: 22,
-                  fontWeight: "800",
-                  color: "#000",
-                  letterSpacing: -0.5,
+                  ...Type.heading,
+                  color: Colors.ink,
                 }}
               >
                 About the Role
@@ -97,7 +96,7 @@ export function JobDescriptionModal({
                 style={{
                   fontSize: 13,
                   fontWeight: "600",
-                  color: "#999",
+                  color: Colors.muted,
                   marginTop: 2,
                 }}
               >
@@ -110,7 +109,7 @@ export function JobDescriptionModal({
             style={{
               width: 36,
               height: 36,
-              backgroundColor: "#F5F5F5",
+              backgroundColor: Colors.surface,
               borderRadius: 18,
               alignItems: "center",
               justifyContent: "center",
@@ -119,7 +118,7 @@ export function JobDescriptionModal({
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <X color="#666" size={18} />
+            <X color={Colors.body} size={18} />
           </TouchableOpacity>
         </View>
 
@@ -127,7 +126,7 @@ export function JobDescriptionModal({
         <View
           style={{
             height: 1,
-            backgroundColor: "#F0F0F0",
+            backgroundColor: Colors.border,
             marginHorizontal: 28,
             marginVertical: 20,
           }}
@@ -142,7 +141,7 @@ export function JobDescriptionModal({
             style={{
               fontSize: 16,
               lineHeight: 26,
-              color: "#444",
+              color: Colors.body,
               fontWeight: "500",
               letterSpacing: -0.2,
             }}

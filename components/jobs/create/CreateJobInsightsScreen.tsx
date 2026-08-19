@@ -1,4 +1,3 @@
-import { Check, MessageSquareQuote } from "@/components/ui/icons";
 import {
     PromptsIntake,
     type PromptAnswer,
@@ -16,7 +15,9 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface CreateJobInsightsScreenProps {
   visible: boolean;
@@ -74,18 +75,16 @@ export function CreateJobInsightsScreen({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.payoffBanner}>
-            <View style={styles.payoffIconCircle}>
-              <MessageSquareQuote color="#FFF" size={18} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.payoffTitle}>The part only you can write</Text>
-              <Text style={styles.payoffSubtitle}>
-                Every other field on {jobTitle || "this listing"} could come
-                from the job posting. Answer a prompt or two about what it&apos;s
-                really like — that&apos;s what makes candidates apply.
-              </Text>
-            </View>
+          {/* Plain section intro, deliberately NOT a card — the prompt
+              cards below are the interactive objects on this screen, and
+              a card introducing more cards diluted them (PM note). */}
+          <View style={styles.payoffIntro}>
+            <Text style={styles.payoffTitle}>The part only you can write</Text>
+            <Text style={styles.payoffSubtitle}>
+              Every other field on {jobTitle || "this listing"} could come
+              from the job posting. Answer a prompt or two about what it&apos;s
+              really like — that&apos;s what makes candidates apply.
+            </Text>
           </View>
 
           <PromptsIntake
@@ -130,6 +129,11 @@ export function CreateJobInsightsScreen({
   );
 }
 
+// "The Broadcast" — the publish-success moment, running on the shared
+// BroadcastMoment primitive (components/cinema/BroadcastMoment.tsx, which
+// was extracted FROM this screen and now serves every milestone
+// confirmation in the app). The CTA is present throughout — a moment,
+// not a gate.
 export function CreateJobSuccessScreen({
   visible,
   jobTitle,
@@ -139,19 +143,20 @@ export function CreateJobSuccessScreen({
   jobTitle: string;
   onDone: () => void;
 }) {
+  // Mounts fresh each time the screen shows, so the one-shot clock
+  // always starts from zero.
   if (!visible) return null;
   return (
     <View style={styles.screen}>
-      <View style={styles.successContent}>
-        <View style={styles.successIconCircle}>
-          <Check color="#FFF" size={36} strokeWidth={3} />
-        </View>
-        <Text style={styles.successTitle}>Listing Published</Text>
-        <Text style={styles.successSubtitle}>
-          {jobTitle || "Your job"} is live. Applicants can start swiping on it
-          right now.
-        </Text>
-      </View>
+      <BroadcastMoment
+        words={[
+          { word: "Your" },
+          { word: "role" },
+          { word: "is" },
+          { word: "live.", accent: true },
+        ]}
+        subtitle={`Applicants can start swiping on ${jobTitle || "it"} right now.`}
+      />
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.publishBtn}
@@ -169,86 +174,48 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#FFF" },
   flex: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 48 },
-  payoffBanner: {
-    flexDirection: "row",
-    gap: 14,
-    backgroundColor: "#F8F9FB",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    borderRadius: 18,
-    padding: 16,
+  // Editorial section intro — serif head + light body, per the site's
+  // section-intro language. No container: cards are reserved for the
+  // interactive prompt objects below.
+  payoffIntro: {
     marginBottom: 24,
-  },
-  payoffIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
+    paddingRight: 8,
   },
   payoffTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 4,
+    fontFamily: Fonts.serif,
+    fontSize: 19,
+    color: Colors.ink,
+    marginBottom: 6,
   },
   payoffSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    lineHeight: 19,
+    fontFamily: Fonts.sansLight,
+    fontSize: 14,
+    color: Colors.body,
+    lineHeight: 21,
   },
   footer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: Colors.border,
   },
   publishBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
-    paddingVertical: 18,
-    borderRadius: 18,
+    backgroundColor: Colors.ink,
+    height: 54,
+    borderRadius: 27,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
   publishBtnDisabled: { opacity: 0.6 },
-  publishBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  publishBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
   skipBtn: { paddingVertical: 14, alignItems: "center" },
+  // Quiet link — the house secondary voice (no underline).
   skipBtnText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "600",
-    color: "#999",
-    textDecorationLine: "underline",
-  },
-  successContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-  },
-  successIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 10,
-    letterSpacing: -0.5,
-  },
-  successSubtitle: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
+    color: Colors.muted,
   },
 });

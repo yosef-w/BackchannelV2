@@ -16,7 +16,8 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Lock, X } from "@/components/ui/icons";
+import { Lock, X } from "@/components/ui/icons";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -35,6 +36,7 @@ import {
     trackResetPasswordSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { Colors, Type } from "@/constants/theme";
 
 type Status = "form" | "missingToken" | "success";
 
@@ -126,7 +128,7 @@ export default function ResetPasswordRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="New password"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
@@ -137,7 +139,7 @@ export default function ResetPasswordRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm new password"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry
@@ -193,17 +195,17 @@ export default function ResetPasswordRoute() {
           )}
 
           {status === "success" && (
-            <View style={styles.center}>
-              <View style={styles.iconCircle}>
-                <Check color="#FFF" size={36} strokeWidth={3} />
-              </View>
-              <Text style={styles.title}>Password updated</Text>
-              <Text style={styles.subtitle}>
-                Your password has been reset. Sign in with your new password
-                to continue.
-              </Text>
+            <View style={styles.broadcastFill}>
+              {/* Milestone confirmation on the shared Broadcast. */}
+              <BroadcastMoment
+                words={[
+                  { word: "Password" },
+                  { word: "updated.", accent: true },
+                ]}
+                subtitle="Your password has been reset. Sign in with your new password to continue."
+              />
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, styles.broadcastCta]}
                 onPress={handleGoToSignIn}
                 activeOpacity={0.8}
               >
@@ -221,6 +223,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   flex: { flex: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
+  // Full-bleed container for BroadcastMoment (it manages its own
+  // centering) with the CTA beneath its caption zone.
+  broadcastFill: { flex: 1, alignItems: "stretch" },
+  broadcastCta: { alignSelf: "center", marginBottom: 8 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -231,7 +237,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -240,21 +246,21 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
   title: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 12,
@@ -265,7 +271,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 50,
@@ -274,12 +280,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: "#DC2626",
+    color: Colors.danger,
     textAlign: "center",
     lineHeight: 18,
   },
   primaryButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 52,
     borderRadius: 26,
     paddingHorizontal: 32,
@@ -289,7 +295,7 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: Colors.faint,
   },
   primaryButtonText: {
     color: "#FFF",

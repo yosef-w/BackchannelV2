@@ -22,6 +22,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { CompanyLogo } from "./CompanyLogo";
+import { Colors } from "@/constants/theme";
 
 interface CompanyAutocompleteProps {
   value: string;
@@ -118,7 +119,7 @@ export function CompanyAutocomplete({
       <View style={[styles.inputWrapper, inputWrapperStyle]}>
         <TextInput
           placeholder={placeholder}
-          placeholderTextColor="#BBB"
+          placeholderTextColor={Colors.faint}
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}
@@ -129,14 +130,14 @@ export function CompanyAutocomplete({
           autoCapitalize="words"
           autoCorrect={false}
         />
-        {loading && <ActivityIndicator size="small" color="#999" />}
+        {loading && <ActivityIndicator size="small" color={Colors.muted} />}
       </View>
 
       {showDropdown && (
         <View style={styles.dropdown}>
           {results.length === 0 && loading ? (
             <View style={styles.dropdownLoadingRow}>
-              <ActivityIndicator size="small" color="#999" />
+              <ActivityIndicator size="small" color={Colors.muted} />
               <Text style={styles.dropdownLoadingText}>Searching…</Text>
             </View>
           ) : (
@@ -183,10 +184,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Colors.offWhite,
   },
   input: {
     flex: 1,
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     overflow: "hidden",
     // Soft elevation so it reads as a floating menu.
     shadowColor: "#000",
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  dropdownLoadingText: { color: "#999", fontSize: 14, fontWeight: "500" },
+  dropdownLoadingText: { color: Colors.muted, fontSize: 14, fontWeight: "500" },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -224,9 +225,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   rowText: { flex: 1, minWidth: 0 },
-  rowName: { fontSize: 15, fontWeight: "700", color: "#111" },
-  rowMeta: { fontSize: 12, color: "#999", fontWeight: "500", marginTop: 1 },
+  rowName: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  rowMeta: { fontSize: 12, color: Colors.muted, fontWeight: "500", marginTop: 1 },
 });

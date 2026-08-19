@@ -287,6 +287,32 @@ export function trackForgotPasswordRequested(): void {
   safeTrack("Forgot Password Requested");
 }
 
+// ─── Pre-signup intro films ───────────────────────────────────────────────────
+
+export function trackIntroFilmViewed(role: AnalyticsUserType): void {
+  safeTrack("Intro Film Viewed", { film_role: role });
+}
+
+/**
+ * Fired once when the user leaves the film, whichever exit they take.
+ * `watchSeconds` + `completedFirstPlay` together answer the launch
+ * question this screen exists for: do people actually watch the reel,
+ * and does watching correlate with converting?
+ */
+export function trackIntroFilmDismissed(args: {
+  role: AnalyticsUserType;
+  action: "skip" | "cta" | "sign_in" | "back";
+  watchSeconds: number;
+  completedFirstPlay: boolean;
+}): void {
+  safeTrack("Intro Film Dismissed", {
+    film_role: args.role,
+    action: args.action,
+    watch_seconds: args.watchSeconds,
+    completed_first_play: args.completedFirstPlay,
+  });
+}
+
 export function trackOnboardingStepViewed(args: {
   role: AnalyticsUserType;
   stepIndex: number;

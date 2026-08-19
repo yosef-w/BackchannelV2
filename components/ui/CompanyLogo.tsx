@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Colors } from "@/constants/theme";
 
 /**
  * Renders a company logo. Prefers the backend-provided URL (from PR #62's
@@ -90,7 +91,7 @@ export function CompanyLogo({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: showImage ? "#F4F4F5" : backgroundColor,
+    backgroundColor: showImage ? Colors.surface : backgroundColor,
   };
 
   return (

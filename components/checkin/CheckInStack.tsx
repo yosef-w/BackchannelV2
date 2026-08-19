@@ -28,6 +28,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn, SlideInRight, ZoomIn } from "react-native-reanimated";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { CharCounter } from "../ui/CharCounter";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import {
@@ -37,6 +38,7 @@ import {
   type SessionResults,
 } from "./checkInSession";
 import { StageTrack } from "./StageTrack";
+import { Colors, Type } from "@/constants/theme";
 
 const NOTE_MAX = 500;
 
@@ -267,9 +269,9 @@ export function CheckInStack({
         : "Done";
     return (
       <Animated.View entering={ZoomIn.duration(280)} style={styles.recap}>
-        <View style={styles.recapBadge}>
-          <Check color="#FFF" size={30} strokeWidth={3} />
-        </View>
+        {/* Silent — the submit interaction already landed the success
+            haptic; doubling it here would buzz twice for one action. */}
+        <ConfirmPop size={64} haptic={null} />
         <Text style={styles.recapTitle}>
           {summary.updated > 0 ? "All caught up" : "Nothing updated"}
         </Text>
@@ -454,7 +456,7 @@ export function CheckInStack({
                 accessibilityRole="button"
                 accessibilityLabel="See all referrals"
               >
-                <List color="#999" size={18} strokeWidth={2.2} />
+                <List color={Colors.muted} size={18} strokeWidth={2.2} />
               </TouchableOpacity>
             </View>
           )}
@@ -508,7 +510,7 @@ export function CheckInStack({
                 <TextInput
                   style={styles.noteInput}
                   placeholder={notePlaceholder ?? "Add a note (optional)"}
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   multiline
                   value={note}
                   onChangeText={setNote}
@@ -587,13 +589,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Colors.border,
   },
   progressSegmentDone: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   progressSegmentCurrent: {
-    backgroundColor: "#BBB",
+    backgroundColor: Colors.faint,
   },
 
   cardScroll: {
@@ -608,7 +610,7 @@ const styles = StyleSheet.create({
   positionText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -621,10 +623,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   overviewTitle: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.3,
+    color: Colors.ink,
   },
   overviewList: {
     gap: 8,
@@ -635,10 +636,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -653,17 +654,17 @@ const styles = StyleSheet.create({
   },
   overviewRowSub: {
     fontSize: 12,
-    color: "#888",
+    color: Colors.muted,
     fontWeight: "500",
   },
   overviewPending: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
   },
   bulkBtn: {
-    backgroundColor: "#000",
-    borderRadius: 16,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 10,
@@ -674,21 +675,20 @@ const styles = StyleSheet.create({
     gap: 4,
     marginBottom: 22,
   },
+  // The referral's name/company — headline-tier, same rule as elsewhere.
   heading: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
+    ...Type.heading,
     marginTop: 10,
+    color: Colors.ink,
   },
   subheading: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#444",
+    color: Colors.body,
   },
   metaText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
   },
   stalePill: {
@@ -696,21 +696,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#EBEBEB",
+    borderColor: Colors.border,
   },
   stalePillText: {
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.6,
-    color: "#666",
+    color: Colors.body,
   },
 
   promptText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -725,17 +725,17 @@ const styles = StyleSheet.create({
   noteToggleText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
   },
   noteWrap: {
     marginTop: 16,
   },
   noteInput: {
     minHeight: 84,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     padding: 14,
     fontSize: 14,
     color: "#000",
@@ -748,19 +748,19 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F2F2F2",
+    borderTopColor: Colors.surface,
   },
   skipBtn: {
     paddingVertical: 16,
     paddingHorizontal: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   skipBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
   },
   sendBtn: {
     flex: 1,
@@ -768,12 +768,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   sendBtnDisabled: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
   },
   sendBtnText: {
     color: "#FFF",
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   sendBtnTextDisabled: {
-    color: "#BBB",
+    color: Colors.faint,
   },
 
   // Recap
@@ -790,25 +790,15 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     flex: 1,
   },
-  recapBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
   recapTitle: {
+    ...Type.heading,
     fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.4,
+    color: Colors.ink,
     marginBottom: 6,
   },
   recapSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 22,
@@ -824,10 +814,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -841,8 +831,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#000",
-    borderRadius: 10,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
@@ -854,12 +844,12 @@ const styles = StyleSheet.create({
   recapRowSkipped: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
   },
   primaryBtn: {
     alignSelf: "stretch",
-    backgroundColor: "#000",
-    borderRadius: 16,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
   },

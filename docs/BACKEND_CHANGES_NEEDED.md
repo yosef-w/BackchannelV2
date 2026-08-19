@@ -1,41 +1,39 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-07-21 (§P/§Q/§O/§M/§G/§R all shipped by the backend and wired frontend-side same day — removed from this doc; see the backend's `KNOWN_ISSUES.md` "Recently fixed" for the record)
+**Last updated:** 2026-08-09 (added §B — confirm/fix `BIO` missing from `GET /api/profile/`; bio can't round-trip and a re-login/reinstall shows it blank)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§S** — SSO (Apple/Google/LinkedIn) research ticket; the backend delivered a proposal (`docs/SSO_PROPOSAL.md`) but **no endpoint exists** — do not build/wire until product explicitly green-lights against it (App Store Guideline 4.8 means Apple becomes mandatory the moment any third-party login ships, so this is a product+scope call, not just an engineering one). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
+> **Open items:** **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
-## §S — SSO sign-in (Apple, Google, LinkedIn) 🔵 Research item — scope what it takes before we commit
+## §S — SSO sign-in (Apple + Google) ✅ Both sides built — remaining: credentials/env config + deploy
 
-**Status (2026-07-21): proposal delivered, not yet actioned.** The backend wrote `docs/SSO_PROPOSAL.md` (in their repo) answering every question below — table design (`user_info.user_sso_identities`), the `POST /api/auth/sso/` contract (login-shaped response + `is_new_user`/`needs_onboarding`), nullable `password_hash`, an account-linking policy (auto-link on provider-verified email; Apple private-relay emails never auto-link), and a ~2–3 eng-week estimate. **No endpoint has been built.** This stays a research/scoping item — do not wire SSO buttons or start frontend work — until product explicitly commits to building it (the App Store 4.8 constraint below makes this a product scope decision, not just a technical one).
+**Status (2026-08-07): backend SHIPPED both endpoints** (their PR #152, `feat/sso-apple-google` → `develop`, commit `04c2bea`, with a frontend handoff at their `docs/FRONTEND_SSO_HANDOFF_2026-08-04.md`) — `POST /api/auth/sso/`, `POST /api/auth/complete-onboarding/`, migration 029 (`user_sso_identities` + nullable `password_hash`), password-gated flows returning 400 for passwordless accounts, and Apple revoke-on-delete. The frontend (branch `feature/sso-apple-google`) is wired to the **implemented** contract, verified against their actual `services/sso.py` rather than the proposal: `has_password` handling + "Set a Password" UX, Apple `authorization_code` forwarded on every sign-in, capitalized `role` values, and `register-sponsor`-matching sponsor field conversions (an earlier note here guessed those were free-text strings — wrong; booleans + `"yes"`/`"no"`, matching what `createProfile()` already sends).
 
-**What we want:** let users sign up / log in with **Apple, Google, and LinkedIn** in addition to email+password. This is a research ticket first — come back with a proposed design + effort estimate; the frontend work will be planned against your answer.
+**Remaining launch checklist (nothing left to code on either side):**
 
-**One hard constraint up front:** App Store Guideline 4.8 — if we offer ANY third-party login (Google, LinkedIn), **Sign in with Apple becomes mandatory**. So the realistic scopes are "none" or "Apple + others", never "Google only".
+1. **Backend/ops:** merge `develop` → `main` and deploy — SSO is live on dev (`https://backchannel-dev-hl72i.ondigitalocean.app`, returns 503-per-provider until creds are set) but **not on production**.
+2. **Admin (Apple):** enable Sign in with Apple on the App ID; create the Sign in with Apple `.p8` key. Feeds backend env vars `APPLE_BUNDLE_ID` + `APPLE_TEAM_ID`/`APPLE_KEY_ID`/`APPLE_PRIVATE_KEY` (key trio is only for revoke-on-delete).
+3. **Admin (Google):** create iOS/Android/Web OAuth client IDs in Google Cloud Console. Feeds backend `GOOGLE_OAUTH_CLIENT_IDS` (comma-separated, web ID is the token `aud`) and the frontend `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` env vars; the iOS ID's reversed form also goes into app.json's google-signin plugin as `iosUrlScheme`.
+4. **Frontend:** set the env vars from #3, flip `SSO_ENABLED = true`, EAS build (native modules + entitlement must ship in a real build; the config plugin `plugins/withGoogleSigninModularHeaders.js` already handles the Podfile patch on every prebuild).
+5. **E2E test against dev first** — their handoff's §5 has the recipe; test users land in `BACKCHANNEL_DEV`, never prod.
 
-**How the flow would look (standard native pattern, for shared context):**
-1. The app runs the provider's native flow on-device (expo-apple-authentication / Google & LinkedIn OAuth) and receives an **identity token** (JWT) from the provider.
-2. The app POSTs that token to a new endpoint, e.g. `POST /api/auth/sso/` with `{ provider: "apple" | "google" | "linkedin", identity_token, ...provider extras }`.
-3. The backend **verifies the token against the provider's public keys** (issuer, audience = our client id, expiry, signature), extracts the stable provider user id + email, and then finds-or-creates our user.
-4. The backend responds with **the exact same shape as `/api/login/`** — `access_token` + `refresh_token` — plus flags the app needs for routing (below). From that point on, nothing else in the app changes: same JWTs, same everything.
+---
 
-**The research questions (what we need answered):**
+## §B — `GET /api/profile/` doesn't return `BIO` — bio can't round-trip 🟠 Medium priority (silent user-visible data loss)
 
-1. **Account model / database:** where do provider identities live? Presumably a new table (`user_sso_identities`: user_id, provider, provider_user_id, email_at_link_time, created_at) rather than columns on `user_info.user_profiles` — confirm. What does a **password-less** user mean for the current schema/login code (nullable password hash? sentinel?), and for the password-reset flow?
-2. **Account linking & collisions:** a user signs up with email+password, later taps "Sign in with Google" using the same email — link silently (email is verified by the provider), or challenge? And the reverse: SSO first, sets a password later? What about **Apple's private relay emails** (`xyz@privaterelay.appleid.com`) — the same human can now exist twice with two different emails; any dedupe story?
-3. **Role selection:** our registration is role-specific (`/api/register/` vs `/api/register-sponsor/`, each with its own questionnaire payload). SSO gives us an authenticated identity but NO role/questionnaire data — proposal: SSO creates a bare account and returns `is_new_user: true` + `needs_onboarding: true`, and the app routes them into the existing role-choice + questionnaire, which PATCHes the profile afterwards. Confirm the register services can be split into "create auth user" vs "attach role profile" cleanly.
-4. **Provider quirks:** Apple sends the user's **name only on the very first authorization** (never again — must be captured and stored on first pass or it's gone); Apple requires our team id / service id config; LinkedIn's current product is **OpenID Connect** ("Sign In with LinkedIn v2" is sunset) — needs an app in the LinkedIn developer portal and may need a token-exchange server-side since their flow is not fully native. Google needs OAuth client ids per platform (iOS + Android + web/Expo).
-5. **Email verification interplay:** we currently send a login-email verification on registration (PR #38). Provider-verified emails should presumably skip that — confirm the flag exists to mark an email pre-verified. (Sponsor WORK-email verification is separate and unaffected.)
-6. **Session/security parity:** refresh-token rotation, logout/`unregisterDevice`, and account deletion (§C-era work) all behave the same for SSO users — anything provider-side to revoke on delete (Apple requires token revocation on account deletion per App Store rules — confirm).
+**Status (2026-08-09):** needs a one-line confirmation against the live API, then (if confirmed) a small serializer fix.
 
-**What the frontend needs in the response (whatever the design):** the standard `access_token`/`refresh_token` pair, `is_new_user`, `needs_onboarding` (or equivalent), and the user's email + any name the provider supplied — so the app can route to role selection for new users or straight in for returning ones.
+**What the frontend observes:** `PATCH /api/profile/update/` accepts and stores `bio` (sponsor onboarding and the profile editor both save through it successfully), but the profile the app reads back via `GET /api/profile/` does not appear to include a `BIO` field — the frontend's response type declares it (`lib/auth-api.ts`) and the store maps it (`stores/useUserProfileStore.ts` → `professional.summary`), but a long-standing code comment there says the field never actually arrives, and the mapping only works today because it falls back to the locally cached value.
 
-### Deliverable
+**User-visible consequence if confirmed:** the bio survives only in on-device AsyncStorage. Any fresh context — logout → login, reinstall, new device — shows an empty bio even though the server has one stored. The user then either re-types it or (worse) assumes the app lost their data. Photo does NOT have this problem (`PHOTO_URL` round-trips fine); bio is the only affected field found in the 2026-08-09 end-to-end profile-pipeline audit.
 
-A short written proposal: chosen table design, the `POST /api/auth/sso/` contract, the account-linking policy, per-provider setup needed (keys/ids we must create in Apple/Google/LinkedIn consoles), and a rough effort estimate. We'll build the app side against it.
+**Ask:**
+1. Confirm whether the `GET /api/profile/` serializer includes `BIO` for both roles.
+2. If missing, add it (same casing convention as the response's other columns, e.g. `PHOTO_URL`).
+3. No frontend change needed afterward — the mapping (`summary: profile.BIO || existing…`) is already in place and will simply start receiving real data.
 
 ---
 

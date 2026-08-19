@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ApplicantPublicProfileViewProps {
   userData: PublicProfileUserData;
@@ -172,7 +173,7 @@ export function ApplicantPublicProfileView({
 
           {locationStr ? (
             <View style={styles.infoRow}>
-              <MapPin color="#BBB" size={14} strokeWidth={2} />
+              <MapPin color={Colors.faint} size={14} strokeWidth={2} />
               <Text style={styles.locationText}>{locationStr}</Text>
             </View>
           ) : null}
@@ -447,13 +448,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
   },
   name: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    lineHeight: 32,
+    color: Colors.ink,
   },
   infoRow: {
     flexDirection: "row",
@@ -464,16 +465,16 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   locationText: {
     fontSize: 14,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "500",
   },
   bio: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
@@ -493,16 +494,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   whiteBtnText: {
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "700",
     fontSize: 14,
   },
   statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 24,
     padding: 24,
     marginBottom: 32,
@@ -511,15 +512,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
+  // Matches the site's .stat-num (serif for stat/count displays).
   statValue: {
+    fontFamily: Fonts.serif,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#BBB",
+    color: Colors.faint,
     marginTop: 4,
     letterSpacing: 1,
   },
@@ -533,7 +535,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
   section: {
@@ -542,7 +544,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#BBB",
+    color: Colors.faint,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 16,
@@ -558,7 +560,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#FFF",
     borderWidth: 1.5,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   tagText: {
     fontSize: 14,
@@ -569,14 +571,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
-    borderColor: "#F4F4F5",
+    borderColor: Colors.surface,
   },
   preferenceText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
   },
   roleTag: {
     flexDirection: "row",
@@ -585,7 +587,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   roleTagText: {
     fontSize: 14,
@@ -600,12 +602,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   resumeCard: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   resumeCardRow: {
     flexDirection: "row",
@@ -623,17 +625,17 @@ const styles = StyleSheet.create({
   resumeCardDate: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
   },
   resumeCardSubtitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#444",
+    color: Colors.body,
     marginBottom: 6,
   },
   resumeCardBody: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginTop: 4,
   },
@@ -643,12 +645,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   certBadge: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 4,
   },
   certName: {
@@ -658,17 +660,17 @@ const styles = StyleSheet.create({
   },
   certSub: {
     fontSize: 12,
-    color: "#888",
+    color: Colors.muted,
     fontWeight: "500",
     marginTop: 2,
   },
   langBadge: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     alignItems: "center",
     marginBottom: 4,
   },
@@ -679,20 +681,20 @@ const styles = StyleSheet.create({
   },
   langSub: {
     fontSize: 12,
-    color: "#888",
+    color: Colors.muted,
     fontWeight: "500",
     marginTop: 2,
   },
   achievementsCard: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   achievementsText: {
     fontSize: 14,
-    color: "#444",
+    color: Colors.body,
     lineHeight: 22,
     fontWeight: "500",
   },
@@ -701,18 +703,18 @@ const styles = StyleSheet.create({
   avatarFallback: {
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
   },
   avatarInitials: {
     fontSize: 40,
     fontWeight: "800" as const,
-    color: "#000",
+    color: Colors.ink,
   },
 
   // ── Stats divider ──────────────────────────────────────────────────────────────
   statDivider: {
     width: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.border,
     marginVertical: 4,
     alignSelf: "stretch" as const,
   },
@@ -721,18 +723,18 @@ const styles = StyleSheet.create({
   connectedCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 18,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   connectedIconCircle: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -744,7 +746,7 @@ const styles = StyleSheet.create({
   connectedCompany: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: "#666",
+    color: Colors.body,
     marginTop: 2,
   },
 });

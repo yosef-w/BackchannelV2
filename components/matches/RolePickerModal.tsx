@@ -18,6 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -79,7 +80,7 @@ export function RolePickerModal({
                   style={[
                     styles.rolePickerAvatar,
                     {
-                      backgroundColor: "#000",
+                      backgroundColor: Colors.ink,
                       alignItems: "center",
                       justifyContent: "center",
                     },
@@ -132,7 +133,7 @@ export function RolePickerModal({
                           .join(" · ")}
                       </Text>
                     </View>
-                    <ChevronRight color="#CCC" size={18} strokeWidth={2.2} />
+                    <ChevronRight color={Colors.faint} size={18} strokeWidth={2.2} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.rolePickerMsgBtn}
@@ -157,7 +158,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
     // Sheet sizes to its content; only grows to fill (and scroll) when the
     // content is taller than this cap — no empty whitespace for short modals.
@@ -172,10 +176,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rolePickerAvatar: { width: 52, height: 52, borderRadius: 26 },
-  rolePickerName: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
+  rolePickerName: { fontFamily: Type.heading.fontFamily, fontSize: 20, color: Colors.ink },
   rolePickerSub: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     marginTop: 3,
     lineHeight: 18,
   },
@@ -206,12 +210,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rolePickerRole: { fontSize: 15, fontWeight: "700", color: "#000" },
-  rolePickerMeta: { fontSize: 13, color: "#999", marginTop: 2 },
+  rolePickerMeta: { fontSize: 13, color: Colors.muted, marginTop: 2 },
   rolePickerMsgBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,

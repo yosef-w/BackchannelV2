@@ -26,7 +26,9 @@ import { authApi } from "@/lib/auth-api";
 import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
+import { Colors, Type } from "@/constants/theme";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
@@ -66,7 +68,75 @@ export function PrivacySecurityScreen({
   // a "check your inbox" message rather than a success toast.
   const [emailRequestSent, setEmailRequestSent] = useState(false);
   const refreshToken = useAuthStore((s) => s.refreshToken);
+  // False only for a pure-SSO (Apple/Google) account. The three password-
+  // gated flows on this screen (change password/email, delete) all 400
+  // server-side without one, so each swaps its form for a "set a password
+  // first" gate that emails the existing forgot-password link.
+  const hasPassword = useAuthStore((s) => s.hasPassword);
+  const accountEmail = useUserProfileStore((s) => s.data.personal.email);
+  const [setupLinkSending, setSetupLinkSending] = useState(false);
+  const [setupLinkSent, setSetupLinkSent] = useState(false);
   const showToast = useToastStore((s) => s.showToast);
+
+  const handleSendSetupLink = async () => {
+    if (!accountEmail || setupLinkSending) return;
+    setSetupLinkSending(true);
+    try {
+      await authApi.forgotPassword(accountEmail);
+      setSetupLinkSent(true);
+    } catch (err) {
+      showToast(
+        (err instanceof Error && err.message) ||
+          "Couldn't send the setup link. Please try again.",
+        "error",
+      );
+    } finally {
+      setSetupLinkSending(false);
+    }
+  };
+
+  /**
+   * Shown in place of any password-gated form while the account has no
+   * password (pure-SSO). Sends the existing forgot-password email, which
+   * doubles as "create your first password" for a passwordless account.
+   */
+  const renderSetPasswordGate = (headline: string, subtitle: string) => (
+    <>
+      <View style={styles.deleteIconCircle}>
+        <Lock color="#000" size={26} strokeWidth={2.2} />
+      </View>
+      {setupLinkSent ? (
+        <>
+          <Text style={styles.deleteHeadline}>Check your inbox</Text>
+          <Text style={styles.deleteSubtitle}>
+            We sent a password setup link to {accountEmail}. Open it to
+            create your password, then come back here — don&apos;t forget
+            the spam folder if it doesn&apos;t show up in a minute.
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.deleteHeadline}>{headline}</Text>
+          <Text style={styles.deleteSubtitle}>{subtitle}</Text>
+          <TouchableOpacity
+            style={[
+              styles.updateBtn,
+              (setupLinkSending || !accountEmail) && { opacity: 0.6 },
+            ]}
+            onPress={handleSendSetupLink}
+            disabled={setupLinkSending || !accountEmail}
+            activeOpacity={0.8}
+          >
+            {setupLinkSending ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Text style={styles.updateBtnText}>Email Me a Setup Link</Text>
+            )}
+          </TouchableOpacity>
+        </>
+      )}
+    </>
+  );
 
   const resetPasswordFields = () => {
     setCurrentPassword("");
@@ -91,6 +161,7 @@ export function PrivacySecurityScreen({
     resetPasswordFields();
     resetDeleteFields();
     resetEmailFields();
+    setSetupLinkSent(false);
     setStep("main");
     onClose();
   };
@@ -186,6 +257,26 @@ export function PrivacySecurityScreen({
   };
 
   if (step === "password") {
+    if (!hasPassword) {
+      return (
+        <EditorScreen
+          visible={visible}
+          onClose={handleClose}
+          onBack={() => {
+            setSetupLinkSent(false);
+            setStep("main");
+          }}
+          title="Set a Password"
+        >
+          {renderSetPasswordGate(
+            "Set a password",
+            "You signed in with Apple or Google, so this account doesn't " +
+              "have a password yet. We'll email you a link to create one — " +
+              "after that, both sign-in methods work.",
+          )}
+        </EditorScreen>
+      );
+    }
     return (
       <EditorScreen
         visible={visible}
@@ -202,11 +293,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Enter current password"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry
@@ -216,11 +307,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>NEW PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Enter new password"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
@@ -230,11 +321,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>CONFIRM NEW PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Re-enter new password"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -260,6 +351,26 @@ export function PrivacySecurityScreen({
   }
 
   if (step === "email") {
+    if (!hasPassword) {
+      return (
+        <EditorScreen
+          visible={visible}
+          onClose={handleClose}
+          onBack={() => {
+            setSetupLinkSent(false);
+            setStep("main");
+          }}
+          title="Change Email"
+        >
+          {renderSetPasswordGate(
+            "Set a password first",
+            "Changing your email requires confirming a password, and this " +
+              "account doesn't have one yet — you signed in with Apple or " +
+              "Google. We'll email you a link to create one.",
+          )}
+        </EditorScreen>
+      );
+    }
     return (
       <EditorScreen
         visible={visible}
@@ -301,11 +412,11 @@ export function PrivacySecurityScreen({
 
             <Text style={styles.fieldLabel}>NEW EMAIL</Text>
             <View style={styles.inputWrapper}>
-              <Mail color="#AAA" size={18} />
+              <Mail color={Colors.faint} size={18} />
               <TextInput
                 style={styles.input}
                 placeholder="name@example.com"
-                placeholderTextColor="#BBB"
+                placeholderTextColor={Colors.faint}
                 value={newEmail}
                 onChangeText={setNewEmail}
                 keyboardType="email-address"
@@ -316,11 +427,11 @@ export function PrivacySecurityScreen({
 
             <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
             <View style={styles.inputWrapper}>
-              <Lock color="#AAA" size={18} />
+              <Lock color={Colors.faint} size={18} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your password to confirm"
-                placeholderTextColor="#BBB"
+                placeholderTextColor={Colors.faint}
                 value={emailPassword}
                 onChangeText={setEmailPassword}
                 secureTextEntry
@@ -350,6 +461,27 @@ export function PrivacySecurityScreen({
   }
 
   if (step === "delete") {
+    if (!hasPassword) {
+      return (
+        <EditorScreen
+          visible={visible}
+          onClose={handleClose}
+          onBack={() => {
+            setSetupLinkSent(false);
+            setStep("main");
+          }}
+          title="Delete Account"
+        >
+          {renderSetPasswordGate(
+            "Set a password first",
+            "Deleting your account requires confirming a password, and " +
+              "this account doesn't have one yet — you signed in with " +
+              "Apple or Google. We'll email you a link to create one; once " +
+              "it's set, come back here to delete your account.",
+          )}
+        </EditorScreen>
+      );
+    }
     return (
       <EditorScreen
         visible={visible}
@@ -386,11 +518,11 @@ export function PrivacySecurityScreen({
 
         <Text style={styles.fieldLabel}>CONFIRM YOUR PASSWORD</Text>
         <View style={styles.inputWrapper}>
-          <Lock color="#AAA" size={18} />
+          <Lock color={Colors.faint} size={18} />
           <TextInput
             style={styles.input}
             placeholder="Enter your password to continue"
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             value={deletePassword}
             onChangeText={(t) => {
               setDeletePassword(t);
@@ -461,10 +593,16 @@ export function PrivacySecurityScreen({
           onPress={() => setStep("password")}
         >
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.rowLabel}>Change Password</Text>
-            <Text style={styles.rowDescription}>Update your password</Text>
+            <Text style={styles.rowLabel}>
+              {hasPassword ? "Change Password" : "Set a Password"}
+            </Text>
+            <Text style={styles.rowDescription}>
+              {hasPassword
+                ? "Update your password"
+                : "Create a password for your account"}
+            </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionRow, { borderBottomWidth: 0 }]}
@@ -476,7 +614,7 @@ export function PrivacySecurityScreen({
               Update the email you log in with
             </Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
       </View>
 
@@ -493,7 +631,7 @@ export function PrivacySecurityScreen({
             <Text style={styles.rowLabel}>Terms of Service</Text>
             <Text style={styles.rowDescription}>Read our terms of service</Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionRow, { borderBottomWidth: 0 }]}
@@ -506,7 +644,7 @@ export function PrivacySecurityScreen({
             <Text style={styles.rowLabel}>Privacy Policy</Text>
             <Text style={styles.rowDescription}>How we handle your data</Text>
           </View>
-          <ChevronRight color="#BBB" size={20} />
+          <ChevronRight color={Colors.faint} size={20} />
         </TouchableOpacity>
       </View>
 
@@ -522,7 +660,7 @@ export function PrivacySecurityScreen({
             Remove your account permanently
           </Text>
         </View>
-        <ChevronRight color="#BBB" size={20} />
+        <ChevronRight color={Colors.faint} size={20} />
       </TouchableOpacity>
     </EditorScreen>
   );
@@ -532,16 +670,16 @@ const styles = StyleSheet.create({
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 10,
     marginTop: 4,
   },
   group: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 28,
     overflow: "hidden",
   },
@@ -557,28 +695,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
-  rowLabel: { fontSize: 15, fontWeight: "700", color: "#000" },
-  rowDescription: { fontSize: 12, color: "#999", marginTop: 2, lineHeight: 16 },
-  rowValue: { fontSize: 14, fontWeight: "700", color: "#999" },
+  rowLabel: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  rowDescription: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  rowValue: { fontSize: 14, fontWeight: "700", color: Colors.muted },
   deleteRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
   },
-  deleteTitle: { fontSize: 15, fontWeight: "700", color: "#000" },
-  subtitle: { fontSize: 13, color: "#999", marginBottom: 20, lineHeight: 18 },
+  deleteTitle: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  subtitle: {
+    fontSize: 13,
+    color: Colors.muted,
+    marginBottom: 20,
+    lineHeight: 18,
+  },
   fieldLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.6,
     marginBottom: 8,
   },
@@ -586,10 +734,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     height: 48,
     marginBottom: 20,
@@ -597,12 +745,12 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 15, color: "#000" },
   errorText: {
     fontSize: 13,
-    color: "#DC2626",
+    color: Colors.danger,
     fontWeight: "600",
     marginBottom: 16,
   },
   updateBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     borderRadius: 14,
     height: 52,
     alignItems: "center",
@@ -618,24 +766,24 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     marginTop: 8,
     marginBottom: 18,
   },
+  // Also used by the "Set a password first" gate (same modal shell) —
+  // 22px, above the serif floor, same tier as the other modal titles.
   deleteHeadline: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.5,
     marginBottom: 10,
   },
   deleteSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     fontWeight: "500",
@@ -643,10 +791,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   deleteWarningCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     padding: 16,
     marginBottom: 24,
     gap: 10,
@@ -660,18 +808,18 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     marginTop: 7,
   },
   deleteWarningText: {
     flex: 1,
     fontSize: 13,
-    color: "#444",
+    color: Colors.body,
     lineHeight: 19,
     fontWeight: "600",
   },
   deleteConfirmBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     borderRadius: 14,
     height: 52,
     alignItems: "center",
@@ -685,7 +833,7 @@ const styles = StyleSheet.create({
   deleteCancelBtn: {
     height: 52,
     borderRadius: 14,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,

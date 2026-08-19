@@ -4,6 +4,7 @@ import {
     trackReferralWithdrawn,
     trackSponsorLikedBack,
 } from "@/lib/analytics/mixpanel";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import {
     getJobDetail,
     type SilverJobDetail,
@@ -27,6 +28,10 @@ import {
 } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  MatchCelebrationModal,
+  type MatchedUser,
+} from "@/components/home/MatchCelebrationModal";
+import {
     Dimensions,
     Modal,
     NativeScrollEvent,
@@ -39,6 +44,7 @@ import {
     View,
 } from "react-native";
 import Animated, {
+    FadeInDown,
     SlideInDown,
     SlideOutDown,
 } from "react-native-reanimated";
@@ -171,6 +177,11 @@ export function MatchesView({
     activeModal?.kind === "interestedSponsor" ? activeModal.sponsor : null;
   // likeId of the sponsor we're currently "liking back" (shows a spinner)
   const [likingBackSponsorId, setLikingBackSponsorId] = useState<string | null>(
+    null,
+  );
+  // Mutual match born from a like-back — drives the same celebration
+  // modal the swipe deck uses, instead of the old toast-only treatment.
+  const [celebratedMatch, setCelebratedMatch] = useState<MatchedUser | null>(
     null,
   );
   // Job detail layered OVER the interested-sponsor profile sheet — the
@@ -848,6 +859,7 @@ export function MatchesView({
     try {
       const res = await likeBackSponsor(sponsor.likeId);
       trackSponsorLikedBack({ likeId: sponsor.likeId });
+      closeAllModals();
       if (res.matched) {
         // Pull them out of "Interested in You" and re-fetch matches so they
         // appear under "Matched Opportunities".
@@ -855,9 +867,19 @@ export function MatchesView({
           prev.filter((s) => s.likeId !== sponsor.likeId),
         );
         refreshMatchSections();
+        // The app's core moment gets its celebration here too — this used
+        // to be the one match path that only showed a toast.
+        setCelebratedMatch({
+          name: sponsor.name,
+          image: sponsor.image,
+          role: sponsor.role,
+          jobTitle: sponsor.jobTitle || undefined,
+          jobId: res.job_id ?? sponsor.jobId,
+          userId: sponsor.userId,
+        });
+      } else {
+        showToast(res.message, "info");
       }
-      closeAllModals();
-      showToast(res.message, res.matched ? "success" : "info");
     } catch (err) {
       console.warn("[MatchesView] Failed to like back sponsor:", err);
       showToast("Couldn't do that right now. Please try again.", "error");
@@ -956,17 +978,19 @@ export function MatchesView({
           />
         }
       >
-        <View style={styles.header}>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           {/* Renamed from "Opportunities" to match the "Matches" bottom-nav
               label — the screen and the tab that opens it should say the
               same thing. */}
-          <Text style={styles.title}>Matches</Text>
+          <Text style={styles.title}>
+            Your <Text style={styles.titleEm}>matches.</Text>
+          </Text>
           <Text style={styles.subtitle}>
             {userType === "applicant"
               ? "Your active opportunities & sponsors"
               : "Talent you are sponsoring"}
           </Text>
-        </View>
+        </Animated.View>
 
         {/* Stale-referral nudge — see the staleReferrals memo above for
             exactly what counts. Only rendered when there's something to
@@ -991,7 +1015,7 @@ export function MatchesView({
                 No update in over a week — check in now
               </Text>
             </View>
-            <ChevronRight size={18} color="#999" />
+            <ChevronRight size={18} color={Colors.muted} />
           </TouchableOpacity>
         )}
 
@@ -1116,6 +1140,7 @@ export function MatchesView({
       {selectedProfile && (
         <Modal visible={!!matchedProfileJob} transparent animationType="none">
           <JobDetailModal
+            instant
             job={matchedProfileJob}
             enriching={enrichingMatchedProfileJob}
             // The person to message is the profile being viewed — for a
@@ -1152,7 +1177,7 @@ export function MatchesView({
           }}
           badge={{
             label: "Interested in Your Job",
-            color: "#DC2626",
+            color: Colors.danger,
             bgColor: "#FEF2F2",
           }}
           roleContext={
@@ -1259,7 +1284,7 @@ export function MatchesView({
             label: selectedInterestedSponsor.likedAt
               ? `Wants to connect · ${getRelativeTime(selectedInterestedSponsor.likedAt)}`
               : "Wants to connect with you",
-            color: "#DC2626",
+            color: Colors.danger,
             bgColor: "#FEF2F2",
           }}
           roleContext={
@@ -1304,6 +1329,7 @@ export function MatchesView({
           animationType="none"
         >
           <JobDetailModal
+            instant
             job={interestedSponsorJob}
             enriching={enrichingSponsorJob}
             onClose={() => setInterestedSponsorJob(null)}
@@ -1438,6 +1464,26 @@ export function MatchesView({
           </TouchableOpacity>
         </Animated.View>
       )}
+
+      <MatchCelebrationModal
+        matchedUser={celebratedMatch}
+        userType={userType}
+        onDismiss={() => setCelebratedMatch(null)}
+        onMessage={() => {
+          const m = celebratedMatch;
+          setCelebratedMatch(null);
+          if (m?.jobId) {
+            onNavigateToMessages?.(m.jobId, m.userId);
+          } else {
+            // Legacy likes can arrive without a job to thread on — the
+            // match itself is real, so point at where it now lives.
+            showToast(
+              "You're matched — find them under Matched Opportunities.",
+              "info",
+            );
+          }
+        }}
+      />
     </View>
   );
 }
@@ -1446,15 +1492,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 100 },
   header: { marginBottom: 30 },
-  title: { fontSize: 32, fontWeight: "800", letterSpacing: -1 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 4 },
+  title: { ...Type.title, color: Colors.ink },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    color: Colors.body,
+    marginTop: 4,
+  },
   staleReferralBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     borderRadius: 16,
     padding: 14,
     marginBottom: 30,
@@ -1465,7 +1517,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1476,7 +1528,7 @@ const styles = StyleSheet.create({
   },
   staleReferralSubtitle: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 2,
   },
   undoToast: {
@@ -1484,7 +1536,7 @@ const styles = StyleSheet.create({
     bottom: 100,
     left: 20,
     right: 20,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: Colors.ink,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 20,

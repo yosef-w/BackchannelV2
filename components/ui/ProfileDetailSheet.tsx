@@ -24,6 +24,7 @@ import {
   RoleTicket,
   SectionCard,
   SkeletonCard,
+  SkillChips,
 } from "@/components/matches/JobSheetKit";
 import React, { useEffect, useState } from "react";
 import {
@@ -39,6 +40,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { DismissibleSheet, SheetScrollView } from "./DismissibleSheet";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -332,13 +334,7 @@ export function ProfileDetailSheet({
                   {/* Applicant skills */}
                   {variant === "applicant" && skills.length > 0 && (
                     <SectionCard title="Skills">
-                      <View style={styles.chipRow}>
-                        {skills.map((s, i) => (
-                          <View key={i} style={styles.darkChip}>
-                            <Text style={styles.darkChipText}>{s}</Text>
-                          </View>
-                        ))}
-                      </View>
+                      <SkillChips skills={skills} />
                     </SectionCard>
                   )}
 
@@ -427,7 +423,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
   },
   // Pill rows float directly on the canvas under the centered hero, so
@@ -440,19 +439,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   capPill: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: Colors.border,
   },
-  capPillText: { fontSize: 11, fontWeight: "700", color: "#333" },
+  capPillText: { fontSize: 11, fontWeight: "700", color: Colors.body },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   // Light chips — chips are information, not the star; black is reserved
   // for display type and the CTA pill.
   darkChip: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -461,7 +460,7 @@ const styles = StyleSheet.create({
   // Inset tint deep enough to read as a distinct block inside a white
   // card — #F8F9FB was invisible against it.
   insightCard: {
-    backgroundColor: "#F3F5F9",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -469,7 +468,7 @@ const styles = StyleSheet.create({
   insightQ: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#AAA",
+    color: Colors.faint,
     letterSpacing: 0.8,
     marginBottom: 6,
     textTransform: "uppercase",
@@ -477,12 +476,12 @@ const styles = StyleSheet.create({
   insightA: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#222",
+    color: Colors.ink,
     lineHeight: 20,
   },
   fallbackText: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "500",
     lineHeight: 19,
   },

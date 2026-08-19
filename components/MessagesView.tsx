@@ -27,7 +27,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import {
+import Animated, {
+    FadeInDown,
     useAnimatedKeyboard,
     useAnimatedStyle,
 } from "react-native-reanimated";
@@ -36,6 +37,7 @@ import { InboxList } from "./messages/InboxList";
 import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
 import { ThreadScreen } from "./messages/ThreadScreen";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_PADDING = 28;
@@ -1062,10 +1064,12 @@ export function MessagesView({
           if (expandedGroups.size) setExpandedGroups(new Set());
         }}
       >
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.title}>Inbox</Text>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.headerTitleContainer}>
+          <Text style={styles.title}>
+            Your <Text style={styles.titleEm}>inbox.</Text>
+          </Text>
           <Text style={styles.subtitle}>Direct lines to your connections</Text>
-        </View>
+        </Animated.View>
 
       {conversationsLoading ? (
         <InboxLoading />
@@ -1088,6 +1092,15 @@ export function MessagesView({
               onSelect={handleConversationSelect}
             />
           </InboxSection>
+
+          {/* The archive block — a caps eyebrow introduces the collapsed
+              drawers as their own species, so Past/Hidden stop reading as
+              a continuation of the Active rows (tester feedback: the
+              sections blended / felt crowded). */}
+          {(pastConversations.length > 0 ||
+            hiddenConversations.length > 0) && (
+            <Text style={styles.archiveEyebrow}>ARCHIVE</Text>
+          )}
 
           {/* Past Connections — unmatched conversations (status === 'CLOSED').
               Visually muted so they read as "archived". Still tappable so
@@ -1149,20 +1162,34 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF" },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
   headerTitleContainer: { marginBottom: 32 },
-  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.2 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
+  title: { ...Type.title, color: Colors.ink },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
+  archiveEyebrow: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.6,
+    color: Colors.faint,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    color: Colors.body,
+    marginTop: 8,
+  },
   loadMoreBtn: {
     marginVertical: 16,
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: Colors.border,
     alignItems: "center" as const,
   },
   loadMoreText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#374151",
+    color: Colors.body,
   },
   // ── Grouped inbox rows (same person, multiple role-threads) ──────────
   // Second line of a group header: latest-message preview + a "N roles"
@@ -1179,7 +1206,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -1196,7 +1223,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -1205,12 +1232,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.surface,
     padding: 12,
     borderRadius: 15,
     marginBottom: 20,
   },
-  jobRefLabel: { fontSize: 10, fontWeight: "900", color: "#999" },
+  jobRefLabel: { fontSize: 10, fontWeight: "800", color: Colors.muted },
   jobRefBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1226,9 +1253,9 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 24,
     padding: 20,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   pagination: {
     flexDirection: "row",
@@ -1237,8 +1264,8 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   dot: { height: 6, borderRadius: 3 },
-  dotActive: { width: 22, backgroundColor: "#000" },
-  dotInactive: { width: 6, backgroundColor: "#DDD" },
+  dotActive: { width: 22, backgroundColor: Colors.ink },
+  dotInactive: { width: 6, backgroundColor: Colors.borderStrong },
   infoCardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1246,10 +1273,10 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   modalAvatar: { width: 55, height: 55, borderRadius: 27 },
-  modalName: { fontSize: 20, fontWeight: "800" },
+  modalName: { fontFamily: Type.heading.fontFamily, fontSize: 20, color: Colors.ink },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  locationText: { fontSize: 12, color: "#AAA", fontWeight: "600" },
-  bioText: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 15 },
+  locationText: { fontSize: 12, color: Colors.faint, fontWeight: "600" },
+  bioText: { fontSize: 14, color: Colors.body, lineHeight: 20, marginBottom: 15 },
   skillsContainer: { flexDirection: "row", gap: 8, marginBottom: 15 },
   skillChip: {
     backgroundColor: "#FFF",
@@ -1257,9 +1284,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
-  skillText: { fontSize: 11, fontWeight: "700", color: "#666" },
+  skillText: { fontSize: 11, fontWeight: "700", color: Colors.body },
   statsRow: { flexDirection: "row", gap: 8 },
   statItem: {
     flexDirection: "row",
@@ -1270,12 +1297,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   statLabel: { fontSize: 11, fontWeight: "800" },
   resumeBtn: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1289,7 +1316,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   promptIconRowInModal: {
     flexDirection: "row",
@@ -1301,7 +1328,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1314,11 +1341,11 @@ const styles = StyleSheet.create({
   promptAnswerInModal: {
     fontSize: 14,
     fontWeight: "400",
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
   },
   fullProfileBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1345,14 +1372,14 @@ const styles = StyleSheet.create({
   /* ── Sponsor profile (applicant view) ── */
   sponsorTitleText: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     marginTop: 2,
     fontWeight: "500",
   },
   sponsorReferringRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 12,
     marginTop: 14,
@@ -1362,20 +1389,20 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   sponsorReferringLabel: {
     fontSize: 11,
-    color: "#888",
+    color: Colors.muted,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   sponsorReferringValue: {
     fontSize: 14,
-    color: "#111",
+    color: Colors.ink,
     fontWeight: "700",
     marginTop: 1,
   },
@@ -1388,7 +1415,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1402,19 +1429,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   sponsorMatchBadgeText: {
     fontSize: 12,
-    color: "#222",
+    color: Colors.ink,
     fontWeight: "700",
   },
   sponsorTipText: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     lineHeight: 18,
     marginTop: 14,
     textAlign: "center",
@@ -1430,7 +1457,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#EDEDED",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
@@ -1438,26 +1465,26 @@ const styles = StyleSheet.create({
   sponsorInsightsEmptyTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#111",
+    color: Colors.ink,
   },
   sponsorInsightsEmptyText: {
     fontSize: 13,
-    color: "#888",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
   },
 
   summaryCard: {
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     padding: 20,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   summaryLabel: {
     fontSize: 10,
-    fontWeight: "900",
-    color: "#AAA",
+    fontWeight: "800",
+    color: Colors.faint,
     letterSpacing: 1,
     marginBottom: 4,
   },
@@ -1468,5 +1495,5 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   summarySkills: { flexDirection: "row", flexWrap: "wrap" },
-  summarySkillText: { fontSize: 13, color: "#666", fontWeight: "600" },
+  summarySkillText: { fontSize: 13, color: Colors.body, fontWeight: "600" },
 });

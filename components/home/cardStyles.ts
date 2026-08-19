@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 /**
  * Shared style cluster for the Hinge-style profile/job cards rendered by
@@ -9,74 +10,185 @@ import { StyleSheet } from "react-native";
  * split and stay shared now.
  */
 export const cardStyles = StyleSheet.create({
-  // ── Hero (applicant identity / job identity) ──────────────────────
-  hingeHero: {
-    alignItems: "center",
+  // ── Hero — "Dossier" ID block (2026-08 K redesign) ────────────────
+  // PM feedback: the old centered avatar hero surfaced only photo, name,
+  // and title, burying the standout facts below the fold. The dossier
+  // hero is a passport-style ID row (modest square photo beside the
+  // identity — deliberately not a dating-app portrait) followed by a
+  // hairline LEDGER of the facts that decide the swipe. Shared verbatim
+  // by both decks: applicant cards (EXPERIENCE / SHARPEST AT / KNOWN
+  // FOR) and job cards (COMPENSATION / THE SETUP / YOUR FIT / YOUR
+  // SPONSOR).
+  kHero: {
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: 4,
   },
-  hingeHeroAvatar: {
+  kIdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  kIdPhoto: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    backgroundColor: "#F0F0F0",
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
   },
-  hingeHeroAvatarFallback: {
+  kIdPhotoFallback: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    backgroundColor: "#000",
+    borderRadius: 18,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  hingeHeroAvatarInitial: {
+  kIdPhotoInitial: {
+    fontFamily: Fonts.serif,
     fontSize: 36,
-    fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
   },
-  hingeHeroName: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
-    marginTop: 16,
-    textAlign: "center",
+  kIdText: {
+    flex: 1,
+    minWidth: 0,
   },
-  hingeHeroSubtitle: {
-    fontSize: 15,
+  // Names and job titles are headline-tier (serif), same rule as
+  // ProfileIdentityCard — sized for a column beside the ID photo, with
+  // numberOfLines at the call site handling the long tail.
+  kIdName: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    lineHeight: 29,
+    color: Colors.ink,
+    letterSpacing: -0.3,
+  },
+  kIdSub: {
+    fontSize: 13.5,
     fontWeight: "500",
-    color: "#666",
-    textAlign: "center",
-    marginTop: 4,
+    color: Colors.body,
+    lineHeight: 19,
+    marginTop: 5,
   },
-  hingeHeroPillRow: {
+  // The italic accent inside the sub-line (desired role / company) —
+  // the site's signature serif-italic-muted emphasis.
+  kIdSubEm: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 14.5,
+    color: Colors.muted,
+  },
+  // The hairline ledger. Rows own their bottom rule, and the top rule
+  // closes the box — so the ledger also replaces the old hero divider.
+  kLedger: {
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  kLedgerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  // 11px floor (not the app's 12px section-header floor: these are table
+  // keys, not section headers) with a fixed key column so values align
+  // into a scannable ledger. Width is sized off the longest key
+  // (COMPENSATION ≈ 101px at this size/tracking) with real headroom —
+  // a wrapped key orphans its last letter onto a second line, which is
+  // exactly the widow bug this width exists to prevent. Call sites also
+  // set numberOfLines={1} as the backstop.
+  kLedgerKey: {
+    width: 118,
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.muted,
+    paddingTop: 2,
+  },
+  kLedgerValueWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  kLedgerValue: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13.5,
+    color: Colors.ink,
+    lineHeight: 19,
+  },
+  kLedgerValueSub: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: Colors.muted,
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  // Pull-quote — the candidate's/sponsor's own words promoted from the
+  // buried Q&A list to right under the ledger. "In their own words" is
+  // the product's differentiator; it reads as editorial, not résumé.
+  kQuote: {
+    paddingTop: 22,
+    paddingBottom: 4,
+  },
+  kQuoteMark: {
+    fontFamily: Fonts.serif,
+    fontSize: 40,
+    lineHeight: 42,
+    color: Colors.faint,
+    marginBottom: -10,
+  },
+  kQuoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 19,
+    lineHeight: 27,
+    color: Colors.ink,
+  },
+  kQuoteAttr: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: Colors.muted,
+    marginTop: 10,
+  },
+  // INSIGHTS quote bands — the hero pull-quote's voice one step smaller,
+  // so the promoted first answer keeps primacy.
+  kInsightQuoteGap: { marginTop: 22 },
+  kInsightQuoteMark: {
+    fontFamily: Fonts.serif,
+    fontSize: 30,
+    lineHeight: 32,
+    color: Colors.faint,
+    marginBottom: -8,
+  },
+  kInsightQuoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 16.5,
+    lineHeight: 24,
+    color: Colors.ink,
+  },
+  // Top-of-card badge row (status pills + SPONSORED ROLE) — left-aligned
+  // to match the dossier hero's left rag.
+  kBadgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    marginTop: 14,
+    gap: 6,
+    marginBottom: 12,
   },
 
   // ── "Liked your role" top-of-card pill ────────────────────────────
   likedYourRoleRow: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     marginBottom: 8,
   },
 
   // ── Section primitives ────────────────────────────────────────────
-  hingeDivider: {
-    height: 1,
-    backgroundColor: "#F0F0F0",
-    marginVertical: 4,
-  },
   hingeSection: { paddingVertical: 18 },
   hingeSectionLabel: {
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.8,
-    color: "#999",
+    color: Colors.muted,
     marginBottom: 10,
   },
   hingeBodyText: {
@@ -88,106 +200,6 @@ export const cardStyles = StyleSheet.create({
 
   // ── At-a-glance stats strip (sponsor view) ────────────────────────
 
-  // ── Insight Q&A cards — quote-style with vertical accent ──────────
-  // White card with a soft drop shadow + thin hairline border for
-  // depth (instead of the prior gray-on-gray look that disappeared
-  // into the page). A 3px black stripe runs the full height of the
-  // left edge as a brand accent — the only color is monochrome, but
-  // the stripe gives the card a strong sense of authorship ("here are
-  // the applicant's actual words"). A large opening quote mark next
-  // to the answer plays the same role typographically.
-  hingeInsightCard: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  hingeInsightAccent: {
-    width: 3,
-    backgroundColor: "#000",
-  },
-  hingeInsightBody: {
-    flex: 1,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-  },
-  hingeInsightQuestion: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 1.0,
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-  hingeInsightAnswerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  hingeInsightQuoteMark: {
-    fontSize: 36,
-    lineHeight: 30,
-    fontWeight: "800",
-    color: "#000",
-    marginRight: 8,
-    marginTop: -2,
-  },
-  hingeInsightAnswer: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1A1A1A",
-    lineHeight: 24,
-  },
-
-  // ── Job-brief cards (role-spec insights from the sponsor) ─────────
-  // Same depth treatment as the sponsor's quote cards (white bg, soft
-  // shadow, hairline border), but a totally different visual rhythm:
-  // a dark "header strip" at the top carries the label, then body
-  // text below. Reads as a formal documented brief rather than a
-  // personal quote — distinct enough at a glance that the user knows
-  // this is "what the sponsor wrote ABOUT the role" vs. "what the
-  // sponsor said in their own words".
-  jobInsightCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  jobInsightHeader: {
-    backgroundColor: "#000",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  jobInsightHeaderLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-  jobInsightBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  jobInsightBodyText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#1A1A1A",
-    lineHeight: 23,
-  },
 
   // ── Chip wrapping (skills, credentials, role details) ─────────────
   hingeChipsWrap: {
@@ -269,12 +281,8 @@ export const cardStyles = StyleSheet.create({
     marginTop: 3,
   },
 
-  // ── Status banner (waitlisted / applied / sponsor-requested) ──────
-  statusBannerRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
+  // ── Status pills (waitlisted / applied / sponsored role) — rendered
+  // inside kBadgeRow at the top of the card ──────────────────────────
   statusBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -291,6 +299,133 @@ export const cardStyles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
+  // ── The Vouch — sponsor zone (2026-08 P redesign) ─────────────────
+  // The product's core mechanic — a real person staking their name on a
+  // role — rendered as typography instead of an inset gray card. A
+  // hairline rule opens the section, a serif statement leads ("Jordan
+  // put their *name* on this role."), then the identity row, trust
+  // facts as outlined ink chips (VERIFIED is the single filled accent),
+  // the sponsor's remaining Q&A as flat quote bands, and the role-spec
+  // insights as labeled passages. No box, no shadow, no green.
+  // Sizes here are the preview mock's values scaled ~1.2× — the mock's
+  // phone frame is 320px wide vs ~390pt on device, so a literal px copy
+  // renders visibly smaller and tighter than the approved preview. Line
+  // heights get extra headroom on top of that: DM Serif Display sits
+  // taller than the mock's Georgia.
+  vouchSection: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 26,
+    paddingBottom: 8,
+  },
+  vouchStatement: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    lineHeight: 31,
+    color: Colors.ink,
+    letterSpacing: -0.2,
+  },
+  vouchStatementEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  vouchIdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginTop: 18,
+  },
+  vouchAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: Colors.surface,
+  },
+  vouchAvatarFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: Colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vouchAvatarInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 21,
+    color: Colors.paper,
+  },
+  vouchName: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 16.5,
+    color: Colors.ink,
+    letterSpacing: -0.2,
+  },
+  vouchRole: {
+    fontSize: 13.5,
+    fontWeight: "500",
+    color: Colors.body,
+    marginTop: 3,
+  },
+  vouchChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+    marginTop: 16,
+  },
+  vouchChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1.2,
+    borderColor: Colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+  },
+  vouchChipText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.ink,
+  },
+  vouchChipFill: {
+    backgroundColor: Colors.ink,
+  },
+  vouchChipFillText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.paper,
+  },
+  vouchQuote: {
+    marginTop: 22,
+  },
+  vouchQuoteMark: {
+    fontFamily: Fonts.serif,
+    fontSize: 36,
+    lineHeight: 38,
+    color: Colors.faint,
+    marginBottom: -8,
+  },
+  vouchQuoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 18,
+    lineHeight: 26,
+    color: Colors.ink,
+  },
+  // Passage headers for the sponsor's role-spec insights — 12px floor
+  // per the section-header accessibility feedback (they head passages,
+  // unlike the ledger's table keys).
+  vouchInsightLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: Colors.muted,
+    marginTop: 22,
+    marginBottom: 8,
+  },
+
   // ── "No sponsor yet" inline block (applicant view) ────────────────
   noSponsorInlineBlock: {
     alignItems: "center",
@@ -302,88 +437,17 @@ export const cardStyles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  // ── Sponsor zone card (sponsored jobs — distinct section) ─────────
-  sponsorZoneOuter: { paddingVertical: 18 },
-  sponsorZoneCard: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E8E8E8",
-  },
-  sponsorZoneBody: { padding: 16 },
-  sponsorZoneDivider: {
-    height: 1,
-    backgroundColor: "#E8E8E8",
-    marginVertical: 16,
-  },
-  // "SPONSOR INSIGHTS" sub-label — light gray, personal voice
-  sponsorZoneQALabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#999",
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  // "JOB INSIGHTS" sub-label — darker to signal role data vs personal
-  sponsorZoneJobLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#444",
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-
-  // ── Meet your sponsor inline block ────────────────────────────────
-  sponsorMeetInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  sponsorMeetAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#F0F0F0",
-  },
-  sponsorMeetAvatarFallback: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sponsorMeetAvatarInitial: {
-    fontSize: 21,
-    fontWeight: "800",
-    color: "#FFF",
-  },
+  // A person's name — same "names are headline-tier" rule as
+  // ProfileIdentityCard, embedded inline. Still used by
+  // ReferralSigningScreen; the deck's sponsor zone now uses the vouch
+  // styles above.
   sponsorMeetName: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 19,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.3,
   },
-  sponsorMeetRole: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
-    marginTop: 2,
-  },
 
-  // ── Centered-profile card front face (redesign) ──
-  // Circular avatar + centered identity + centered fact pills, with a
-  // left-aligned ABOUT block below. Shared by the sponsor view (applicant
-  // profile cards) and the applicant view (job cards).
-  heroPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F4F4F5",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
   // PR #56 — "Liked your role" badge at the top of a sponsor's profile-pack
   // card. Black accent pill so it visually anchors the high-conviction
   // signal above the neutral hero block.
@@ -404,78 +468,6 @@ export const cardStyles = StyleSheet.create({
     color: "#FFF",
     letterSpacing: 0.8,
   },
-  heroPillText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#333",
-    letterSpacing: -0.1,
-  },
-  // Accent pill — used for the AI-match score. Black so it stands apart
-  // from the neutral fact pills.
-  heroPillAccent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#000",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  heroPillAccentText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFF",
-    letterSpacing: -0.1,
-  },
-  // Sponsorship status pill (job cards only).
-  heroStatusSponsored: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginTop: 10,
-  },
-  heroStatusSponsoredText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 0.2,
-  },
-  heroStatusMuted: {
-    backgroundColor: "#F2F2F2",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginTop: 10,
-  },
-  heroStatusMutedText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#999",
-    letterSpacing: 0.2,
-  },
-
-  // ── Referral Check-in Banner ───────────────────────────────────────────────
-  canReferTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#E8FBEF",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  canReferTagText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#00CB54",
-    letterSpacing: 0.2,
-  },
   benefitsList: { gap: 10, marginTop: 8 },
   benefitRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   benefitText: { fontSize: 14, color: "#555", flex: 1 },
@@ -495,10 +487,11 @@ export const cardStyles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
+  // Below the serif's ~18px floor — system font, token color only.
   noSponsorHeadline: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 6,
     textAlign: "center",
     letterSpacing: -0.2,
@@ -510,24 +503,6 @@ export const cardStyles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
-  },
-
-  // Relevance badge & requirements summary
-  roleDetailChip: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 5,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  roleDetailChipText: {
-    fontSize: 13,
-    color: "#000",
-    fontWeight: "500" as const,
   },
 
   // "View original posting" row — shows the sponsor's pasted domain

@@ -73,6 +73,7 @@ import {
 } from "../matches/JobSheetKit";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import type { Conversation } from "../MessagesView";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -246,7 +247,7 @@ function HoldToSign({
             />
           </Svg>
           <View style={holdStyles.inner}>
-            <Check size={30} color="#000" strokeWidth={3} />
+            <Check size={30} color={Colors.ink} strokeWidth={3} />
           </View>
         </Animated.View>
       </TouchableOpacity>
@@ -535,7 +536,7 @@ export function ReferralSigningScreen({
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   accessibilityLabel="About referrals"
                 >
-                  <Info size={18} color="#9CA3AF" strokeWidth={2.2} />
+                  <Info size={18} color={Colors.muted} strokeWidth={2.2} />
                 </TouchableOpacity>
               ) : (
                 <View style={{ width: 18 }} />
@@ -888,7 +889,7 @@ export function ReferralSigningScreen({
                   onCopied={(what) => showToast(`${what} copied.`, "success")}
                 />
                 <Text style={styles.savedHint}>
-                  🔖 Saved — find this packet anytime in Matches → Referrals.
+                  Saved — find this packet anytime in Matches → Referrals.
                 </Text>
               </ScrollView>
               <View style={styles.footer}>
@@ -910,8 +911,10 @@ export function ReferralSigningScreen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F6F7F9" },
-  rootDark: { backgroundColor: "#000" },
+  // Paper, not the retired Gallery canvas; the sign act stays the app's
+  // one deliberate dark screen.
+  root: { flex: 1, backgroundColor: Colors.paper },
+  rootDark: { backgroundColor: Colors.ink },
   safe: { flex: 1 },
   header: {
     flexDirection: "row",
@@ -925,14 +928,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: Colors.border,
     overflow: "hidden",
   },
   progressTrackDark: { backgroundColor: "rgba(255,255,255,0.18)" },
   progressFill: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   progressFillDark: { backgroundColor: "#FFF" },
   body: { flex: 1 },
@@ -952,23 +955,23 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 24,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 22,
   },
   introTitle: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    lineHeight: 32,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 12,
   },
   introBody: {
+    fontFamily: Fonts.sansLight,
     fontSize: 15,
-    color: "#4B5563",
-    fontWeight: "500",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 23,
   },
@@ -982,9 +985,9 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: Colors.borderStrong,
   },
-  introDotOn: { backgroundColor: "#000", width: 18 },
+  introDotOn: { backgroundColor: Colors.ink, width: 18 },
   // ── Candidate ──
   candidateScroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
   candidatePhoto: {
@@ -994,22 +997,30 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   candidatePhotoFallback: {
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  candidatePhotoInitial: { fontSize: 44, fontWeight: "800", color: "#3B4353" },
+  candidatePhotoInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 44,
+    color: Colors.muted,
+  },
+  // "You know [Name]." reads as one headline unit, same lead+accent
+  // construction as the splash's "Welcome to *BackChannel*" — plain serif
+  // lead, then the payoff. Kept the existing size architecture (32/34)
+  // rather than Type's presets, which don't have a matching two-size pair.
   candidateLead: {
+    fontFamily: Fonts.serif,
     fontSize: 32,
-    fontWeight: "800",
-    color: "#9CA3AF",
+    color: Colors.muted,
     letterSpacing: -0.8,
     lineHeight: 38,
   },
   candidateName: {
+    fontFamily: Fonts.serif,
     fontSize: 34,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.9,
     lineHeight: 40,
     marginBottom: 8,
@@ -1017,53 +1028,54 @@ const styles = StyleSheet.create({
   candidateMeta: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6B7280",
+    color: Colors.body,
     marginBottom: 18,
   },
   roleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFF",
-    borderRadius: 18,
+    backgroundColor: Colors.paper,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
+    borderColor: Colors.border,
     padding: 14,
     marginBottom: 12,
   },
   roleLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#9CA3AF",
-    letterSpacing: 1,
+    fontSize: 10,
+    fontWeight: "800",
+    color: Colors.muted,
+    letterSpacing: 1.2,
     marginBottom: 3,
   },
-  roleTitle: { fontSize: 15, fontWeight: "800", color: "#000" },
-  sectionBody: { fontSize: 14, color: "#4B5563", lineHeight: 21 },
+  // 15px — below the serif's ~18px floor, system font kept.
+  roleTitle: { fontSize: 15, fontWeight: "800", color: Colors.ink },
+  sectionBody: { fontSize: 14, color: Colors.body, lineHeight: 21 },
   entryRow: { paddingVertical: 8 },
   entryDivider: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(15,23,42,0.06)",
+    borderTopColor: Colors.border,
   },
   entryTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 2,
   },
-  entryMeta: { fontSize: 13, color: "#6B7280" },
+  entryMeta: { fontSize: 13, color: Colors.muted },
   skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   skillBadge: {
     paddingHorizontal: 11,
     paddingVertical: 5,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
   },
-  skillBadgeText: { fontSize: 11, fontWeight: "700", color: "#000" },
+  skillBadgeText: { fontSize: 11, fontWeight: "700", color: Colors.ink },
   portfolioLink: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     textDecorationLine: "underline",
   },
   // ── Vouch ──
@@ -1077,17 +1089,16 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 26,
   },
   statementQuote: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
     lineHeight: 37,
+    color: Colors.ink,
     textAlign: "center",
   },
   stamp: {
@@ -1096,7 +1107,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1107,9 +1118,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 28,
   },
+  // Dark section (rootDark) — same treatment as HomeIntro's overlay
+  // headline: font only, color intentionally untouched (a deliberate dark
+  // moment, not a light-theme text color to tokenize).
   signLead: {
+    fontFamily: Fonts.serif,
     fontSize: 26,
-    fontWeight: "800",
     color: "#FFF",
     letterSpacing: -0.6,
     textAlign: "center",
@@ -1125,18 +1139,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 34,
   },
-  signAvatar: { width: 64, height: 64, borderRadius: 32, marginBottom: 10 },
+  // Square ID tile — the house language, even on the dark act.
+  signAvatar: { width: 64, height: 64, borderRadius: 16, marginBottom: 10 },
   signAvatarFallback: {
-    backgroundColor: "#F0F2F7",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  signAvatarInitial: { fontSize: 24, fontWeight: "800", color: "#3B4353" },
-  signName: { fontSize: 18, fontWeight: "800", color: "#000" },
+  signAvatarInitial: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    color: Colors.muted,
+  },
+  // A person's name — same headline-tier rule as elsewhere
+  // (ProfileIdentityCard, cardStyles.sponsorMeetName).
+  signName: {
+    fontFamily: Type.heading.fontFamily,
+    fontSize: 18,
+    color: Colors.ink,
+  },
   signRole: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B7280",
+    color: Colors.body,
     marginTop: 3,
     textAlign: "center",
   },
@@ -1165,30 +1190,31 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     marginBottom: 16,
   },
   receiptTitle: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 8,
   },
   receiptSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 14,
-    color: "#6B7280",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     paddingHorizontal: 12,
   },
   receiptNext: {
     fontSize: 13,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 19,
@@ -1198,7 +1224,7 @@ const styles = StyleSheet.create({
   },
   savedHint: {
     fontSize: 13,
-    color: "#6B7280",
+    color: Colors.body,
     fontWeight: "600",
     textAlign: "center",
     marginTop: 4,

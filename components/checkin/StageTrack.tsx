@@ -21,6 +21,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface StageTrackProps {
   /** Pipeline stages in order (terminal value excluded — see terminalLabel). */
@@ -203,30 +204,30 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     backgroundColor: "#FFF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 7,
   },
   dotCompleted: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.ink,
+    borderColor: Colors.ink,
   },
   dotActive: {
-    borderColor: "#000",
+    borderColor: Colors.ink,
   },
   dotCore: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   // Rails sit at dot-centre height (18/2 - 1) and stretch between nodes.
   rail: {
     flex: 1,
     height: 2,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     marginTop: 8,
     marginHorizontal: -8,
     borderRadius: 1,
@@ -234,12 +235,12 @@ const styles = StyleSheet.create({
   },
   railFill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   label: {
     fontSize: 9.5,
     fontWeight: "600",
-    color: "#555",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 12,
     // Wider render box than the 46pt node column (negative margins keep the
@@ -249,11 +250,11 @@ const styles = StyleSheet.create({
     marginHorizontal: -6,
   },
   labelActive: {
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "800",
   },
   labelMuted: {
-    color: "#AAA",
+    color: Colors.faint,
   },
   terminal: {
     alignSelf: "center",
@@ -265,13 +266,13 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   terminalSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.ink,
+    borderColor: Colors.ink,
   },
   terminalText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     textDecorationLine: "underline",
   },
   terminalTextSelected: {

@@ -22,10 +22,16 @@ import {
 } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useJobsStore } from "@/stores/useJobsStore";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { Job } from "@/types/jobs";
 import { CheckCircle, Plus, Zap } from "@/components/ui/icons";
+import { useShell } from "@/components/shell/ShellContext";
+import {
+  MatchCelebrationModal,
+  type MatchedUser,
+} from "@/components/home/MatchCelebrationModal";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -39,7 +45,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { JobsEmptyState } from "./jobs/JobsEmptyState";
 import {
   type Applicant,
@@ -103,6 +109,7 @@ export function JobsView() {
   const setMyJobsLoading = useJobsStore((state) => state.setMyJobsLoading);
   const removeMyJob = useJobsStore((state) => state.removeMyJob);
   const showToast = useToastStore((state) => state.showToast);
+  const shell = useShell();
 
   // Sponsor's company drives the ATS browse filter. We read it here so an
   // empty board can offer "did you mean…" corrections, and write it back when
@@ -161,6 +168,11 @@ export function JobsView() {
   // sponsor opens the Top Applicants list and preserved through to the
   // messaging modal's Match button.
   const [matchJobPostingsId, setMatchJobPostingsId] = useState<string | null>(
+    null,
+  );
+  // Mutual match from liking an applicant here — celebration modal
+  // instead of the old toast-only treatment.
+  const [celebratedMatch, setCelebratedMatch] = useState<MatchedUser | null>(
     null,
   );
   const [isMatching, setIsMatching] = useState(false);
@@ -664,16 +676,18 @@ export function JobsView() {
 
       setPublished(true);
 
-      // If the backend used the LLM fallback path (no JSON-LD on the page),
-      // nudge the sponsor to double-check the auto-extracted fields. The
-      // structured path is high-confidence and doesn't need this hint.
+      // The Broadcast success screen (setPublished above) is the
+      // celebration now — a "published" toast on top of it was a double
+      // confirmation, so it's gone. The LLM-fallback caveat survives as
+      // an info nudge (it carries real guidance, not celebration), timed
+      // to land as the Broadcast finishes rather than over it.
       if (response.source === "llm") {
-        showToast(
-          "Job published. Auto-extracted by AI — review the listing in My Jobs.",
-          "success",
-        );
-      } else {
-        showToast("Job listing published.", "success");
+        setTimeout(() => {
+          showToast(
+            "Auto-extracted by AI — review the listing in My Jobs.",
+            "info",
+          );
+        }, 2700);
       }
     } catch (err) {
       console.warn("[JobsView] Failed to create job from URL:", err);
@@ -719,7 +733,7 @@ export function JobsView() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           <View style={styles.headerRow}>
             {/* "Jobs" matches the bottom-nav label — the screen and the tab
                 that opens it should say the same thing. Create Listing is a
@@ -727,27 +741,30 @@ export function JobsView() {
                 is the primary path, creating is the fallback (it keeps its
                 full-size button inside the empty states, where it IS the
                 primary action). */}
-            <Text style={styles.title}>Jobs</Text>
+            <Text style={styles.title}>
+              The <Text style={styles.titleEm}>board.</Text>
+            </Text>
             <TouchableOpacity
               style={styles.createAction}
-              activeOpacity={0.85}
+              activeOpacity={0.7}
               onPress={openCreateModal}
             >
-              <Plus color="#FFF" size={15} strokeWidth={3} />
-              <Text style={styles.createActionText}>Create</Text>
+              <Plus color={Colors.ink} size={14} strokeWidth={3} />
+              <Text style={styles.createActionText}>CREATE</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.subtitle}>
-            Manage your listings and find the right talent
+            Sponsor roles at your company, and run the ones that carry your
+            name.
           </Text>
-        </View>
+        </Animated.View>
 
         {isLoading && jobs.length === 0 ? (
           <Animated.View
             entering={FadeIn.duration(300)}
             style={styles.loadingContainer}
           >
-            <ActivityIndicator size="small" color="#999" />
+            <ActivityIndicator size="small" color={Colors.muted} />
             <Text style={styles.loadingText}>Finding opportunities...</Text>
           </Animated.View>
         ) : error ? (
@@ -781,76 +798,63 @@ export function JobsView() {
           />
         ) : (
           <>
-            {/* Action bar — iOS-style segmented control toggling the
-                Browse / My Sponsored tabs. */}
-            <View style={styles.actionBar}>
-              <View style={styles.segmentedControl}>
-                <TouchableOpacity
+            {/* Underline text-tabs with serif counts — the Desk's ledger
+                take on Browse / Sponsoring (replaces the iOS segmented
+                control). */}
+            <View style={styles.tabsRow}>
+              <TouchableOpacity
+                style={[styles.tabBtn, activeTab === "browse" && styles.tabBtnOn]}
+                onPress={() => setActiveTab("browse")}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === "browse" }}
+              >
+                <Text
                   style={[
-                    styles.segment,
-                    activeTab === "browse" && styles.segmentActive,
+                    styles.tabText,
+                    activeTab === "browse" && styles.tabTextOn,
                   ]}
-                  onPress={() => setActiveTab("browse")}
-                  activeOpacity={0.8}
                 >
+                  BROWSE
                   <Text
                     style={[
-                      styles.segmentText,
-                      activeTab === "browse" && styles.segmentTextActive,
+                      styles.tabCount,
+                      activeTab === "browse" && styles.tabCountOn,
                     ]}
                   >
-                    Browse
+                    {"  "}
+                    {jobs.length}
                   </Text>
-                  <View
-                    style={[
-                      styles.segmentBadge,
-                      activeTab === "browse" && styles.segmentBadgeActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentBadgeText,
-                        activeTab === "browse" && styles.segmentBadgeTextActive,
-                      ]}
-                    >
-                      {jobs.length}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tabBtn,
+                  activeTab === "sponsored" && styles.tabBtnOn,
+                ]}
+                onPress={() => setActiveTab("sponsored")}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === "sponsored" }}
+              >
+                <Text
                   style={[
-                    styles.segment,
-                    activeTab === "sponsored" && styles.segmentActive,
+                    styles.tabText,
+                    activeTab === "sponsored" && styles.tabTextOn,
                   ]}
-                  onPress={() => setActiveTab("sponsored")}
-                  activeOpacity={0.8}
                 >
+                  SPONSORING
                   <Text
                     style={[
-                      styles.segmentText,
-                      activeTab === "sponsored" && styles.segmentTextActive,
+                      styles.tabCount,
+                      activeTab === "sponsored" && styles.tabCountOn,
                     ]}
                   >
-                    My Sponsored
+                    {"  "}
+                    {myJobs.length}
                   </Text>
-                  <View
-                    style={[
-                      styles.segmentBadge,
-                      activeTab === "sponsored" && styles.segmentBadgeActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentBadgeText,
-                        activeTab === "sponsored" &&
-                          styles.segmentBadgeTextActive,
-                      ]}
-                    >
-                      {myJobs.length}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Browse Jobs Tab */}
@@ -1076,7 +1080,7 @@ export function JobsView() {
           badge={
             selectedApplicantForMessage.status === "MATCHED"
               ? // Monochrome to match the "Matched" tag on the list row.
-                { label: "Matched", color: "#000", bgColor: "#F4F4F5" }
+                { label: "Matched", color: "#000", bgColor: Colors.surface }
               : { label: "Liked your role" }
           }
           roleContext={
@@ -1116,13 +1120,17 @@ export function JobsView() {
                         applicant.id,
                         matchJobPostingsId,
                       );
-                      const firstName =
-                        applicant.name.split(" ")[0] || "this applicant";
                       if (result.matched) {
-                        showToast(
-                          `Matched with ${firstName}! Find them in your Matches.`,
-                          "success",
-                        );
+                        // Celebration modal, not a toast — the same moment
+                        // applicants get on the deck.
+                        setCelebratedMatch({
+                          name: applicant.name,
+                          image: applicant.image,
+                          role: applicant.role,
+                          jobTitle: applicant.appliedRole || undefined,
+                          jobId: matchJobPostingsId,
+                          userId: applicant.id,
+                        });
                       } else {
                         showToast(
                           result.message || "Interest sent.",
@@ -1149,6 +1157,17 @@ export function JobsView() {
           }
         />
       )}
+
+      <MatchCelebrationModal
+        matchedUser={celebratedMatch}
+        userType="sponsor"
+        onDismiss={() => setCelebratedMatch(null)}
+        onMessage={() => {
+          const m = celebratedMatch;
+          setCelebratedMatch(null);
+          if (m?.jobId) shell.navigateToMessages(m.jobId, m.userId);
+        }}
+      />
     </View>
   );
 }
@@ -1162,18 +1181,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  title: { fontSize: 32, fontWeight: "800", color: "#000", letterSpacing: -1 },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 6, fontWeight: "500" },
+  title: { ...Type.title, color: Colors.ink },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 16,
+    color: Colors.body,
+    marginTop: 6,
+  },
+  // Hairline letterpress pill — sponsoring existing listings is the
+  // primary path; Create stays present but quiet.
   createAction: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#000",
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 18,
   },
-  createActionText: { color: "#FFF", fontSize: 13, fontWeight: "700" },
+  createActionText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.ink,
+  },
   loadingContainer: {
     paddingVertical: 48,
     alignItems: "center",
@@ -1182,62 +1216,44 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
-  actionBar: {
+  // ── Underline text-tabs (the Desk) ────────────────────────────────
+  tabsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 24,
-    paddingHorizontal: 4,
+    gap: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: 4,
   },
-  segmentedControl: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#F0F0F0",
-    borderRadius: 12,
-    padding: 3,
+  tabBtn: {
+    paddingTop: 6,
+    paddingBottom: 10,
   },
-  segment: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+  tabBtnOn: {
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.ink,
+    marginBottom: -1,
   },
-  segmentActive: {
-    backgroundColor: "#000",
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#666",
-    letterSpacing: -0.2,
-  },
-  segmentTextActive: {
-    color: "#FFF",
-  },
-  segmentBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-    borderRadius: 8,
-    backgroundColor: "#E0E0E0",
-    minWidth: 20,
-    alignItems: "center",
-  },
-  segmentBadgeActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.22)",
-  },
-  segmentBadgeText: {
+  tabText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    letterSpacing: 1.2,
+    color: Colors.muted,
   },
-  segmentBadgeTextActive: {
-    color: "#FFF",
+  tabTextOn: {
+    color: Colors.ink,
+  },
+  // Serif count beside the tab label — the stat-number voice.
+  tabCount: {
+    fontFamily: Fonts.serif,
+    fontSize: 13,
+    fontWeight: "400",
+    letterSpacing: 0,
+    color: Colors.faint,
+  },
+  tabCountOn: {
+    color: Colors.ink,
   },
 });

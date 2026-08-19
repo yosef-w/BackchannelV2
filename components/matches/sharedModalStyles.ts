@@ -16,7 +16,10 @@ export const modalStyles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
     // Sheet sizes to its content; only grows to fill (and scroll) when the
     // content is taller than this cap — no empty whitespace for short modals.
@@ -24,6 +27,19 @@ export const modalStyles = StyleSheet.create({
     // height — the GestureHandlerRootView wrapper inside DismissibleSheet is
     // content-sized, and a % maxHeight against it would collapse to nothing.
     maxHeight: SCREEN_HEIGHT * 0.88,
+  },
+  /**
+   * Fixed-height variant for the enrichment-backed detail sheets (job,
+   * referral, SR job). Those open with basics + a skeleton and grow when
+   * the full posting lands — and a content-sized sheet repeatedly failed
+   * to re-clamp/scroll after that growth ("the modal is stuck"). A fixed
+   * height sidesteps the growth relayout entirely: the sheet presents
+   * full-height from the first frame (standard detail-sheet behavior),
+   * the skeleton breathes in the space, and the scroll area is stable.
+   * Merge AFTER modalContent + canvasSheet.
+   */
+  modalContentTall: {
+    height: SCREEN_HEIGHT * 0.88,
   },
   applyBtnLarge: {
     backgroundColor: "#000",
@@ -192,18 +208,6 @@ export const modalStyles = StyleSheet.create({
     borderRadius: 8,
   },
   roleDetailChipText: { fontSize: 13, fontWeight: "600", color: "#000" },
-  skillBadge: {
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  skillBadgeText: { fontSize: 12, fontWeight: "700", color: "#000" },
-  skillsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
   sponsorCardAvatar: { width: 40, height: 40, borderRadius: 20 },
   sponsorCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
   sponsorCardHeader: {

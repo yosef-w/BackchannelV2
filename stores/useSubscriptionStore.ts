@@ -43,6 +43,11 @@ interface SubscriptionState {
   isLoading: boolean;
   /** True after configure() has been called successfully. */
   isInitialized: boolean;
+  /** True right after a NEW purchase completes (not restores) — drives the
+   *  one-time PremiumCelebration overlay rendered by app/_layout's host.
+   *  Can only ever become true while PREMIUM_ENABLED = true, since
+   *  presentPaywall() short-circuits otherwise. */
+  celebrationPending: boolean;
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -76,6 +81,9 @@ interface SubscriptionState {
    */
   presentCustomerCenter: () => Promise<void>;
 
+  /** Dismiss the post-purchase celebration overlay. */
+  dismissCelebration: () => void;
+
   /**
    * Restore purchases from the App Store / Play Store.
    * Returns true if at least one entitlement became active after restoring.
@@ -104,6 +112,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   packages: [],
   isLoading: false,
   isInitialized: false,
+  celebrationPending: false,
 
   // ── initialize ─────────────────────────────────────────────────────────────
 
@@ -193,8 +202,13 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       const result = await RevenueCatUI.presentPaywall();
       switch (result) {
         case PAYWALL_RESULT.PURCHASED:
-        case PAYWALL_RESULT.RESTORED:
           // Refresh so isPremium updates immediately after purchase.
+          await get().refreshCustomerInfo();
+          // A NEW purchase gets the celebration; a restore (below) does
+          // not — restoring isn't buying.
+          set({ celebrationPending: true });
+          return true;
+        case PAYWALL_RESULT.RESTORED:
           await get().refreshCustomerInfo();
           return true;
         case PAYWALL_RESULT.NOT_PRESENTED:
@@ -210,6 +224,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   },
 
   // ── presentCustomerCenter ──────────────────────────────────────────────────
+
+  dismissCelebration: () => set({ celebrationPending: false }),
 
   presentCustomerCenter: async (): Promise<void> => {
     if (!PREMIUM_ENABLED) return;

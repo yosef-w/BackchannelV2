@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface ProfileCompletionBannerProps {
   percentage: number;
@@ -24,7 +25,7 @@ export function ProfileCompletionBanner({
   return (
     <Animated.View entering={FadeInDown.delay(300)} style={styles.banner}>
       <View style={styles.iconContainer}>
-        <AlertCircle color="#666" size={24} />
+        <AlertCircle color={Colors.body} size={24} />
       </View>
 
       <View style={styles.content}>
@@ -54,7 +55,7 @@ export function ProfileCompletionBanner({
           onPress={onDismiss}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <X color="#999" size={20} />
+          <X color={Colors.muted} size={20} />
         </TouchableOpacity>
       )}
     </Animated.View>
@@ -64,13 +65,13 @@ export function ProfileCompletionBanner({
 const styles = StyleSheet.create({
   banner: {
     flexDirection: "row",
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
     marginHorizontal: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   iconContainer: {
     width: 48,
@@ -106,11 +107,11 @@ const styles = StyleSheet.create({
   percentageText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
   },
   subtitle: {
     fontSize: 13,
-    color: "#78716C",
+    color: Colors.muted,
     lineHeight: 18,
     marginBottom: 12,
   },

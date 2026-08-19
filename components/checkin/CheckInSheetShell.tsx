@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 5,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: Colors.border,
     borderRadius: 3,
     alignSelf: "center",
     marginBottom: 20,
@@ -151,13 +152,12 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
   },
   stateText: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 20,
   },
@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 14,
     paddingHorizontal: 28,
-    borderRadius: 24,
-    backgroundColor: "#000",
+    borderRadius: 999,
+    backgroundColor: Colors.ink,
   },
   emptyDismissBtnText: {
     color: "#FFF",

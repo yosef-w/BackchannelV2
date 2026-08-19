@@ -14,7 +14,9 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Mail, X } from "@/components/ui/icons";
+import { Mail, X } from "@/components/ui/icons";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -32,6 +34,7 @@ import {
     trackVerifyEmailSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { Colors, Type } from "@/constants/theme";
 
 type Status = "loading" | "success" | "alreadyVerified" | "error";
 
@@ -124,22 +127,25 @@ export default function VerifyEmailRoute() {
         )}
 
         {(status === "success" || status === "alreadyVerified") && (
-          <View style={styles.center}>
-            <View style={styles.iconCircle}>
-              <Check color="#FFF" size={36} strokeWidth={3} />
-            </View>
-            <Text style={styles.title}>
-              {status === "success"
-                ? "Email verified!"
-                : "Already verified"}
-            </Text>
-            <Text style={styles.subtitle}>
-              {status === "success"
-                ? "Thanks for confirming. You're all set."
-                : "Your email was already verified — nothing else to do."}
-            </Text>
+          <View style={styles.broadcastFill}>
+            {/* Milestone confirmation on the shared Broadcast — freshly
+                verified gets the full moment; "already verified" is old
+                news, so its beat plays silently (no haptics). */}
+            <BroadcastMoment
+              haptics={status === "success"}
+              words={
+                status === "success"
+                  ? [{ word: "Email" }, { word: "verified.", accent: true }]
+                  : [{ word: "Already" }, { word: "verified.", accent: true }]
+              }
+              subtitle={
+                status === "success"
+                  ? "Thanks for confirming. You're all set."
+                  : "Your email was already verified — nothing else to do."
+              }
+            />
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[styles.primaryButton, styles.broadcastCta]}
               onPress={handleContinue}
               activeOpacity={0.8}
             >
@@ -157,8 +163,8 @@ export default function VerifyEmailRoute() {
             <Text style={styles.subtitle}>{errorMessage}</Text>
 
             {resendSent ? (
-              <View style={styles.resendSent}>
-                <Mail color="#000" size={20} strokeWidth={2} />
+              <View style={styles.resendSentBlock}>
+                <ConfirmPop size={56} icon={<Mail color="#FFF" size={22} />} />
                 <Text style={styles.resendSentText}>
                   If an account exists for that address, a new verification
                   email is on its way.
@@ -172,7 +178,7 @@ export default function VerifyEmailRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={resendEmail}
                   onChangeText={setResendEmail}
                   keyboardType="email-address"
@@ -221,12 +227,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
   },
-  loadingText: { fontSize: 14, color: "#666", marginTop: 12 },
+  // Full-bleed container for BroadcastMoment (it manages its own
+  // centering) with the Continue button beneath its caption zone.
+  broadcastFill: {
+    flex: 1,
+    alignItems: "stretch",
+  },
+  broadcastCta: { alignSelf: "center", marginBottom: 8 },
+  loadingText: { fontSize: 14, color: Colors.body, marginTop: 12 },
   iconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -235,27 +248,27 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
   title: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
+    lineHeight: 30,
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 12,
   },
   primaryButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 52,
     borderRadius: 26,
     paddingHorizontal: 32,
@@ -265,7 +278,7 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: Colors.faint,
   },
   primaryButtonText: {
     color: "#FFF",
@@ -278,7 +291,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   secondaryButtonText: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -290,31 +303,32 @@ const styles = StyleSheet.create({
   resendLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#444",
+    color: Colors.body,
     textAlign: "center",
   },
   input: {
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 50,
     fontSize: 15,
     color: "#000",
   },
-  resendSent: {
-    flexDirection: "row",
+  // Column layout — the ConfirmPop sits above the copy (the old row put
+  // a static Mail icon beside it).
+  resendSentBlock: {
     alignItems: "center",
-    gap: 10,
-    backgroundColor: "#F4F4F4",
+    gap: 4,
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    marginTop: 12,
+    marginTop: 4,
   },
   resendSentText: {
     flex: 1,
     fontSize: 13,
-    color: "#333",
+    color: Colors.body,
     lineHeight: 18,
   },
 });

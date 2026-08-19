@@ -22,10 +22,16 @@ import type {
 } from "@/stores/useUserProfileStore";
 import { CharCounter } from "../ui/CharCounter";
 import { EditorScreen } from "./EditorScreen";
+import { Colors } from "@/constants/theme";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** The résumé upload/replace pipeline (dropzone, progress, success,
+   * error states) — built and stateful in ProfileView, rendered at the
+   * top of this editor. The hub's ledger row is the only other résumé
+   * surface. */
+  uploadSection?: React.ReactNode;
   professionalMissingCount: number;
   missingFieldLabels: string[];
   professionalExperiences: ProfessionalExperience[];
@@ -57,6 +63,7 @@ interface Props {
 export function ResumeScreen({
   visible,
   onClose,
+  uploadSection,
   professionalMissingCount,
   missingFieldLabels,
   professionalExperiences,
@@ -100,10 +107,12 @@ export function ResumeScreen({
         </View>
       )}
 
+      {uploadSection}
+
       <Text style={styles.groupLabel}>PROFESSIONAL EXPERIENCE</Text>
       {professionalExperiences.length === 0 && (
         <View style={styles.emptyStateCard}>
-          <Briefcase size={32} color="#999" />
+          <Briefcase size={32} color={Colors.muted} />
           <Text style={styles.emptyStateText}>
             No work experience added yet.{"\n"}
             Add your professional experience here.
@@ -123,7 +132,7 @@ export function ResumeScreen({
       <Text style={styles.groupLabel}>EDUCATION</Text>
       {educationEntries.length === 0 && (
         <View style={styles.emptyStateCard}>
-          <GraduationCap size={32} color="#999" />
+          <GraduationCap size={32} color={Colors.muted} />
           <Text style={styles.emptyStateText}>
             No education added yet.{"\n"}
             Add your degrees and schools here.
@@ -183,7 +192,7 @@ export function ResumeScreen({
             onPress={() => handleEditField("achievements", achievements)}
           >
             <Text style={styles.fieldText}>{achievements || "Not set"}</Text>
-            <Edit color="#666" size={16} />
+            <Edit color={Colors.body} size={16} />
           </TouchableOpacity>
         )}
       </View>
@@ -193,28 +202,34 @@ export function ResumeScreen({
 
 const styles = StyleSheet.create({
   progressContainer: { marginBottom: 24 },
-  progressText: { fontSize: 12, color: "#999", marginBottom: 8, lineHeight: 17 },
-  progressBar: { height: 4, backgroundColor: "#F0F0F0", borderRadius: 2, overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 2 },
+  progressText: { fontSize: 12, color: Colors.muted, marginBottom: 8, lineHeight: 17 },
+  // Hairline, matching the site's .nav-bar/.sec-bar 2px progress language.
+  progressBar: { height: 2, backgroundColor: Colors.border, borderRadius: 1, overflow: "hidden" },
+  progressFill: { height: "100%", backgroundColor: Colors.ink, borderRadius: 2 },
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 10,
     marginTop: 20,
   },
   emptyStateCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingVertical: 28,
     alignItems: "center",
     gap: 10,
     marginBottom: 12,
   },
-  emptyStateText: { fontSize: 13, color: "#999", textAlign: "center", lineHeight: 18 },
+  emptyStateText: {
+    fontSize: 13,
+    color: Colors.muted,
+    textAlign: "center",
+    lineHeight: 18,
+  },
   addItemBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -230,9 +245,9 @@ const styles = StyleSheet.create({
   addItemText: { fontSize: 14, fontWeight: "700", color: "#000" },
   field: { marginBottom: 24 },
   fieldLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.6,
     marginBottom: 10,
   },
@@ -240,20 +255,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 12,
   },
   fieldText: { flex: 1, fontSize: 14, color: "#000", lineHeight: 20 },
   bioInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,

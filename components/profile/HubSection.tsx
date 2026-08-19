@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface HubSectionProps {
   title: string;
@@ -11,10 +12,10 @@ interface HubSectionProps {
 }
 
 /**
- * Group container for the Profile hub — same #F9F9F9/16-radius/hairline-
- * divider shell as MatchSection (Matches redesign) and the Phase 9 Account
- * editors, so all three surfaces read as one design system instead of
- * three different ones bolted together over time.
+ * Group container for the Profile hub — 2026-08 "Two Faces" rebrand:
+ * the gray recessed box is gone; rows sit flat on the paper between
+ * hairlines (the deck cards' section language), under the same caps
+ * section label.
  */
 export function HubSection({
   title,
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -72,22 +73,21 @@ const styles = StyleSheet.create({
     height: 18,
     paddingHorizontal: 5,
     borderRadius: 9,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  countText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
+  countText: { fontSize: 11, fontWeight: "800", color: Colors.paper },
   subtitle: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     marginBottom: 10,
     lineHeight: 16,
   },
+  // Flat hairline group — rows carry their own dividers; the top rule
+  // closes the set against the section label.
   group: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    overflow: "hidden",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
 });

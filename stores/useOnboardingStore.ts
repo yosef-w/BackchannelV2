@@ -40,19 +40,43 @@ export interface SponsorProfileData {
 }
 
 /**
+ * Set once AuthScreen gets a role-less (`needs_onboarding: true`) response
+ * from `POST /api/auth/sso/` (docs/BACKEND_CHANGES_NEEDED.md §S) — the user
+ * is already authenticated (tokens are in useAuthStore) but has no role or
+ * profile yet. The questionnaires read this to call
+ * `authApi.completeSsoOnboarding()` instead of `authApi.createProfile()`
+ * and to skip the password field entirely. `givenName`/`familyName` are
+ * Apple's one-time full-name grant (see lib/sso.ts) — captured here because
+ * a second Apple sign-in will never send them again.
+ */
+export interface SsoSession {
+  provider: "apple" | "google";
+  /** From POST /api/auth/sso/'s response — completeSsoOnboarding's response
+   * doesn't echo it back, so this is the only place the questionnaires can
+   * get it for the identifyUser()/RevenueCat calls they make once a role is
+   * attached. */
+  userId: string;
+  email: string;
+  givenName: string | null;
+  familyName: string | null;
+}
+
+/**
  * 📝 Onboarding Store State
  */
 interface OnboardingState {
   userType: UserType;
   applicantData: Partial<ApplicantProfileData>;
   sponsorData: Partial<SponsorProfileData>;
+  ssoSession: SsoSession | null;
 
   // Actions
   setUserType: (type: UserType) => void;
   updateApplicantData: (data: Partial<ApplicantProfileData>) => void;
   updateSponsorData: (data: Partial<SponsorProfileData>) => void;
+  setSsoSession: (session: SsoSession | null) => void;
   clearProfile: () => void;
-  
+
   // Computed
   getCompleteProfile: () => ApplicantProfileData | SponsorProfileData | null;
 }
@@ -64,6 +88,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   userType: null,
   applicantData: {},
   sponsorData: {},
+  ssoSession: null,
 
   /**
    * Set user type (applicant or sponsor)
@@ -91,6 +116,14 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   },
 
   /**
+   * Record (or clear) the authenticated-but-role-less SSO identity for the
+   * questionnaires to consume. See `SsoSession`'s doc comment.
+   */
+  setSsoSession: (session) => {
+    set({ ssoSession: session });
+  },
+
+  /**
    * Clear all profile data
    */
   clearProfile: () => {
@@ -98,6 +131,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       userType: null,
       applicantData: {},
       sponsorData: {},
+      ssoSession: null,
     });
   },
 

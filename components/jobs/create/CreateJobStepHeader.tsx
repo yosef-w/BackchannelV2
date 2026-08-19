@@ -1,6 +1,7 @@
 import { ChevronLeft, X } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface CreateJobStepHeaderProps {
   title: string;
@@ -36,7 +37,7 @@ export function CreateJobStepHeader({
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          {onBack && <ChevronLeft color="#000" size={24} strokeWidth={2.2} />}
+          {onBack && <ChevronLeft color={Colors.ink} size={24} strokeWidth={2.2} />}
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -48,7 +49,7 @@ export function CreateJobStepHeader({
           accessibilityRole="button"
           accessibilityLabel="Close"
         >
-          <X color="#000" size={22} strokeWidth={2.2} />
+          <X color={Colors.ink} size={22} strokeWidth={2.2} />
         </TouchableOpacity>
       </View>
 
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   headerBtn: {
     width: 40,
@@ -86,11 +87,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerBtnHidden: { opacity: 0 },
+  // Serif — screen titles are headline-tier in the rebrand.
   title: {
     flex: 1,
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Fonts.serif,
+    fontSize: 18,
+    color: Colors.ink,
     textAlign: "center",
     letterSpacing: -0.3,
   },
@@ -104,8 +106,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: Colors.border,
   },
-  dotActive: { backgroundColor: "#000" },
+  dotActive: { backgroundColor: Colors.ink },
   dotCurrent: { width: 22 },
 });

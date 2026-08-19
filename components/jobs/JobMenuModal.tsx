@@ -18,6 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { UNSPONSOR_REASONS } from "./jobTransforms";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -91,16 +92,17 @@ export function JobMenuModal({
           { maxHeight: SCREEN_HEIGHT * 0.9 },
         ]}
       >
-        {/* Job context — title + company so the user knows which card they tapped */}
-        {job && (
-          <View style={styles.menuSheetJobHeader}>
-            <Text style={styles.menuSheetJobTitle} numberOfLines={1}>
+        {/* Job context — centered serif title + subtitle, the same
+            decision-sheet language as the thread's menu. */}
+        {job && !showLogoEditor && !showUnsponsorReasons && (
+          <>
+            <Text style={styles.menuSheetJobTitle} numberOfLines={2}>
               {job.title}
             </Text>
             <Text style={styles.menuSheetJobCompany} numberOfLines={1}>
               {job.company}
             </Text>
-          </View>
+          </>
         )}
 
         {showLogoEditor ? (
@@ -128,7 +130,7 @@ export function JobMenuModal({
             <TextInput
               style={styles.reasonOtherInput}
               placeholder="https://example.com/logo.png"
-              placeholderTextColor="#BBB"
+              placeholderTextColor={Colors.faint}
               value={logoUrlInput}
               onChangeText={onSetLogoUrlInput}
               autoCapitalize="none"
@@ -191,7 +193,7 @@ export function JobMenuModal({
                 <TextInput
                   style={styles.reasonOtherInput}
                   placeholder="Tell us more (optional)"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={Colors.faint}
                   value={unsponsorReasonDetail}
                   onChangeText={onSetUnsponsorReasonDetail}
                   multiline
@@ -218,57 +220,43 @@ export function JobMenuModal({
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={{ gap: 10, paddingBottom: 8 }}>
+          <View style={{ paddingBottom: 8 }}>
             {activeTab === "sponsored" && job ? (
               <>
                 <TouchableOpacity
-                  style={styles.menuOptionCard}
+                  style={styles.actionOutlineBtn}
                   onPress={onOpenLogoEditor}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.menuIconContainer}>
-                    <ImageIcon size={18} color="#666" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuOptionTitle}>Replace Logo</Text>
-                    <Text style={styles.menuOptionDesc}>
-                      Override the auto-resolved company logo
-                    </Text>
-                  </View>
+                  <ImageIcon size={18} color={Colors.ink} strokeWidth={2} />
+                  <Text style={styles.actionOutlineText}>Replace Logo</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.menuOptionCard}
+                  style={styles.actionPrimaryBtn}
                   onPress={onShowUnsponsorReasons}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.menuIconContainer}>
-                    <Trash2 size={18} color="#666" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuOptionTitle}>Unsponsor Job</Text>
-                    <Text style={styles.menuOptionDesc}>
-                      Remove this listing from your sponsored jobs
-                    </Text>
-                  </View>
+                  <Trash2 size={18} color="#FFF" strokeWidth={2} />
+                  <Text style={styles.actionPrimaryText}>Unsponsor Job</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <TouchableOpacity
-                style={styles.menuOptionCard}
+                style={styles.actionPrimaryBtn}
                 onPress={onClose}
                 activeOpacity={0.7}
               >
-                <View style={styles.menuIconContainer}>
-                  <ThumbsDown size={18} color="#666" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.menuOptionTitle}>Not Interested</Text>
-                  <Text style={styles.menuOptionDesc}>
-                    Hide this job from your feed
-                  </Text>
-                </View>
+                <ThumbsDown size={18} color="#FFF" strokeWidth={2} />
+                <Text style={styles.actionPrimaryText}>Not Interested</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={styles.actionCancelBtn}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionCancelText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         )}
       </DismissibleSheet>
@@ -277,41 +265,76 @@ export function JobMenuModal({
 }
 
 const styles = StyleSheet.create({
-  menuSheetJobHeader: {
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    marginBottom: 16,
-  },
+  // Centered decision-sheet header — matches ThreadMenuSheet.
   menuSheetJobTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 2,
+    fontFamily: Type.heading.fontFamily,
+    fontSize: 20,
+    color: Colors.ink,
+    textAlign: "center",
+    marginTop: 4,
+    marginBottom: 4,
   },
   menuSheetJobCompany: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.muted,
     fontWeight: "500",
+    textAlign: "center",
+    marginBottom: 24,
   },
+  // Stacked full-width actions — the thread menu's exact vocabulary:
+  // outlined secondary, ink primary, hairline cancel.
+  actionOutlineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1.5,
+    borderColor: Colors.ink,
+    marginBottom: 12,
+  },
+  actionOutlineText: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  actionPrimaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Colors.ink,
+    marginBottom: 12,
+  },
+  actionPrimaryText: { fontSize: 15, fontWeight: "700", color: "#FFF" },
+  actionCancelBtn: {
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionCancelText: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   unsponsorReasonHeading: {
+    textAlign: "center",
+    fontFamily: Type.heading.fontFamily,
     fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 4,
   },
   unsponsorReasonSub: {
+    textAlign: "center",
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "500",
     marginBottom: 10,
   },
   reasonOtherInput: {
     marginTop: 14,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     padding: 14,
     fontSize: 14,
     color: "#000",
@@ -320,8 +343,8 @@ const styles = StyleSheet.create({
   },
   unsponsorConfirmBtn: {
     marginTop: 16,
-    backgroundColor: "#000",
-    borderRadius: 16,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -337,14 +360,14 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: Colors.surface,
   },
   radioOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -353,7 +376,7 @@ const styles = StyleSheet.create({
     width: 11,
     height: 11,
     borderRadius: 6,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   reasonLabel: {
     flex: 1,
@@ -361,31 +384,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
   },
-  menuOptionCard: {
-    backgroundColor: "#F8F9FB",
-    padding: 16,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  menuOptionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 2,
-  },
-  menuOptionDesc: { fontSize: 13, color: "#666", fontWeight: "500" },
 });

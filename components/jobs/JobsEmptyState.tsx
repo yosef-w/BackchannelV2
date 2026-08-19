@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 interface JobsEmptyStateProps {
   icon: React.ReactNode;
@@ -52,7 +53,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -66,16 +67,16 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
   },
   actionBtn: {
     marginTop: 20,
-    backgroundColor: "#000",
-    paddingHorizontal: 20,
+    backgroundColor: Colors.ink,
+    paddingHorizontal: 22,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 999,
   },
   actionText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
 });

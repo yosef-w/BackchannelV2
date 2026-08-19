@@ -37,6 +37,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 // Drag down past this many px — or flick down faster than this — to dismiss.
@@ -113,6 +114,15 @@ interface DismissibleSheetProps {
    * finger. Sheets without a SheetScrollView get whole-surface dragging.
    */
   scrollDismiss?: boolean;
+  /**
+   * Skip the slide-in/out layout animations. Use for sheets LAYERED over
+   * another already-visible sheet (profile → job): the two Modals swap in
+   * the same commit, and reanimated's entering animation can freeze
+   * mid-slide on that handoff, leaving the sheet stuck partially
+   * off-screen (reported as "the modal is stuck / won't scroll"). An
+   * instant swap also reads better — the screen already has a sheet up.
+   */
+  instant?: boolean;
 }
 
 export function DismissibleSheet({
@@ -121,6 +131,7 @@ export function DismissibleSheet({
   children,
   fullSheetGesture = false,
   scrollDismiss = false,
+  instant = false,
 }: DismissibleSheetProps) {
   const translateY = useSharedValue(0);
   const scrollOffset = useSharedValue(0);
@@ -226,8 +237,8 @@ export function DismissibleSheet({
 
   const sheet = (
     <Animated.View
-      entering={SlideInDown}
-      exiting={SlideOutDown}
+      entering={instant ? undefined : SlideInDown}
+      exiting={instant ? undefined : SlideOutDown}
       style={[style, animatedStyle]}
     >
       {inner}
@@ -262,7 +273,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 5,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     borderRadius: 3,
   },
 });

@@ -42,6 +42,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY } from "@/constants/config";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import {
   APPLICANT_PROMPT_CATEGORIES,
   APPLICANT_PROMPT_EXAMPLES,
@@ -77,9 +78,12 @@ import {
 } from "@/stores/useUserProfileStore";
 import {
   clearOnboardingDraft,
+  clearOnboardingRegistered,
   loadOnboardingDraft,
+  markOnboardingRegistered,
   saveOnboardingDraft,
 } from "@/utils/onboardingDraft";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -88,6 +92,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 // call and can occasionally be slow; a new user must never be trapped on a
 // spinner, so we race it against this timeout and finish gracefully either way.
 const RESUME_PROCESS_TIMEOUT_MS = 25000;
+
+// Length of the post-completion Broadcast beat — the moment plays fully,
+// then navigation to the dashboard fires.
+const DONE_BEAT_MS = 1900;
 
 // AsyncStorage key for the in-progress applicant questionnaire, so a user who
 // backgrounds/kills the app mid-signup doesn't lose their answers. We store
@@ -205,8 +213,15 @@ export function ApplicantQuestionnaire({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   // True once the résumé has been parsed + classified — hides the steps it fills.
   const [resumeFilled, setResumeFilled] = useState(false);
-  // Guards against double-registration (registration now fires at the résumé step).
-  const registeredRef = useRef(false);
+  // Guards against double-registration (registration now fires at the résumé
+  // step). Seeded from the global auth state, not just `false` — a user
+  // resuming an interrupted signup (see markOnboardingRegistered) is
+  // ALREADY authenticated when this component (re)mounts, and re-running
+  // registration for them would either 401 or hit "email already
+  // registered". isAuthenticated is read once at mount here deliberately;
+  // see its declaration below.
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const registeredRef = useRef(isAuthenticated);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileAsset, setSelectedFileAsset] = useState<{
     name: string;
@@ -218,6 +233,9 @@ export function ApplicantQuestionnaire({
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  // The post-completion Broadcast beat — separate from showSuccess, which
+  // doubles as a network-bound loading overlay.
+  const [showDoneBeat, setShowDoneBeat] = useState(false);
   // Distinguishes the two loading beats behind the success overlay: the résumé
   // parse (after step 1) vs. the final save (last step).
   const [finalizing, setFinalizing] = useState(false);
@@ -257,9 +275,22 @@ export function ApplicantQuestionnaire({
   const [locationManual, setLocationManual] = useState(false);
 
   const applicantData = useOnboardingStore((state) => state.applicantData);
+  // Set by AuthScreen when this account was created via "Continue with
+  // Apple/Google" and is still role-less — routes the résumé step's
+  // account-creation call to completeSsoOnboarding() instead of
+  // createProfile(), since this user already has tokens and no password.
+  const ssoSession = useOnboardingStore((state) => state.ssoSession);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
+  // useOnboardingStore is in-memory only — a resumed session (app restarted
+  // mid-questionnaire, see markOnboardingRegistered) mounts with
+  // applicantData.email empty. useUserProfileStore IS persisted to
+  // AsyncStorage and gets seeded with the email the moment registration
+  // succeeds (loadFromProfile, below), so it survives the restart — falling
+  // back to it is what lets a resumed session find its own saved draft.
+  const persistedEmail = useUserProfileStore((state) => state.data.personal.email);
+  const identityEmail = applicantData.email || persistedEmail;
   const fetchFromBackend = useUserProfileStore(
     (state) => state.fetchFromBackend,
   );
@@ -268,20 +299,37 @@ export function ApplicantQuestionnaire({
 
   // Final exit from onboarding → dashboard. Shared by the no-resume path, the
   // resume-processing fallbacks, and the review screen's confirm button.
+  // Plays the Broadcast beat (the signup's one true celebration — the
+  // loading overlay above it is a spinner, not a confirmation) and then
+  // finishes for real after the beat completes.
   const completeOnboarding = () => {
+    setShowSuccess(false);
+    setShowReview(false);
+    setIsSubmitting(false);
+    setShowDoneBeat(true);
+    setTimeout(finishOnboardingNow, DONE_BEAT_MS);
+  };
+
+  const finishOnboardingNow = () => {
     // Onboarding finished — stop autosaving, discard the draft, clear the
     // in-memory onboarding data (auth basics no longer needed).
     hydratedRef.current = false;
     clearOnboardingDraft(APPLICANT_DRAFT_KEY);
+    clearOnboardingRegistered();
     clearOnboardingData();
     trackOnboardingCompleted("applicant");
-    setIsSubmitting(false);
+    // Captured before onComplete()/clearOnboardingData() run, since
+    // ssoSession is about to be cleared from the store.
+    const wasSso = !!ssoSession;
     onComplete();
-    // Backend sends a verification email automatically on register (PR #38).
-    // Verification isn't enforced — we just surface it, after the transition.
+    // Backend sends a verification email automatically on register (PR #38)
+    // — not applicable to SSO signups: there's no register call, and the
+    // provider already verified the email.
     setTimeout(() => {
       showToast(
-        "Welcome! We sent a verification email — check your inbox and spam folder.",
+        wasSso
+          ? "Welcome! Your profile is ready."
+          : "Welcome! We sent a verification email — check your inbox and spam folder.",
         "success",
       );
     }, 500);
@@ -346,11 +394,13 @@ export function ApplicantQuestionnaire({
   // the initial empty state before the restore has run.
   //
   // Drafts are identity-scoped (utils/onboardingDraft.ts): stamped with the
-  // signup email from the AuthScreen and only restored for the SAME email.
-  // A new signup session with a different identity discards any old draft
-  // instead of hydrating it — previously an abandoned signup's junk answers
-  // leaked into the next signup on the same device and looked like broken
-  // resume auto-fill.
+  // signup email and only restored for the SAME email. A new signup session
+  // with a different identity discards any old draft instead of hydrating
+  // it — previously an abandoned signup's junk answers leaked into the next
+  // signup on the same device and looked like broken resume auto-fill.
+  // Uses `identityEmail` (not applicantData.email directly) so this still
+  // resolves after an app restart mid-questionnaire, when the in-memory
+  // onboarding store has reset but the persisted profile store hasn't.
   const hydratedRef = useRef(false);
 
   useEffect(() => {
@@ -362,7 +412,7 @@ export function ApplicantQuestionnaire({
           selectedInsights?: typeof selectedInsights;
           selectedWorkPreferences?: string[];
           locationText?: string;
-        }>(APPLICANT_DRAFT_KEY, applicantData.email);
+        }>(APPLICANT_DRAFT_KEY, identityEmail);
         if (d) {
           if (d.answers) setAnswers(d.answers);
           if (Array.isArray(d.selectedSkills)) setSelectedSkills(d.selectedSkills);
@@ -381,13 +431,16 @@ export function ApplicantQuestionnaire({
         hydratedRef.current = true;
       }
     })();
-    // Run once on mount (the signup email is fixed before this screen mounts).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Depends on identityEmail rather than running once: for a brand-new
+    // signup it's stable from the first render (no extra runs), but for a
+    // resumed session it can start empty and resolve a beat later once the
+    // persisted profile store finishes loading — this re-attempts the load
+    // once that happens instead of missing the draft.
+  }, [identityEmail]);
 
   useEffect(() => {
     if (!hydratedRef.current) return;
-    saveOnboardingDraft(APPLICANT_DRAFT_KEY, applicantData.email, {
+    saveOnboardingDraft(APPLICANT_DRAFT_KEY, identityEmail, {
       answers,
       selectedSkills,
       selectedInsights,
@@ -400,7 +453,7 @@ export function ApplicantQuestionnaire({
     selectedInsights,
     selectedWorkPreferences,
     locationText,
-    applicantData.email,
+    identityEmail,
   ]);
 
   const createProfileMutation = useMutation({
@@ -441,6 +494,13 @@ export function ApplicantQuestionnaire({
     onSuccess: async (data) => {
       console.log("[ApplicantQuestionnaire] Registration successful:", data);
 
+      // The user is about to become authenticated with a still-mostly-empty
+      // profile — flag that BEFORE flipping auth state, and await it, so
+      // anything that reacts to isAuthenticated (splash's cold-start
+      // redirect) is guaranteed to see the flag and route an interrupted
+      // signup back here instead of the dashboard. Cleared in
+      // completeOnboarding.
+      await markOnboardingRegistered("applicant");
       // Save auth tokens so the subsequent authed calls (classify, PATCH,
       // image upload) work.
       await setAuthTokens(data.access_token, data.refresh_token, "Applicant");
@@ -499,6 +559,80 @@ export function ApplicantQuestionnaire({
     },
   });
 
+  // SSO counterpart to createProfileMutation above — fires at the same point
+  // (the résumé step) for a user who already authenticated via "Continue
+  // with Apple/Google" and just needs a role + profile row attached. Sent
+  // empty/placeholder like createProfileMutation's payload: the résumé
+  // classify + handleFinalize's PATCH (via updateApplicantProfile) fill in
+  // the real data afterward, identically for both signup paths.
+  const completeSsoOnboardingMutation = useMutation({
+    mutationFn: async () => {
+      return authApi.completeSsoOnboarding({
+        // Capitalized per the backend's validation — it rejects anything
+        // but exactly 'Applicant'/'Sponsor'.
+        role: "Applicant",
+        // The SSO exchange usually stored the name already, but Apple only
+        // sends it once ever — forward anything the flow captured so a
+        // questionnaire-entered name isn't lost.
+        ...(applicantData.firstName?.trim()
+          ? { first_name: applicantData.firstName.trim() }
+          : {}),
+        ...(applicantData.lastName?.trim()
+          ? { last_name: applicantData.lastName.trim() }
+          : {}),
+        skills: [],
+        insights: [],
+        work_preferences: [],
+      });
+    },
+    onSuccess: async () => {
+      // Guarded by handleResumeStep only ever calling this mutation when
+      // ssoSession is set — but narrow the type here rather than assert.
+      if (!ssoSession) return;
+      // This SSO user is authenticated with a still-mostly-empty profile —
+      // flag it (awaited, durably) so splash's cold-start redirect routes
+      // an interrupted signup back here instead of the dashboard. Cleared
+      // in completeOnboarding.
+      await markOnboardingRegistered("applicant");
+
+      identifyUser({
+        userId: ssoSession.userId,
+        userType: "applicant",
+        email: applicantData.email ?? null,
+        firstName: applicantData.firstName ?? null,
+        lastName: applicantData.lastName ?? null,
+        currentRole: answers["currentRole"] ?? null,
+      });
+      trackSignUpSucceeded("applicant");
+      AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
+      rcIdentifyUser(ssoSession.userId);
+
+      await loadFromProfile({
+        firstName: applicantData.firstName,
+        lastName: applicantData.lastName,
+        email: applicantData.email,
+        profileData: {
+          targetIndustry: undefined,
+          currentRole: undefined,
+          seekingPosition: undefined,
+          skills: [],
+          insights: [],
+          workPreferences: [],
+          resumeUrl: undefined,
+        },
+      });
+    },
+    onError: (error: Error) => {
+      console.warn(
+        "[ApplicantQuestionnaire] SSO onboarding completion failed:",
+        error,
+      );
+      setIsSubmitting(false);
+      trackSignUpFailed("applicant", error.message || "unknown");
+      showToast(`Couldn't finish setting up your account: ${error.message}`, "error");
+    },
+  });
+
   const filteredSkills = useMemo(() => {
     const selectedIndustry = answers["industry"] || "Other";
     const industrySkills =
@@ -517,10 +651,21 @@ export function ApplicantQuestionnaire({
     setIsSubmitting(true);
     if (!registeredRef.current) {
       try {
-        await createProfileMutation.mutateAsync();
+        if (ssoSession) {
+          // Already authenticated — attach the role instead of registering.
+          await completeSsoOnboardingMutation.mutateAsync();
+        } else {
+          await createProfileMutation.mutateAsync();
+        }
         registeredRef.current = true;
       } catch (err) {
         setIsSubmitting(false);
+        // "Already registered" only means something for the password path
+        // (createProfile creating a brand-new account); an SSO user hitting
+        // an error here is already authenticated as themselves, so there's
+        // no "sign in instead" recovery to offer — onError already showed
+        // a toast for that case.
+        if (ssoSession) return;
         // If the failure is an already-registered email, send them straight
         // to Sign In (pre-filled with what they typed) instead of dropping
         // them back on the sign-up form they were just rejected from.
@@ -838,7 +983,7 @@ export function ApplicantQuestionnaire({
                             <Check color="#FFF" size={20} />
                           ) : (
                             <ChevronRight
-                              color={isEnabled ? "#CCC" : "#E0E0E0"}
+                              color={isEnabled ? Colors.faint : Colors.border}
                               size={18}
                             />
                           )}
@@ -856,7 +1001,7 @@ export function ApplicantQuestionnaire({
                   <View style={styles.inputWrapper}>
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={answers[question.key] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [question.key]: v })
@@ -872,13 +1017,13 @@ export function ApplicantQuestionnaire({
                   <View>
                     <View style={styles.searchWrapper}>
                       <Search
-                        color="#AAA"
+                        color={Colors.faint}
                         size={20}
                         style={{ marginRight: 10 }}
                       />
                       <TextInput
                         placeholder="Search skills..."
-                        placeholderTextColor="#BBB"
+                        placeholderTextColor={Colors.faint}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         autoCapitalize="none"
@@ -989,7 +1134,7 @@ export function ApplicantQuestionnaire({
                         // Friendlier default than a bare icon — their initials.
                         <Text style={styles.photoInitials}>{initials}</Text>
                       ) : (
-                        <Camera color="#BBB" size={40} />
+                        <Camera color={Colors.faint} size={40} />
                       )}
                     </TouchableOpacity>
                     <View style={styles.photoBtnRow}>
@@ -1045,10 +1190,10 @@ export function ApplicantQuestionnaire({
                       />
                     ) : (
                       <View style={styles.locationInputWrap}>
-                        <MapPin color="#BBB" size={20} />
+                        <MapPin color={Colors.faint} size={20} />
                         <TextInput
                           placeholder="e.g., San Francisco, CA"
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={Colors.faint}
                           value={locationText}
                           onChangeText={setLocationText}
                           autoCapitalize="words"
@@ -1118,7 +1263,7 @@ export function ApplicantQuestionnaire({
                             }}
                             activeOpacity={0.7}
                           >
-                            <X size={16} color="#666" strokeWidth={2.5} />
+                            <X size={16} color={Colors.body} strokeWidth={2.5} />
                           </TouchableOpacity>
                         </View>
 
@@ -1313,6 +1458,27 @@ export function ApplicantQuestionnaire({
           </BlurView>
         </Animated.View>
       )}
+
+      {/* Last sibling so it covers both the questionnaire and the review
+          screen. The Broadcast at signup scale — the beat length matches
+          completeOnboarding's navigation timer. */}
+      {showDoneBeat && (
+        <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
+          <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
+            <View style={styles.doneBeatContainer}>
+              <BroadcastMoment
+                durationMs={DONE_BEAT_MS}
+                icon={<UserCheck color="#FFF" size={38} />}
+                words={[
+                  { word: "Profile" },
+                  { word: "complete.", accent: true },
+                ]}
+                subtitle="Sponsors can find you now."
+              />
+            </View>
+          </BlurView>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -1334,25 +1500,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     // #767676 is the minimum gray that passes WCAG AA contrast (4.5:1) on
     // white — #BBB (~2.3:1) failed for text conveying real progress state.
-    color: "#767676",
+    color: Colors.muted,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  progressBarBg: { height: 2, backgroundColor: "#F0F0F0", width: "100%" },
-  progressBar: { height: "100%", backgroundColor: "#000" },
+  progressBarBg: { height: 2, backgroundColor: Colors.border, width: "100%" },
+  progressBar: { height: "100%", backgroundColor: Colors.ink },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   content: { flex: 1 },
   questionText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 38,
+    ...Type.title,
+    color: Colors.ink,
     marginBottom: 40,
   },
+  // Matches the site's .hero-body treatment.
   stepSubtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 22,
     marginTop: -28,
     marginBottom: 32,
@@ -1364,26 +1529,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
-  optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
-  optionCardDisabled: { backgroundColor: "#FAFAFA", borderColor: "#F0F0F0" },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
+  optionCardSelected: { backgroundColor: Colors.body, borderColor: Colors.body },
+  optionCardDisabled: { backgroundColor: Colors.offWhite, borderColor: Colors.border },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
-  optionTextDisabled: { color: "#C8C8C8" },
+  optionTextDisabled: { color: Colors.borderStrong },
   comingSoonNote: {
     marginTop: 12,
     fontSize: 13,
-    color: "#AAAAAA",
+    color: Colors.faint,
     textAlign: "center",
     lineHeight: 18,
   },
   inputWrapper: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     height: 64,
     justifyContent: "center",
@@ -1392,19 +1559,19 @@ const styles = StyleSheet.create({
   fileContainer: {
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     borderRadius: 20,
     paddingVertical: 44,
     paddingHorizontal: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Colors.offWhite,
   },
   fileUploadIconWrap: {
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -1416,22 +1583,22 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textAlign: "center",
   },
-  fileSubtitle: { fontSize: 13, color: "#AAA", textAlign: "center" },
+  fileSubtitle: { fontSize: 13, color: Colors.faint, textAlign: "center" },
   fileConfirmCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   fileIconCircle: {
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1443,12 +1610,12 @@ const styles = StyleSheet.create({
     color: "#000",
     lineHeight: 20,
   },
-  fileConfirmMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  fileConfirmMeta: { fontSize: 13, color: Colors.muted, fontWeight: "500" },
   fileRemoveBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#EFEFEF",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1464,7 +1631,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1472,18 +1639,18 @@ const styles = StyleSheet.create({
   fileChangeLink: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
     textDecorationLine: "underline",
   },
   searchWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 54,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 24,
   },
   searchInput: { flex: 1, fontSize: 16, color: "#000", fontWeight: "500" },
@@ -1497,24 +1664,26 @@ const styles = StyleSheet.create({
     borderColor: "#000",
     marginBottom: 4,
   },
-  skillItemSelected: { backgroundColor: "#000" },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
+  skillItemSelected: { backgroundColor: Colors.body },
   skillText: { fontSize: 14, fontWeight: "600", color: "#000" },
   selectionCount: {
     marginTop: 24,
     fontSize: 14,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "600",
     textAlign: "center",
   },
   insightsSubtitle: {
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     marginBottom: 32,
     lineHeight: 24,
   },
   footer: { paddingHorizontal: 28, paddingBottom: 30, paddingTop: 20 },
   nextButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 60,
     borderRadius: 30,
     flexDirection: "row",
@@ -1532,6 +1701,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 40,
   },
+  // Full-bleed container for BroadcastMoment (which manages its own
+  // centering) — no alignItems here or the stage would shrink-wrap.
+  doneBeatContainer: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingBottom: 40,
+  },
   successIconBox: {
     width: 100,
     height: 100,
@@ -1546,14 +1722,14 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   successTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.title,
+    color: Colors.ink,
     textAlign: "center",
   },
   successSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
@@ -1566,27 +1742,27 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   photoImage: { width: "100%", height: "100%" },
-  photoInitials: { fontSize: 52, fontWeight: "800", color: "#999" },
+  photoInitials: { fontSize: 52, fontWeight: "800", color: Colors.muted },
   photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
   photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
   photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
-  photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
+  photoSkipText: { fontSize: 14, fontWeight: "600", color: Colors.faint },
   inputContainer: { paddingTop: 8 },
   locationInputWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -1615,20 +1791,18 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
   reviewTitle: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    ...Type.title,
+    color: Colors.ink,
   },
   reviewSub: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 21,
     marginTop: 10,
   },
@@ -1641,7 +1815,7 @@ const styles = StyleSheet.create({
   reviewSectionLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 1,
     marginBottom: 12,
   },
@@ -1649,7 +1823,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     padding: 16,
     marginBottom: 10,
   },
@@ -1660,7 +1834,7 @@ const styles = StyleSheet.create({
   },
   reviewCardSub: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     marginTop: 4,
   },
   reviewChips: {
@@ -1672,7 +1846,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
@@ -1686,16 +1860,18 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: Colors.border,
   },
+  // Matches the pill shape (radius = height/2) every other CTA in the
+  // sign-up flow uses — this one was squared off (radius 16) before.
   reviewPrimaryBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#000",
-    borderRadius: 16,
-    paddingVertical: 18,
+    backgroundColor: Colors.ink,
+    height: 56,
+    borderRadius: 28,
   },
   reviewPrimaryText: {
     fontSize: 16,
@@ -1704,7 +1880,7 @@ const styles = StyleSheet.create({
   },
   reviewFootnote: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     marginTop: 12,
   },

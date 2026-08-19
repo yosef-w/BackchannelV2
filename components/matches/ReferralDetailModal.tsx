@@ -7,7 +7,6 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
 } from "react-native";
 import {
     DismissibleSheet,
@@ -21,6 +20,7 @@ import {
     ReadMoreText,
     SectionCard,
     SkeletonCard,
+    SkillChips,
     StatStrip,
     Timeline,
 } from "./JobSheetKit";
@@ -99,7 +99,11 @@ export function ReferralDetailModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onClose}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[
+          modalStyles.modalContent,
+          canvasSheet,
+          modalStyles.modalContentTall,
+        ]}
       >
         {referral &&
           (() => {
@@ -150,8 +154,34 @@ export function ReferralDetailModal({
                     onClose={onClose}
                   />
 
-                  {/* The referral IS the human moment — the sponsor's host
-                      card leads, their note quoted inside it. */}
+                  {/* Shared sheet skeleton (learn once, read everywhere):
+                      hero → stats → the sheet's reason-for-being → role
+                      detail → human + progression closing. For a referral
+                      the reason-for-being is the status explainer. */}
+                  <StatStrip stats={stats} />
+
+                  <SectionCard title="What This Means">
+                    <Text style={modalStyles.jobSectionText}>
+                      {isReferred
+                        ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
+                        : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
+                    </Text>
+                  </SectionCard>
+
+                  {showSkeleton && <SkeletonCard title="About the Role" />}
+                  {!!enriched?.description && (
+                    <SectionCard title="About the Role">
+                      <ReadMoreText text={enriched.description} />
+                    </SectionCard>
+                  )}
+                  {!!enriched?.skills?.length && (
+                    <SectionCard title="Skills">
+                      <SkillChips skills={enriched.skills} />
+                    </SectionCard>
+                  )}
+
+                  {/* The human + the momentum close the sheet — the
+                      sponsor's note quoted in their block. */}
                   <HostCard
                     label="Referred By"
                     name={sponsorName}
@@ -166,9 +196,6 @@ export function ReferralDetailModal({
                     }
                     note={r.referralNote || undefined}
                   />
-
-                  {/* Journey — only while the referral is live; a withdrawn
-                      one has no momentum to show. */}
                   {isReferred && (
                     <Timeline
                       steps={[
@@ -190,36 +217,6 @@ export function ReferralDetailModal({
                         },
                       ]}
                     />
-                  )}
-
-                  <SectionCard title="What This Means">
-                    <Text style={modalStyles.jobSectionText}>
-                      {isReferred
-                        ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
-                        : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
-                    </Text>
-                  </SectionCard>
-
-                  {/* The role itself — background-enriched. */}
-                  <StatStrip stats={stats} />
-                  {showSkeleton && <SkeletonCard title="About the Role" />}
-                  {!!enriched?.description && (
-                    <SectionCard title="About the Role">
-                      <ReadMoreText text={enriched.description} />
-                    </SectionCard>
-                  )}
-                  {!!enriched?.skills?.length && (
-                    <SectionCard title="Skills">
-                      <View style={modalStyles.skillsRow}>
-                        {enriched.skills.map((skill, idx) => (
-                          <View key={idx} style={modalStyles.skillBadge}>
-                            <Text style={modalStyles.skillBadgeText}>
-                              {skill}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    </SectionCard>
                   )}
                 </SheetScrollView>
 
@@ -259,7 +256,7 @@ export function ReferralDetailModal({
 }
 
 const styles = StyleSheet.create({
-  // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned action bar; scrolls the overflow.
-  scroll: { flexShrink: 1 },
+  // flex: 1 (not just shrink) — the sheet is fixed-height now, so the
+  // scroll fills it and the action bar stays pinned to the bottom.
+  scroll: { flex: 1 },
 });

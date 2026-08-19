@@ -2,8 +2,6 @@ import { Check, MessageCircle } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -21,6 +19,7 @@ import {
     ReadMoreText,
     SectionCard,
     SkeletonCard,
+    SkillChips,
     StatStrip,
     Timeline,
 } from "./JobSheetKit";
@@ -59,6 +58,9 @@ interface JobDetailModalProps {
    * matched applicant, not themselves.
    */
   messageName?: string;
+  /** Skip the sheet's slide-in — pass when this modal is LAYERED over
+   * another sheet (see DismissibleSheet.instant). */
+  instant?: boolean;
 }
 
 /**
@@ -74,6 +76,7 @@ export function JobDetailModal({
   cta,
   enriching,
   messageName,
+  instant,
 }: JobDetailModalProps) {
   const matched = job?.status === "MATCHED";
   const counterpartFirstName =
@@ -112,10 +115,13 @@ export function JobDetailModal({
     job.benefits.length === 0;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={modalStyles.modalOverlay}
-    >
+    /* Plain View, deliberately NOT a KeyboardAvoidingView: this sheet has
+       no inputs, and opening it while the thread's keyboard was up made
+       the KAV compress the overlay while the sheet kept its full-screen
+       height cap — the bottom of the sheet (footer included) was clipped
+       OUTSIDE the scroll view, which read as "modal stuck / can't scroll
+       to the rest". Callers with a live keyboard also dismiss it. */
+    <View style={modalStyles.modalOverlay}>
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
@@ -126,8 +132,13 @@ export function JobDetailModal({
 
       <DismissibleSheet
         scrollDismiss
+        instant={instant}
         onDismiss={onClose}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[
+          modalStyles.modalContent,
+          canvasSheet,
+          modalStyles.modalContentTall,
+        ]}
       >
         {job && (
           <>
@@ -148,7 +159,45 @@ export function JobDetailModal({
 
               <StatStrip stats={stats} />
 
-              {/* The insider — the human way in gets the host-card stage. */}
+              {/* Enrichment skeleton — holds the details area's place while
+                  the full posting loads. */}
+              {showSkeleton && <SkeletonCard title="About the Role" />}
+
+              {!!job.description && (
+                <SectionCard title="About the Role">
+                  <ReadMoreText text={job.description} />
+                </SectionCard>
+              )}
+
+              {!!job.coreResponsibilities && (
+                <SectionCard title="What You'll Do">
+                  <Text style={modalStyles.jobSectionText}>
+                    {job.coreResponsibilities}
+                  </Text>
+                </SectionCard>
+              )}
+
+              {job.skills.length > 0 && (
+                <SectionCard title="Skills">
+                  <SkillChips skills={job.skills} />
+                </SectionCard>
+              )}
+
+              {job.benefits.length > 0 && (
+                <SectionCard title="Highlights">
+                  {job.benefits.map((benefit, idx) => (
+                    <View key={idx} style={modalStyles.benefitRow}>
+                      <Check size={14} color="#000" />
+                      <Text style={modalStyles.benefitText}>{benefit}</Text>
+                    </View>
+                  ))}
+                </SectionCard>
+              )}
+
+              {/* The insider + journey close the sheet (PM feedback: the
+                  role description is what a candidate reads first — it
+                  moved up under the stats; the human context and the
+                  progression state read as the wrap-up). */}
               <HostCard
                 label="Your Insider"
                 name={job.sponsorInfo.name}
@@ -194,47 +243,6 @@ export function JobDetailModal({
                   ]}
                 />
               )}
-
-              {/* Enrichment skeleton — holds the details area's place while
-                  the full posting loads. */}
-              {showSkeleton && <SkeletonCard title="About the Role" />}
-
-              {!!job.description && (
-                <SectionCard title="About the Role">
-                  <ReadMoreText text={job.description} />
-                </SectionCard>
-              )}
-
-              {!!job.coreResponsibilities && (
-                <SectionCard title="What You'll Do">
-                  <Text style={modalStyles.jobSectionText}>
-                    {job.coreResponsibilities}
-                  </Text>
-                </SectionCard>
-              )}
-
-              {job.skills.length > 0 && (
-                <SectionCard title="Skills">
-                  <View style={modalStyles.skillsRow}>
-                    {job.skills.map((skill, idx) => (
-                      <View key={idx} style={modalStyles.skillBadge}>
-                        <Text style={modalStyles.skillBadgeText}>{skill}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </SectionCard>
-              )}
-
-              {job.benefits.length > 0 && (
-                <SectionCard title="Highlights">
-                  {job.benefits.map((benefit, idx) => (
-                    <View key={idx} style={modalStyles.benefitRow}>
-                      <Check size={14} color="#000" />
-                      <Text style={modalStyles.benefitText}>{benefit}</Text>
-                    </View>
-                  ))}
-                </SectionCard>
-              )}
             </SheetScrollView>
 
             {/* Action bar — the state and the action, always visible. */}
@@ -277,12 +285,12 @@ export function JobDetailModal({
           </>
         )}
       </DismissibleSheet>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned action bar; scrolls the overflow.
-  scroll: { flexShrink: 1 },
+  // flex: 1 (not just shrink) — the sheet is fixed-height now, so the
+  // scroll fills it and the action bar stays pinned to the bottom.
+  scroll: { flex: 1 },
 });

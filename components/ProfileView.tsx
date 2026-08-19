@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
@@ -11,6 +12,7 @@ import {
     Edit,
     FileText,
     GraduationCap,
+    Heart,
     ImageIcon,
     Lock,
     LogOut,
@@ -87,6 +89,13 @@ import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
 import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
 import { PromptsIntake } from "./ui/PromptsIntake";
+import { ApplicantProfileCard } from "./home/ApplicantProfileCard";
+import { cardStyles } from "./home/cardStyles";
+import type {
+    EnrichedApplicantProfile,
+    ProfileDeckCard,
+} from "@/types/profiles";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface ProfileViewProps {
   userType: "applicant" | "sponsor";
@@ -99,9 +108,9 @@ interface ProfileViewProps {
 // `ios_backgroundColor` (NOT `trackColor.false`), which wasn't set at all. The
 // gray below frames the white thumb clearly while staying on-brand.
 const SWITCH_COLORS = {
-  trackColor: { false: "#B0B3BA", true: "#000" },
+  trackColor: { false: Colors.faint, true: "#000" },
   thumbColor: "#FFF",
-  ios_backgroundColor: "#B0B3BA",
+  ios_backgroundColor: Colors.faint,
 } as const;
 
 interface ApplicantProfile {
@@ -186,6 +195,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.updateEducationEntries,
   );
 
+  // "Two Faces": EDIT is the management hub, PREVIEW renders the live
+  // deck card exactly as the other side sees it.
+  const [profileTab, setProfileTab] = useState<"edit" | "preview">("edit");
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditInsights, setShowEditInsights] = useState(false);
   const [showEditResume, setShowEditResume] = useState(false);
@@ -1002,10 +1014,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1022,7 +1034,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isNameMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1042,7 +1054,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateCertification(index, { name: text })
                 }
                 placeholder="e.g., AWS Solutions Architect"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1054,7 +1066,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isOrgMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1074,7 +1086,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateCertification(index, { organization: text })
                 }
                 placeholder="e.g., Amazon Web Services"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1086,7 +1098,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1106,7 +1118,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateCertification(index, { year: text })
                 }
                 placeholder="e.g., 2023"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 keyboardType="numeric"
               />
             </View>
@@ -1182,10 +1194,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1202,7 +1214,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isLanguageMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1225,7 +1237,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateLanguage(index, { language: text })
                 }
                 placeholder="e.g., Spanish"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1237,7 +1249,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isProficiencyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1260,7 +1272,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateLanguage(index, { proficiency: text })
                 }
                 placeholder="e.g., Native, Fluent, Conversational"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1560,10 +1572,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1580,7 +1592,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isJobTitleMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1603,7 +1615,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { jobTitle: text })
                 }
                 placeholder="e.g., Senior Product Manager"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1615,7 +1627,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isCompanyMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1638,7 +1650,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { company: text })
                 }
                 placeholder="e.g., Google"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1650,7 +1662,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isStartDateMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1673,7 +1685,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { startDate: text })
                 }
                 placeholder="e.g., Jan 2022"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1702,7 +1714,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     handleUpdateExperience(experience.id, { endDate: text })
                   }
                   placeholder="e.g., Dec 2024"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={Colors.muted}
                 />
               </View>
             )}
@@ -1720,7 +1732,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateExperience(experience.id, { description: text })
                 }
                 placeholder="Describe your responsibilities and achievements..."
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 multiline
                 numberOfLines={4}
               />
@@ -1794,10 +1806,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
               }}
               style={{ padding: 4 }}
             >
-              <Trash2 size={18} color="#666" />
+              <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
             <ChevronRight
-              color="#666"
+              color={Colors.body}
               size={20}
               style={{ transform: [{ rotate: isExpanded ? "90deg" : "0deg" }] }}
             />
@@ -1814,7 +1826,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isDegreeMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1834,7 +1846,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { degree: text })
                 }
                 placeholder="e.g., Bachelor of Science, MBA"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1848,7 +1860,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { major: text })
                 }
                 placeholder="e.g., Computer Science"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1860,7 +1872,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isUniversityMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1883,7 +1895,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { university: text })
                 }
                 placeholder="e.g., Stanford University"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
               />
             </View>
 
@@ -1895,7 +1907,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {isGradYearMissing && (
                   <Text
                     style={{
-                      color: "#DC2626",
+                      color: Colors.danger,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1918,7 +1930,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { graduationYear: text })
                 }
                 placeholder="e.g., 2020"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 keyboardType="numeric"
               />
             </View>
@@ -1933,7 +1945,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                   handleUpdateEducation(education.id, { gpa: text })
                 }
                 placeholder="e.g., 3.9"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.muted}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -1999,6 +2011,217 @@ export function ProfileView({ userType }: ProfileViewProps) {
     });
   }
 
+  // Résumé upload/replace pipeline — lives INSIDE the résumé editor now
+  // (the hub's ledger RÉSUMÉ row is the single entry point; the old
+  // standalone hub section duplicated it). All state/handlers stay in
+  // this component (useResumePipeline above); only the JSX moved.
+  const resumeUploadSection =
+    userType === "applicant" ? (
+      <View style={styles.resumeSection}>
+                <Text style={styles.resumeSectionLabel}>RÉSUMÉ</Text>
+
+                {/* Idle — document card (on file) or dropzone (none) */}
+                {resumeUploadStep === "idle" &&
+                  (resumeLastUpdated ? (
+                    <>
+                      <View style={styles.docCard}>
+                        <View style={styles.docGlyph}>
+                          <FileText size={22} color="#000" strokeWidth={1.75} />
+                        </View>
+                        <View style={styles.docInfo}>
+                          <Text style={styles.docTitle}>Your résumé</Text>
+                          <Text style={styles.docMeta}>
+                            Updated {formatRelativeTime(resumeLastUpdated)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.docCaption}>
+                        AI keeps your profile in sync with your résumé.
+                      </Text>
+                      <View style={styles.docActions}>
+                        <TouchableOpacity
+                          style={styles.docReplaceBtn}
+                          onPress={handleResumeUpload}
+                          activeOpacity={0.75}
+                        >
+                          <Upload size={15} color="#000" strokeWidth={2} />
+                          <Text style={styles.docReplaceText}>Replace</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={styles.dropzone}
+                        onPress={handleResumeUpload}
+                        activeOpacity={0.75}
+                      >
+                        <View style={styles.dropzoneIcon}>
+                          <Upload size={24} color="#000" strokeWidth={2} />
+                        </View>
+                        <Text style={styles.dropzoneTitle}>Upload your résumé</Text>
+                        <Text style={styles.dropzoneSub}>
+                          AI auto-fills your profile · PDF
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.docCaption}>
+                        Or enter your details manually below.
+                      </Text>
+                    </>
+                  ))}
+
+                {/* Uploading state */}
+                {resumeUploadStep === "uploading" && (
+                  <View style={styles.resumeProgressCard}>
+                    <View style={styles.resumeProgressRow}>
+                      <ActivityIndicator color="#000" size="small" />
+                      <View style={styles.resumeProgressTextCol}>
+                        <Text style={styles.resumeProgressTitle}>
+                          Uploading your resume...
+                        </Text>
+                        <Text style={styles.resumeProgressSub}>
+                          {resumeElapsedSecs < 6
+                            ? "Reading your file..."
+                            : resumeElapsedSecs < 20
+                              ? "Extracting text..."
+                              : "Taking a bit longer than usual..."}
+                        </Text>
+                      </View>
+                      <Text style={styles.resumeElapsedText}>
+                        {resumeElapsedSecs}s
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.resumeCancelBtn}
+                      onPress={cancelResumeUpload}
+                      activeOpacity={0.7}
+                    >
+                      <X size={12} color={Colors.body} strokeWidth={2.5} />
+                      <Text style={styles.resumeCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Analyzing state */}
+                {resumeUploadStep === "analyzing" && (
+                  <View style={styles.resumeProgressCard}>
+                    <View style={styles.resumeProgressRow}>
+                      <ActivityIndicator color="#000" size="small" />
+                      <View style={styles.resumeProgressTextCol}>
+                        <Text style={styles.resumeProgressTitle}>
+                          AI is analyzing your resume...
+                        </Text>
+                        <Text style={styles.resumeProgressSub}>
+                          {resumeElapsedSecs < 10
+                            ? "Auto-filling your profile..."
+                            : resumeElapsedSecs < 30
+                              ? "Classifying your experience..."
+                              : resumeElapsedSecs < 60
+                                ? "Almost done..."
+                                : "Hang tight, deep analysis takes a moment..."}
+                        </Text>
+                      </View>
+                      <Text style={styles.resumeElapsedText}>
+                        {resumeElapsedSecs}s
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.resumeCancelBtn}
+                      onPress={cancelResumeUpload}
+                      activeOpacity={0.7}
+                    >
+                      <X size={12} color={Colors.body} strokeWidth={2.5} />
+                      <Text style={styles.resumeCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Done state */}
+                {resumeUploadStep === "done" && (
+                  <Animated.View
+                    entering={FadeInUp.duration(400)}
+                    style={styles.resumeSuccessCard}
+                  >
+                    <View style={styles.resumeSuccessHeader}>
+                      <CheckCircle2 size={20} color="#000" strokeWidth={2.5} />
+                      <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
+                    </View>
+                    {resumeFieldsUpdated.length > 0 && (
+                      <>
+                        <Text style={styles.resumeSuccessSubtitle}>
+                          AI filled in {resumeFieldsUpdated.length} field
+                          {resumeFieldsUpdated.length !== 1 ? "s" : ""}:
+                        </Text>
+                        <View style={styles.resumeUpdatedFields}>
+                          {resumeFieldsUpdated.map((field) => (
+                            <View key={field} style={styles.resumeFieldPill}>
+                              <Text style={styles.resumeFieldPillText}>
+                                {formatFieldName(field)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    )}
+                    <TouchableOpacity
+                      style={styles.resumeUploadAgainBtn}
+                      onPress={() => setResumeUploadStep("idle")}
+                    >
+                      <RefreshCw size={14} color={Colors.body} strokeWidth={2} />
+                      <Text style={styles.resumeUploadAgainText}>Upload again</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+
+                {/* Error state */}
+                {resumeUploadStep === "error" && (
+                  <View style={styles.resumeErrorCard}>
+                    <AlertCircle size={18} color="#000" strokeWidth={2} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resumeErrorTitle}>Upload failed</Text>
+                      <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.resumeRetryBtn}
+                      onPress={() => setResumeUploadStep("idle")}
+                    >
+                      <Text style={styles.resumeRetryText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+    ) : null;
+
+  // ── PREVIEW tab data — the live deck card, fed straight from this
+  // screen's own store-backed state. Same shapes the sponsor deck uses
+  // (ProfileDeckCard + EnrichedApplicantProfile), so the preview is the
+  // real component and can never drift from what sponsors actually see.
+  // Key "me" only needs to match between card and cache.
+  const previewCard: ProfileDeckCard = {
+    id: "me",
+    USER_ID: "me",
+    name,
+    location: profileData.location,
+    skills: expertise,
+    desiredRole: desiredRoles[0] || role || "",
+    bio,
+    prompts: profileInsights,
+    image: profileImage || "",
+    company: "",
+  };
+  const previewCache: Record<string, EnrichedApplicantProfile> = {
+    me: {
+      experiences: professionalExperiences,
+      education: educationEntries,
+      certifications,
+      languages,
+      achievements,
+      prompts: profileInsights,
+      bio,
+      skills: expertise,
+    },
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -2006,6 +2229,135 @@ export function ProfileView({ userType }: ProfileViewProps) {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="always"
     >
+      {/* Page head — serif title + EDIT/PREVIEW segmented control */}
+      <Text style={styles.pageTitle}>
+        Your <Text style={styles.pageTitleEm}>profile.</Text>
+      </Text>
+      <View style={styles.segTrack}>
+        {(["edit", "preview"] as const).map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.segBtn, profileTab === tab && styles.segBtnOn]}
+            onPress={() => setProfileTab(tab)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: profileTab === tab }}
+          >
+            <Text
+              style={[styles.segText, profileTab === tab && styles.segTextOn]}
+            >
+              {tab === "edit" ? "EDIT" : "PREVIEW"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {profileTab === "preview" ? (
+        /* ── PREVIEW — the live card, exactly as the other side sees it ── */
+        <>
+          <View style={styles.liveBand}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveBandText}>
+              {userType === "applicant"
+                ? "LIVE — EXACTLY AS SPONSORS SEE IT"
+                : "LIVE — HOW APPLICANTS SEE YOU"}
+            </Text>
+          </View>
+          {userType === "applicant" ? (
+            <>
+              <ApplicantProfileCard
+                currentData={previewCard}
+                fullProfileCache={previewCache}
+                fullProfileLoading={false}
+              />
+              <View style={styles.ghostBar}>
+                <View style={styles.ghostAct}>
+                  <X color={Colors.faint} size={20} strokeWidth={2} />
+                </View>
+                <View style={styles.ghostAct}>
+                  <Heart color={Colors.faint} size={20} strokeWidth={2} />
+                </View>
+              </View>
+              <Text style={styles.previewFootnote}>
+                The buttons are for show — this is your card as it deals in
+                sponsor decks.
+              </Text>
+            </>
+          ) : (
+            /* Sponsors appear on their roles' cards as the Vouch — render
+               that section with their real data. */
+            <>
+              <View style={cardStyles.vouchSection}>
+                <Text style={cardStyles.vouchStatement}>
+                  You put your{" "}
+                  <Text style={cardStyles.vouchStatementEm}>name</Text>
+                  {" on the roles you sponsor."}
+                </Text>
+                <View style={cardStyles.vouchIdRow}>
+                  {profileImage ? (
+                    <Image
+                      source={{ uri: profileImage }}
+                      style={cardStyles.vouchAvatar}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View style={cardStyles.vouchAvatarFallback}>
+                      <Text style={cardStyles.vouchAvatarInitial}>
+                        {(name || "?")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={cardStyles.vouchName} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    {!!(sponsorData.role || sponsorData.company) && (
+                      <Text style={cardStyles.vouchRole} numberOfLines={1}>
+                        {sponsorData.role}
+                        {sponsorData.role && sponsorData.company ? " · " : ""}
+                        {sponsorData.company}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                {workEmailVerified && (
+                  <View style={cardStyles.vouchChipsRow}>
+                    <View
+                      style={[
+                        cardStyles.vouchChip,
+                        cardStyles.vouchChipFill,
+                      ]}
+                    >
+                      <Check color={Colors.paper} size={10} strokeWidth={3} />
+                      <Text style={cardStyles.vouchChipFillText}>
+                        VERIFIED
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {profileInsights
+                  .filter((i) => i.question && i.answer)
+                  .map((item) => (
+                    <View key={item.question} style={cardStyles.vouchQuote}>
+                      <Text style={cardStyles.vouchQuoteMark}>“</Text>
+                      <Text style={cardStyles.vouchQuoteText}>
+                        {item.answer}
+                      </Text>
+                      <Text style={cardStyles.kQuoteAttr} numberOfLines={2}>
+                        {item.question.toUpperCase()}
+                      </Text>
+                    </View>
+                  ))}
+              </View>
+              <Text style={styles.previewFootnote}>
+                This vouch appears on every role you sponsor, beneath the job
+                details.
+              </Text>
+            </>
+          )}
+        </>
+      ) : (
+        <>
       <ProfileIdentityCard
         profileImage={profileImage}
         initials={getUserInitials()}
@@ -2016,16 +2368,80 @@ export function ProfileView({ userType }: ProfileViewProps) {
             : applicantData.role
         }
         location={profileData.location}
-        bio={profileData.bio}
-        completionPercentage={profileCompletion.percentage}
-        personalMissingCount={personalMissingCount}
         onOpenImagePicker={openImagePicker}
-        onEditProfile={() => {
-          trackProfileEditOpened({ section: "personal" });
-          setShowEditProfile(true);
-        }}
         photoMissing={isFieldMissing("profileImage")}
       />
+
+      {/* Status ledger — the deck cards' hairline vocabulary. STRENGTH
+          replaces the old avatar completion ring; RÉSUMÉ and PROMPTS are
+          the status + entry points for their editors (the upload
+          pipeline itself stays in the RÉSUMÉ section below). */}
+      <View style={[cardStyles.kLedger, styles.profileLedger]}>
+        <View style={cardStyles.kLedgerRow}>
+          <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+            STRENGTH
+          </Text>
+          <View style={cardStyles.kLedgerValueWrap}>
+            <Text style={cardStyles.kLedgerValue}>
+              {profileCompletion.percentage}%
+            </Text>
+            <Text style={cardStyles.kLedgerValueSub} numberOfLines={2}>
+              {profileCompletion.isComplete
+                ? "Complete — your card deals in full"
+                : `${profileCompletion.missingFields.length} item${
+                    profileCompletion.missingFields.length === 1 ? "" : "s"
+                  } left — finish below`}
+            </Text>
+          </View>
+        </View>
+        {userType === "applicant" && (
+          <TouchableOpacity
+            style={cardStyles.kLedgerRow}
+            onPress={() => {
+              trackProfileEditOpened({ section: "resume" });
+              setShowEditResume(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+              RÉSUMÉ
+            </Text>
+            <View style={cardStyles.kLedgerValueWrap}>
+              <Text style={cardStyles.kLedgerValue}>
+                {resumeLastUpdated ? "On file" : "Not uploaded yet"}
+              </Text>
+              {!!resumeLastUpdated && (
+                <Text style={cardStyles.kLedgerValueSub} numberOfLines={1}>
+                  Updated {formatRelativeTime(resumeLastUpdated)}
+                </Text>
+              )}
+            </View>
+            <View style={{ alignSelf: "center" }}>
+              <ChevronRight size={16} color={Colors.faint} />
+            </View>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={cardStyles.kLedgerRow}
+          onPress={() => {
+            trackProfileEditOpened({ section: "insights" });
+            setShowEditInsights(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+            PROMPTS
+          </Text>
+          <View style={cardStyles.kLedgerValueWrap}>
+            <Text style={cardStyles.kLedgerValue}>
+              {profileInsights.length} of 3 answered
+            </Text>
+          </View>
+          <View style={{ alignSelf: "center" }}>
+            <ChevronRight size={16} color={Colors.faint} />
+          </View>
+        </TouchableOpacity>
+      </View>
 
       <HubSection
         title="Finish Your Profile"
@@ -2042,222 +2458,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
         ))}
       </HubSection>
 
-      {/* Resume Upload Section — Applicant Only */}
-      {userType === "applicant" && (
-        <View style={styles.resumeSection}>
-          <Text style={styles.resumeSectionLabel}>RÉSUMÉ</Text>
-
-          {/* Idle — document card (on file) or dropzone (none) */}
-          {resumeUploadStep === "idle" &&
-            (resumeLastUpdated ? (
-              <>
-                <View style={styles.docCard}>
-                  <View style={styles.docGlyph}>
-                    <FileText size={22} color="#000" strokeWidth={1.75} />
-                  </View>
-                  <View style={styles.docInfo}>
-                    <Text style={styles.docTitle}>Your résumé</Text>
-                    <Text style={styles.docMeta}>
-                      Updated {formatRelativeTime(resumeLastUpdated)}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.docCaption}>
-                  AI keeps your profile in sync with your résumé.
-                </Text>
-                <View style={styles.docActions}>
-                  <TouchableOpacity
-                    style={styles.docReplaceBtn}
-                    onPress={handleResumeUpload}
-                    activeOpacity={0.75}
-                  >
-                    <Upload size={15} color="#000" strokeWidth={2} />
-                    <Text style={styles.docReplaceText}>Replace</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.docEditLink}
-                    onPress={() => {
-                      trackProfileEditOpened({ section: "resume" });
-                      setShowEditResume(true);
-                    }}
-                  >
-                    <Text style={styles.docEditText}>Edit details</Text>
-                    <ChevronRight size={14} color="#BBB" />
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={styles.dropzone}
-                  onPress={handleResumeUpload}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.dropzoneIcon}>
-                    <Upload size={24} color="#000" strokeWidth={2} />
-                  </View>
-                  <Text style={styles.dropzoneTitle}>Upload your résumé</Text>
-                  <Text style={styles.dropzoneSub}>
-                    AI auto-fills your profile · PDF
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.docManualLink}
-                  onPress={() => {
-                    trackProfileEditOpened({ section: "resume" });
-                    setShowEditResume(true);
-                  }}
-                >
-                  <Text style={styles.docEditText}>
-                    Or enter details manually
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ))}
-
-          {/* Uploading state */}
-          {resumeUploadStep === "uploading" && (
-            <View style={styles.resumeProgressCard}>
-              <View style={styles.resumeProgressRow}>
-                <ActivityIndicator color="#000" size="small" />
-                <View style={styles.resumeProgressTextCol}>
-                  <Text style={styles.resumeProgressTitle}>
-                    Uploading your resume...
-                  </Text>
-                  <Text style={styles.resumeProgressSub}>
-                    {resumeElapsedSecs < 6
-                      ? "Reading your file..."
-                      : resumeElapsedSecs < 20
-                        ? "Extracting text..."
-                        : "Taking a bit longer than usual..."}
-                  </Text>
-                </View>
-                <Text style={styles.resumeElapsedText}>
-                  {resumeElapsedSecs}s
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.resumeCancelBtn}
-                onPress={cancelResumeUpload}
-                activeOpacity={0.7}
-              >
-                <X size={12} color="#666" strokeWidth={2.5} />
-                <Text style={styles.resumeCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Analyzing state */}
-          {resumeUploadStep === "analyzing" && (
-            <View style={styles.resumeProgressCard}>
-              <View style={styles.resumeProgressRow}>
-                <ActivityIndicator color="#000" size="small" />
-                <View style={styles.resumeProgressTextCol}>
-                  <Text style={styles.resumeProgressTitle}>
-                    AI is analyzing your resume...
-                  </Text>
-                  <Text style={styles.resumeProgressSub}>
-                    {resumeElapsedSecs < 10
-                      ? "Auto-filling your profile..."
-                      : resumeElapsedSecs < 30
-                        ? "Classifying your experience..."
-                        : resumeElapsedSecs < 60
-                          ? "Almost done..."
-                          : "Hang tight, deep analysis takes a moment..."}
-                  </Text>
-                </View>
-                <Text style={styles.resumeElapsedText}>
-                  {resumeElapsedSecs}s
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.resumeCancelBtn}
-                onPress={cancelResumeUpload}
-                activeOpacity={0.7}
-              >
-                <X size={12} color="#666" strokeWidth={2.5} />
-                <Text style={styles.resumeCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Done state */}
-          {resumeUploadStep === "done" && (
-            <Animated.View
-              entering={FadeInUp.duration(400)}
-              style={styles.resumeSuccessCard}
-            >
-              <View style={styles.resumeSuccessHeader}>
-                <CheckCircle2 size={20} color="#000" strokeWidth={2.5} />
-                <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
-              </View>
-              {resumeFieldsUpdated.length > 0 && (
-                <>
-                  <Text style={styles.resumeSuccessSubtitle}>
-                    AI filled in {resumeFieldsUpdated.length} field
-                    {resumeFieldsUpdated.length !== 1 ? "s" : ""}:
-                  </Text>
-                  <View style={styles.resumeUpdatedFields}>
-                    {resumeFieldsUpdated.map((field) => (
-                      <View key={field} style={styles.resumeFieldPill}>
-                        <Text style={styles.resumeFieldPillText}>
-                          {formatFieldName(field)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
-              <TouchableOpacity
-                style={styles.resumeUploadAgainBtn}
-                onPress={() => setResumeUploadStep("idle")}
-              >
-                <RefreshCw size={14} color="#666" strokeWidth={2} />
-                <Text style={styles.resumeUploadAgainText}>Upload again</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-
-          {/* Error state */}
-          {resumeUploadStep === "error" && (
-            <View style={styles.resumeErrorCard}>
-              <AlertCircle size={18} color="#000" strokeWidth={2} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.resumeErrorTitle}>Upload failed</Text>
-                <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.resumeRetryBtn}
-                onPress={() => setResumeUploadStep("idle")}
-              >
-                <Text style={styles.resumeRetryText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
-
+      {/* Prompts + résumé editing moved up into the status ledger; this
+          group holds the personal-details editor entry. */}
       <HubSection title="Profile">
         <HubRow
-          icon={<MessageSquareQuote color="#000" size={16} strokeWidth={2} />}
-          label="Profile Prompts"
-          value={`${profileInsights.length}/3`}
+          icon={<Edit color="#000" size={16} strokeWidth={2} />}
+          label="Personal Details"
+          badgeCount={personalMissingCount}
           onPress={() => {
-            trackProfileEditOpened({ section: "insights" });
-            setShowEditInsights(true);
+            trackProfileEditOpened({ section: "personal" });
+            setShowEditProfile(true);
           }}
         />
-        {userType === "applicant" && (
-          <HubRow
-            icon={<FileText color="#000" size={16} strokeWidth={2} />}
-            label="Edit Resume Information"
-            badgeCount={professionalMissingCount}
-            onPress={() => {
-              trackProfileEditOpened({ section: "resume" });
-              setShowEditResume(true);
-            }}
-          />
-        )}
       </HubSection>
 
       <HubSection title="Settings">
@@ -2294,6 +2506,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         <LogOut color="#000" size={16} strokeWidth={2} />
         <Text style={styles.logOutText}>Log Out</Text>
       </TouchableOpacity>
+        </>
+      )}
 
       {/* IMAGE PICKER MODAL */}
       <ProfileActionSheet
@@ -2366,6 +2580,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       <ResumeScreen
         visible={showEditResume}
         onClose={() => setShowEditResume(false)}
+        uploadSection={resumeUploadSection}
         professionalMissingCount={professionalMissingCount}
         missingFieldLabels={
           profileCompletion.missingFields
@@ -2458,9 +2673,96 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 140,
   },
+  // ── "Two Faces" page head ─────────────────────────────────────────
+  pageTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 28,
+    lineHeight: 34,
+    color: Colors.ink,
+    letterSpacing: -0.3,
+  },
+  pageTitleEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  segTrack: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    borderRadius: 999,
+    padding: 3,
+    marginTop: 16,
+  },
+  segBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+  segBtnOn: {
+    backgroundColor: Colors.ink,
+  },
+  segText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.muted,
+  },
+  segTextOn: {
+    color: Colors.paper,
+  },
+  profileLedger: {
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  // ── PREVIEW tab chrome ────────────────────────────────────────────
+  liveBand: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.ink,
+  },
+  liveBandText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.6,
+    color: Colors.muted,
+  },
+  ghostBar: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 18,
+    marginTop: 26,
+  },
+  ghostAct: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: Colors.faint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewFootnote: {
+    fontSize: 12.5,
+    fontWeight: "500",
+    color: Colors.muted,
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 14,
+    paddingHorizontal: 12,
+  },
   blackBtn: {
     flexDirection: "row",
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -2491,10 +2793,10 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   entryCard: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     marginBottom: 16,
     overflow: "hidden",
   },
@@ -2517,7 +2819,7 @@ const styles = StyleSheet.create({
   entryCardSubText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
   },
   entryCardActions: {
     flexDirection: "row",
@@ -2535,7 +2837,7 @@ const styles = StyleSheet.create({
   entryFieldLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#666",
+    color: Colors.body,
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginBottom: 4,
@@ -2547,7 +2849,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#000",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   checkboxRow: {
     flexDirection: "row",
@@ -2566,7 +2868,7 @@ const styles = StyleSheet.create({
   resumeSectionLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 14,
@@ -2575,10 +2877,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     padding: 16,
   },
   docGlyph: {
@@ -2587,16 +2889,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   docInfo: { flex: 1, gap: 3 },
   docTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
-  docMeta: { fontSize: 13, color: "#999", fontWeight: "500" },
+  docMeta: { fontSize: 13, color: Colors.muted, fontWeight: "500" },
   docCaption: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 18,
     marginTop: 12,
   },
@@ -2616,46 +2918,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   docReplaceText: { fontSize: 14, fontWeight: "700", color: "#000" },
-  docEditLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    marginLeft: "auto",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  docEditText: { fontSize: 14, fontWeight: "600", color: "#666" },
-  docManualLink: { alignSelf: "center", marginTop: 16, paddingVertical: 6 },
   dropzone: {
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     borderRadius: 18,
     paddingVertical: 32,
     paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: Colors.offWhite,
   },
   dropzoneIcon: {
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
   },
   dropzoneTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
-  dropzoneSub: { fontSize: 13, color: "#999", marginTop: 6 },
+  dropzoneSub: { fontSize: 13, color: Colors.muted, marginTop: 6 },
   resumeProgressCard: {
     flexDirection: "column",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   resumeProgressRow: {
     flexDirection: "row",
@@ -2673,13 +2965,13 @@ const styles = StyleSheet.create({
   },
   resumeProgressSub: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
   resumeElapsedText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#BBB",
+    color: Colors.faint,
     minWidth: 28,
     textAlign: "right",
   },
@@ -2692,18 +2984,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     backgroundColor: "#FFF",
   },
   resumeCancelText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: Colors.body,
   },
   resumeSuccessCard: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     borderRadius: 14,
     padding: 16,
     gap: 10,
@@ -2720,7 +3012,7 @@ const styles = StyleSheet.create({
   },
   resumeSuccessSubtitle: {
     fontSize: 13,
-    color: "#374151",
+    color: Colors.body,
     fontWeight: "600",
   },
   resumeUpdatedFields: {
@@ -2729,12 +3021,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   resumeFieldPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   resumeFieldPillText: {
     fontSize: 11,
@@ -2750,16 +3042,16 @@ const styles = StyleSheet.create({
   },
   resumeUploadAgainText: {
     fontSize: 13,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
   },
   resumeErrorCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     borderRadius: 14,
     padding: 14,
   },
@@ -2771,11 +3063,11 @@ const styles = StyleSheet.create({
   },
   resumeErrorSub: {
     fontSize: 12,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
   },
   resumeRetryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,

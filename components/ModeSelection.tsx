@@ -1,9 +1,13 @@
-import {
-    ArrowLeft,
-    Briefcase,
-    ChevronRight,
-    Handshake,
-} from "@/components/ui/icons";
+// ModeSelection — role choice, rebuilt to the marketing site's editorial
+// card language (index.html's .role-card): each card reads top-to-bottom
+// like a small cover — uppercase eyebrow label, serif title with the
+// site's italic muted accent on the role word, a real description, and a
+// "Continue as X →" CTA line. Replaces the previous icon-circle utility
+// rows, which read as settings-menu chrome rather than a brand moment on
+// what is one of the first screens every new user sees. Cards stagger in
+// and shrink slightly on press (PressableScale), both per the site.
+
+import { ArrowLeft, ArrowRight } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
     SafeAreaView,
@@ -19,11 +23,34 @@ import {
   trackSignUpRoleSelected,
 } from "@/lib/analytics/mixpanel";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { Colors, Fonts, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 interface ModeSelectionProps {
   onSelect: (mode: "applicant" | "sponsor") => void;
   onBack: () => void;
 }
+
+const ROLES = [
+  {
+    mode: "applicant" as const,
+    eyebrow: "I'M LOOKING FOR A JOB",
+    titlePlain: "I'm an ",
+    titleAccent: "Applicant",
+    description:
+      "You want someone on the inside to champion your application. Browse jobs, connect with sponsors, and skip the resume black hole.",
+    cta: "Continue as Applicant",
+  },
+  {
+    mode: "sponsor" as const,
+    eyebrow: "I WORK AT A COMPANY",
+    titlePlain: "I'm a ",
+    titleAccent: "Sponsor",
+    description:
+      "You refer talented people to open roles at your company. Match with candidates you'd vouch for, and make introductions that matter.",
+    cta: "Continue as Sponsor",
+  },
+];
 
 export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
   useEffect(() => {
@@ -39,6 +66,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
     setSelected(mode);
     setUserType(mode);
     trackSignUpRoleSelected(mode);
+    // Brief beat so the selected border registers before navigating.
     setTimeout(() => onSelect(mode), 200);
   };
 
@@ -58,117 +86,49 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
         </TouchableOpacity>
 
         <View style={styles.content}>
-          {/* Header Section - No Spring, just clean Ease Out */}
           <Animated.View
             entering={FadeInDown.duration(500)}
             style={styles.header}
           >
-            <Text style={styles.title}>How will you use{"\n"}BackChannel?</Text>
-            <Text style={styles.subtitle}>Select your role to continue</Text>
+            <Text style={styles.title}>
+              How will you use{"\n"}
+              <Text style={styles.titleAccent}>BackChannel?</Text>
+            </Text>
+            <Text style={styles.subtitle}>
+              Pick the one that matches your real life.
+            </Text>
           </Animated.View>
 
           <View style={styles.cardsContainer}>
-            {/* Applicant Card */}
-            <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-              <TouchableOpacity
-                onPress={() => handleSelect("applicant")}
-                activeOpacity={0.9}
-                style={[
-                  styles.card,
-                  selected === "applicant" && styles.cardSelected,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: selected === "applicant" }}
+            {ROLES.map((role, i) => (
+              <Animated.View
+                key={role.mode}
+                entering={FadeInDown.delay(120 + i * 120).duration(500)}
               >
-                <View style={styles.cardMain}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      selected === "applicant" && styles.iconCircleSelected,
-                    ]}
-                  >
-                    <Briefcase
-                      color={selected === "applicant" ? "#FFF" : "#000"}
-                      size={22}
-                      strokeWidth={2}
-                    />
-                  </View>
-                  <View style={styles.textContainer}>
-                    <Text
-                      style={[
-                        styles.cardTitle,
-                        selected === "applicant" && styles.textSelected,
-                      ]}
-                    >
-                      I'm an Applicant
+                <PressableScale
+                  onPress={() => handleSelect(role.mode)}
+                  style={[
+                    styles.card,
+                    selected === role.mode && styles.cardSelected,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selected === role.mode }}
+                >
+                  <Text style={styles.cardEyebrow}>{role.eyebrow}</Text>
+                  <Text style={styles.cardTitle}>
+                    {role.titlePlain}
+                    <Text style={styles.cardTitleAccent}>
+                      {role.titleAccent}
                     </Text>
-                    <Text
-                      style={[
-                        styles.cardDescription,
-                        selected === "applicant" && styles.textSelectedMuted,
-                      ]}
-                    >
-                      I want to find referrals and land my next role.
-                    </Text>
+                  </Text>
+                  <Text style={styles.cardDescription}>{role.description}</Text>
+                  <View style={styles.cardCtaRow}>
+                    <Text style={styles.cardCta}>{role.cta}</Text>
+                    <ArrowRight color={Colors.ink} size={15} strokeWidth={2.4} />
                   </View>
-                </View>
-                <ChevronRight
-                  color={selected === "applicant" ? "#FFF" : "#CCC"}
-                  size={18}
-                />
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Sponsor Card */}
-            <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-              <TouchableOpacity
-                onPress={() => handleSelect("sponsor")}
-                activeOpacity={0.9}
-                style={[
-                  styles.card,
-                  selected === "sponsor" && styles.cardSelected,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: selected === "sponsor" }}
-              >
-                <View style={styles.cardMain}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      selected === "sponsor" && styles.iconCircleSelected,
-                    ]}
-                  >
-                    <Handshake
-                      color={selected === "sponsor" ? "#FFF" : "#000"}
-                      size={22}
-                      strokeWidth={2}
-                    />
-                  </View>
-                  <View style={styles.textContainer}>
-                    <Text
-                      style={[
-                        styles.cardTitle,
-                        selected === "sponsor" && styles.textSelected,
-                      ]}
-                    >
-                      I'm a Sponsor
-                    </Text>
-                    <Text
-                      style={[
-                        styles.cardDescription,
-                        selected === "sponsor" && styles.textSelectedMuted,
-                      ]}
-                    >
-                      I want to refer talent and help others grow.
-                    </Text>
-                  </View>
-                </View>
-                <ChevronRight
-                  color={selected === "sponsor" ? "#FFF" : "#CCC"}
-                  size={18}
-                />
-              </TouchableOpacity>
-            </Animated.View>
+                </PressableScale>
+              </Animated.View>
+            ))}
           </View>
         </View>
 
@@ -200,86 +160,89 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   header: {
-    marginBottom: 44,
+    marginBottom: 36,
   },
   title: {
-    fontSize: 34,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1.2,
-    lineHeight: 40,
+    ...Type.display,
+    color: Colors.ink,
+  },
+  // The site's .hero-title em rule — the accent word is italic + muted.
+  titleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   subtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 17,
-    color: "#666",
+    lineHeight: 25,
+    color: Colors.body,
     marginTop: 12,
-    fontWeight: "400",
   },
   cardsContainer: {
-    gap: 12,
+    gap: 14,
   },
+  // The site's .role-card: off-white, hairline border, generous radius,
+  // left-aligned editorial column.
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FBFBFB",
-    padding: 24,
-    borderRadius: 24,
+    backgroundColor: Colors.offWhite,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    justifyContent: "space-between",
+    borderColor: Colors.border,
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   cardSelected: {
-    backgroundColor: "#000000", // Brand Black
-    borderColor: "#000000",
+    borderColor: Colors.ink,
   },
-  cardMain: {
+  // .role-label — tiny uppercase eyebrow.
+  cardEyebrow: {
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: Colors.faint,
+    marginBottom: 6,
+  },
+  // .role-title — serif with italic muted accent on the role word.
+  cardTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    lineHeight: 29,
+    color: Colors.ink,
+    marginBottom: 10,
+  },
+  cardTitleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  // .role-desc
+  cardDescription: {
+    fontSize: 13,
+    color: Colors.body,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  // .role-cta — "Continue as X" + arrow.
+  cardCtaRow: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
+    gap: 6,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  iconCircleSelected: {
-    backgroundColor: "#222", // Slightly lighter black for icon visibility
-    borderColor: "#333",
-  },
-  textContainer: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 18,
+  cardCta: {
+    fontSize: 13,
     fontWeight: "600",
-    color: "#000",
-    letterSpacing: -0.3,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  textSelected: {
-    color: "#FFFFFF",
-  },
-  textSelectedMuted: {
-    color: "#AAAAAA",
+    color: Colors.ink,
+    letterSpacing: -0.1,
   },
   footer: {
     alignItems: "center",
     paddingBottom: 24,
   },
+  // Matches the site's faint/label token.
   footerText: {
     fontSize: 11,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 1.5,

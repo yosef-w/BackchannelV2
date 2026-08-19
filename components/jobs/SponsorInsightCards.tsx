@@ -17,6 +17,7 @@ import {
     View,
 } from "react-native";
 import { CharCounter } from "../ui/CharCounter";
+import { Colors } from "@/constants/theme";
 
 // ─── Sponsor insight prompts ──────────────────────────────────────────────
 // The four open-ended questions a sponsor answers when sponsoring a job.
@@ -152,7 +153,7 @@ export function SponsorInsightCards({
               style={engaged ? styles.siIconCircleActive : styles.siIconCircle}
             >
               <Icon
-                color={engaged ? "#FFF" : "#999"}
+                color={engaged ? "#FFF" : Colors.muted}
                 size={16}
                 strokeWidth={2.2}
               />
@@ -172,7 +173,7 @@ export function SponsorInsightCards({
                 onPress={collapse}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <ChevronUp color="#999" size={20} strokeWidth={2.2} />
+                <ChevronUp color={Colors.muted} size={20} strokeWidth={2.2} />
               </TouchableOpacity>
             ) : filled ? (
               <Text style={styles.siEditText}>Edit</Text>
@@ -192,7 +193,7 @@ export function SponsorInsightCards({
               <TextInput
                 style={styles.siInput}
                 placeholder={field.placeholder}
-                placeholderTextColor="#AAA"
+                placeholderTextColor={Colors.faint}
                 value={value}
                 onChangeText={(t) => onChange(field.key, t)}
                 multiline
@@ -265,65 +266,63 @@ const styles = StyleSheet.create({
   siProgress: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#AAA",
+    color: Colors.faint,
     letterSpacing: 0.3,
     marginBottom: 2,
   },
+  // Bounded editor cards — paper + hairline, no shadows (the rebrand
+  // retired elevation everywhere).
   siCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: Colors.paper,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: Colors.border,
     paddingVertical: 16,
     paddingHorizontal: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 1,
   },
   siCardActive: {
-    borderColor: "#000",
-    shadowOpacity: 0.1,
+    borderColor: Colors.ink,
+    borderWidth: 1.5,
   },
-  siCardFilled: { borderColor: "#E0E0E0" },
+  siCardFilled: { borderColor: Colors.border },
   siAccent: {
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
     width: 3,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   siHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   siHeaderText: { flex: 1 },
+  // Square tiles — the house ID language.
   siIconCircle: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: "#F4F4F4",
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   siIconCircleActive: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: "#000",
+    borderRadius: 12,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   siTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#111",
+    color: Colors.ink,
     letterSpacing: -0.2,
   },
-  siSubtitle: { fontSize: 13, color: "#999", marginTop: 2, lineHeight: 18 },
+  siSubtitle: { fontSize: 13, color: Colors.muted, marginTop: 2, lineHeight: 18 },
   siPreview: {
     fontSize: 14,
-    color: "#333",
+    color: Colors.body,
     marginTop: 4,
     lineHeight: 20,
     fontWeight: "500",
@@ -331,14 +330,14 @@ const styles = StyleSheet.create({
   siEditText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginLeft: 8,
   },
   siPlusCircle: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
@@ -346,19 +345,19 @@ const styles = StyleSheet.create({
   siInput: {
     marginTop: 14,
     minHeight: 120,
-    backgroundColor: "#F8F8F8",
-    borderRadius: 14,
+    backgroundColor: Colors.paper,
+    borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     lineHeight: 22,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   siChipHint: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
     marginTop: 16,
     marginBottom: 2,
   },
@@ -375,12 +374,12 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: Colors.border,
   },
-  siChipActive: { backgroundColor: "#000", borderColor: "#000" },
-  siChipText: { fontSize: 13, fontWeight: "600", color: "#333" },
+  siChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
+  siChipText: { fontSize: 13, fontWeight: "600", color: Colors.body },
   siChipTextActive: { color: "#FFF" },
   siDoneBtn: {
     flexDirection: "row",
@@ -389,8 +388,8 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 16,
     height: 46,
-    borderRadius: 23,
-    backgroundColor: "#000",
+    borderRadius: 999,
+    backgroundColor: Colors.ink,
   },
   siDoneBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
 });

@@ -28,10 +28,11 @@ import {
 } from "@/lib/api";
 import { formatSalary } from "@/types/jobs";
 import type { BrowseJobResponse } from "@/types/jobs";
-import { Check, Heart, Info, MapPin, Search, X } from "@/components/ui/icons";
+import { Check, Heart, MapPin, Search, X } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Keyboard,
   Modal,
   ScrollView,
   StatusBar,
@@ -41,7 +42,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import Animated, {
+  ZoomIn, FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
 import {
   BarFooter,
@@ -49,6 +51,7 @@ import {
   PosterHero,
   ReadMoreText,
   SectionCard,
+  SkillChips,
   SkeletonCard,
   StatStrip,
 } from "./matches/JobSheetKit";
@@ -57,6 +60,10 @@ import {
   SheetScrollView,
 } from "./ui/DismissibleSheet";
 import { CompanyLogo } from "./ui/CompanyLogo";
+import { MarketplaceGateModal } from "./jobs/MarketplaceGateModal";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { PREMIUM_ENABLED } from "@/constants/config";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 function parseSkillsField(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -246,6 +253,20 @@ export function ApplicantJobsBrowseView() {
   );
   const [waitlistedIds, setWaitlistedIds] = useState<Set<string>>(new Set());
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  // Premium velvet rope: browsing/searching stays free — ACTIONS are the
+  // members' privilege. Non-null = the gate sheet is up, holding the
+  // action the user attempted; a successful in-gate purchase runs it.
+  // Inert while PREMIUM_ENABLED is false (isPremium is hardwired false
+  // then, but the guard checks the flag first so behavior is unchanged).
+  const [gateAction, setGateAction] = useState<(() => void) | null>(null);
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+  const guardPremium = (action: () => void) => {
+    if (PREMIUM_ENABLED && !isPremium) {
+      setGateAction(() => action);
+      return;
+    }
+    action();
+  };
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
   // total_count powers "View more"'s visibility + remaining-count label.
@@ -401,23 +422,25 @@ export function ApplicantJobsBrowseView() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Browse Jobs</Text>
+        <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
+          <Text style={styles.title}>
+            The <Text style={styles.titleEm}>marketplace.</Text>
+          </Text>
           <Text style={styles.subtitle}>
             Search beyond your daily deck — join a waitlist or request a
             sponsor for any open role.
           </Text>
-        </View>
+        </Animated.View>
 
         {/* Search — as-you-type, with clear buttons; no Search button to
             hunt for. */}
         <View style={styles.searchStack}>
           <View style={styles.searchInputWrap}>
-            <Search size={17} color="#6B7280" strokeWidth={2.2} />
+            <Search size={17} color={Colors.body} strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
               placeholder="Role, company, or skill"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.muted}
               value={titleQuery}
               onChangeText={setTitleQuery}
               returnKeyType="search"
@@ -430,16 +453,16 @@ export function ApplicantJobsBrowseView() {
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="Clear role search"
               >
-                <X size={15} color="#9CA3AF" />
+                <X size={15} color={Colors.muted} />
               </TouchableOpacity>
             )}
           </View>
           <View style={styles.searchInputWrap}>
-            <MapPin size={17} color="#6B7280" strokeWidth={2.2} />
+            <MapPin size={17} color={Colors.body} strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
               placeholder={'Location (or "remote")'}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.muted}
               value={locationQuery}
               onChangeText={setLocationQuery}
               returnKeyType="search"
@@ -452,7 +475,7 @@ export function ApplicantJobsBrowseView() {
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="Clear location search"
               >
-                <X size={15} color="#9CA3AF" />
+                <X size={15} color={Colors.muted} />
               </TouchableOpacity>
             )}
           </View>
@@ -461,8 +484,7 @@ export function ApplicantJobsBrowseView() {
         {/* Sample-data banner — honest about §R until the backend serves
             applicant callers. */}
         {showingSamples && !loading && jobs.length > 0 && (
-          <Animated.View entering={FadeIn} style={styles.sampleBanner}>
-            <Info size={13} color="#6B7280" strokeWidth={2.2} />
+          <Animated.View entering={FadeIn}>
             <Text style={styles.sampleBannerText}>
               Sample listings — live roles are coming soon.
             </Text>
@@ -478,7 +500,7 @@ export function ApplicantJobsBrowseView() {
         ) : jobs.length === 0 ? (
           <View style={styles.centerBlock}>
             <View style={styles.emptyIconCircle}>
-              <Search size={26} color="#9CA3AF" strokeWidth={2} />
+              <Search size={26} color={Colors.muted} strokeWidth={2} />
             </View>
             <Text style={styles.emptyTitle}>No roles found</Text>
             <Text style={styles.emptySub}>
@@ -486,7 +508,16 @@ export function ApplicantJobsBrowseView() {
             </Text>
           </View>
         ) : (
-          jobs.map((job, index) => {
+          <>
+          {/* The market's size, stated — then the classifieds rules. */}
+          <Text style={styles.countLine}>
+            {(showingSamples ? jobs.length : totalCount) || jobs.length} OPEN
+            {" "}ROLE
+            {((showingSamples ? jobs.length : totalCount) || jobs.length) === 1
+              ? ""
+              : "S"}
+          </Text>
+          {jobs.map((job, index) => {
             const isDone =
               waitlistedIds.has(job.JOB_ID) || likedIds.has(job.JOB_ID);
             const doneLabel = likedIds.has(job.JOB_ID)
@@ -499,20 +530,26 @@ export function ApplicantJobsBrowseView() {
               >
                 <TouchableOpacity
                   style={styles.jobCard}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedJob(job)}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    // The search keyboard may be up — drop it so the
+                    // detail sheet gets the whole bottom half.
+                    Keyboard.dismiss();
+                    setSelectedJob(job);
+                  }}
                 >
-                  <View style={styles.jobCardLogoTile}>
-                    <CompanyLogo
-                      logoUrl={job.ORGANIZATION_LOGO ?? undefined}
-                      name={job.ORGANIZATION}
-                      size={40}
-                      borderRadius={12}
-                      initialFontSize={17}
-                    />
-                  </View>
+                  <CompanyLogo
+                    logoUrl={job.ORGANIZATION_LOGO ?? undefined}
+                    name={job.ORGANIZATION}
+                    size={44}
+                    borderRadius={12}
+                    initialFontSize={18}
+                  />
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.jobCardTitle} numberOfLines={1}>
+                    {/* Two lines before truncating — real titles ("Senior
+                        Staff Software Engineer, Infrastructure") lose
+                        their meaning cut at one. */}
+                    <Text style={styles.jobCardTitle} numberOfLines={2}>
                       {job.TITLE}
                     </Text>
                     <Text style={styles.jobCardCompany} numberOfLines={1}>
@@ -520,28 +557,32 @@ export function ApplicantJobsBrowseView() {
                       {job.FULL_LOCATION ? ` · ${job.FULL_LOCATION}` : ""}
                       {job.IS_REMOTE ? " · Remote" : ""}
                     </Text>
-                    {!!(job.SALARY_ANNUAL_MIN || job.SALARY_ANNUAL_MAX) && (
-                      <Text style={styles.jobCardSalary} numberOfLines={1}>
-                        {formatSalary(
-                          job.SALARY_ANNUAL_MIN,
-                          job.SALARY_ANNUAL_MAX,
-                          job.SALARY_CURRENCY,
-                        ).replace(" - ", "–")}
-                      </Text>
-                    )}
                   </View>
-                  {isDone && (
-                    <View style={styles.waitlistedPill}>
-                      <Check size={10} color="#3B4353" strokeWidth={3} />
-                      <Text style={styles.waitlistedPillText}>
-                        {doneLabel}
+                  {/* Right column: the done-state, or the price in serif. */}
+                  {isDone ? (
+                    <Animated.View
+                      entering={ZoomIn.duration(240)}
+                      style={styles.doneChip}
+                    >
+                      <Check size={10} color={Colors.muted} strokeWidth={3} />
+                      <Text style={styles.doneChipText}>
+                        {doneLabel.toUpperCase()}
                       </Text>
-                    </View>
-                  )}
+                    </Animated.View>
+                  ) : job.SALARY_ANNUAL_MIN || job.SALARY_ANNUAL_MAX ? (
+                    <Text style={styles.jobRowSalary} numberOfLines={1}>
+                      {formatSalary(
+                        job.SALARY_ANNUAL_MIN,
+                        job.SALARY_ANNUAL_MAX,
+                        job.SALARY_CURRENCY,
+                      ).replace(" - ", "–")}
+                    </Text>
+                  ) : null}
                 </TouchableOpacity>
               </Animated.View>
             );
-          })
+          })}
+          </>
         )}
 
         {/* View More — real offset pagination: fetch the next page and
@@ -585,7 +626,7 @@ export function ApplicantJobsBrowseView() {
               style={[styles.detailSheet, canvasSheet]}
             >
               <SheetScrollView
-                style={{ flexShrink: 1 }}
+                style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 16 }}
               >
                 <PosterHero
@@ -598,22 +639,19 @@ export function ApplicantJobsBrowseView() {
                   onClose={closeDetail}
                 />
                 <StatStrip stats={detailStats} />
-                {detailSkills.length > 0 && (
-                  <SectionCard title="Skills">
-                    <View style={styles.skillsRow}>
-                      {detailSkills.map((skill) => (
-                        <View key={skill} style={styles.skillBadge}>
-                          <Text style={styles.skillBadgeText}>{skill}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </SectionCard>
-                )}
+                {/* Description first — it's what a candidate reads to
+                    decide (PM feedback); the ATS skill wall follows,
+                    capped by SkillChips. */}
                 {!!selectedJob.DESCRIPTION_TEXT && (
                   <SectionCard title="About the Role">
                     <ReadMoreText
                       text={cleanJobText(selectedJob.DESCRIPTION_TEXT)}
                     />
+                  </SectionCard>
+                )}
+                {detailSkills.length > 0 && (
+                  <SectionCard title="Skills">
+                    <SkillChips skills={detailSkills} />
                   </SectionCard>
                 )}
               </SheetScrollView>
@@ -667,7 +705,8 @@ export function ApplicantJobsBrowseView() {
                     icon: <Heart color="#FFF" size={16} strokeWidth={2.5} />,
                     loading: isRequesting,
                     spinnerOnLoading: true,
-                    onPress: () => handleLikeSponsored(selectedJob),
+                    onPress: () =>
+                      guardPremium(() => handleLikeSponsored(selectedJob)),
                   }}
                 />
               ) : (
@@ -676,12 +715,21 @@ export function ApplicantJobsBrowseView() {
                     label: "Get a Sponsor",
                     loading: isRequesting,
                     spinnerOnLoading: true,
-                    onPress: () => handleRequestSponsor(selectedJob),
+                    onPress: () =>
+                      guardPremium(() => handleRequestSponsor(selectedJob)),
                   }}
                 />
               )}
             </DismissibleSheet>
           )}
+
+          {/* Rendered inside the detail Modal so it stacks above the
+              sheet (a sibling outside the Modal never would). */}
+          <MarketplaceGateModal
+            visible={!!gateAction}
+            onClose={() => setGateAction(null)}
+            onUnlocked={() => gateAction?.()}
+          />
         </View>
       </Modal>
     </View>
@@ -695,25 +743,30 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
   header: { marginBottom: 18 },
   title: {
+    ...Type.title,
     fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.8,
+    lineHeight: 32,
+    color: Colors.ink,
   },
-  subtitle: { fontSize: 14, color: "#6B7280", marginTop: 6, lineHeight: 20 },
-  searchStack: { gap: 8, marginBottom: 14 },
-  // Filled + visibly bordered so the fields read as THE control on a
-  // white screen instead of blending into the result cards around them.
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
+  subtitle: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 14,
+    color: Colors.body,
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  searchStack: { marginBottom: 4 },
+  // Letterpress rule-line inputs (AC "Listings") — no filled boxes; each
+  // field is a hairline underline, the classifieds' own vocabulary.
   searchInputWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F3F5F9",
-    borderWidth: 1.5,
-    borderColor: "rgba(15,23,42,0.10)",
-    borderRadius: 16,
-    paddingHorizontal: 15,
-    height: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingHorizontal: 2,
+    height: 48,
   },
   searchInput: {
     flex: 1,
@@ -727,18 +780,13 @@ const styles = StyleSheet.create({
     textAlignVertical: "center",
     includeFontPadding: false,
   },
-  sampleBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    backgroundColor: "#F0F2F7",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    marginBottom: 12,
+  // Serif-italic footnote — honest, quiet, editorial.
+  sampleBannerText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 13,
+    color: Colors.muted,
+    marginTop: 10,
   },
-  sampleBannerText: { fontSize: 12, fontWeight: "700", color: "#6B7280" },
   centerBlock: {
     alignItems: "center",
     paddingVertical: 60,
@@ -747,61 +795,79 @@ const styles = StyleSheet.create({
   emptyIconCircle: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    backgroundColor: "#F0F2F7",
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 17, fontWeight: "800", color: "#000" },
+  // Below the serif's ~18px floor (constants/theme.ts) — too small to read
+  // cleanly in DM Serif Display, so this keeps the system font, token color only.
+  emptyTitle: { fontSize: 17, fontWeight: "800", color: Colors.ink },
   emptySub: {
     fontSize: 13,
-    color: "#6B7280",
+    color: Colors.body,
     textAlign: "center",
     marginTop: 6,
     lineHeight: 18,
   },
-  // Floating white cards on the canvas — same object language as the
-  // Gallery sheets' rows.
+  // The market's size, stated — doubles as the list's top rule.
+  countLine: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginTop: 18,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  // Flat classifieds rows between hairlines (AC "Listings") — the cards,
+  // shadows, and recessed logo tiles retire.
   jobCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
-    borderRadius: 18,
-    padding: 13,
-    marginBottom: 10,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  jobCardLogoTile: {
-    padding: 5,
-    borderRadius: 14,
-    backgroundColor: "#F6F7F9",
-  },
-  jobCardTitle: { fontSize: 15, fontWeight: "800", color: "#000" },
-  jobCardCompany: { fontSize: 12.5, color: "#6B7280", marginTop: 2 },
-  jobCardSalary: {
-    fontSize: 12.5,
+  jobCardTitle: {
+    fontSize: 14.5,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
+    lineHeight: 19,
+  },
+  // Company · location in the caps ledger-key voice.
+  jobCardCompany: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: Colors.body,
     marginTop: 3,
   },
-  waitlistedPill: {
+  // The price, in serif — the site's stat-number language.
+  jobRowSalary: {
+    fontFamily: Fonts.serif,
+    fontSize: 14.5,
+    color: Colors.ink,
+    marginLeft: 8,
+  },
+  doneChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F2F7",
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    marginLeft: 8,
   },
-  waitlistedPillText: { fontSize: 10, fontWeight: "800", color: "#3B4353" },
+  doneChipText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.muted,
+  },
   detailOverlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -810,26 +876,17 @@ const styles = StyleSheet.create({
   detailSheet: {
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    // Absolute px — a % maxHeight resolves against DismissibleSheet's
-    // content-sized gesture-root wrapper and floats the sheet off the
-    // bottom of the screen.
-    maxHeight: Dimensions.get("window").height * 0.88,
+    // Fixed (not max) height — same stuck-sheet class as the Matches
+    // sheets: a fixed frame presents full-height from the first frame
+    // and nothing can clip outside the scroll. Absolute px — a % would
+    // resolve against DismissibleSheet's content-sized gesture root.
+    height: Dimensions.get("window").height * 0.88,
   },
+  // Quiet centered link — the ledger's "there is more" note.
   viewMoreBtn: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#F0F2F7",
-    marginTop: 4,
+    paddingVertical: 16,
   },
-  viewMoreText: { fontSize: 13, fontWeight: "800", color: "#000" },
-  skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  skillBadge: {
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    backgroundColor: "#F0F2F7",
-    borderRadius: 999,
-  },
-  skillBadgeText: { fontSize: 11, fontWeight: "700", color: "#000" },
+  viewMoreText: { fontSize: 13, fontWeight: "700", color: Colors.muted },
 });

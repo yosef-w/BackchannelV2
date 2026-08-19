@@ -1,6 +1,7 @@
 import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface HubRowProps {
   icon: React.ReactNode;
@@ -51,57 +52,54 @@ export function HubRow({
           <Text style={styles.badgeText}>{badgeCount}</Text>
         </View>
       )}
-      {!destructive && <ChevronRight size={18} color="#CCC" />}
+      {!destructive && <ChevronRight size={18} color={Colors.faint} />}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  // 2026-08 "Two Faces" rebrand — flat hairline rows on the paper (no
+  // gray tiles/recesses); every row keeps its bottom rule so the group
+  // reads as a ledger.
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingVertical: 14,
     gap: 12,
-  },
-  rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
+  rowDivider: {},
   iconTile: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#F0F0F0",
+    width: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconTileDestructive: {
-    backgroundColor: "#FEF2F2",
-  },
+  iconTileDestructive: {},
   label: {
     flex: 1,
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   labelDestructive: {
-    color: "#DC2626",
+    color: Colors.danger,
     fontWeight: "700",
   },
+  // Serif trailing value — the site's stat-number language.
   value: {
-    fontSize: 13,
-    color: "#999",
-    fontWeight: "500",
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    color: Colors.muted,
   },
   badge: {
     minWidth: 20,
     height: 20,
     paddingHorizontal: 5,
     borderRadius: 10,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
+  badgeText: { fontSize: 11, fontWeight: "800", color: Colors.paper },
 });

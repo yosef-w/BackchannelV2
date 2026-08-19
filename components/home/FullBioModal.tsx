@@ -13,6 +13,7 @@ import {
   DismissibleSheet,
   SheetScrollView,
 } from "../ui/DismissibleSheet";
+import { Colors, Type } from "@/constants/theme";
 
 interface FullBioModalProps {
   visible: boolean;
@@ -69,7 +70,7 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                backgroundColor: "#F5F5F5",
+                backgroundColor: Colors.surface,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -79,10 +80,8 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
             <View>
               <Text
                 style={{
-                  fontSize: 22,
-                  fontWeight: "800",
-                  color: "#000",
-                  letterSpacing: -0.5,
+                  ...Type.heading,
+                  color: Colors.ink,
                 }}
               >
                 About
@@ -91,7 +90,7 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
                 style={{
                   fontSize: 13,
                   fontWeight: "600",
-                  color: "#999",
+                  color: Colors.muted,
                   marginTop: 2,
                 }}
               >
@@ -104,7 +103,7 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
             style={{
               width: 36,
               height: 36,
-              backgroundColor: "#F5F5F5",
+              backgroundColor: Colors.surface,
               borderRadius: 18,
               alignItems: "center",
               justifyContent: "center",
@@ -113,14 +112,14 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <X color="#666" size={18} />
+            <X color={Colors.body} size={18} />
           </TouchableOpacity>
         </View>
 
         <View
           style={{
             height: 1,
-            backgroundColor: "#F0F0F0",
+            backgroundColor: Colors.border,
             marginHorizontal: 28,
             marginVertical: 20,
           }}
@@ -134,7 +133,7 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
             style={{
               fontSize: 16,
               lineHeight: 26,
-              color: "#444",
+              color: Colors.body,
               fontWeight: "500",
               letterSpacing: -0.2,
             }}

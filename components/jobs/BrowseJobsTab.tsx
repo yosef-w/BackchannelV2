@@ -19,6 +19,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { JobCard } from "./JobCard";
 import { JobsEmptyState } from "./JobsEmptyState";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface BrowseJobsTabProps {
   jobs: Job[];
@@ -116,7 +117,7 @@ export function BrowseJobsTab({
                   {applying ? (
                     <ActivityIndicator size="small" color="#000" />
                   ) : (
-                    <ChevronRight size={18} color="#BBB" />
+                    <ChevronRight size={18} color={Colors.faint} />
                   )}
                 </TouchableOpacity>
               );
@@ -161,11 +162,11 @@ export function BrowseJobsTab({
   return (
     <>
       <View style={styles.searchWrap}>
-        <Search size={16} color="#999" />
+        <Search size={16} color={Colors.muted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search roles or locations"
-          placeholderTextColor="#BBB"
+          placeholderTextColor={Colors.faint}
           value={searchQuery}
           onChangeText={onSetSearchQuery}
           autoCapitalize="none"
@@ -177,7 +178,7 @@ export function BrowseJobsTab({
             onPress={() => onSetSearchQuery("")}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <X size={16} color="#999" />
+            <X size={16} color={Colors.muted} />
           </TouchableOpacity>
         )}
       </View>
@@ -199,6 +200,12 @@ export function BrowseJobsTab({
                   : "You're sponsoring every open role at your company"}
               </Text>
             </View>
+          )}
+          {availableJobs.length > 0 && (
+            <Text style={styles.countLine} numberOfLines={1}>
+              {availableJobs.length} OPEN
+              {sponsorCompany ? ` AT ${sponsorCompany.toUpperCase()}` : " ROLES"}
+            </Text>
           )}
           {availableJobs.slice(0, displayLimit).map((job, index) => (
             <Animated.View
@@ -239,15 +246,13 @@ export function BrowseJobsTab({
                 <Text style={styles.sponsoredToggleText}>
                   ALREADY SPONSORING
                 </Text>
-                <View style={styles.sponsoredTogglePill}>
-                  <Text style={styles.sponsoredTogglePillText}>
-                    {sponsoredInBrowse.length}
-                  </Text>
-                </View>
                 <View style={{ flex: 1 }} />
+                <Text style={styles.sponsoredTogglePillText}>
+                  {sponsoredInBrowse.length}
+                </Text>
                 <ChevronRight
                   size={16}
-                  color="#BBB"
+                  color={Colors.faint}
                   style={
                     showSponsoredInBrowse && {
                       transform: [{ rotate: "90deg" }],
@@ -284,23 +289,22 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 18,
   },
   didYouMeanTitle: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 19,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.3,
     marginBottom: 8,
     paddingHorizontal: 12,
   },
   didYouMeanSub: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 22,
@@ -311,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     overflow: "hidden",
   },
   didYouMeanRow: {
@@ -321,19 +325,19 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   didYouMeanRowText: { flex: 1, minWidth: 0 },
-  didYouMeanRowName: { fontSize: 15, fontWeight: "700", color: "#111" },
+  didYouMeanRowName: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   didYouMeanRowMeta: {
     fontSize: 12,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     marginTop: 1,
   },
   didYouMeanFootnote: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
     marginTop: 22,
@@ -341,7 +345,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   didYouMeanCreateBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 14,
@@ -352,63 +356,64 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.2,
   },
+  // Letterpress rule-line input — matches the applicant marketplace.
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingHorizontal: 12,
-    height: 42,
-    marginBottom: 16,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingHorizontal: 2,
+    height: 46,
+    marginTop: 6,
   },
-  searchInput: { flex: 1, fontSize: 14, color: "#000" },
+  // The market's size, stated — anchors where the list begins and keeps
+  // the search from bleeding into the rows.
+  countLine: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  searchInput: { flex: 1, fontSize: 15, fontWeight: "500", color: Colors.ink },
   noMatchesWrap: { paddingVertical: 32, alignItems: "center" },
-  noMatchesText: { fontSize: 14, color: "#999", fontWeight: "600" },
+  noMatchesText: { fontSize: 14, color: Colors.muted, fontWeight: "600" },
+  // Quiet centered link — the ledger's "there is more" note.
   loadMoreBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
     paddingVertical: 16,
-    paddingHorizontal: 24,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    marginTop: 16,
-    marginBottom: 20,
-    borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    marginBottom: 8,
   },
   loadMoreText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-    letterSpacing: -0.2,
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.muted,
   },
+  // Collapsed drawer row — the inbox archive's language (hairline top
+  // rule, serif count).
   sponsoredToggle: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 12,
-    marginTop: 8,
-    marginBottom: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingVertical: 14,
+    marginTop: 20,
   },
   sponsoredToggleText: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
   },
-  sponsoredTogglePill: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 5,
-    borderRadius: 9,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
+  sponsoredTogglePillText: {
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    color: Colors.faint,
   },
-  sponsoredTogglePillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
 });

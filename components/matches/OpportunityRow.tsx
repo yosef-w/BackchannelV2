@@ -1,6 +1,7 @@
 import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface OpportunityRowProps {
   onPress: () => void;
@@ -90,7 +91,7 @@ export function OpportunityRow({
             </View>
           )
         ) : (
-          (right ?? <ChevronRight size={18} color="#CCC" />)
+          (right ?? <ChevronRight size={18} color={Colors.faint} />)
         )}
       </View>
     </TouchableOpacity>
@@ -108,22 +109,22 @@ export function MetaLine({ icon, text }: { icon?: React.ReactNode; text: string 
 }
 
 const styles = StyleSheet.create({
+  // Docket rebrand — flat rows on the paper; every row keeps its bottom
+  // rule so the group reads as a ledger.
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
     gap: 12,
-  },
-  rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
+  rowDivider: {},
   info: { flex: 1, gap: 2 },
-  title: { fontSize: 15, fontWeight: "700", color: "#000" },
-  titleMuted: { color: "#999" },
-  subtitle: { fontSize: 12, color: "#888", fontWeight: "500" },
-  subtitleMuted: { color: "#BBB" },
+  title: { fontSize: 14.5, fontWeight: "700", color: Colors.ink },
+  titleMuted: { color: Colors.muted },
+  subtitle: { fontSize: 12, color: Colors.muted, fontWeight: "500" },
+  subtitleMuted: { color: Colors.faint },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -131,12 +132,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   trailing: { alignItems: "flex-end", justifyContent: "center" },
+  // The row's one filled accent — caps micro-pill.
   ctaPill: {
-    backgroundColor: "#000",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: Colors.ink,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 999,
   },
-  ctaText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
-  metaText: { fontSize: 11, color: "#999", fontWeight: "600" },
+  ctaText: {
+    color: Colors.paper,
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  metaText: { fontSize: 11, color: Colors.muted, fontWeight: "600" },
 });

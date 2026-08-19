@@ -33,6 +33,7 @@ import { PlacesAutocomplete } from "../ui/PlacesAutocomplete";
 import { EditorScreen } from "./EditorScreen";
 import { SaveStatusPill } from "./SaveStatusPill";
 import { useAutosaveStatus } from "./useAutosaveStatus";
+import { Colors } from "@/constants/theme";
 
 interface Props {
   visible: boolean;
@@ -263,11 +264,11 @@ export function EditProfileScreen({
           />
         ) : (
           <View style={styles.locationInputWrap}>
-            <MapPin color="#AAA" size={18} />
+            <MapPin color={Colors.faint} size={18} />
             <TextInput
               style={styles.locationInput}
               placeholder="e.g., San Francisco, CA"
-              placeholderTextColor="#BBB"
+              placeholderTextColor={Colors.faint}
               value={local.location}
               onChangeText={set("location")}
               onBlur={() => run(() => onSaveLocation(local.location))}
@@ -443,7 +444,7 @@ function LockedField({
       </View>
       <View style={[styles.input, styles.lockedInput]}>
         <Text style={styles.lockedText}>{value}</Text>
-        <Lock color="#999" size={16} />
+        <Lock color={Colors.muted} size={16} />
       </View>
       <Text style={styles.note}>{note}</Text>
     </View>
@@ -452,26 +453,27 @@ function LockedField({
 
 const styles = StyleSheet.create({
   progressContainer: { marginBottom: 24 },
-  progressText: { fontSize: 12, color: "#999", marginBottom: 8, lineHeight: 17 },
-  progressBar: { height: 4, backgroundColor: "#F0F0F0", borderRadius: 2, overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: "#000", borderRadius: 2 },
+  progressText: { fontSize: 12, color: Colors.muted, marginBottom: 8, lineHeight: 17 },
+  // Hairline, matching the site's .nav-bar/.sec-bar 2px progress language.
+  progressBar: { height: 2, backgroundColor: Colors.border, borderRadius: 1, overflow: "hidden" },
+  progressFill: { height: "100%", backgroundColor: Colors.ink, borderRadius: 2 },
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 10,
     marginTop: 20,
   },
   field: { marginBottom: 20 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
-  fieldLabel: { fontSize: 11, fontWeight: "800", color: "#999", letterSpacing: 0.6 },
-  requiredStar: { fontSize: 13, color: "#DC2626", fontWeight: "700" },
+  fieldLabel: { fontSize: 12, fontWeight: "800", color: Colors.muted, letterSpacing: 0.6 },
+  requiredStar: { fontSize: 13, color: Colors.danger, fontWeight: "700" },
   input: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -482,10 +484,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
   },
   locationInput: {
@@ -505,14 +507,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     opacity: 0.6,
   },
-  lockedText: { fontSize: 15, color: "#000" },
-  note: { fontSize: 11, color: "#999", marginTop: 4, fontStyle: "italic" },
+  lockedText: { fontSize: 15, color: Colors.ink },
+  note: { fontSize: 12, color: Colors.muted, marginTop: 4, fontStyle: "italic" },
   tagsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   tag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.border,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -521,10 +523,10 @@ const styles = StyleSheet.create({
   addTagRow: { flexDirection: "row", gap: 8 },
   tagInput: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
@@ -534,7 +536,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -544,10 +546,10 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: "#DDD",
+    borderColor: Colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
-  checkboxOn: { backgroundColor: "#000", borderColor: "#000" },
+  checkboxOn: { backgroundColor: Colors.ink, borderColor: "#000" },
   checkboxLabel: { fontSize: 14, fontWeight: "600", color: "#000" },
 });

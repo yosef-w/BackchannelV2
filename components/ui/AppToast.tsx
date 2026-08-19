@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
+import { Colors } from "@/constants/theme";
+import * as Haptics from "expo-haptics";
 
 const ICON_SIZE = 18;
 
@@ -33,6 +35,22 @@ export function AppToast() {
       if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
       setShouldRender(true);
 
+      // Every toast lands physically as well as visually — success and
+      // error get their system notification patterns, info a light tap.
+      // Fired here (not at showToast call sites) so all 100+ callers get
+      // it for free and no toast ever double-buzzes.
+      if (variant === "success") {
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
+      } else if (variant === "error") {
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Error,
+        ).catch(() => {});
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+
       // Auto-dismiss after AUTO_DISMISS_MS
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
@@ -48,7 +66,7 @@ export function AppToast() {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
     };
-  }, [visible, message]);
+  }, [visible, message, variant]);
 
   if (!shouldRender) return null;
 
@@ -81,7 +99,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 9999,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: Colors.ink,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -107,7 +125,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   dismissText: {
-    color: "#888",
+    color: Colors.muted,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.3,

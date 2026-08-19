@@ -23,7 +23,8 @@
         "NSPhotoLibraryUsageDescription": "Allow photo library access to select a profile photo or upload a resume.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.yosefwolday.backchannelv2"
+      "bundleIdentifier": "com.yosefwolday.backchannelv2",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -68,7 +69,15 @@
           "organization": "backchannel-f6",
           "project": "react-native"
         }
-      ]
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.1047376390212-jnqdni1pj3i1s75rokf2qe94d58s0r41"
+        }
+      ],
+      "./plugins/withGoogleSigninModularHeaders",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

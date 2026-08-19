@@ -16,6 +16,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { Applicant } from "./jobTransforms";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface TopApplicantsModalProps {
   applicants: Applicant[];
@@ -77,7 +78,7 @@ export function TopApplicantsModal({
               <Text
                 style={{
                   marginTop: 12,
-                  color: "#999",
+                  color: Colors.muted,
                   fontSize: 13,
                   fontWeight: "600",
                 }}
@@ -90,7 +91,7 @@ export function TopApplicantsModal({
               <Text
                 style={{
                   textAlign: "center",
-                  color: "#DC2626",
+                  color: Colors.danger,
                   fontSize: 14,
                   fontWeight: "600",
                 }}
@@ -100,7 +101,7 @@ export function TopApplicantsModal({
             </View>
           ) : applicants.length === 0 ? (
             <View style={{ padding: 20, alignItems: "center" }}>
-              <Text style={{ textAlign: "center", color: "#999", fontSize: 16 }}>
+              <Text style={{ textAlign: "center", color: Colors.muted, fontSize: 16 }}>
                 No applicants yet.
               </Text>
             </View>
@@ -126,7 +127,8 @@ export function TopApplicantsModal({
                     style={[
                       styles.applicantAvatar,
                       {
-                        backgroundColor: "#000",
+                        borderWidth: 1,
+                        borderColor: Colors.border,
                         alignItems: "center",
                         justifyContent: "center",
                       },
@@ -134,9 +136,9 @@ export function TopApplicantsModal({
                   >
                     <Text
                       style={{
+                        fontFamily: Fonts.serif,
                         fontSize: 18,
-                        fontWeight: "800",
-                        color: "#FFF",
+                        color: Colors.muted,
                       }}
                     >
                       {(applicant.name || "?")[0].toUpperCase()}
@@ -181,21 +183,21 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
+    borderBottomColor: Colors.surface,
   },
   applicantAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: "#EEE",
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
   },
   applicantName: { fontSize: 16, fontWeight: "700", color: "#000" },
-  applicantRole: { fontSize: 13, color: "#666", marginTop: 2 },
+  applicantRole: { fontSize: 13, color: Colors.body, marginTop: 2 },
   applicantMatchedTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -207,7 +209,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   messageApplicantBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     width: 40,
     height: 40,
     borderRadius: 20,

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { useKeyboardVisible } from "./useKeyboardVisible";
+import { Colors, Type } from "@/constants/theme";
 
 interface CreateJobUrlScreenProps {
   visible: boolean;
@@ -100,11 +101,11 @@ export function CreateJobUrlScreen({
           )}
 
           <View style={styles.inputContainer}>
-            <Globe color="#999" size={18} />
+            <Globe color={Colors.muted} size={18} />
             <TextInput
               style={styles.textInput}
               placeholder="https://jobs.company.com/role"
-              placeholderTextColor="#999"
+              placeholderTextColor={Colors.muted}
               value={url}
               onChangeText={onSetUrl}
               keyboardType="url"
@@ -119,7 +120,7 @@ export function CreateJobUrlScreen({
                 onPress={() => onSetUrl("")}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <X color="#999" size={16} />
+                <X color={Colors.muted} size={16} />
               </TouchableOpacity>
             )}
           </View>
@@ -156,15 +157,15 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
   heading: {
+    ...Type.title,
     fontSize: 26,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.6,
+    lineHeight: 30,
+    color: Colors.ink,
     marginBottom: 8,
   },
   subheading: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 21,
     marginBottom: 24,
   },
@@ -172,11 +173,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    borderColor: Colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 15,
     paddingVertical: 12,
     marginBottom: 16,
   },
@@ -184,24 +185,22 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
+  // Letterpress rule-line input — the search fields' vocabulary.
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1.5,
-    borderColor: "#EEE",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingHorizontal: 2,
     gap: 10,
   },
   textInput: {
     flex: 1,
     height: 52,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "500",
     // Android pads single-line text with extra font-metric space by
     // default, pushing text/placeholder visibly below center — kill it and
@@ -212,7 +211,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 10,
     fontWeight: "500",
     lineHeight: 18,
@@ -224,12 +223,13 @@ const styles = StyleSheet.create({
   },
   footerKeyboard: { paddingBottom: 12 },
   continueBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 18,
-    borderRadius: 18,
+    backgroundColor: Colors.ink,
+    height: 54,
+    borderRadius: 27,
     alignItems: "center",
+    justifyContent: "center",
   },
-  continueBtnDisabled: { backgroundColor: "#F0F0F0" },
-  continueBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  continueBtnTextDisabled: { color: "#BBB" },
+  continueBtnDisabled: { backgroundColor: Colors.border },
+  continueBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
+  continueBtnTextDisabled: { color: Colors.faint },
 });

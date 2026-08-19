@@ -1,6 +1,7 @@
 import { MessageCircle } from "@/components/ui/icons";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 /**
  * Inbox loading / error / empty states, styled to match the equivalent
@@ -11,7 +12,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 export function InboxLoading() {
   return (
     <View style={styles.center}>
-      <ActivityIndicator size="small" color="#999" />
+      <ActivityIndicator size="small" color={Colors.muted} />
     </View>
   );
 }
@@ -42,13 +43,13 @@ export function InboxEmpty() {
 const styles = StyleSheet.create({
   center: { paddingVertical: 40, alignItems: "center" },
   errorTitle: {
-    color: "#DC2626",
+    color: Colors.danger,
     fontSize: 15,
     fontWeight: "600",
     marginBottom: 8,
   },
   errorDetail: {
-    color: "#999",
+    color: Colors.muted,
     fontSize: 13,
     textAlign: "center",
     paddingHorizontal: 20,
@@ -62,20 +63,21 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
+  // Below the serif's ~18px floor — system font, token color only.
   emptyTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
   },

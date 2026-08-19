@@ -18,12 +18,16 @@ import {
   Modal,
   Platform,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+// Auto-scrolls the focused input above the keyboard (PM: "auto-scroll as
+// I navigate through inputs") — same wrapper AuthScreen uses; degrades to
+// KeyboardAvoidingView+ScrollView on binaries without the native module.
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
+import { Colors } from "@/constants/theme";
 
 interface EditorScreenProps {
   visible: boolean;
@@ -58,42 +62,48 @@ export function EditorScreen({
       onRequestClose={onBack ?? onClose}
     >
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={onBack ?? onClose}
-              style={styles.headerBtn}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel={onBack ? "Back" : "Close"}
-            >
-              {onBack ? (
-                <ChevronLeft color="#000" size={24} strokeWidth={2.2} />
-              ) : (
-                <X color="#000" size={22} strokeWidth={2.2} />
-              )}
-            </TouchableOpacity>
-            <Text style={styles.title} numberOfLines={1}>
-              {title}
-            </Text>
-            <View style={styles.headerRightSlot}>{headerRight}</View>
-          </View>
+        {/* Header sits outside the keyboard-handling containers — it's
+            pinned at the top and never needs to move for the keyboard. */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={onBack ?? onClose}
+            style={styles.headerBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={onBack ? "Back" : "Close"}
+          >
+            {onBack ? (
+              <ChevronLeft color="#000" size={24} strokeWidth={2.2} />
+            ) : (
+              <X color="#000" size={22} strokeWidth={2.2} />
+            )}
+          </TouchableOpacity>
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+          <View style={styles.headerRightSlot}>{headerRight}</View>
+        </View>
 
-          {scrollable ? (
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {children}
-            </ScrollView>
-          ) : (
+        {scrollable ? (
+          /* KeyboardAwareScrollView handles keyboard avoidance itself —
+             wrapping it in a KeyboardAvoidingView would double-shift. */
+          <KeyboardAwareScrollView
+            style={styles.flex}
+            bottomOffset={24}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </KeyboardAwareScrollView>
+        ) : (
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
             <View style={styles.flex}>{children}</View>
-          )}
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -108,7 +118,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
   },
   headerBtn: {
     width: 40,
@@ -116,11 +126,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
   },
+  // Compact nav-bar title (17px) — below the serif's readability floor,
+  // system font kept, token color only. Shared by every settings
+  // sub-screen (Change Password, Privacy & Security, Notifications, etc.).
   title: {
     flex: 1,
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
     letterSpacing: -0.3,
   },

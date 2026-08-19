@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, Text } from "react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { JobsEmptyState } from "./JobsEmptyState";
 import { SponsoredJobCard } from "./SponsoredJobCard";
+import { Colors } from "@/constants/theme";
 
 interface SponsoredJobsTabProps {
   myJobs: Job[];
@@ -33,7 +34,7 @@ export function SponsoredJobsTab({
         entering={FadeIn.duration(300)}
         style={styles.loadingContainer}
       >
-        <ActivityIndicator size="small" color="#999" />
+        <ActivityIndicator size="small" color={Colors.muted} />
         <Text style={styles.loadingText}>Loading your sponsored jobs...</Text>
       </Animated.View>
     );
@@ -51,6 +52,11 @@ export function SponsoredJobsTab({
   }
   return (
     <>
+      {/* The book's size, stated — same caps count line as Browse, and it
+          gives the first card air below the tabs' rule. */}
+      <Text style={styles.countLine} numberOfLines={1}>
+        {myJobs.length} CARRYING YOUR NAME
+      </Text>
       {myJobs.map((job, index) => (
         <Animated.View
           key={job.id}
@@ -71,6 +77,14 @@ export function SponsoredJobsTab({
 }
 
 const styles = StyleSheet.create({
+  countLine: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginTop: 20,
+    marginBottom: 12,
+  },
   loadingContainer: {
     paddingVertical: 48,
     alignItems: "center",
@@ -79,7 +93,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "600",
   },
 });

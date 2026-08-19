@@ -4,11 +4,11 @@ import {
   DollarSign,
   MapPin,
   MoreHorizontal,
-  Users,
 } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface SponsoredJobCardProps {
   job: Job;
@@ -18,13 +18,14 @@ interface SponsoredJobCardProps {
 }
 
 /**
- * A sponsored job as a management card — the My Sponsored tab is where a
- * sponsor runs their listings, so unlike the Browse JobCard this leads
- * with applicant activity: the real applicant count (LIKES_COUNT) and a
- * black "N new" pill for unactioned interest (PENDING_LIKES_COUNT), with
- * a View Applicants action. The 2-line description is dropped — the
- * sponsor knows their own job; what changed since they last looked is
- * the point.
+ * A sponsored job as a management card — the old cards' anatomy (soft
+ * offWhite fill, header → tag pills → footer action) in the rebrand's
+ * language. The header carries the momentum: a serif applicant count on
+ * the right (the marketplace's "price" position) with QUIET for roles
+ * nobody has liked yet, and the footer is the applicants doorway — an
+ * ink N NEW pill for unactioned interest plus VIEW APPLICANTS. No
+ * description — the sponsor knows their own job; what changed since
+ * they last looked is the point.
  */
 export function SponsoredJobCard({
   job,
@@ -33,74 +34,102 @@ export function SponsoredJobCard({
   onApplicantPress,
 }: SponsoredJobCardProps) {
   const pending = job.pendingApplicants ?? 0;
+  const applicants = job.applicants ?? 0;
   return (
-    <TouchableOpacity
-      style={styles.card}
-      activeOpacity={0.85}
-      onPress={onPress}
-    >
+    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
       <View style={styles.cardHeader}>
         <CompanyLogo
           logoUrl={job.image}
           name={job.company}
           size={52}
-          borderRadius={16}
+          borderRadius={14}
+          initialFontSize={21}
         />
         <View style={styles.headerInfo}>
-          <Text style={styles.companyName} numberOfLines={1}>
+          <Text style={styles.company} numberOfLines={1}>
             {job.company}
           </Text>
-          <Text style={styles.jobTitleText} numberOfLines={1}>
+          {/* Two lines before truncating — real titles lose their meaning
+              cut at one. */}
+          <Text style={styles.title} numberOfLines={2}>
             {job.title}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.moreBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            onMenu?.();
-          }}
-          activeOpacity={0.7}
-        >
-          <MoreHorizontal color="#999" size={20} />
-        </TouchableOpacity>
+        <View style={styles.countCol}>
+          <Text
+            style={[styles.countNum, applicants === 0 && styles.countZero]}
+          >
+            {applicants}
+          </Text>
+          <Text style={styles.countLabel}>
+            {applicants === 0
+              ? "QUIET"
+              : applicants === 1
+                ? "APPLICANT"
+                : "APPLICANTS"}
+          </Text>
+        </View>
+        {!!onMenu && (
+          <TouchableOpacity
+            style={styles.moreBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              onMenu();
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="More options"
+          >
+            <MoreHorizontal color={Colors.faint} size={18} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.tagsRow}>
-        <View style={styles.tag}>
-          <MapPin size={10} color="#666" />
-          <Text style={styles.tagText}>{job.location}</Text>
-        </View>
-        <View style={styles.tag}>
-          <DollarSign size={10} color="#666" />
-          <Text style={styles.tagText}>{job.salary}</Text>
-        </View>
+        {!!job.location && (
+          <View style={styles.tag}>
+            <MapPin size={10} color={Colors.body} />
+            <Text style={styles.tagText} numberOfLines={1}>
+              {job.location}
+            </Text>
+          </View>
+        )}
+        {!!job.salary && (
+          <View style={styles.tag}>
+            <DollarSign size={10} color={Colors.body} />
+            <Text style={styles.tagText} numberOfLines={1}>
+              {job.salary}
+            </Text>
+          </View>
+        )}
       </View>
 
+      {/* Footer — the applicants doorway. */}
       <TouchableOpacity
-        style={styles.applicantsRow}
+        style={styles.cardFooter}
         onPress={(e) => {
           e.stopPropagation();
           onApplicantPress?.();
         }}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={
+          applicants === 1
+            ? "View 1 applicant"
+            : `View ${applicants} applicants`
+        }
       >
-        <Users color="#000" size={15} strokeWidth={2.2} />
-        <Text style={styles.applicantsText}>
-          {job.applicants === 1
-            ? "1 applicant"
-            : `${job.applicants} applicants`}
-        </Text>
-        {pending > 0 && (
+        {pending > 0 ? (
           <View style={styles.newPill}>
-            <Text style={styles.newPillText}>
-              {pending} new
-            </Text>
+            <Text style={styles.newPillText}>{pending} NEW</Text>
           </View>
+        ) : (
+          <View />
         )}
-        <View style={{ flex: 1 }} />
-        <Text style={styles.viewApplicantsText}>View</Text>
-        <ChevronRight size={16} color="#999" />
+        <View style={styles.footerLinkRow}>
+          <Text style={styles.footerLinkText}>VIEW APPLICANTS</Text>
+          <ChevronRight size={14} color={Colors.ink} strokeWidth={2.5} />
+        </View>
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -108,64 +137,107 @@ export function SponsoredJobCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
+    backgroundColor: Colors.offWhite,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    marginBottom: 14,
+    borderColor: Colors.border,
     padding: 16,
+    marginBottom: 12,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 13,
     marginBottom: 12,
   },
-  headerInfo: { flex: 1 },
-  companyName: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#666",
-    marginBottom: 2,
+  headerInfo: { flex: 1, minWidth: 0 },
+  company: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    color: Colors.muted,
+    marginBottom: 3,
   },
-  jobTitleText: {
+  title: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
+    lineHeight: 22,
     letterSpacing: -0.4,
   },
-  moreBtn: { padding: 12, margin: -8, alignSelf: "flex-start" },
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+  countCol: {
+    alignItems: "flex-end",
+    minWidth: 52,
+  },
+  // The serif stat-number voice — who wants this role.
+  countNum: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    lineHeight: 27,
+    color: Colors.ink,
+  },
+  countZero: { color: Colors.faint },
+  countLabel: {
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: Colors.faint,
+    marginTop: 2,
+  },
+  moreBtn: {
+    padding: 6,
+    marginTop: -6,
+    marginRight: -6,
+    alignSelf: "flex-start",
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
   tag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 999,
   },
-  tagText: { fontSize: 12, fontWeight: "600", color: "#444" },
-  applicantsRow: {
+  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  newPill: {
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  newPillText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.paper,
+  },
+  footerLinkRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 3,
   },
-  applicantsText: { fontSize: 14, fontWeight: "700", color: "#000" },
-  newPill: {
-    backgroundColor: "#000",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+  footerLinkText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    color: Colors.ink,
   },
-  newPillText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
-  viewApplicantsText: { fontSize: 13, fontWeight: "700", color: "#666" },
 });

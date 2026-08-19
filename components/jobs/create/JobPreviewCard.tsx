@@ -9,6 +9,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../../ui/CompanyLogo";
+import { Colors } from "@/constants/theme";
 
 export interface JobPreviewFields {
   title: string;
@@ -96,19 +97,19 @@ export function JobPreviewCard({ fields, pending }: JobPreviewCardProps) {
 
       <View style={styles.tagsRow}>
         <PreviewTag
-          icon={<MapPin size={10} color="#666" />}
+          icon={<MapPin size={10} color={Colors.body} />}
           text={fields.location}
           pending={pending.location}
           placeholder="Location"
         />
         <PreviewTag
-          icon={<DollarSign size={10} color="#666" />}
+          icon={<DollarSign size={10} color={Colors.body} />}
           text={fields.salary}
           pending={pending.salary}
           placeholder="Competitive"
         />
         <PreviewTag
-          icon={<Briefcase size={10} color="#666" />}
+          icon={<Briefcase size={10} color={Colors.body} />}
           text={fields.type}
           pending={pending.type}
           placeholder="Full-time"
@@ -156,12 +157,14 @@ function PreviewTag({
 }
 
 const styles = StyleSheet.create({
+  // The Desk's ticket — paper + hairline, matching the board rows this
+  // preview promises to become.
   card: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 20,
+    backgroundColor: Colors.paper,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    padding: 20,
+    borderColor: Colors.border,
+    padding: 18,
   },
   header: {
     flexDirection: "row",
@@ -174,23 +177,25 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Colors.border,
   },
   textShimmer: {
-    backgroundColor: "#EBEBEB",
+    backgroundColor: Colors.border,
     borderRadius: 4,
   },
   companyName: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.muted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  // Matches the board tickets' title (JobCard/SponsoredJobCard), one
+  // step up for the preview's hero role.
   jobTitleText: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.4,
     marginTop: 3,
   },
@@ -199,16 +204,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 10,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 11,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 999,
   },
-  tagText: { fontSize: 12, fontWeight: "600", color: "#444" },
+  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
   tagShimmer: {
     width: 76,
     height: 26,
-    borderRadius: 8,
-    backgroundColor: "#EBEBEB",
+    borderRadius: 999,
+    backgroundColor: Colors.border,
   },
 });

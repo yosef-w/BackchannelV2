@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { EditorScreen } from "../profile/EditorScreen";
+import { Colors } from "@/constants/theme";
 
 interface MatchListScreenProps {
   visible: boolean;
@@ -41,10 +42,10 @@ export function MatchListScreen({
 
 const styles = StyleSheet.create({
   group: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     overflow: "hidden",
   },
 });

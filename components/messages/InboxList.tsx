@@ -1,9 +1,10 @@
-import { Briefcase, ChevronRight } from "@/components/ui/icons";
+import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Avatar } from "../ui/Avatar";
 import { StatusChip } from "../ui/StatusChip";
+import { Colors, Fonts } from "@/constants/theme";
 
 /**
  * The grouped Inbox list for one section (active / past / hidden).
@@ -106,19 +107,24 @@ function ConvAvatar({
   name,
   imageUrl,
   hidden,
-  unread,
 }: {
   name?: string;
   imageUrl?: string | null;
   hidden?: boolean;
-  unread?: boolean;
 }) {
   return (
     <View style={[styles.avatarWrapper, hidden && styles.avatarHidden]}>
       <Avatar photoUrl={imageUrl} name={name} size={48} borderRadius={16} />
-      {unread && <View style={styles.unreadDot} />}
     </View>
   );
+}
+
+/** The unread signal — an ink bullet floating in the page's own left
+ * margin (absolutely positioned, so rows keep their full width and
+ * read rows carry no phantom gutter). */
+function MarginDot({ unread }: { unread?: boolean }) {
+  if (!unread) return null;
+  return <View style={styles.marginDot} pointerEvents="none" />;
 }
 
 /** Right-hand slot of a row header: timestamp, or the Unmatched chip on past rows. */
@@ -152,19 +158,25 @@ function PreviewText({
   variant: InboxVariant;
   unread?: boolean;
 }) {
+  const content = conv.lastMessage?.content;
   return (
     <Text
       style={[
         styles.preview,
         variant !== "active" && styles.previewHidden,
-        // Unread rows read as "something new here" at a glance, the way
-        // every mainstream inbox bolds its unread previews.
+        // Unread reads as ink weight, not color — the marked line in a
+        // manuscript (the margin bullet carries the signal too).
         unread && styles.previewUnread,
       ]}
       numberOfLines={1}
     >
-      {conv.lastMessage?.content ||
-        (variant === "active" ? "Start a conversation..." : "No messages")}
+      {/* Their words, quoted — previews set in the serif quote voice so
+          the inbox reads as people talking (placeholders stay bare). */}
+      {content
+        ? `“${content}”`
+        : variant === "active"
+          ? "Start a conversation..."
+          : "No messages"}
     </Text>
   );
 }
@@ -194,11 +206,11 @@ function LeafRow({
       style={[styles.row, !isLast && styles.rowDivider]}
       activeOpacity={0.7}
     >
+      <MarginDot unread={unread} />
       <ConvAvatar
         name={conv.otherParticipant?.name}
         imageUrl={conv.otherParticipant?.profileImageUrl}
         hidden={variant !== "active"}
-        unread={unread}
       />
       <View style={styles.main}>
         <View style={styles.rowHeader}>
@@ -284,11 +296,11 @@ function GroupRow({
         style={styles.row}
         activeOpacity={0.7}
       >
+        <MarginDot unread={variant === "active" && group.unreadCount > 0} />
         <ConvAvatar
           name={conv.otherParticipant?.name}
           imageUrl={conv.otherParticipant?.profileImageUrl}
           hidden={variant !== "active"}
-          unread={variant === "active" && group.unreadCount > 0}
         />
         <View style={styles.main}>
           <View style={styles.rowHeader}>
@@ -304,17 +316,14 @@ function GroupRow({
             <View style={{ flex: 1 }}>
               <PreviewText conv={conv} variant={variant} />
             </View>
-            <View style={styles.rolesPill}>
-              <Briefcase size={11} color="#666" />
-              <Text style={styles.rolesPillText}>
-                {group.items.length} roles
-              </Text>
-            </View>
+            <Text style={styles.rolesText}>
+              {group.items.length} ROLES
+            </Text>
           </View>
         </View>
         <ChevronRight
           size={18}
-          color="#BBB"
+          color={Colors.faint}
           style={[
             styles.groupChevron,
             expanded && { transform: [{ rotate: "90deg" }] },
@@ -374,29 +383,32 @@ export function InboxList({
 }
 
 const styles = StyleSheet.create({
+  // Docket/Correspondence rebrand — flat ruled rows on the paper, an ink
+  // margin bullet for unread, previews in the serif quote voice.
+  // Every row keeps its bottom rule (ledger rhythm), so the Active group
+  // closes with a line before the collapsed drawers below it.
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     gap: 12,
-  },
-  rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.border,
+    position: "relative",
   },
+  rowDivider: {},
   avatarWrapper: { position: "relative" },
   avatarHidden: { opacity: 0.55 },
-  unreadDot: {
+  // Floats in the screen's 28px content padding — rows stay full width.
+  marginDot: {
     position: "absolute",
-    top: -2,
-    right: -2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#000",
-    borderWidth: 2,
-    borderColor: "#F9F9F9",
+    left: -16,
+    top: "50%",
+    marginTop: -3.5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Colors.ink,
   },
   main: { flex: 1 },
   rowHeader: {
@@ -406,51 +418,52 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 3,
   },
-  name: { fontSize: 15, fontWeight: "700", color: "#000", flexShrink: 1 },
-  nameHidden: { color: "#999" },
+  name: { fontSize: 15, fontWeight: "700", color: Colors.ink, flexShrink: 1 },
+  nameHidden: { color: Colors.muted },
+  // Which role this thread is about — caps micro, the ledger-key voice.
   contextLine: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#666",
-    marginBottom: 2,
-  },
-  time: { fontSize: 10, fontWeight: "800", color: "#BBB" },
-  preview: { fontSize: 13, color: "#888" },
-  previewHidden: { color: "#AAA" },
-  previewUnread: { color: "#000", fontWeight: "600" },
-  previewRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  rolesPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  rolesPillText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#666",
-    letterSpacing: 0.3,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: Colors.body,
+    marginBottom: 2,
+  },
+  time: { fontSize: 10, fontWeight: "800", color: Colors.faint },
+  // Their words, in the serif quote voice.
+  preview: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: Colors.muted,
+    marginTop: 2,
+  },
+  previewHidden: { color: Colors.faint },
+  previewUnread: { color: Colors.ink },
+  previewRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rolesText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: Colors.muted,
   },
   groupChevron: { marginLeft: -4 },
   // Expanded per-role sub-threads, indented under the person row with a
-  // hairline rail aligned to the avatar's right edge (14 pad + 48 avatar).
+  // hairline rail aligned to the avatar's right edge (dot slot + avatar).
   subList: {
-    marginLeft: 62,
-    marginRight: 14,
+    marginLeft: 60,
     paddingLeft: 14,
     borderLeftWidth: 1,
-    borderLeftColor: "#EDEDED",
-    marginBottom: 10,
+    borderLeftColor: Colors.border,
+    marginTop: 2,
+    marginBottom: 12,
   },
   subRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
   subRowUnreadDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     marginRight: 11,
   },
   subRowDotSpacer: { width: 7, marginRight: 11 },

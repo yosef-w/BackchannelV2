@@ -4,10 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
-    KeyboardAvoidingView,
-    Platform,
     SafeAreaView,
-    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -15,6 +12,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+// Wrapper, NOT the library directly — falls back to the previous
+// KeyboardAvoidingView+ScrollView behavior on binaries built before the
+// native module existed instead of crashing at import.
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import {
     identifyUser,
@@ -25,13 +26,19 @@ import {
     trackLoginSucceeded,
     trackSignUpFormSubmitted,
 } from "@/lib/analytics/mixpanel";
-import { authApi, LoginResponse } from "@/lib/auth-api";
+import { authApi, LoginResponse, SsoLoginResponse } from "@/lib/auth-api";
+import { isAppleSignInSupported, isGoogleSignInSupported, SsoIdentity } from "@/lib/sso";
 import { isValidEmail } from "@/lib/validation";
+import { SSO_ENABLED } from "@/constants/config";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { SSOButtons } from "@/components/auth/SSOButtons";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -64,6 +71,7 @@ export function AuthScreen({
   onRequestSignUp,
 }: AuthScreenProps) {
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
+  const setHasPassword = useAuthStore((state) => state.setHasPassword);
   const storeUserType = useOnboardingStore((state) => state.userType);
   // Prefer the prop (set from URL params by onboarding.tsx) over the store value,
   // so sign-up works correctly even if the Zustand store was reset mid-flow.
@@ -75,6 +83,7 @@ export function AuthScreen({
   const updateSponsorData = useOnboardingStore(
     (state) => state.updateSponsorData,
   );
+  const setSsoSession = useOnboardingStore((state) => state.setSsoSession);
   // Pre-populate sign-up fields from the onboarding store so they survive
   // navigation back from the questionnaire step.
   const savedApplicantData = useOnboardingStore((state) => state.applicantData);
@@ -100,11 +109,57 @@ export function AuthScreen({
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Drives the focused-input visual affordance below — no field name here
+  // ever collides with another, so a single tracker covers the main form
+  // and the forgot-password modal's email field alike.
+  const [focusedField, setFocusedField] = useState<
+    "firstName" | "lastName" | "email" | "password" | "forgotEmail" | null
+  >(null);
+  const clearFocus = (field: string) =>
+    setFocusedField((f) => (f === field ? null : f));
   const seedSessionEmail = useUserProfileStore(
     (state) => state.seedSessionEmail,
   );
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
+  // Gate on the feature flag AND whether either provider can actually
+  // render here, so a build with SSO_ENABLED true but no supported
+  // provider (e.g. Android with no Google client IDs configured yet)
+  // doesn't show a picker with nothing but an email button on it.
+  const showSso =
+    SSO_ENABLED && (isAppleSignInSupported() || isGoogleSignInSupported());
+
+  // "The Front Door": when SSO is available this screen opens as a method
+  // picker — Apple / Google / email as three equal pills — and the typed
+  // form becomes its own step (the SSO-first pattern used by Notion/
+  // Airbnb). This also gives Apple's button the top-of-screen prominence
+  // App Store guideline 4.8 asks for. When SSO isn't available (flag off,
+  // Expo Go, unsupported platform) a picker would be a pointless extra
+  // tap, so the screen opens directly on the form — exactly the pre-SSO
+  // behavior.
+  const [view, setView] = useState<"picker" | "form">(
+    showSso ? "picker" : "form",
+  );
+
+  const handleScreenBack = () => {
+    if (showSso && view === "form") {
+      // The form is a sub-step of the picker — back returns there rather
+      // than leaving the screen.
+      setView("picker");
+      return;
+    }
+    onBack();
+  };
+
+  const handleToggleMode = () => {
+    if (isLogin && onRequestSignUp) {
+      // No role chosen yet (direct sign-in entry) — send them to role
+      // selection instead of guessing applicant/sponsor.
+      onRequestSignUp();
+    } else {
+      setIsLogin(!isLogin);
+    }
+  };
 
   const loginMutation = useMutation<LoginResponse, Error>({
     mutationFn: async () => {
@@ -113,6 +168,9 @@ export function AuthScreen({
     onSuccess: async (data) => {
       // Store real tokens + role from backend (PR #19)
       await setAuthTokens(data.access_token, data.refresh_token, data.role);
+      // Logging in WITH a password is proof one exists — clears a stale
+      // `false` left by a previous pure-SSO session on this device.
+      await setHasPassword(true);
 
       // Backend doesn't return profile info in login response — seed just
       // the email locally; fetchFromBackend() (fired by _layout.tsx as soon
@@ -157,14 +215,85 @@ export function AuthScreen({
     },
   });
 
+  // Shared by both the sign-in and sign-up tabs, and by both entry points
+  // (app/sign-in.tsx, app/onboarding.tsx) — "Continue with Apple/Google"
+  // means the same thing regardless of which tab was showing when it was
+  // tapped, so routing branches on the backend response, not on `isLogin`.
+  const handleSsoSuccess = async (
+    response: SsoLoginResponse,
+    identity: SsoIdentity,
+    provider: "apple" | "google",
+  ) => {
+    // role is null for a brand-new/role-less account — omit it so
+    // setAuthTokens leaves the stored role untouched (already null there).
+    await setAuthTokens(
+      response.access_token,
+      response.refresh_token,
+      response.role ?? undefined,
+    );
+    // False for a pure-SSO account — drives the Privacy & Security
+    // screen's "Set a Password" UX (password-gated flows 400 without one).
+    await setHasPassword(response.has_password);
+    seedSessionEmail(response.email);
+
+    if (response.needs_onboarding) {
+      // Authenticated but no role/profile yet. Stash the identity so the
+      // questionnaire calls authApi.completeSsoOnboarding() instead of
+      // createProfile() and skips the password field — then let this
+      // screen's normal "proceed" routing take over: onboarding.tsx's auth
+      // step goes to the questionnaire (role already known there);
+      // sign-in.tsx's onComplete goes to /choose-role (role NOT known
+      // there) — both are exactly "this user still needs a role."
+      setSsoSession({
+        provider,
+        userId: String(response.user_id),
+        email: identity.email ?? response.email,
+        givenName: identity.givenName,
+        familyName: identity.familyName,
+      });
+      const prefill = {
+        firstName: identity.givenName ?? "",
+        lastName: identity.familyName ?? "",
+        email: identity.email ?? response.email,
+      };
+      if (userType === "sponsor") {
+        updateSponsorData(prefill);
+      } else {
+        updateApplicantData(prefill);
+      }
+      onComplete();
+      return;
+    }
+
+    // Existing, fully-onboarded account — same "log them straight in" path
+    // as the password login mutation above.
+    const role: "applicant" | "sponsor" =
+      response.role === "Sponsor" ? "sponsor" : "applicant";
+    identifyUser({
+      userId: String(response.user_id),
+      userType: role,
+      email: response.email,
+    });
+    trackLoginSucceeded(role);
+    rcIdentifyUser(String(response.user_id));
+    showToast("Welcome back!", "success");
+    if (onLoginComplete) {
+      onLoginComplete();
+    } else {
+      onComplete();
+    }
+  };
+
   const forgotPasswordMutation = useMutation<{ message: string }, Error>({
     mutationFn: async () => {
       return authApi.forgotPassword(forgotPasswordEmail);
     },
     onSuccess: () => {
+      // Show the modal's own "Check Your Email" state — previously this
+      // ALSO closed the modal on the next line, which made that state
+      // unreachable dead UI and left only a toast. The in-modal state
+      // carries the address + spam hint, so no toast needed on top.
       setForgotPasswordSent(true);
-      showToast("Password reset email sent. Check your inbox.", "success");
-      handleCloseForgotPasswordModal();
     },
     onError: (error) => {
       showToast(
@@ -260,7 +389,7 @@ export function AuthScreen({
         {/* Navigation */}
         <View style={styles.topNav}>
           <TouchableOpacity
-            onPress={onBack}
+            onPress={handleScreenBack}
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Back"
@@ -269,15 +398,91 @@ export function AuthScreen({
           </TouchableOpacity>
         </View>
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        {/* Auto-scrolls whichever field is focused (and the submit button
+            below it) above the keyboard as you type — plain ScrollView +
+            KeyboardAvoidingView only resize the available space, they
+            don't know to chase a specific focused input. */}
+        <KeyboardAwareScrollView
           style={styles.keyboardView}
+          bottomOffset={24}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+            {view === "picker" ? (
+              /* ── The Front Door — method picker ─────────────────────
+                 Headline + three equal pills (Apple, Google, email).
+                 No typed fields on this step at all; the form is one
+                 tap away for those who want it. */
+              <Animated.View
+                entering={FadeInDown.duration(600)}
+                style={styles.content}
+              >
+                <View style={styles.header}>
+                  <Text style={styles.title}>
+                    {isLogin ? "Welcome " : "Create your "}
+                    <Text style={styles.titleAccent}>
+                      {isLogin ? "back" : "account"}
+                    </Text>
+                  </Text>
+                  <Text style={styles.subtitle}>
+                    {isLogin
+                      ? "Sign in to continue"
+                      : userType === "sponsor"
+                        ? "Help great people get in — and get rewarded for it."
+                        : "Your next job comes from someone already inside."}
+                  </Text>
+                </View>
+
+                <Animated.View entering={FadeInDown.duration(600).delay(80)}>
+                  <SSOButtons
+                    onSuccess={handleSsoSuccess}
+                    // Backend SSO errors carry user-appropriate guidance
+                    // in the message (e.g. 409 "log in with password
+                    // instead", Apple no-email recovery steps) — show it
+                    // verbatim, generic line for network-level throws.
+                    onError={(error) =>
+                      showToast(
+                        error.message || "Sign-in failed. Please try again.",
+                        "error",
+                      )
+                    }
+                  />
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.duration(600).delay(160)}>
+                  <PressableScale
+                    pressedScale={0.97}
+                    style={styles.emailButton}
+                    onPress={() => setView("form")}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isLogin ? "Sign in with email" : "Sign up with email"
+                    }
+                  >
+                    <Mail color="#000" size={18} />
+                    <Text style={styles.emailButtonText}>
+                      {isLogin ? "Sign in with email" : "Sign up with email"}
+                    </Text>
+                  </PressableScale>
+                </Animated.View>
+
+                <TouchableOpacity
+                  onPress={handleToggleMode}
+                  style={styles.toggleBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.toggleText}>
+                    {isLogin
+                      ? "New to BackChannel? "
+                      : "Already have an account? "}
+                    <Text style={styles.toggleHighlight}>
+                      {isLogin ? "Sign up" : "Sign in"}
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ) : (
             <Animated.View
               entering={FadeInDown.duration(600)}
               style={styles.content}
@@ -285,7 +490,10 @@ export function AuthScreen({
               {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.title}>
-                  {isLogin ? "Welcome back" : "Create your account"}
+                  {isLogin ? "Welcome " : "Create your "}
+                  <Text style={styles.titleAccent}>
+                    {isLogin ? "back" : "account"}
+                  </Text>
                 </Text>
                 <Text style={styles.subtitle}>
                   {isLogin
@@ -301,13 +509,16 @@ export function AuthScreen({
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>First Name</Text>
                       <View style={styles.inputWrapper}>
-                        <User color="#AAA" size={18} style={styles.inputIcon} />
+                        <FocusRing active={focusedField === "firstName"} />
+                        <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="First Name"
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={Colors.faint}
                           value={firstName}
                           onChangeText={setFirstName}
                           autoCapitalize="words"
+                          onFocus={() => setFocusedField("firstName")}
+                          onBlur={() => clearFocus("firstName")}
                           style={styles.input}
                         />
                       </View>
@@ -316,13 +527,16 @@ export function AuthScreen({
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>Last Name</Text>
                       <View style={styles.inputWrapper}>
-                        <User color="#AAA" size={18} style={styles.inputIcon} />
+                        <FocusRing active={focusedField === "lastName"} />
+                        <User color={Colors.faint} size={18} style={styles.inputIcon} />
                         <TextInput
                           placeholder="Last Name"
-                          placeholderTextColor="#BBB"
+                          placeholderTextColor={Colors.faint}
                           value={lastName}
                           onChangeText={setLastName}
                           autoCapitalize="words"
+                          onFocus={() => setFocusedField("lastName")}
+                          onBlur={() => clearFocus("lastName")}
                           style={styles.input}
                         />
                       </View>
@@ -333,14 +547,17 @@ export function AuthScreen({
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email Address</Text>
                   <View style={styles.inputWrapper}>
-                    <Mail color="#AAA" size={18} style={styles.inputIcon} />
+                    <FocusRing active={focusedField === "email"} />
+                    <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={email}
                       onChangeText={setEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => clearFocus("email")}
                       style={styles.input}
                     />
                   </View>
@@ -349,14 +566,17 @@ export function AuthScreen({
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Password</Text>
                   <View style={styles.inputWrapper}>
-                    <Lock color="#AAA" size={18} style={styles.inputIcon} />
+                    <FocusRing active={focusedField === "password"} />
+                    <Lock color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Password"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => clearFocus("password")}
                       style={styles.input}
                     />
                     <TouchableOpacity
@@ -369,9 +589,9 @@ export function AuthScreen({
                       }
                     >
                       {showPassword ? (
-                        <EyeOff color="#AAA" size={18} />
+                        <EyeOff color={Colors.faint} size={18} />
                       ) : (
-                        <Eye color="#AAA" size={18} />
+                        <Eye color={Colors.faint} size={18} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -406,17 +626,12 @@ export function AuthScreen({
                 </TouchableOpacity>
               </View>
 
-              {/* Toggle Mode */}
+              {/* Toggle Mode — kept on the form step too, so someone who
+                  tapped "Sign up with email" and then remembers they
+                  already have an account can flip straight to sign-in
+                  without backing out to the picker. */}
               <TouchableOpacity
-                onPress={() => {
-                  if (isLogin && onRequestSignUp) {
-                    // No role chosen yet (direct sign-in entry) — send them
-                    // to role selection instead of guessing applicant/sponsor.
-                    onRequestSignUp();
-                  } else {
-                    setIsLogin(!isLogin);
-                  }
-                }}
+                onPress={handleToggleMode}
                 style={styles.toggleBtn}
                 activeOpacity={0.7}
               >
@@ -430,8 +645,8 @@ export function AuthScreen({
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+            )}
+        </KeyboardAwareScrollView>
 
         {showForgotPasswordModal && (
           <View style={styles.modalOverlay}>
@@ -448,19 +663,22 @@ export function AuthScreen({
                 <>
                   <Text style={styles.modalTitle}>Reset Password</Text>
                   <Text style={styles.modalSubtitle}>
-                    Enter your email and we'll send you a link to reset your
+                    Enter your email and we&apos;ll send you a link to reset your
                     password.
                   </Text>
 
                   <View style={styles.modalInputWrapper}>
-                    <Mail color="#AAA" size={18} style={styles.inputIcon} />
+                    <FocusRing active={focusedField === "forgotEmail"} />
+                    <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email Address"
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={forgotPasswordEmail}
                       onChangeText={setForgotPasswordEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      onFocus={() => setFocusedField("forgotEmail")}
+                      onBlur={() => clearFocus("forgotEmail")}
                       style={styles.input}
                     />
                   </View>
@@ -491,8 +709,11 @@ export function AuthScreen({
                 </>
               ) : (
                 <>
-                  <View style={styles.successIconWrapper}>
-                    <Mail color="#000" size={32} />
+                  <View style={styles.successPopWrap}>
+                    <ConfirmPop
+                      size={64}
+                      icon={<Mail color="#FFF" size={26} />}
+                    />
                   </View>
                   <Text style={styles.modalTitle}>Check Your Email</Text>
                   <Text style={styles.modalSubtitle}>
@@ -500,11 +721,11 @@ export function AuthScreen({
                     <Text style={styles.emailHighlight}>
                       {forgotPasswordEmail}
                     </Text>
-                    , we've sent a password reset link.
+                    , we&apos;ve sent a password reset link.
                   </Text>
 
                   <Text style={styles.modalSpamHint}>
-                    Don't see it? Check your spam or junk folder — it can take a
+                    Don&apos;t see it? Check your spam or junk folder — it can take a
                     minute to arrive.
                   </Text>
 
@@ -521,6 +742,25 @@ export function AuthScreen({
         )}
       </SafeAreaView>
     </View>
+  );
+}
+
+/**
+ * The focused-input affordance, as an absolutely-positioned overlay whose
+ * opacity toggles — deliberately NOT a conditional style on the input's
+ * wrapper View. Under the New Architecture, mutating a TextInput
+ * ancestor's shadow/elevation styles on focus makes Fabric recreate the
+ * native view, which fires onBlur immediately after onFocus — the
+ * keyboard flashes up and instantly dismisses
+ * (facebook/react-native#45798). A sibling overlay isn't in the input's
+ * ancestor chain, so toggling it leaves focus untouched.
+ */
+function FocusRing({ active }: { active: boolean }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.focusRing, active && styles.focusRingActive]}
+    />
   );
 }
 
@@ -555,14 +795,20 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
+    ...Type.title,
+    color: Colors.ink,
   },
+  // The site's .hero-title em rule — italic muted accent word.
+  titleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
+  // Matches the site's .hero-body treatment (light weight, body-gray).
   subtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 16,
-    color: "#666",
+    lineHeight: 24,
+    color: Colors.body,
     marginTop: 8,
   },
   socialButton: {
@@ -572,7 +818,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     gap: 12,
     marginBottom: 20,
   },
@@ -596,12 +842,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: 56,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
+  // The "you are here" affordance the PM flagged as missing — rendered by
+  // FocusRing as an overlay (see its comment for why it must not be a
+  // conditional style on the wrapper). Sized -1 to sit exactly over the
+  // wrapper's own 1px hairline border; same 16px radius as both wrappers.
+  // No shadow: shadow/elevation on focus is precisely the Fabric trigger
+  // this replaces, and the ink ring alone reads clearly.
+  focusRing: {
+    position: "absolute",
+    top: -1,
+    left: -1,
+    right: -1,
+    bottom: -1,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.ink,
+    opacity: 0,
+  },
+  focusRingActive: { opacity: 1 },
   inputIcon: {
     marginRight: 12,
   },
@@ -620,11 +884,11 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "500",
   },
   submitButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 60,
     borderRadius: 30,
     alignItems: "center",
@@ -641,13 +905,33 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
+  // "Sign up/in with email" — third pill on the method picker. Same
+  // 50pt pill as the SSO buttons (they read as three equal options), with
+  // the app's standard hairline border treatment.
+  emailButton: {
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 12,
+  },
+  emailButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+  },
   toggleBtn: {
     marginTop: 24,
     alignItems: "center",
   },
   toggleText: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
   },
   toggleHighlight: {
     color: "#000",
@@ -673,22 +957,22 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     marginBottom: 12,
     textAlign: "center",
   },
   modalSubtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     marginBottom: 24,
     textAlign: "center",
     lineHeight: 22,
   },
   modalSpamHint: {
     fontSize: 12.5,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     textAlign: "center",
     lineHeight: 17,
@@ -699,15 +983,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: 56,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     marginBottom: 20,
   },
   modalButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 56,
     borderRadius: 28,
     alignItems: "center",
@@ -730,18 +1014,12 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
   },
-  successIconWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#F5F5F5",
-    alignItems: "center",
-    justifyContent: "center",
+  successPopWrap: {
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   emailHighlight: {
     fontWeight: "700",

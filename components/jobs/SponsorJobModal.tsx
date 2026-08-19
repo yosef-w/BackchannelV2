@@ -1,4 +1,5 @@
-import { Check, X } from "@/components/ui/icons";
+import { X } from "@/components/ui/icons";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import type { Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import React from "react";
@@ -18,6 +19,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { SponsorInsightCards } from "./SponsorInsightCards";
+import { Colors, Type } from "@/constants/theme";
 
 export interface SponsorFlowState {
   step: number;
@@ -288,9 +290,7 @@ export function SponsorJobModal({
           </>
         ) : (
           <Animated.View entering={FadeIn} style={styles.successStep}>
-            <View style={styles.successIconCircle}>
-              <Check color="#FFF" size={32} strokeWidth={3} />
-            </View>
+            <ConfirmPop size={72} />
             <Text style={styles.successTitle}>Sponsorship Confirmed!</Text>
             <Text style={styles.successDesc}>
               You are now sponsoring {job?.title}. Applicants will be able to
@@ -327,47 +327,38 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   radioCircle: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#CCC",
+    borderColor: Colors.faint,
   },
   radioCircleActive: { borderColor: "#000", borderWidth: 6 },
   radioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   radioOption: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.paper,
     padding: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     marginBottom: 12,
   },
-  radioText: { fontSize: 15, color: "#666", fontWeight: "600" },
+  radioText: { fontSize: 15, color: Colors.body, fontWeight: "600" },
   radioTextActive: { color: "#000", fontWeight: "600" },
   sideBySide: { flexDirection: "row", gap: 12 },
   successDesc: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 30,
     paddingHorizontal: 20,
   },
-  successIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
   successStep: { alignItems: "center", paddingVertical: 20, width: "100%" },
-  successTitle: { fontSize: 22, fontWeight: "800", marginBottom: 10 },
+  successTitle: { ...Type.heading, color: Colors.ink, marginBottom: 10 },
 });

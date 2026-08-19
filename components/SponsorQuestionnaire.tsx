@@ -13,6 +13,8 @@ import {
   uploadProfileImage,
 } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
+import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
+import { Colors, Type } from "@/constants/theme";
 import type { BrowseJobResponse } from "@/types/jobs";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -61,7 +63,6 @@ import Animated, {
   Layout,
   useAnimatedStyle,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import {
   SPONSOR_PROMPT_CATEGORIES,
@@ -214,6 +215,11 @@ export function SponsorQuestionnaire({
   const sponsorData = useOnboardingStore((state) => state.sponsorData);
   const setAuthTokens = useAuthStore((state) => state.setAuthTokens);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
+  // Set by AuthScreen when this account was created via "Continue with
+  // Apple/Google" and is still role-less — routes final submission to
+  // completeSsoOnboarding() instead of createProfile(), since this user
+  // already has tokens and no password.
+  const ssoSession = useOnboardingStore((state) => state.ssoSession);
   const loadFromProfile = useUserProfileStore((state) => state.loadFromProfile);
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
@@ -227,6 +233,12 @@ export function SponsorQuestionnaire({
   // an abandoned signup's draft no longer leaks into the next signup on
   // this device.
   const hydratedRef = useRef(false);
+  // finishOnboarding() can run much later than afterAccountReady() — after
+  // the cold-start role-picker interaction — by which point
+  // clearOnboardingData() has already wiped ssoSession from the store and
+  // this component has re-rendered with it null. A ref survives that gap;
+  // a plain closure over the hook value would not.
+  const wasSsoRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -265,6 +277,81 @@ export function SponsorQuestionnaire({
     });
   }, [answers, selectedInsights, bioText, currentQuestion, sponsorData.email]);
 
+  // Shared by createProfileMutation and completeSsoOnboardingMutation below
+  // — everything downstream of "the account now has a role + profile row"
+  // is identical regardless of which endpoint created it.
+  const afterAccountReady = async (userId: string) => {
+    wasSsoRef.current = !!ssoSession;
+
+    // Identify the new sponsor for the rest of their session and stamp
+    // basic profile attributes onto Mixpanel's People record. The work
+    // email is collected here but `work_email_verified` is currently a
+    // cosmetic flag (see BACKEND_CHANGES_NEEDED.md §1).
+    identifyUser({
+      userId,
+      userType: "sponsor",
+      email: sponsorData.email ?? null,
+      firstName: sponsorData.firstName ?? null,
+      lastName: sponsorData.lastName ?? null,
+      company: answers[0] ?? null,
+      jobTitle: answers[1] ?? null,
+      workEmailVerified: false,
+    });
+    trackSignUpSucceeded("sponsor");
+    trackOnboardingCompleted("sponsor");
+    // Show the first-run Home intro once on their first Home view.
+    AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
+    // Link this backend user ID to their RevenueCat customer record.
+    rcIdentifyUser(userId);
+
+    // Load profile data into local store
+    await loadFromProfile({
+      firstName: sponsorData.firstName,
+      lastName: sponsorData.lastName,
+      email: sponsorData.email,
+      profileData: {
+        company: answers[0],
+        jobTitle: answers[1],
+        yearsAtCompany: answers[2],
+        openToReferrals: answers[3],
+        pastReferrals: answers[4],
+        referralBonus: answers[5],
+        insights: selectedInsights,
+        workEmail: answers[7],
+      },
+    });
+
+    // Clear onboarding data + the saved draft (stop autosaving first).
+    clearOnboardingData();
+    hydratedRef.current = false;
+    clearOnboardingDraft(SPONSOR_DRAFT_KEY);
+
+    // Sponsor cold-start fix — now that registration + auth are done, the
+    // company-scoped browse endpoint actually works. If there are open
+    // roles, offer to sponsor one right now instead of dropping the
+    // sponsor onto an empty "Build your deck" quest. finishOnboarding()
+    // (the rest of the pre-existing success flow) runs once this either
+    // completes or is skipped, from the role-picker overlay's handlers.
+    try {
+      const response = await browseJobs({ limit: 10 });
+      const jobs = response.jobs || [];
+      if (jobs.length > 0) {
+        setRoleOptions(jobs);
+        setRolePickerStep("pick");
+        setShowRolePicker(true);
+        setIsSubmitting(false);
+        return;
+      }
+    } catch (err) {
+      console.warn(
+        "[SponsorQuestionnaire] Failed to fetch roles for cold-start picker:",
+        err,
+      );
+    }
+
+    finishOnboarding();
+  };
+
   const createProfileMutation = useMutation({
     mutationFn: async () => {
       console.log("[SponsorQuestionnaire] Starting registration...");
@@ -292,73 +379,7 @@ export function SponsorQuestionnaire({
       // Save auth tokens
       await setAuthTokens(data.access_token, data.refresh_token, "Sponsor");
 
-      // Identify the new sponsor for the rest of their session and stamp
-      // basic profile attributes onto Mixpanel's People record. The work
-      // email is collected here but `work_email_verified` is currently a
-      // cosmetic flag (see BACKEND_CHANGES_NEEDED.md §1).
-      identifyUser({
-        userId: String(data.user_id),
-        userType: "sponsor",
-        email: sponsorData.email ?? null,
-        firstName: sponsorData.firstName ?? null,
-        lastName: sponsorData.lastName ?? null,
-        company: answers[0] ?? null,
-        jobTitle: answers[1] ?? null,
-        workEmailVerified: false,
-      });
-      trackSignUpSucceeded("sponsor");
-      trackOnboardingCompleted("sponsor");
-      // Show the first-run Home intro once on their first Home view.
-      AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
-      // Link this backend user ID to their RevenueCat customer record.
-      rcIdentifyUser(String(data.user_id));
-
-      // Load profile data into local store
-      await loadFromProfile({
-        firstName: sponsorData.firstName,
-        lastName: sponsorData.lastName,
-        email: sponsorData.email,
-        profileData: {
-          company: answers[0],
-          jobTitle: answers[1],
-          yearsAtCompany: answers[2],
-          openToReferrals: answers[3],
-          pastReferrals: answers[4],
-          referralBonus: answers[5],
-          insights: selectedInsights,
-          workEmail: answers[7],
-        },
-      });
-
-      // Clear onboarding data + the saved draft (stop autosaving first).
-      clearOnboardingData();
-      hydratedRef.current = false;
-      clearOnboardingDraft(SPONSOR_DRAFT_KEY);
-
-      // Sponsor cold-start fix — now that registration + auth are done, the
-      // company-scoped browse endpoint actually works. If there are open
-      // roles, offer to sponsor one right now instead of dropping the
-      // sponsor onto an empty "Build your deck" quest. finishOnboarding()
-      // (the rest of the pre-existing success flow) runs once this either
-      // completes or is skipped, from the role-picker overlay's handlers.
-      try {
-        const response = await browseJobs({ limit: 10 });
-        const jobs = response.jobs || [];
-        if (jobs.length > 0) {
-          setRoleOptions(jobs);
-          setRolePickerStep("pick");
-          setShowRolePicker(true);
-          setIsSubmitting(false);
-          return;
-        }
-      } catch (err) {
-        console.warn(
-          "[SponsorQuestionnaire] Failed to fetch roles for cold-start picker:",
-          err,
-        );
-      }
-
-      finishOnboarding();
+      await afterAccountReady(String(data.user_id));
     },
     onError: (error: Error) => {
       console.warn("[SponsorQuestionnaire] Registration failed:", error);
@@ -388,10 +409,62 @@ export function SponsorQuestionnaire({
     },
   });
 
+  // SSO counterpart to createProfileMutation — fires for a user who already
+  // authenticated via "Continue with Apple/Google" and just needs a role +
+  // profile row attached. Sends the full questionnaire payload in one shot,
+  // same as createProfile() does here (unlike the applicant flow, sponsor
+  // registration was always a single end-of-flow call, not resume-first).
+  const completeSsoOnboardingMutation = useMutation({
+    mutationFn: async () => {
+      return authApi.completeSsoOnboarding({
+        // Capitalized per the backend's validation — it rejects anything
+        // but exactly 'Applicant'/'Sponsor'.
+        role: "Sponsor",
+        // The SSO exchange usually stored the name already, but Apple only
+        // sends it once ever — forward anything the flow captured.
+        ...(sponsorData.firstName?.trim()
+          ? { first_name: sponsorData.firstName.trim() }
+          : {}),
+        ...(sponsorData.lastName?.trim()
+          ? { last_name: sponsorData.lastName.trim() }
+          : {}),
+        company: answers[0],
+        job_title: answers[1],
+        duration: answers[2],
+        // Same select-answer → wire-format conversions createProfile()
+        // applies for /api/register-sponsor/ — the backend treats this
+        // endpoint's fields identically (booleans; financial_reward is the
+        // literal string "yes"/"no", compared == 'yes' server-side).
+        open_to_referrals: answers[3] === "Yes, absolutely",
+        referral_experience: answers[4] === "Frequently",
+        financial_reward: answers[5] === "Yes" ? "yes" : "no",
+        insights: selectedInsights,
+        work_email: answers[7],
+      });
+    },
+    onSuccess: async () => {
+      if (!ssoSession) return;
+      await afterAccountReady(ssoSession.userId);
+    },
+    onError: (error: Error) => {
+      console.warn(
+        "[SponsorQuestionnaire] SSO onboarding completion failed:",
+        error,
+      );
+      setIsSubmitting(false);
+      trackSignUpFailed("sponsor", error.message || "unknown");
+      showToast(`Couldn't finish setting up your account: ${error.message}`, "error");
+    },
+  });
+
   const handleFinalSubmit = () => {
     Keyboard.dismiss();
     setIsSubmitting(true);
-    createProfileMutation.mutate();
+    if (ssoSession) {
+      completeSsoOnboardingMutation.mutate();
+    } else {
+      createProfileMutation.mutate();
+    }
   };
 
   // The success animation + best-effort photo/bio save + work-email
@@ -472,12 +545,16 @@ export function SponsorQuestionnaire({
     setTimeout(() => {
       setIsSubmitting(false);
       onComplete();
-      // Delay toast until after the navigation transition finishes. Two
-      // emails are now in flight: the login-email verification (PR #38)
-      // and the work-email verification we just kicked off (PR #42).
+      // Delay toast until after the navigation transition finishes. For a
+      // password signup, two emails are in flight: the login-email
+      // verification (PR #38) and the work-email one we just kicked off
+      // (PR #42). An SSO signup only ever triggers the work-email one — the
+      // provider already verified the login email.
       setTimeout(() => {
         showToast(
-          "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
+          wasSsoRef.current
+            ? "Welcome! We sent a work email verification link — check your inbox and spam folder."
+            : "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
           "success",
         );
       }, 500);
@@ -757,7 +834,7 @@ export function SponsorQuestionnaire({
                     ) : initials ? (
                       <Text style={styles.photoInitials}>{initials}</Text>
                     ) : (
-                      <Camera color="#BBB" size={40} />
+                      <Camera color={Colors.faint} size={40} />
                     )}
                   </TouchableOpacity>
                   <View style={styles.photoBtnRow}>
@@ -789,7 +866,7 @@ export function SponsorQuestionnaire({
                 <View style={styles.bioWrapper}>
                   <TextInput
                     placeholder="A sentence or two about you"
-                    placeholderTextColor="#BBB"
+                    placeholderTextColor={Colors.faint}
                     value={bioText}
                     onChangeText={setBioText}
                     style={styles.bioInput}
@@ -802,11 +879,11 @@ export function SponsorQuestionnaire({
                 <View>
                   <View style={styles.inputWrapper}>
                     {question.type === "email" && (
-                      <Mail color="#AAA" size={20} style={{ marginRight: 12 }} />
+                      <Mail color={Colors.faint} size={20} style={{ marginRight: 12 }} />
                     )}
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={answers[currentQuestion] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [currentQuestion]: v })
@@ -933,7 +1010,7 @@ export function SponsorQuestionnaire({
                             </Text>
                           )}
                         </View>
-                        <ChevronRight size={18} color="#CCC" />
+                        <ChevronRight size={18} color={Colors.faint} />
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -1004,7 +1081,7 @@ export function SponsorQuestionnaire({
                     <TextInput
                       style={styles.rolePickerNoteInput}
                       placeholder="e.g. what the team is like, what we look for..."
-                      placeholderTextColor="#BBB"
+                      placeholderTextColor={Colors.faint}
                       value={roleInsiderNote}
                       onChangeText={setRoleInsiderNote}
                       multiline
@@ -1051,25 +1128,20 @@ export function SponsorQuestionnaire({
       {showSuccess && (
         <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
+            {/* The Broadcast at signup scale — durationMs matches the
+                2.2s navigation beat in finishOnboarding, so the moment
+                completes just as the dashboard arrives. */}
             <View style={styles.successContainer}>
-              <Animated.View
-                entering={ZoomIn.delay(200).duration(600)}
-                style={styles.successIconBox}
-              >
-                <UserCheck color="#000" size={48} />
-              </Animated.View>
-              <Animated.Text
-                entering={FadeInDown.delay(400)}
-                style={styles.successTitle}
-              >
-                Profile Complete
-              </Animated.Text>
-              <Animated.Text
-                entering={FadeInDown.delay(600)}
-                style={styles.successSub}
-              >
-                Your sponsor account is ready. Welcome to the network.
-              </Animated.Text>
+              <BroadcastMoment
+                durationMs={2200}
+                icon={<UserCheck color="#FFF" size={38} />}
+                words={[
+                  { word: "Welcome" },
+                  { word: "to" },
+                  { word: "BackChannel.", accent: true },
+                ]}
+                subtitle="Your sponsor account is ready."
+              />
             </View>
           </BlurView>
         </Animated.View>
@@ -1094,19 +1166,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     // #767676 is the minimum gray that passes WCAG AA contrast (4.5:1) on
     // white — #BBB (~2.3:1) failed for text conveying real progress state.
-    color: "#767676",
+    color: Colors.muted,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  progressBarBg: { height: 2, backgroundColor: "#F0F0F0", width: "100%" },
-  progressBar: { height: "100%", backgroundColor: "#000" },
+  progressBarBg: { height: 2, backgroundColor: Colors.border, width: "100%" },
+  progressBar: { height: "100%", backgroundColor: Colors.ink },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40 },
   questionText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 38,
+    ...Type.title,
+    color: Colors.ink,
     marginBottom: 40,
   },
   optionsContainer: { gap: 12 },
@@ -1116,26 +1185,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderRadius: 16,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
-  optionCardSelected: { backgroundColor: "#000", borderColor: "#000" },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
+  optionCardSelected: { backgroundColor: Colors.body, borderColor: Colors.body },
   optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     height: 64,
   },
   textInput: { flex: 1, fontSize: 18, color: "#000", fontWeight: "500" },
   companyHelper: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     lineHeight: 18,
     marginTop: 12,
@@ -1144,7 +1215,7 @@ const styles = StyleSheet.create({
 
   footer: { paddingHorizontal: 28, paddingBottom: 30, paddingTop: 20 },
   nextButton: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 60,
     borderRadius: 30,
     flexDirection: "row",
@@ -1155,37 +1226,12 @@ const styles = StyleSheet.create({
   nextButtonDisabled: { opacity: 0.3 },
   nextButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   textWhite: { color: "#FFF" },
+  // Full-bleed container for BroadcastMoment (which manages its own
+  // centering) — no alignItems here or the stage would shrink-wrap.
   successContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-  },
-  successIconBox: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-  },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-  },
-  successSub: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginTop: 12,
-    lineHeight: 22,
+    paddingHorizontal: 12,
+    paddingBottom: 40,
   },
 
   // ── Photo + bio steps ────────────────────────────────────────────────────
@@ -1194,31 +1240,31 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   photoImage: { width: "100%", height: "100%" },
-  photoInitials: { fontSize: 52, fontWeight: "800", color: "#999" },
+  photoInitials: { fontSize: 52, fontWeight: "800", color: Colors.muted },
   photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
   photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
-  photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  photoPickText: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
-  photoSkipText: { fontSize: 14, fontWeight: "600", color: "#AAA" },
+  photoSkipText: { fontSize: 14, fontWeight: "600", color: Colors.faint },
   bioWrapper: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
   bioInput: {
     fontSize: 18,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "500",
     minHeight: 120,
     textAlignVertical: "top",
@@ -1231,21 +1277,20 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
   rolePickerTitle: {
+    ...Type.heading,
     fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
     lineHeight: 30,
+    color: Colors.ink,
   },
   rolePickerSub: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     marginTop: 8,
   },
@@ -1259,7 +1304,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 10,
@@ -1271,7 +1316,7 @@ const styles = StyleSheet.create({
   },
   rolePickerRowSub: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 2,
   },
   rolePickerFooter: {
@@ -1290,13 +1335,15 @@ const styles = StyleSheet.create({
   rolePickerSkipText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
   },
+  // Matches the pill shape (radius = height/2) every other CTA in the
+  // sign-up flow uses — both were squared off (radius 18) before.
   rolePickerBackBtn: {
-    paddingVertical: 17,
+    height: 56,
     paddingHorizontal: 20,
-    borderRadius: 18,
-    backgroundColor: "#F3F4F6",
+    borderRadius: 28,
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1307,9 +1354,9 @@ const styles = StyleSheet.create({
   },
   rolePickerSponsorBtn: {
     flex: 1,
-    paddingVertical: 17,
-    borderRadius: 18,
-    backgroundColor: "#000",
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1328,14 +1375,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     alignItems: "center",
   },
+  // Softer than the CTA buttons' pure black — a selection shouldn't
+  // compete with the primary action for visual weight.
   rolePickerChoiceBtnSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.body,
+    borderColor: Colors.body,
   },
   rolePickerChoiceText: {
     fontSize: 14,
@@ -1346,9 +1395,9 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   rolePickerNoteInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,

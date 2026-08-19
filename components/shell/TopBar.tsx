@@ -7,6 +7,7 @@ import { Bell, ClipboardCheck } from "@/components/ui/icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors, Fonts } from "@/constants/theme";
 
 interface TopBarProps {
   /** Contextual — the check-in icon only renders when there are live
@@ -30,7 +31,10 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <View style={styles.topBar}>
-      <Text style={styles.appTitle}>BackChannel</Text>
+      <Text style={styles.appTitle}>
+        BackChannel
+        <Text style={styles.appTitlePeriod}>.</Text>
+      </Text>
       <View style={styles.topBarButtons}>
         {activeReferralCount > 0 && (
           <TouchableOpacity
@@ -46,7 +50,7 @@ export function TopBar({
             accessibilityHint="Review and update the status of your referrals"
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <ClipboardCheck color="#000" size={20} strokeWidth={1.5} />
+            <ClipboardCheck color={Colors.ink} size={20} strokeWidth={1.5} />
             {staleReferralCount > 0 && (
               <View style={styles.headerCountPill}>
                 <Text style={styles.headerCountPillText}>
@@ -74,7 +78,7 @@ export function TopBar({
           }
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Bell color="#000" size={22} strokeWidth={1.5} />
+          <Bell color={Colors.ink} size={22} strokeWidth={1.5} />
           {unreadNotificationCount > 0 && (
             <View style={styles.headerCountPill}>
               <Text style={styles.headerCountPillText}>
@@ -96,25 +100,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
+  // The splash/hero wordmark, carried into the app chrome: DM Serif
+  // Display Italic — the same glyphs the splash types out — in ink, with
+  // the trailing period in muted (the site's em-accent nod). Ink rather
+  // than the splash's full muted because up here it's the standing brand
+  // anchor, not an accent word inside a sentence; full muted at this
+  // size reads disabled.
   appTitle: {
+    fontFamily: Fonts.serifItalic,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -1,
+    color: Colors.ink,
+    letterSpacing: -0.4,
+  },
+  appTitlePeriod: {
+    color: Colors.muted,
   },
   topBarButtons: {
     flexDirection: "row",
     gap: 12,
   },
+  // Flat letterpress buttons — paper fill with a hairline, not a gray
+  // recess; the chrome stays quiet so the wordmark carries the row.
   headerIconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.paper,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   // Count pill on a header icon — says HOW MUCH is waiting, not just that
   // something is. Same black count-pill language as section headers on
@@ -127,15 +142,15 @@ const styles = StyleSheet.create({
     height: 17,
     paddingHorizontal: 4,
     borderRadius: 9,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#FFF",
+    borderColor: Colors.paper,
   },
   headerCountPillText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
   },
 });

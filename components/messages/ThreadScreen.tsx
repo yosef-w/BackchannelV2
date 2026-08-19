@@ -23,6 +23,7 @@ import {
 import React, { useState } from "react";
 import {
   Image,
+  Keyboard,
   Modal,
   ScrollView,
   Text,
@@ -48,6 +49,7 @@ import { ReferralSigningScreen } from "./ReferralSigningScreen";
 import { ThreadContextStrip } from "./ThreadContextStrip";
 import { ThreadMenuSheet } from "./ThreadMenuSheet";
 import { threadScreenStyles as styles } from "./threadScreenStyles";
+import { Colors, Fonts } from "@/constants/theme";
 
 function getConversationStarters(
   conversation: Conversation | null | undefined,
@@ -181,6 +183,9 @@ export function ThreadScreen({
    * the full posting (description, salary, skills, benefits) when the
    * background fetch lands. */
   const openJobContext = () => {
+    // The composer's keyboard may be up — drop it before presenting the
+    // sheet so nothing competes with the modal for the bottom half.
+    Keyboard.dismiss();
     if (!conversation) return;
     const ctx = conversation.jobContext;
     if (!ctx?.jobTitle && !ctx?.company) return;
@@ -419,15 +424,15 @@ if (!conversation) {
             width: 64,
             height: 64,
             borderRadius: 32,
-            backgroundColor: "#F4F4F5",
+            backgroundColor: Colors.surface,
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 12,
           }}
         >
-          <MessageCircle color="#BBB" size={28} strokeWidth={2} />
+          <MessageCircle color={Colors.faint} size={28} strokeWidth={2} />
         </View>
-        <Text style={{ fontSize: 14, fontWeight: "600", color: "#AAA" }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: Colors.faint }}>
           Loading conversation…
         </Text>
       </View>
@@ -443,7 +448,7 @@ if (!conversation) {
         padding: 20,
       }}
     >
-      <Text style={{ fontSize: 16, color: "#666" }}>
+      <Text style={{ fontSize: 16, color: Colors.body }}>
         Conversation not found
       </Text>
       <TouchableOpacity
@@ -451,7 +456,7 @@ if (!conversation) {
         style={{
           marginTop: 16,
           padding: 12,
-          backgroundColor: "#000",
+          backgroundColor: Colors.ink,
           borderRadius: 12,
         }}
       >
@@ -490,14 +495,20 @@ return (
               style={[
                 styles.headerImage,
                 {
-                  backgroundColor: "#000",
+                  backgroundColor: Colors.surface,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
                   alignItems: "center",
                   justifyContent: "center",
                 },
               ]}
             >
               <Text
-                style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
+                style={{
+                  fontFamily: Fonts.serif,
+                  fontSize: 16,
+                  color: Colors.muted,
+                }}
               >
                 {(conversation.otherParticipant.name ||
                   "?")[0].toUpperCase()}
@@ -593,31 +604,31 @@ return (
       >
         {messagesLoading ? (
           <View style={{ padding: 40, alignItems: "center" }}>
-            <Text style={{ color: "#999", fontSize: 15 }}>
+            <Text style={{ color: Colors.muted, fontSize: 15 }}>
               Loading messages...
             </Text>
           </View>
         ) : messagesError ? (
           <View style={{ padding: 40, alignItems: "center" }}>
             <Text
-              style={{ color: "#DC2626", fontSize: 15, marginBottom: 8 }}
+              style={{ color: Colors.danger, fontSize: 15, marginBottom: 8 }}
             >
               Failed to load messages
             </Text>
             <Text
-              style={{ color: "#999", fontSize: 13, textAlign: "center" }}
+              style={{ color: Colors.muted, fontSize: 13, textAlign: "center" }}
             >
               {messagesError}
             </Text>
           </View>
         ) : messages.length === 0 ? (
           <View style={{ padding: 28, alignItems: "center" }}>
-            <Text style={{ color: "#999", fontSize: 15 }}>
+            <Text style={{ color: Colors.muted, fontSize: 15 }}>
               No messages yet
             </Text>
             <Text
               style={{
-                color: "#BBB",
+                color: Colors.faint,
                 fontSize: 13,
                 marginTop: 8,
                 marginBottom: 20,
@@ -800,7 +811,7 @@ return (
                   Tap to refer them for the role
                 </Text>
               </View>
-              <ChevronRight size={18} color="#999" />
+              <ChevronRight size={18} color={Colors.muted} />
             </TouchableOpacity>
           )}
           {/* Only surface the counter as you approach the 2000-char cap so
@@ -817,7 +828,7 @@ return (
             value={messageText}
             onChangeText={setMessageText}
             placeholder="Write a message..."
-            placeholderTextColor="#BBB"
+            placeholderTextColor={Colors.faint}
             style={styles.textInput}
             multiline
             maxLength={2000}

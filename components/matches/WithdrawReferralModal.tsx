@@ -11,6 +11,7 @@ import {
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import { BarFooter, canvasSheet, QuietAction } from "./JobSheetKit";
 import type { Referral } from "./matchesQueries";
+import { Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -61,7 +62,7 @@ export function WithdrawReferralModal({
         {referral && (
           <View>
             <View style={styles.withdrawIconCircle}>
-              <AlertTriangle size={28} color="#DC2626" strokeWidth={2.5} />
+              <AlertTriangle size={28} color={Colors.danger} strokeWidth={2.5} />
             </View>
 
             <Text style={styles.withdrawModalTitle}>Withdraw referral?</Text>
@@ -133,16 +134,14 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   withdrawModalTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
-    letterSpacing: -0.5,
     marginBottom: 10,
   },
   withdrawModalSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     fontWeight: "500",
@@ -171,13 +170,13 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     marginTop: 7,
   },
   withdrawWarningText: {
     flex: 1,
     fontSize: 13,
-    color: "#DC2626",
+    color: Colors.danger,
     lineHeight: 19,
     fontWeight: "600",
   },

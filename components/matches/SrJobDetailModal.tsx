@@ -20,12 +20,14 @@ import {
     ReadMoreText,
     SectionCard,
     SkeletonCard,
+    SkillChips,
     StatStrip,
 } from "./JobSheetKit";
 import { parseSkillsField } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
 
 import type { SilverJobDetail } from "@/lib/api";
+import { Colors } from "@/constants/theme";
 
 interface SrJobDetailModalProps {
   visible: boolean;
@@ -85,7 +87,11 @@ export function SrJobDetailModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onBack}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[
+          modalStyles.modalContent,
+          canvasSheet,
+          modalStyles.modalContentTall,
+        ]}
       >
         {/* Header row — drill-in affordance back to the request. */}
         <TouchableOpacity
@@ -104,7 +110,7 @@ export function SrJobDetailModal({
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <AlertTriangle size={32} color="#DC2626" />
+            <AlertTriangle size={32} color={Colors.danger} />
             <Text style={styles.errorTitle}>Could not load role details</Text>
             <Text style={styles.errorSub}>{error}</Text>
           </View>
@@ -129,22 +135,18 @@ export function SrJobDetailModal({
 
               <StatStrip stats={stats} />
 
-              {skills.length > 0 && (
-                <SectionCard title="Skills">
-                  <View style={modalStyles.skillsRow}>
-                    {skills.map((skill: string, idx: number) => (
-                      <View key={idx} style={modalStyles.skillBadge}>
-                        <Text style={modalStyles.skillBadgeText}>{skill}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </SectionCard>
-              )}
-
-              {/* Description — silver descriptions run LONG; collapse. */}
+              {/* Description first — the role itself is what a candidate
+                  reads to decide (PM feedback: it was buried under a long
+                  ATS skill list). Silver descriptions run LONG; collapse. */}
               {!!detail.DESCRIPTION_TEXT && (
                 <SectionCard title="About the Role">
                   <ReadMoreText text={detail.DESCRIPTION_TEXT} />
+                </SectionCard>
+              )}
+
+              {skills.length > 0 && (
+                <SectionCard title="Skills">
+                  <SkillChips skills={skills} />
                 </SectionCard>
               )}
             </SheetScrollView>
@@ -164,9 +166,9 @@ export function SrJobDetailModal({
 }
 
 const styles = StyleSheet.create({
-  // Shrinks below its content height when the sheet hits its maxHeight cap,
-  // leaving room for the pinned action bar; scrolls the overflow.
-  scroll: { flexShrink: 1 },
+  // flex: 1 (not just shrink) — the sheet is fixed-height now, so the
+  // scroll fills it and the action bar stays pinned to the bottom.
+  scroll: { flex: 1 },
   backRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -186,13 +188,13 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#DC2626",
+    color: Colors.danger,
     marginTop: 12,
     textAlign: "center",
   },
   errorSub: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     marginTop: 4,
     textAlign: "center",
     lineHeight: 19,

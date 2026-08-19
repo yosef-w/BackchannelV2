@@ -1,6 +1,7 @@
 import { Heart } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface MatchesEmptyStateProps {
   userType: "applicant" | "sponsor";
@@ -49,7 +50,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -57,13 +58,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: "800", color: "#000", marginBottom: 6 },
   subtitle: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 19,
   },
   actionBtn: {
     marginTop: 20,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 14,

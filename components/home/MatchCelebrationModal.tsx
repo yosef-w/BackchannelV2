@@ -1,4 +1,5 @@
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import { Heart, MessageCircle } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -14,6 +15,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 export interface MatchedUser {
   name: string;
@@ -57,6 +59,11 @@ export function MatchCelebrationModal({
   // Pulse-ring that radiates outward from both avatars when a mutual match fires
   useEffect(() => {
     if (matchedUser) {
+      // The app's biggest moment finally lands physically too — it was
+      // the one celebration with no haptic.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
       matchRingScale.value = 0.8;
       matchRingOpacity.value = 0;
       matchRingScale.value = withTiming(1.9, { duration: 750 });
@@ -146,7 +153,9 @@ export function MatchCelebrationModal({
 
             {/* Title */}
             <Animated.View entering={FadeInUp.delay(300).duration(400)}>
-              <Text style={styles.matchTitle}>It’s a Match!</Text>
+              <Text style={styles.matchTitle}>
+                It’s a <Text style={styles.matchTitleAccent}>Match!</Text>
+              </Text>
             </Animated.View>
 
             {/* Subtitle */}
@@ -214,7 +223,7 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   matchLabelPill: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
@@ -255,7 +264,7 @@ const styles = StyleSheet.create({
     borderColor: "#FFF",
   },
   matchAvatarInitial: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -268,23 +277,27 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   matchTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.5,
+    ...Type.title,
+    color: Colors.ink,
     marginBottom: 8,
     textAlign: "center",
   },
+  // The site's .hero-title em rule — italic muted accent word.
+  matchTitleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
   matchSubtitle: {
+    fontFamily: Fonts.sansLight,
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 21,
     marginBottom: 28,
@@ -295,7 +308,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   matchMsgBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     borderRadius: 18,
     paddingVertical: 15,
     flexDirection: "row",
@@ -314,10 +327,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
+  // Matches the site's secondary/cancel-button convention (var(--muted)).
   matchSkipBtnText: {
-    color: "#666",
+    color: Colors.muted,
     fontSize: 15,
     fontWeight: "600",
   },

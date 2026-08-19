@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import type { ReportReason } from "@/lib/api";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ThreadMenuSheetProps {
   visible: boolean;
@@ -173,7 +174,7 @@ export function ThreadMenuSheet({
             <TextInput
               style={styles.reportDetailInput}
               placeholder="Add details (optional)"
-              placeholderTextColor="#AAA"
+              placeholderTextColor={Colors.faint}
               value={reportDetail}
               onChangeText={setReportDetail}
               multiline
@@ -216,20 +217,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 52,
   },
   unmatchSheetTitle: {
+    ...Type.heading,
     fontSize: 20,
-    fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 8,
     marginTop: 4,
   },
   unmatchSheetSubtitle: {
     fontSize: 14,
-    color: "#888",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 28,
@@ -238,30 +242,33 @@ const styles = StyleSheet.create({
   // pattern (Match button, Send button, etc.). The destructive context is
   // communicated by the modal subtitle ("This cannot be undone."), not by
   // the button color — keeps the brand palette consistent across surfaces.
+  // Pill CTAs — the rebrand's primary-action shape.
   unmatchActionBtn: {
-    paddingVertical: 17,
-    borderRadius: 18,
-    backgroundColor: "#000",
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
   unmatchActionText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFF",
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 15.5,
+    letterSpacing: -0.2,
+    color: Colors.paper,
   },
   unmatchCancelBtn: {
-    paddingVertical: 17,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 18,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   unmatchCancelText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   // Report — outlined (not filled) to sit visually below Unmatch's solid
   // black CTA without resorting to red; severity is communicated by copy
@@ -272,16 +279,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 16,
-    borderRadius: 18,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     marginBottom: 12,
   },
   reportActionText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   reportReasonList: {
     gap: 8,
@@ -294,31 +301,31 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   reportReasonRowSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: Colors.ink,
+    borderColor: Colors.ink,
   },
   reportReasonText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   reportReasonTextSelected: {
-    color: "#FFF",
+    color: Colors.paper,
   },
   reportDetailInput: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     minHeight: 70,
     textAlignVertical: "top",
     marginBottom: 20,

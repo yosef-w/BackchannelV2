@@ -21,6 +21,8 @@ import {
 } from "@/lib/analytics/mixpanel";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { ConfirmPop } from "@/components/cinema/ConfirmPop";
+import { Colors, Type } from "@/constants/theme";
 
 interface WorkEmailVerificationModalProps {
   visible: boolean;
@@ -33,7 +35,7 @@ interface WorkEmailVerificationModalProps {
 /**
  * Soft gate blocking sponsor swiping until their work email is verified.
  * Extracted from HomeView as a self-contained modal: isEditingWorkEmail/
- * editedWorkEmail/emailVerifyError/emailVerifyLoading have zero readers
+ * editedWorkEmail/emailVerifStatus/emailVerifyLoading have zero readers
  * outside this UI (confirmed by a state-ownership audit before extraction).
  * pendingWorkEmail, profileData, fetchFromBackend, and updatePersonalStore
  * all come straight from useUserProfileStore, so this component reads them
@@ -60,21 +62,33 @@ export function WorkEmailVerificationModal({
 
   const [isEditingWorkEmail, setIsEditingWorkEmail] = useState(false);
   const [editedWorkEmail, setEditedWorkEmail] = useState("");
-  const [emailVerifyError, setEmailVerifyError] = useState("");
+  // One status line under the buttons, but with a TONE — "Sent!" used to
+  // render in the same danger red as real failures because everything
+  // funneled through a single error string (PM: success reading as
+  // "something went wrong"). No green exists in this palette by design,
+  // so success = ink, info = body gray, error = danger.
+  const [emailVerifStatus, setEmailVerifStatus] = useState<{
+    text: string;
+    tone: "error" | "success" | "info";
+  } | null>(null);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  // Brief "you're in" beat between verification confirming and the gate
+  // closing itself — see the "I've Verified" handler.
+  const [showVerifiedBeat, setShowVerifiedBeat] = useState(false);
 
   // Clear any stale error message whenever the gate re-opens — mirrors the
   // original handleSwipe() call site, which cleared this right before
   // setting the modal visible (the Modal's `visible` prop toggles without
   // unmounting this component, so state would otherwise persist).
   useEffect(() => {
-    if (visible) setEmailVerifyError("");
+    if (visible) setEmailVerifStatus(null);
   }, [visible]);
 
   const resetAndClose = () => {
+    setShowVerifiedBeat(false);
     setIsEditingWorkEmail(false);
     setEditedWorkEmail("");
-    setEmailVerifyError("");
+    setEmailVerifStatus(null);
     onClose();
   };
 
@@ -98,6 +112,18 @@ export function WorkEmailVerificationModal({
         fullSheetGesture
         style={styles.emailVerifModal}
       >
+        {showVerifiedBeat ? (
+          /* The unlock beat — replaces the whole sheet body for ~1.4s
+             before the gate closes itself. */
+          <View style={styles.verifiedBeat}>
+            <ConfirmPop size={72} />
+            <Text style={styles.emailVerifTitle}>Verified — you&apos;re in.</Text>
+            <Text style={styles.verifiedBeatSub}>
+              Your applicant deck is unlocked.
+            </Text>
+          </View>
+        ) : (
+          <>
         <View style={styles.emailVerifIconCircle}>
           <Mail color="#FFF" size={32} strokeWidth={1.5} />
         </View>
@@ -113,7 +139,7 @@ export function WorkEmailVerificationModal({
               value={editedWorkEmail}
               onChangeText={setEditedWorkEmail}
               placeholder="name@company.com"
-              placeholderTextColor="#BBB"
+              placeholderTextColor={Colors.faint}
               style={styles.emailVerifEditInput}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -125,7 +151,7 @@ export function WorkEmailVerificationModal({
                 onPress={() => {
                   setIsEditingWorkEmail(false);
                   setEditedWorkEmail("");
-                  setEmailVerifyError("");
+                  setEmailVerifStatus(null);
                 }}
                 style={styles.emailVerifEditCancel}
                 activeOpacity={0.7}
@@ -137,13 +163,14 @@ export function WorkEmailVerificationModal({
                 onPress={async () => {
                   const trimmed = editedWorkEmail.trim();
                   if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
-                    setEmailVerifyError(
-                      "That doesn't look like a valid email.",
-                    );
+                    setEmailVerifStatus({
+                      text: "That doesn't look like a valid email.",
+                      tone: "error",
+                    });
                     return;
                   }
                   setEmailVerifyLoading(true);
-                  setEmailVerifyError("");
+                  setEmailVerifStatus(null);
                   try {
                     // Two coordinated backend calls + a local mirror:
                     //   1. PATCH sponsor profile so the backend
@@ -168,17 +195,19 @@ export function WorkEmailVerificationModal({
                     await updatePersonalStore({ workEmail: trimmed });
                     setIsEditingWorkEmail(false);
                     setEditedWorkEmail("");
-                    setEmailVerifyError(
-                      `Sent! Check ${trimmed} — including your spam folder.`,
-                    );
+                    setEmailVerifStatus({
+                      text: `Sent! Check ${trimmed} — including your spam folder.`,
+                      tone: "success",
+                    });
                   } catch (err) {
                     const msg =
                       err instanceof Error ? err.message : "Couldn't send.";
-                    setEmailVerifyError(
-                      msg.toLowerCase().includes("rate")
+                    setEmailVerifStatus({
+                      text: msg.toLowerCase().includes("rate")
                         ? "Too many sends — please wait a bit and try again."
                         : "Couldn't send to that address. Please try again.",
-                    );
+                      tone: "error",
+                    });
                   } finally {
                     setEmailVerifyLoading(false);
                   }
@@ -209,7 +238,7 @@ export function WorkEmailVerificationModal({
               onPress={() => {
                 setEditedWorkEmail(displayedEmail);
                 setIsEditingWorkEmail(true);
-                setEmailVerifyError("");
+                setEmailVerifStatus(null);
               }}
               activeOpacity={0.7}
             >
@@ -221,16 +250,16 @@ export function WorkEmailVerificationModal({
         )}
 
         <View style={styles.emailVerifSpamHint}>
-          <Info color="#999" size={13} strokeWidth={2} />
+          <Info color={Colors.muted} size={13} strokeWidth={2} />
           <Text style={styles.emailVerifSpamHintText}>
-            Don't see it? Check your spam or junk folder — it can take a
+            Don&apos;t see it? Check your spam or junk folder — it can take a
             minute to arrive.
           </Text>
         </View>
 
         <View style={styles.emailVerifInfoBox}>
           <Text style={styles.emailVerifInfoText}>
-            This keeps the network trusted — every candidate knows they're
+            This keeps the network trusted — every candidate knows they&apos;re
             talking to a real, verified professional.
           </Text>
         </View>
@@ -248,21 +277,29 @@ export function WorkEmailVerificationModal({
           style={styles.emailVerifSecondaryBtn}
           onPress={async () => {
             setEmailVerifyLoading(true);
-            setEmailVerifyError("");
+            setEmailVerifStatus(null);
             try {
               await fetchFromBackend();
               const isNowVerified =
                 useUserProfileStore.getState().workEmailVerified;
               trackWorkEmailVerifyChecked({ verified: isNowVerified });
               if (isNowVerified) {
-                onClose();
+                // A real unlock (sponsor swiping opens up) deserves a
+                // beat, not a silent close — brief verified state, then
+                // the gate lifts.
+                setShowVerifiedBeat(true);
+                setTimeout(onClose, 1400);
               } else {
-                setEmailVerifyError(
-                  "Still pending — please click the link in your inbox.",
-                );
+                setEmailVerifStatus({
+                  text: "Still pending — please click the link in your inbox.",
+                  tone: "info",
+                });
               }
             } catch {
-              setEmailVerifyError("Could not check status. Please try again.");
+              setEmailVerifStatus({
+                text: "Could not check status. Please try again.",
+                tone: "error",
+              });
             } finally {
               setEmailVerifyLoading(false);
             }
@@ -274,13 +311,24 @@ export function WorkEmailVerificationModal({
             <ActivityIndicator size="small" color="#000" />
           ) : (
             <Text style={styles.emailVerifSecondaryBtnText}>
-              I've Verified My Email
+              I&apos;ve Verified My Email
             </Text>
           )}
         </TouchableOpacity>
 
-        {emailVerifyError ? (
-          <Text style={styles.emailVerifErrorText}>{emailVerifyError}</Text>
+        {emailVerifStatus ? (
+          <Text
+            style={[
+              styles.emailVerifStatusText,
+              emailVerifStatus.tone === "error"
+                ? styles.emailVerifStatusError
+                : emailVerifStatus.tone === "success"
+                  ? styles.emailVerifStatusSuccess
+                  : styles.emailVerifStatusInfo,
+            ]}
+          >
+            {emailVerifStatus.text}
+          </Text>
         ) : null}
 
         {/* Resend (PR #42) — re-trigger the verification email if the user
@@ -292,23 +340,28 @@ export function WorkEmailVerificationModal({
           onPress={async () => {
             const workEmail = pendingWorkEmail ?? profileData?.personal?.workEmail;
             if (!workEmail) {
-              setEmailVerifyError(
-                "We don't have a work email on file. Tap 'Update it' to add one.",
-              );
+              setEmailVerifStatus({
+                text: "We don't have a work email on file. Tap 'Update it' to add one.",
+                tone: "error",
+              });
               return;
             }
-            setEmailVerifyError("");
+            setEmailVerifStatus(null);
             try {
               await authApi.sendWorkEmailVerification(workEmail);
               trackWorkEmailResendRequested();
-              setEmailVerifyError("Sent! Check your inbox and spam folder.");
+              setEmailVerifStatus({
+                text: "Sent! Check your inbox and spam folder.",
+                tone: "success",
+              });
             } catch (err) {
               const msg = err instanceof Error ? err.message : "Couldn't resend.";
-              setEmailVerifyError(
-                msg.toLowerCase().includes("rate")
+              setEmailVerifStatus({
+                text: msg.toLowerCase().includes("rate")
                   ? "Too many resends — please wait a bit and try again."
                   : "Couldn't resend. Please try again.",
-              );
+                tone: "error",
+              });
             }
           }}
           activeOpacity={0.8}
@@ -335,6 +388,8 @@ export function WorkEmailVerificationModal({
             </Text>
           </TouchableOpacity>
         )}
+          </>
+        )}
       </DismissibleSheet>
     </KeyboardAvoidingView>
   );
@@ -346,29 +401,41 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 44,
   },
   emailVerifIconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     marginBottom: 20,
   },
+  verifiedBeat: {
+    alignItems: "center",
+    paddingVertical: 24,
+    gap: 4,
+  },
+  verifiedBeatSub: {
+    fontSize: 14,
+    color: Colors.body,
+    textAlign: "center",
+  },
   emailVerifTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#000",
+    ...Type.heading,
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 12,
   },
   emailVerifSubtitle: {
     fontSize: 15,
-    color: "#666",
+    color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
@@ -389,26 +456,26 @@ const styles = StyleSheet.create({
   emailVerifSpamHintText: {
     flex: 1,
     fontSize: 12.5,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
     lineHeight: 17,
   },
   emailVerifInfoBox: {
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 16,
     padding: 20,
     marginBottom: 28,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
   },
   emailVerifInfoText: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.body,
     lineHeight: 20,
     textAlign: "center",
   },
   emailVerifPrimaryBtn: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     height: 56,
     borderRadius: 28,
     flexDirection: "row",
@@ -432,13 +499,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  emailVerifErrorText: {
+  emailVerifStatusText: {
     fontSize: 13,
-    color: "#DC2626",
     textAlign: "center",
     marginTop: 4,
     marginBottom: 4,
   },
+  emailVerifStatusError: { color: Colors.danger },
+  emailVerifStatusSuccess: { color: Colors.ink, fontWeight: "600" },
+  emailVerifStatusInfo: { color: Colors.body },
   emailVerifTesterBtn: {
     height: 44,
     alignItems: "center",
@@ -446,7 +515,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emailVerifTesterBtnText: {
-    color: "#999",
+    color: Colors.muted,
     fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -457,7 +526,7 @@ const styles = StyleSheet.create({
   // the modal's neutral palette (no bright accent — the existing primary CTA
   // already owns the visual emphasis).
   emailVerifEditLink: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",
@@ -472,7 +541,7 @@ const styles = StyleSheet.create({
   emailVerifEditLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666",
+    color: Colors.body,
     letterSpacing: 0.6,
     textTransform: "uppercase",
     marginBottom: 8,
@@ -484,10 +553,10 @@ const styles = StyleSheet.create({
     color: "#000",
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
   },
   emailVerifEditActions: {
     flexDirection: "row",
@@ -499,12 +568,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   emailVerifEditCancelText: {
-    color: "#666",
+    color: Colors.body,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -512,7 +581,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },

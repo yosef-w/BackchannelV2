@@ -31,8 +31,10 @@ import {
     DismissibleSheet,
     SheetScrollView,
 } from "../ui/DismissibleSheet";
+import { SkillChips } from "../matches/JobSheetKit";
 import { extractDisplayDomain } from "./jobTransforms";
 import { jobsModalStyles } from "./jobsModalStyles";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -84,36 +86,31 @@ export function JobDetailsModal({
         {job && (
           <SheetScrollView contentContainerStyle={{ paddingBottom: 8 }}>
             {/* Hero: Company Logo (initial fallback) + Title + Company + Location */}
+            {/* Dossier ID row — square tile beside the serif title. */}
             <View style={styles.jobModalHero}>
               <CompanyLogo
                 logoUrl={job.image}
                 name={job.company}
-                size={72}
-                borderRadius={22}
-                initialFontSize={32}
-                style={{ marginBottom: 16 }}
+                size={64}
+                borderRadius={16}
+                initialFontSize={26}
               />
-              <Text style={styles.jobModalHeroTitle}>{job.title}</Text>
-              <Text style={styles.jobModalHeroCompany}>{job.company}</Text>
-              {!!job.location && (
-                <View style={styles.jobModalLocationRow}>
-                  <MapPin size={13} color="#999" />
-                  <Text style={styles.jobModalLocationText}>
-                    {job.location}
-                  </Text>
-                  {job.isRemote && (
-                    <View style={styles.jobRemoteBadge}>
-                      <Text style={styles.jobRemoteText}>Remote</Text>
-                    </View>
-                  )}
-                </View>
-              )}
+              <View style={styles.jobModalHeroText}>
+                <Text style={styles.jobModalHeroTitle} numberOfLines={3}>
+                  {job.title}
+                </Text>
+                <Text style={styles.jobModalHeroCompany} numberOfLines={2}>
+                  {job.company}
+                  {job.location ? ` · ${job.location}` : ""}
+                  {job.isRemote ? " · Remote" : ""}
+                </Text>
+              </View>
             </View>
 
             {/* Compensation Strip */}
             <View style={styles.jobModalCompStrip}>
               <View style={styles.jobModalCompCell}>
-                <DollarSign size={14} color="#555" />
+                <DollarSign size={14} color={Colors.body} />
                 <View style={{ flex: 1, flexShrink: 1 }}>
                   <Text style={styles.jobModalCompLabel}>SALARY</Text>
                   <Text style={styles.jobModalCompValue}>
@@ -134,7 +131,7 @@ export function JobDetailsModal({
                     styles.jobModalCompCellBorder,
                   ]}
                 >
-                  <Briefcase size={14} color="#555" />
+                  <Briefcase size={14} color={Colors.body} />
                   <View style={{ flex: 1, flexShrink: 1 }}>
                     <Text style={styles.jobModalCompLabel}>EXPERIENCE</Text>
                     <Text style={styles.jobModalCompValue}>
@@ -197,13 +194,7 @@ export function JobDetailsModal({
                     Required Skills
                   </Text>
                 </View>
-                <View style={styles.skillsRow}>
-                  {job.skills.map((skill, i) => (
-                    <View key={i} style={styles.skillBadge}>
-                      <Text style={styles.skillBadgeText}>{skill}</Text>
-                    </View>
-                  ))}
-                </View>
+                <SkillChips skills={job.skills} />
               </View>
             )}
 
@@ -249,7 +240,7 @@ export function JobDetailsModal({
                   onPress={() => Linking.openURL(job.url).catch(() => {})}
                   activeOpacity={0.7}
                 >
-                  <ExternalLink size={14} color="#666" strokeWidth={2} />
+                  <ExternalLink size={14} color={Colors.body} strokeWidth={2} />
                   <Text style={cardStyles.originalPostingText}>
                     {extractDisplayDomain(job.url)}
                   </Text>
@@ -285,7 +276,7 @@ export function JobDetailsModal({
                           style={[
                             styles.sponsorCardAvatar,
                             {
-                              backgroundColor: "#000",
+                              backgroundColor: Colors.ink,
                               alignItems: "center",
                               justifyContent: "center",
                             },
@@ -379,57 +370,36 @@ export function JobDetailsModal({
 }
 
 const styles = StyleSheet.create({
+  // ── Desk rebrand: dossier ID row + flat hairline sections ─────────
   jobModalHero: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 18,
+    paddingRight: 8,
   },
+  jobModalHeroText: { flex: 1, minWidth: 0 },
   jobModalHeroTitle: {
+    fontFamily: Type.heading.fontFamily,
     fontSize: 22,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "center",
-    marginBottom: 6,
-    letterSpacing: -0.5,
+    lineHeight: 27,
+    color: Colors.ink,
+    letterSpacing: -0.3,
   },
   jobModalHeroCompany: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#555",
-    marginBottom: 8,
-  },
-  jobModalLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  jobModalLocationText: {
-    fontSize: 13,
-    color: "#999",
+    fontSize: 13.5,
     fontWeight: "500",
+    color: Colors.body,
+    lineHeight: 19,
+    marginTop: 5,
   },
-  jobRemoteBadge: {
-    backgroundColor: "#F4F4F5",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 4,
-  },
-  jobRemoteText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#000",
-  },
+  // Flat hairline fact strip (was the recessed offWhite box).
   jobModalCompStrip: {
     flexDirection: "row",
-    backgroundColor: "#F8F9FA",
-    borderRadius: 18,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
     marginBottom: 24,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#EEEEEE",
   },
   jobModalCompCell: {
     flex: 1,
@@ -440,19 +410,20 @@ const styles = StyleSheet.create({
   },
   jobModalCompCellBorder: {
     borderLeftWidth: 1,
-    borderLeftColor: "#EEEEEE",
+    borderLeftColor: Colors.border,
   },
   jobModalCompLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#BBB",
-    letterSpacing: 0.8,
+    fontSize: 10,
+    fontWeight: "800",
+    color: Colors.muted,
+    letterSpacing: 1,
     marginBottom: 2,
   },
+  // The serif stat-number voice.
   jobModalCompValue: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    color: Colors.ink,
   },
   detailSection: {
     marginBottom: 24,
@@ -461,12 +432,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
+  // Caps section labels — the ledger-key voice (12px accessibility floor).
   detailSectionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "800",
-    color: "#000",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: Colors.muted,
   },
   skillsRow: {
     flexDirection: "row",
@@ -477,42 +451,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
   },
   roleDetailChipText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: Colors.body,
   },
-  jobDetailCard: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#EEEEEE",
-  },
+  // Flat body text — the recessed card retires.
+  jobDetailCard: {},
   jobDetailText: {
     fontSize: 14,
-    color: "#333",
+    color: Colors.body,
     lineHeight: 21,
     fontWeight: "500",
-  },
-  skillBadge: {
-    backgroundColor: "#F8F9FB",
-    borderWidth: 1,
-    borderColor: "#EEE",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  skillBadgeText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: 0.2,
   },
   benefitRow: {
     flexDirection: "row",
@@ -520,24 +475,23 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 10,
   },
-  benefitText: { fontSize: 14, color: "#555", fontWeight: "500" },
+  benefitText: { fontSize: 14, color: Colors.body, fontWeight: "500" },
   jobSection: { marginBottom: 24 },
   jobSectionTitle: {
     fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
+    fontWeight: "800",
+    color: Colors.muted,
     textTransform: "uppercase",
-    marginBottom: 12,
-    letterSpacing: 0.5,
+    marginBottom: 10,
+    letterSpacing: 1.2,
   },
-  jobSectionText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  jobSectionText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
+  // Flat section between hairlines (was a recessed card).
   sponsorInfoCard: {
-    backgroundColor: "#F8F9FB",
-    padding: 16,
-    borderRadius: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 16,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "#EEE",
   },
   sponsorCardHeader: {
     flexDirection: "row",
@@ -547,16 +501,17 @@ const styles = StyleSheet.create({
   },
   sponsorCardTitle: {
     fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
+    fontWeight: "800",
+    color: Colors.muted,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   sponsorCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
-  sponsorCardAvatar: { width: 40, height: 40, borderRadius: 20 },
+  sponsorCardAvatar: { width: 40, height: 40, borderRadius: 12 },
   sponsorCardName: { fontSize: 14, fontWeight: "800", color: "#000" },
   sponsorCardRole: {
     fontSize: 12,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -564,7 +519,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -573,11 +528,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   unsponsorBtn: {
-    backgroundColor: "#F9F9F9",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
+    backgroundColor: Colors.paper,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
     paddingVertical: 16,
-    borderRadius: 18,
+    borderRadius: 999,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -594,8 +549,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#000",
-    borderRadius: 18,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
     paddingVertical: 16,
     width: "100%",
   },
@@ -605,9 +560,9 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
   },
   applyBtnLarge: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
-    borderRadius: 18,
+    borderRadius: 999,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

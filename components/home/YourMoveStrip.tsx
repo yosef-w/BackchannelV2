@@ -4,6 +4,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { interestedSponsorsQuery } from "../matches/matchesQueries";
+import { Colors } from "@/constants/theme";
 
 interface YourMoveStripProps {
   userType: "applicant" | "sponsor";
@@ -40,13 +41,13 @@ export function YourMoveStrip({ userType, onPress }: YourMoveStripProps) {
         accessibilityRole="button"
         accessibilityLabel={`${count} sponsor${count === 1 ? "" : "s"} interested in you — view in Matches`}
       >
-        <Heart color="#DC2626" size={14} strokeWidth={2.5} />
+        <Heart color={Colors.danger} size={14} strokeWidth={2.5} />
         <Text style={styles.text} numberOfLines={1}>
           {count === 1
             ? "1 sponsor is interested in you"
             : `${count} sponsors are interested in you`}
         </Text>
-        <ChevronRight color="#999" size={16} strokeWidth={2.5} />
+        <ChevronRight color={Colors.muted} size={16} strokeWidth={2.5} />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -57,10 +58,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: Colors.offWhite,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 11,
     marginHorizontal: 20,

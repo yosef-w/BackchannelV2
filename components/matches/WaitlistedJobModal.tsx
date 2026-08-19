@@ -21,6 +21,7 @@ import {
 } from "./JobSheetKit";
 import { WaitlistedJob } from "./matchesQueries";
 import { modalStyles } from "./sharedModalStyles";
+import { Colors } from "@/constants/theme";
 
 interface WaitlistedJobModalProps {
   /** The waitlisted job whose detail is being viewed, or null when closed. */
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
   scroll: { flexShrink: 1 },
   outcomeMessage: {
     fontSize: 12,
-    color: "#888",
+    color: Colors.muted,
     lineHeight: 17,
     fontWeight: "500",
     fontStyle: "italic",

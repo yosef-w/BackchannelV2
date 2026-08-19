@@ -14,7 +14,10 @@ export const jobsModalStyles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 28,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
     maxHeight: "90%",
   },
@@ -22,7 +25,10 @@ export const jobsModalStyles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    padding: 32,
+    // Gripper hugs the sheet edge (PM: it floated too far down) —
+    // 12 matches the sheets that already looked right.
+    paddingTop: 12,
+    paddingHorizontal: 32,
     paddingBottom: 40,
     width: "100%",
     maxHeight: "90%",
@@ -44,7 +50,7 @@ export const jobsModalStyles = StyleSheet.create({
   confirmBtn: {
     backgroundColor: "#000",
     paddingVertical: 18,
-    borderRadius: 18,
+    borderRadius: 999,
     alignItems: "center",
     width: "100%",
   },

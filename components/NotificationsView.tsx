@@ -38,6 +38,7 @@ import {
     markNotificationAsRead,
 } from "@/lib/api";
 import { useToastStore } from "@/stores/useToastStore";
+import { Colors, Fonts, Type } from "@/constants/theme";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // React Query key for the notifications list. Caching it means the screen
@@ -427,12 +428,14 @@ export function NotificationsView({
           style={styles.backButton}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ArrowLeft color="#000" size={24} strokeWidth={2.5} />
+          <ArrowLeft color={Colors.ink} size={24} strokeWidth={2.5} />
         </TouchableOpacity>
 
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Notifications</Text>
+            <Text style={styles.title}>
+            Your <Text style={styles.titleEm}>notifications.</Text>
+          </Text>
             <Text style={styles.subtitle}>
               {isLoading
                 ? "Loading…"
@@ -472,13 +475,13 @@ export function NotificationsView({
       {isLoading && (
         <View style={styles.centeredState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={28} strokeWidth={2} />
+            <Bell color={Colors.faint} size={28} strokeWidth={2} />
           </View>
           <Text
             style={{
               fontSize: 14,
               fontWeight: "600",
-              color: "#AAA",
+              color: Colors.faint,
               marginTop: 4,
             }}
           >
@@ -491,7 +494,7 @@ export function NotificationsView({
       {!isLoading && error && (
         <View style={styles.centeredState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={28} strokeWidth={2} />
+            <Bell color={Colors.faint} size={28} strokeWidth={2} />
           </View>
           <Text style={styles.errorText}>Couldn&apos;t load notifications</Text>
           <TouchableOpacity
@@ -509,7 +512,7 @@ export function NotificationsView({
       {!isLoading && !error && notifications.length === 0 && (
         <View style={styles.emptyState}>
           <View style={styles.stateIconCircle}>
-            <Bell color="#BBB" size={30} strokeWidth={2} />
+            <Bell color={Colors.faint} size={30} strokeWidth={2} />
           </View>
           <Text style={styles.emptyStateTitle}>No notifications yet</Text>
           <Text style={styles.emptyStateText}>
@@ -582,7 +585,7 @@ export function NotificationsView({
               />
             ) : (
               <View style={styles.iconCircle}>
-                <Icon color="#1A1A1A" size={20} strokeWidth={2.3} />
+                <Icon color={Colors.ink} size={20} strokeWidth={2.3} />
               </View>
             )}
 
@@ -674,19 +677,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
+    ...Type.title,
     fontSize: 30,
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: -0.8,
+    lineHeight: 34,
+    color: Colors.ink,
   },
+  titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   subtitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#999",
+    color: Colors.muted,
     marginTop: 3,
   },
   actionPill: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -694,7 +698,7 @@ const styles = StyleSheet.create({
   actionPillText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.1,
   },
 
@@ -708,7 +712,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -716,7 +720,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -724,7 +728,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: 999,
@@ -742,7 +746,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#999",
+    color: Colors.muted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 8,
@@ -769,22 +773,23 @@ const styles = StyleSheet.create({
   // Unread lift — was #F5F6F8, a bluish gray that had become the only
   // off-palette color left in the app; #F4F4F5 is the system neutral.
   rowUnread: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.surface,
   },
   rowRead: {
     backgroundColor: "transparent",
   },
+  // Square tiles — the house ID language.
   avatar: {
     width: 46,
     height: 46,
-    borderRadius: 23,
-    backgroundColor: "#F2F2F2",
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
   },
   iconCircle: {
     width: 46,
     height: 46,
-    borderRadius: 23,
-    backgroundColor: "#F4F4F5",
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -795,18 +800,18 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.2,
   },
   // Read rows soften the title so unread ones lead the eye.
   rowTitleRead: {
     fontWeight: "600",
-    color: "#444",
+    color: Colors.body,
   },
   rowBody: {
     fontSize: 13.5,
     fontWeight: "500",
-    color: "#777",
+    color: Colors.muted,
     lineHeight: 19,
     marginTop: 2,
   },
@@ -819,25 +824,25 @@ const styles = StyleSheet.create({
   rowTime: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#CCC",
+    backgroundColor: Colors.faint,
   },
   rowContext: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#AAA",
+    color: Colors.faint,
     flexShrink: 1,
   },
   unreadDot: {
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
 
   // ── Swipe-to-delete ──
@@ -846,7 +851,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   swipeActionDelete: {
-    backgroundColor: "#DC2626",
+    backgroundColor: Colors.danger,
     borderRadius: 18,
     flexDirection: "row",
     alignItems: "center",
@@ -868,17 +873,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 70,
   },
+  // Below the serif's ~18px floor — system font, token color only.
   emptyStateTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
   emptyStateText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#999",
+    color: Colors.muted,
     textAlign: "center",
     lineHeight: 20,
     paddingHorizontal: 40,
