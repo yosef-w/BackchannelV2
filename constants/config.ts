@@ -36,7 +36,7 @@ export const PREMIUM_ENABLED = false;
  * true — the buttons appear on the sign-in and sign-up screens (Apple only
  *   on iOS; Google on both platforms once its client IDs are non-empty).
  */
-export const SSO_ENABLED = false;
+export const SSO_ENABLED = true;
 
 // ─── RevenueCat ───────────────────────────────────────────────────────────────
 //
