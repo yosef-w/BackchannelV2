@@ -1,6 +1,6 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-08-09 (added §B — confirm/fix `BIO` missing from `GET /api/profile/`; bio can't round-trip and a re-login/reinstall shows it blank)
+**Last updated:** 2026-08-19 (§S: `SSO_ENABLED = true` is now committed on frontend `main` — remaining §S work is backend deploy + console credentials/env vars only)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
@@ -17,7 +17,7 @@
 1. **Backend/ops:** merge `develop` → `main` and deploy — SSO is live on dev (`https://backchannel-dev-hl72i.ondigitalocean.app`, returns 503-per-provider until creds are set) but **not on production**.
 2. **Admin (Apple):** enable Sign in with Apple on the App ID; create the Sign in with Apple `.p8` key. Feeds backend env vars `APPLE_BUNDLE_ID` + `APPLE_TEAM_ID`/`APPLE_KEY_ID`/`APPLE_PRIVATE_KEY` (key trio is only for revoke-on-delete).
 3. **Admin (Google):** create iOS/Android/Web OAuth client IDs in Google Cloud Console. Feeds backend `GOOGLE_OAUTH_CLIENT_IDS` (comma-separated, web ID is the token `aud`) and the frontend `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` env vars; the iOS ID's reversed form also goes into app.json's google-signin plugin as `iosUrlScheme`.
-4. **Frontend:** set the env vars from #3, flip `SSO_ENABLED = true`, EAS build (native modules + entitlement must ship in a real build; the config plugin `plugins/withGoogleSigninModularHeaders.js` already handles the Podfile patch on every prebuild).
+4. **Frontend:** set the env vars from #3, then EAS build (native modules + entitlement must ship in a real build; the config plugin `plugins/withGoogleSigninModularHeaders.js` already handles the Podfile patch on every prebuild). ~~Flip `SSO_ENABLED = true`~~ — **done 2026-08-19**, committed on `main`; the next build ships with SSO buttons rendering, so sequence the backend deploy (#1) before or alongside that build.
 5. **E2E test against dev first** — their handoff's §5 has the recipe; test users land in `BACKCHANNEL_DEV`, never prod.
 
 ---
