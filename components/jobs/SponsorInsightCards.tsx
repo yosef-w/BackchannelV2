@@ -270,23 +270,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     marginBottom: 2,
   },
+  // Bounded editor cards — paper + hairline, no shadows (the rebrand
+  // retired elevation everywhere).
   siCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: Colors.paper,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingVertical: 16,
     paddingHorizontal: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 1,
   },
   siCardActive: {
-    borderColor: "#000",
-    shadowOpacity: 0.1,
+    borderColor: Colors.ink,
+    borderWidth: 1.5,
   },
   siCardFilled: { borderColor: Colors.border },
   siAccent: {
@@ -295,14 +292,15 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 3,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
   },
   siHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   siHeaderText: { flex: 1 },
+  // Square tiles — the house ID language.
   siIconCircle: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 12,
     backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
@@ -310,8 +308,8 @@ const styles = StyleSheet.create({
   siIconCircleActive: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: "#000",
+    borderRadius: 12,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -332,7 +330,7 @@ const styles = StyleSheet.create({
   siEditText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginLeft: 8,
   },
   siPlusCircle: {
@@ -347,11 +345,11 @@ const styles = StyleSheet.create({
   siInput: {
     marginTop: 14,
     minHeight: 120,
-    backgroundColor: Colors.offWhite,
-    borderRadius: 14,
+    backgroundColor: Colors.paper,
+    borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     lineHeight: 22,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -380,7 +378,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  siChipActive: { backgroundColor: "#000", borderColor: "#000" },
+  siChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   siChipText: { fontSize: 13, fontWeight: "600", color: Colors.body },
   siChipTextActive: { color: "#FFF" },
   siDoneBtn: {
@@ -390,8 +388,8 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 16,
     height: 46,
-    borderRadius: 23,
-    backgroundColor: "#000",
+    borderRadius: 999,
+    backgroundColor: Colors.ink,
   },
   siDoneBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
 });
