@@ -17,6 +17,7 @@ import {
 import React, { useEffect } from "react";
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -113,13 +114,8 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   );
 
   return (
-    /* Deliberately NO entering animation: a reanimated entering on this
-       absolutely-positioned container is the same Fabric bug class as the
-       frozen DismissibleSheet slide-ins — the layout animation can leave
-       the view's TOUCH TARGET at its pre-animation frame, so the bar
-       renders in place but every tap lands on dead space. The bar appears
-       with the scene; its polish lives in the per-item active springs. */
     <Animated.View
+      entering={FadeInDown.duration(600)}
       style={[styles.navContainer, navAnimatedStyle]}
       pointerEvents="box-none"
     >

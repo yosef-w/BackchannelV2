@@ -28,7 +28,6 @@ import { DMSerifDisplay_400Regular } from "@expo-google-fonts/dm-serif-display/4
 import { DMSerifDisplay_400Regular_Italic } from "@expo-google-fonts/dm-serif-display/400Regular_Italic";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { AppState, AppStateStatus, StyleSheet } from "react-native";
@@ -63,15 +62,6 @@ function PremiumCelebrationHost() {
   );
 }
 
-// Hold the native launch screen up until the design-system fonts
-// (constants/theme.ts's Fonts.serif/.sans) are loaded — without this, RN
-// briefly renders headlines in the platform default font, then swaps to
-// the serif once loading finishes (a visible flash-of-unstyled-text on
-// every cold start). Paired with the hideAsync() call below. Failing to
-// call this before it auto-hides would just mean losing the hold — never
-// a crash — so this is safe even if it somehow runs twice.
-SplashScreen.preventAutoHideAsync().catch(() => {});
-
 /**
  * Create ONE QueryClient for the entire app.
  * useRef ensures it persists across re-renders.
@@ -79,7 +69,20 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 function RootLayout() {
   // Keys here MUST match constants/theme.ts's Fonts values exactly — that
   // file documents which weight is for what, this just supplies the bytes.
-  const [fontsLoaded, fontError] = useFonts({
+  //
+  // Loaded in the BACKGROUND — intentionally NO render gate, NO module-level
+  // preventAutoHideAsync, and NO hideAsync choreography. That combination
+  // put the gesture-handler native root in a half-attached state on real
+  // iPhones and bottom-of-screen taps (the floating tab bar) dropped
+  // intermittently across every tab — verified by reproduction on the
+  // ui-redesign-v2 branch (commit 3b1bd30, June 2026), which is where this
+  // fix comes from. Text renders in the system font for ~200ms on a true
+  // cold start, then swaps to DM Sans / DM Serif Display; the in-app splash
+  // masks that window almost entirely. The brief flash is the accepted cost
+  // for reliable touches. A no-FOUT solution later should bundle the fonts
+  // at BUILD time via the expo-font config plugin — never runtime
+  // splash-screen choreography.
+  useFonts({
     DMSerifDisplay_400Regular,
     DMSerifDisplay_400Regular_Italic,
     DMSans_300Light,
@@ -88,16 +91,6 @@ function RootLayout() {
     DMSans_600SemiBold,
     DMSans_700Bold,
   });
-
-  useEffect(() => {
-    // Release the native launch screen once fonts resolve either way — a
-    // font-load failure (fontError) must not strand the user on the
-    // launch screen forever; RN falls back to the platform default font
-    // in that case, which is a visual regression, not a broken app.
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [fontsLoaded, fontError]);
 
   const queryClientRef = useRef<QueryClient | null>(null);
 
@@ -209,17 +202,6 @@ function RootLayout() {
     }
   }, [accessToken, fetchFromBackend, flushSyncNow]);
 
-  // Fonts still loading — the native launch screen (held open above)
-  // covers the gap, so there's no visible blank frame. Deliberately NOT an
-  // early return: GestureHandlerRootView must mount on the FIRST render so
-  // its native touch-responder chain is established before anything
-  // becomes visible. An early return here mounted GHRV late and re-created
-  // the iOS touch-responder race originally fixed in f1273ef (ui-redesign
-  // branch, June 2026) — taps on gesture/reanimated surfaces (the floating
-  // tab bar) landed on a dead responder and navigation silently ignored
-  // them. Only the inner tree below is gated on fonts.
-  const fontsReady = fontsLoaded || !!fontError;
-
   return (
     <QueryClientProvider client={queryClientRef.current}>
       {/* Every screen in this app hardcodes a white background and
@@ -237,8 +219,6 @@ function RootLayout() {
           <KeyboardProvider>
             <StatusBar style="dark" />
 
-            {!fontsReady ? null : (
-              <>
             {/* Main navigation stack for BackChannel */}
             <Stack initialRouteName="splash">
               <Stack.Screen name="splash" options={{ headerShown: false }} />
@@ -284,8 +264,6 @@ function RootLayout() {
                 RN Modal, so stack position is irrelevant; dormant while
                 PREMIUM_ENABLED is off (the pending flag can't be set). */}
             <PremiumCelebrationHost />
-              </>
-            )}
           </KeyboardProvider>
         </GestureHandlerRootView>
       </ThemeProvider>
