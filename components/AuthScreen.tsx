@@ -142,23 +142,34 @@ export function AuthScreen({
   );
 
   const handleScreenBack = () => {
-    if (showSso && view === "form") {
-      // The form is a sub-step of the picker — back returns there rather
-      // than leaving the screen.
+    if (!isLogin && showSso && view === "form") {
+      // The sign-up email form is a sub-step of the picker — back returns
+      // there rather than leaving the screen. (Sign-in has no sub-step:
+      // its form is inline, so back always exits.)
       setView("picker");
       return;
     }
     onBack();
   };
 
-  const handleToggleMode = () => {
-    if (isLogin && onRequestSignUp) {
+  // AJ "The Switch": the mode lives in the segmented tabs (NEW HERE ·
+  // SIGN IN) at the top — the single visible source of truth — instead of
+  // a one-word text link at the bottom.
+  const handlePressNewHere = () => {
+    if (!isLogin) return;
+    if (onRequestSignUp) {
       // No role chosen yet (direct sign-in entry) — send them to role
       // selection instead of guessing applicant/sponsor.
       onRequestSignUp();
-    } else {
-      setIsLogin(!isLogin);
+      return;
     }
+    setIsLogin(false);
+    setView(showSso ? "picker" : "form");
+  };
+
+  const handlePressSignIn = () => {
+    if (isLogin) return;
+    setIsLogin(true);
   };
 
   const loginMutation = useMutation<LoginResponse, Error>({
@@ -409,28 +420,168 @@ export function AuthScreen({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-            {view === "picker" ? (
-              /* ── The Front Door — method picker ─────────────────────
-                 Headline + three equal pills (Apple, Google, email).
-                 No typed fields on this step at all; the form is one
-                 tap away for those who want it. */
+            {/* ── Mode switch — NEW HERE · SIGN IN. The rebrand's
+                underline tabs, the single visible source of truth for
+                the mode (replaces the buried one-word text link). ── */}
+            <View style={styles.segRow}>
+              <TouchableOpacity
+                onPress={handlePressNewHere}
+                style={styles.segBtn}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: !isLogin }}
+              >
+                <Text
+                  style={[styles.segText, !isLogin && styles.segTextActive]}
+                >
+                  NEW HERE
+                </Text>
+                {!isLogin && <View style={styles.segUnderline} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handlePressSignIn}
+                style={styles.segBtn}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isLogin }}
+              >
+                <Text style={[styles.segText, isLogin && styles.segTextActive]}>
+                  SIGN IN
+                </Text>
+                {isLogin && <View style={styles.segUnderline} />}
+              </TouchableOpacity>
+            </View>
+
+            {isLogin ? (
+              /* ── Sign in — the shortcut. Compact header, email +
+                 password already open (returning users skip a tap), SSO
+                 demoted below the divider. Distinct silhouette from the
+                 sign-up pitch on purpose. ── */
               <Animated.View
-                entering={FadeInDown.duration(600)}
-                style={styles.content}
+                key="signin"
+                entering={FadeInDown.duration(350)}
+                style={styles.modeContent}
+              >
+                <Text style={styles.welcomeEyebrow}>WELCOME BACK</Text>
+                <Text style={styles.titleCompact}>
+                  Good to see <Text style={styles.titleAccent}>you.</Text>
+                </Text>
+
+                <View style={styles.form}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Email Address</Text>
+                    <View style={styles.inputWrapper}>
+                      <FocusRing active={focusedField === "email"} />
+                      <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
+                      <TextInput
+                        placeholder="Email"
+                        placeholderTextColor={Colors.faint}
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        onFocus={() => setFocusedField("email")}
+                        onBlur={() => clearFocus("email")}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Password</Text>
+                    <View style={styles.inputWrapper}>
+                      <FocusRing active={focusedField === "password"} />
+                      <Lock color={Colors.faint} size={18} style={styles.inputIcon} />
+                      <TextInput
+                        placeholder="Password"
+                        placeholderTextColor={Colors.faint}
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        onFocus={() => setFocusedField("password")}
+                        onBlur={() => clearFocus("password")}
+                        style={styles.input}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword((v) => !v)}
+                        style={styles.eyeBtn}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeOff color={Colors.faint} size={18} />
+                        ) : (
+                          <Eye color={Colors.faint} size={18} />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleForgotPassword}
+                    style={styles.forgotBtn}
+                  >
+                    <Text style={styles.forgotText}>Forgot password?</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSubmit}
+                    activeOpacity={0.8}
+                    disabled={loginMutation.isPending}
+                    style={[
+                      styles.submitButton,
+                      loginMutation.isPending && { opacity: 0.7 },
+                    ]}
+                  >
+                    {loginMutation.isPending ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <Text style={styles.submitButtonText}>Sign In</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {showSso && (
+                  <>
+                    <View style={styles.divider}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
+                    <SSOButtons
+                      onSuccess={handleSsoSuccess}
+                      onError={(error) =>
+                        showToast(
+                          error.message || "Sign-in failed. Please try again.",
+                          "error",
+                        )
+                      }
+                    />
+                  </>
+                )}
+              </Animated.View>
+            ) : view === "picker" && showSso ? (
+              /* ── New here — the pitch. Tall serif headline, the
+                 one-liner, SSO-first (Apple keeps its guideline-4.8
+                 prominence on the screen new users see), email one tap
+                 away. ── */
+              <Animated.View
+                key="signup-picker"
+                entering={FadeInDown.duration(350)}
+                style={[styles.modeContent, styles.pickerCentered]}
               >
                 <View style={styles.header}>
                   <Text style={styles.title}>
-                    {isLogin ? "Welcome " : "Create your "}
-                    <Text style={styles.titleAccent}>
-                      {isLogin ? "back" : "account"}
-                    </Text>
+                    Create your <Text style={styles.titleAccent}>account.</Text>
                   </Text>
                   <Text style={styles.subtitle}>
-                    {isLogin
-                      ? "Sign in to continue"
-                      : userType === "sponsor"
-                        ? "Help great people get in — and get rewarded for it."
-                        : "Your next job comes from someone already inside."}
+                    {userType === "sponsor"
+                      ? "Help great people get in — and get rewarded for it."
+                      : "Your next job comes from someone already inside."}
                   </Text>
                 </View>
 
@@ -456,93 +607,71 @@ export function AuthScreen({
                     style={styles.emailButton}
                     onPress={() => setView("form")}
                     accessibilityRole="button"
-                    accessibilityLabel={
-                      isLogin ? "Sign in with email" : "Sign up with email"
-                    }
+                    accessibilityLabel="Sign up with email"
                   >
-                    <Mail color="#000" size={18} />
+                    <Mail color={Colors.ink} size={18} />
                     <Text style={styles.emailButtonText}>
-                      {isLogin ? "Sign in with email" : "Sign up with email"}
+                      Sign up with email
                     </Text>
                   </PressableScale>
                 </Animated.View>
-
-                <TouchableOpacity
-                  onPress={handleToggleMode}
-                  style={styles.toggleBtn}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.toggleText}>
-                    {isLogin
-                      ? "New to BackChannel? "
-                      : "Already have an account? "}
-                    <Text style={styles.toggleHighlight}>
-                      {isLogin ? "Sign up" : "Sign in"}
-                    </Text>
-                  </Text>
-                </TouchableOpacity>
               </Animated.View>
             ) : (
+            /* ── Sign up with email — the typed step behind the picker,
+               on the same rule-line letterpress fields as sign-in. The
+               segments stay visible above, so no bottom toggle link. ── */
             <Animated.View
-              entering={FadeInDown.duration(600)}
-              style={styles.content}
+              key="signup-form"
+              entering={FadeInDown.duration(350)}
+              style={styles.modeContent}
             >
-              {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.title}>
-                  {isLogin ? "Welcome " : "Create your "}
-                  <Text style={styles.titleAccent}>
-                    {isLogin ? "back" : "account"}
-                  </Text>
+                  Create your <Text style={styles.titleAccent}>account.</Text>
                 </Text>
                 <Text style={styles.subtitle}>
-                  {isLogin
-                    ? "Sign in to continue"
-                    : "Join the professional referral network"}
+                  {userType === "sponsor"
+                    ? "Help great people get in — and get rewarded for it."
+                    : "Your next job comes from someone already inside."}
                 </Text>
               </View>
 
-              {/* Form */}
               <View style={styles.form}>
-                {!isLogin && (
-                  <>
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>First Name</Text>
-                      <View style={styles.inputWrapper}>
-                        <FocusRing active={focusedField === "firstName"} />
-                        <User color={Colors.faint} size={18} style={styles.inputIcon} />
-                        <TextInput
-                          placeholder="First Name"
-                          placeholderTextColor={Colors.faint}
-                          value={firstName}
-                          onChangeText={setFirstName}
-                          autoCapitalize="words"
-                          onFocus={() => setFocusedField("firstName")}
-                          onBlur={() => clearFocus("firstName")}
-                          style={styles.input}
-                        />
-                      </View>
-                    </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>First Name</Text>
+                  <View style={styles.inputWrapper}>
+                    <FocusRing active={focusedField === "firstName"} />
+                    <User color={Colors.faint} size={18} style={styles.inputIcon} />
+                    <TextInput
+                      placeholder="First Name"
+                      placeholderTextColor={Colors.faint}
+                      value={firstName}
+                      onChangeText={setFirstName}
+                      autoCapitalize="words"
+                      onFocus={() => setFocusedField("firstName")}
+                      onBlur={() => clearFocus("firstName")}
+                      style={styles.input}
+                    />
+                  </View>
+                </View>
 
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Last Name</Text>
-                      <View style={styles.inputWrapper}>
-                        <FocusRing active={focusedField === "lastName"} />
-                        <User color={Colors.faint} size={18} style={styles.inputIcon} />
-                        <TextInput
-                          placeholder="Last Name"
-                          placeholderTextColor={Colors.faint}
-                          value={lastName}
-                          onChangeText={setLastName}
-                          autoCapitalize="words"
-                          onFocus={() => setFocusedField("lastName")}
-                          onBlur={() => clearFocus("lastName")}
-                          style={styles.input}
-                        />
-                      </View>
-                    </View>
-                  </>
-                )}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Last Name</Text>
+                  <View style={styles.inputWrapper}>
+                    <FocusRing active={focusedField === "lastName"} />
+                    <User color={Colors.faint} size={18} style={styles.inputIcon} />
+                    <TextInput
+                      placeholder="Last Name"
+                      placeholderTextColor={Colors.faint}
+                      value={lastName}
+                      onChangeText={setLastName}
+                      autoCapitalize="words"
+                      onFocus={() => setFocusedField("lastName")}
+                      onBlur={() => clearFocus("lastName")}
+                      style={styles.input}
+                    />
+                  </View>
+                </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email Address</Text>
@@ -597,53 +726,14 @@ export function AuthScreen({
                   </View>
                 </View>
 
-                {isLogin && (
-                  <TouchableOpacity
-                    onPress={handleForgotPassword}
-                    style={styles.forgotBtn}
-                  >
-                    <Text style={styles.forgotText}>Forgot password?</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Submit Button */}
                 <TouchableOpacity
                   onPress={handleSubmit}
                   activeOpacity={0.8}
-                  disabled={loginMutation.isPending}
-                  style={[
-                    styles.submitButton,
-                    loginMutation.isPending && { opacity: 0.7 },
-                  ]}
+                  style={styles.submitButton}
                 >
-                  {loginMutation.isPending && isLogin ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>
-                      {isLogin ? "Sign In" : "Get Started"}
-                    </Text>
-                  )}
+                  <Text style={styles.submitButtonText}>Get Started</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Toggle Mode — kept on the form step too, so someone who
-                  tapped "Sign up with email" and then remembers they
-                  already have an account can flip straight to sign-in
-                  without backing out to the picker. */}
-              <TouchableOpacity
-                onPress={handleToggleMode}
-                style={styles.toggleBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.toggleText}>
-                  {isLogin
-                    ? "New to BackChannel? "
-                    : "Already have an account? "}
-                  <Text style={styles.toggleHighlight}>
-                    {isLogin ? "Sign up" : "Sign in"}
-                  </Text>
-                </Text>
-              </TouchableOpacity>
             </Animated.View>
             )}
         </KeyboardAwareScrollView>
@@ -764,6 +854,7 @@ function FocusRing({ active }: { active: boolean }) {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -787,10 +878,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 30,
   },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-  },
   header: {
     marginBottom: 24,
   },
@@ -811,22 +898,62 @@ const styles = StyleSheet.create({
     color: Colors.body,
     marginTop: 8,
   },
-  socialButton: {
+  // ── AJ "The Switch" — segments, mode content, rule-line fields ──────
+  segRow: {
     flexDirection: "row",
-    alignItems: "center",
+    gap: 26,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginTop: 10,
+  },
+  segBtn: {
+    paddingBottom: 12,
+  },
+  segText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    color: Colors.muted,
+  },
+  segTextActive: {
+    color: Colors.ink,
+  },
+  segUnderline: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: -1,
+    height: 2,
+    backgroundColor: Colors.ink,
+  },
+  modeContent: {
+    flex: 1,
+    paddingTop: 28,
+  },
+  // NEW HERE picker only — vertically centered like the pre-segment
+  // screen, so the three pills sit mid-screen rather than hugging the top.
+  pickerCentered: {
     justifyContent: "center",
-    height: 56,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 12,
+    paddingTop: 0,
+    paddingBottom: 60,
+  },
+  welcomeEyebrow: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 10.5,
+    letterSpacing: 2.2,
+    color: Colors.muted,
+  },
+  titleCompact: {
+    fontFamily: Fonts.serif,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.3,
+    color: Colors.ink,
+    marginTop: 10,
     marginBottom: 20,
   },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
+  // The previous boxed-input language, kept deliberately — the user
+  // preferred it, and it matches the questionnaire's fields.
   form: {
     gap: 16,
   },
@@ -847,6 +974,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 28,
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  dividerText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    color: Colors.muted,
   },
   // The "you are here" affordance the PM flagged as missing — rendered by
   // FocusRing as an overlay (see its comment for why it must not be a
@@ -924,18 +1069,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#000",
-  },
-  toggleBtn: {
-    marginTop: 24,
-    alignItems: "center",
-  },
-  toggleText: {
-    fontSize: 15,
-    color: Colors.body,
-  },
-  toggleHighlight: {
-    color: "#000",
-    fontWeight: "700",
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
