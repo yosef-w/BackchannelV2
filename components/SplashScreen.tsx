@@ -402,6 +402,9 @@ const styles = StyleSheet.create({
     color: Colors.ink,
     letterSpacing: -0.8,
     textAlign: 'center',
+    // Same clipping guard as the footer labels below — negative tracking
+    // + an italic nested segment can render wider than iOS measures.
+    paddingHorizontal: 8,
   },
   // "BackChannel." — the italic muted-gray accent, matching the site's
   // .hero-title em rule exactly (color: var(--muted), font-style: italic).
@@ -452,11 +455,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 44,
   },
+  // Both labels below carry a little horizontal padding on the Text
+  // itself: iOS clips a Text to its MEASURED width, and two things here
+  // measure a hair narrower than they render — negative letterSpacing on
+  // the button label, and the bold nested "Sign in" span (mixed-weight
+  // nested text measures against the parent's metrics). Without the
+  // padding the final glyph's ink gets shaved at the right edge.
   signInLinkText: {
     fontFamily: Fonts.sans,
     fontSize: 14,
     color: Colors.muted,
     textAlign: 'center',
+    paddingHorizontal: 6,
   },
   signInLinkHighlight: {
     fontFamily: Fonts.sansBold,
@@ -467,5 +477,6 @@ const styles = StyleSheet.create({
     color: Colors.paper,
     fontSize: 16,
     letterSpacing: -0.2,
+    paddingHorizontal: 8,
   },
 });
