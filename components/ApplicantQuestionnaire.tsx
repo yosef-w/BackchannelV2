@@ -10,7 +10,6 @@ import {
   Camera,
   Check,
   ChevronRight,
-  Eye,
   FileText,
   MapPin,
   Search,
@@ -84,18 +83,41 @@ import {
   saveOnboardingDraft,
 } from "@/utils/onboardingDraft";
 import { BroadcastMoment } from "@/components/cinema/BroadcastMoment";
+import { ResumeReadingFilm } from "@/components/cinema/ResumeReadingFilm";
+import {
+  buildReadingRows,
+  type ReadingRow,
+} from "@/components/cinema/resumeReadingContent";
+import { Sentry } from "@/lib/sentry";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// Upper bound on how long we'll block onboarding waiting for the resume to be
-// parsed + AI-classified before proceeding anyway. The classify step is an AI
-// call and can occasionally be slow; a new user must never be trapped on a
-// spinner, so we race it against this timeout and finish gracefully either way.
+// Upper bound on how long we'll block onboarding waiting for the final save
+// before proceeding anyway — a new user must never be trapped on a spinner.
 const RESUME_PROCESS_TIMEOUT_MS = 25000;
 
-// Length of the post-completion Broadcast beat — the moment plays fully,
-// then navigation to the dashboard fires.
-const DONE_BEAT_MS = 1900;
+// How long we HOLD the user on the "building your profile" beat for the
+// résumé pipeline (upload → parse → AI classify → refetch). The classify step
+// is Snowflake Cortex and routinely runs 30–90s (the profile screen budgets
+// 60s + 120s for the same pipeline), so this must be generous — the original
+// 25s cap expired mid-classify, showed a false "couldn't parse" toast, and
+// made testers re-type everything the backend then filled in anyway. Past
+// this hold we release the user into the manual steps, but the pipeline keeps
+// running and a late success is harvested (see handleResumeStep).
+const RESUME_FOREGROUND_WAIT_MS = 75_000;
+
+// Error-message prefix marking "the PDF had no extractable text" (scanned /
+// image-only résumés) so the catch can show a more useful toast than the
+// generic failure copy.
+const RESUME_UNREADABLE = "resume-unreadable:";
+
+// The post-completion Broadcast beat. The animation plays at its NATURAL
+// length — BroadcastMoment's choreography is fractional, so passing less
+// than 2600ms compresses every movement (the old 1900ms made "Profile
+// complete." fly by half-finished). Navigation then waits a further beat
+// so the moment actually lands before the dashboard's intro slides begin.
+const DONE_BEAT_ANIMATION_MS = 2600;
+const DONE_BEAT_MS = 3400;
 
 // AsyncStorage key for the in-progress applicant questionnaire, so a user who
 // backgrounds/kills the app mid-signup doesn't lose their answers. We store
@@ -222,6 +244,16 @@ export function ApplicantQuestionnaire({
   // see its declaration below.
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const registeredRef = useRef(isAuthenticated);
+  // Closes the late-résumé harvest window: once the final save starts (or the
+  // component unmounts) a slow classify landing in the background must no
+  // longer flip resumeFilled — the data still lands server-side either way.
+  const resumeHarvestClosedRef = useRef(false);
+  useEffect(
+    () => () => {
+      resumeHarvestClosedRef.current = true;
+    },
+    [],
+  );
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFileAsset, setSelectedFileAsset] = useState<{
     name: string;
@@ -239,6 +271,17 @@ export function ApplicantQuestionnaire({
   // Distinguishes the two loading beats behind the success overlay: the résumé
   // parse (after step 1) vs. the final save (last step).
   const [finalizing, setFinalizing] = useState(false);
+  // "The Reading" — the résumé-parse film (ResumeReadingFilm) that replaces
+  // the blur/spinner overlay for the résumé beat. Null when not playing;
+  // resumeText arrives when the parse lands, resolved+rows when the classify
+  // and refetch complete. filmDoneRef resolves handleResumeStep's wait once
+  // the film's confirmation beat finishes.
+  const [film, setFilm] = useState<null | {
+    resumeText: string | null;
+    resolved: boolean;
+    rows: ReadingRow[];
+  }>(null);
+  const filmDoneRef = useRef<(() => void) | null>(null);
   // Phase 2 — resume review. After the resume is parsed + AI-classified we show
   // the user what we extracted (a confirmation moment) instead of filling the
   // profile invisibly. Null until we have something worth reviewing.
@@ -297,8 +340,8 @@ export function ApplicantQuestionnaire({
   const showToast = useToastStore((state) => state.showToast);
   const rcIdentifyUser = useSubscriptionStore((state) => state.identifyUser);
 
-  // Final exit from onboarding → dashboard. Shared by the no-resume path, the
-  // resume-processing fallbacks, and the review screen's confirm button.
+  // Final exit from onboarding → dashboard, from handleFinalize for every
+  // path (the résumé review happens mid-flow now, after the parse film).
   // Plays the Broadcast beat (the signup's one true celebration — the
   // loading overlay above it is a spinner, not a confirmation) and then
   // finishes for real after the beat completes.
@@ -335,9 +378,10 @@ export function ApplicantQuestionnaire({
     }, 500);
   };
 
+  // Review dismissal — the next question is already on stage underneath,
+  // so closing the sheet drops the user straight into the remaining steps.
   const handleReviewConfirm = () => {
     setShowReview(false);
-    completeOnboarding();
   };
 
   // Pick a profile photo from the library. Kept local (URI only) until after
@@ -683,37 +727,120 @@ export function ApplicantQuestionnaire({
       }
     }
     if (selectedFileAsset) {
-      setFinalizing(false); // this beat is the résumé parse, not the final save
-      setShowSuccess(true); // doubles as the "Building your profile…" beat
+      // Roll film — "The Reading" plays over the whole parse + classify wait.
+      setFilm({ resumeText: null, resolved: false, rows: [] });
+      const form = new FormData();
+      // POST /api/upload-and-parse/ expects field name "file".
+      form.append("file", {
+        uri: selectedFileAsset.uri,
+        name: selectedFileAsset.name,
+        type: selectedFileAsset.mimeType,
+        // RN FormData file descriptor — cast required (web-typed lib.dom).
+      } as any);
+      trackResumeUploaded({
+        source: "questionnaire",
+        fileSizeBytes: selectedFileAsset.size,
+      });
+
+      // The whole pipeline as ONE promise: the foreground timeout below stops
+      // the WAITING, never the work — the requests keep running so a slow
+      // classify can still be harvested after we release the user.
+      const pipeline = (async () => {
+        const parsed = await uploadAndParseResume(form);
+        // The backend returns 201 even when text extraction fails (scanned/
+        // image-only PDFs) — extracted_text is null. Don't classify nothing.
+        if (!parsed.extracted_text) {
+          throw new Error(
+            `${RESUME_UNREADABLE}${parsed.parsing_error ?? "no extracted text"}`,
+          );
+        }
+        // Hand the parsed text to the film — the drift scene shows the
+        // user's own lines while the classify runs.
+        const text = parsed.extracted_text;
+        setFilm((s) => (s ? { ...s, resumeText: text } : s));
+        await classifyResume();
+        await fetchFromBackend();
+      })();
+
       try {
-        const form = new FormData();
-        // POST /api/upload-and-parse/ expects field name "file".
-        form.append("file", {
-          uri: selectedFileAsset.uri,
-          name: selectedFileAsset.name,
-          type: selectedFileAsset.mimeType,
-          // RN FormData file descriptor — cast required (web-typed lib.dom).
-        } as any);
-        trackResumeUploaded({
-          source: "questionnaire",
-          fileSizeBytes: selectedFileAsset.size,
+        await withTimeout(pipeline, RESUME_FOREGROUND_WAIT_MS);
+        // Real values for the film's build scene — the same derivations the
+        // deck card ledger uses, from the freshly-refetched profile.
+        const d = useUserProfileStore.getState().data;
+        const rows = buildReadingRows({
+          experiences: d.professional.experiences,
+          skills: d.skills,
+          achievements: d.achievements,
+          currentRole: d.professional.currentRole,
+          industry: d.professional.targetIndustry,
         });
-        await withTimeout(
-          uploadAndParseResume(form)
-            .then(() => classifyResume())
-            .then(() => fetchFromBackend()),
-          RESUME_PROCESS_TIMEOUT_MS,
-        );
+        // Let the film land its ending: the beat on stage finishes its
+        // read, then the build + confirmation scenes play out before we
+        // advance to the next question.
+        await new Promise<void>((resolve) => {
+          filmDoneRef.current = resolve;
+          setFilm((s) => (s ? { ...s, resolved: true, rows } : s));
+        });
         setResumeFilled(true);
-      } catch (err) {
-        console.warn("[Questionnaire] Résumé processing failed:", err);
-        showToast(
-          "We couldn't read your résumé automatically — you can fill those details in yourself.",
-          "info",
+        // The film's "Here's what we found" hands directly into the review
+        // sheet: show everything the résumé filled, then the CTA continues
+        // into the remaining questions (the parts a résumé can't answer).
+        const experiences = (d.professional.experiences || []).filter(
+          (e) => e.jobTitle?.trim() || e.company?.trim(),
         );
-        // resumeFilled stays false → the manual industry/role/skills steps show.
+        const education = (d.education.entries || []).filter(
+          (e) => e.degree?.trim() || e.university?.trim(),
+        );
+        const skills = d.skills || [];
+        if (experiences.length || education.length || skills.length) {
+          setReviewData({ experiences, education, skills });
+          setShowReview(true);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (message === "timeout") {
+          // Still working server-side. Release the user into the manual steps
+          // and quietly harvest the result if it lands before the final save —
+          // resumeFilled flipping mid-flow collapses the industry/role/skills
+          // steps (the safeIndex guard handles the list shrinking).
+          showToast(
+            "Your résumé is taking a moment — keep going and we'll fill in what we can.",
+            "info",
+          );
+          pipeline
+            .then(() => {
+              if (resumeHarvestClosedRef.current) return;
+              setResumeFilled(true);
+              showToast(
+                "Résumé read — we've filled in your experience and skills.",
+                "success",
+              );
+            })
+            .catch((lateErr) => {
+              console.warn(
+                "[Questionnaire] Résumé background processing failed:",
+                lateErr,
+              );
+              Sentry.captureException(lateErr, {
+                tags: { flow: "onboarding_resume", stage: "background" },
+              });
+            });
+        } else {
+          console.warn("[Questionnaire] Résumé processing failed:", err);
+          // Onboarding's centerpiece — failures should page the dashboard,
+          // not just toast (mirrors useResumePipeline).
+          Sentry.captureException(err, { tags: { flow: "onboarding_resume" } });
+          showToast(
+            message.startsWith(RESUME_UNREADABLE)
+              ? "We couldn't read your résumé — it may be a scanned image. You can fill those details in yourself."
+              : "We couldn't read your résumé automatically — you can fill those details in yourself.",
+            "info",
+          );
+          // resumeFilled stays false → the manual industry/role/skills steps show.
+        }
       } finally {
-        setShowSuccess(false);
+        filmDoneRef.current = null;
+        setFilm(null);
       }
     }
     setIsSubmitting(false);
@@ -728,6 +855,9 @@ export function ApplicantQuestionnaire({
     // otherwise it lingers over the review screen, which has no input to
     // give it focus and no obvious way to dismiss it.
     Keyboard.dismiss();
+    // The final save is starting — a late résumé harvest flipping the step
+    // list or toasting over the review screen from here on would be wrong.
+    resumeHarvestClosedRef.current = true;
     setIsSubmitting(true);
     setFinalizing(true);
     setShowSuccess(true);
@@ -772,24 +902,9 @@ export function ApplicantQuestionnaire({
       console.warn("[Questionnaire] Finalize failed:", err);
     }
 
-    // Résumé users get the "here's what we found" review; others just finish.
-    if (resumeFilled) {
-      const data = useUserProfileStore.getState().data;
-      const experiences = (data.professional.experiences || []).filter(
-        (e) => e.jobTitle?.trim() || e.company?.trim(),
-      );
-      const education = (data.education.entries || []).filter(
-        (e) => e.degree?.trim() || e.university?.trim(),
-      );
-      const skills = data.skills || [];
-      if (experiences.length || education.length || skills.length) {
-        setReviewData({ experiences, education, skills });
-        setShowSuccess(false);
-        setShowReview(true);
-        setIsSubmitting(false);
-        return;
-      }
-    }
+    // The résumé review now plays right after the parse film (see
+    // handleResumeStep) — the finale is the same for everyone: the
+    // Broadcast beat, then the dashboard.
     completeOnboarding();
   };
 
@@ -1008,7 +1123,11 @@ export function ApplicantQuestionnaire({
                       }
                       style={styles.textInput}
                       autoCapitalize="words"
-                      autoFocus
+                      // After the résumé film, the flow advances to this
+                      // question UNDER the review sheet — autofocusing then
+                      // summons the keyboard over the overlay. Focus only
+                      // when this screen is actually the one being looked at.
+                      autoFocus={!showReview}
                     />
                   </View>
                 )}
@@ -1319,6 +1438,17 @@ export function ApplicantQuestionnaire({
         </KeyboardAvoidingView>
       </SafeAreaView>
 
+      {/* The Reading — full-screen résumé-parse film (replaces the old
+          blur/spinner overlay for the résumé beat). */}
+      {film && (
+        <ResumeReadingFilm
+          resumeText={film.resumeText}
+          resolved={film.resolved}
+          rows={film.rows}
+          onComplete={() => filmDoneRef.current?.()}
+        />
+      )}
+
       {showSuccess && (
         <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
@@ -1355,119 +1485,122 @@ export function ApplicantQuestionnaire({
       )}
 
       {showReview && reviewData && (
-        <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
-          <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill}>
-            <SafeAreaView style={styles.reviewSafeArea}>
-              <View style={styles.reviewHeader}>
-                <View style={styles.reviewBadge}>
-                  <Eye color="#000" size={22} />
-                </View>
-                <Text style={styles.reviewTitle}>Here&apos;s what we found</Text>
-                <Text style={styles.reviewSub}>
-                  We built your profile straight from your resume. Give it a
-                  quick look — you can fine-tune anything later.
-                </Text>
-              </View>
+        <Animated.View
+          entering={FadeIn}
+          style={[StyleSheet.absoluteFill, styles.reviewRoot]}
+        >
+          <SafeAreaView style={styles.reviewSafeArea}>
+            <View style={styles.reviewHeader}>
+              <Text style={styles.reviewEyebrow}>FROM YOUR RÉSUMÉ</Text>
+              <Text style={styles.reviewTitle}>
+                Here&apos;s what we{" "}
+                <Text style={styles.reviewTitleAccent}>found.</Text>
+              </Text>
+              <Text style={styles.reviewSub}>
+                Your profile is built. A few questions remain — the parts a
+                résumé can&apos;t answer.
+              </Text>
+            </View>
 
-              <ScrollView
-                contentContainerStyle={styles.reviewScroll}
-                showsVerticalScrollIndicator={false}
-              >
-                {reviewData.experiences.length > 0 && (
-                  <View style={styles.reviewSection}>
-                    <Text style={styles.reviewSectionLabel}>
-                      WORK EXPERIENCE · {reviewData.experiences.length}
-                    </Text>
-                    {reviewData.experiences.map((exp, i) => (
-                      <View key={exp.id || `exp-${i}`} style={styles.reviewCard}>
-                        <Text style={styles.reviewCardTitle}>
-                          {exp.jobTitle || "Role"}
-                        </Text>
-                        <Text style={styles.reviewCardSub}>
-                          {[
-                            exp.company,
-                            [
-                              exp.startDate,
-                              exp.current ? "Present" : exp.endDate,
-                            ]
-                              .filter(Boolean)
-                              .join(" – "),
+            <ScrollView
+              contentContainerStyle={styles.reviewScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              {reviewData.experiences.length > 0 && (
+                <View style={styles.reviewSection}>
+                  <Text style={styles.reviewSectionLabel}>
+                    WORK EXPERIENCE · {reviewData.experiences.length}
+                  </Text>
+                  {reviewData.experiences.map((exp, i) => (
+                    <View key={exp.id || `exp-${i}`} style={styles.reviewRow}>
+                      <Text style={styles.reviewRowTitle} numberOfLines={1}>
+                        {exp.jobTitle || "Role"}
+                      </Text>
+                      <Text style={styles.reviewRowSub} numberOfLines={1}>
+                        {[
+                          exp.company,
+                          [
+                            exp.startDate,
+                            exp.current ? "Present" : exp.endDate,
                           ]
                             .filter(Boolean)
-                            .join(" · ")}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {reviewData.education.length > 0 && (
-                  <View style={styles.reviewSection}>
-                    <Text style={styles.reviewSectionLabel}>
-                      EDUCATION · {reviewData.education.length}
-                    </Text>
-                    {reviewData.education.map((edu, i) => (
-                      <View key={edu.id || `edu-${i}`} style={styles.reviewCard}>
-                        <Text style={styles.reviewCardTitle}>
-                          {[edu.degree, edu.major].filter(Boolean).join(", ") ||
-                            edu.university ||
-                            "Education"}
-                        </Text>
-                        <Text style={styles.reviewCardSub}>
-                          {[edu.university, edu.graduationYear]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {reviewData.skills.length > 0 && (
-                  <View style={styles.reviewSection}>
-                    <Text style={styles.reviewSectionLabel}>
-                      SKILLS · {reviewData.skills.length}
-                    </Text>
-                    <View style={styles.reviewChips}>
-                      {reviewData.skills.map((skill, i) => (
-                        <View key={`skill-${i}`} style={styles.reviewChip}>
-                          <Text style={styles.reviewChipText}>{skill}</Text>
-                        </View>
-                      ))}
+                            .join(" – "),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </Text>
                     </View>
-                  </View>
-                )}
-              </ScrollView>
+                  ))}
+                </View>
+              )}
 
-              <View style={styles.reviewFooter}>
-                <TouchableOpacity
-                  style={styles.reviewPrimaryBtn}
-                  onPress={handleReviewConfirm}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.reviewPrimaryText}>
-                    Looks good — start swiping
+              {reviewData.education.length > 0 && (
+                <View style={styles.reviewSection}>
+                  <Text style={styles.reviewSectionLabel}>
+                    EDUCATION · {reviewData.education.length}
                   </Text>
-                  <ArrowRight color="#FFF" size={20} />
-                </TouchableOpacity>
-                <Text style={styles.reviewFootnote}>
-                  You can edit every detail anytime in your profile.
+                  {reviewData.education.map((edu, i) => (
+                    <View key={edu.id || `edu-${i}`} style={styles.reviewRow}>
+                      <Text style={styles.reviewRowTitle} numberOfLines={1}>
+                        {[edu.degree, edu.major].filter(Boolean).join(", ") ||
+                          edu.university ||
+                          "Education"}
+                      </Text>
+                      <Text style={styles.reviewRowSub} numberOfLines={1}>
+                        {[edu.university, edu.graduationYear]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {reviewData.skills.length > 0 && (
+                <View style={styles.reviewSection}>
+                  <Text style={styles.reviewSectionLabel}>
+                    SKILLS · {reviewData.skills.length}
+                  </Text>
+                  <View style={styles.reviewChips}>
+                    {reviewData.skills.map((skill, i) => (
+                      <View key={`skill-${i}`} style={styles.reviewChip}>
+                        <Text style={styles.reviewChipText}>{skill}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.reviewFooter}>
+              <TouchableOpacity
+                style={styles.reviewPrimaryBtn}
+                onPress={handleReviewConfirm}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.reviewPrimaryText}>
+                  Looks right — keep going
                 </Text>
-              </View>
-            </SafeAreaView>
-          </BlurView>
+                <ArrowRight color={Colors.paper} size={18} />
+              </TouchableOpacity>
+              <Text style={styles.reviewFootnote}>
+                You can fine-tune every detail later in your profile.
+              </Text>
+            </View>
+          </SafeAreaView>
         </Animated.View>
       )}
 
       {/* Last sibling so it covers both the questionnaire and the review
-          screen. The Broadcast at signup scale — the beat length matches
-          completeOnboarding's navigation timer. */}
+          screen. The Broadcast at signup scale — plays its full natural
+          choreography, and completeOnboarding's navigation timer holds a
+          beat longer so the moment lands before the dashboard intro. */}
       {showDoneBeat && (
         <Animated.View entering={FadeIn} style={StyleSheet.absoluteFill}>
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
             <View style={styles.doneBeatContainer}>
               <BroadcastMoment
-                durationMs={DONE_BEAT_MS}
+                durationMs={DONE_BEAT_ANIMATION_MS}
                 icon={<UserCheck color="#FFF" size={38} />}
                 words={[
                   { word: "Profile" },
@@ -1780,106 +1913,116 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
 
-  // ── Phase 2 resume-review screen ─────────────────────────────────────────
+  // ── Résumé review sheet (plays right after the parse film) ──────────────
+  // Solid paper page — the film's stage, carried forward. No blur (the
+  // questionnaire ghosting through read as murky shadows), no boxed cards:
+  // flat rows on hairlines, serif titles, one filled pill.
+  reviewRoot: {
+    backgroundColor: Colors.paper,
+    zIndex: 30,
+  },
   reviewSafeArea: { flex: 1 },
   reviewHeader: {
     paddingHorizontal: 28,
     paddingTop: 24,
-    paddingBottom: 8,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  reviewBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
+  reviewEyebrow: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginBottom: 14,
   },
   reviewTitle: {
     ...Type.title,
     color: Colors.ink,
   },
+  reviewTitleAccent: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
+  },
   reviewSub: {
+    fontFamily: Fonts.sansLight,
     fontSize: 15,
     color: Colors.body,
-    lineHeight: 21,
+    lineHeight: 22,
     marginTop: 10,
   },
   reviewScroll: {
     paddingHorizontal: 28,
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 24,
   },
-  reviewSection: { marginBottom: 28 },
+  reviewSection: { marginBottom: 30 },
   reviewSectionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontFamily: Fonts.sansBold,
+    fontSize: 11.5,
     color: Colors.muted,
-    letterSpacing: 1,
-    marginBottom: 12,
+    letterSpacing: 1.6,
+    marginBottom: 4,
   },
-  reviewCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 16,
-    marginBottom: 10,
+  reviewRow: {
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  reviewCardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
+  reviewRowTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 17,
+    color: Colors.ink,
   },
-  reviewCardSub: {
-    fontSize: 14,
+  reviewRowSub: {
+    fontFamily: Fonts.sans,
+    fontSize: 13.5,
     color: Colors.body,
-    marginTop: 4,
+    marginTop: 3,
   },
   reviewChips: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    paddingTop: 12,
   },
   reviewChip: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
+    backgroundColor: Colors.paper,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   reviewChipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    fontFamily: Fonts.sansMedium,
+    fontSize: 13.5,
+    color: Colors.ink,
   },
   reviewFooter: {
     paddingHorizontal: 28,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingTop: 14,
+    paddingBottom: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  // Matches the pill shape (radius = height/2) every other CTA in the
-  // sign-up flow uses — this one was squared off (radius 16) before.
   reviewPrimaryBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     backgroundColor: Colors.ink,
-    height: 56,
-    borderRadius: 28,
+    height: 54,
+    borderRadius: 27,
   },
   reviewPrimaryText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFF",
+    fontFamily: Fonts.sansBold,
+    fontSize: 15.5,
+    color: Colors.paper,
   },
   reviewFootnote: {
-    fontSize: 13,
+    fontFamily: Fonts.serifItalic,
+    fontSize: 13.5,
     color: Colors.muted,
     textAlign: "center",
     marginTop: 12,
