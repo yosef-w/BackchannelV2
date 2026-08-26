@@ -50,7 +50,7 @@ import {
   RefreshCcw,
   X,
 } from "@/components/ui/icons";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -86,6 +86,12 @@ import { DeckDoneCard } from "./home/DeckDoneCard";
 import { FullBioModal } from "./home/FullBioModal";
 import { GetSponsorModal } from "./home/GetSponsorModal";
 import { JobCardContent } from "./home/JobCardContent";
+import { PlateDeck } from "./home/plates/PlateDeck";
+import {
+  buildApplicantPlates,
+  buildJobPlates,
+  deriveAnchor,
+} from "./home/plates/plateContent";
 import { JobDescriptionModal } from "./home/JobDescriptionModal";
 import { JobSwitcherSheet } from "./home/JobSwitcherSheet";
 import { MatchCelebrationModal } from "./home/MatchCelebrationModal";
@@ -96,6 +102,7 @@ import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
+import { PLATES_ENABLED } from "@/constants/config";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
@@ -148,6 +155,9 @@ interface HomeViewProps {
 // Exported so MainApp can compute "cards remaining" for the unfinished-deck
 // local-notification reminder without duplicating this constant.
 export const DECK_SIZE = 10;
+// Horizontal padding of the deck page — PlateDeck cancels it so plates run
+// edge to edge while the dossier below keeps the normal column.
+const PAGE_PADDING = 24;
 // How long a cached per-role deck stays "fresh" before a role re-fetches on
 // re-entry (so new applicants surface). Keeps rapid role-switching instant
 // without serving a stale deck all day.
@@ -179,6 +189,10 @@ export function HomeView({
 
   // Sponsored jobs (for sponsors)
   const sponsoredJobs = useJobsStore((state) => state.sponsoredJobs);
+  // Full job rows for the sponsor's own roles — the active role's skills
+  // feed the "why you're seeing them" plate (sponsoredJobs above is the
+  // lightweight id/title list).
+  const myJobs = useJobsStore((state) => state.myJobs);
   const addSponsoredJob = useJobsStore((state) => state.addSponsoredJob);
   const activeSponsoredJobId = useJobsStore(
     (state) => state.activeSponsoredJobId,
@@ -358,6 +372,14 @@ export function HomeView({
   // handler can derive direction (scroll-up vs scroll-down) frame-by-
   // frame. Used by the Hinge-style nav-bar hide animation below.
   const prevScrollY = useSharedValue(0);
+  // Mirror of the vertical offset for PlateDeck (drives its sticky anchor).
+  const plateScrollY = useSharedValue(0);
+  // Where the user is inside the current card — ticks the gauge segment.
+  const [plateProgress, setPlateProgress] = useState({ index: 0, count: 1 });
+  const handlePlateChange = useCallback(
+    (index: number, count: number) => setPlateProgress({ index, count }),
+    [],
+  );
   // Pulsing LIVE dot for the "No Applicants Yet" empty state. Loops
   // a gentle opacity oscillation so the indicator reads as active /
   // running, the way streaming UIs and status dashboards do it.
@@ -421,6 +443,37 @@ export function HomeView({
       : (currentData as ProfileDeckCard)?.USER_ID ||
         (currentData as ProfileDeckCard)?.id
     : null;
+  // "Skim & Dive" plates for the current card (PLATES_ENABLED) — derived
+  // from the same data the dossier renders, so skim and dive never disagree.
+  const plates = useMemo(() => {
+    if (!PLATES_ENABLED || !currentData) return [];
+    if (userType === "sponsor") {
+      const card = currentData as ProfileDeckCard;
+      const uid = card.USER_ID ? String(card.USER_ID) : "";
+      return buildApplicantPlates(card, (uid && fullProfileCache[uid]) || null, {
+        roleTitle: activeSponsoredJob?.title,
+        roleSkills: myJobs.find(
+          (j) => String(j.id) === String(activeSponsoredJobId ?? ""),
+        )?.skills,
+      });
+    }
+    const job = currentData as Job;
+    const sid = job.sponsorInfo?.userId ? String(job.sponsorInfo.userId) : "";
+    return buildJobPlates(job, (sid && sponsorProfileCache[sid]) || null, {
+      mySkills: profileData?.skills,
+    });
+  }, [
+    currentData,
+    userType,
+    fullProfileCache,
+    sponsorProfileCache,
+    activeSponsoredJob,
+    activeSponsoredJobId,
+    myJobs,
+    profileData?.skills,
+  ]);
+  const plateAnchor = useMemo(() => deriveAnchor(plates), [plates]);
+
   const isAlreadyLiked =
     !!currentItemId &&
     likedIds.has(String(currentItemId)) &&
@@ -1311,7 +1364,15 @@ export function HomeView({
   const mainAnimatedStyle = useAnimatedStyle(
     () => ({
       opacity: isAlreadyLiked ? 0.35 : swipeOpacity.value,
-      transform: [{ translateY: (1 - swipeOpacity.value) * 8 }],
+      // Plates: the decided card LIFTS away (and the next one settles
+      // down from the same lift) — the sheet-lift beat. Classic card:
+      // the original 8px settle.
+      transform: PLATES_ENABLED
+        ? [
+            { translateY: (1 - swipeOpacity.value) * -22 },
+            { scale: 1 - (1 - swipeOpacity.value) * 0.02 },
+          ]
+        : [{ translateY: (1 - swipeOpacity.value) * 8 }],
     }),
     [isAlreadyLiked],
   );
@@ -1349,6 +1410,7 @@ export function HomeView({
     onScroll: (e) => {
       "worklet";
       const y = e.contentOffset.y;
+      plateScrollY.value = y;
       const dy = y - prevScrollY.value;
       const maxY = e.contentSize.height - e.layoutMeasurement.height;
       // Guard `maxY > 0` so we don't accidentally treat a short
@@ -1496,6 +1558,30 @@ export function HomeView({
                   const cardNumber = i + 1;
                   const isPast = cardNumber < progress;
                   const isCurrent = cardNumber === progress;
+                  if (PLATES_ENABLED && isCurrent && deckIsActive) {
+                    // The merged gauge: the current card's segment ticks in
+                    // plate-sized steps, so one bar answers "which card"
+                    // AND "where in it" — no second progress bar anywhere.
+                    return (
+                      <View
+                        key={i}
+                        style={[styles.progressDot, styles.progressDotTicks]}
+                      >
+                        {Array.from({ length: plateProgress.count }).map(
+                          (__, t) => (
+                            <View
+                              key={t}
+                              style={[
+                                styles.progressTick,
+                                t <= plateProgress.index &&
+                                  styles.progressDotFilled,
+                              ]}
+                            />
+                          ),
+                        )}
+                      </View>
+                    );
+                  }
                   return (
                     <View
                       key={i}
@@ -1920,29 +2006,63 @@ export function HomeView({
                   // disabled rather than just visually suggested.
                   pointerEvents={isAlreadyLiked ? "none" : "auto"}
                 >
-                <Animated.ScrollView
-                  ref={scrollRef as any}
-                  contentContainerStyle={styles.profileScrollContent}
-                  showsVerticalScrollIndicator={false}
-                  onScroll={scrollHandler}
-                  scrollEventThrottle={16}
-                >
-                  {userType === "sponsor" ? (
-                    <ApplicantProfileCard
-                      currentData={currentData as ProfileDeckCard}
-                      fullProfileCache={fullProfileCache}
-                      fullProfileLoading={fullProfileLoading}
-                    />
-                  ) : (
-                    <JobCardContent
-                      currentData={currentData as Job}
-                      waitlistedJobIds={waitlistedJobIds}
-                      requestedSponsorJobIds={requestedSponsorJobIds}
-                      appliedJobIds={appliedJobIds}
-                      sponsorProfileCache={sponsorProfileCache}
-                    />
-                  )}
-                </Animated.ScrollView>
+                {PLATES_ENABLED && plates.length > 0 ? (
+                  /* "Skim & Dive" (components/home/plates): a slide-through
+                     row of full-bleed plates above the full dossier. Keyed
+                     by card so every entry opens on plate one. */
+                  <PlateDeck
+                    key={String(currentItemId ?? "card")}
+                    plates={plates}
+                    anchor={plateAnchor}
+                    scrollRef={scrollRef}
+                    onScroll={scrollHandler}
+                    scrollY={plateScrollY}
+                    bleed={PAGE_PADDING}
+                    onPlateChange={handlePlateChange}
+                  >
+                    {userType === "sponsor" ? (
+                      <ApplicantProfileCard
+                        currentData={currentData as ProfileDeckCard}
+                        fullProfileCache={fullProfileCache}
+                        fullProfileLoading={fullProfileLoading}
+                        presentation="dossier"
+                      />
+                    ) : (
+                      <JobCardContent
+                        currentData={currentData as Job}
+                        waitlistedJobIds={waitlistedJobIds}
+                        requestedSponsorJobIds={requestedSponsorJobIds}
+                        appliedJobIds={appliedJobIds}
+                        sponsorProfileCache={sponsorProfileCache}
+                        presentation="dossier"
+                      />
+                    )}
+                  </PlateDeck>
+                ) : (
+                  <Animated.ScrollView
+                    ref={scrollRef as any}
+                    contentContainerStyle={styles.profileScrollContent}
+                    showsVerticalScrollIndicator={false}
+                    onScroll={scrollHandler}
+                    scrollEventThrottle={16}
+                  >
+                    {userType === "sponsor" ? (
+                      <ApplicantProfileCard
+                        currentData={currentData as ProfileDeckCard}
+                        fullProfileCache={fullProfileCache}
+                        fullProfileLoading={fullProfileLoading}
+                      />
+                    ) : (
+                      <JobCardContent
+                        currentData={currentData as Job}
+                        waitlistedJobIds={waitlistedJobIds}
+                        requestedSponsorJobIds={requestedSponsorJobIds}
+                        appliedJobIds={appliedJobIds}
+                        sponsorProfileCache={sponsorProfileCache}
+                      />
+                    )}
+                  </Animated.ScrollView>
+                )}
               </Animated.View>
 
               {isAlreadyLiked ? (
@@ -2184,7 +2304,7 @@ const styles = StyleSheet.create({
   // 2026-05-26 Hinge-style redesign — layout primitives.
   // `pageContainer` is the flex-column that holds the sticky header,
   // the active profile scroll, and the sticky bottom action bar.
-  pageContainer: { flex: 1, paddingHorizontal: 24 },
+  pageContainer: { flex: 1, paddingHorizontal: PAGE_PADDING },
   // Each non-active deck state (empty / loading / no-applicants etc.)
   // fills the page beneath the header with its centered illustration.
   fullEmptyContainer: {
@@ -2307,6 +2427,19 @@ const styles = StyleSheet.create({
   },
   progressDotFilled: {
     backgroundColor: Colors.ink,
+  },
+  // The current segment as plate ticks (PLATES_ENABLED) — same 3pt bar,
+  // subdivided; hairline gaps so it still reads as one segment.
+  progressDotTicks: {
+    flexDirection: "row",
+    gap: 2,
+    backgroundColor: "transparent",
+  },
+  progressTick: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
   },
 
   // 2026-05-27 redesign — Role switcher pill (sponsor-only).

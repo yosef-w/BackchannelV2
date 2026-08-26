@@ -38,6 +38,14 @@ export const PREMIUM_ENABLED = false;
  */
 export const SSO_ENABLED = true;
 
+/**
+ * PLATES_ENABLED — the "Skim & Dive" home deck (components/home/plates).
+ * true: each deck entry renders as a slide-through row of full-bleed plates
+ * (one idea each) above the full dossier, with the deck gauge ticking the
+ * current card's segment per plate. false: the previous single-scroll card.
+ */
+export const PLATES_ENABLED = true;
+
 // ─── RevenueCat ───────────────────────────────────────────────────────────────
 //
 // API keys are loaded from env vars so they are never committed to git.
