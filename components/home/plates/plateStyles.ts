@@ -1,6 +1,6 @@
 // Styles for the "Skim & Dive" deck (PlateDeck / PlateViews). Paper-and-
 // ink only, DM Serif for anything that speaks, DM Sans for labels — the
-// same vocabulary as the dossier ledger and the cinema films, sized for a
+// same vocabulary as the full read ledger and the cinema films, sized for a
 // full-bleed plate ~360pt wide.
 
 import { StyleSheet } from "react-native";
@@ -10,13 +10,13 @@ import { Colors, Fonts } from "@/constants/theme";
  * How much of the card stage the plate row leaves free at the bottom. The
  * floating ✕/✓ (64pt at bottom 28) and the tab bar both live in the
  * stage's lower band, so the row ends above all of it — its foot (and the
- * placard's "slide / scroll" hint) is always visible, and the dossier
+ * placard's "slide / scroll" hint) is always visible, and the full read
  * heading peeks up beneath it as the scroll cue.
  */
 export const ROW_CLEARANCE = 150;
 /** Never let a short stage crush the plates below this. */
 export const ROW_MIN_HEIGHT = 300;
-/** The pinned identity strip (plate two onward, and through the dossier). */
+/** The pinned identity strip (plate two onward, and through the full read). */
 export const ANCHOR_HEIGHT = 66;
 
 export const plateStyles = StyleSheet.create({
@@ -305,19 +305,19 @@ export const plateStyles = StyleSheet.create({
   },
 
   // ── the dive ──────────────────────────────────────────────────────────
-  dossierHead: {
+  readHead: {
     paddingTop: 26,
     paddingBottom: 6,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  dossierEyebrow: {
+  readEyebrow: {
     fontFamily: Fonts.sansBold,
     fontSize: 11,
     letterSpacing: 2,
     color: Colors.muted,
   },
-  dossierTitle: {
+  readTitle: {
     fontFamily: Fonts.serif,
     fontSize: 26,
     lineHeight: 31,

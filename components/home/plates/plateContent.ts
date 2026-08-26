@@ -1,8 +1,8 @@
 // Plate content — the pure, testable half of the "Skim & Dive" deck card
 // (PlateDeck). A deck entry is rendered as a short row of full-screen
 // PLATES (one idea each, slid through at decide-speed) above the full
-// dossier (scrolled into at read-speed). This module turns the raw deck
-// data into those plates, using the SAME derivations the dossier ledger
+// full read (scrolled into at read-speed). This module turns the raw deck
+// data into those plates, using the SAME derivations the card's ledger
 // uses (dossierFacts) so the skim and the dive never disagree.
 //
 // Every claim on a plate is DERIVED, never invented: claim lines come from
@@ -78,7 +78,7 @@ export type Plate =
   | { kind: "fit"; eyebrow: string; line: RichLine; receipts: string[] };
 
 /** The identity strip that persists from plate two onward and through the
- * dossier — derived from the first plate so the two can never disagree. */
+ * full read — derived from the first plate so the two can never disagree. */
 export interface PlateAnchor {
   name: string;
   claim: string;

@@ -19,10 +19,10 @@ interface ApplicantProfileCardProps {
   currentData: ProfileDeckCard;
   fullProfileCache: Record<string, EnrichedApplicantProfile>;
   fullProfileLoading: boolean;
-  /** "dossier": the hero ID block, ledger, and hero pull-quote are omitted
+  /** "read": the hero ID block, ledger, and hero pull-quote are omitted
    * — the plates above already carry them (PlateDeck). Every prompt then
    * renders in INSIGHTS, since none was promoted. */
-  presentation?: "full" | "dossier";
+  presentation?: "full" | "read";
 }
 
 /**
@@ -53,7 +53,7 @@ export function ApplicantProfileCard({
   fullProfileLoading,
   presentation = "full",
 }: ApplicantProfileCardProps) {
-  const dossier = presentation === "dossier";
+  const fullRead = presentation === "read";
   const uid = currentData?.USER_ID;
   const cached: EnrichedApplicantProfile | null =
     (uid && fullProfileCache[String(uid)]) || null;
@@ -86,8 +86,8 @@ export function ApplicantProfileCard({
   );
   // First answered prompt becomes the hero pull-quote; the rest stay in
   // the INSIGHTS section so no words are lost to the promotion.
-  const heroPrompt = dossier ? null : (validPrompts[0] ?? null);
-  const restPrompts = dossier ? validPrompts : validPrompts.slice(1);
+  const heroPrompt = fullRead ? null : (validPrompts[0] ?? null);
+  const restPrompts = fullRead ? validPrompts : validPrompts.slice(1);
 
   const bio: string =
     cached?.bio || ("bio" in currentData ? currentData.bio : "") || "";
@@ -131,8 +131,8 @@ export function ApplicantProfileCard({
       )}
 
       {/* HERO — dossier ID block + ledger (the plates carry this in the
-          dossier presentation) */}
-      {!dossier && (
+          full-read presentation) */}
+      {!fullRead && (
       <View style={cardStyles.kHero}>
         <View style={cardStyles.kIdRow}>
           {image ? (

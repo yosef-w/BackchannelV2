@@ -4,7 +4,7 @@
 // (one idea each) that slides horizontally at decide-speed: tap the right
 // two-thirds to advance, the left third to go back, or drag — the next
 // plate peeks at the right edge so the gesture teaches itself. Scroll
-// down from ANY plate and the page continues into the full dossier at
+// down from ANY plate and the page continues into the full read at
 // read-speed (the existing card content, minus the hero the plates already
 // carried), with the identity strip going sticky as it passes. The
 // floating ✕/✓ decide from anywhere; nothing below the fold is required.
@@ -59,7 +59,7 @@ interface PlateDeckProps {
   /** The parent's horizontal padding, cancelled so plates run edge to edge. */
   bleed: number;
   onPlateChange?: (index: number, count: number) => void;
-  /** The dossier — the existing card content in "dossier" presentation. */
+  /** The full read — the existing card content in "read" presentation. */
   children: React.ReactNode;
 }
 
@@ -119,11 +119,11 @@ export function PlateDeck({
     commitIndex(Math.round(e.nativeEvent.contentOffset.x / plateWidth));
   };
 
-  const openDossier = useCallback(() => {
+  const openRead = useCallback(() => {
     scrollRef.current?.scrollTo({ y: Math.max(0, rowHeight - 4), animated: true });
   }, [scrollRef, rowHeight]);
 
-  // ── the anchor: on from plate two, or once the dossier scrolls under it ──
+  // ── the anchor: on from plate two, or once the full read scrolls under it ──
   const anchorOn = useSharedValue(0);
   useEffect(() => {
     anchorOn.value = withTiming(index > 0 ? 1 : 0, { duration: 240 });
@@ -145,15 +145,15 @@ export function PlateDeck({
     return { opacity: on, transform: [{ translateY: (1 - on) * -10 }] };
   });
 
-  const [inDossier, setInDossier] = useState(false);
+  const [inRead, setInRead] = useState(false);
   useAnimatedReaction(
     () => scrollY.value > (stage.value || 1) * 0.7,
     (now, prev) => {
-      if (now !== prev) runOnJS(setInDossier)(now);
+      if (now !== prev) runOnJS(setInRead)(now);
     },
   );
 
-  const posLabel = inDossier ? "THE DOSSIER" : `PLATE ${index + 1} / ${count}`;
+  const posLabel = inRead ? "THE FULL READ" : `PLATE ${index + 1} / ${count}`;
 
   return (
     <View style={s.root} onLayout={onLayout}>
@@ -186,18 +186,18 @@ export function PlateDeck({
                   width={plateWidth}
                   height={rowHeight}
                   underAnchor={i > 0}
-                  hint={i === 0 ? "SLIDE FOR MORE  ·  SCROLL FOR THE FULL DOSSIER" : undefined}
+                  hint={i === 0 ? "SLIDE FOR MORE  ·  SCROLL FOR THE FULL READ" : undefined}
                   onTapZone={(zone) => goTo(zone === "forward" ? i + 1 : i - 1)}
-                  onOpenDossier={openDossier}
+                  onOpenRead={openRead}
                 />
               ))}
             </ScrollView>
           </View>
         )}
 
-        <View style={s.dossierHead}>
-          <Text style={s.dossierEyebrow}>THE FULL DOSSIER</Text>
-          <Text style={s.dossierTitle}>
+        <View style={s.readHead}>
+          <Text style={s.readEyebrow}>THE FULL READ</Text>
+          <Text style={s.readTitle}>
             Every detail, <Text style={s.accent}>in full.</Text>
           </Text>
         </View>
@@ -205,7 +205,7 @@ export function PlateDeck({
       </Animated.ScrollView>
 
       {/* Pinned identity — pointerEvents none so it never steals a tap
-          from the plate row or the dossier beneath it. */}
+          from the plate row or the full read beneath it. */}
       <Animated.View
         style={[s.anchor, { marginHorizontal: -bleed }, anchorStyle]}
         pointerEvents="none"

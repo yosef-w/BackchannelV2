@@ -11,11 +11,11 @@ The home deck's card body, behind `PLATES_ENABLED` (`constants/config.ts`).
   the left third to go back, or drag; the next plate peeks 22pt at the
   right edge so the gesture teaches itself. A light haptic ticks per plate.
 - Scroll down from **any** plate and the page continues into **the full
-  dossier** — the existing `ApplicantProfileCard` / `JobCardContent` in
-  `presentation="dossier"` (hero, ledger, and hero quote omitted, since the
+  read** — the existing `ApplicantProfileCard` / `JobCardContent` in
+  `presentation="read"` (hero, ledger, and hero quote omitted, since the
   plates carried them). Nothing below the fold is required to decide.
-- From plate two onward — and through the dossier — a slim **anchor strip**
-  pins identity (photo/logo, name, claim line, `PLATE n / N` → `THE DOSSIER`).
+- From plate two onward — and through the full read — a slim **anchor strip**
+  pins identity (photo/logo, name, claim line, `PLATE n / N` → `THE FULL READ`).
 - The **deck gauge** (3/10) is the only progress bar: the current card's
   segment subdivides into plate ticks (`HomeView` → `plateProgress`).
 - ✕/✓ float exactly where they always did and work from any plate. A decision

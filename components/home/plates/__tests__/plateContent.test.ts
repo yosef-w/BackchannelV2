@@ -47,7 +47,7 @@ describe("helpers", () => {
     expect(skillOverlap(["React Native", "Go"], ["react-native", "GO", "Rust"])).toEqual(["React Native", "Go"]);
     expect(skillOverlap([], ["Go"])).toEqual([]);
   });
-  it("splitYears parses the dossier's year phrases", () => {
+  it("splitYears parses the ledger's year phrases", () => {
     expect(splitYears("6 years")).toEqual({ stat: "6", suffix: "yrs" });
     expect(splitYears("1 year")).toEqual({ stat: "1", suffix: "yr" });
     expect(splitYears("Under a year")).toEqual({ stat: "<1", suffix: "yr" });

@@ -83,7 +83,7 @@ function Chips({ items, fillFirstIf }: { items: string[]; fillFirstIf?: string }
   );
 }
 
-function PlateBody({ plate, onOpenDossier }: { plate: Plate; onOpenDossier: () => void }) {
+function PlateBody({ plate, onOpenRead }: { plate: Plate; onOpenRead: () => void }) {
   switch (plate.kind) {
     case "placard":
       return (
@@ -192,12 +192,12 @@ function PlateBody({ plate, onOpenDossier }: { plate: Plate; onOpenDossier: () =
           <Rich line={plate.line} style={s.fitLine} numberOfLines={4} />
           <Chips items={plate.receipts} />
           <Pressable
-            onPress={onOpenDossier}
+            onPress={onOpenRead}
             hitSlop={12}
             accessibilityRole="button"
-            accessibilityLabel="Open the full dossier"
+            accessibilityLabel="Read in full"
           >
-            <Text style={s.ghost}>OPEN THE FULL DOSSIER ↓</Text>
+            <Text style={s.ghost}>READ IN FULL ↓</Text>
           </Pressable>
         </>
       );
@@ -215,7 +215,7 @@ interface PlateViewProps {
   /** Small caps line at the foot of the plate (the placard's affordance). */
   hint?: string;
   onTapZone: (zone: "back" | "forward") => void;
-  onOpenDossier: () => void;
+  onOpenRead: () => void;
 }
 
 export function PlateView({
@@ -225,7 +225,7 @@ export function PlateView({
   underAnchor,
   hint,
   onTapZone,
-  onOpenDossier,
+  onOpenRead,
 }: PlateViewProps) {
   const handlePress = (e: GestureResponderEvent) => {
     const x = e.nativeEvent.locationX;
@@ -243,7 +243,7 @@ export function PlateView({
       accessibilityLabel="Next plate"
     >
       <View style={s.plateBody}>
-        <PlateBody plate={plate} onOpenDossier={onOpenDossier} />
+        <PlateBody plate={plate} onOpenRead={onOpenRead} />
       </View>
       {!!hint && <Text style={s.hint}>{hint}</Text>}
     </Pressable>

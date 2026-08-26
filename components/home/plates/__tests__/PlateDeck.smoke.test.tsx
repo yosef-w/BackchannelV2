@@ -36,7 +36,7 @@ describe("PlateView", () => {
     );
     for (const plate of plates) {
       const { unmount } = render(
-        <PlateView plate={plate} width={360} height={500} underAnchor={false} onTapZone={() => {}} onOpenDossier={() => {}} />,
+        <PlateView plate={plate} width={360} height={500} underAnchor={false} onTapZone={() => {}} onOpenRead={() => {}} />,
       );
       unmount();
     }
@@ -45,19 +45,19 @@ describe("PlateView", () => {
   it("shows the derived claim and the fit line", () => {
     const plates = buildApplicantPlates(CARD, null, { roleTitle: "Platform Lead", roleSkills: ["Go"] });
     const { getByText } = render(
-      <PlateView plate={plates[0]} width={360} height={500} underAnchor={false} onTapZone={() => {}} onOpenDossier={() => {}} />,
+      <PlateView plate={plates[0]} width={360} height={500} underAnchor={false} onTapZone={() => {}} onOpenRead={() => {}} />,
     );
     expect(getByText("Jordan Okafor")).toBeTruthy();
     const fit = plates[plates.length - 1];
     const r = render(
-      <PlateView plate={fit} width={360} height={500} underAnchor onTapZone={() => {}} onOpenDossier={() => {}} />,
+      <PlateView plate={fit} width={360} height={500} underAnchor onTapZone={() => {}} onOpenRead={() => {}} />,
     );
-    expect(r.getByText("OPEN THE FULL DOSSIER ↓")).toBeTruthy();
+    expect(r.getByText("READ IN FULL ↓")).toBeTruthy();
   });
 });
 
 describe("PlateDeck", () => {
-  it("mounts with the dossier as children and reports plate count", () => {
+  it("mounts with the full read as children and reports plate count", () => {
     const plates = buildApplicantPlates(CARD, null);
     const onPlateChange = jest.fn();
     const scrollY = { value: 0 } as never;
@@ -71,11 +71,11 @@ describe("PlateDeck", () => {
         bleed={24}
         onPlateChange={onPlateChange}
       >
-        <Text>DOSSIER BODY</Text>
+        <Text>READ BODY</Text>
       </PlateDeck>,
     );
-    expect(getByText("THE FULL DOSSIER")).toBeTruthy();
-    expect(getByText("DOSSIER BODY")).toBeTruthy();
+    expect(getByText("THE FULL READ")).toBeTruthy();
+    expect(getByText("READ BODY")).toBeTruthy();
     expect(onPlateChange).toHaveBeenCalledWith(0, plates.length);
   });
 });

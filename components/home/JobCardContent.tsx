@@ -38,10 +38,10 @@ interface JobCardContentProps {
   requestedSponsorJobIds: Set<string>;
   appliedJobIds: Set<string>;
   sponsorProfileCache: Record<string, EnrichedSponsorProfile>;
-  /** "dossier": the hero ID block, ledger, and hero pull-quote are omitted
+  /** "read": the hero ID block, ledger, and hero pull-quote are omitted
    * — the plates above already carry them (PlateDeck). The vouch zone
    * then renders every sponsor answer, since none was promoted. */
-  presentation?: "full" | "dossier";
+  presentation?: "full" | "read";
 }
 
 /**
@@ -74,7 +74,7 @@ export function JobCardContent({
   sponsorProfileCache,
   presentation = "full",
 }: JobCardContentProps) {
-  const dossier = presentation === "dossier";
+  const fullRead = presentation === "read";
   const jobId = "id" in currentData ? String(currentData.id) : "";
   const statusLabel = !jobId
     ? null
@@ -106,7 +106,7 @@ export function JobCardContent({
   // carries sponsorInfo; the hero quote follows the same gate.
   const showSponsorZone = isSponsored !== false && !!si;
   const heroQA =
-    !dossier && showSponsorZone && sponsorQA.length > 0 ? sponsorQA[0] : null;
+    !fullRead && showSponsorZone && sponsorQA.length > 0 ? sponsorQA[0] : null;
   const zoneQA = heroQA ? sponsorQA.slice(1) : sponsorQA;
   const sponsorFirstName = (si?.name || "").trim().split(/\s+/)[0] || "";
 
@@ -181,8 +181,8 @@ export function JobCardContent({
       )}
 
       {/* HERO — dossier ID block + ledger (the plates carry this in the
-          dossier presentation) */}
-      {!dossier && (
+          full-read presentation) */}
+      {!fullRead && (
       <View style={cardStyles.kHero}>
         <View style={cardStyles.kIdRow}>
           <CompanyLogo

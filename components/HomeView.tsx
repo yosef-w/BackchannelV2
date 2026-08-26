@@ -156,7 +156,7 @@ interface HomeViewProps {
 // local-notification reminder without duplicating this constant.
 export const DECK_SIZE = 10;
 // Horizontal padding of the deck page — PlateDeck cancels it so plates run
-// edge to edge while the dossier below keeps the normal column.
+// edge to edge while the full read below keeps the normal column.
 const PAGE_PADDING = 24;
 // How long a cached per-role deck stays "fresh" before a role re-fetches on
 // re-entry (so new applicants surface). Keeps rapid role-switching instant
@@ -444,7 +444,7 @@ export function HomeView({
         (currentData as ProfileDeckCard)?.id
     : null;
   // "Skim & Dive" plates for the current card (PLATES_ENABLED) — derived
-  // from the same data the dossier renders, so skim and dive never disagree.
+  // from the same data the full read renders, so skim and dive never disagree.
   const plates = useMemo(() => {
     if (!PLATES_ENABLED || !currentData) return [];
     if (userType === "sponsor") {
@@ -2008,7 +2008,7 @@ export function HomeView({
                 >
                 {PLATES_ENABLED && plates.length > 0 ? (
                   /* "Skim & Dive" (components/home/plates): a slide-through
-                     row of full-bleed plates above the full dossier. Keyed
+                     row of full-bleed plates above the full read. Keyed
                      by card so every entry opens on plate one. */
                   <PlateDeck
                     key={String(currentItemId ?? "card")}
@@ -2025,7 +2025,7 @@ export function HomeView({
                         currentData={currentData as ProfileDeckCard}
                         fullProfileCache={fullProfileCache}
                         fullProfileLoading={fullProfileLoading}
-                        presentation="dossier"
+                        presentation="read"
                       />
                     ) : (
                       <JobCardContent
@@ -2034,7 +2034,7 @@ export function HomeView({
                         requestedSponsorJobIds={requestedSponsorJobIds}
                         appliedJobIds={appliedJobIds}
                         sponsorProfileCache={sponsorProfileCache}
-                        presentation="dossier"
+                        presentation="read"
                       />
                     )}
                   </PlateDeck>
