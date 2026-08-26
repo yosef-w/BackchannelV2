@@ -6,8 +6,16 @@
 import { StyleSheet } from "react-native";
 import { Colors, Fonts } from "@/constants/theme";
 
-/** Height of the floating ✕/✓ zone every plate keeps its content clear of. */
-export const BUTTON_ZONE = 104;
+/**
+ * How much of the card stage the plate row leaves free at the bottom. The
+ * floating ✕/✓ (64pt at bottom 28) and the tab bar both live in the
+ * stage's lower band, so the row ends above all of it — its foot (and the
+ * placard's "slide / scroll" hint) is always visible, and the dossier
+ * heading peeks up beneath it as the scroll cue.
+ */
+export const ROW_CLEARANCE = 150;
+/** Never let a short stage crush the plates below this. */
+export const ROW_MIN_HEIGHT = 300;
 /** The pinned identity strip (plate two onward, and through the dossier). */
 export const ANCHOR_HEIGHT = 66;
 
@@ -241,7 +249,7 @@ export const plateStyles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: BUTTON_ZONE - 26,
+    bottom: 16,
     fontFamily: Fonts.sansBold,
     fontSize: 10.5,
     letterSpacing: 1.5,

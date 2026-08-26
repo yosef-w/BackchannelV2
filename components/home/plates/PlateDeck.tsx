@@ -40,7 +40,7 @@ import Animated, {
 } from "react-native-reanimated";
 import type { Plate, PlateAnchor } from "./plateContent";
 import { PlateView } from "./PlateViews";
-import { plateStyles as s } from "./plateStyles";
+import { plateStyles as s, ROW_CLEARANCE, ROW_MIN_HEIGHT } from "./plateStyles";
 
 /** How much of the next plate shows at the right edge — the slide affordance. */
 const PEEK = 22;
@@ -77,9 +77,12 @@ export function PlateDeck({
   const plateWidth = screenWidth - PEEK;
   const count = plates.length;
 
-  // The stage is whatever height the card area gives us — the plate row
-  // fills exactly one screen of it, so plate one IS the first impression.
+  // The stage is whatever height the card area gives us. The plate row
+  // takes the stage minus a clearance band at the bottom (the floating
+  // ✕/✓ and the tab bar live there), so plate one is the first impression
+  // AND its foot is never under the chrome.
   const [stageHeight, setStageHeight] = useState(0);
+  const rowHeight = Math.max(ROW_MIN_HEIGHT, stageHeight - ROW_CLEARANCE);
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setStageHeight(Math.round(e.nativeEvent.layout.height));
   }, []);
@@ -117,8 +120,8 @@ export function PlateDeck({
   };
 
   const openDossier = useCallback(() => {
-    scrollRef.current?.scrollTo({ y: Math.max(0, stageHeight - 4), animated: true });
-  }, [scrollRef, stageHeight]);
+    scrollRef.current?.scrollTo({ y: Math.max(0, rowHeight - 4), animated: true });
+  }, [scrollRef, rowHeight]);
 
   // ── the anchor: on from plate two, or once the dossier scrolls under it ──
   const anchorOn = useSharedValue(0);
@@ -127,8 +130,8 @@ export function PlateDeck({
   }, [index, anchorOn]);
   const stage = useSharedValue(0);
   useEffect(() => {
-    stage.value = stageHeight;
-  }, [stageHeight, stage]);
+    stage.value = rowHeight;
+  }, [rowHeight, stage]);
 
   const anchorStyle = useAnimatedStyle(() => {
     const h = stage.value || 1;
@@ -162,7 +165,7 @@ export function PlateDeck({
         contentContainerStyle={s.scrollContent}
       >
         {stageHeight > 0 && (
-          <View style={[s.rowWrap, { height: stageHeight, marginHorizontal: -bleed }]}>
+          <View style={[s.rowWrap, { height: rowHeight, marginHorizontal: -bleed }]}>
             <ScrollView
               ref={rowRef}
               horizontal
@@ -181,7 +184,7 @@ export function PlateDeck({
                   key={`${plate.kind}-${i}`}
                   plate={plate}
                   width={plateWidth}
-                  height={stageHeight}
+                  height={rowHeight}
                   underAnchor={i > 0}
                   hint={i === 0 ? "SLIDE FOR MORE  ·  SCROLL FOR THE FULL DOSSIER" : undefined}
                   onTapZone={(zone) => goTo(zone === "forward" ? i + 1 : i - 1)}

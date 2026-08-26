@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { cardStyles } from "../cardStyles";
 import type { Plate, RichLine } from "./plateContent";
-import { BUTTON_ZONE, plateStyles as s } from "./plateStyles";
+import { plateStyles as s } from "./plateStyles";
 
 /** A serif line with italic-muted accent spans. */
 export function Rich({
@@ -236,7 +236,7 @@ export function PlateView({
       onPress={handlePress}
       style={[
         s.plate,
-        { width, height, paddingBottom: BUTTON_ZONE },
+        { width, height, paddingBottom: 28 },
         underAnchor && s.plateUnderAnchor,
       ]}
       accessibilityRole="button"
