@@ -227,11 +227,17 @@ export function buildApplicantPlates(
           : seat
             ? [{ text: seat, accent: true }]
             : [];
-    const receipts = sorted
-      .slice(-3)
-      .reverse()
-      .map((e) => joinFacts([e.jobTitle, e.company]))
-      .filter(Boolean);
+    // Most recent first; identical strings (two untitled rows at the same
+    // company) collapse to one — a repeated receipt reads as a glitch.
+    const receipts = [
+      ...new Set(
+        sorted
+          .slice(-3)
+          .reverse()
+          .map((e) => joinFacts([e.jobTitle, e.company]))
+          .filter(Boolean),
+      ),
+    ];
     plates.push({
       kind: "record",
       eyebrow: "THE RECORD",

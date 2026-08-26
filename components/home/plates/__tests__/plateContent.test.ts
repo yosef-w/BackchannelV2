@@ -82,6 +82,18 @@ describe("buildApplicantPlates", () => {
     expect(fit.receipts).toEqual(["Systems thinking", "Go"]);
   });
 
+  it("collapses duplicate receipts (two untitled rows at one company)", () => {
+    const dupes = {
+      ...ENRICHED,
+      experiences: [
+        { jobTitle: "", company: "Schlumberger", startDate: "2015-01-01", endDate: "2017-01-01", current: false },
+        { jobTitle: "", company: "Schlumberger", startDate: "2017-02-01", endDate: "", current: true },
+      ],
+    };
+    const record = buildApplicantPlates(CARD, dupes as never)[1] as Extract<Plate, { kind: "record" }>;
+    expect(record.receipts).toEqual(["Schlumberger"]);
+  });
+
   it("omits the record plate and falls back to the bio voice on a thin card", () => {
     const thin: ProfileDeckCard = { ...CARD, prompts: [], skills: [] };
     const plates = buildApplicantPlates(thin, null);

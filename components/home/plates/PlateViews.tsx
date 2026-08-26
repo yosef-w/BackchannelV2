@@ -69,10 +69,10 @@ function Chips({ items, fillFirstIf }: { items: string[]; fillFirstIf?: string }
   if (items.length === 0) return null;
   return (
     <View style={s.chipsRow}>
-      {items.map((label) => {
+      {items.map((label, i) => {
         const fill = !!fillFirstIf && label === fillFirstIf;
         return (
-          <View key={label} style={[s.chip, fill && s.chipFill]}>
+          <View key={`${i}-${label}`} style={[s.chip, fill && s.chipFill]}>
             <Text style={[s.chipText, fill && s.chipFillText]} numberOfLines={1}>
               {label}
             </Text>
@@ -109,8 +109,8 @@ function PlateBody({ plate, onOpenDossier }: { plate: Plate; onOpenDossier: () =
             <Rich line={plate.statline} style={s.statline} numberOfLines={2} />
           )}
           {plate.receipts.length > 0 && <View style={s.rule} />}
-          {plate.receipts.map((r) => (
-            <Text key={r} style={s.receipt} numberOfLines={1}>{r}</Text>
+          {plate.receipts.map((r, i) => (
+            <Text key={`${i}-${r}`} style={s.receipt} numberOfLines={1}>{r}</Text>
           ))}
         </>
       );
