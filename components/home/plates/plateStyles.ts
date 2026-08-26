@@ -7,15 +7,15 @@ import { StyleSheet } from "react-native";
 import { Colors, Fonts } from "@/constants/theme";
 
 /**
- * How much of the card stage the plate row leaves free at the bottom. The
- * floating ✕/✓ (64pt at bottom 28) and the tab bar both live in the
- * stage's lower band, so the row ends above all of it — its foot (and the
- * placard's "slide / scroll" hint) is always visible, and the full read
- * heading peeks up beneath it as the scroll cue.
+ * The decide band: the floating ✕/✓ sit at bottom 28 and are 64pt tall.
+ * The plate row fills the whole stage (so nothing peeks up on first view),
+ * but every plate composes its content above this band, and the read cue
+ * lives INSIDE it — centred between the two buttons, the one strip of the
+ * band that is always free.
  */
-export const ROW_CLEARANCE = 150;
-/** Never let a short stage crush the plates below this. */
-export const ROW_MIN_HEIGHT = 300;
+export const DECIDE_BAND = 28 + 64 + 20;
+export const DECIDE_BAND_BOTTOM = 28;
+export const DECIDE_BAND_HEIGHT = 64;
 /** The pinned identity strip (plate two onward, and through the full read). */
 export const ANCHOR_HEIGHT = 66;
 
@@ -245,16 +245,34 @@ export const plateStyles = StyleSheet.create({
     paddingVertical: 8,
     marginTop: 14,
   },
-  hint: {
+  // In-flow under the placard's claim — the slide affordance, never
+  // positioned where the chrome could cover it.
+  slideHint: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 10.5,
+    letterSpacing: 1.6,
+    color: Colors.muted,
+    textAlign: "center",
+    marginTop: 24,
+  },
+  // The read cue — centred in the decide band between ✕ and ✓.
+  readCue: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 16,
+    bottom: DECIDE_BAND_BOTTOM,
+    height: DECIDE_BAND_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  readCueText: {
     fontFamily: Fonts.sansBold,
-    fontSize: 10.5,
-    letterSpacing: 1.5,
-    color: Colors.muted,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: Colors.body,
     textAlign: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
 
   // ── the anchor strip ──────────────────────────────────────────────────
@@ -306,7 +324,8 @@ export const plateStyles = StyleSheet.create({
 
   // ── the dive ──────────────────────────────────────────────────────────
   readHead: {
-    paddingTop: 26,
+    // Room for the pinned anchor when "READ IN FULL" scrolls straight here.
+    paddingTop: ANCHOR_HEIGHT + 14,
     paddingBottom: 6,
     borderTopWidth: 1,
     borderTopColor: Colors.border,

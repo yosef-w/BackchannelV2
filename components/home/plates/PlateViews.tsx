@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { cardStyles } from "../cardStyles";
 import type { Plate, RichLine } from "./plateContent";
-import { plateStyles as s } from "./plateStyles";
+import { DECIDE_BAND, plateStyles as s } from "./plateStyles";
 
 /** A serif line with italic-muted accent spans. */
 export function Rich({
@@ -212,7 +212,7 @@ interface PlateViewProps {
   height: number;
   /** Plates after the first sit under the pinned anchor strip. */
   underAnchor: boolean;
-  /** Small caps line at the foot of the plate (the placard's affordance). */
+  /** Small caps line under the plate's content (the placard's slide cue). */
   hint?: string;
   onTapZone: (zone: "back" | "forward") => void;
   onOpenRead: () => void;
@@ -236,7 +236,7 @@ export function PlateView({
       onPress={handlePress}
       style={[
         s.plate,
-        { width, height, paddingBottom: 28 },
+        { width, height, paddingBottom: DECIDE_BAND },
         underAnchor && s.plateUnderAnchor,
       ]}
       accessibilityRole="button"
@@ -244,8 +244,8 @@ export function PlateView({
     >
       <View style={s.plateBody}>
         <PlateBody plate={plate} onOpenRead={onOpenRead} />
+        {!!hint && <Text style={s.slideHint}>{hint}</Text>}
       </View>
-      {!!hint && <Text style={s.hint}>{hint}</Text>}
     </Pressable>
   );
 }

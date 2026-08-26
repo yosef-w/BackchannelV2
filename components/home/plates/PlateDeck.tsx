@@ -20,6 +20,7 @@ import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Pressable,
   ScrollView,
   Text,
   useWindowDimensions,
@@ -40,7 +41,7 @@ import Animated, {
 } from "react-native-reanimated";
 import type { Plate, PlateAnchor } from "./plateContent";
 import { PlateView } from "./PlateViews";
-import { plateStyles as s, ROW_CLEARANCE, ROW_MIN_HEIGHT } from "./plateStyles";
+import { plateStyles as s } from "./plateStyles";
 
 /** How much of the next plate shows at the right edge — the slide affordance. */
 const PEEK = 22;
@@ -77,12 +78,12 @@ export function PlateDeck({
   const plateWidth = screenWidth - PEEK;
   const count = plates.length;
 
-  // The stage is whatever height the card area gives us. The plate row
-  // takes the stage minus a clearance band at the bottom (the floating
-  // ✕/✓ and the tab bar live there), so plate one is the first impression
-  // AND its foot is never under the chrome.
+  // The stage is whatever height the card area gives us; the plate row
+  // fills it exactly, so the first view is one composed plate and nothing
+  // from the read peeks up. Plates keep their content above the decide
+  // band (PlateViews), and the read cue sits inside that band.
   const [stageHeight, setStageHeight] = useState(0);
-  const rowHeight = Math.max(ROW_MIN_HEIGHT, stageHeight - ROW_CLEARANCE);
+  const rowHeight = stageHeight;
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setStageHeight(Math.round(e.nativeEvent.layout.height));
   }, []);
@@ -155,6 +156,15 @@ export function PlateDeck({
 
   const posLabel = inRead ? "THE FULL READ" : `PLATE ${index + 1} / ${count}`;
 
+  // The read cue fades as soon as the read starts scrolling into view —
+  // it has done its job.
+  const readCueStyle = useAnimatedStyle(() => {
+    const h = stage.value || 1;
+    return {
+      opacity: interpolate(scrollY.value, [0, h * 0.25], [1, 0], Extrapolation.CLAMP),
+    };
+  });
+
   return (
     <View style={s.root} onLayout={onLayout}>
       <Animated.ScrollView
@@ -186,7 +196,7 @@ export function PlateDeck({
                   width={plateWidth}
                   height={rowHeight}
                   underAnchor={i > 0}
-                  hint={i === 0 ? "SLIDE FOR MORE  ·  SCROLL FOR THE FULL READ" : undefined}
+                  hint={i === 0 ? "SLIDE FOR MORE →" : undefined}
                   onTapZone={(zone) => goTo(zone === "forward" ? i + 1 : i - 1)}
                   onOpenRead={openRead}
                 />
@@ -203,6 +213,19 @@ export function PlateDeck({
         </View>
         {children}
       </Animated.ScrollView>
+
+      {/* The read cue — between ✕ and ✓, the decide band's free centre.
+          box-none so only the label itself takes the tap. */}
+      <Animated.View style={[s.readCue, readCueStyle]} pointerEvents="box-none">
+        <Pressable
+          onPress={openRead}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Scroll to the full read"
+        >
+          <Text style={s.readCueText}>THE FULL READ ↓</Text>
+        </Pressable>
+      </Animated.View>
 
       {/* Pinned identity — pointerEvents none so it never steals a tap
           from the plate row or the full read beneath it. */}
