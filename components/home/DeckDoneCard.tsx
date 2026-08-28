@@ -111,7 +111,7 @@ export function DeckDoneCard({
           {sessionMatches > 0 && (
             <View style={styles.recapLinkRow}>
               <Text style={styles.recapLinkText}>View</Text>
-              <ChevronRight color="#000" size={12} strokeWidth={2.5} />
+              <ChevronRight color={Colors.ink} size={12} strokeWidth={2.5} />
             </View>
           )}
         </TouchableOpacity>
@@ -124,7 +124,7 @@ export function DeckDoneCard({
           <ConfirmPop
             size={48}
             haptic={null}
-            icon={<Lock color="#FFF" size={18} strokeWidth={2.2} />}
+            icon={<Lock color={Colors.paper} size={18} strokeWidth={2.2} />}
           />
           <Text style={styles.gateEyebrow}>MEMBERS ONLY</Text>
           <Text style={styles.gateTitle}>
@@ -150,7 +150,7 @@ export function DeckDoneCard({
               ? "Message your new match"
               : "Message your new matches"}
           </Text>
-          <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+          <ChevronRight color={Colors.paper} size={18} strokeWidth={2.5} />
         </TouchableOpacity>
       ) : (
         showUpsell && (
@@ -171,7 +171,7 @@ export function DeckDoneCard({
           onPress={onUnlockMore}
           activeOpacity={0.7}
         >
-          <Lock color="#000" size={15} strokeWidth={2.2} />
+          <Lock color={Colors.ink} size={15} strokeWidth={2.2} />
           <Text style={styles.secondaryText}>Unlock with Premium</Text>
         </TouchableOpacity>
       )}
@@ -194,7 +194,7 @@ export function DeckDoneCard({
           onPress={onReviewAgain}
           activeOpacity={0.7}
         >
-          <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+          <RefreshCcw color={Colors.ink} size={16} strokeWidth={2.2} />
           <Text style={styles.secondaryText}>Review again</Text>
         </TouchableOpacity>
       )}
@@ -222,8 +222,8 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Fonts.sansBold,
+    color: Colors.ink,
     letterSpacing: 0.6,
   },
   title: {
@@ -280,8 +280,8 @@ const styles = StyleSheet.create({
   },
   recapLinkText: {
     fontSize: 12,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Fonts.sansBold,
+    color: Colors.ink,
   },
   recapDivider: {
     width: 1,
@@ -300,15 +300,10 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
     paddingHorizontal: 18,
     marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 22,
-    elevation: 3,
   },
   gateEyebrow: {
     fontSize: 9,
-    fontWeight: "800",
+    fontFamily: Fonts.sansBold,
     letterSpacing: 2.2,
     color: Colors.muted,
     marginTop: 2,
@@ -344,9 +339,9 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   primaryText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 16,
-    fontWeight: "800",
+    fontFamily: Fonts.sansBold,
     letterSpacing: -0.2,
   },
   // Pill shape — the premium vocabulary's CTA (matches the marketplace
@@ -381,7 +376,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   secondaryText: {
-    color: "#000",
+    color: Colors.ink,
     fontSize: 15,
     fontWeight: "700",
   },

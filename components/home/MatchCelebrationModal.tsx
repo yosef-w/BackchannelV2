@@ -91,19 +91,16 @@ export function MatchCelebrationModal({
         exiting={FadeOut.duration(200)}
         style={StyleSheet.absoluteFill}
       >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+        <BlurView intensity={92} style={StyleSheet.absoluteFill} tint="light" />
 
         <View style={styles.matchModalOverlay}>
           <Animated.View
             entering={ZoomIn.springify().damping(14).stiffness(180)}
             style={styles.matchCard}
           >
-            {/* "IT'S A MATCH" pill label */}
-            <Animated.View
-              entering={FadeInDown.delay(150).duration(350)}
-              style={styles.matchLabelPill}
-            >
-              <Text style={styles.matchLabelText}>IT’S A MATCH</Text>
+            {/* Eyebrow — the caps voice, no pill */}
+            <Animated.View entering={FadeInDown.delay(150).duration(350)}>
+              <Text style={styles.matchEyebrow}>A MUTUAL MATCH</Text>
             </Animated.View>
 
             {/* Avatar row */}
@@ -130,7 +127,7 @@ export function MatchCelebrationModal({
 
               {/* Connector between the two avatars */}
               <View style={styles.matchSparkWrapper}>
-                <Heart size={18} color="#000" strokeWidth={2.2} />
+                <Heart size={18} color={Colors.ink} strokeWidth={2.2} />
               </View>
 
               {/* Matched user's avatar */}
@@ -154,7 +151,7 @@ export function MatchCelebrationModal({
             {/* Title */}
             <Animated.View entering={FadeInUp.delay(300).duration(400)}>
               <Text style={styles.matchTitle}>
-                It’s a <Text style={styles.matchTitleAccent}>Match!</Text>
+                It’s a <Text style={styles.matchTitleAccent}>match.</Text>
               </Text>
             </Animated.View>
 
@@ -183,8 +180,8 @@ export function MatchCelebrationModal({
                 onPress={onMessage}
                 activeOpacity={0.8}
               >
-                <MessageCircle size={18} color="#FFF" />
-                <Text style={styles.matchMsgBtnText}>Message Now</Text>
+                <MessageCircle size={18} color={Colors.paper} />
+                <Text style={styles.matchMsgBtnText}>MESSAGE NOW</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -192,7 +189,7 @@ export function MatchCelebrationModal({
                 onPress={onDismiss}
                 activeOpacity={0.8}
               >
-                <Text style={styles.matchSkipBtnText}>Continue Exploring</Text>
+                <Text style={styles.matchSkipBtnText}>KEEP GOING</Text>
               </TouchableOpacity>
             </Animated.View>
           </Animated.View>
@@ -209,31 +206,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 28,
   },
+  // The stage — no card, no shadow: the moment plays on the frosted page
+  // itself, the way the Broadcast beats do.
   matchCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 28,
-    paddingVertical: 32,
-    paddingHorizontal: 28,
     width: "100%",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.22,
-    shadowRadius: 36,
-    elevation: 20,
+    paddingHorizontal: 12,
   },
-  matchLabelPill: {
-    backgroundColor: Colors.ink,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 24,
-  },
-  matchLabelText: {
-    color: "#FFF",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
+  matchEyebrow: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 2.4,
+    color: Colors.muted,
+    marginBottom: 26,
   },
   matchAvatarRow: {
     flexDirection: "row",
@@ -254,14 +239,14 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: Colors.ink,
   },
   matchAvatar: {
     width: 74,
     height: 74,
     borderRadius: 37,
     borderWidth: 3,
-    borderColor: "#FFF",
+    borderColor: Colors.paper,
   },
   matchAvatarInitial: {
     backgroundColor: Colors.ink,
@@ -269,9 +254,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   matchAvatarInitialText: {
-    color: "#FFF",
-    fontSize: 26,
-    fontWeight: "800",
+    fontFamily: Fonts.serif,
+    color: Colors.paper,
+    fontSize: 28,
   },
   matchSparkWrapper: {
     width: 38,
@@ -308,31 +293,33 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   matchMsgBtn: {
+    height: 54,
+    borderRadius: 27,
     backgroundColor: Colors.ink,
-    borderRadius: 18,
-    paddingVertical: 15,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
   matchMsgBtnText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: Fonts.sansBold,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    color: Colors.paper,
   },
   matchSkipBtn: {
-    borderRadius: 18,
-    paddingVertical: 14,
+    height: 54,
+    borderRadius: 27,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
+    backgroundColor: Colors.paper,
   },
-  // Matches the site's secondary/cancel-button convention (var(--muted)).
   matchSkipBtnText: {
-    color: Colors.muted,
-    fontSize: 15,
-    fontWeight: "600",
+    fontFamily: Fonts.sansBold,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    color: Colors.body,
   },
 });

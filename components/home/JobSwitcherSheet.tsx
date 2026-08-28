@@ -123,7 +123,7 @@ export function JobSwitcherSheet({
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   sheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   countNumMuted: { color: Colors.faint },
   countLabel: {
     fontSize: 7.5,
-    fontWeight: "800",
+    fontFamily: Fonts.sansBold,
     letterSpacing: 1,
     color: Colors.faint,
     marginTop: 1,

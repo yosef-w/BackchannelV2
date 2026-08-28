@@ -45,7 +45,7 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
           scrollDismiss
           onDismiss={onClose}
           style={{
-            backgroundColor: "#FFF",
+            backgroundColor: Colors.paper,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingTop: 12,
@@ -75,7 +75,7 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
                 justifyContent: "center",
               }}
             >
-              <Info color="#000" size={20} />
+              <Info color={Colors.ink} size={20} />
             </View>
             <View>
               <Text

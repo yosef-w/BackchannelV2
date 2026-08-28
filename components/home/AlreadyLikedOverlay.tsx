@@ -1,8 +1,7 @@
-import { Check, ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface AlreadyLikedOverlayProps {
   userType: "applicant" | "sponsor";
@@ -14,12 +13,13 @@ interface AlreadyLikedOverlayProps {
 }
 
 /**
- * "Already seen" overlay — replaces the floating Pass/Connect buttons when
- * the current card is one already liked this session (almost always because
- * "Review again" replayed the deck from the top). The dimmed card
- * underneath is deliberately non-interactive so the only way forward is a
- * conscious tap on Continue — no duplicate like call, no silent no-op that
- * looks like a bug.
+ * "Already seen" — replaces the verdict bar when the current card is one
+ * already liked this session (almost always because "Review again" replayed
+ * the deck). The dimmed card beneath is non-interactive, so the only way
+ * forward is a conscious tap — no duplicate like, no silent no-op.
+ *
+ * 2026-08 rebrand: a paper panel on a hairline, serif statement, one ink
+ * pill — no shadowed card, no check-in-a-circle.
  */
 export function AlreadyLikedOverlay({
   userType,
@@ -28,29 +28,27 @@ export function AlreadyLikedOverlay({
   name,
   onContinue,
 }: AlreadyLikedOverlayProps) {
-  const subtitle =
-    userType === "applicant"
-      ? `You showed interest in ${jobTitle || "this role"}${company ? ` at ${company}` : ""} earlier.`
-      : `You already connected with ${name || "this applicant"}.`;
+  const isApplicant = userType === "applicant";
+  const subtitle = isApplicant
+    ? `You showed interest in ${jobTitle || "this role"}${company ? ` at ${company}` : ""} earlier.`
+    : `You already connected with ${name || "this applicant"}.`;
   return (
     <View style={styles.overlay} pointerEvents="box-none">
-      <Animated.View entering={FadeIn.duration(200)} style={styles.card}>
-        <View style={styles.iconCircle}>
-          <Check color="#FFF" size={28} strokeWidth={3} />
-        </View>
+      <Animated.View entering={FadeIn.duration(200)} style={styles.panel}>
+        <Text style={styles.eyebrow}>ALREADY SEEN</Text>
         <Text style={styles.title}>
-          {userType === "applicant" ? "Already Interested" : "Already Connected"}
+          {isApplicant ? "You're already " : "You've already "}
+          <Text style={styles.titleEm}>{isApplicant ? "interested." : "connected."}</Text>
         </Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
         <TouchableOpacity
-          style={styles.button}
+          style={styles.pill}
           onPress={onContinue}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Continue to next card"
         >
-          <Text style={styles.buttonText}>Continue</Text>
-          <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+          <Text style={styles.pillText}>CONTINUE →</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -62,59 +60,54 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
   },
-  card: {
+  panel: {
     width: "100%",
     maxWidth: 360,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    paddingVertical: 32,
-    paddingHorizontal: 28,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 10,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 20,
+    paddingVertical: 26,
+    paddingHorizontal: 26,
   },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.ink,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 18,
+  eyebrow: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginBottom: 10,
   },
   title: {
     ...Type.heading,
-    fontSize: 21,
+    fontSize: 24,
+    lineHeight: 29,
     color: Colors.ink,
-    textAlign: "center",
-    marginBottom: 8,
+  },
+  titleEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   subtitle: {
-    fontSize: 14,
+    fontFamily: Fonts.sansLight,
+    fontSize: 14.5,
+    lineHeight: 21,
     color: Colors.body,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
+    marginTop: 10,
   },
-  button: {
-    flexDirection: "row",
+  pill: {
+    marginTop: 22,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    backgroundColor: Colors.ink,
-    paddingVertical: 15,
-    borderRadius: 16,
-    width: "100%",
   },
-  buttonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.2,
+  pillText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    color: Colors.paper,
   },
 });

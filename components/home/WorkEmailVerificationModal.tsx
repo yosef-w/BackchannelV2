@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { ChevronRight, Info, Mail } from "@/components/ui/icons";
+import { ChevronRight, Info } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,7 +22,7 @@ import {
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface WorkEmailVerificationModalProps {
   visible: boolean;
@@ -124,11 +124,10 @@ export function WorkEmailVerificationModal({
           </View>
         ) : (
           <>
-        <View style={styles.emailVerifIconCircle}>
-          <Mail color="#FFF" size={32} strokeWidth={1.5} />
-        </View>
-
-        <Text style={styles.emailVerifTitle}>Verify Your Work Email</Text>
+        <Text style={styles.emailVerifEyebrow}>SPONSORS ONLY</Text>
+        <Text style={styles.emailVerifTitle}>
+          Verify your <Text style={styles.emailVerifTitleEm}>work email.</Text>
+        </Text>
 
         {isEditingWorkEmail ? (
           <View style={styles.emailVerifEditBlock}>
@@ -217,7 +216,7 @@ export function WorkEmailVerificationModal({
                 disabled={emailVerifyLoading}
               >
                 {emailVerifyLoading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color={Colors.paper} />
                 ) : (
                   <Text style={styles.emailVerifEditSaveText}>
                     Save & resend
@@ -270,7 +269,7 @@ export function WorkEmailVerificationModal({
           activeOpacity={0.8}
         >
           <Text style={styles.emailVerifPrimaryBtnText}>Open Email App</Text>
-          <ChevronRight color="#FFF" size={20} />
+          <ChevronRight color={Colors.paper} size={20} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -308,7 +307,7 @@ export function WorkEmailVerificationModal({
           activeOpacity={0.8}
         >
           {emailVerifyLoading ? (
-            <ActivityIndicator size="small" color="#000" />
+            <ActivityIndicator size="small" color={Colors.ink} />
           ) : (
             <Text style={styles.emailVerifSecondaryBtnText}>
               I&apos;ve Verified My Email
@@ -398,7 +397,7 @@ export function WorkEmailVerificationModal({
 const styles = StyleSheet.create({
   emailVerifOverlay: { flex: 1, justifyContent: "flex-end" },
   emailVerifModal: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
@@ -407,15 +406,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 44,
   },
-  emailVerifIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.ink,
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 20,
+  emailVerifEyebrow: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginBottom: 12,
+  },
+  emailVerifTitleEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   verifiedBeat: {
     alignItems: "center",
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   },
   emailVerifAddress: {
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   emailVerifSpamHint: {
     flexDirection: "row",
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emailVerifPrimaryBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 17,
     fontWeight: "700",
   },
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   emailVerifSecondaryBtnText: {
-    color: "#000",
+    color: Colors.ink,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     width: "100%",
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: Colors.ink,
     paddingVertical: 12,
     paddingHorizontal: 14,
     backgroundColor: Colors.offWhite,
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   emailVerifEditSaveText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 14,
     fontWeight: "700",
   },

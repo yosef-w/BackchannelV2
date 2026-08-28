@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { AlertCircle, ChevronRight } from "@/components/ui/icons";
+import {  ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import {
   Modal,
@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { ProfileCompletenessResult } from "@/utils/profileCompletion";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ProfileCompletionModalProps {
   visible: boolean;
@@ -49,18 +49,17 @@ export function ProfileCompletionModal({
           onDismiss={onClose}
           style={styles.modalContent}
         >
-        <View style={styles.iconContainer}>
-          <AlertCircle color={Colors.body} size={48} />
-        </View>
-
-        <Text style={styles.title}>Complete Your Profile</Text>
+        <Text style={styles.eyebrow}>BEFORE YOU DECIDE</Text>
+        <Text style={styles.title}>
+          Finish your <Text style={styles.titleEm}>profile.</Text>
+        </Text>
         <Text style={styles.subtitle}>
           Your profile is {profileCompletion.percentage}% complete. Add the missing
           information to unlock autofill for job applications.
         </Text>
 
         <View style={styles.missingFieldsContainer}>
-          <Text style={styles.missingTitle}>Missing Information:</Text>
+          <Text style={styles.missingTitle}>STILL MISSING</Text>
           {profileCompletion.missingFields.slice(0, 5).map((field, index) => (
             <View key={index} style={styles.missingField}>
               <View style={styles.missingDot} />
@@ -80,7 +79,7 @@ export function ProfileCompletionModal({
           activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Complete Profile</Text>
-          <ChevronRight color="#FFF" size={20} />
+          <ChevronRight color={Colors.paper} size={20} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -112,7 +111,7 @@ export function ProfileCompletionModal({
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
@@ -121,15 +120,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 40,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 20,
+  eyebrow: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: Colors.muted,
+    marginBottom: 12,
+  },
+  titleEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   title: {
     ...Type.heading,
@@ -145,18 +145,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   missingFieldsContainer: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    marginTop: 18,
+    marginBottom: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 14,
   },
   missingTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: Colors.muted,
+    marginBottom: 8,
   },
   missingField: {
     flexDirection: "row",
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryButtonText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 17,
     fontWeight: "700",
   },

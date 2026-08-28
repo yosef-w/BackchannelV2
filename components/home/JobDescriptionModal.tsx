@@ -50,7 +50,7 @@ export function JobDescriptionModal({
           scrollDismiss
           onDismiss={onClose}
           style={{
-            backgroundColor: "#FFF",
+            backgroundColor: Colors.paper,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingTop: 12,
@@ -81,7 +81,7 @@ export function JobDescriptionModal({
                 justifyContent: "center",
               }}
             >
-              <Briefcase color="#000" size={20} />
+              <Briefcase color={Colors.ink} size={20} />
             </View>
             <View>
               <Text

@@ -1,17 +1,16 @@
 import { BlurView } from "expo-blur";
-import { BellRing, ChevronRight, X } from "@/components/ui/icons";
+import { X } from "@/components/ui/icons";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React from "react";
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface GetSponsorModalProps {
   visible: boolean;
@@ -24,12 +23,15 @@ interface GetSponsorModalProps {
 }
 
 /**
- * "Get a Sponsor" flow for non-sponsored jobs. Extracted from HomeView as a
- * render-only component: applyStep/showApplyModal/pendingJob/
- * isRequestingSponsor are all set from outside this UI (the swipe-intercept
- * handler and handleGetSponsor/handleApplyModalDone), so a state-ownership
- * audit found no state that could safely move — everything stays in
- * HomeView and is passed down as props.
+ * "Ask for a sponsor" — the sheet behind WAITLIST on a role with no sponsor.
+ * Render-only: applyStep / pendingJob / isRequestingSponsor are owned by
+ * HomeView (the swipe intercept and handleGetSponsor / handleApplyModalDone)
+ * and passed down.
+ *
+ * 2026-08 rebrand: a serif statement, one sentence in the light body voice,
+ * and a single ink pill in the verdict bar's verb language — no boxed
+ * option row, no bell-in-a-circle. Both backend writes (request a sponsor +
+ * join the waitlist) still fire from the one action.
  */
 export function GetSponsorModal({
   visible,
@@ -40,6 +42,7 @@ export function GetSponsorModal({
   onGetSponsor,
   onDone,
 }: GetSponsorModalProps) {
+  const company = companyName ?? "this company";
   return (
     <View style={styles.modalOverlay}>
       <TouchableOpacity
@@ -53,82 +56,70 @@ export function GetSponsorModal({
       <Animated.View
         entering={SlideInDown}
         exiting={SlideOutDown}
-        style={styles.applyModalContent}
+        style={styles.sheet}
       >
-        <View style={styles.modalHandle} />
+        <View style={styles.handle} />
+        <TouchableOpacity
+          onPress={onClose}
+          style={styles.closeBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        >
+          <X color={Colors.ink} size={22} strokeWidth={1.8} />
+        </TouchableOpacity>
 
-        <View style={styles.applyModalHeader}>
-          <Text style={styles.applyModalTitle}>
-            {applyStep === "select" ? "Get a Sponsor" : "Request sent!"}
-          </Text>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-          >
-            <X color="#000" size={24} />
-          </TouchableOpacity>
-        </View>
-
-        {applyStep === "select" && (
-          <Text style={styles.applyModalSubtitle}>
-            This role at {companyName} doesn&apos;t have an active sponsor yet.
-          </Text>
+        {applyStep === "select" ? (
+          <>
+            <Text style={styles.eyebrow}>THIS ROLE · {company.toUpperCase()}</Text>
+            <Text style={styles.title}>
+              No sponsor on this role{" "}
+              <Text style={styles.titleEm}>yet.</Text>
+            </Text>
+            <Text style={styles.body}>
+              Ask, and we&apos;ll let people at {company} know you&apos;re
+              interested — and you&apos;ll hear the moment someone puts their
+              name on it.
+            </Text>
+            <TouchableOpacity
+              style={[styles.pill, isRequestingSponsor && styles.pillBusy]}
+              onPress={onGetSponsor}
+              disabled={isRequestingSponsor}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Ask for a sponsor"
+            >
+              {isRequestingSponsor ? (
+                <ActivityIndicator size="small" color={Colors.paper} />
+              ) : (
+                <Text style={styles.pillText}>ASK FOR A SPONSOR</Text>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.footnote}>
+              You&apos;re also on the waitlist — any sponsor who signs on will see you.
+            </Text>
+          </>
+        ) : (
+          <View style={styles.success}>
+            <ConfirmPop size={64} />
+            <Text style={[styles.title, styles.titleCenter]}>
+              Request <Text style={styles.titleEm}>sent.</Text>
+            </Text>
+            <Text style={[styles.body, styles.bodyCenter]}>
+              Everyone we have at {company} has been asked. If someone can
+              sponsor this role, you&apos;ll be notified right away.
+            </Text>
+            <TouchableOpacity
+              style={styles.pill}
+              onPress={onDone}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+            >
+              <Text style={styles.pillText}>DONE</Text>
+            </TouchableOpacity>
+          </View>
         )}
-
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-          {applyStep === "select" && (
-            <View style={styles.modalOptionsContainer}>
-              {/* Single combined action — both "request a sponsor"
-                  (notify employees at the company) AND "join waitlist"
-                  (get notified when any sponsor signs on) fire in
-                  parallel. They were redundant from the user's point of
-                  view; one button, two backend writes. */}
-              <TouchableOpacity
-                style={[
-                  styles.modalOptionBtn,
-                  isRequestingSponsor && { opacity: 0.6 },
-                ]}
-                onPress={onGetSponsor}
-                disabled={isRequestingSponsor}
-                activeOpacity={0.7}
-              >
-                <View style={styles.modalOptionIcon}>
-                  <BellRing color="#000" size={24} />
-                </View>
-                <View style={styles.modalOptionContent}>
-                  <Text style={styles.modalOptionTitle}>Get a Sponsor</Text>
-                  <Text style={styles.modalOptionDesc}>
-                    We&apos;ll let employees at {companyName ?? "this company"} know
-                    and notify you the moment someone signs on.
-                  </Text>
-                </View>
-                {isRequestingSponsor ? (
-                  <ActivityIndicator size="small" color={Colors.muted} />
-                ) : (
-                  <ChevronRight color={Colors.faint} size={20} />
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {applyStep === "requested" && (
-            <View style={styles.successContainer}>
-              <ConfirmPop size={72} />
-              <Text style={styles.successMessage}>
-                {`This role doesn't have a dedicated sponsor yet, but your request has been sent to everyone we have available at ${companyName ?? "this company"}. If someone is able to sponsor you for this role, you'll be notified right away.`}
-              </Text>
-              <TouchableOpacity
-                style={styles.successActionBtn}
-                onPress={onDone}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.successActionBtnText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </ScrollView>
       </Animated.View>
     </View>
   );
@@ -136,88 +127,75 @@ export function GetSponsorModal({
 
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
-  modalHandle: {
-    width: 40,
-    height: 5,
-    backgroundColor: Colors.border,
-    borderRadius: 3,
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  applyModalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    // Gripper hugs the sheet edge (matches the DismissibleSheet-wide fix).
+  sheet: {
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingTop: 12,
     paddingHorizontal: 28,
     paddingBottom: 40,
-    maxHeight: "90%",
   },
-  applyModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 22,
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 24,
+    right: 24,
+    padding: 4,
+  },
+  eyebrow: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: Colors.muted,
     marginBottom: 12,
   },
-  applyModalTitle: { ...Type.heading, color: Colors.ink },
-  applyModalSubtitle: {
-    fontSize: 14,
-    color: Colors.body,
-    lineHeight: 20,
-    marginBottom: 24,
+  title: {
+    ...Type.title,
+    fontSize: 28,
+    lineHeight: 33,
+    color: Colors.ink,
   },
-  closeBtn: { padding: 4 },
-
-  modalOptionsContainer: { gap: 12 },
-  modalOptionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    padding: 20,
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  titleEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
-  modalOptionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalOptionContent: { flex: 1 },
-  modalOptionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 4,
-  },
-  modalOptionDesc: { fontSize: 13, color: Colors.body, lineHeight: 18 },
-
-  successContainer: { alignItems: "center", paddingVertical: 32 },
-  successMessage: {
-    fontSize: 14,
-    color: Colors.body,
-    textAlign: "center",
+  titleCenter: { textAlign: "center", marginTop: 18 },
+  body: {
+    fontFamily: Fonts.sansLight,
+    fontSize: 15,
     lineHeight: 22,
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    color: Colors.body,
+    marginTop: 12,
   },
-  successActionBtn: {
+  bodyCenter: { textAlign: "center" },
+  pill: {
+    marginTop: 26,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: Colors.ink,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 18,
-    minWidth: 200,
   },
-  successActionBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  pillBusy: { opacity: 0.7 },
+  pillText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    color: Colors.paper,
+  },
+  footnote: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 13.5,
+    color: Colors.muted,
+    textAlign: "center",
+    marginTop: 14,
+  },
+  success: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
 });
