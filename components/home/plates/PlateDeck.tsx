@@ -18,9 +18,16 @@
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  Pressable,
   ScrollView,
   Text,
   useWindowDimensions,
@@ -31,7 +38,6 @@ import {
 } from "react-native";
 import Animated, {
   Extrapolation,
-  FadeIn,
   interpolate,
   runOnJS,
   useAnimatedReaction,
@@ -65,21 +71,30 @@ interface PlateDeckProps {
   scrollY: SharedValue<number>;
   /** The parent's horizontal padding, cancelled so plates run edge to edge. */
   bleed: number;
-  onPlateChange?: (index: number, count: number) => void;
+  /** Fires on mount and whenever the plate or read position changes —
+   * the gauge ticks off index/count, and HomeView renders `cue` as the
+   * third control between ✕ and ✓. */
+  onPlateChange?: (index: number, count: number, cue: PlateCue) => void;
   /** The full read — the existing card content in "read" presentation. */
   children: React.ReactNode;
 }
 
-export function PlateDeck({
-  plates,
-  anchor,
-  scrollRef,
-  onScroll,
-  scrollY,
-  bleed,
-  onPlateChange,
-  children,
-}: PlateDeckProps) {
+/** What the third control in the decide row should say and do. */
+export interface PlateCue {
+  label: string;
+  /** A read section to jump to, or "plates" to return to the top. */
+  target: SectionId | "plates";
+}
+
+export interface PlateDeckHandle {
+  goToSection: (id: SectionId) => void;
+  scrollToTop: () => void;
+}
+
+export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function PlateDeck(
+  { plates, anchor, scrollRef, onScroll, scrollY, bleed, onPlateChange, children },
+  ref,
+) {
   const { width: screenWidth } = useWindowDimensions();
   const plateWidth = screenWidth - PEEK;
   const count = plates.length;
@@ -108,10 +123,6 @@ export function PlateDeck({
     },
     [count],
   );
-
-  useEffect(() => {
-    onPlateChange?.(index, count);
-  }, [index, count, onPlateChange]);
 
   const goTo = useCallback(
     (next: number) => {
@@ -205,16 +216,24 @@ export function PlateDeck({
   );
 
   const posLabel = readLabel ?? `PLATE ${index + 1} / ${count}`;
-  const cue = plates[index]?.readCta ?? "THE FULL READ ↓";
 
-  // The read cue fades as soon as the read starts scrolling into view —
-  // it has done its job.
-  const readCueStyle = useAnimatedStyle(() => {
-    const h = stage.value || 1;
-    return {
-      opacity: interpolate(scrollY.value, [0, h * 0.25], [1, 0], Extrapolation.CLAMP),
-    };
-  });
+  // The cue: the current plate's deep link while skimming; a way back up
+  // once the read is under the anchor.
+  const inRead = readLabel !== null;
+  const cueLabel = inRead
+    ? "BACK TO THE PLATES ↑"
+    : (plates[index]?.readCta ?? "THE FULL READ ↓");
+  const cueTarget: PlateCue["target"] = inRead
+    ? "plates"
+    : (plates[index]?.readTarget ?? "top");
+  useEffect(() => {
+    onPlateChange?.(index, count, { label: cueLabel, target: cueTarget });
+  }, [index, count, cueLabel, cueTarget, onPlateChange]);
+
+  const scrollToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [scrollRef]);
+  useImperativeHandle(ref, () => ({ goToSection, scrollToTop }), [goToSection, scrollToTop]);
 
   return (
     <View style={s.root} onLayout={onLayout}>
@@ -266,21 +285,6 @@ export function PlateDeck({
         </ReadSectionsContext.Provider>
       </Animated.ScrollView>
 
-      {/* The read cue — between ✕ and ✓, the decide band's free centre.
-          box-none so only the label itself takes the tap. */}
-      <Animated.View style={[s.readCue, readCueStyle]} pointerEvents="box-none">
-        <Pressable
-          onPress={() => goToSection(plates[index]?.readTarget ?? "top")}
-          style={({ pressed }) => [s.readCueBtn, pressed && { opacity: 0.7 }]}
-          accessibilityRole="button"
-          accessibilityLabel={cue.replace(" ↓", "").toLowerCase()}
-        >
-          <Animated.View key={cue} entering={FadeIn.duration(220)} style={s.readCuePill}>
-            <Text style={s.readCueText}>{cue}</Text>
-          </Animated.View>
-        </Pressable>
-      </Animated.View>
-
       {/* Pinned identity — pointerEvents none so it never steals a tap
           from the plate row or the full read beneath it. */}
       <Animated.View
@@ -311,4 +315,4 @@ export function PlateDeck({
       </Animated.View>
     </View>
   );
-}
+});

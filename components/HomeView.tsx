@@ -64,6 +64,7 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  FadeIn,
   FadeInDown,
   FadeInUp,
   useAnimatedScrollHandler,
@@ -86,7 +87,11 @@ import { DeckDoneCard } from "./home/DeckDoneCard";
 import { FullBioModal } from "./home/FullBioModal";
 import { GetSponsorModal } from "./home/GetSponsorModal";
 import { JobCardContent } from "./home/JobCardContent";
-import { PlateDeck } from "./home/plates/PlateDeck";
+import {
+  PlateDeck,
+  type PlateCue,
+  type PlateDeckHandle,
+} from "./home/plates/PlateDeck";
 import {
   buildApplicantPlates,
   buildJobPlates,
@@ -375,10 +380,22 @@ export function HomeView({
   const plateScrollY = useSharedValue(0);
   // Where the user is inside the current card — ticks the gauge segment.
   const [plateProgress, setPlateProgress] = useState({ index: 0, count: 1 });
+  // The third control in the decide row — the current plate's deep link
+  // into the full read ("ALL EXPERIENCE ↓"), or the way back up.
+  const [plateCue, setPlateCue] = useState<PlateCue | null>(null);
+  const plateDeckRef = useRef<PlateDeckHandle>(null);
   const handlePlateChange = useCallback(
-    (index: number, count: number) => setPlateProgress({ index, count }),
+    (index: number, count: number, cue: PlateCue) => {
+      setPlateProgress({ index, count });
+      setPlateCue(cue);
+    },
     [],
   );
+  const handlePlateCue = useCallback(() => {
+    if (!plateCue) return;
+    if (plateCue.target === "plates") plateDeckRef.current?.scrollToTop();
+    else plateDeckRef.current?.goToSection(plateCue.target);
+  }, [plateCue]);
   // Pulsing LIVE dot for the "No Applicants Yet" empty state. Loops
   // a gentle opacity oscillation so the indicator reads as active /
   // running, the way streaming UIs and status dashboards do it.
@@ -1998,6 +2015,7 @@ export function HomeView({
                      row of full-bleed plates above the full read. Keyed
                      by card so every entry opens on plate one. */
                   <PlateDeck
+                    ref={plateDeckRef}
                     key={String(currentItemId ?? "card")}
                     plates={plates}
                     anchor={plateAnchor}
@@ -2109,6 +2127,32 @@ export function HomeView({
                   >
                     <X color="#000" size={26} strokeWidth={2.5} />
                   </TouchableOpacity>
+                  {/* The third control (plates): a hairline pill between
+                      ✕ and ✓ that deep-links into the full read for the
+                      plate on stage — "ALL EXPERIENCE ↓" — and turns into
+                      the way back up once the read is under the anchor.
+                      Laid out by the same row as the buttons, so it's
+                      always exactly between them. */}
+                  {PLATES_ENABLED && plateCue && (
+                    <TouchableOpacity
+                      onPress={handlePlateCue}
+                      style={styles.floatingReadBtn}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel={plateCue.label
+                        .replace(/ [↓↑]$/, "")
+                        .toLowerCase()}
+                    >
+                      <Animated.Text
+                        key={plateCue.label}
+                        entering={FadeIn.duration(200)}
+                        style={styles.floatingReadText}
+                        numberOfLines={1}
+                      >
+                        {plateCue.label}
+                      </Animated.Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
                     onPress={() => handleSwipe(true)}
                     style={styles.floatingConnectBtn}
@@ -2348,6 +2392,31 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 14,
     elevation: 8,
+  },
+  // The plates' read control — the same floating vocabulary as the ✕
+  // (white, soft shadow) at a lower silhouette, so the row reads as
+  // two decisions with the read between them.
+  floatingReadBtn: {
+    height: 44,
+    maxWidth: 196,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  floatingReadText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: Colors.ink,
   },
   floatingConnectBtn: {
     width: 64,

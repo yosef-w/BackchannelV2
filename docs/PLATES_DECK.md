@@ -39,9 +39,9 @@ computed overlaps (`skillOverlap`).
 
 ### The deep link
 
-The cue between ✕ and ✓ is **contextual**: its label is the current plate's
+The third control in HomeView's floating action row — a hairline pill between ✕ and ✓ — is **contextual**: its label is the current plate's
 `readCta` ("ALL EXPERIENCE ↓", "FULL DESCRIPTION ↓") and tapping it scrolls
-to the plate's `readTarget` section. Sections register their offsets via
+to the plate's `readTarget` section (via the `PlateDeckHandle` ref); once the read is under the anchor it becomes "BACK TO THE PLATES ↑". Sections register their offsets via
 `ReadSections.tsx` (`<ReadSection id label>` wrappers in both cards); the
 landing section flashes a hairline, and the anchor's right label shows the
 section name while reading. A manual scroll is never auto-jumped — it stays
