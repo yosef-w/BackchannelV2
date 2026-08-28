@@ -1,11 +1,17 @@
-// FloatingTabBar — the black floating pill (extracted from MainApp), now
-// rendered as the custom tabBar of the (tabs) expo-router layout instead of
-// a hand-rolled view switcher. Slides down off-screen while the user scrolls
-// down on HomeView (Hinge-style), driven by the shell's navTranslateY shared
-// value which only HomeView writes to; on every other screen the value stays
-// 0 so the bar is anchored.
+// FloatingTabBar — the glass bar (2026-08 "BG" redesign). A floating
+// capsule of frosted glass over the page: the page shows through, a
+// hairline of light runs along its top edge, and the active tab sits in a
+// soft well. Lighter than the content instead of heavier — the previous
+// solid-ink pill stacked a second black slab under the verdict bar and
+// carried the app's last drop shadow.
+//
+// Still the custom tabBar of the (tabs) expo-router layout; still slides
+// off-screen while the user scrolls down on HomeView via the shell's
+// navTranslateY shared value (HomeView is the only writer). Count pills
+// per route arrive via `badges`.
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import {
   Briefcase,
@@ -14,19 +20,21 @@ import {
   Star,
   User,
 } from "@/components/ui/icons";
-import React, { useEffect } from "react";
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  FadeIn,
-  withSpring,
-} from "react-native-reanimated";
+import React from "react";
+import {
+  Dimensions,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, { FadeIn, useAnimatedStyle } from "react-native-reanimated";
 import { useShell } from "./ShellContext";
 import { Colors } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const BAR_HEIGHT = 62;
 
 // Route name → tab chrome. Order here is the render order; must match the
 // Tabs.Screen declarations in app/(tabs)/_layout.tsx.
@@ -61,21 +69,7 @@ function TabItem({
   badge?: number;
   onPress: () => void;
 }) {
-  const scale = useSharedValue(1);
   const Icon = item.icon;
-
-  useEffect(() => {
-    scale.value = withSpring(isActive ? 1.2 : 1, {
-      damping: 15,
-      stiffness: 150,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive]);
-
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
     <TouchableOpacity
       onPress={() => {
@@ -83,22 +77,20 @@ function TabItem({
         onPress();
       }}
       activeOpacity={0.8}
-      style={styles.navItem}
+      style={[styles.tab, isActive && styles.tabActive]}
       accessibilityRole="tab"
       accessibilityLabel={
         badge ? `${item.label}, ${badge} waiting for you` : item.label
       }
       accessibilityState={{ selected: isActive }}
     >
-      <Animated.View style={animatedIconStyle}>
+      <View>
         <Icon
-          color={isActive ? "#FFF" : Colors.body}
-          size={22}
-          strokeWidth={isActive ? 2.5 : 1.5}
+          color={isActive ? Colors.ink : Colors.body}
+          size={19}
+          strokeWidth={isActive ? 2.2 : 1.5}
         />
-        {/* The count pill — a crisp paper pill on the ink bar, the inverse
-            of the header's ink-on-paper pills. No ring: on a black bar a
-            dark ring reads as a gap around a floating white circle. */}
+        {/* The count pill — ink on glass, the header's pill language. */}
         {!!badge && badge > 0 && (
           <Animated.View
             key={badge > 9 ? "9+" : String(badge)}
@@ -108,9 +100,9 @@ function TabItem({
             <Text style={styles.badgeText}>{badge > 9 ? "9+" : badge}</Text>
           </Animated.View>
         )}
-      </Animated.View>
+      </View>
       <Text
-        style={[styles.navLabel, isActive && styles.navLabelActive]}
+        style={[styles.label, isActive && styles.labelActive]}
         numberOfLines={1}
       >
         {item.label}
@@ -142,36 +134,48 @@ export function FloatingTabBar({
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(600)}
       style={[styles.navContainer, navAnimatedStyle]}
       pointerEvents="box-none"
     >
-      <View style={styles.navBar}>
-        {visibleItems.map((item) => {
-          const routeIndex = state.routes.findIndex(
-            (r) => r.name === item.name,
-          );
-          const isActive = state.index === routeIndex;
-          return (
-            <TabItem
-              key={item.name}
-              item={item}
-              isActive={isActive}
-              badge={badges?.[item.name]}
-              onPress={() => {
-                const route = state.routes[routeIndex];
-                const event = navigation.emit({
-                  type: "tabPress",
-                  target: route?.key,
-                  canPreventDefault: true,
-                });
-                if (!isActive && !event.defaultPrevented) {
-                  navigation.navigate(item.name);
-                }
-              }}
-            />
-          );
-        })}
+      <View style={styles.capsule}>
+        {/* The glass: system blur under a milky wash so type stays
+            legible whatever scrolls beneath. Android gets the wash alone
+            (no native blur) — still a light capsule, just opaque. */}
+        <BlurView
+          intensity={38}
+          tint="light"
+          style={StyleSheet.absoluteFill}
+          experimentalBlurMethod="dimezisBlurView"
+        />
+        <View style={styles.wash} pointerEvents="none" />
+        <View style={styles.edgeLight} pointerEvents="none" />
+        <View style={styles.row}>
+          {visibleItems.map((item) => {
+            const routeIndex = state.routes.findIndex(
+              (r) => r.name === item.name,
+            );
+            const isActive = state.index === routeIndex;
+            return (
+              <TabItem
+                key={item.name}
+                item={item}
+                isActive={isActive}
+                badge={badges?.[item.name]}
+                onPress={() => {
+                  const route = state.routes[routeIndex];
+                  const event = navigation.emit({
+                    type: "tabPress",
+                    target: route?.key,
+                    canPreventDefault: true,
+                  });
+                  if (!isActive && !event.defaultPrevented) {
+                    navigation.navigate(item.name);
+                  }
+                }}
+              />
+            );
+          })}
+        </View>
       </View>
     </Animated.View>
   );
@@ -180,61 +184,87 @@ export function FloatingTabBar({
 const styles = StyleSheet.create({
   navContainer: {
     position: "absolute",
-    bottom: 30,
+    bottom: 22,
     left: 0,
     right: 0,
     alignItems: "center",
   },
-  navBar: {
+  capsule: {
+    width: SCREEN_WIDTH * 0.9,
+    height: BAR_HEIGHT,
+    borderRadius: BAR_HEIGHT / 2,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(10,10,10,0.09)",
+    // One soft ambient shadow — glass has to float, but quietly.
+    shadowColor: "#0A0A0A",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 28,
+    elevation: 8,
+  },
+  wash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor:
+      Platform.OS === "android"
+        ? "rgba(255,255,255,0.9)"
+        : "rgba(255,255,255,0.64)",
+  },
+  // The hairline of light along the top edge — what makes glass read as
+  // glass rather than as a translucent sheet.
+  edgeLight: {
+    position: "absolute",
+    top: 0,
+    left: 12,
+    right: 12,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  row: {
+    flex: 1,
     flexDirection: "row",
-    backgroundColor: Colors.ink,
-    width: SCREEN_WIDTH * 0.85,
-    height: 70,
-    borderRadius: 35,
     alignItems: "center",
     justifyContent: "space-around",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
+    paddingHorizontal: 6,
   },
-  navItem: {
+  tab: {
+    width: 54,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    width: 60,
-    height: 60,
     gap: 3,
   },
-  navLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: Colors.body,
-    letterSpacing: -0.1,
+  // The soft well the active tab sits in.
+  tabActive: {
+    backgroundColor: "rgba(10,10,10,0.08)",
   },
-  navLabelActive: {
-    color: "#FFF",
+  label: {
+    fontSize: 8.5,
     fontWeight: "700",
+    letterSpacing: 0.8,
+    color: Colors.body,
+  },
+  labelActive: {
+    color: Colors.ink,
   },
   badge: {
     position: "absolute",
     top: -7,
     right: -11,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 5.5,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 5,
     borderRadius: 9,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
   badgeText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: "800",
-    color: Colors.ink,
+    color: Colors.paper,
     letterSpacing: -0.2,
     includeFontPadding: false,
   },
