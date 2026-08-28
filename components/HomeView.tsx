@@ -97,7 +97,6 @@ import { JobSwitcherSheet } from "./home/JobSwitcherSheet";
 import { MatchCelebrationModal } from "./home/MatchCelebrationModal";
 import { SkeletonCard } from "./home/SkeletonCard";
 import { WorkEmailVerificationModal } from "./home/WorkEmailVerificationModal";
-import { YourMoveStrip } from "./home/YourMoveStrip";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
@@ -1632,18 +1631,6 @@ export function HomeView({
             )}
 
           </Animated.View>
-
-          {/* "Sponsors are interested in you" teaser — reads the same
-              React Query cache MatchesView populates; renders nothing for
-              sponsors or when nobody's interested. Shown on every deck
-              state (including deck-done) since it's actionable whenever
-              it's true. */}
-          <YourMoveStrip
-            userType={userType}
-            onPress={() =>
-              router.navigate("/(tabs)/matches")
-            }
-          />
 
           {isDeckFinished ? (
             <View style={styles.fullEmptyContainer}>
