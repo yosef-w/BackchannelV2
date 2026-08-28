@@ -141,11 +141,14 @@ export function FloatingTabBar({
         {/* The glass: system blur under a milky wash so type stays
             legible whatever scrolls beneath. Android gets the wash alone
             (no native blur) — still a light capsule, just opaque. */}
+        {/* The blur carries the capsule's own radius: on iOS a
+            UIVisualEffectView clipped only by its parent can paint a
+            dark halo outside the rounded corners on re-layout (tab
+            changes) — rounding the effect view itself keeps it inside. */}
         <BlurView
           intensity={38}
           tint="light"
-          style={StyleSheet.absoluteFill}
-          experimentalBlurMethod="dimezisBlurView"
+          style={[StyleSheet.absoluteFill, styles.blur]}
         />
         <View style={styles.wash} pointerEvents="none" />
         <View style={styles.edgeLight} pointerEvents="none" />
@@ -201,6 +204,10 @@ const styles = StyleSheet.create({
     // off to the side on tab changes.
     borderWidth: 1,
     borderColor: "rgba(10,10,10,0.12)",
+  },
+  blur: {
+    borderRadius: BAR_HEIGHT / 2,
+    overflow: "hidden",
   },
   wash: {
     ...StyleSheet.absoluteFillObject,
