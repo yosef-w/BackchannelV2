@@ -2148,6 +2148,8 @@ export function HomeView({
                         entering={FadeIn.duration(200)}
                         style={styles.floatingReadText}
                         numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.85}
                       >
                         {plateCue.label}
                       </Animated.Text>
@@ -2398,9 +2400,11 @@ const styles = StyleSheet.create({
   // two decisions with the read between them.
   floatingReadBtn: {
     height: 44,
-    maxWidth: 196,
+    // Fixed footprint: the row is space-between, so a label-sized pill
+    // would push ✕/✓ around as the copy changes plate to plate.
+    width: 184,
     borderRadius: 22,
-    paddingHorizontal: 18,
+    paddingHorizontal: 10,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: Colors.border,
