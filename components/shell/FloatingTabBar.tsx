@@ -194,14 +194,13 @@ const styles = StyleSheet.create({
     height: BAR_HEIGHT,
     borderRadius: BAR_HEIGHT / 2,
     overflow: "hidden",
+    // A hairline edge and the light along the top do the floating — no
+    // drop shadow. On iOS a shadow on a non-opaque view (the glass) is
+    // computed from its contents' alpha every frame; with a BlurView
+    // inside an overflow-hidden capsule it rendered as a smeared shadow
+    // off to the side on tab changes.
     borderWidth: 1,
-    borderColor: "rgba(10,10,10,0.09)",
-    // One soft ambient shadow — glass has to float, but quietly.
-    shadowColor: "#0A0A0A",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 28,
-    elevation: 8,
+    borderColor: "rgba(10,10,10,0.12)",
   },
   wash: {
     ...StyleSheet.absoluteFillObject,
