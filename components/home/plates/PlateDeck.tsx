@@ -271,17 +271,13 @@ export function PlateDeck({
       <Animated.View style={[s.readCue, readCueStyle]} pointerEvents="box-none">
         <Pressable
           onPress={() => goToSection(plates[index]?.readTarget ?? "top")}
-          hitSlop={8}
+          style={({ pressed }) => [s.readCueBtn, pressed && { opacity: 0.7 }]}
           accessibilityRole="button"
           accessibilityLabel={cue.replace(" ↓", "").toLowerCase()}
         >
-          <Animated.Text
-            key={cue}
-            entering={FadeIn.duration(220)}
-            style={s.readCueText}
-          >
-            {cue}
-          </Animated.Text>
+          <Animated.View key={cue} entering={FadeIn.duration(220)} style={s.readCuePill}>
+            <Text style={s.readCueText}>{cue}</Text>
+          </Animated.View>
         </Pressable>
       </Animated.View>
 

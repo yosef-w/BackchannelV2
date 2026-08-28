@@ -257,7 +257,10 @@ export const plateStyles = StyleSheet.create({
     textAlign: "center",
     marginTop: 24,
   },
-  // The read cue — centred in the decide band between ✕ and ✓.
+  // The read cue — centred in the decide band between ✕ and ✓. Above the
+  // plates and the anchor in stacking order, and the tap target is the
+  // whole band centre (not just the label), so "tap between the buttons"
+  // always means the deep link.
   readCue: {
     position: "absolute",
     left: 0,
@@ -266,15 +269,34 @@ export const plateStyles = StyleSheet.create({
     height: DECIDE_BAND_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 4,
+    elevation: 4,
+  },
+  readCueBtn: {
+    height: DECIDE_BAND_HEIGHT,
+    minWidth: 176,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // A hairline pill — the third control in the row, between the white ✕
+  // and the ink ✓.
+  readCuePill: {
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
   readCueText: {
     fontFamily: Fonts.sansBold,
     fontSize: 11,
-    letterSpacing: 1.6,
-    color: Colors.body,
+    letterSpacing: 1.4,
+    color: Colors.ink,
     textAlign: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
   },
 
   // ── the anchor strip ──────────────────────────────────────────────────
