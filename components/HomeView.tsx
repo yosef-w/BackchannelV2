@@ -44,11 +44,9 @@ import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import {
   Briefcase,
-  Check,
   ChevronDown,
   ChevronRight,
   RefreshCcw,
-  X,
 } from "@/components/ui/icons";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -64,7 +62,6 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
   useAnimatedScrollHandler,
@@ -87,11 +84,9 @@ import { DeckDoneCard } from "./home/DeckDoneCard";
 import { FullBioModal } from "./home/FullBioModal";
 import { GetSponsorModal } from "./home/GetSponsorModal";
 import { JobCardContent } from "./home/JobCardContent";
-import {
-  PlateDeck,
-  type PlateCue,
-  type PlateDeckHandle,
-} from "./home/plates/PlateDeck";
+import { PlateDeck } from "./home/plates/PlateDeck";
+import { DecisionStamp, STAMP_MS } from "./home/DecisionStamp";
+import { VerdictBar } from "./home/VerdictBar";
 import {
   buildApplicantPlates,
   buildJobPlates,
@@ -380,22 +375,13 @@ export function HomeView({
   const plateScrollY = useSharedValue(0);
   // Where the user is inside the current card — ticks the gauge segment.
   const [plateProgress, setPlateProgress] = useState({ index: 0, count: 1 });
-  // The third control in the decide row — the current plate's deep link
-  // into the full read ("ALL EXPERIENCE ↓"), or the way back up.
-  const [plateCue, setPlateCue] = useState<PlateCue | null>(null);
-  const plateDeckRef = useRef<PlateDeckHandle>(null);
   const handlePlateChange = useCallback(
-    (index: number, count: number, cue: PlateCue) => {
-      setPlateProgress({ index, count });
-      setPlateCue(cue);
-    },
+    (index: number, count: number) => setPlateProgress({ index, count }),
     [],
   );
-  const handlePlateCue = useCallback(() => {
-    if (!plateCue) return;
-    if (plateCue.target === "plates") plateDeckRef.current?.scrollToTop();
-    else plateDeckRef.current?.goToSection(plateCue.target);
-  }, [plateCue]);
+  // The commit beat: the accept verb stamps the card (DecisionStamp) for
+  // the moment before it lifts away.
+  const [stamp, setStamp] = useState<string | null>(null);
   // Pulsing LIVE dot for the "No Applicants Yet" empty state. Loops
   // a gentle opacity oscillation so the indicator reads as active /
   // running, the way streaming UIs and status dashboards do it.
@@ -1016,6 +1002,10 @@ export function HomeView({
     }
 
     if (isAccept) {
+      // The stamp lands the instant the verb is pressed — a physical mark,
+      // not a network receipt — and clears itself as the card lifts.
+      setStamp(userType === "sponsor" ? "CONNECTED" : "INTERESTED");
+      setTimeout(() => setStamp(null), STAMP_MS + 900);
       // Call like API when accepting
       let didMatch = false;
       let jobGone = false;
@@ -2015,7 +2005,6 @@ export function HomeView({
                      row of full-bleed plates above the full read. Keyed
                      by card so every entry opens on plate one. */
                   <PlateDeck
-                    ref={plateDeckRef}
                     key={String(currentItemId ?? "card")}
                     plates={plates}
                     anchor={plateAnchor}
@@ -2070,6 +2059,8 @@ export function HomeView({
                 )}
               </Animated.View>
 
+              {stamp && <DecisionStamp label={stamp} />}
+
               {isAlreadyLiked ? (
                 /* "Already seen" overlay — replaces the floating Pass/
                    Connect buttons when the current card is one we've
@@ -2116,58 +2107,30 @@ export function HomeView({
                   ]}
                   pointerEvents="box-none"
                 >
-                  <TouchableOpacity
-                    onPress={() => handleSwipe(false)}
-                    style={styles.floatingPassBtn}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityLabel={
+                  {/* The verdict bar — one hairline instrument, PASS on
+                      paper, the accept verb in ink. Verbs know the role
+                      and the card: CONNECT (sponsor), INTERESTED
+                      (applicant), WAITLIST (a role with no sponsor yet). */}
+                  <VerdictBar
+                    onPass={() => handleSwipe(false)}
+                    onAccept={() => handleSwipe(true)}
+                    acceptLabel={
+                      userType === "sponsor"
+                        ? "CONNECT"
+                        : "isSponsored" in currentData &&
+                            currentData.isSponsored === false
+                          ? "WAITLIST"
+                          : "INTERESTED"
+                    }
+                    passAccessibilityLabel={
                       userType === "applicant" ? "Pass on this role" : "Pass"
                     }
-                  >
-                    <X color="#000" size={26} strokeWidth={2.5} />
-                  </TouchableOpacity>
-                  {/* The third control (plates): a hairline pill between
-                      ✕ and ✓ that deep-links into the full read for the
-                      plate on stage — "ALL EXPERIENCE ↓" — and turns into
-                      the way back up once the read is under the anchor.
-                      Laid out by the same row as the buttons, so it's
-                      always exactly between them. */}
-                  {PLATES_ENABLED && plateCue && (
-                    <TouchableOpacity
-                      onPress={handlePlateCue}
-                      style={styles.floatingReadBtn}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityLabel={plateCue.label
-                        .replace(/ [↓↑]$/, "")
-                        .toLowerCase()}
-                    >
-                      <Animated.Text
-                        key={plateCue.label}
-                        entering={FadeIn.duration(200)}
-                        style={styles.floatingReadText}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.85}
-                      >
-                        {plateCue.label}
-                      </Animated.Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    onPress={() => handleSwipe(true)}
-                    style={styles.floatingConnectBtn}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityLabel={
+                    acceptAccessibilityLabel={
                       userType === "applicant"
                         ? "Show interest in this role"
                         : "Connect with this applicant"
                     }
-                  >
-                    <Check color="#FFF" size={26} strokeWidth={2.8} />
-                  </TouchableOpacity>
+                  />
                 </Animated.View>
               )}
               </View>
@@ -2375,66 +2338,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: Platform.OS === "ios" ? 28 : 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
   },
-  floatingPassBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    // Drop shadow so the white circle reads against light content
-    // underneath. Subtle to keep the brand minimal.
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  // The plates' read control — the same floating vocabulary as the ✕
-  // (white, soft shadow) at a lower silhouette, so the row reads as
-  // two decisions with the read between them.
-  floatingReadBtn: {
-    height: 44,
-    // Fixed footprint: the row is space-between, so a label-sized pill
-    // would push ✕/✓ around as the copy changes plate to plate.
-    width: 184,
-    borderRadius: 22,
-    paddingHorizontal: 10,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  floatingReadText: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 11,
-    letterSpacing: 1.4,
-    color: Colors.ink,
-  },
-  floatingConnectBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.ink,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 10,
-  },
+
 
   headerRow: {
     flexDirection: "row",

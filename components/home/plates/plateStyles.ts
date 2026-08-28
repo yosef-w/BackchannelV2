@@ -247,6 +247,19 @@ export const plateStyles = StyleSheet.create({
     width: "100%",
     marginTop: 16,
   },
+  // The plate's deep link into the full read — an underlined caps line
+  // under the content, contextual to the plate ("ALL EXPERIENCE ↓").
+  readLink: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 10.5,
+    letterSpacing: 1.6,
+    color: Colors.ink,
+    textAlign: "center",
+    marginTop: 24,
+    paddingBottom: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.ink,
+  },
   // In-flow under the placard's claim — the slide affordance, never
   // positioned where the chrome could cover it.
   slideHint: {
@@ -302,6 +315,17 @@ export const plateStyles = StyleSheet.create({
     fontSize: 10.5,
     letterSpacing: 1.6,
     color: Colors.muted,
+  },
+  // Once the read is under the anchor, the position label becomes the
+  // way back up — ink, underlined, tappable.
+  anchorBack: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 10.5,
+    letterSpacing: 1.6,
+    color: Colors.ink,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.ink,
+    paddingBottom: 2,
   },
 
   // ── the dive ──────────────────────────────────────────────────────────

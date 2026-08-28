@@ -76,9 +76,6 @@ describe("PlateDeck", () => {
     );
     expect(getByText("THE FULL READ")).toBeTruthy();
     expect(getByText("READ BODY")).toBeTruthy();
-    expect(onPlateChange).toHaveBeenCalledWith(0, plates.length, {
-      label: "THE FULL READ ↓",
-      target: "top",
-    });
+    expect(onPlateChange).toHaveBeenCalledWith(0, plates.length);
   });
 });

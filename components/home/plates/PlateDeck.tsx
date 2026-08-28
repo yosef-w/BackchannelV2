@@ -28,6 +28,7 @@ import React, {
   useState,
 } from "react";
 import {
+  Pressable,
   ScrollView,
   Text,
   useWindowDimensions,
@@ -71,19 +72,10 @@ interface PlateDeckProps {
   scrollY: SharedValue<number>;
   /** The parent's horizontal padding, cancelled so plates run edge to edge. */
   bleed: number;
-  /** Fires on mount and whenever the plate or read position changes —
-   * the gauge ticks off index/count, and HomeView renders `cue` as the
-   * third control between ✕ and ✓. */
-  onPlateChange?: (index: number, count: number, cue: PlateCue) => void;
+  /** Fires on mount and whenever the plate changes — the gauge ticks. */
+  onPlateChange?: (index: number, count: number) => void;
   /** The full read — the existing card content in "read" presentation. */
   children: React.ReactNode;
-}
-
-/** What the third control in the decide row should say and do. */
-export interface PlateCue {
-  label: string;
-  /** A read section to jump to, or "plates" to return to the top. */
-  target: SectionId | "plates";
 }
 
 export interface PlateDeckHandle {
@@ -216,19 +208,10 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
   );
 
   const posLabel = readLabel ?? `PLATE ${index + 1} / ${count}`;
-
-  // The cue: the current plate's deep link while skimming; a way back up
-  // once the read is under the anchor.
   const inRead = readLabel !== null;
-  const cueLabel = inRead
-    ? "BACK TO THE PLATES ↑"
-    : (plates[index]?.readCta ?? "THE FULL READ ↓");
-  const cueTarget: PlateCue["target"] = inRead
-    ? "plates"
-    : (plates[index]?.readTarget ?? "top");
   useEffect(() => {
-    onPlateChange?.(index, count, { label: cueLabel, target: cueTarget });
-  }, [index, count, cueLabel, cueTarget, onPlateChange]);
+    onPlateChange?.(index, count);
+  }, [index, count, onPlateChange]);
 
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -267,6 +250,8 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
                   height={rowHeight}
                   underAnchor={i > 0}
                   hint={i === 0 ? "SLIDE FOR MORE →" : undefined}
+                  readLabel={plate.readCta}
+                  onOpenRead={() => goToSection(plate.readTarget)}
                   onTapZone={(zone) => goTo(zone === "forward" ? i + 1 : i - 1)}
                 />
               ))}
@@ -285,11 +270,11 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
         </ReadSectionsContext.Provider>
       </Animated.ScrollView>
 
-      {/* Pinned identity — pointerEvents none so it never steals a tap
-          from the plate row or the full read beneath it. */}
+      {/* Pinned identity — box-none so only the "back up" label takes a
+          tap; everything else passes through to the plates / the read. */}
       <Animated.View
         style={[s.anchor, { marginHorizontal: -bleed }, anchorStyle]}
-        pointerEvents="none"
+        pointerEvents="box-none"
       >
         {anchor.logoName ? (
           <CompanyLogo logoUrl={anchor.image} name={anchor.logoName} size={42} borderRadius={11} initialFontSize={17} />
@@ -311,7 +296,13 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
             <Text style={s.anchorClaim} numberOfLines={1}>{anchor.claim}</Text>
           )}
         </View>
-        <Text style={s.anchorPos}>{posLabel}</Text>
+        {inRead ? (
+          <Pressable onPress={scrollToTop} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back to the plates">
+            <Text style={s.anchorBack}>BACK UP ↑</Text>
+          </Pressable>
+        ) : (
+          <Text style={s.anchorPos}>{posLabel}</Text>
+        )}
       </Animated.View>
     </View>
   );

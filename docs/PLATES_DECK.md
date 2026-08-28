@@ -18,8 +18,9 @@ The home deck's card body, behind `PLATES_ENABLED` (`constants/config.ts`).
   pins identity (photo/logo, name, claim line, `PLATE n / N` → `THE FULL READ`).
 - The **deck gauge** (3/10) is the only progress bar: the current card's
   segment subdivides into plate ticks (`HomeView` → `plateProgress`).
-- ✕/✓ float exactly where they always did and work from any plate. A decision
-  lifts the card away (`mainAnimatedStyle`) — the sheet-lift beat.
+- The decide row is the **VerdictBar** — one hairline instrument, PASS on paper,
+  the accept verb in ink (CONNECT / INTERESTED / WAITLIST). Accepting stamps the
+  card (`DecisionStamp`, heavy haptic) and then it lifts away (`mainAnimatedStyle`).
 
 ## Plate order — and where each one deep-links
 
@@ -39,9 +40,9 @@ computed overlaps (`skillOverlap`).
 
 ### The deep link
 
-The third control in HomeView's floating action row — a hairline pill between ✕ and ✓ — is **contextual**: its label is the current plate's
+Each plate carries its own underlined read link under its content — **contextual**: its label is the current plate's
 `readCta` ("ALL EXPERIENCE ↓", "FULL DESCRIPTION ↓") and tapping it scrolls
-to the plate's `readTarget` section (via the `PlateDeckHandle` ref); once the read is under the anchor it becomes "BACK TO THE PLATES ↑". Sections register their offsets via
+to the plate's `readTarget` section ; once the read is under the anchor, the anchor's right label becomes a tappable BACK UP ↑. Sections register their offsets via
 `ReadSections.tsx` (`<ReadSection id label>` wrappers in both cards); the
 landing section flashes a hairline, and the anchor's right label shows the
 section name while reading. A manual scroll is never auto-jumped — it stays

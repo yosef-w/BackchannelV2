@@ -209,6 +209,9 @@ interface PlateViewProps {
   underAnchor: boolean;
   /** Small caps line under the plate's content (the placard's slide cue). */
   hint?: string;
+  /** The plate's deep link into the full read — "ALL EXPERIENCE ↓". */
+  readLabel?: string;
+  onOpenRead?: () => void;
   onTapZone: (zone: "back" | "forward") => void;
 }
 
@@ -218,6 +221,8 @@ export function PlateView({
   height,
   underAnchor,
   hint,
+  readLabel,
+  onOpenRead,
   onTapZone,
 }: PlateViewProps) {
   const handlePress = (e: GestureResponderEvent) => {
@@ -237,6 +242,16 @@ export function PlateView({
     >
       <View style={s.plateBody}>
         <PlateBody plate={plate} />
+        {!!readLabel && (
+          <Pressable
+            onPress={onOpenRead}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={readLabel.replace(" ↓", "").toLowerCase()}
+          >
+            <Text style={s.readLink}>{readLabel}</Text>
+          </Pressable>
+        )}
         {!!hint && <Text style={s.slideHint}>{hint}</Text>}
       </View>
     </Pressable>
