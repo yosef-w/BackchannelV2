@@ -22,9 +22,9 @@ export const ANCHOR_HEIGHT = 66;
 export const plateStyles = StyleSheet.create({
   root: { flex: 1 },
   scrollContent: { paddingBottom: 120 },
+  // No top rule: the row sits directly under the deck gauge, and a hairline
+  // there read as a stray line (worse once the header hides on scroll).
   rowWrap: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
     backgroundColor: Colors.paper,
   },
 
