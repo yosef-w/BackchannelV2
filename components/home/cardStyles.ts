@@ -82,6 +82,13 @@ export const cardStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
+  // The same ledger inside the full read's AT A GLANCE section — the
+  // section label provides the spacing the hero's marginTop did.
+  kLedgerRead: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
   kLedgerRow: {
     flexDirection: "row",
     alignItems: "flex-start",

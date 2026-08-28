@@ -13,6 +13,7 @@ import { CompanyLogo } from "../ui/CompanyLogo";
 import { ExpandableText } from "../ui/ExpandableText";
 import { extractDisplayDomain } from "../jobs/jobTransforms";
 import { cardStyles } from "./cardStyles";
+import { ReadSection } from "./plates/ReadSections";
 import { formatExperienceLevelLabel, joinFacts } from "./dossierFacts";
 import { Colors } from "@/constants/theme";
 
@@ -232,6 +233,36 @@ export function JobCardContent({
       </View>
       )}
 
+      {/* AT A GLANCE — the ledger, kept in the read so the dive is
+          self-sufficient (the plates carried it, but a reader mid-scroll
+          shouldn't have to go back up to check a fact). */}
+      {fullRead && ledger.length > 0 && (
+        <ReadSection id="glance" label="AT A GLANCE">
+          <View style={cardStyles.hingeSection}>
+            <Text style={cardStyles.hingeSectionLabel}>AT A GLANCE</Text>
+            <View style={cardStyles.kLedgerRead}>
+              {ledger.map((row) => (
+              <View key={row.key} style={cardStyles.kLedgerRow}>
+                <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+                  {row.key}
+                </Text>
+                <View style={cardStyles.kLedgerValueWrap}>
+                  <Text style={cardStyles.kLedgerValue} numberOfLines={2}>
+                    {row.value}
+                  </Text>
+                  {!!row.sub && (
+                    <Text style={cardStyles.kLedgerValueSub} numberOfLines={2}>
+                      {row.sub}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))}
+            </View>
+          </View>
+        </ReadSection>
+      )}
+
       {/* PULL-QUOTE — the sponsor's own words, promoted */}
       {heroQA && (
         <View style={cardStyles.kQuote}>
@@ -251,42 +282,42 @@ export function JobCardContent({
           "description" in currentData ? currentData.description || "" : "";
         if (!description.trim()) return null;
         return (
-          <View style={cardStyles.hingeSection}>
+          <ReadSection id="description" label="ABOUT THE ROLE"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>ABOUT THE ROLE</Text>
             <Text style={cardStyles.hingeBodyText}>{description}</Text>
-          </View>
+          </View></ReadSection>
         );
       })()}
 
       {/* CORE RESPONSIBILITIES */}
       {"coreResponsibilities" in currentData &&
         currentData.coreResponsibilities && (
-          <View style={cardStyles.hingeSection}>
+          <ReadSection id="responsibilities" label="CORE RESPONSIBILITIES"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>
               CORE RESPONSIBILITIES
             </Text>
             <Text style={cardStyles.hingeBodyText}>
               {currentData.coreResponsibilities}
             </Text>
-          </View>
+          </View></ReadSection>
         )}
 
       {/* REQUIREMENTS */}
       {"requirementsSummary" in currentData &&
         currentData.requirementsSummary && (
-          <View style={cardStyles.hingeSection}>
+          <ReadSection id="requirements" label="REQUIREMENTS"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>REQUIREMENTS</Text>
             <Text style={cardStyles.hingeBodyText}>
               {currentData.requirementsSummary}
             </Text>
-          </View>
+          </View></ReadSection>
         )}
 
       {/* REQUIRED SKILLS — chips */}
       {"skills" in currentData &&
         currentData.skills &&
         currentData.skills.length > 0 && (
-          <View style={cardStyles.hingeSection}>
+          <ReadSection id="skills" label="REQUIRED SKILLS"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>REQUIRED SKILLS</Text>
             <View style={cardStyles.hingeChipsWrap}>
               {currentData.skills.map((skill: string, idx: number) => (
@@ -295,14 +326,14 @@ export function JobCardContent({
                 </View>
               ))}
             </View>
-          </View>
+          </View></ReadSection>
         )}
 
       {/* HIGHLIGHTS — benefits as a checked list */}
       {"benefits" in currentData &&
         currentData.benefits &&
         currentData.benefits.length > 0 && (
-          <View style={cardStyles.hingeSection}>
+          <ReadSection id="highlights" label="HIGHLIGHTS"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>HIGHLIGHTS</Text>
             <View style={cardStyles.benefitsList}>
               {currentData.benefits.map((benefit: string, idx: number) => (
@@ -312,7 +343,7 @@ export function JobCardContent({
                 </View>
               ))}
             </View>
-          </View>
+          </View></ReadSection>
         )}
 
       {/* SOURCE — the sponsor's pasted/ATS source link, shown whenever the
@@ -326,7 +357,7 @@ export function JobCardContent({
       {"url" in currentData &&
         currentData.url &&
         extractDisplayDomain(currentData.url) && (
-          <View style={cardStyles.hingeSection}>
+          <ReadSection id="source" label="SOURCE"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>SOURCE</Text>
             <TouchableOpacity
               style={cardStyles.originalPostingRow}
@@ -338,13 +369,13 @@ export function JobCardContent({
                 {extractDisplayDomain(currentData.url)}
               </Text>
             </TouchableOpacity>
-          </View>
+          </View></ReadSection>
         )}
 
       {/* NO SPONSOR YET — status block + company description */}
       {isSponsored === false ? (
         <>
-          <View style={cardStyles.hingeSection}>
+          <ReadSection id="vouch" label="STATUS"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>STATUS</Text>
             <View style={cardStyles.noSponsorInlineBlock}>
               <View style={cardStyles.noSponsorIconCircle}>
@@ -356,7 +387,7 @@ export function JobCardContent({
                 sponsor this role, you&apos;ll be notified instantly.
               </Text>
             </View>
-          </View>
+          </View></ReadSection>
           {"companyDescription" in currentData &&
             currentData.companyDescription && (
               <View style={cardStyles.hingeSection}>
@@ -408,7 +439,7 @@ export function JobCardContent({
             });
           const yearsChip = (si.yearsAtCompany || "").trim();
           return (
-            <View style={cardStyles.vouchSection}>
+            <ReadSection id="vouch" label="THE VOUCH"><View style={cardStyles.vouchSection}>
               <Text style={cardStyles.vouchStatement}>
                 {sponsorFirstName || "Someone"} put their{" "}
                 <Text style={cardStyles.vouchStatementEm}>name</Text>
@@ -514,7 +545,7 @@ export function JobCardContent({
                   </ExpandableText>
                 </View>
               ))}
-            </View>
+            </View></ReadSection>
           );
         })()
       )}

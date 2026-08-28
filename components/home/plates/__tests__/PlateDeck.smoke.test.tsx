@@ -32,11 +32,11 @@ describe("PlateView", () => {
       ...buildJobPlates(JOB, { bio: "", insights: [{ question: "Why", answer: "Ships." }], companiesCanReferTo: [], verified: true }),
     ];
     expect(new Set(plates.map((p) => p.kind))).toEqual(
-      new Set(["placard", "voice", "fit", "role", "setup", "vouch"]),
+      new Set(["placard", "voice", "fit", "role", "needs", "vouch"]),
     );
     for (const plate of plates) {
       const { unmount } = render(
-        <PlateView plate={plate} width={360} height={500} underAnchor={false} onTapZone={() => {}} onOpenRead={() => {}} />,
+        <PlateView plate={plate} width={360} height={500} underAnchor={false} onTapZone={() => {}} />,
       );
       unmount();
     }
@@ -45,14 +45,14 @@ describe("PlateView", () => {
   it("shows the derived claim and the fit line", () => {
     const plates = buildApplicantPlates(CARD, null, { roleTitle: "Platform Lead", roleSkills: ["Go"] });
     const { getByText } = render(
-      <PlateView plate={plates[0]} width={360} height={500} underAnchor={false} onTapZone={() => {}} onOpenRead={() => {}} />,
+      <PlateView plate={plates[0]} width={360} height={500} underAnchor={false} onTapZone={() => {}} />,
     );
     expect(getByText("Jordan Okafor")).toBeTruthy();
     const fit = plates[plates.length - 1];
     const r = render(
-      <PlateView plate={fit} width={360} height={500} underAnchor onTapZone={() => {}} onOpenRead={() => {}} />,
+      <PlateView plate={fit} width={360} height={500} underAnchor onTapZone={() => {}} />,
     );
-    expect(r.getByText("READ IN FULL ↓")).toBeTruthy();
+    expect(r.getByText("WHY YOU'RE SEEING THEM")).toBeTruthy();
   });
 });
 
@@ -76,6 +76,7 @@ describe("PlateDeck", () => {
     );
     expect(getByText("THE FULL READ")).toBeTruthy();
     expect(getByText("READ BODY")).toBeTruthy();
+    expect(getByText("THE FULL READ ↓")).toBeTruthy();
     expect(onPlateChange).toHaveBeenCalledWith(0, plates.length);
   });
 });

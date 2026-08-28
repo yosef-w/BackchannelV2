@@ -73,6 +73,7 @@ describe("buildApplicantPlates", () => {
       roleSkills: ["Go", "Kafka", "systems thinking"],
     });
     expect(plates.map((p) => p.kind)).toEqual(["placard", "record", "voice", "fit"]);
+    expect(plates.map((p) => p.readTarget)).toEqual(["top", "experience", "insights", "skills"]);
     const record = plates[1] as Extract<typeof plates[number], { kind: "record" }>;
     expect(record.stat).toBe("8");
     expect(plainText(record.statline)).toBe("Stripe, then Northline.");
@@ -115,7 +116,8 @@ const JOB: Job = {
 describe("buildJobPlates", () => {
   it("builds role → setup → vouch → fit for a sponsored job", () => {
     const plates = buildJobPlates(JOB, { bio: "", insights: [{ question: "Why here", answer: "This team ships." }], companiesCanReferTo: [], verified: true }, { mySkills: ["go", "Kafka"] });
-    expect(plates.map((p) => p.kind)).toEqual(["role", "setup", "vouch", "fit"]);
+    expect(plates.map((p) => p.kind)).toEqual(["role", "needs", "vouch", "fit"]);
+    expect(plates.map((p) => p.readTarget)).toEqual(["top", "skills", "vouch", "skills"]);
     const vouch = plates[2] as Extract<typeof plates[number], { kind: "vouch" }>;
     expect(plainText(vouch.statement)).toBe("Dana put their name on this role.");
     expect(vouch.chips).toEqual(["VERIFIED", "4 YEARS HERE", "CAN REFER"]);
@@ -126,9 +128,36 @@ describe("buildJobPlates", () => {
 
   it("skips the vouch and uses the match percent when there is no sponsor", () => {
     const plates = buildJobPlates({ ...JOB, isSponsored: false, sponsorInfo: null }, null, { mySkills: [] });
-    expect(plates.map((p) => p.kind)).toEqual(["role", "setup", "fit"]);
+    expect(plates.map((p) => p.kind)).toEqual(["role", "needs", "fit"]);
     expect((plates[0] as { eyebrow: string }).eyebrow).toBe("OPEN ROLE · NO SPONSOR YET");
     expect(plainText((plates[2] as Extract<Plate, { kind: "fit" }>).line)).toBe("82% match, by our read.");
+  });
+});
+
+describe("briefs", () => {
+  const LONG_BIO =
+    "I build payment systems that stay up when it matters, and I mentor the people who run them. " +
+    "Before Northline I spent five years at Stripe on the ledger team. I like hard migrations.";
+
+  it("gives a substantive bio its own brief plate, after the placard", () => {
+    const plates = buildApplicantPlates({ ...CARD, bio: LONG_BIO }, null);
+    expect(plates.map((p) => p.kind)).toEqual(["placard", "brief", "voice", "fit"]);
+    const brief = plates[1] as Extract<Plate, { kind: "brief" }>;
+    expect(brief.readTarget).toBe("about");
+    expect(brief.text.length).toBeLessThanOrEqual(230);
+    expect(brief.text.startsWith("I build payment systems")).toBe(true);
+  });
+
+  it("introduces a long job description with a brief that links to the description", () => {
+    const desc = "Own the payments platform end to end. You will lead a team of nine through a replatform. " + "More detail. ".repeat(40);
+    const plates = buildJobPlates({ ...JOB, description: desc, requirementsSummary: "Five years of Go." }, null);
+    expect(plates.map((p) => p.kind)).toEqual(["role", "brief", "needs", "vouch", "fit"]);
+    const brief = plates[1] as Extract<Plate, { kind: "brief" }>;
+    expect(brief.text).toBe("Own the payments platform end to end. You will lead a team of nine through a replatform.");
+    const needs = plates[2] as Extract<Plate, { kind: "needs" }>;
+    expect(needs.readTarget).toBe("requirements");
+    expect(needs.skills).toEqual(["Go", "Kafka", "Postgres"]);
+    expect(needs.requirement).toBe("Five years of Go.");
   });
 });
 

@@ -15,7 +15,6 @@ import {
   type StyleProp,
   type TextStyle,
 } from "react-native";
-import { cardStyles } from "../cardStyles";
 import type { Plate, RichLine } from "./plateContent";
 import { DECIDE_BAND, plateStyles as s } from "./plateStyles";
 
@@ -83,7 +82,7 @@ function Chips({ items, fillFirstIf }: { items: string[]; fillFirstIf?: string }
   );
 }
 
-function PlateBody({ plate, onOpenRead }: { plate: Plate; onOpenRead: () => void }) {
+function PlateBody({ plate }: { plate: Plate }) {
   switch (plate.kind) {
     case "placard":
       return (
@@ -95,6 +94,13 @@ function PlateBody({ plate, onOpenRead }: { plate: Plate; onOpenRead: () => void
             <Text style={s.sub} numberOfLines={1}>{plate.sub}</Text>
           )}
           <Rich line={plate.claim} style={s.claim} numberOfLines={3} />
+        </>
+      );
+    case "brief":
+      return (
+        <>
+          <Text style={s.eyebrow}>{plate.eyebrow}</Text>
+          <Text style={s.brief} numberOfLines={7}>{plate.text}</Text>
         </>
       );
     case "record":
@@ -140,23 +146,20 @@ function PlateBody({ plate, onOpenRead }: { plate: Plate; onOpenRead: () => void
           )}
         </>
       );
-    case "setup":
+    case "needs":
       return (
         <>
           <Text style={s.eyebrow}>{plate.eyebrow}</Text>
-          <View style={s.ledger}>
-            {plate.rows.map((row) => (
-              <View key={row.key} style={cardStyles.kLedgerRow}>
-                <Text style={cardStyles.kLedgerKey} numberOfLines={1}>{row.key}</Text>
-                <View style={cardStyles.kLedgerValueWrap}>
-                  <Text style={cardStyles.kLedgerValue} numberOfLines={2}>{row.value}</Text>
-                  {!!row.sub && (
-                    <Text style={cardStyles.kLedgerValueSub} numberOfLines={2}>{row.sub}</Text>
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
+          {plate.setupLine.length > 0 && (
+            <Rich line={plate.setupLine} style={s.statline} numberOfLines={2} />
+          )}
+          <Chips items={plate.skills} />
+          {!!plate.requirement && (
+            <>
+              <View style={s.rule} />
+              <Text style={s.receipt} numberOfLines={3}>{plate.requirement}</Text>
+            </>
+          )}
         </>
       );
     case "vouch":
@@ -191,14 +194,6 @@ function PlateBody({ plate, onOpenRead }: { plate: Plate; onOpenRead: () => void
           <Text style={s.eyebrow}>{plate.eyebrow}</Text>
           <Rich line={plate.line} style={s.fitLine} numberOfLines={4} />
           <Chips items={plate.receipts} />
-          <Pressable
-            onPress={onOpenRead}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Read in full"
-          >
-            <Text style={s.ghost}>READ IN FULL ↓</Text>
-          </Pressable>
         </>
       );
     default:
@@ -215,7 +210,6 @@ interface PlateViewProps {
   /** Small caps line under the plate's content (the placard's slide cue). */
   hint?: string;
   onTapZone: (zone: "back" | "forward") => void;
-  onOpenRead: () => void;
 }
 
 export function PlateView({
@@ -225,7 +219,6 @@ export function PlateView({
   underAnchor,
   hint,
   onTapZone,
-  onOpenRead,
 }: PlateViewProps) {
   const handlePress = (e: GestureResponderEvent) => {
     const x = e.nativeEvent.locationX;
@@ -243,7 +236,7 @@ export function PlateView({
       accessibilityLabel="Next plate"
     >
       <View style={s.plateBody}>
-        <PlateBody plate={plate} onOpenRead={onOpenRead} />
+        <PlateBody plate={plate} />
         {!!hint && <Text style={s.slideHint}>{hint}</Text>}
       </View>
     </Pressable>

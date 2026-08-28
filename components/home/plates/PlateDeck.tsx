@@ -18,7 +18,7 @@
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -31,6 +31,7 @@ import {
 } from "react-native";
 import Animated, {
   Extrapolation,
+  FadeIn,
   interpolate,
   runOnJS,
   useAnimatedReaction,
@@ -41,7 +42,12 @@ import Animated, {
 } from "react-native-reanimated";
 import type { Plate, PlateAnchor } from "./plateContent";
 import { PlateView } from "./PlateViews";
-import { plateStyles as s } from "./plateStyles";
+import { ANCHOR_HEIGHT, plateStyles as s } from "./plateStyles";
+import {
+  ReadSectionsContext,
+  type ReadSectionsApi,
+  type SectionId,
+} from "./ReadSections";
 
 /** How much of the next plate shows at the right edge — the slide affordance. */
 const PEEK = 22;
@@ -120,9 +126,36 @@ export function PlateDeck({
     commitIndex(Math.round(e.nativeEvent.contentOffset.x / plateWidth));
   };
 
-  const openRead = useCallback(() => {
-    scrollRef.current?.scrollTo({ y: Math.max(0, rowHeight - 4), animated: true });
-  }, [scrollRef, rowHeight]);
+  // ── the read's section registry (ReadSections) ─────────────────────
+  // Sections report their offsets as they lay out; a plate's cue scrolls
+  // straight to its target section and flashes its landing hairline.
+  const sectionsRef = useRef(new Map<SectionId, { y: number; label: string }>());
+  const [flashId, setFlashId] = useState<SectionId | null>(null);
+  const register = useCallback((id: SectionId, y: number, label: string) => {
+    sectionsRef.current.set(id, { y, label });
+  }, []);
+  const sectionsApi = useMemo<ReadSectionsApi>(
+    () => ({ register, flashId }),
+    [register, flashId],
+  );
+
+  const rowHeightRef = useRef(0);
+  rowHeightRef.current = rowHeight;
+
+  const goToSection = useCallback(
+    (id: SectionId) => {
+      const entry = id === "top" ? undefined : sectionsRef.current.get(id);
+      const y = entry
+        ? Math.max(0, entry.y - ANCHOR_HEIGHT - 10)
+        : Math.max(0, rowHeightRef.current - 4);
+      scrollRef.current?.scrollTo({ y, animated: true });
+      if (entry) {
+        setFlashId(id);
+        setTimeout(() => setFlashId((cur) => (cur === id ? null : cur)), 1400);
+      }
+    },
+    [scrollRef],
+  );
 
   // ── the anchor: on from plate two, or once the full read scrolls under it ──
   const anchorOn = useSharedValue(0);
@@ -146,15 +179,33 @@ export function PlateDeck({
     return { opacity: on, transform: [{ translateY: (1 - on) * -10 }] };
   });
 
-  const [inRead, setInRead] = useState(false);
+  // "You are here" for the anchor: the plate position while skimming, the
+  // section label once the read is under the strip.
+  const [readLabel, setReadLabel] = useState<string | null>(null);
+  const onScrollPos = useCallback((y: number) => {
+    if (y < rowHeightRef.current * 0.7) {
+      setReadLabel(null);
+      return;
+    }
+    let label = "THE FULL READ";
+    let bestY = -1;
+    sectionsRef.current.forEach((v) => {
+      if (v.y <= y + ANCHOR_HEIGHT + 24 && v.y > bestY) {
+        bestY = v.y;
+        label = v.label;
+      }
+    });
+    setReadLabel(label);
+  }, []);
   useAnimatedReaction(
-    () => scrollY.value > (stage.value || 1) * 0.7,
-    (now, prev) => {
-      if (now !== prev) runOnJS(setInRead)(now);
+    () => Math.round(scrollY.value / 16),
+    (bucket, prev) => {
+      if (bucket !== prev) runOnJS(onScrollPos)(bucket * 16);
     },
   );
 
-  const posLabel = inRead ? "THE FULL READ" : `PLATE ${index + 1} / ${count}`;
+  const posLabel = readLabel ?? `PLATE ${index + 1} / ${count}`;
+  const cue = plates[index]?.readCta ?? "THE FULL READ ↓";
 
   // The read cue fades as soon as the read starts scrolling into view —
   // it has done its job.
@@ -198,7 +249,6 @@ export function PlateDeck({
                   underAnchor={i > 0}
                   hint={i === 0 ? "SLIDE FOR MORE →" : undefined}
                   onTapZone={(zone) => goTo(zone === "forward" ? i + 1 : i - 1)}
-                  onOpenRead={openRead}
                 />
               ))}
             </ScrollView>
@@ -211,19 +261,27 @@ export function PlateDeck({
             Every detail, <Text style={s.accent}>in full.</Text>
           </Text>
         </View>
-        {children}
+        <ReadSectionsContext.Provider value={sectionsApi}>
+          {children}
+        </ReadSectionsContext.Provider>
       </Animated.ScrollView>
 
       {/* The read cue — between ✕ and ✓, the decide band's free centre.
           box-none so only the label itself takes the tap. */}
       <Animated.View style={[s.readCue, readCueStyle]} pointerEvents="box-none">
         <Pressable
-          onPress={openRead}
+          onPress={() => goToSection(plates[index]?.readTarget ?? "top")}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Scroll to the full read"
+          accessibilityLabel={cue.replace(" ↓", "").toLowerCase()}
         >
-          <Text style={s.readCueText}>THE FULL READ ↓</Text>
+          <Animated.Text
+            key={cue}
+            entering={FadeIn.duration(220)}
+            style={s.readCueText}
+          >
+            {cue}
+          </Animated.Text>
         </Pressable>
       </Animated.View>
 

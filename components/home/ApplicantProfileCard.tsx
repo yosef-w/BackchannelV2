@@ -9,6 +9,7 @@ import React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { ExpandableText } from "../ui/ExpandableText";
 import { cardStyles } from "./cardStyles";
+import { ReadSection } from "./plates/ReadSections";
 import { deriveExperienceFact, joinFacts } from "./dossierFacts";
 import { Colors } from "@/constants/theme";
 
@@ -193,6 +194,36 @@ export function ApplicantProfileCard({
       </View>
       )}
 
+      {/* AT A GLANCE — the ledger, kept in the read so the dive is
+          self-sufficient (the plates carried it, but a reader mid-scroll
+          shouldn't have to go back up to check a fact). */}
+      {fullRead && ledger.length > 0 && (
+        <ReadSection id="glance" label="AT A GLANCE">
+          <View style={cardStyles.hingeSection}>
+            <Text style={cardStyles.hingeSectionLabel}>AT A GLANCE</Text>
+            <View style={cardStyles.kLedgerRead}>
+              {ledger.map((row) => (
+              <View key={row.key} style={cardStyles.kLedgerRow}>
+                <Text style={cardStyles.kLedgerKey} numberOfLines={1}>
+                  {row.key}
+                </Text>
+                <View style={cardStyles.kLedgerValueWrap}>
+                  <Text style={cardStyles.kLedgerValue} numberOfLines={2}>
+                    {row.value}
+                  </Text>
+                  {!!row.sub && (
+                    <Text style={cardStyles.kLedgerValueSub} numberOfLines={2}>
+                      {row.sub}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))}
+            </View>
+          </View>
+        </ReadSection>
+      )}
+
       {/* PULL-QUOTE — the applicant's own words, promoted */}
       {heroPrompt && (
         <View style={cardStyles.kQuote}>
@@ -209,12 +240,12 @@ export function ApplicantProfileCard({
       )}
 
       {/* ABOUT — full bio, no clamp */}
-      <View style={cardStyles.hingeSection}>
+      <ReadSection id="about" label="ABOUT"><View style={cardStyles.hingeSection}>
         <Text style={cardStyles.hingeSectionLabel}>ABOUT</Text>
         <Text style={cardStyles.hingeBodyText}>
           {bio.trim().length > 0 ? bio : "No bio added yet."}
         </Text>
-      </View>
+      </View></ReadSection>
 
       {/* INSIGHTS — remaining Q&A cards, full text */}
       {validPrompts.length === 0 && fullProfileLoading ? (
@@ -229,7 +260,7 @@ export function ApplicantProfileCard({
            the hero pull-quote (one step smaller, so the hero keeps
            primacy) and the Vouch. The shadowed insight cards retired with
            the rebrand. */
-        <View style={cardStyles.hingeSection}>
+        <ReadSection id="insights" label="INSIGHTS"><View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>INSIGHTS</Text>
           {restPrompts.map((prompt, idx) => (
             <View key={idx} style={idx > 0 ? cardStyles.kInsightQuoteGap : null}>
@@ -247,12 +278,12 @@ export function ApplicantProfileCard({
               )}
             </View>
           ))}
-        </View>
+        </View></ReadSection>
       ) : null}
 
       {/* TOP SKILLS — chips */}
       {skills.length > 0 && (
-        <View style={cardStyles.hingeSection}>
+        <ReadSection id="skills" label="TOP SKILLS"><View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>TOP SKILLS</Text>
           <View style={cardStyles.hingeChipsWrap}>
             {skills.map((skill: string, idx: number) => (
@@ -261,12 +292,12 @@ export function ApplicantProfileCard({
               </View>
             ))}
           </View>
-        </View>
+        </View></ReadSection>
       )}
 
       {/* EXPERIENCE — timeline */}
       {experiences.length > 0 && (
-        <View style={cardStyles.hingeSection}>
+        <ReadSection id="experience" label="EXPERIENCE"><View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>EXPERIENCE</Text>
           {experiences.map((exp, idx) => (
             <View
@@ -297,12 +328,12 @@ export function ApplicantProfileCard({
               </View>
             </View>
           ))}
-        </View>
+        </View></ReadSection>
       )}
 
       {/* EDUCATION — timeline */}
       {education.length > 0 && (
-        <View style={cardStyles.hingeSection}>
+        <ReadSection id="education" label="EDUCATION"><View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>EDUCATION</Text>
           {education.map((edu, idx) => (
             <View
@@ -329,12 +360,12 @@ export function ApplicantProfileCard({
               </View>
             </View>
           ))}
-        </View>
+        </View></ReadSection>
       )}
 
       {/* CERTIFICATIONS — credential blocks */}
       {certs.length > 0 && (
-        <View style={cardStyles.hingeSection}>
+        <ReadSection id="certifications" label="CERTIFICATIONS"><View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>CERTIFICATIONS</Text>
           <View style={cardStyles.hingeCredentialList}>
             {certs.map((cert, idx) => (
@@ -347,12 +378,12 @@ export function ApplicantProfileCard({
               </View>
             ))}
           </View>
-        </View>
+        </View></ReadSection>
       )}
 
       {/* LANGUAGES — credential blocks */}
       {langs.length > 0 && (
-        <View style={cardStyles.hingeSection}>
+        <ReadSection id="languages" label="LANGUAGES"><View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>LANGUAGES</Text>
           <View style={cardStyles.hingeCredentialList}>
             {langs.map((lang, idx) => (
@@ -366,16 +397,16 @@ export function ApplicantProfileCard({
               </View>
             ))}
           </View>
-        </View>
+        </View></ReadSection>
       )}
 
       {/* ACHIEVEMENTS — full text (the KNOWN FOR ledger row above is the
           two-line teaser of this) */}
       {!!achievements && (
-        <View style={cardStyles.hingeSection}>
+        <ReadSection id="achievements" label="ACHIEVEMENTS"><View style={cardStyles.hingeSection}>
           <Text style={cardStyles.hingeSectionLabel}>ACHIEVEMENTS</Text>
           <Text style={cardStyles.hingeBodyText}>{achievements}</Text>
-        </View>
+        </View></ReadSection>
       )}
     </>
   );

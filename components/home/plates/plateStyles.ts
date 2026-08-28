@@ -236,14 +236,16 @@ export const plateStyles = StyleSheet.create({
     textAlign: "center",
     marginTop: 14,
   },
-  ghost: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 12,
-    letterSpacing: 1.4,
+  // A brief — one or two sentences of prose, read left-to-right like
+  // prose should be, inside the centred composition.
+  brief: {
+    fontFamily: Fonts.serif,
+    fontSize: 19,
+    lineHeight: 28,
     color: Colors.ink,
-    textAlign: "center",
-    paddingVertical: 8,
-    marginTop: 14,
+    textAlign: "left",
+    width: "100%",
+    marginTop: 16,
   },
   // In-flow under the placard's claim — the slide affordance, never
   // positioned where the chrome could cover it.

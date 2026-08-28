@@ -24,6 +24,7 @@ import {
   joinFacts,
   yearFromDateString,
 } from "../dossierFacts";
+import type { SectionId } from "./ReadSections";
 
 /** A line of serif type with optional italic-muted accent spans. */
 export interface RichSegment {
@@ -38,44 +39,59 @@ export interface LedgerRow {
   sub?: string;
 }
 
-export type Plate =
-  | {
-      kind: "placard";
-      eyebrow: string;
-      image: string;
-      name: string;
-      sub: string;
-      claim: RichLine;
-    }
-  | {
-      kind: "record";
-      eyebrow: string;
-      stat: string;
-      statSuffix: string;
-      statline: RichLine;
-      receipts: string[];
-    }
-  | { kind: "voice"; quote: string; attribution: string }
-  | {
-      kind: "role";
-      eyebrow: string;
-      logoUrl?: string;
-      company: string;
-      title: string;
-      sub: RichLine;
-    }
-  | { kind: "setup"; eyebrow: string; rows: LedgerRow[] }
-  | {
-      kind: "vouch";
-      statement: RichLine;
-      sponsorName: string;
-      sponsorRole: string;
-      image: string;
-      quote?: string;
-      attribution?: string;
-      chips: string[];
-    }
-  | { kind: "fit"; eyebrow: string; line: RichLine; receipts: string[] };
+/** Where a plate deep-links into the full read, and what the cue says. */
+export interface PlateLink {
+  readTarget: SectionId;
+  readCta: string;
+}
+
+export type Plate = PlateLink &
+  (
+    | {
+        kind: "placard";
+        eyebrow: string;
+        image: string;
+        name: string;
+        sub: string;
+        claim: RichLine;
+      }
+    | { kind: "brief"; eyebrow: string; text: string }
+    | {
+        kind: "record";
+        eyebrow: string;
+        stat: string;
+        statSuffix: string;
+        statline: RichLine;
+        receipts: string[];
+      }
+    | { kind: "voice"; quote: string; attribution: string }
+    | {
+        kind: "role";
+        eyebrow: string;
+        logoUrl?: string;
+        company: string;
+        title: string;
+        sub: RichLine;
+      }
+    | {
+        kind: "needs";
+        eyebrow: string;
+        setupLine: RichLine;
+        skills: string[];
+        requirement: string;
+      }
+    | {
+        kind: "vouch";
+        statement: RichLine;
+        sponsorName: string;
+        sponsorRole: string;
+        image: string;
+        quote?: string;
+        attribution?: string;
+        chips: string[];
+      }
+    | { kind: "fit"; eyebrow: string; line: RichLine; receipts: string[] }
+  );
 
 /** The identity strip that persists from plate two onward and through the
  * full read — derived from the first plate so the two can never disagree. */
@@ -99,6 +115,27 @@ export function firstSentence(text: string | null | undefined, max = CLAIM_MAX):
   let s = (m ? m[1] : t).trim();
   if (s.length > max) s = `${s.slice(0, max - 1).trimEnd()}…`;
   return s;
+}
+
+/** The first one or two sentences of a block, clipped — a plate's brief. */
+export function briefOf(text: string | null | undefined, max = 230): string {
+  const t = (text || "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  const sentences = (t.match(/[^.!?]+(?:[.!?]+|$)/g) || [t])
+    .map((s) => s.trim())
+    .filter(Boolean);
+  let out = sentences[0] ?? "";
+  if (sentences[1] && `${out} ${sentences[1]}`.length <= max) {
+    out = `${out} ${sentences[1]}`;
+  }
+  if (out.length > max) out = `${out.slice(0, max - 1).trimEnd()}…`;
+  return out;
+}
+
+/** True when a bio is worth its own plate (real prose, not the default). */
+export function isSubstantiveBio(bio: string | null | undefined): boolean {
+  const t = (bio || "").trim();
+  return t.length >= 80 && !/^looking for new opportunities/i.test(t);
 }
 
 function endsWithPunctuation(s: string): boolean {
@@ -205,9 +242,23 @@ export function buildApplicantPlates(
     name,
     sub: joinFacts([seat, location]),
     claim: deriveApplicantClaim({ achievements, skills, desiredRole, bio }),
+    readTarget: "top",
+    readCta: "THE FULL READ ↓",
   });
 
-  // 2 · THE RECORD — only when there is a record to show
+  // 2 · IN BRIEF — a real bio gets its own plate; the read has the rest
+  const briefBio = isSubstantiveBio(bio);
+  if (briefBio) {
+    plates.push({
+      kind: "brief",
+      eyebrow: "IN BRIEF",
+      text: briefOf(bio),
+      readTarget: "about",
+      readCta: "THE FULL BIO ↓",
+    });
+  }
+
+  // 3 · THE RECORD — only when there is a record to show
   if (experiences.length > 0 || experienceFact?.value) {
     const years = experienceFact ? splitYears(experienceFact.value) : null;
     const stat = years ?? {
@@ -245,22 +296,33 @@ export function buildApplicantPlates(
       statSuffix: stat.suffix,
       statline,
       receipts,
+      readTarget: "experience",
+      readCta: "ALL EXPERIENCE ↓",
     });
   }
 
-  // 3 · IN THEIR WORDS — the first prompt, else the bio
+  // 4 · IN THEIR WORDS — the first prompt; a short bio stands in when there
+  // are no prompts and the bio didn't already get its brief
   const hero = prompts[0];
   if (hero) {
     plates.push({
       kind: "voice",
       quote: hero.answer!.trim(),
       attribution: (hero.question || "In their words").toUpperCase(),
+      readTarget: "insights",
+      readCta: prompts.length > 1 ? "ALL ANSWERS ↓" : "THE FULL READ ↓",
     });
-  } else if (bio && !/^looking for new opportunities$/i.test(bio)) {
-    plates.push({ kind: "voice", quote: bio, attribution: "FROM THEIR BIO" });
+  } else if (!briefBio && bio && !/^looking for new opportunities$/i.test(bio)) {
+    plates.push({
+      kind: "voice",
+      quote: bio,
+      attribution: "FROM THEIR BIO",
+      readTarget: "about",
+      readCta: "THE FULL READ ↓",
+    });
   }
 
-  // 4 · WHY YOU'RE SEEING THEM
+  // 5 · WHY YOU'RE SEEING THEM
   const roleTitle = (ctx.roleTitle || "").trim();
   const roleSkills = (ctx.roleSkills || []).filter(Boolean);
   const overlap = skillOverlap(skills, roleSkills);
@@ -284,7 +346,14 @@ export function buildApplicantPlates(
   } else {
     line = [{ text: "Open to the right role" }, { text: location ? ` · ${location}` : ".", accent: !!location }];
   }
-  plates.push({ kind: "fit", eyebrow: "WHY YOU'RE SEEING THEM", line, receipts });
+  plates.push({
+    kind: "fit",
+    eyebrow: "WHY YOU'RE SEEING THEM",
+    line,
+    receipts,
+    readTarget: "skills",
+    readCta: "ALL SKILLS ↓",
+  });
 
   return plates;
 }
@@ -330,19 +399,60 @@ export function buildJobPlates(
   if (salary) sub.push({ text: salary });
   const where = joinFacts([arrangement, location]);
   if (where) sub.push({ text: salary ? ` · ${where}` : where, accent: true });
-  plates.push({ kind: "role", eyebrow, logoUrl: job.image || job.logo, company, title, sub });
+  plates.push({
+    kind: "role",
+    eyebrow,
+    logoUrl: job.image || job.logo,
+    company,
+    title,
+    sub,
+    readTarget: "top",
+    readCta: "THE FULL READ ↓",
+  });
 
-  // 2 · THE SETUP
-  const rows: LedgerRow[] = [];
-  if (salary) rows.push({ key: "COMPENSATION", value: salary });
-  const setup = joinFacts([arrangement, job.type, formatExperienceLevelLabel(job.experienceLevel)]);
-  if (setup) rows.push({ key: "THE SETUP", value: setup });
-  if (location) rows.push({ key: "LOCATION", value: location });
-  if (typeof job.applicants === "number" && job.applicants > 0)
-    rows.push({ key: "INTEREST", value: `${job.applicants} showing interest` });
-  if (rows.length > 0) plates.push({ kind: "setup", eyebrow: "THE SETUP", rows });
+  // 2 · IN BRIEF — the job itself, introduced: the summary if the backend
+  // wrote one, else the description's opening sentences
+  const brief = briefOf(job.summary || job.description);
+  if (brief) {
+    plates.push({
+      kind: "brief",
+      eyebrow: "THE ROLE, IN BRIEF",
+      text: brief,
+      readTarget: "description",
+      readCta: "FULL DESCRIPTION ↓",
+    });
+  }
 
-  // 3 · THE VOUCH — only a real sponsor gets the stage
+  // 3 · WHAT THEY NEED — level · type · arrangement, the top skills, and
+  // the first line of the requirements (absorbs the old setup ledger)
+  const setupLine: RichLine = [];
+  const level = formatExperienceLevelLabel(job.experienceLevel);
+  const setupFacts = [level, job.type].map((x) => (x || "").trim()).filter(Boolean);
+  if (setupFacts.length) setupLine.push({ text: setupFacts.join(" · ") });
+  if (arrangement) setupLine.push({ text: setupFacts.length ? ` · ${arrangement}` : arrangement, accent: true });
+  const topSkills = (job.skills || []).map((x) => x.trim()).filter(Boolean).slice(0, 3);
+  const requirement = firstSentence(
+    job.requirementsSummary || job.requirements || job.coreResponsibilities,
+    140,
+  );
+  if (setupLine.length || topSkills.length || requirement) {
+    const target: SectionId = job.requirementsSummary
+      ? "requirements"
+      : job.coreResponsibilities
+        ? "responsibilities"
+        : "skills";
+    plates.push({
+      kind: "needs",
+      eyebrow: "WHAT THEY NEED",
+      setupLine,
+      skills: topSkills,
+      requirement,
+      readTarget: target,
+      readCta: target === "skills" ? "ALL REQUIRED SKILLS ↓" : "FULL REQUIREMENTS ↓",
+    });
+  }
+
+  // 4 · THE VOUCH — only a real sponsor gets the stage
   if (sponsored && si) {
     const qa = (sponsorProfile?.insights || []).filter((q) => q && q.question && q.answer);
     const chips: string[] = [];
@@ -358,6 +468,8 @@ export function buildJobPlates(
       quote: qa[0]?.answer?.trim() || undefined,
       attribution: qa[0] ? joinFacts([first, qa[0].question || ""]).toUpperCase() : undefined,
       chips,
+      readTarget: "vouch",
+      readCta: `MORE FROM ${(first || "THE SPONSOR").toUpperCase()} ↓`,
     });
   }
 
@@ -386,7 +498,14 @@ export function buildJobPlates(
   } else {
     line = [{ text: "Worth a look" }, { text: company ? ` at ${company}.` : ".", accent: true }];
   }
-  plates.push({ kind: "fit", eyebrow: "YOUR FIT", line, receipts });
+  plates.push({
+    kind: "fit",
+    eyebrow: "YOUR FIT",
+    line,
+    receipts,
+    readTarget: "skills",
+    readCta: "ALL REQUIRED SKILLS ↓",
+  });
 
   return plates;
 }

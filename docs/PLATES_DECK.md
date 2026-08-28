@@ -21,26 +21,38 @@ The home deck's card body, behind `PLATES_ENABLED` (`constants/config.ts`).
 - ✕/✓ float exactly where they always did and work from any plate. A decision
   lifts the card away (`mainAnimatedStyle`) — the sheet-lift beat.
 
-## Plate order
+## Plate order — and where each one deep-links
 
-| Applicant (sponsor looking)        | Job (applicant looking)          |
-|-----------------------------------|----------------------------------|
-| placard — photo, name, claim line | role — logo, title, comp · where |
-| record — years stat, seat, receipts | setup — ledger rows           |
-| voice — first prompt (or bio)     | vouch — sponsor's name, quote, chips |
-| fit — why you're seeing them      | fit — your skill overlap / match |
+| Applicant (sponsor looking)              | → lands on   | Job (applicant looking)                 | → lands on     |
+|------------------------------------------|--------------|-----------------------------------------|----------------|
+| placard — photo, name, claim line        | top          | role — logo, title, comp · where        | top            |
+| in brief — the bio's opening (if real)   | ABOUT        | the role, in brief — summary/description opening | ABOUT THE ROLE |
+| the record — years stat, seat, receipts  | EXPERIENCE   | what they need — level · type · arrangement, top skills, first requirement | REQUIREMENTS / RESPONSIBILITIES / REQUIRED SKILLS |
+| in their words — first prompt (or bio)   | INSIGHTS     | the vouch — sponsor's name, quote, chips | THE VOUCH      |
+| why you're seeing them — skill overlap   | TOP SKILLS   | your fit — your skill overlap / match    | REQUIRED SKILLS |
 
 Plates whose data is absent are omitted (`plateContent.ts`). Everything is
 **derived, never invented**: claim lines come from achievements → lead
-skill → desired role; receipts are real experience rows; fit lines are
-computed overlaps (`skillOverlap`) against the sponsor's active role
-(`myJobs` skills) or the applicant's own profile skills.
+skill → desired role; briefs are the opening sentences of the bio /
+summary / description; receipts are real experience rows; fit lines are
+computed overlaps (`skillOverlap`).
+
+### The deep link
+
+The cue between ✕ and ✓ is **contextual**: its label is the current plate's
+`readCta` ("ALL EXPERIENCE ↓", "FULL DESCRIPTION ↓") and tapping it scrolls
+to the plate's `readTarget` section. Sections register their offsets via
+`ReadSections.tsx` (`<ReadSection id label>` wrappers in both cards); the
+landing section flashes a hairline, and the anchor's right label shows the
+section name while reading. A manual scroll is never auto-jumped — it stays
+a natural continuous read (the read opens with AT A GLANCE, the ledger).
 
 ## Files
 
 - `plateContent.ts` — pure builders + `deriveAnchor` (unit-tested).
 - `PlateViews.tsx` — one composition per plate kind; `Rich` renders the
   italic-muted accent spans.
+- `ReadSections.tsx` — section registry + `<ReadSection>` (offset, landing flash).
 - `PlateDeck.tsx` — owns the vertical `Animated.ScrollView` (HomeView's
   chrome hide-on-scroll handler + scroll ref pass straight through), the
   horizontal plate row, and the anchor.
