@@ -20,8 +20,8 @@ import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
+  FadeIn,
   withSpring,
-  ZoomIn,
 } from "react-native-reanimated";
 import { useShell } from "./ShellContext";
 import { Colors } from "@/constants/theme";
@@ -96,13 +96,13 @@ function TabItem({
           size={22}
           strokeWidth={isActive ? 2.5 : 1.5}
         />
-        {/* The count pill — paper on the ink bar (the inverse of the
-            header's ink-on-paper pills), ringed in ink so it cuts cleanly
-            out of the icon. Pops in when a count first appears. */}
+        {/* The count pill — a crisp paper pill on the ink bar, the inverse
+            of the header's ink-on-paper pills. No ring: on a black bar a
+            dark ring reads as a gap around a floating white circle. */}
         {!!badge && badge > 0 && (
           <Animated.View
             key={badge > 9 ? "9+" : String(badge)}
-            entering={ZoomIn.duration(260)}
+            entering={FadeIn.duration(200)}
             style={styles.badge}
           >
             <Text style={styles.badgeText}>{badge > 9 ? "9+" : badge}</Text>
@@ -220,22 +220,22 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: "absolute",
-    top: -6,
-    right: -10,
+    top: -7,
+    right: -11,
     minWidth: 18,
     height: 18,
-    paddingHorizontal: 5,
+    paddingHorizontal: 5.5,
     borderRadius: 9,
-    backgroundColor: Colors.paper,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: Colors.ink,
+    zIndex: 2,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: "800",
     color: Colors.ink,
     letterSpacing: -0.2,
+    includeFontPadding: false,
   },
 });

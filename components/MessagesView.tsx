@@ -759,6 +759,20 @@ export function MessagesView({
         setMessages(transformedMessages);
         initialMessageCountRef.current = transformedMessages.length;
 
+        // The history fetch is also the backend's "mark read" — it clears
+        // the caller's unread flag on the conversation. Mirror that in the
+        // cached list (which is never refetched; the socket keeps it live)
+        // so the inbox margin dot and the Inbox tab badge clear the moment
+        // the thread is opened, instead of holding a stale flag until the
+        // next app launch.
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedConversation && (c.unreadCount ?? 0) > 0
+              ? { ...c, unreadCount: 0 }
+              : c,
+          ),
+        );
+
         // Infer current user ID from messages
         if (response.messages && response.messages.length > 0) {
           // Find current user by checking which sender appears most frequently
