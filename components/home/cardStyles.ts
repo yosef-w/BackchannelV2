@@ -190,18 +190,22 @@ export const cardStyles = StyleSheet.create({
   },
 
   // ── Section primitives ────────────────────────────────────────────
+  // ── The read's sections (2026-08 rebrand pass) ───────────────────
+  // Caps labels at the 12pt floor, DM Sans body in the body token, serif
+  // for anything that names a role or a credential, hairlines instead of
+  // boxes, paper chips instead of gray ones. No hex grays.
   hingeSection: { paddingVertical: 18 },
   hingeSectionLabel: {
+    fontFamily: Fonts.sansBold,
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    letterSpacing: 1.4,
     color: Colors.muted,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   hingeBodyText: {
+    fontFamily: Fonts.sans,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#333",
+    color: Colors.body,
     lineHeight: 23,
   },
 
@@ -215,15 +219,17 @@ export const cardStyles = StyleSheet.create({
     gap: 8,
   },
   hingeSkillChip: {
-    backgroundColor: "#F4F4F5",
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
   },
   hingeSkillChipText: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 13,
-    fontWeight: "600",
-    color: "#1A1A1A",
+    color: Colors.ink,
   },
 
   // ── Timeline (experience, education) ──────────────────────────────
@@ -233,58 +239,59 @@ export const cardStyles = StyleSheet.create({
     gap: 12,
   },
   hingeTimelineDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: "#000",
-    marginTop: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Colors.ink,
+    marginTop: 8,
   },
   hingeTimelineBody: { flex: 1, minWidth: 0 },
+  // Roles and degrees are headline-tier — serif, like every name/title.
   hingeTimelineTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Fonts.serif,
+    fontSize: 17,
+    lineHeight: 22,
+    color: Colors.ink,
   },
   hingeTimelineSubtitle: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    marginTop: 2,
+    color: Colors.body,
+    marginTop: 3,
   },
   hingeTimelineMeta: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#888",
-    marginTop: 3,
-    letterSpacing: 0.1,
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 11.5,
+    letterSpacing: 0.6,
+    color: Colors.muted,
+    marginTop: 4,
   },
   hingeTimelineDescription: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
-    fontWeight: "500",
-    color: "#444",
+    color: Colors.body,
     lineHeight: 21,
     marginTop: 8,
   },
 
-  // ── Credential blocks (certifications, languages) ─────────────────
-  hingeCredentialList: { gap: 12 },
+  // ── Credentials (certifications, languages): flat hairline rows, not
+  // gray boxes — the ledger's voice ──────────────────────────────────
+  hingeCredentialList: {},
   hingeCredentialBlock: {
-    backgroundColor: "#F8F9FB",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   hingeCredentialName: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#000",
+    fontFamily: Fonts.serif,
+    fontSize: 16,
+    lineHeight: 21,
+    color: Colors.ink,
   },
   hingeCredentialMeta: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#777",
+    fontFamily: Fonts.sans,
+    fontSize: 12.5,
+    color: Colors.muted,
     marginTop: 3,
   },
 
@@ -433,15 +440,14 @@ export const cardStyles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // ── "No sponsor yet" inline block (applicant view) ────────────────
+  // ── "No sponsor yet" (applicant view): a serif statement on hairlines,
+  // no gray box, no icon-in-a-circle — the vouch statement's voice ─────
   noSponsorInlineBlock: {
-    alignItems: "center",
-    backgroundColor: "#F8F9FB",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EFEFEF",
-    paddingVertical: 28,
-    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
 
   // A person's name — same "names are headline-tier" rule as
@@ -475,9 +481,15 @@ export const cardStyles = StyleSheet.create({
     color: "#FFF",
     letterSpacing: 0.8,
   },
-  benefitsList: { gap: 10, marginTop: 8 },
-  benefitRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  benefitText: { fontSize: 14, color: "#555", flex: 1 },
+  benefitsList: { gap: 10, marginTop: 4 },
+  benefitRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  benefitText: {
+    fontFamily: Fonts.sans,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: Colors.body,
+    flex: 1,
+  },
 
   // JOB CARD SPECIFIC STYLES
 
@@ -485,31 +497,23 @@ export const cardStyles = StyleSheet.create({
   // Small centered kicker label at the top of the back faces.
   // Non-sponsored back — centered "no sponsor yet" status block.
   // About-the-company blurb beneath the no-sponsor status block.
-  noSponsorIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#F5F5F5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-  // Below the serif's ~18px floor — system font, token color only.
   noSponsorHeadline: {
-    fontSize: 17,
-    fontWeight: "800",
+    fontFamily: Fonts.serif,
+    fontSize: 22,
+    lineHeight: 28,
     color: Colors.ink,
+    letterSpacing: -0.3,
     marginBottom: 6,
-    textAlign: "center",
-    letterSpacing: -0.2,
+  },
+  noSponsorHeadlineEm: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.muted,
   },
   noSponsorSubtext: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#777",
-    textAlign: "center",
-    lineHeight: 20,
-    maxWidth: 280,
+    fontFamily: Fonts.sansLight,
+    fontSize: 14.5,
+    color: Colors.body,
+    lineHeight: 21,
   },
 
   // "View original posting" row — shows the sponsor's pasted domain
@@ -523,8 +527,8 @@ export const cardStyles = StyleSheet.create({
     gap: 6,
   },
   originalPostingText: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 14,
-    color: "#333",
-    fontWeight: "500" as const,
+    color: Colors.body,
   },
 });

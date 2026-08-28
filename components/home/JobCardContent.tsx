@@ -1,8 +1,4 @@
-import {
-  BellRing,
-  Check,
-  ExternalLink,
-} from "@/components/ui/icons";
+import { Check, ExternalLink } from "@/components/ui/icons";
 import { Image } from "expo-image";
 import React from "react";
 import { Linking, Text, TouchableOpacity, View } from "react-native";
@@ -338,7 +334,7 @@ export function JobCardContent({
             <View style={cardStyles.benefitsList}>
               {currentData.benefits.map((benefit: string, idx: number) => (
                 <View key={idx} style={cardStyles.benefitRow}>
-                  <Check size={14} color="#000" />
+                  <Check size={14} color={Colors.ink} strokeWidth={2.4} />
                   <Text style={cardStyles.benefitText}>{benefit}</Text>
                 </View>
               ))}
@@ -378,13 +374,13 @@ export function JobCardContent({
           <ReadSection id="vouch" label="STATUS"><View style={cardStyles.hingeSection}>
             <Text style={cardStyles.hingeSectionLabel}>STATUS</Text>
             <View style={cardStyles.noSponsorInlineBlock}>
-              <View style={cardStyles.noSponsorIconCircle}>
-                <BellRing size={22} color="#000" strokeWidth={2} />
-              </View>
-              <Text style={cardStyles.noSponsorHeadline}>No sponsor yet</Text>
+              <Text style={cardStyles.noSponsorHeadline}>
+                No sponsor{" "}
+                <Text style={cardStyles.noSponsorHeadlineEm}>yet.</Text>
+              </Text>
               <Text style={cardStyles.noSponsorSubtext}>
-                When someone at {company || "this company"} signs on to
-                sponsor this role, you&apos;ll be notified instantly.
+                When someone at {company || "this company"} puts their name
+                on this role, you&apos;ll hear the moment it happens.
               </Text>
             </View>
           </View></ReadSection>

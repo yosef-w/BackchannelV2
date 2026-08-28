@@ -179,7 +179,7 @@ function PlateBody({ plate }: { plate: Plate }) {
           {!!plate.quote && (
             <>
               <View style={s.rule} />
-              <Text style={s.vouchQuote} numberOfLines={5}>“{plate.quote}”</Text>
+              <Text style={s.vouchQuote} numberOfLines={3}>“{plate.quote}”</Text>
               {!!plate.attribution && (
                 <Text style={s.attribution} numberOfLines={2}>{plate.attribution}</Text>
               )}
@@ -234,7 +234,9 @@ export function PlateView({
       onPress={handlePress}
       style={[
         s.plate,
-        { width, height, paddingBottom: DECIDE_BAND },
+        // Extra bottom padding biases the centred composition upward —
+        // the plates read as sitting high on the page, not mid-air.
+        { width, height, paddingBottom: DECIDE_BAND + 28 },
         underAnchor && s.plateUnderAnchor,
       ]}
       accessibilityRole="button"
