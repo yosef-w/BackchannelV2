@@ -21,6 +21,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  ZoomIn,
 } from "react-native-reanimated";
 import { useShell } from "./ShellContext";
 import { Colors } from "@/constants/theme";
@@ -51,10 +52,13 @@ const TAB_ITEMS: {
 function TabItem({
   item,
   isActive,
+  badge,
   onPress,
 }: {
   item: (typeof TAB_ITEMS)[number];
   isActive: boolean;
+  /** Count pill on the icon — "someone is waiting for you here". */
+  badge?: number;
   onPress: () => void;
 }) {
   const scale = useSharedValue(1);
@@ -81,7 +85,9 @@ function TabItem({
       activeOpacity={0.8}
       style={styles.navItem}
       accessibilityRole="tab"
-      accessibilityLabel={item.label}
+      accessibilityLabel={
+        badge ? `${item.label}, ${badge} waiting for you` : item.label
+      }
       accessibilityState={{ selected: isActive }}
     >
       <Animated.View style={animatedIconStyle}>
@@ -90,6 +96,18 @@ function TabItem({
           size={22}
           strokeWidth={isActive ? 2.5 : 1.5}
         />
+        {/* The count pill — paper on the ink bar (the inverse of the
+            header's ink-on-paper pills), ringed in ink so it cuts cleanly
+            out of the icon. Pops in when a count first appears. */}
+        {!!badge && badge > 0 && (
+          <Animated.View
+            key={badge > 9 ? "9+" : String(badge)}
+            entering={ZoomIn.duration(260)}
+            style={styles.badge}
+          >
+            <Text style={styles.badgeText}>{badge > 9 ? "9+" : badge}</Text>
+          </Animated.View>
+        )}
       </Animated.View>
       <Text
         style={[styles.navLabel, isActive && styles.navLabelActive]}
@@ -101,7 +119,16 @@ function TabItem({
   );
 }
 
-export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
+type FloatingTabBarProps = BottomTabBarProps & {
+  /** Per-route count pills, keyed by route name (e.g. { matches: 3 }). */
+  badges?: Partial<Record<string, number>>;
+};
+
+export function FloatingTabBar({
+  state,
+  navigation,
+  badges,
+}: FloatingTabBarProps) {
   const shell = useShell();
 
   const navAnimatedStyle = useAnimatedStyle(() => ({
@@ -130,6 +157,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
               key={item.name}
               item={item}
               isActive={isActive}
+              badge={badges?.[item.name]}
               onPress={() => {
                 const route = state.routes[routeIndex];
                 const event = navigation.emit({
@@ -189,5 +217,25 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: "#FFF",
     fontWeight: "700",
+  },
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    backgroundColor: Colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.ink,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: Colors.ink,
+    letterSpacing: -0.2,
   },
 });

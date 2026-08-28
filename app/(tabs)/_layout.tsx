@@ -35,7 +35,12 @@ import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { PublicProfileUserData } from "@/types/profiles";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  interestedApplicantsQuery,
+  interestedSponsorsQuery,
+} from "@/components/matches/matchesQueries";
+import { useUnreadThreadCount } from "@/components/messages/unreadThreads";
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import {
@@ -195,6 +200,27 @@ export default function TabsLayout() {
   // ── Referral check-in system ─────────────────────────────────────────────
   const [showApplicantCheckIn, setShowApplicantCheckIn] = useState(false);
   const [showSponsorCheckIn, setShowSponsorCheckIn] = useState(false);
+  // ── Tab badges — "someone is waiting for you" ────────────────────────────
+  // Matches: unactioned interest in the Your Move group — sponsors who liked
+  // the applicant, or applicants who liked the sponsor's roles. Reads the
+  // same React Query entries MatchesView populates (the queries gate
+  // themselves by role), so the badge is exactly what Matches shows on
+  // arrival. Replaced the old in-deck "sponsors are interested" strip.
+  const { data: interestedSponsors = [] } = useQuery(
+    interestedSponsorsQuery(userType),
+  );
+  const { data: interestedApplicants = [] } = useQuery(
+    interestedApplicantsQuery(userType),
+  );
+  const matchesBadge =
+    userType === "applicant"
+      ? interestedSponsors.length
+      : interestedApplicants.length;
+  // Inbox: threads with something unread — live from the inbox's own cache
+  // once it's been opened (clears the instant a thread is read), a light
+  // poll before that.
+  const unreadThreads = useUnreadThreadCount(userType, isAuthenticated);
+
   const {
     referrals,
     referralsLoading,
@@ -402,7 +428,10 @@ export default function TabsLayout() {
                 // thread or an overlay is up — same as MainApp's
                 // conditional render.
                 isThreadActive || overlayOpen ? null : (
-                  <FloatingTabBar {...props} />
+                  <FloatingTabBar
+                    {...props}
+                    badges={{ matches: matchesBadge, messages: unreadThreads }}
+                  />
                 )
               }
             >
