@@ -53,12 +53,25 @@ export function useUnreadThreadCount(role: InboxRole, enabled: boolean): number 
   const [fromInbox, setFromInbox] = useState<number | null>(() => readInboxCache(client));
 
   useEffect(() => {
-    return client.getQueryCache().subscribe((event) => {
+    let alive = true;
+    const unsubscribe = client.getQueryCache().subscribe((event) => {
       const key = event?.query?.queryKey;
-      if (Array.isArray(key) && key[0] === "conversations" && key[1] === "list") {
-        setFromInbox(readInboxCache(client));
-      }
+      if (!Array.isArray(key) || key[0] !== "conversations" || key[1] !== "list") return;
+      // Only data changes matter (fetch success, setQueryData, cache
+      // removal) — not observer add/remove churn.
+      if (event.type !== "updated" && event.type !== "added" && event.type !== "removed") return;
+      // Cache events can fire synchronously inside ANOTHER component's
+      // render (MessagesView registering its query) — a setState here would
+      // be a cross-component update during render. Defer to a microtask so
+      // the recount lands after the current render commits.
+      queueMicrotask(() => {
+        if (alive) setFromInbox(readInboxCache(client));
+      });
     });
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
   }, [client]);
 
   if (!enabled) return 0;
