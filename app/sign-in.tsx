@@ -26,7 +26,19 @@ export default function SignInScreen() {
       onBack={() =>
         router.canGoBack() ? router.back() : router.replace("/splash")
       }
-      onLoginComplete={() => router.replace("/dashboard")}
+      // dismissAll() first: this screen may sit under choose-role/intro if
+      // the user reached it via the pre-signup film's "sign in" escape
+      // hatch (they're pushed, not replaced, so swipe-back works). A plain
+      // replace() here only swaps sign-in for dashboard — it leaves intro's
+      // cinema film mounted underneath, and its master clock loops forever
+      // (withRepeat(-1)) firing haptic beats every ~16s with nothing on
+      // screen to explain them. dismissAll() collapses the whole stack back
+      // to its root before we land on dashboard, so nothing pre-auth stays
+      // alive in the background.
+      onLoginComplete={() => {
+        router.dismissAll();
+        router.replace("/dashboard");
+      }}
       // Defensive fallback only — onRequestSignUp intercepts every "Sign up"
       // tap while isLogin is true, so the signup submit path below should
       // never actually run from this screen.

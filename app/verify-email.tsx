@@ -113,6 +113,13 @@ export default function VerifyEmailRoute() {
   };
 
   const handleContinue = () => {
+    // dismissAll() first — this screen can sit under choose-role/intro/
+    // onboarding (all pushed, not replaced, so the funnel's swipe-back
+    // works). A plain replace() would leave them mounted; intro's film
+    // runs an infinite looping clock that keeps firing haptic beats with
+    // nothing on screen to explain them. Collapse the stack to its root
+    // before landing on dashboard so none of the pre-auth funnel survives.
+    router.dismissAll();
     router.replace("/dashboard");
   };
 

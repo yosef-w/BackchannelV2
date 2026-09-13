@@ -84,14 +84,32 @@ export default function OnboardingScreen() {
           else router.replace("/choose-role");
         }}
         onComplete={() => setStep("questionnaire")}
-        onLoginComplete={() =>
-          router.replace({ pathname: "/dashboard", params: { mode: userType } })
-        }
+        // dismissAll() first — see handleComplete's comment below. This
+        // route is only reached via choose-role → the role's film, both
+        // still sitting under us in the stack (pushed, not replaced, so
+        // the funnel's swipe-back works); a plain replace() would leave
+        // them mounted, and the film's looping clock keeps firing haptic
+        // beats from a screen nobody can see.
+        onLoginComplete={() => {
+          router.dismissAll();
+          router.replace({ pathname: "/dashboard", params: { mode: userType } });
+        }}
       />
     );
   }
 
   const handleComplete = () => {
+    // dismissAll() before landing on dashboard: this route is only reached
+    // via choose-role → the role's film (see the comment above this
+    // component), both pushed — not replaced — onto the stack so swipe-back
+    // works through the funnel. A plain replace() here only swaps THIS
+    // screen for dashboard; choose-role and the film stay mounted
+    // underneath, and the film's master clock (withRepeat(-1)) loops
+    // forever, firing haptic beats every ~16s from a screen that's no
+    // longer visible. dismissAll() collapses the whole pre-auth stack back
+    // to its root first, so nothing from the funnel survives into the
+    // authenticated app.
+    router.dismissAll();
     router.replace({ pathname: "/dashboard", params: { mode: userType } });
   };
 

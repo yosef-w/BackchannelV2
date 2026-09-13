@@ -71,6 +71,13 @@ export default function SplashRoute() {
             params: { mode: pendingRole, resume: "1" },
           });
         } else {
+          // dismissAll() first: mostly a no-op on a genuine cold start
+          // (nothing is pushed above splash yet), but cheap insurance for
+          // the "backed all the way into splash" path this effect also
+          // covers — if any pre-auth screen (intro, with its looping
+          // haptic clock) is ever still in the stack, this makes sure it
+          // doesn't survive into the authenticated app.
+          router.dismissAll();
           router.replace("/dashboard");
         }
       })();
