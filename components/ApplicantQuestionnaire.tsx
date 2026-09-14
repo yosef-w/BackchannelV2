@@ -60,6 +60,7 @@ import {
 import { HOME_INTRO_PENDING_KEY } from "./ui/HomeIntro";
 import {
   classifyResume,
+  getExtractedResumeText,
   updateApplicantProfile,
   updateGeneralProfile,
   uploadAndParseResume,
@@ -97,14 +98,25 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const RESUME_PROCESS_TIMEOUT_MS = 25000;
 
 // How long we HOLD the user on the "building your profile" beat for the
-// résumé pipeline (upload → parse → AI classify → refetch). The classify step
-// is Snowflake Cortex and routinely runs 30–90s (the profile screen budgets
-// 60s + 120s for the same pipeline), so this must be generous — the original
-// 25s cap expired mid-classify, showed a false "couldn't parse" toast, and
-// made testers re-type everything the backend then filled in anyway. Past
-// this hold we release the user into the manual steps, but the pipeline keeps
-// running and a late success is harvested (see handleResumeStep).
+// résumé pipeline (upload → parse → AI classify → refetch). Parsing/classify
+// both call Anthropic Claude server-side (extraction budgets up to 90s read
+// time, classify up to 60s — see the backend's bc_microservices/services/
+// documents.py), so this must be generous — the original 25s cap expired
+// mid-classify, showed a false "couldn't parse" toast, and made testers
+// re-type everything the backend then filled in anyway. Past this hold we
+// release the user into the manual steps, but the pipeline keeps running and
+// a late success is recovered (see handleResumeStep's attemptLateRecovery).
 const RESUME_FOREGROUND_WAIT_MS = 75_000;
+
+// Generous upper bound on how long the backend could still be legitimately
+// working on a résumé request after this pipeline has already failed here
+// (the foreground wait above expired, or the connection was dropped
+// entirely) — see attemptLateRecovery in handleResumeStep. Reconciled
+// against the backend's own per-call ceilings (see the backend's
+// fix/resume-parse-timeout-race, which also made those ceilings real by
+// disabling the Anthropic SDK's default retry-on-timeout) plus room for
+// upload/CDN/DB overhead.
+const RESUME_REQUEST_CEILING_MS = 130_000;
 
 // Error-message prefix marking "the PDF had no extractable text" (scanned /
 // image-only résumés) so the catch can show a more useful toast than the
@@ -744,23 +756,73 @@ export function ApplicantQuestionnaire({
 
       // The whole pipeline as ONE promise: the foreground timeout below stops
       // the WAITING, never the work — the requests keep running so a slow
-      // classify can still be harvested after we release the user.
+      // classify can still be recovered after we release the user (see
+      // attemptLateRecovery below).
+      let resumePhaseStartedAt = Date.now();
       const pipeline = (async () => {
         const parsed = await uploadAndParseResume(form);
         // The backend returns 201 even when text extraction fails (scanned/
-        // image-only PDFs) — extracted_text is null. Don't classify nothing.
+        // image-only PDFs) — extracted_text is null. This is a fast,
+        // definitive answer from the backend, not a race, so it's flagged
+        // as such and skips the late-recovery path below entirely.
         if (!parsed.extracted_text) {
-          throw new Error(
+          const err: Error & { resumeDefinitiveFailure?: boolean } = new Error(
             `${RESUME_UNREADABLE}${parsed.parsing_error ?? "no extracted text"}`,
           );
+          err.resumeDefinitiveFailure = true;
+          throw err;
         }
         // Hand the parsed text to the film — the drift scene shows the
         // user's own lines while the classify runs.
         const text = parsed.extracted_text;
         setFilm((s) => (s ? { ...s, resumeText: text } : s));
+        resumePhaseStartedAt = Date.now();
         await classifyResume();
         await fetchFromBackend();
       })();
+
+      // Called when the pipeline's outcome is AMBIGUOUS — the foreground
+      // wait above expired, or the request failed in some other way that
+      // isn't the backend's own definitive "this file really can't be
+      // parsed" answer (most plausibly a dropped connection outliving
+      // neither our timeout nor a graceful backend error). The backend may
+      // still be working, or may have already finished, when we give up on
+      // it here; wait out a generous, elapsed-aware remainder of its
+      // realistic worst case, then check whether the résumé actually landed
+      // and resume the pipeline from wherever it left off instead of
+      // leaving the user's manual answers as the only outcome.
+      const attemptLateRecovery = async (startedAt: number) => {
+        const elapsed = Date.now() - startedAt;
+        const waitMs = Math.max(15_000, RESUME_REQUEST_CEILING_MS - elapsed);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        if (resumeHarvestClosedRef.current) return;
+        try {
+          const status = await getExtractedResumeText();
+          if (!status.extracted_resume_text) return; // genuinely never landed
+          // Text is present now (freshly landed, or was already there from
+          // before an ambiguous classify-phase failure) — (re-)classify is
+          // safe to call again even if an earlier attempt secretly
+          // succeeded too, since it just recomputes from the same stored
+          // text and overwrites with an equivalent result.
+          await classifyResume();
+          await fetchFromBackend();
+          if (resumeHarvestClosedRef.current) return;
+          setResumeFilled(true);
+          showToast(
+            "Résumé read — we've filled in your experience and skills.",
+            "success",
+          );
+        } catch (lateErr) {
+          if (lateErr instanceof Error && lateErr.name === "AbortError") return;
+          console.warn(
+            "[Questionnaire] Résumé background recovery failed:",
+            lateErr,
+          );
+          Sentry.captureException(lateErr, {
+            tags: { flow: "onboarding_resume", stage: "late_recovery" },
+          });
+        }
+      };
 
       try {
         await withTimeout(pipeline, RESUME_FOREGROUND_WAIT_MS);
@@ -797,43 +859,29 @@ export function ApplicantQuestionnaire({
           setShowReview(true);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : "";
-        if (message === "timeout") {
-          // Still working server-side. Release the user into the manual steps
-          // and quietly harvest the result if it lands before the final save —
-          // resumeFilled flipping mid-flow collapses the industry/role/skills
-          // steps (the safeIndex guard handles the list shrinking).
+        const isDefinitive =
+          (err as { resumeDefinitiveFailure?: boolean } | null)
+            ?.resumeDefinitiveFailure === true;
+        if (!isDefinitive) {
+          // Ambiguous — our own foreground wait expired, or some other
+          // non-definitive failure (e.g. a dropped connection) — the
+          // backend may still finish this. Release the user into the
+          // manual steps and quietly recover the result if it lands before
+          // the final save — resumeFilled flipping mid-flow collapses the
+          // industry/role/skills steps (the safeIndex guard handles the
+          // list shrinking).
           showToast(
             "Your résumé is taking a moment — keep going and we'll fill in what we can.",
             "info",
           );
-          pipeline
-            .then(() => {
-              if (resumeHarvestClosedRef.current) return;
-              setResumeFilled(true);
-              showToast(
-                "Résumé read — we've filled in your experience and skills.",
-                "success",
-              );
-            })
-            .catch((lateErr) => {
-              console.warn(
-                "[Questionnaire] Résumé background processing failed:",
-                lateErr,
-              );
-              Sentry.captureException(lateErr, {
-                tags: { flow: "onboarding_resume", stage: "background" },
-              });
-            });
+          void attemptLateRecovery(resumePhaseStartedAt);
         } else {
           console.warn("[Questionnaire] Résumé processing failed:", err);
           // Onboarding's centerpiece — failures should page the dashboard,
           // not just toast (mirrors useResumePipeline).
           Sentry.captureException(err, { tags: { flow: "onboarding_resume" } });
           showToast(
-            message.startsWith(RESUME_UNREADABLE)
-              ? "We couldn't read your résumé — it may be a scanned image. You can fill those details in yourself."
-              : "We couldn't read your résumé automatically — you can fill those details in yourself.",
+            "We couldn't read your résumé — it may be a scanned image. You can fill those details in yourself.",
             "info",
           );
           // resumeFilled stays false → the manual industry/role/skills steps show.
