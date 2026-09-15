@@ -136,7 +136,7 @@ describe("loadTokens (cold start)", () => {
     expect(store().isLoading).toBe(false);
   });
 
-  it("lands unauthenticated when the expired token cannot be refreshed", async () => {
+  it("lands unauthenticated when the refresh token is genuinely rejected (401)", async () => {
     secureStorage.set("access_token", makeJwt(-60));
     secureStorage.set("refresh_token", "ref-dead");
     fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
@@ -145,6 +145,25 @@ describe("loadTokens (cold start)", () => {
 
     expect(store().isAuthenticated).toBe(false);
     expect(store().accessToken).toBeNull();
+    expect(store().isLoading).toBe(false);
+  });
+
+  it("stays optimistically authenticated on a TRANSIENT refresh failure at cold start", async () => {
+    // A real regression: loadTokens used to treat any `false` from
+    // refreshAccessToken() as proof both tokens were dead, even though
+    // refreshAccessToken deliberately leaves auth intact for anything short
+    // of a genuine 401/403 (network blip, 5xx, malformed 200). That forced
+    // a still-logged-in user back to the login screen over e.g. a bad
+    // connection at app launch.
+    secureStorage.set("access_token", makeJwt(-60));
+    secureStorage.set("refresh_token", "ref-1");
+    secureStorage.set("user_role", "Applicant");
+    fetchMock.mockRejectedValueOnce(new Error("network down"));
+
+    await store().loadTokens();
+
+    expect(store().isAuthenticated).toBe(true);
+    expect(store().refreshToken).toBe("ref-1");
     expect(store().isLoading).toBe(false);
   });
 

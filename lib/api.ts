@@ -244,10 +244,18 @@ class ApiClient {
           // expired, please log in again" as an actual logout.
           const sessionActuallyExpired =
             !useAuthStore.getState().isAuthenticated;
+          // Deliberately not "check your connection" — this branch also
+          // covers a 5xx or malformed response FROM the refresh endpoint
+          // itself, where connectivity is fine and blaming it would be
+          // wrong. Note this is a per-request message only: a refresh
+          // endpoint that stays down indefinitely has no eventual timeout/
+          // retry-budget-then-actually-log-out here — every call just fails
+          // with this same message. Deferred: that needs a real backoff/
+          // budget design, not a quick fix bolted on here.
           const err = new Error(
             sessionActuallyExpired
               ? "Session expired. Please log in again."
-              : "Couldn't reach the server to refresh your session. Please check your connection and try again.",
+              : "We couldn't refresh your session right now. Please try again in a moment.",
           );
           this.rejectRefreshQueue(err);
           throw err;
@@ -360,9 +368,16 @@ class ApiClient {
 
   /**
    * GET request
+   * Pass an AbortSignal to opt out of (or extend) the client's blanket
+   * default timeout — see DEFAULT_REQUEST_TIMEOUT_MS — for a call that's
+   * expected to run long (e.g. the onboarding résumé pipeline's polling).
    */
-  async get<T>(endpoint: string, skipAuth = false): Promise<T> {
-    return this.request<T>(endpoint, { method: "GET" }, skipAuth);
+  async get<T>(
+    endpoint: string,
+    skipAuth = false,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return this.request<T>(endpoint, { method: "GET", signal }, skipAuth);
   }
 
   /**
@@ -1681,12 +1696,12 @@ export async function updateResumeField(data: object): Promise<{
  * Return the raw text extracted from the user's last uploaded resume file.
  * Uses GET /api/resume/extracted-text/
  */
-export async function getExtractedResumeText(): Promise<{
+export async function getExtractedResumeText(signal?: AbortSignal): Promise<{
   extracted_resume_text: string | null;
   updated_at: string | null;
   message: string;
 }> {
-  return api.get("/api/resume/extracted-text/");
+  return api.get("/api/resume/extracted-text/", undefined, signal);
 }
 
 /**

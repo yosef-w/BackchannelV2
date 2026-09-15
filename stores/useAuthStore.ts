@@ -219,14 +219,24 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ refreshToken, role, hasPassword });
         const refreshed = await useAuthStore.getState().refreshAccessToken();
         if (!refreshed) {
-          // Both tokens are expired — the user must log in again.
-          set({
-            accessToken: null,
-            refreshToken: null,
-            role: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+          // refreshAccessToken() only calls clearAuth() (which nulls
+          // refreshToken) on a genuine 401/403 rejection — a transient
+          // failure (network blip, 5xx, malformed 200) deliberately leaves
+          // the staged tokens untouched. Use that to tell the two apart
+          // here too, the same distinction lib/api.ts's callers already
+          // make, instead of treating every `false` as proof both tokens
+          // are dead.
+          if (!useAuthStore.getState().refreshToken) {
+            // Genuinely expired — clearAuth() already reset everything.
+            set({ isLoading: false });
+            return;
+          }
+          // Transient — don't force a real, still-logged-in user back to
+          // the login screen over a network blip at cold start. Stay
+          // optimistically authenticated with the (expired) access token;
+          // the first real API call's own reactive-401 refresh handles it
+          // properly once the network is back.
+          set({ accessToken, isAuthenticated: true, isLoading: false });
           return;
         }
         // setAuthTokens was already called inside refreshAccessToken; role already in state.
