@@ -129,7 +129,14 @@ export function EditProfileScreen({
 
   const saveOnBlur = (field: string, key: keyof typeof local) => () => {
     const value = local[key];
-    run(() => onSaveField(field, value));
+    // run() re-throws on failure (its own contract, so it can distinguish
+    // "saved" from "error" for the header's SaveStatusPill) — nothing
+    // further needs to happen with that rejection here: onSaveField
+    // already showed its own toast, and the pill already reflects the
+    // failure via run()'s own state. Left uncaught, this surfaced as an
+    // unhandled promise rejection on every validation failure or save
+    // error once onSaveField started actually throwing for those cases.
+    run(() => onSaveField(field, value)).catch(() => {});
   };
 
   return (
@@ -257,7 +264,12 @@ export function EditProfileScreen({
                 .join(", ");
               const value = combined || addr.city;
               set("location")(value);
-              run(() => onSaveLocation(value));
+              // A rejected save (empty city) never updates the `location`
+              // prop below — reverting to it on failure undoes the local
+              // edit instead of leaving the field showing emptied/invalid
+              // text for the rest of the session with no second attempt
+              // (blur already fired).
+              run(() => onSaveLocation(value)).catch(() => set("location")(location));
             }}
             onError={() => {}}
             onSwitchToManual={() => setLocationManual(true)}
@@ -271,7 +283,11 @@ export function EditProfileScreen({
               placeholderTextColor={Colors.faint}
               value={local.location}
               onChangeText={set("location")}
-              onBlur={() => run(() => onSaveLocation(local.location))}
+              onBlur={() =>
+                run(() => onSaveLocation(local.location)).catch(() =>
+                  set("location")(location),
+                )
+              }
               autoCapitalize="words"
             />
           </View>

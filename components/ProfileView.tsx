@@ -24,7 +24,7 @@ import {
     Upload,
     X,
 } from "@/components/ui/icons";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -231,6 +231,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [email, setEmail] = useState("");
   const [workEmail, setWorkEmail] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  // Generation counter for handleImageSelected's revert-on-failure guard —
+  // see its own comment for why a superseded attempt's failure must not be
+  // allowed to clobber a later attempt's success.
+  const imageUploadGenerationRef = useRef(0);
   const [bio, setBio] = useState("");
 
   // Additional details (optional)
@@ -453,20 +457,36 @@ export function ProfileView({ userType }: ProfileViewProps) {
   // write in flight per field group now.
   const reportSyncOutcome = async (
     group: SyncableField,
-    successMessage = "Saved.",
+    // null = stay quiet on success (used for light, frequent actions like
+    // adding a skill tag, where a toast on every single one would be
+    // chattier than the interaction warrants) — failure/still-syncing
+    // still surface regardless, since THOSE going unreported silently was
+    // the actual bug.
+    successMessage: string | null = "Saved.",
   ) => {
     await flushProfileSync();
     const { dirtyFields, syncError } = useUserProfileStore.getState();
     if (!dirtyFields.has(group)) {
-      showToast(successMessage, "success");
+      if (successMessage) showToast(successMessage, "success");
     } else if (syncError && syncError !== "offline") {
+      // A real failure always surfaces regardless of successMessage —
+      // silently losing this was the actual bug this whole mechanism
+      // exists to fix, whether the caller wanted a chatty success toast or
+      // not.
       showToast("Failed to save. Please try again.", "error");
-    } else {
+    } else if (successMessage) {
       // Still dirty but no hard failure: either genuinely offline (will
       // sync once connectivity returns) or another sync was already in
       // flight when we flushed (will pick this up on its next pass). Either
-      // way the edit is captured — reverting it here would be the exact
-      // false-negative this audit was called in to fix.
+      // way the edit is captured — reverting it here would be a false
+      // negative. Only worth telling the user when they opted into a
+      // definitive confirmation via successMessage, though — callers that
+      // pass null (tag add/remove, work-preference toggles) chose that
+      // specifically because a toast on every single light interaction is
+      // chattier than it warrants, and this branch used to show one
+      // anyway: adding 3 skills quickly, each waiting on the previous
+      // flush, meant up to 3 "finishing up" toasts for what should have
+      // been a silent, successful operation.
       showToast("Saved — finishing up in the background…", "info");
     }
   };
@@ -484,7 +504,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
     const { ok, cleaned, error } = validateProfileField(field, rawValue);
     if (!ok) {
       showToast(error || "Please check this field and try again.", "error");
-      return;
+      // Thrown, not just returned: EditProfileScreen's saveOnBlur wraps
+      // this call in useAutosaveStatus's run(), which sets the header's
+      // SaveStatusPill to "saved" whenever the wrapped function resolves
+      // normally — a plain return here meant a rejected field showed a
+      // green "Saved" pill directly next to this red error toast. Every
+      // field EditProfileScreen actually renders (firstName/lastName/role/
+      // company/bio) was previously always ok:true unconditionally, so
+      // this path only became reachable once REQUIRED_FIELDS existed.
+      throw new Error(error || "Validation failed");
     }
     const valueToSave = cleaned;
     // Every case below used to follow its store write with an immediate
@@ -627,6 +655,19 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const handleSaveLocation = async (value: string) => {
     const trimmed = value.trim();
     const [cityPart, statePart] = trimmed.split(",").map((s) => s.trim());
+    // City is a required field (profileCompletion.ts's own required set —
+    // it's the app's only location matching signal) and this is the one
+    // path that actually writes it. Without this check, clearing the
+    // field entirely and saving wrote an empty city straight through with
+    // no validation — a silent, successful-looking save that quietly
+    // broke matching until the user happened to notice and re-typed it.
+    if (!cityPart) {
+      showToast("City can't be left empty.", "error");
+      // Thrown, not returned — see handleSaveField's identical fix above:
+      // this is called through EditProfileScreen's run(), which needs the
+      // rejection to flip the SaveStatusPill to "error" instead of "saved".
+      throw new Error("City can't be left empty.");
+    }
     setCity(cityPart || "");
     setState(statePart || "");
     setLocation(trimmed);
@@ -699,17 +740,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
           setNewTag("");
           return;
         }
-        // Store update only — its own debounced sync covers this field
-        // (see authApi.updateProfile's rolePayload.skills); a redundant
-        // direct call here used to fire in parallel and race it.
+        // Store update, its own debounced sync covers this field — but
+        // unlike a text field's onBlur save, this had NO feedback path at
+        // all, success or failure: a sync failure here used to mean the
+        // skill silently vanished on the next full profile fetch with
+        // nothing to explain why. reportSyncOutcome(..., null) stays quiet
+        // on success (a toast per tag add would be chattier than this
+        // light interaction warrants) but still surfaces a real failure.
         const newExpertise = [...expertise, valueToAdd];
         setExpertise(newExpertise);
         await updateSkills(newExpertise);
+        await reportSyncOutcome("skills", null);
         break;
       case "workPreferences": {
         const newWorkPreferences = [...workPreferences, valueToAdd];
         setWorkPreferences(newWorkPreferences);
         await updateWorkPreferencesStore(newWorkPreferences);
+        await reportSyncOutcome("workPreferences", null);
         break;
       }
       case "desiredRoles": {
@@ -725,6 +772,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         const newDesiredRoles = [...desiredRoles, valueToAdd];
         setDesiredRoles(newDesiredRoles);
         await updateDesiredRolesStore(newDesiredRoles);
+        await reportSyncOutcome("desiredRoles", null);
         break;
       }
     }
@@ -737,6 +785,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       : [...workPreferences, preference];
     setWorkPreferences(updated);
     await updateWorkPreferencesStore(updated);
+    await reportSyncOutcome("workPreferences", null);
   };
 
   const handleRemoveTag = async (
@@ -748,18 +797,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
         const updatedExpertise = expertise.filter((_, i) => i !== index);
         setExpertise(updatedExpertise);
         await updateSkills(updatedExpertise);
+        await reportSyncOutcome("skills", null);
         break;
       }
       case "workPreferences": {
         const updatedWorkPrefs = workPreferences.filter((_, i) => i !== index);
         setWorkPreferences(updatedWorkPrefs);
         await updateWorkPreferencesStore(updatedWorkPrefs);
+        await reportSyncOutcome("workPreferences", null);
         break;
       }
       case "desiredRoles": {
         const updatedRoles = desiredRoles.filter((_, i) => i !== index);
         setDesiredRoles(updatedRoles);
         await updateDesiredRolesStore(updatedRoles);
+        await reportSyncOutcome("desiredRoles", null);
         break;
       }
     }
@@ -891,13 +943,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
     updateCertifications(updated);
   };
 
-  const handleDeleteCertification = (index: number) => {
+  const handleDeleteCertification = async (index: number) => {
     const updated = certifications.filter((_, i) => i !== index);
     setCertifications(updated);
-    updateCertifications(updated);
+    await updateCertifications(updated);
     if (expandedCertification === index) {
       setExpandedCertification(null);
     }
+    // Matches handleDeleteExperience/handleDeleteEducation's pattern — a
+    // deletion had no feedback path at all before this, success or
+    // failure, unlike its sibling entry types.
+    await reportSyncOutcome("certifications", "Certification removed.");
   };
 
   // Handlers for Languages — same persist-at-the-mutation-site pattern.
@@ -920,13 +976,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
     updateLanguages(updated);
   };
 
-  const handleDeleteLanguage = (index: number) => {
+  const handleDeleteLanguage = async (index: number) => {
     const updated = languages.filter((_, i) => i !== index);
     setLanguages(updated);
-    updateLanguages(updated);
+    await updateLanguages(updated);
     if (expandedLanguage === index) {
       setExpandedLanguage(null);
     }
+    // See handleDeleteCertification above — same gap, same fix.
+    await reportSyncOutcome("languages", "Language removed.");
   };
 
   // Render Certification Card
@@ -1348,6 +1406,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleImageSelected = async (uri: string) => {
+    // Guards the revert-on-failure below against a SECOND photo pick
+    // superseding this one before it finishes uploading — without this, an
+    // earlier (slow) attempt's failure could revert all the way back past
+    // a LATER attempt that already succeeded: pick A (slow), pick B before
+    // A settles (B uploads fine, store + UI now show B's CDN URL), then A
+    // fails and its catch reverts to whatever profileImage was before A
+    // started — discarding B's successful upload locally, with the backend
+    // and the UI now disagreeing until the next full profile fetch.
+    const myGeneration = ++imageUploadGenerationRef.current;
+    // Captured before the optimistic update below so a failure can revert
+    // to it — a local device file:// URI isn't guaranteed to survive a
+    // cache eviction or app restart, so leaving it in place on failure
+    // (the old behavior) risked a permanently broken avatar for a
+    // first-time photo (nothing valid to fall back to) and, for an
+    // existing photo, showed a picture that visually looked like it had
+    // already changed right next to a toast saying it hadn't.
+    const previousImage = profileImage;
     // Show local preview immediately so the UI feels responsive
     setProfileImage(uri);
     updatePersonal({ profileImage: uri });
@@ -1377,15 +1452,43 @@ export function ProfileView({ userType }: ProfileViewProps) {
         "cdn_url saved:",
         cdn_url,
       );
-      updatePersonal({ profileImage: cdn_url });
-      setProfileImage(cdn_url);
-      showToast("Profile photo updated.", "success");
+      // Same generation guard as the catch block below: an older, slower
+      // pick succeeding AFTER a newer one has already displayed ITS photo
+      // would otherwise silently revert the display back to the stale
+      // choice. (This only protects the CLIENT-side display — the two
+      // updateGeneralProfile PATCH calls above aren't sequenced against
+      // each other, so whichever one's request actually reaches the
+      // backend last still wins there regardless of generation order. A
+      // full fix would serialize these requests the way
+      // notificationPrefsQueue does for notification preferences; picking
+      // two photos within moments of each other is rare enough that this
+      // wasn't judged worth that scope here.)
+      if (imageUploadGenerationRef.current === myGeneration) {
+        updatePersonal({ profileImage: cdn_url });
+        setProfileImage(cdn_url);
+        showToast("Profile photo updated.", "success");
+      }
     } catch (err) {
       console.warn("[ProfileImage] ❌ Failed to upload profile photo:", err);
       Sentry.captureException(err, {
         tags: { feature: "profile_photo_upload" },
       });
-      showToast("Failed to upload photo. Please try again.", "error");
+      // Revert rather than leaving the failed attempt's local URI in
+      // place — true whether the CDN upload itself failed or it
+      // succeeded but the follow-up PATCH didn't: either way the backend
+      // never actually got the new photo, so the display shouldn't imply
+      // otherwise. (A partial success — upload landed, PATCH didn't — does
+      // mean re-selecting the same photo re-uploads it; a wasted upload is
+      // an acceptable tradeoff for not risking a permanently broken avatar
+      // on a temp file that may not even survive to the next app launch.)
+      // Only revert if no NEWER pick has superseded this one — otherwise
+      // this (possibly much later) failure would stomp a later attempt's
+      // already-successful, already-displayed photo.
+      if (imageUploadGenerationRef.current === myGeneration) {
+        updatePersonal({ profileImage: previousImage ?? undefined });
+        setProfileImage(previousImage);
+        showToast("Failed to upload photo. Please try again.", "error");
+      }
     }
   };
 

@@ -110,16 +110,47 @@ export interface FieldValidationResult {
   error?: string;
 }
 
+/** A field that can't be saved empty — profileCompletion.ts's own required
+ * set (firstName/lastName/role/bio/city — the fields the sponsor card
+ * actually renders or the matching algorithm reads) plus company, which
+ * EditProfileScreen already marks with a required-field indicator
+ * (`required={!company}`) even though it isn't in that formal set. Every
+ * other field stays optional — the app deliberately doesn't gate on phone,
+ * street/state/country, portfolio, etc. (see profileCompletion.ts's own
+ * comment on why). Without this, clearing one of these to empty and
+ * blurring saved silently: validateProfileField treated every field as
+ * optional, so it went through with an "ok" result and a "Profile
+ * updated." success toast — no indication the save just broke something
+ * the app actually depends on. */
+const REQUIRED_FIELDS = new Set([
+  "firstName",
+  "lastName",
+  "role",
+  "jobTitle",
+  "bio",
+  "summary",
+  "company",
+  "city",
+]);
+
+const REQUIRED_FIELD_ERROR = "This field can't be left empty.";
+
 /**
  * Central validator/cleaner for an editable profile field, keyed by the same
  * field names ProfileView's handleSaveField switch uses. Empty values are
- * always allowed (fields are optional) — we only reject non-empty garbage.
+ * allowed for optional fields; REQUIRED_FIELDS above must not end up empty.
  */
 export function validateProfileField(
   field: string,
   raw: string,
 ): FieldValidationResult {
   const value = raw ?? "";
+  const requireNonEmpty = (cleaned: string): FieldValidationResult => {
+    if (!cleaned && REQUIRED_FIELDS.has(field)) {
+      return { ok: false, cleaned, error: REQUIRED_FIELD_ERROR };
+    }
+    return { ok: true, cleaned };
+  };
   switch (field) {
     case "phone": {
       const cleaned = cleanText(value, FIELD_LIMITS.phone);
@@ -159,15 +190,15 @@ export function validateProfileField(
     }
     case "firstName":
     case "lastName":
-      return { ok: true, cleaned: cleanText(value, FIELD_LIMITS.name) };
+      return requireNonEmpty(cleanText(value, FIELD_LIMITS.name));
     case "role":
     case "jobTitle":
-      return { ok: true, cleaned: cleanText(value, FIELD_LIMITS.role) };
+      return requireNonEmpty(cleanText(value, FIELD_LIMITS.role));
     case "company":
-      return { ok: true, cleaned: cleanText(value, FIELD_LIMITS.company) };
+      return requireNonEmpty(cleanText(value, FIELD_LIMITS.company));
     case "bio":
     case "summary":
-      return { ok: true, cleaned: cleanMultiline(value, FIELD_LIMITS.bio) };
+      return requireNonEmpty(cleanMultiline(value, FIELD_LIMITS.bio));
     case "achievements":
       return {
         ok: true,
@@ -179,8 +210,9 @@ export function validateProfileField(
       return { ok: true, cleaned: cleanText(value, FIELD_LIMITS.major) };
     case "university":
       return { ok: true, cleaned: cleanText(value, FIELD_LIMITS.university) };
-    case "street":
     case "city":
+      return requireNonEmpty(cleanText(value, FIELD_LIMITS.location));
+    case "street":
     case "state":
     case "country":
       return { ok: true, cleaned: cleanText(value, FIELD_LIMITS.location) };

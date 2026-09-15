@@ -203,4 +203,41 @@ describe("validateProfileField", () => {
     const res = validateProfileField("someFutureField", "  a   b  ");
     expect(res).toEqual({ ok: true, cleaned: "a b" });
   });
+
+  it("rejects an empty value for required fields instead of silently allowing it through", () => {
+    // These are required elsewhere in the app (profileCompletion.ts's own
+    // required set, or EditProfileScreen's `required={!company}` for
+    // sponsors) — clearing one and saving used to go through silently
+    // (ok: true, cleaned: "") with a "Profile updated." success toast, no
+    // indication the save just wiped a field the app actually depends on.
+    for (const field of [
+      "firstName",
+      "lastName",
+      "role",
+      "jobTitle",
+      "bio",
+      "summary",
+      "company",
+      "city",
+    ]) {
+      const res = validateProfileField(field, "   ");
+      expect(res.ok).toBe(false);
+      expect(res.error).toBeTruthy();
+    }
+  });
+
+  it("still allows a non-empty value for every required field", () => {
+    expect(validateProfileField("firstName", "Sarah").ok).toBe(true);
+    expect(validateProfileField("city", "Austin").ok).toBe(true);
+    expect(validateProfileField("company", "Acme").ok).toBe(true);
+  });
+
+  it("street/state/country stay optional even though city (the same field group) is required", () => {
+    for (const field of ["street", "state", "country"]) {
+      expect(validateProfileField(field, "")).toEqual({
+        ok: true,
+        cleaned: "",
+      });
+    }
+  });
 });

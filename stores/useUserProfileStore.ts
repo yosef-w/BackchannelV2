@@ -210,6 +210,18 @@ interface UserProfileStore {
    * Reset to 0 on every successful sync attempt, even a partial one.
    */
   syncFailureCount: number;
+  /**
+   * Count of updateNotificationPreferences calls currently in flight (not
+   * yet resolved either way). notificationPreferences is deliberately NOT
+   * a SyncableField — it PATCHes directly rather than joining the debounced
+   * batch sync (toggles want immediate feedback, not a 2s wait) — so it
+   * needs its own, separate "don't let a fetch clobber this" signal for
+   * fetchFromBackend's merge, mirroring what dirtyFields already does for
+   * every other field. Without it, a launch-time fetchFromBackend() racing
+   * a toggle flipped right after opening the app could silently revert the
+   * toggle's optimistic value back to whatever the server still had.
+   */
+  notificationPreferencesPending: number;
 
   updatePersonal: (data: Partial<AutofillData["personal"]>) => Promise<void>;
   /**
@@ -397,6 +409,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   needsSync: false,
   dirtyFields: new Set<SyncableField>(),
   syncFailureCount: 0,
+  notificationPreferencesPending: 0,
   workEmailVerified: false,
   setWorkEmailVerified: (verified) => set({ workEmailVerified: verified }),
 
@@ -678,7 +691,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
     // Optimistic local update
     const newData = { ...get().data, notificationPreferences: merged };
-    set({ data: newData });
+    set({ data: newData, notificationPreferencesPending: get().notificationPreferencesPending + 1 });
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
@@ -688,6 +701,17 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         error,
       );
     }
+
+    // Wait for any earlier toggle's own PATCH to fully settle before
+    // sending this one — see notificationPrefsQueue's doc comment. `merged`
+    // above was already computed from current state, so it's still correct
+    // by the time this call's turn comes up; nothing here needs redoing.
+    const previousInQueue = notificationPrefsQueue;
+    let releaseQueue!: () => void;
+    notificationPrefsQueue = new Promise((resolve) => {
+      releaseQueue = resolve;
+    });
+    await previousInQueue;
 
     // Direct, targeted PATCH — do NOT go through the full-profile sync queue.
     try {
@@ -716,6 +740,14 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rolledBack));
       } catch {}
       throw error;
+    } finally {
+      set({
+        notificationPreferencesPending: Math.max(
+          0,
+          get().notificationPreferencesPending - 1,
+        ),
+      });
+      releaseQueue();
     }
   },
 
@@ -1181,6 +1213,11 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         autofillData.languages = existing.languages;
       if (dirtyFields.has("achievements"))
         autofillData.achievements = existing.achievements;
+      // notificationPreferences isn't a SyncableField (see its own doc
+      // comment) so it isn't covered by the dirtyFields checks above —
+      // this is its equivalent protection against a concurrent fetch.
+      if (get().notificationPreferencesPending > 0)
+        autofillData.notificationPreferences = existing.notificationPreferences;
 
       set({ data: autofillData, isLoaded: true, lastSyncedAt: new Date() });
 
@@ -1307,6 +1344,22 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
     });
   },
 }));
+
+/**
+ * Serializes updateNotificationPreferences' network calls so two rapid
+ * toggles can never have their PATCH requests race each other over the
+ * network and apply out of order server-side. The endpoint takes a full
+ * replace snapshot, not a delta merge, so if an earlier toggle's (now
+ * stale) request happened to land AFTER a later one's, it would silently
+ * overwrite the later toggle with old data — with both requests reporting
+ * "success" on the client, since each one's OWN PATCH did succeed. Chaining
+ * every call onto this promise guarantees at most one such request is ever
+ * in flight, so they can only ever apply in the order they were made — and
+ * since each call computes its snapshot from CURRENT local state (already
+ * reflecting every earlier queued call's optimistic update), that's
+ * sufficient: no need to recompute anything once it's a given call's turn.
+ */
+let notificationPrefsQueue: Promise<void> = Promise.resolve();
 
 /**
  * Debounced sync helper
