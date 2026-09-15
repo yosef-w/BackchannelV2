@@ -275,14 +275,25 @@ export function HomeView({
   // builds where PREMIUM_ENABLED is false (presentPaywall returns false).
   const isPremium = useSubscriptionStore((state) => state.isPremium);
   const presentPaywall = useSubscriptionStore((state) => state.presentPaywall);
+  // presentPaywall() itself now guards against a concurrent second call
+  // succeeding, but DeckDoneCard's two "Unlock with Premium" buttons had no
+  // disabled/loading state of their own — a fast double-tap dispatched two
+  // calls before either button could react, unlike MarketplaceGateModal's
+  // handleUnlock, which already tracked this locally.
+  const [unlockingPremium, setUnlockingPremium] = useState(false);
 
   // Tapping "Unlock more cards" opens the paywall. On a successful purchase we
   // reset the deck so they can keep swiping immediately. (A larger/unlimited
   // daily allotment for premium users needs backend support — see note in
   // docs/BACKEND_CHANGES_NEEDED.md; for now this returns them to the top.)
   const handleUnlockMoreCards = async () => {
-    const purchased = await presentPaywall();
-    if (purchased) resetNavigation();
+    setUnlockingPremium(true);
+    try {
+      const purchased = await presentPaywall();
+      if (purchased) resetNavigation();
+    } finally {
+      setUnlockingPremium(false);
+    }
   };
 
   const scrollRef = useRef<ScrollView>(null);
@@ -1744,6 +1755,7 @@ export function HomeView({
                 sessionMatches={sessionMatches}
                 isPremium={isPremium}
                 onUnlockMore={handleUnlockMoreCards}
+                unlocking={unlockingPremium}
                 onReviewAgain={resetNavigation}
                 onViewMatches={() =>
                   router.navigate("/(tabs)/matches")

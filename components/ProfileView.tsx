@@ -157,6 +157,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const presentCustomerCenter = useSubscriptionStore(
     (state) => state.presentCustomerCenter,
   );
+  const [isTogglingPremium, setIsTogglingPremium] = useState(false);
   const userProfileData = useUserProfileStore((state) => state.data);
   // Once a sponsor's work email is verified, their Company is locked — they've
   // vouched for that employer, so they can't silently swap it while keeping
@@ -2578,11 +2579,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
           <HubRow
             icon={<Star color="#000" size={16} strokeWidth={2} />}
             label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
+            disabled={isTogglingPremium}
             onPress={async () => {
-              if (isPremium) {
-                await presentCustomerCenter();
-              } else {
-                await presentPaywall();
+              // presentPaywall() itself now guards against a concurrent
+              // second call, but this row had no disabled state of its own
+              // — nothing stopped a fast double-tap from dispatching two
+              // presentCustomerCenter()/presentPaywall() calls before
+              // either had a chance to react.
+              setIsTogglingPremium(true);
+              try {
+                if (isPremium) {
+                  await presentCustomerCenter();
+                } else {
+                  await presentPaywall();
+                }
+              } finally {
+                setIsTogglingPremium(false);
               }
             }}
           />
