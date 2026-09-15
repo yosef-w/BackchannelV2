@@ -254,11 +254,31 @@ describe("failure reporting + scrubbing", () => {
     expect(mockCaptureServerError).not.toHaveBeenCalled();
   });
 
-  it("aborted requests are labeled 'aborted', not 'network'", async () => {
+  it("an AbortError with no caller-supplied signal is labeled 'timeout', not 'network'", async () => {
+    // get() never passes its own signal, so the client always builds its
+    // own default-timeout AbortController for it — any AbortError here can
+    // only mean THAT timeout fired, not a caller's own cancellation.
     const abortErr = new Error("Aborted");
     abortErr.name = "AbortError";
     fetchMock.mockRejectedValueOnce(abortErr);
     await expect(api.get("/api/a/")).rejects.toBe(abortErr);
+    expect(mockTrackApiError).toHaveBeenCalledWith({
+      endpoint: "/api/a/",
+      statusOrReason: "timeout",
+    });
+  });
+
+  it("an AbortError on a caller-supplied signal is labeled 'aborted', not 'timeout'", async () => {
+    // post() accepts a signal — passing one opts this request out of the
+    // client's own default timeout, so an abort here is a real
+    // caller-initiated cancellation, not this client's own timeout firing.
+    const abortErr = new Error("Aborted");
+    abortErr.name = "AbortError";
+    fetchMock.mockRejectedValueOnce(abortErr);
+    const controller = new AbortController();
+    await expect(
+      api.post("/api/a/", undefined, false, controller.signal),
+    ).rejects.toBe(abortErr);
     expect(mockTrackApiError).toHaveBeenCalledWith({
       endpoint: "/api/a/",
       statusOrReason: "aborted",

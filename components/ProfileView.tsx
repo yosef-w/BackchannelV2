@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -71,6 +72,8 @@ import { cancelCheckInNudges } from "@/lib/checkInNudges";
 import { logBreadcrumb, Sentry } from "@/lib/sentry";
 import { validateProfileField } from "@/lib/validation";
 import { checkProfileCompleteness } from "@/utils/profileCompletion";
+import { clearLocalCheckInCache } from "@/utils/checkInStageCache";
+import { clearSponsorRequestCache } from "@/utils/sponsorRequestCache";
 import {
   APPLICANT_PROMPT_CATEGORIES,
   APPLICANT_PROMPT_EXAMPLES,
@@ -141,6 +144,7 @@ interface ProfileInsight {
 
 export function ProfileView({ userType }: ProfileViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Store access - must come before any useMemo that depends on it
   const clearAuth = useAuthStore((state) => state.clearAuth);
@@ -1436,6 +1440,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // previous session bleed into the new user's experience.
     resetJobsStore();
     clearOnboarding();
+    // These three stores were the only things this logout ever reset — the
+    // React Query cache (notifications, matches, referrals, sponsor
+    // requests, waitlisted jobs, unread thread counts — several of them
+    // keyed by role, not by user id) and two AsyncStorage caches (check-in
+    // stage, sponsor-request outcome — both keyed only by referralId/jobId,
+    // no user-scoping at all) were left completely untouched. On a shared
+    // or reused device, the next account to log in would see the previous
+    // account's own data rendered as if it were current and theirs — a
+    // real cross-account privacy leak, not just a stale-cache annoyance.
+    queryClient.clear();
+    await clearLocalCheckInCache();
+    await clearSponsorRequestCache();
     router.replace("/splash");
   };
 
@@ -1464,6 +1480,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // (card index, session likes/matches) from the deleted account.
     resetJobsStore();
     clearOnboarding();
+    // Same cache-leak fix as confirmLogout above, and arguably more
+    // important here — this account is gone for good, so its data
+    // lingering in an unscoped cache for whoever uses this device next is
+    // not just stale, it's the one copy of that data left anywhere.
+    queryClient.clear();
+    await clearLocalCheckInCache();
+    await clearSponsorRequestCache();
     router.replace("/splash");
   };
 

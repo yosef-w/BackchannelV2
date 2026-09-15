@@ -100,6 +100,17 @@ export default function ResetPasswordRoute() {
     // Straight to sign-in, not the splash screen — a user who just reset
     // their password shouldn't have to walk role-selection + onboarding
     // slides again to log back in.
+    //
+    // dismissAll() first — this screen is reached via a deep link and can
+    // sit under choose-role/intro/onboarding (all pushed, not replaced, so
+    // the signup funnel's swipe-back works — see e.g. a user who requested
+    // a reset from onboarding's "already have an account" recovery path).
+    // A plain replace() here only swaps reset-password for sign-in; intro's
+    // cinema film (and its infinite-looping haptic clock) stays mounted
+    // underneath indefinitely — the same bug already fixed at every other
+    // cross-auth-boundary exit point (sign-in.tsx, verify-email.tsx,
+    // onboarding.tsx, splash.tsx), just missed here.
+    router.dismissAll();
     router.replace("/sign-in");
   };
 

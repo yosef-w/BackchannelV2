@@ -260,8 +260,15 @@ export const useAuthStore = create<AuthState>((set) => ({
    * Uses a plain fetch() call directly against the API so we avoid a circular
    * dependency (useAuthStore → authApi → ApiClient → useAuthStore).
    *
-   * Returns true on success; returns false and clears auth if the session has
-   * fully expired.
+   * Returns true on success; returns false otherwise. Auth is only actually
+   * cleared when the refresh token itself is genuinely rejected (401/403) —
+   * a real expiry. Everything else (a network blip, a timeout, a 5xx from
+   * the refresh endpoint, a malformed-but-200 response) fails just this one
+   * attempt and leaves the stored tokens intact, so a request that happened
+   * to need a refresh during a bad connection doesn't force-log-out a user
+   * who's still genuinely authenticated — the previous version treated ANY
+   * failure here, including a plain fetch() throw from being offline, as
+   * full session expiry.
    */
   refreshAccessToken: async () => {
     const { refreshToken } = useAuthStore.getState();
@@ -278,13 +285,25 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
 
       if (!response.ok) {
-        await useAuthStore.getState().clearAuth();
+        if (response.status === 401 || response.status === 403) {
+          // The refresh token itself was rejected — a real expiry.
+          await useAuthStore.getState().clearAuth();
+        } else {
+          console.warn(
+            `[Auth] Token refresh got a transient error (${response.status}) — leaving the session intact for a later retry.`,
+          );
+        }
         return false;
       }
 
       const data = await response.json();
       if (!data?.access) {
-        await useAuthStore.getState().clearAuth();
+        // A 2xx with a missing field reads as a backend hiccup, not proof
+        // the session is invalid (a genuinely rejected refresh token comes
+        // back as 401/403, not 200) — don't clear auth over it.
+        console.warn(
+          "[Auth] Token refresh returned 200 with no access token — leaving the session intact for a later retry.",
+        );
         return false;
       }
 
@@ -292,8 +311,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       await useAuthStore.getState().setAuthTokens(data.access, refreshToken);
       return true;
     } catch (error) {
-      console.warn("[Auth] Token refresh failed:", error);
-      await useAuthStore.getState().clearAuth();
+      // fetch() itself threw — offline, DNS, timeout, TLS blip. Not
+      // evidence the session is invalid; leave auth intact.
+      console.warn(
+        "[Auth] Token refresh request failed (network) — leaving the session intact for a later retry:",
+        error,
+      );
       return false;
     }
   },

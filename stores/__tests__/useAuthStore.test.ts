@@ -6,8 +6,11 @@
  *   2. clearAuth wipes both storage and state
  *   3. loadTokens: absent → unauthenticated; valid → authenticated;
  *      expired-but-refreshable → refreshed before isAuthenticated flips
- *   4. refreshAccessToken: success reuses the refresh token; any failure
- *      (HTTP, malformed body, network) clears auth and returns false
+ *   4. refreshAccessToken: success reuses the refresh token; only a genuine
+ *      401/403 (the refresh token itself rejected) clears auth. Everything
+ *      else that can fail here — a network error, a 5xx, a malformed 200 —
+ *      fails just that attempt and deliberately leaves auth intact, since
+ *      none of those are proof the session is actually invalid.
  */
 
 jest.mock("expo-secure-store", () => {
@@ -174,7 +177,7 @@ describe("refreshAccessToken", () => {
     expect(secureStorage.get("refresh_token")).toBe("ref-1");
   });
 
-  it("clears auth and returns false on an HTTP failure", async () => {
+  it("clears auth and returns false when the refresh token is genuinely rejected (401)", async () => {
     useAuthStore.setState({ refreshToken: "ref-dead", accessToken: "old" });
     fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
 
@@ -183,19 +186,51 @@ describe("refreshAccessToken", () => {
     expect(store().isAuthenticated).toBe(false);
   });
 
-  it("clears auth and returns false when the body has no access token", async () => {
-    useAuthStore.setState({ refreshToken: "ref-1" });
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
-
-    expect(await store().refreshAccessToken()).toBe(false);
-    expect(store().isAuthenticated).toBe(false);
-  });
-
-  it("clears auth and returns false on a network error", async () => {
-    useAuthStore.setState({ refreshToken: "ref-1", accessToken: "old" });
-    fetchMock.mockRejectedValueOnce(new TypeError("Network request failed"));
+  it("clears auth and returns false when the refresh token is genuinely rejected (403)", async () => {
+    useAuthStore.setState({ refreshToken: "ref-dead", accessToken: "old" });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403 });
 
     expect(await store().refreshAccessToken()).toBe(false);
     expect(store().accessToken).toBeNull();
+    expect(store().isAuthenticated).toBe(false);
+  });
+
+  it("leaves auth intact on a transient server error (5xx)", async () => {
+    useAuthStore.setState({
+      refreshToken: "ref-1",
+      accessToken: "old",
+      isAuthenticated: true,
+    });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
+
+    expect(await store().refreshAccessToken()).toBe(false);
+    expect(store().accessToken).toBe("old");
+    expect(store().isAuthenticated).toBe(true);
+  });
+
+  it("leaves auth intact when the body has no access token (not proof of expiry)", async () => {
+    useAuthStore.setState({
+      refreshToken: "ref-1",
+      accessToken: "old",
+      isAuthenticated: true,
+    });
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+
+    expect(await store().refreshAccessToken()).toBe(false);
+    expect(store().accessToken).toBe("old");
+    expect(store().isAuthenticated).toBe(true);
+  });
+
+  it("leaves auth intact on a network error", async () => {
+    useAuthStore.setState({
+      refreshToken: "ref-1",
+      accessToken: "old",
+      isAuthenticated: true,
+    });
+    fetchMock.mockRejectedValueOnce(new TypeError("Network request failed"));
+
+    expect(await store().refreshAccessToken()).toBe(false);
+    expect(store().accessToken).toBe("old");
+    expect(store().isAuthenticated).toBe(true);
   });
 });

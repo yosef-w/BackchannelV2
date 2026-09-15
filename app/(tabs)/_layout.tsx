@@ -131,6 +131,17 @@ export default function TabsLayout() {
     if (!isAuthenticated) {
       const timer = setTimeout(() => {
         console.log("[Shell] Not authenticated, redirecting to splash...");
+        // dismissAll() first — replace() acts on the FOCUSED screen, not
+        // necessarily this (tabs) shell. A deep link reachable while
+        // already authenticated (verify-email, reset-password) can be
+        // pushed on top of (tabs); if the session ends while one of those
+        // is focused, a plain replace() would swap just that pushed screen
+        // for splash and leave the entire authenticated shell — the Tabs
+        // navigator, its notification listeners, the unread-count poll —
+        // mounted underneath, running, instead of torn down. Same bug
+        // class already fixed at every pre-auth exit point, just in the
+        // auth-loss direction instead of the auth-gain direction.
+        router.dismissAll();
         router.replace("/splash");
       }, 800);
       return () => clearTimeout(timer);

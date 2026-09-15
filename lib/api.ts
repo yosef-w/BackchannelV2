@@ -16,6 +16,14 @@ export const API_BASE_URL =
 export const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws");
 
 /**
+ * Default timeout for every request that doesn't supply its own
+ * AbortSignal (see ApiClient.request) — generous enough for normal mobile
+ * network variance and a cold backend query, but bounded so a genuinely
+ * stalled request fails visibly instead of hanging indefinitely.
+ */
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
+/**
  * 🌐 API Client with automatic auth header injection
  */
 class ApiClient {
@@ -120,6 +128,42 @@ class ApiClient {
    * with the new token once the single refresh call resolves, so we never make
    * redundant refresh requests and no caller is silently dropped.
    */
+  /**
+   * Resolves the AbortSignal to use for a fetch(): the caller's own signal
+   * if it supplied one, otherwise a fresh default-timeout controller. A few
+   * endpoints (résumé upload/classify) need much longer, carefully-tuned
+   * budgets and manage their own abort/recovery logic — passing their own
+   * signal opts them out of this default rather than competing with it.
+   * Without this, the large majority of endpoints (get/patch/put/delete,
+   * nearly every call in the app) had no timeout at all and would hang on
+   * whatever the OS's own TCP timeout happens to be if the server stalled —
+   * no error, no Sentry report, the UI's loading state never resolving.
+   * `cleanup()` must run once the request settles either way (success,
+   * HTTP error, or thrown error) so a completed request's timer doesn't
+   * fire late and do nothing, or leak.
+   */
+  private resolveRequestSignal(
+    existingSignal: AbortSignal | null | undefined,
+  ): {
+    signal: AbortSignal | undefined;
+    usingDefaultTimeout: boolean;
+    cleanup: () => void;
+  } {
+    if (existingSignal) {
+      return { signal: existingSignal, usingDefaultTimeout: false, cleanup: () => {} };
+    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      DEFAULT_REQUEST_TIMEOUT_MS,
+    );
+    return {
+      signal: controller.signal,
+      usingDefaultTimeout: true,
+      cleanup: () => clearTimeout(timeoutId),
+    };
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -127,9 +171,13 @@ class ApiClient {
     jsonContentType = true,
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const { signal, usingDefaultTimeout, cleanup } = this.resolveRequestSignal(
+      options.signal,
+    );
 
     const config: RequestInit = {
       ...options,
+      signal,
       headers: {
         ...options.headers,
         ...(skipAuth
@@ -147,14 +195,21 @@ class ApiClient {
       // Network-level failure (offline, DNS, TLS) — never reached the
       // server. Recorded as "network" (breadcrumb + Mixpanel), not a Sentry
       // event: offline is a normal mobile condition and would flood.
+      // "timeout" is its own category (not lumped into "aborted") so a
+      // genuinely slow backend shows up distinctly from a user/caller
+      // deliberately cancelling a request — an AbortError can only mean
+      // OUR timeout fired when we're the ones who created the controller
+      // (usingDefaultTimeout); a caller-supplied signal aborting is a
+      // real cancellation, unrelated to this default.
+      const isAbort = err instanceof Error && err.name === "AbortError";
       this.reportRequestFailure(
         options.method ?? "GET",
         endpoint,
-        err instanceof Error && err.name === "AbortError"
-          ? "aborted"
-          : "network",
+        isAbort ? (usingDefaultTimeout ? "timeout" : "aborted") : "network",
       );
       throw err;
+    } finally {
+      cleanup();
     }
 
     // ── 401 Unauthorized ─────────────────────────────────────────────────────
@@ -178,9 +233,22 @@ class ApiClient {
           this.drainRefreshQueue(newToken);
           return this.retryWithToken<T>(url, options, newToken, jsonContentType);
         } else {
-          // Both tokens are expired. clearAuth() was already called inside
-          // refreshAccessToken, which will drive navigation to the login screen.
-          const err = new Error("Session expired. Please log in again.");
+          // refreshAccessToken only clears auth (isAuthenticated -> false)
+          // when the refresh token itself was genuinely rejected (401/403)
+          // — a real expiry. It can also fail transiently (offline, a 5xx
+          // from the refresh endpoint) while deliberately leaving auth
+          // intact for a later retry; checking isAuthenticated here is what
+          // tells these two apart, since refreshAccessToken's own boolean
+          // return doesn't distinguish them. Conflating them used to mean
+          // a plain network blip during a refresh showed the same "Session
+          // expired, please log in again" as an actual logout.
+          const sessionActuallyExpired =
+            !useAuthStore.getState().isAuthenticated;
+          const err = new Error(
+            sessionActuallyExpired
+              ? "Session expired. Please log in again."
+              : "Couldn't reach the server to refresh your session. Please check your connection and try again.",
+          );
           this.rejectRefreshQueue(err);
           throw err;
         }
@@ -226,15 +294,40 @@ class ApiClient {
     token: string,
     jsonContentType = true,
   ): Promise<T> {
+    // Same default-timeout treatment as request() — this fetch() call was
+    // previously unguarded even when the ORIGINAL call had gone through
+    // the default-timeout path, since retryConfig is rebuilt from the raw
+    // `options` here, not from request()'s own local config.
+    const { signal, usingDefaultTimeout, cleanup } = this.resolveRequestSignal(
+      options.signal,
+    );
     const retryConfig: RequestInit = {
       ...options,
+      signal,
       headers: {
         ...options.headers,
         ...(jsonContentType ? { "Content-Type": "application/json" } : {}),
         Authorization: `Bearer ${token}`,
       },
     };
-    const retryResponse = await fetch(url, retryConfig);
+    const endpointForReporting = url.replace(this.baseUrl, "");
+    let retryResponse: Response;
+    try {
+      retryResponse = await fetch(url, retryConfig);
+    } catch (err) {
+      // Previously uncaught here — a network failure on the post-refresh
+      // retry propagated silently uncounted, unlike the same failure on
+      // the primary request path.
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      this.reportRequestFailure(
+        options.method ?? "GET",
+        endpointForReporting,
+        isAbort ? (usingDefaultTimeout ? "timeout" : "aborted") : "network",
+      );
+      throw err;
+    } finally {
+      cleanup();
+    }
     if (!retryResponse.ok) {
       const rawText = await retryResponse.text().catch(() => "");
       // Parsed error body — shape varies by endpoint, so type just the
@@ -256,7 +349,7 @@ class ApiClient {
       // base URL so grouping matches the primary path's endpoint format.
       this.reportRequestFailure(
         options.method ?? "GET",
-        url.replace(this.baseUrl, ""),
+        endpointForReporting,
         retryResponse.status,
         errorMessage,
       );
@@ -1639,7 +1732,22 @@ export async function uploadProfileImage(formData: FormData): Promise<{
   content_type: string;
   message: string;
 }> {
-  return api.postMultipart("/api/upload/image/", formData);
+  // A photo can still be a few MB even after client-side compression —
+  // give this more headroom than the API client's blanket 30s default
+  // (see DEFAULT_REQUEST_TIMEOUT_MS) so a slow connection doesn't get
+  // treated the same as a genuinely hung request, the same class of issue
+  // already fixed for résumé uploads this session.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60_000);
+  try {
+    return await api.postMultipart(
+      "/api/upload/image/",
+      formData,
+      controller.signal,
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /**
