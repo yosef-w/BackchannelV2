@@ -487,6 +487,13 @@ export function ApplicantJobsBrowseView() {
   const [loadingMore, setLoadingMore] = useState(false);
   // Stale-response guard for the debounced search.
   const searchSeq = useRef(0);
+  // Which query the currently-displayed `jobs` actually reflect. "View
+  // more" appends a page using titleQuery/locationQuery + jobs.length as
+  // the offset — if the user has typed a new query that hasn't debounced
+  // into a fetch yet, jobs.length still belongs to the OLD query, so a tap
+  // there would paginate the NEW query at an offset computed from the OLD
+  // one's results. Gating "View more" on this staying in sync closes that.
+  const [loadedQuery, setLoadedQuery] = useState({ title: "", location: "" });
 
   const loadJobs = async (
     title: string,
@@ -511,6 +518,7 @@ export function ApplicantJobsBrowseView() {
       setJobs((prev) => (isMore ? [...prev, ...live] : live));
       setTotalCount(response.total_count ?? live.length);
       setShowingSamples(false);
+      if (!isMore) setLoadedQuery({ title, location });
     } catch (err) {
       console.warn("[ApplicantJobsBrowseView] Failed to browse jobs:", err);
       if (seq !== searchSeq.current) return;
@@ -589,9 +597,20 @@ export function ApplicantJobsBrowseView() {
       // waitlist" confirmation already shown when reopening a waitlisted
       // job later — see that branch below.
     } else if (requestRes.status === "fulfilled") {
-      // The sponsor request landed but the waitlist half didn't — say so
-      // plainly instead of the clean success copy, since only half the
-      // action actually happened and the badge above won't show waitlisted.
+      // The sponsor request landed but the waitlist half didn't. Skipping
+      // setRequestMessage here entirely (as a first pass at this fix did)
+      // left NEITHER requestMessage NOR waitlistedIds reflecting anything —
+      // the sheet fell back to a fully enabled "Get a Sponsor" button with
+      // only a transient toast as the sole record the request ever landed,
+      // inviting the user to tap it again and fire a second
+      // requestSponsorForJob for the same job. Setting requestMessage (own
+      // copy, not raw backend text) persists that the request itself is
+      // done and flips the sheet to the same "done" footer as the
+      // full-success path, while the toast still calls out that the
+      // waitlist half needs a retry.
+      setRequestMessage(
+        "Sponsor request sent. Reopen this listing to try the waitlist again.",
+      );
       showToast(
         "Sponsor request sent, but we couldn't add you to the waitlist. Try again from this listing.",
         "error",
@@ -628,6 +647,12 @@ export function ApplicantJobsBrowseView() {
   const closeDetail = () => {
     setSelectedJob(null);
     setRequestMessage(null);
+    // gateAction closes over whichever job was selected when the premium
+    // gate was raised. Leaving it set here means the NEXT job's detail
+    // sheet (which reopens the same outer Modal) would immediately show
+    // MarketplaceGateModal again, and completing that gate would fire the
+    // stale closure against this job, not the one the user is now viewing.
+    setGateAction(null);
   };
 
   // Detail-sheet derivations.
@@ -787,7 +812,11 @@ export function ApplicantJobsBrowseView() {
 
         {/* View More — real offset pagination: fetch the next page and
             append rather than refetching a larger window. */}
-        {!loading && !showingSamples && jobs.length < totalCount && (
+        {!loading &&
+          !showingSamples &&
+          jobs.length < totalCount &&
+          titleQuery === loadedQuery.title &&
+          locationQuery === loadedQuery.location && (
           <TouchableOpacity
             style={styles.viewMoreBtn}
             onPress={() =>

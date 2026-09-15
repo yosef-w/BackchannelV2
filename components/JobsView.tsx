@@ -387,6 +387,14 @@ export function JobsView() {
   ) => {
     closeMenu();
     setIsUnsponsoringId(job.id);
+    // Snapshot the sponsoredJobs entry before the optimistic removal below
+    // wipes it — removeMyJob clears the job from BOTH myJobs and
+    // sponsoredJobs, but on failure refreshMyJobs() only re-fetches and
+    // restores myJobs. Without this, a failed unsponsor left the job
+    // correctly back in myJobs yet permanently missing from sponsoredJobs
+    // (green-border tracking on Browse, the sponsoredEntry lookups used
+    // elsewhere in this file) until the next full app reload.
+    const sponsoredSnapshot = sponsoredJobs.find((sj) => sj.jobId === job.id);
     // Optimistic remove from store so the list updates immediately
     removeMyJob(job.id);
     try {
@@ -397,8 +405,10 @@ export function JobsView() {
       queryClient.invalidateQueries({ queryKey: ["matchesScreen"] });
     } catch (err) {
       console.warn("[JobsView] Failed to unsponsor job:", err);
-      // Revert by re-fetching the real list from backend
+      // Revert by re-fetching the real list from backend, and restore the
+      // sponsoredJobs entry refreshMyJobs() alone won't bring back.
       refreshMyJobs(false);
+      if (sponsoredSnapshot) addSponsoredJob(sponsoredSnapshot);
       showToast("Failed to remove sponsorship. Please try again.", "error");
     } finally {
       setIsUnsponsoringId(null);
@@ -984,9 +994,24 @@ export function JobsView() {
           }}
           onRemoveSponsorship={(jobPostingsId, job) => {
             setIsUnsponsoringId(jobPostingsId);
+            // See handleUnsponsor above for why this snapshot matters: on
+            // failure, refreshMyJobs() alone restores myJobs but never
+            // sponsoredJobs, permanently losing the green-border tracking
+            // and sponsoredEntry lookups for this job.
+            const sponsoredSnapshot = sponsoredJobs.find(
+              (sj) => sj.jobId === jobPostingsId,
+            );
             removeMyJob(jobPostingsId);
+            // Read the store's live `jobs` at the moment each of these
+            // fires, not the `jobs` closed over when onRemoveSponsorship was
+            // created — this stays open while the request is in flight
+            // (setViewJobDetails(null) below only closes the detail modal),
+            // and the user can search, paginate, or edit a logo in the
+            // meantime, all of which call setJobs. Using the stale snapshot
+            // here would silently revert whichever of those ran mid-flight
+            // the moment this optimistic update (or its rollback) fires.
             setJobs(
-              jobs.map((j) =>
+              useJobsStore.getState().jobs.map((j) =>
                 j.id === job.id ? { ...j, isSponsored: false } : j,
               ),
             );
@@ -995,6 +1020,12 @@ export function JobsView() {
               .catch((err) => {
                 console.warn("[JobsView] Failed to unsponsor:", err);
                 refreshMyJobs(false);
+                if (sponsoredSnapshot) addSponsoredJob(sponsoredSnapshot);
+                setJobs(
+                  useJobsStore.getState().jobs.map((j) =>
+                    j.id === job.id ? { ...j, isSponsored: true } : j,
+                  ),
+                );
                 showToast(
                   "Failed to remove sponsorship. Please try again.",
                   "error",
