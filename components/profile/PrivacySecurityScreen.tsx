@@ -263,6 +263,16 @@ export function PrivacySecurityScreen({
           visible={visible}
           onClose={handleClose}
           onBack={() => {
+            // Same shared-state concern as handleSendSetupLink's own
+            // comment: setupLinkSending/setupLinkSent are single screen-
+            // level state reused by all three "no password yet" gates
+            // (password/email/delete). Leaving THIS gate while its own
+            // request is in flight, then opening a DIFFERENT gate, used to
+            // show that other gate a spinner/result it never triggered.
+            // Blocking navigation away while sending keeps every gate's
+            // request confined to the screen the user actually triggered
+            // it from.
+            if (setupLinkSending) return;
             setSetupLinkSent(false);
             setStep("main");
           }}
@@ -282,6 +292,14 @@ export function PrivacySecurityScreen({
         visible={visible}
         onClose={handleClose}
         onBack={() => {
+          // Same guard as the Delete step below: resetPasswordFields()
+          // clears passwordError too, and navigating away doesn't cancel
+          // the in-flight changePassword() call — a failure landing after
+          // the user has already backed out to "main" set passwordError on
+          // a step the UI no longer renders, so it went completely
+          // unnoticed (no toast, no visible error) with no way to tell
+          // whether the password actually changed.
+          if (updating) return;
           resetPasswordFields();
           setStep("main");
         }}
@@ -357,6 +375,16 @@ export function PrivacySecurityScreen({
           visible={visible}
           onClose={handleClose}
           onBack={() => {
+            // Same shared-state concern as handleSendSetupLink's own
+            // comment: setupLinkSending/setupLinkSent are single screen-
+            // level state reused by all three "no password yet" gates
+            // (password/email/delete). Leaving THIS gate while its own
+            // request is in flight, then opening a DIFFERENT gate, used to
+            // show that other gate a spinner/result it never triggered.
+            // Blocking navigation away while sending keeps every gate's
+            // request confined to the screen the user actually triggered
+            // it from.
+            if (setupLinkSending) return;
             setSetupLinkSent(false);
             setStep("main");
           }}
@@ -376,6 +404,8 @@ export function PrivacySecurityScreen({
         visible={visible}
         onClose={handleClose}
         onBack={() => {
+          // Same reasoning as the Change Password step's onBack above.
+          if (changingEmail) return;
           resetEmailFields();
           setStep("main");
         }}
@@ -467,6 +497,16 @@ export function PrivacySecurityScreen({
           visible={visible}
           onClose={handleClose}
           onBack={() => {
+            // Same shared-state concern as handleSendSetupLink's own
+            // comment: setupLinkSending/setupLinkSent are single screen-
+            // level state reused by all three "no password yet" gates
+            // (password/email/delete). Leaving THIS gate while its own
+            // request is in flight, then opening a DIFFERENT gate, used to
+            // show that other gate a spinner/result it never triggered.
+            // Blocking navigation away while sending keeps every gate's
+            // request confined to the screen the user actually triggered
+            // it from.
+            if (setupLinkSending) return;
             setSetupLinkSent(false);
             setStep("main");
           }}
@@ -624,7 +664,9 @@ export function PrivacySecurityScreen({
           style={styles.actionRow}
           onPress={() => {
             trackTermsTapped();
-            Linking.openURL(TERMS_URL).catch(() => {});
+            Linking.openURL(TERMS_URL).catch(() =>
+              showToast("Couldn't open that link.", "error"),
+            );
           }}
         >
           <View style={{ flex: 1, marginRight: 12 }}>
@@ -637,7 +679,9 @@ export function PrivacySecurityScreen({
           style={[styles.actionRow, { borderBottomWidth: 0 }]}
           onPress={() => {
             trackPrivacyPolicyTapped();
-            Linking.openURL(PRIVACY_POLICY_URL).catch(() => {});
+            Linking.openURL(PRIVACY_POLICY_URL).catch(() =>
+              showToast("Couldn't open that link.", "error"),
+            );
           }}
         >
           <View style={{ flex: 1, marginRight: 12 }}>
