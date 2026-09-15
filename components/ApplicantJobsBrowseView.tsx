@@ -378,9 +378,20 @@ export function ApplicantJobsBrowseView() {
     if (requestRes.status === "fulfilled" && waitlistRes.status === "fulfilled") {
       setRequestMessage(requestRes.value.message ?? null);
     } else if (requestRes.status === "fulfilled") {
-      // The sponsor request landed but the waitlist half didn't — say so
-      // plainly instead of the clean success copy, since only half the
-      // action actually happened and the badge above won't show waitlisted.
+      // The sponsor request landed but the waitlist half didn't. Skipping
+      // setRequestMessage here entirely (as a first pass at this fix did)
+      // left NEITHER requestMessage NOR waitlistedIds reflecting anything —
+      // the sheet fell back to a fully enabled "Get a Sponsor" button with
+      // only a transient toast as the sole record the request ever landed,
+      // inviting the user to tap it again and fire a second
+      // requestSponsorForJob for the same job. Setting requestMessage (own
+      // copy, not raw backend text) persists that the request itself is
+      // done and flips the sheet to the same "done" footer as the
+      // full-success path, while the toast still calls out that the
+      // waitlist half needs a retry.
+      setRequestMessage(
+        "Sponsor request sent. Reopen this listing to try the waitlist again.",
+      );
       showToast(
         "Sponsor request sent, but we couldn't add you to the waitlist. Try again from this listing.",
         "error",

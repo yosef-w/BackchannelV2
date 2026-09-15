@@ -1002,8 +1002,16 @@ export function JobsView() {
               (sj) => sj.jobId === jobPostingsId,
             );
             removeMyJob(jobPostingsId);
+            // Read the store's live `jobs` at the moment each of these
+            // fires, not the `jobs` closed over when onRemoveSponsorship was
+            // created — this stays open while the request is in flight
+            // (setViewJobDetails(null) below only closes the detail modal),
+            // and the user can search, paginate, or edit a logo in the
+            // meantime, all of which call setJobs. Using the stale snapshot
+            // here would silently revert whichever of those ran mid-flight
+            // the moment this optimistic update (or its rollback) fires.
             setJobs(
-              jobs.map((j) =>
+              useJobsStore.getState().jobs.map((j) =>
                 j.id === job.id ? { ...j, isSponsored: false } : j,
               ),
             );
@@ -1014,7 +1022,7 @@ export function JobsView() {
                 refreshMyJobs(false);
                 if (sponsoredSnapshot) addSponsoredJob(sponsoredSnapshot);
                 setJobs(
-                  jobs.map((j) =>
+                  useJobsStore.getState().jobs.map((j) =>
                     j.id === job.id ? { ...j, isSponsored: true } : j,
                   ),
                 );
