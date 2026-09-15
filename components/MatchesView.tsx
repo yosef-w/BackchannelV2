@@ -392,6 +392,31 @@ export function MatchesView({
   const withdrawTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
+  // Leaving Matches (tab switch, navigating into a thread) during an open
+  // undo window used to just clearTimeout the shared timer implicitly on
+  // remount — with per-referral timers there was no cleanup at all, so N
+  // overlapping undo windows meant N timers left running against an
+  // unmounted component, each eventually setState-ing into thin air and
+  // still firing commitWithdrawReferral late. Committing immediately on
+  // unmount (rather than merely clearing) is the one option that doesn't
+  // leave the backend silently disagreeing with what the optimistic UI
+  // told the user just before they navigated away — the undo affordance
+  // itself is gone the moment this screen isn't visible to act on it.
+  useEffect(() => {
+    // The Map itself is never reassigned (only mutated via set/delete/clear
+    // on the same instance), so capturing it here isn't strictly required
+    // for correctness — done anyway to read as an explicit snapshot rather
+    // than a live .current access inside the cleanup.
+    const timeouts = withdrawTimeoutsRef.current;
+    return () => {
+      for (const [id, timeoutId] of timeouts) {
+        clearTimeout(timeoutId);
+        commitWithdrawReferral(id).catch(() => {});
+      }
+      timeouts.clear();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Which referral the visible undo toast currently belongs to — a ref,
   // not state, since it only needs synchronous reads inside setTimeout
   // closures (a plain state read there would close over whatever the value
@@ -941,7 +966,19 @@ export function MatchesView({
         "error",
       );
     } finally {
-      setWithdrawingReferralId(null);
+      // Same reasoning as the toast/pending-pointer guard just below: with
+      // per-referral timers, multiple withdrawals can now be in flight at
+      // once, so this must only clear the SPINNER/disabled-state marker for
+      // THIS referral — an unconditional clear let whichever commit
+      // finished first wipe another, still-in-flight referral's marker,
+      // silently dropping its spinner and re-enabling its confirm modal
+      // mid-request. Functional-update form, not a closure read of
+      // withdrawingReferralId — commitWithdrawReferral is a plain
+      // per-render function, so a direct read here could itself be stale
+      // by the time this (possibly much later) finally block runs.
+      setWithdrawingReferralId((current) =>
+        current === referralId ? null : current,
+      );
       // Only clear the visible toast/pending-pointer if it's still
       // pointing at THIS referral — a newer withdrawal may have already
       // taken its place as the visible toast, and this (possibly much
@@ -999,6 +1036,15 @@ export function MatchesView({
     );
   };
 
+  // Only ever undoes the MOST RECENT withdrawal — pendingWithdrawReferralIdRef
+  // holds exactly one id, matching the one visible toast. Withdrawing B while
+  // A's window is still open replaces the ref (and the toast) with B; A's own
+  // timer is untouched and commits for real on schedule per the Map above,
+  // with no further UI affordance to catch it. This is a deliberate,
+  // accepted tradeoff (each withdrawal really is independently correct
+  // server-side now, which is the fix this branch is actually about) rather
+  // than a bug to close here — a stacked-toast/per-row undo UI would be a
+  // real feature addition, not a fix, and is left for a future pass.
   const handleUndoWithdraw = () => {
     const referralId = pendingWithdrawReferralIdRef.current;
     if (referralId) {
