@@ -130,7 +130,14 @@ export function SponsorCinema({
   useEffect(() => {
     trackIntroFilmViewed('sponsor');
   }, []);
+  // Same guard as IntroCinema's dismiss — none of the exits disable
+  // themselves, so a fast double-tap (or Skip immediately followed by the
+  // CTA) could independently fire onContinue()/onSignIn()/onBack() twice,
+  // stacking a duplicate screen on the nav stack.
+  const dismissedRef = useRef(false);
   const dismiss = (action: 'skip' | 'cta' | 'sign_in' | 'back') => {
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
     const watchMs = Date.now() - mountedAt.current;
     trackIntroFilmDismissed({
       role: 'sponsor',
