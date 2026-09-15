@@ -12,6 +12,12 @@ interface DeckDoneCardProps {
   sessionLikes: number;
   sessionMatches: number;
   isPremium: boolean;
+  /** True while a presentPaywall() call from this card is in flight — the
+   * store itself now guards against a concurrent second call succeeding,
+   * but these buttons had no disabled/loading state of their own at all,
+   * so a fast double-tap could still dispatch two presentPaywall() calls
+   * (the second just a no-op) with zero visual feedback either way. */
+  unlocking?: boolean;
   onUnlockMore: () => void;
   onReviewAgain: () => void;
   /** Deep-link to the Matches tab — turns the recap numbers into doors. */
@@ -41,6 +47,7 @@ export function DeckDoneCard({
   sessionLikes,
   sessionMatches,
   isPremium,
+  unlocking = false,
   onUnlockMore,
   onReviewAgain,
   onViewMatches,
@@ -155,8 +162,9 @@ export function DeckDoneCard({
       ) : (
         showUpsell && (
           <TouchableOpacity
-            style={styles.unlockCta}
+            style={[styles.unlockCta, unlocking && styles.unlockCtaDisabled]}
             onPress={onUnlockMore}
+            disabled={unlocking}
             activeOpacity={0.85}
           >
             <Text style={styles.unlockCtaText}>Unlock with Premium</Text>
@@ -169,6 +177,7 @@ export function DeckDoneCard({
         <TouchableOpacity
           style={styles.secondary}
           onPress={onUnlockMore}
+          disabled={unlocking}
           activeOpacity={0.7}
         >
           <Lock color={Colors.ink} size={15} strokeWidth={2.2} />
@@ -353,6 +362,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
+  },
+  unlockCtaDisabled: {
+    opacity: 0.6,
   },
   unlockCtaText: {
     fontFamily: Fonts.sansSemiBold,

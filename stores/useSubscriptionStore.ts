@@ -198,6 +198,16 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   presentPaywall: async (): Promise<boolean> => {
     if (!PREMIUM_ENABLED) return false;
+    // Guard lives here instead of in each caller so every entry point gets
+    // it for free — MarketplaceGateModal already had its own local
+    // `purchasing` state to prevent a double-tap presenting the native
+    // paywall UI twice concurrently, but HomeView's deck-done "Unlock with
+    // Premium" CTA and ProfileView's "Upgrade to Pro" row both called this
+    // directly with no such guard of their own. isLoading is already
+    // documented as "true while an async RC operation is in flight" — this
+    // was the one RC operation that didn't actually set it.
+    if (get().isLoading) return false;
+    set({ isLoading: true });
     try {
       const result = await RevenueCatUI.presentPaywall();
       switch (result) {
@@ -220,6 +230,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     } catch (err) {
       console.warn("[Subscription] presentPaywall failed:", err);
       return false;
+    } finally {
+      set({ isLoading: false });
     }
   },
 

@@ -14,6 +14,10 @@ interface HubRowProps {
   /** Tints label + icon red for destructive rows (e.g. Log Out). */
   destructive?: boolean;
   isLast?: boolean;
+  /** Disables the row and dims it — for an async onPress that shouldn't be
+   * re-entrant (e.g. presenting the RevenueCat paywall) while a previous
+   * tap is still in flight. */
+  disabled?: boolean;
 }
 
 /**
@@ -30,11 +34,17 @@ export function HubRow({
   badgeCount,
   destructive,
   isLast,
+  disabled,
 }: HubRowProps) {
   return (
     <TouchableOpacity
-      style={[styles.row, !isLast && styles.rowDivider]}
+      style={[
+        styles.row,
+        !isLast && styles.rowDivider,
+        disabled && styles.rowDisabled,
+      ]}
       onPress={onPress}
+      disabled={disabled}
       activeOpacity={0.7}
     >
       <View style={[styles.iconTile, destructive && styles.iconTileDestructive]}>
@@ -70,6 +80,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   rowDivider: {},
+  rowDisabled: { opacity: 0.5 },
   iconTile: {
     width: 24,
     alignItems: "center",
