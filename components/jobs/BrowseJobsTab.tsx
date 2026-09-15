@@ -19,7 +19,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { JobCard } from "./JobCard";
 import { JobsEmptyState } from "./JobsEmptyState";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Fonts, Type } from "@/constants/theme";
 
 interface BrowseJobsTabProps {
   jobs: Job[];
@@ -377,7 +377,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 12,
   },
-  searchInput: { flex: 1, fontSize: 15, fontWeight: "500", color: Colors.ink },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    color: Colors.ink,
+    // The wrap owns the height — zero the input's own padding and pin
+    // vertical centering (see AndroidInputFix's doc comment).
+    paddingVertical: 0,
+    ...AndroidInputFix,
+  },
   noMatchesWrap: { paddingVertical: 32, alignItems: "center" },
   noMatchesText: { fontSize: 14, color: Colors.muted, fontWeight: "600" },
   // Quiet centered link — the ledger's "there is more" note.

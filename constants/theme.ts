@@ -128,3 +128,29 @@ export const Type = {
     fontSize: 12,
   },
 } as const;
+
+/**
+ * Spread into every single-line TextInput's style. Android reserves extra
+ * vertical space for font ascent/descent by default (`includeFontPadding`)
+ * and has no built-in vertical centering without `textAlignVertical` —
+ * without both, a single-line input in a height-constrained box renders its
+ * text/placeholder pushed down, clipping at the bottom in tight cases. Both
+ * properties are Android-only and harmless no-ops on iOS, so this is safe
+ * to apply unconditionally rather than platform-branching at each call site.
+ *
+ * This was independently discovered and fixed the same way in ~7 different
+ * screens before being pulled out here (see PromptsIntake.tsx's and
+ * ApplicantJobsBrowseView.tsx's searchInput for two of the original finds) —
+ * new single-line inputs should spread this instead of re-deriving it.
+ *
+ * Deliberately doesn't set `paddingVertical` — some inputs are centered by
+ * an owning wrapper's fixed height (set `paddingVertical: 0` on the input
+ * in that case) and others own their own vertical padding directly; this
+ * fix is correct either way, so it stays out of callers' padding decisions.
+ * NOT for multiline inputs — those want `textAlignVertical: "top"` instead,
+ * which this would override.
+ */
+export const AndroidInputFix = {
+  textAlignVertical: "center" as const,
+  includeFontPadding: false,
+};

@@ -28,7 +28,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
-import { Colors, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Type } from "@/constants/theme";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
@@ -742,7 +742,15 @@ const styles = StyleSheet.create({
     height: 48,
     marginBottom: 20,
   },
-  input: { flex: 1, fontSize: 15, color: "#000" },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: "#000",
+    // The wrapper owns the height — zero the input's own padding and pin
+    // vertical centering (see AndroidInputFix's doc comment).
+    paddingVertical: 0,
+    ...AndroidInputFix,
+  },
   errorText: {
     fontSize: 13,
     color: Colors.danger,

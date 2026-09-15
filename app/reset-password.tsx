@@ -36,7 +36,7 @@ import {
     trackResetPasswordSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
-import { Colors, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Type } from "@/constants/theme";
 
 type Status = "form" | "missingToken" | "success";
 
@@ -277,6 +277,9 @@ const styles = StyleSheet.create({
     height: 50,
     fontSize: 15,
     color: "#000",
+    // Fixed height with no separate wrapper — pin vertical centering
+    // directly (see AndroidInputFix's doc comment).
+    ...AndroidInputFix,
   },
   errorText: {
     fontSize: 13,
