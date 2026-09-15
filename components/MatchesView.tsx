@@ -379,12 +379,32 @@ export function MatchesView({
   const [confirmingWithdrawReferral, setConfirmingWithdrawReferral] =
     useState<Referral | null>(null);
   const [undoToastVisible, setUndoToastVisible] = useState(false);
-  const [pendingWithdrawReferralId, setPendingWithdrawReferralId] = useState<
-    string | null
-  >(null);
   const [pendingWithdrawApplicantName, setPendingWithdrawApplicantName] =
     useState<string>("");
-  const withdrawTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Each referral's undo-delay commit timer, tracked independently by id —
+  // NOT a single shared timer. Withdrawing referral B while referral A's 6s
+  // undo window is still open used to clearTimeout the one shared timer
+  // (which was A's pending commit) and reschedule it for B only, so A's
+  // real withdrawReferral() call never fired: the UI kept showing A as
+  // withdrawn forever while the backend still had it as REFERRED, with no
+  // error and no way to notice. A Map lets every pending withdrawal commit
+  // on its own schedule regardless of how many others are also pending.
+  const withdrawTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
+  // Which referral the visible undo toast currently belongs to — a ref,
+  // not state, since it only needs synchronous reads inside setTimeout
+  // closures (a plain state read there would close over whatever the value
+  // was when THAT timer was created — stale the moment a later withdrawal
+  // replaces it as the visible toast) and is never itself read in render
+  // (pendingWithdrawApplicantName + undoToastVisible drive what's shown).
+  // Only one toast shows at a time, but every referral's own commit still
+  // happens independently regardless of which one currently owns it.
+  const pendingWithdrawReferralIdRef = useRef<string | null>(null);
+  const setPendingWithdraw = (id: string | null, name = "") => {
+    pendingWithdrawReferralIdRef.current = id;
+    setPendingWithdrawApplicantName(name);
+  };
   const showToast = useToastStore((state) => state.showToast);
   const queryClient = useQueryClient();
 
@@ -893,6 +913,21 @@ export function MatchesView({
     try {
       await withdrawReferral(referralId);
       trackReferralWithdrawn({ referralId });
+      // Re-assert WITHDRAWN now that it's actually confirmed, rather than
+      // trusting the optimistic patch from handleConfirmWithdrawWithUndo to
+      // still be intact. Anything that invalidates matchesScreenKeys.root
+      // during the 6s undo window (pull-to-refresh, connecting with a
+      // different applicant, etc.) refetches referrals from the server —
+      // which still shows REFERRED until this exact call lands — and that
+      // refetch silently overwrites the optimistic WITHDRAWN back to
+      // REFERRED with nothing to correct it afterward. Re-patching here
+      // (now backend-confirmed, not just optimistic) fixes the display
+      // regardless of whatever a concurrent refetch did in between.
+      patchReferrals((prev) =>
+        prev.map((r) =>
+          r.referralId === referralId ? { ...r, status: "WITHDRAWN" } : r,
+        ),
+      );
     } catch (err) {
       console.warn("[MatchesView] Failed to withdraw referral:", err);
       // Revert the optimistic update on error
@@ -907,9 +942,14 @@ export function MatchesView({
       );
     } finally {
       setWithdrawingReferralId(null);
-      setPendingWithdrawReferralId(null);
-      setPendingWithdrawApplicantName("");
-      setUndoToastVisible(false);
+      // Only clear the visible toast/pending-pointer if it's still
+      // pointing at THIS referral — a newer withdrawal may have already
+      // taken its place as the visible toast, and this (possibly much
+      // later, per-referral) commit finishing must not yank that away.
+      if (pendingWithdrawReferralIdRef.current === referralId) {
+        setPendingWithdraw(null);
+        setUndoToastVisible(false);
+      }
     }
   };
 
@@ -930,38 +970,51 @@ export function MatchesView({
       ),
     );
 
-    // Show the undo toast
-    setPendingWithdrawReferralId(referralId);
-    setPendingWithdrawApplicantName(applicantName);
+    // The visible toast always reflects the most recently withdrawn
+    // referral — only one shows at a time — but every referral's own
+    // commit timer below is tracked independently by id (see
+    // withdrawTimeoutsRef's comment), so withdrawing a second referral
+    // while an earlier one's undo window is still open no longer cancels
+    // the earlier one's real commit.
+    setPendingWithdraw(referralId, applicantName);
     setUndoToastVisible(true);
 
-    // Clear any previous timer and schedule the actual API call after 6s
-    if (withdrawTimeoutRef.current) {
-      clearTimeout(withdrawTimeoutRef.current);
-    }
-    withdrawTimeoutRef.current = setTimeout(() => {
-      setUndoToastVisible(false);
-      commitWithdrawReferral(referralId);
-    }, 6000);
+    // If THIS SAME referral already had a pending timer (withdraw → undo
+    // → withdraw again, fast), replace only that one — never anyone else's.
+    const existingTimeout = withdrawTimeoutsRef.current.get(referralId);
+    if (existingTimeout) clearTimeout(existingTimeout);
+
+    withdrawTimeoutsRef.current.set(
+      referralId,
+      setTimeout(() => {
+        withdrawTimeoutsRef.current.delete(referralId);
+        // Same "still the current one" guard as commitWithdrawReferral's
+        // finally block — don't hide a newer toast that's since replaced
+        // this one.
+        if (pendingWithdrawReferralIdRef.current === referralId) {
+          setUndoToastVisible(false);
+        }
+        commitWithdrawReferral(referralId);
+      }, 6000),
+    );
   };
 
   const handleUndoWithdraw = () => {
-    if (withdrawTimeoutRef.current) {
-      clearTimeout(withdrawTimeoutRef.current);
-      withdrawTimeoutRef.current = null;
-    }
-    // Revert optimistic update
-    if (pendingWithdrawReferralId) {
+    const referralId = pendingWithdrawReferralIdRef.current;
+    if (referralId) {
+      const timeoutId = withdrawTimeoutsRef.current.get(referralId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        withdrawTimeoutsRef.current.delete(referralId);
+      }
+      // Revert optimistic update
       patchReferrals((prev) =>
         prev.map((r) =>
-          r.referralId === pendingWithdrawReferralId
-            ? { ...r, status: "REFERRED" }
-            : r,
+          r.referralId === referralId ? { ...r, status: "REFERRED" } : r,
         ),
       );
     }
-    setPendingWithdrawReferralId(null);
-    setPendingWithdrawApplicantName("");
+    setPendingWithdraw(null);
     setUndoToastVisible(false);
   };
 
