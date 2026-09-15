@@ -274,6 +274,13 @@ export function ApplicantJobsBrowseView() {
   const [loadingMore, setLoadingMore] = useState(false);
   // Stale-response guard for the debounced search.
   const searchSeq = useRef(0);
+  // Which query the currently-displayed `jobs` actually reflect. "View
+  // more" appends a page using titleQuery/locationQuery + jobs.length as
+  // the offset — if the user has typed a new query that hasn't debounced
+  // into a fetch yet, jobs.length still belongs to the OLD query, so a tap
+  // there would paginate the NEW query at an offset computed from the OLD
+  // one's results. Gating "View more" on this staying in sync closes that.
+  const [loadedQuery, setLoadedQuery] = useState({ title: "", location: "" });
 
   const loadJobs = async (
     title: string,
@@ -298,6 +305,7 @@ export function ApplicantJobsBrowseView() {
       setJobs((prev) => (isMore ? [...prev, ...live] : live));
       setTotalCount(response.total_count ?? live.length);
       setShowingSamples(false);
+      if (!isMore) setLoadedQuery({ title, location });
     } catch (err) {
       console.warn("[ApplicantJobsBrowseView] Failed to browse jobs:", err);
       if (seq !== searchSeq.current) return;
@@ -353,14 +361,30 @@ export function ApplicantJobsBrowseView() {
   const handleRequestSponsor = async (job: BrowseJobResponse) => {
     setIsRequesting(true);
     setRequestMessage(null);
-    const [requestRes] = await Promise.allSettled([
+    const [requestRes, waitlistRes] = await Promise.allSettled([
       requestSponsorForJob(job.JOB_ID),
       joinWaitlist(job.JOB_ID),
     ]);
     setIsRequesting(false);
-    setWaitlistedIds((prev) => new Set([...prev, job.JOB_ID]));
-    if (requestRes.status === "fulfilled") {
+
+    // Only mark the job waitlisted when that call actually succeeded —
+    // this used to fire unconditionally, so a failed joinWaitlist still
+    // showed the "WAITLISTED" badge on the card even though the applicant
+    // was never actually queued.
+    if (waitlistRes.status === "fulfilled") {
+      setWaitlistedIds((prev) => new Set([...prev, job.JOB_ID]));
+    }
+
+    if (requestRes.status === "fulfilled" && waitlistRes.status === "fulfilled") {
       setRequestMessage(requestRes.value.message ?? null);
+    } else if (requestRes.status === "fulfilled") {
+      // The sponsor request landed but the waitlist half didn't — say so
+      // plainly instead of the clean success copy, since only half the
+      // action actually happened and the badge above won't show waitlisted.
+      showToast(
+        "Sponsor request sent, but we couldn't add you to the waitlist. Try again from this listing.",
+        "error",
+      );
     } else {
       showToast(
         "Couldn't send the request right now. Please try again.",
@@ -392,6 +416,12 @@ export function ApplicantJobsBrowseView() {
   const closeDetail = () => {
     setSelectedJob(null);
     setRequestMessage(null);
+    // gateAction closes over whichever job was selected when the premium
+    // gate was raised. Leaving it set here means the NEXT job's detail
+    // sheet (which reopens the same outer Modal) would immediately show
+    // MarketplaceGateModal again, and completing that gate would fire the
+    // stale closure against this job, not the one the user is now viewing.
+    setGateAction(null);
   };
 
   // Detail-sheet derivations.
@@ -587,7 +617,11 @@ export function ApplicantJobsBrowseView() {
 
         {/* View More — real offset pagination: fetch the next page and
             append rather than refetching a larger window. */}
-        {!loading && !showingSamples && jobs.length < totalCount && (
+        {!loading &&
+          !showingSamples &&
+          jobs.length < totalCount &&
+          titleQuery === loadedQuery.title &&
+          locationQuery === loadedQuery.location && (
           <TouchableOpacity
             style={styles.viewMoreBtn}
             onPress={() =>
