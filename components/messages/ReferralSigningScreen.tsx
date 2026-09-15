@@ -415,6 +415,13 @@ export function ReferralSigningScreen({
             : 0;
 
   const handleSubmit = async () => {
+    // Re-entrancy guard: the fallback "Sign & Submit" button had no
+    // disabled/loading state tied to this, so a double-tap (or the
+    // SignatureCanvas's onComplete firing alongside a fallback tap) could
+    // fire submitReferral twice concurrently — the second landing as a
+    // confusing "referral already exists" error for an action the user
+    // only took once.
+    if (submitting) return;
     const applicantUserId = conversation.otherParticipant?.id;
     const jobId = conversation.jobContext?.jobId;
     if (!applicantUserId || !jobId) {
@@ -486,7 +493,20 @@ export function ReferralSigningScreen({
   const StatementIcon = statement.icon;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      // Android hardware back maps straight to onClose regardless of which
+      // act is showing or what the header's own back button would do —
+      // previously this let a back-button press dismiss the whole screen
+      // while handleSubmit's request was still in flight. The submit isn't
+      // cancelled by leaving, so it can still succeed in the background;
+      // reopening this screen later (not knowing it already went through)
+      // then hits a confusing "referral already exists" error on the
+      // second attempt. No-op while submitting, matching the header
+      // button's own guard below.
+      onRequestClose={submitting ? () => {} : onClose}
+    >
       <View style={[styles.root, dark && styles.rootDark]}>
         <SafeAreaView style={styles.safe}>
           {/* ── Header: escape/back + thin progress + ⓘ ── */}
@@ -494,6 +514,11 @@ export function ReferralSigningScreen({
             <View style={styles.header}>
               <TouchableOpacity
                 onPress={() => {
+                  // Same reasoning as the Modal's onRequestClose above:
+                  // stepping back to "vouch" mid-submit would leave the
+                  // in-flight request's eventual setAct("receipt") landing
+                  // on a screen the user thinks they'd backed out of.
+                  if (submitting) return;
                   if (act === "vouch") {
                     if (statementIndex > 0)
                       setStatementIndex(statementIndex - 1);
@@ -504,6 +529,7 @@ export function ReferralSigningScreen({
                     onClose();
                   }
                 }}
+                disabled={submitting}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityLabel={
                   act === "vouch" || act === "sign" ? "Back" : "Close"

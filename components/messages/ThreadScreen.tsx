@@ -20,7 +20,7 @@ import {
   User,
   UserCheck,
 } from "@/components/ui/icons";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Image,
   Keyboard,
@@ -245,6 +245,13 @@ export function ThreadScreen({
   };
   const [showReferralFlow, setShowReferralFlow] = useState(false);
   const [messageText, setMessageText] = useState("");
+  // Mirrors messageText so onSend's failure path can check what's in the
+  // input AFTER an in-flight send resolves, without the stale closure
+  // value it would get from `messageText` captured at call time.
+  const messageTextRef = useRef("");
+  useEffect(() => {
+    messageTextRef.current = messageText;
+  }, [messageText]);
   const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
   const [showUnmatchMenu, setShowUnmatchMenu] = useState(false);
   const [isUnmatching, setIsUnmatching] = useState(false);
@@ -260,7 +267,21 @@ export function ThreadScreen({
     if (!trimmed || sendingMessage) return;
     setMessageText("");
     const ok = await handleSendMessage(trimmed);
-    if (!ok) setMessageText(trimmed);
+    if (!ok) {
+      // Restoring the failed text unconditionally would clobber a NEW
+      // draft the user already started typing while this send was still
+      // in flight. Only restore it when the input is still exactly what
+      // we left it in (empty) — otherwise leave their newer draft alone
+      // and just tell them the earlier one didn't make it.
+      if (messageTextRef.current === "") {
+        setMessageText(trimmed);
+      } else {
+        showToast(
+          "Your earlier message didn't send. It wasn't restored since you'd already started a new one.",
+          "error",
+        );
+      }
+    }
   };
 
   const handleUnmatch = async () => {
@@ -285,12 +306,10 @@ export function ThreadScreen({
     } catch (err) {
       console.warn("[ThreadScreen] Failed to unmatch:", err);
       setShowUnmatchMenu(false);
-      showToast(
-        err instanceof Error
-          ? err.message
-          : "Failed to unmatch. Please try again.",
-        "error",
-      );
+      // Never surface the raw backend message here — it's arbitrary length
+      // and the toast clips at 3 lines (AppToast.tsx), so a longer one cuts
+      // off mid-sentence with no indication anything was hidden.
+      showToast("Failed to unmatch. Please try again.", "error");
     } finally {
       setIsUnmatching(false);
     }
@@ -306,14 +325,26 @@ export function ThreadScreen({
     )?.otherParticipant?.id;
     setIsReporting(true);
     try {
+      // reportUser() swallows its own failure and resolves to false rather
+      // than throwing (see its doc comment in lib/api.ts) — so this can't
+      // be trusted to have succeeded just because it didn't throw. Only
+      // fire the analytics event, and only claim "Reported" in the exit
+      // toast, when it actually reports true.
+      let reportSucceeded = false;
       if (reportedUserId) {
-        await reportUser({
+        reportSucceeded = await reportUser({
           reportedUserId: String(reportedUserId),
           reason,
           detail: detail.trim() || undefined,
           conversationId: selectedConversation,
         });
-        trackUserReported({ reason, fromConversation: true });
+        if (reportSucceeded) {
+          trackUserReported({ reason, fromConversation: true });
+        } else {
+          console.warn(
+            "[ThreadScreen] reportUser resolved false; closing conversation anyway",
+          );
+        }
       }
       await unmatchConversation(selectedConversation);
       setConversations((prev) =>
@@ -325,16 +356,18 @@ export function ThreadScreen({
       );
       setShowUnmatchMenu(false);
       handleConversationSelect(null);
-      showToast("Reported. This conversation has been closed.", "success");
+      showToast(
+        reportSucceeded
+          ? "Reported. This conversation has been closed."
+          : "This conversation has been closed, but we couldn't record your report. Please try again later.",
+        reportSucceeded ? "success" : "error",
+      );
     } catch (err) {
       console.warn("[ThreadScreen] Failed to close reported conversation:", err);
       setShowUnmatchMenu(false);
-      showToast(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.",
-        "error",
-      );
+      // Never surface the raw backend message — see the matching note in
+      // handleUnmatch's catch above.
+      showToast("Something went wrong. Please try again.", "error");
     } finally {
       setIsReporting(false);
     }

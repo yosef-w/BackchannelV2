@@ -18,6 +18,7 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+    AppState,
     Dimensions,
     Keyboard,
     Pressable,
@@ -411,6 +412,26 @@ export function MessagesView({
     await refetchConversations();
   };
 
+  // Freshness on foreground, independent of the inbox WebSocket's own
+  // reconnect logic. That logic only refreshes once ITS onclose/reconnect
+  // cycle actually fires — but backgrounding the app can suspend the socket
+  // (and the JS timers driving its reconnect backoff) without ever
+  // delivering a close event, so returning to the app could otherwise sit
+  // on an arbitrarily stale conversations list/unread badges until the
+  // socket layer eventually notices on its own. staleTime: Infinity on the
+  // query means nothing else would trigger a refetch either. This is a
+  // second, independent trigger that doesn't depend on the socket noticing
+  // anything at all.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" && currentUserId) {
+        refreshConversations(true);
+      }
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
   const loadMoreConversations = async () => {
     if (isLoadingMore || conversations.length >= conversationsTotalCount)
       return;
@@ -456,8 +477,8 @@ export function MessagesView({
           limit: 100,
         });
         if (cancelled) return;
-        setMessages((prev) =>
-          response.messages.reduce(
+        setMessages((prev) => {
+          const merged = response.messages.reduce(
             (acc, msg) =>
               mergeIncomingMessage(acc, {
                 id: msg.MESSAGE_ID,
@@ -466,8 +487,19 @@ export function MessagesView({
                 createdAt: msg.CREATED_AT,
               }),
             prev,
-          ),
-        );
+          );
+          // mergeIncomingMessage only ever appends genuinely-new history to
+          // the end — but catch-up history can include messages the OTHER
+          // party sent (and the server timestamped) before an optimistic
+          // temp message this device queued while the socket was down. That
+          // temp message already sits later in `prev`, so appending catch-up
+          // history after it can leave the thread out of chronological
+          // order until the next full refetch silently fixes it. Cheap to
+          // just always re-sort by timestamp after a merge.
+          return [...merged].sort(
+            (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
+          );
+        });
       } catch (err) {
         console.warn("[MessagesView] Reconnect catch-up fetch failed:", err);
       }
@@ -797,9 +829,11 @@ export function MessagesView({
         }
       } catch (err) {
         console.warn("[MessagesView] Failed to fetch messages:", err);
-        setMessagesError(
-          err instanceof Error ? err.message : "Failed to fetch messages",
-        );
+        // A fixed, friendly string — ThreadScreen renders this verbatim as
+        // user-facing copy with no length cap, so it must never be the raw
+        // backend/network error text (which could be arbitrarily long,
+        // technical, or just ugly).
+        setMessagesError("We couldn't load this conversation. Please try again.");
       } finally {
         setMessagesLoading(false);
       }
