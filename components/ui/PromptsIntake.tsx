@@ -24,7 +24,7 @@ import {
 } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import type { PromptCategory } from "@/constants/prompts";
-import { Colors, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Type } from "@/constants/theme";
 
 export interface PromptAnswer {
   question: string;
@@ -480,11 +480,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000",
     fontWeight: "500",
-    // Kill the platform's default vertical padding so the text/placeholder sits
-    // centered in the field instead of dropping low / getting clipped.
     paddingVertical: 0,
-    includeFontPadding: false,
-    textAlignVertical: "center",
+    ...AndroidInputFix,
   },
   sheetScroll: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 40 },
   category: { marginBottom: 24 },

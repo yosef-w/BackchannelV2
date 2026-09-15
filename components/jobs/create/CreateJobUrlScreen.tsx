@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { useKeyboardVisible } from "./useKeyboardVisible";
-import { Colors, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Type } from "@/constants/theme";
 
 interface CreateJobUrlScreenProps {
   visible: boolean;
@@ -202,12 +202,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.ink,
     fontWeight: "500",
-    // Android pads single-line text with extra font-metric space by
-    // default, pushing text/placeholder visibly below center — kill it and
-    // force vertical centering explicitly instead of relying on padding.
     paddingVertical: 0,
-    includeFontPadding: false,
-    textAlignVertical: "center",
+    ...AndroidInputFix,
   },
   hint: {
     fontSize: 13,
