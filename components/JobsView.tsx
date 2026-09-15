@@ -131,6 +131,15 @@ export function JobsView() {
   const suggestionsForCompany = useRef<string | null>(null);
 
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  // Mirrors selectedJob for handleConfirmSponsorship's post-await check —
+  // that function is a plain per-render closure, so reading `selectedJob`
+  // directly after an `await` would always see THIS render's captured
+  // value regardless of what the user did in the meantime. This ref gives
+  // it a way to read the truly-current value instead.
+  const selectedJobRef = useRef<JobPosting | null>(null);
+  useEffect(() => {
+    selectedJobRef.current = selectedJob;
+  }, [selectedJob]);
   const [viewJobDetails, setViewJobDetails] = useState<JobPosting | null>(null);
 
   const [menuJob, setMenuJob] = useState<JobPosting | null>(null);
@@ -537,6 +546,17 @@ export function JobsView() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [published, setPublished] = useState(false);
+  // Bumped on every open AND close of the create-job flow. handlePublishJob
+  // snapshots this at call time and checks it after the await — closing
+  // the flow (header X/back, none of them check isCreatingJob) doesn't
+  // cancel the in-flight createJobFromUrl request, so the user could close
+  // and reopen the flow to submit a SECOND, different job while the first
+  // is still publishing. Without this, whichever response landed last
+  // would unconditionally setPublished(true), potentially flipping the
+  // CURRENT (second) flow session to its success screen for a job it
+  // never actually submitted, or duplicating a job post the user believed
+  // they'd cancelled.
+  const createModalGenerationRef = useRef(0);
 
   const handleOpenModal = (job: JobPosting) => {
     setSelectedJob(job);
@@ -560,6 +580,11 @@ export function JobsView() {
       console.warn("[JobsView] Missing required sponsorship data");
       return;
     }
+    // Snapshot which job this specific call is for — closeModal doesn't
+    // cancel this request, so the user can dismiss the sheet (swipe,
+    // backdrop, header X — none of them check isSponsoring) and open it
+    // again for a DIFFERENT job while this one is still in flight.
+    const jobIdAtStart = selectedJob.id;
 
     try {
       setIsSponsoring(true);
@@ -617,8 +642,15 @@ export function JobsView() {
       // Refresh "My Sponsored" list in background so badge + tab are instantly current
       refreshMyJobs(false);
 
-      // Move to success step
-      setSponsorshipStep(3);
+      // Only jump the UI to the success step if the sheet is still showing
+      // THIS job — otherwise the user has already dismissed it and opened
+      // it again for a different job, and this (now-late) success would
+      // otherwise yank their current view to a celebration screen for a
+      // job they never actually confirmed sponsoring, captioned with
+      // whatever job happens to be selected now.
+      if (selectedJobRef.current?.id === jobIdAtStart) {
+        setSponsorshipStep(3);
+      }
     } catch (err) {
       console.warn("[JobsView] Failed to sponsor job:", err);
       // You could show an error message to the user here
@@ -629,18 +661,23 @@ export function JobsView() {
   };
 
   const openCreateModal = () => {
+    createModalGenerationRef.current++;
     trackJobCreateFromUrlStarted();
     setPublished(false);
     setShowCreateModal(true);
   };
 
   const closeCreateModal = () => {
+    // Also bumped on close — a publish already in flight for the session
+    // being closed must never affect whatever the user does next.
+    createModalGenerationRef.current++;
     setShowCreateModal(false);
     setPublished(false);
     setIsCreatingJob(false);
   };
 
   const handlePublishJob = async (payload: CreateJobPublishPayload) => {
+    const myGeneration = createModalGenerationRef.current;
     if (__DEV__) {
       console.log("[JobsView] create-from-url payload", {
         url: payload.url,
@@ -671,23 +708,32 @@ export function JobsView() {
         hasInsights,
       });
 
-      // Refresh "My Sponsored" so the badge + tab reflect the new posting
+      // Refresh "My Sponsored" so the badge + tab reflect the new posting —
+      // always correct to do regardless of generation, since the job really
+      // was created and every sponsor's list should reflect that.
       refreshMyJobs(false);
 
-      setPublished(true);
+      // Only flip to the success screen if this is still the SAME create
+      // flow session that started this publish — otherwise the user closed
+      // (and possibly reopened, for a different job) while this request
+      // was in flight, and this now-late success would incorrectly
+      // celebrate a submission the CURRENT session never made.
+      if (createModalGenerationRef.current === myGeneration) {
+        setPublished(true);
 
-      // The Broadcast success screen (setPublished above) is the
-      // celebration now — a "published" toast on top of it was a double
-      // confirmation, so it's gone. The LLM-fallback caveat survives as
-      // an info nudge (it carries real guidance, not celebration), timed
-      // to land as the Broadcast finishes rather than over it.
-      if (response.source === "llm") {
-        setTimeout(() => {
-          showToast(
-            "Auto-extracted by AI — review the listing in My Jobs.",
-            "info",
-          );
-        }, 2700);
+        // The Broadcast success screen (setPublished above) is the
+        // celebration now — a "published" toast on top of it was a double
+        // confirmation, so it's gone. The LLM-fallback caveat survives as
+        // an info nudge (it carries real guidance, not celebration), timed
+        // to land as the Broadcast finishes rather than over it.
+        if (response.source === "llm") {
+          setTimeout(() => {
+            showToast(
+              "Auto-extracted by AI — review the listing in My Jobs.",
+              "info",
+            );
+          }, 2700);
+        }
       }
     } catch (err) {
       console.warn("[JobsView] Failed to create job from URL:", err);
@@ -718,7 +764,14 @@ export function JobsView() {
         showToast("Failed to publish job listing. Please try again.", "error");
       }
     } finally {
-      setIsCreatingJob(false);
+      // Only clear the publishing flag for the generation that actually set
+      // it — a slow, stale session's finally block clearing it here could
+      // otherwise re-enable the Publish button for a NEWER session that's
+      // genuinely still submitting, opening the door to a real duplicate
+      // submission for that (current) session.
+      if (createModalGenerationRef.current === myGeneration) {
+        setIsCreatingJob(false);
+      }
     }
   };
 
