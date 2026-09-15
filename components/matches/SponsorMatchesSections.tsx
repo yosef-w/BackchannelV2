@@ -224,7 +224,7 @@ export function SponsorMatchesSections({
         }
         detail={
           isReferred ? (
-            <PipelineStageTimeline currentStage={referral.checkInStage} />
+            <PipelineStageTimeline currentStage={referral.checkInStage} isLocalOnly={referral.checkInStageIsLocal} />
           ) : undefined
         }
       />

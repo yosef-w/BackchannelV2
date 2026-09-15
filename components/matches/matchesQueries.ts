@@ -134,6 +134,14 @@ export interface Referral {
    * ships it.
    */
   checkInStage?: string | null;
+  /**
+   * True when `checkInStage` above is showing the device-local mirror
+   * rather than a backend-confirmed value (i.e. the backend hasn't shipped
+   * §N2 yet AND this device has a locally-cached stage for this referral).
+   * Lets the UI mark the stage as "as reported by you" instead of implying
+   * the other party has confirmed it too.
+   */
+  checkInStageIsLocal?: boolean;
   /** ISO time of the last check-in submitted from THIS device (see
    * checkInStageCache.ts) — null when never checked in locally. */
   lastLocalCheckInAt?: string | null;
@@ -756,6 +764,10 @@ export const referralsQuery = (userType: string) => ({
             r.checkin_stage ||
             localStages[referralId] ||
             null,
+          checkInStageIsLocal:
+            !r.CHECKIN_STAGE &&
+            !r.checkin_stage &&
+            !!localStages[referralId],
           // Device-local "when did I last check in" — keeps the stale
           // nudge from nagging right after the user just submitted.
           lastLocalCheckInAt: localTimes[referralId] || null,

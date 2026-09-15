@@ -5,6 +5,7 @@
  */
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { Alert } from "react-native";
 
 jest.mock("@/components/ui/icons", () => {
   const stub = () => null;
@@ -12,6 +13,14 @@ jest.mock("@/components/ui/icons", () => {
 });
 
 import { CheckInStack, type StackCardItem } from "../CheckInStack";
+
+// Selecting the terminal stage now confirms via Alert before submitting
+// (see CheckInStack's handleSend) — auto-confirm so existing flows that
+// pick a terminal stage still proceed past it.
+jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+  const confirm = buttons?.find((b) => b.text === "Confirm");
+  confirm?.onPress?.();
+});
 
 const STAGES = [
   "Referred",
@@ -175,6 +184,68 @@ describe("CheckInStack — overview + bulk (scale features)", () => {
     await waitFor(() => expect(getByText("All caught up")).toBeTruthy());
     expect(getByText("Offer")).toBeTruthy();
     expect(getByText("2 updates sent.")).toBeTruthy();
+  });
+});
+
+describe("CheckInStack — terminal-stage confirmation", () => {
+  it("declining the confirmation leaves the card open and unsubmitted", async () => {
+    (Alert.alert as jest.Mock).mockImplementationOnce(
+      (_title, _msg, buttons) => {
+        const cancel = buttons?.find((b: { text?: string }) => b.text === "Cancel");
+        cancel?.onPress?.();
+      },
+    );
+    const onSubmitCard = jest.fn().mockResolvedValue(undefined);
+    const { getByText } = render(
+      <CheckInStack {...baseProps} onSubmitCard={onSubmitCard} />,
+    );
+    fireEvent.press(getByText("Didn't move forward"));
+    fireEvent.press(getByText("Send update"));
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      expect.stringContaining("Didn't move forward"),
+      expect.any(String),
+      expect.any(Array),
+    );
+    expect(onSubmitCard).not.toHaveBeenCalled();
+    // Still on the same card, selection intact.
+    expect(getByText("Snowflake")).toBeTruthy();
+  });
+
+  it("confirming submits the terminal stage", async () => {
+    const onSubmitCard = jest.fn().mockResolvedValue(undefined);
+    const { getByText } = render(
+      <CheckInStack {...baseProps} onSubmitCard={onSubmitCard} />,
+    );
+    fireEvent.press(getByText("Didn't move forward"));
+    await act(async () => {
+      fireEvent.press(getByText("Send update"));
+    });
+    // Module-level mock (beforeEach preserves it) auto-presses Confirm.
+    expect(onSubmitCard).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "r1" }),
+      expect.objectContaining({ terminal: true }),
+    );
+  });
+
+  it("never confirms in accumulate mode — the recap is the review step", async () => {
+    const onFinalize = jest.fn().mockResolvedValue(undefined);
+    (Alert.alert as jest.Mock).mockClear();
+    const { getByText } = render(
+      <CheckInStack
+        {...baseProps}
+        terminalLabel="No Longer Active"
+        onFinalize={onFinalize}
+        finalizeLabel={(n) => `Send ${n} updates`}
+      />,
+    );
+    fireEvent.press(getByText("No Longer Active"));
+    fireEvent.press(getByText("Send update"));
+
+    // No dialog — sponsor mode just records the answer; nothing is
+    // submitted until "Send N updates" on the recap.
+    expect(Alert.alert).not.toHaveBeenCalled();
+    await waitFor(() => expect(getByText("Google")).toBeTruthy());
   });
 });
 
