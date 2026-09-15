@@ -24,7 +24,7 @@ import {
     Upload,
     X,
 } from "@/components/ui/icons";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -231,6 +231,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const [email, setEmail] = useState("");
   const [workEmail, setWorkEmail] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  // Generation counter for handleImageSelected's revert-on-failure guard —
+  // see its own comment for why a superseded attempt's failure must not be
+  // allowed to clobber a later attempt's success.
+  const imageUploadGenerationRef = useRef(0);
   const [bio, setBio] = useState("");
 
   // Additional details (optional)
@@ -465,13 +469,24 @@ export function ProfileView({ userType }: ProfileViewProps) {
     if (!dirtyFields.has(group)) {
       if (successMessage) showToast(successMessage, "success");
     } else if (syncError && syncError !== "offline") {
+      // A real failure always surfaces regardless of successMessage —
+      // silently losing this was the actual bug this whole mechanism
+      // exists to fix, whether the caller wanted a chatty success toast or
+      // not.
       showToast("Failed to save. Please try again.", "error");
-    } else {
+    } else if (successMessage) {
       // Still dirty but no hard failure: either genuinely offline (will
       // sync once connectivity returns) or another sync was already in
       // flight when we flushed (will pick this up on its next pass). Either
-      // way the edit is captured — reverting it here would be the exact
-      // false-negative this audit was called in to fix.
+      // way the edit is captured — reverting it here would be a false
+      // negative. Only worth telling the user when they opted into a
+      // definitive confirmation via successMessage, though — callers that
+      // pass null (tag add/remove, work-preference toggles) chose that
+      // specifically because a toast on every single light interaction is
+      // chattier than it warrants, and this branch used to show one
+      // anyway: adding 3 skills quickly, each waiting on the previous
+      // flush, meant up to 3 "finishing up" toasts for what should have
+      // been a silent, successful operation.
       showToast("Saved — finishing up in the background…", "info");
     }
   };
@@ -489,7 +504,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
     const { ok, cleaned, error } = validateProfileField(field, rawValue);
     if (!ok) {
       showToast(error || "Please check this field and try again.", "error");
-      return;
+      // Thrown, not just returned: EditProfileScreen's saveOnBlur wraps
+      // this call in useAutosaveStatus's run(), which sets the header's
+      // SaveStatusPill to "saved" whenever the wrapped function resolves
+      // normally — a plain return here meant a rejected field showed a
+      // green "Saved" pill directly next to this red error toast. Every
+      // field EditProfileScreen actually renders (firstName/lastName/role/
+      // company/bio) was previously always ok:true unconditionally, so
+      // this path only became reachable once REQUIRED_FIELDS existed.
+      throw new Error(error || "Validation failed");
     }
     const valueToSave = cleaned;
     // Every case below used to follow its store write with an immediate
@@ -640,7 +663,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // broke matching until the user happened to notice and re-typed it.
     if (!cityPart) {
       showToast("City can't be left empty.", "error");
-      return;
+      // Thrown, not returned — see handleSaveField's identical fix above:
+      // this is called through EditProfileScreen's run(), which needs the
+      // rejection to flip the SaveStatusPill to "error" instead of "saved".
+      throw new Error("City can't be left empty.");
     }
     setCity(cityPart || "");
     setState(statePart || "");
@@ -1380,6 +1406,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleImageSelected = async (uri: string) => {
+    // Guards the revert-on-failure below against a SECOND photo pick
+    // superseding this one before it finishes uploading — without this, an
+    // earlier (slow) attempt's failure could revert all the way back past
+    // a LATER attempt that already succeeded: pick A (slow), pick B before
+    // A settles (B uploads fine, store + UI now show B's CDN URL), then A
+    // fails and its catch reverts to whatever profileImage was before A
+    // started — discarding B's successful upload locally, with the backend
+    // and the UI now disagreeing until the next full profile fetch.
+    const myGeneration = ++imageUploadGenerationRef.current;
     // Captured before the optimistic update below so a failure can revert
     // to it — a local device file:// URI isn't guaranteed to survive a
     // cache eviction or app restart, so leaving it in place on failure
@@ -1417,9 +1452,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
         "cdn_url saved:",
         cdn_url,
       );
-      updatePersonal({ profileImage: cdn_url });
-      setProfileImage(cdn_url);
-      showToast("Profile photo updated.", "success");
+      // Same generation guard as the catch block below: an older, slower
+      // pick succeeding AFTER a newer one has already displayed ITS photo
+      // would otherwise silently revert the display back to the stale
+      // choice. (This only protects the CLIENT-side display — the two
+      // updateGeneralProfile PATCH calls above aren't sequenced against
+      // each other, so whichever one's request actually reaches the
+      // backend last still wins there regardless of generation order. A
+      // full fix would serialize these requests the way
+      // notificationPrefsQueue does for notification preferences; picking
+      // two photos within moments of each other is rare enough that this
+      // wasn't judged worth that scope here.)
+      if (imageUploadGenerationRef.current === myGeneration) {
+        updatePersonal({ profileImage: cdn_url });
+        setProfileImage(cdn_url);
+        showToast("Profile photo updated.", "success");
+      }
     } catch (err) {
       console.warn("[ProfileImage] ❌ Failed to upload profile photo:", err);
       Sentry.captureException(err, {
@@ -1433,9 +1481,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
       // mean re-selecting the same photo re-uploads it; a wasted upload is
       // an acceptable tradeoff for not risking a permanently broken avatar
       // on a temp file that may not even survive to the next app launch.)
-      updatePersonal({ profileImage: previousImage ?? undefined });
-      setProfileImage(previousImage);
-      showToast("Failed to upload photo. Please try again.", "error");
+      // Only revert if no NEWER pick has superseded this one — otherwise
+      // this (possibly much later) failure would stomp a later attempt's
+      // already-successful, already-displayed photo.
+      if (imageUploadGenerationRef.current === myGeneration) {
+        updatePersonal({ profileImage: previousImage ?? undefined });
+        setProfileImage(previousImage);
+        showToast("Failed to upload photo. Please try again.", "error");
+      }
     }
   };
 
