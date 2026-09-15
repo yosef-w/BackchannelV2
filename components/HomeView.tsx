@@ -463,6 +463,14 @@ export function HomeView({
   // prematurely read as "finished" before a deck has loaded.
   const isDeckFinished =
     activeDeckLength > 0 && progress > Math.min(DECK_SIZE, activeDeckLength);
+  // Same real-length cap for every place the deck's total is DISPLAYED —
+  // isDeckFinished alone being capped left the counter/dots/DeckDoneCard
+  // still claiming DECK_SIZE (10), so a 3-card deck showed "1/10 … 3/10"
+  // against 10 dots (7 of which could never fill) and then a "you reviewed
+  // 10" done card. Falls back to DECK_SIZE while activeDeckLength is still
+  // 0 (nothing loaded yet), matching isDeckFinished's own load-guard.
+  const displayDeckSize =
+    activeDeckLength > 0 ? Math.min(DECK_SIZE, activeDeckLength) : DECK_SIZE;
 
   // True when the current card is one we've already liked this session —
   // most commonly because "Review again" replayed the deck from the top.
@@ -1329,6 +1337,10 @@ export function HomeView({
   // was the "switching resets the progress bar" complaint.
   const handleSwitchRole = (newJobId: string) => {
     setShowJobSwitcher(false);
+    // Defense in depth alongside the pill's own guard above — the switcher
+    // sheet shouldn't be reachable while pending, but never let an actual
+    // switch land mid-action regardless of how it was triggered.
+    if (isActionPendingRef.current) return;
     if (!newJobId || newJobId === activeSponsoredJobId) return;
     if (
       activeSponsoredJobId &&
@@ -1626,12 +1638,12 @@ export function HomeView({
             >
               <View style={styles.progressLabelRow}>
                 <Text style={styles.progressCurrent}>
-                  {deckIsActive ? Math.min(progress, DECK_SIZE) : 0}
+                  {deckIsActive ? Math.min(progress, displayDeckSize) : 0}
                 </Text>
-                <Text style={styles.progressTotal}>/{DECK_SIZE}</Text>
+                <Text style={styles.progressTotal}>/{displayDeckSize}</Text>
               </View>
               <View style={styles.progressDotsRow}>
-                {Array.from({ length: DECK_SIZE }).map((_, i) => {
+                {Array.from({ length: displayDeckSize }).map((_, i) => {
                   const cardNumber = i + 1;
                   const isPast = cardNumber < progress;
                   const isCurrent = cardNumber === progress;
@@ -1682,7 +1694,20 @@ export function HomeView({
                 signal lives right in the header. */}
             {userType === "sponsor" && sponsoredJobs.length > 0 && (
               <TouchableOpacity
-                onPress={() => setShowJobSwitcher(true)}
+                onPress={() => {
+                  // A swipe action still in flight for the CURRENT role
+                  // closes over this render's deck position (nextProfile/
+                  // finishCelebration aren't functional updates) — if a
+                  // role switch resets the deck position for a NEW role
+                  // while that stale completion is still pending, it lands
+                  // on the new role's fresh state and silently advances (or
+                  // mis-skips) cards the user never saw a decision on.
+                  // Blocking entry to the switcher while pending closes
+                  // this at its one entry point, same as isActionPending
+                  // already does for the swipe buttons themselves.
+                  if (isActionPending) return;
+                  setShowJobSwitcher(true);
+                }}
                 activeOpacity={0.85}
                 style={styles.roleSwitcherPill}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -1714,7 +1739,7 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <DeckDoneCard
                 userType={userType}
-                deckSize={DECK_SIZE}
+                deckSize={displayDeckSize}
                 sessionLikes={sessionLikes}
                 sessionMatches={sessionMatches}
                 isPremium={isPremium}
