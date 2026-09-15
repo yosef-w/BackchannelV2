@@ -95,7 +95,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Upper bound on how long we'll block onboarding waiting for the final save
 // before proceeding anyway — a new user must never be trapped on a spinner.
-const RESUME_PROCESS_TIMEOUT_MS = 25000;
+// This pipeline does real work beyond a single request (a profile PATCH, an
+// optional photo upload, a location PATCH, then a full refetch), so 25s was
+// too tight for a slow connection's photo upload alone — raised to give
+// that realistic headroom. Losing this race no longer means the save is
+// abandoned either — see handleFinalize's pipeline continuation below.
+const RESUME_PROCESS_TIMEOUT_MS = 45000;
 
 // How long we HOLD the user on the "building your profile" beat for the
 // résumé pipeline (upload → parse → AI classify → refetch). Parsing/classify
@@ -254,8 +259,23 @@ export function ApplicantQuestionnaire({
   // registration for them would either 401 or hit "email already
   // registered". isAuthenticated is read once at mount here deliberately;
   // see its declaration below.
+  //
+  // isAuthenticated alone is NOT enough, though: a brand-new "Continue with
+  // Apple/Google" sign-up is ALSO already authenticated the instant this
+  // component mounts (AuthScreen's handleSsoSuccess calls setAuthTokens,
+  // which flips isAuthenticated, before ever routing here) — but that
+  // account is still role-less and specifically needs
+  // completeSsoOnboardingMutation to run at the résumé step, not be skipped.
+  // useOnboardingStore.getState().ssoSession (set synchronously before
+  // handleSsoSuccess navigates here — see AuthScreen.tsx) is what actually
+  // distinguishes "resuming a real prior registration" from "freshly
+  // pre-authenticated via SSO, registration still pending" — read
+  // imperatively, once, rather than via the hook, since only the value at
+  // THIS mount matters for seeding a ref.
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const registeredRef = useRef(isAuthenticated);
+  const registeredRef = useRef(
+    isAuthenticated && !useOnboardingStore.getState().ssoSession,
+  );
   // Closes the late-résumé harvest window: once the final save starts (or the
   // component unmounts) a slow classify landing in the background must no
   // longer flip resumeFilled — the data still lands server-side either way.
@@ -909,50 +929,75 @@ export function ApplicantQuestionnaire({
     setIsSubmitting(true);
     setFinalizing(true);
     setShowSuccess(true);
-    try {
-      await withTimeout(
-        (async () => {
-          const patch: Parameters<typeof updateApplicantProfile>[0] = {
-            positions: answers["seekingPosition"]
-              ? [answers["seekingPosition"]]
-              : [],
-            insights: selectedInsights,
-            work_preferences: selectedWorkPreferences,
-          };
-          // Industry/role/skills are filled by the résumé classify when present;
-          // only send them from the manual steps when there was no résumé.
-          if (!resumeFilled) {
-            if (answers["industry"]) patch.industry = answers["industry"];
-            if (answers["currentRole"])
-              patch.current_role = answers["currentRole"];
-            patch.skills = selectedSkills;
-          }
-          await updateApplicantProfile(patch);
 
-          if (selectedPhotoUri) {
-            const photoForm = new FormData();
-            photoForm.append("image", {
-              uri: selectedPhotoUri,
-              name: "photo.jpg",
-              type: "image/jpeg",
-            } as any);
-            const { cdn_url } = await uploadProfileImage(photoForm);
-            if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
-          }
-          if (locationText.trim()) {
-            await updateGeneralProfile({ location: locationText.trim() });
-          }
-          await fetchFromBackend();
-        })(),
-        RESUME_PROCESS_TIMEOUT_MS,
-      );
+    // Built once, awaited below with a timeout — but not abandoned if that
+    // timeout wins. photo/location are required "gate" fields (see
+    // canContinue's isFieldMissing checks and utils/profileCompletion.ts);
+    // silently declaring the profile complete without confirming they
+    // actually saved used to mean a user could see "Profile complete." and
+    // land on the dashboard, then have their very first swipe blocked by
+    // ProfileCompletionModal telling them the photo/location it just
+    // celebrated is missing. That gate still exists as a real safety net
+    // (nobody can swipe with a genuinely incomplete profile), but the
+    // pipeline itself should still get to finish and self-correct rather
+    // than being cut off the moment we stop waiting on it.
+    const pipeline = (async () => {
+      const patch: Parameters<typeof updateApplicantProfile>[0] = {
+        positions: answers["seekingPosition"]
+          ? [answers["seekingPosition"]]
+          : [],
+        insights: selectedInsights,
+        work_preferences: selectedWorkPreferences,
+      };
+      // Industry/role/skills are filled by the résumé classify when present;
+      // only send them from the manual steps when there was no résumé.
+      if (!resumeFilled) {
+        if (answers["industry"]) patch.industry = answers["industry"];
+        if (answers["currentRole"])
+          patch.current_role = answers["currentRole"];
+        patch.skills = selectedSkills;
+      }
+      await updateApplicantProfile(patch);
+
+      if (selectedPhotoUri) {
+        const photoForm = new FormData();
+        photoForm.append("image", {
+          uri: selectedPhotoUri,
+          name: "photo.jpg",
+          type: "image/jpeg",
+        } as any);
+        const { cdn_url } = await uploadProfileImage(photoForm);
+        if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
+      }
+      if (locationText.trim()) {
+        await updateGeneralProfile({ location: locationText.trim() });
+      }
+      await fetchFromBackend();
+    })();
+
+    try {
+      await withTimeout(pipeline, RESUME_PROCESS_TIMEOUT_MS);
     } catch (err) {
-      console.warn("[Questionnaire] Finalize failed:", err);
+      console.warn(
+        "[Questionnaire] Finalize is taking longer than expected — letting it keep running in the background:",
+        err,
+      );
+      Sentry.captureException(err, { tags: { flow: "onboarding_finalize" } });
+      // Deliberately not re-thrown or awaited further: the pipeline above
+      // is still running (a timeout here doesn't cancel it) and its own
+      // fetchFromBackend() at the end will still correct local state
+      // whenever it actually finishes, even though the user has already
+      // moved on. Attach a no-op catch so a genuine later failure doesn't
+      // surface as an unhandled promise rejection — it's already reported
+      // above.
+      pipeline.catch(() => {});
     }
 
     // The résumé review now plays right after the parse film (see
     // handleResumeStep) — the finale is the same for everyone: the
-    // Broadcast beat, then the dashboard.
+    // Broadcast beat, then the dashboard. ProfileCompletionModal (gated on
+    // the swipe deck) is the real backstop if a gate field genuinely never
+    // saved — this screen never blocks on confirming that itself.
     completeOnboarding();
   };
 
