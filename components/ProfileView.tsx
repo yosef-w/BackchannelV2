@@ -453,12 +453,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
   // write in flight per field group now.
   const reportSyncOutcome = async (
     group: SyncableField,
-    successMessage = "Saved.",
+    // null = stay quiet on success (used for light, frequent actions like
+    // adding a skill tag, where a toast on every single one would be
+    // chattier than the interaction warrants) — failure/still-syncing
+    // still surface regardless, since THOSE going unreported silently was
+    // the actual bug.
+    successMessage: string | null = "Saved.",
   ) => {
     await flushProfileSync();
     const { dirtyFields, syncError } = useUserProfileStore.getState();
     if (!dirtyFields.has(group)) {
-      showToast(successMessage, "success");
+      if (successMessage) showToast(successMessage, "success");
     } else if (syncError && syncError !== "offline") {
       showToast("Failed to save. Please try again.", "error");
     } else {
@@ -627,6 +632,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const handleSaveLocation = async (value: string) => {
     const trimmed = value.trim();
     const [cityPart, statePart] = trimmed.split(",").map((s) => s.trim());
+    // City is a required field (profileCompletion.ts's own required set —
+    // it's the app's only location matching signal) and this is the one
+    // path that actually writes it. Without this check, clearing the
+    // field entirely and saving wrote an empty city straight through with
+    // no validation — a silent, successful-looking save that quietly
+    // broke matching until the user happened to notice and re-typed it.
+    if (!cityPart) {
+      showToast("City can't be left empty.", "error");
+      return;
+    }
     setCity(cityPart || "");
     setState(statePart || "");
     setLocation(trimmed);
@@ -699,17 +714,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
           setNewTag("");
           return;
         }
-        // Store update only — its own debounced sync covers this field
-        // (see authApi.updateProfile's rolePayload.skills); a redundant
-        // direct call here used to fire in parallel and race it.
+        // Store update, its own debounced sync covers this field — but
+        // unlike a text field's onBlur save, this had NO feedback path at
+        // all, success or failure: a sync failure here used to mean the
+        // skill silently vanished on the next full profile fetch with
+        // nothing to explain why. reportSyncOutcome(..., null) stays quiet
+        // on success (a toast per tag add would be chattier than this
+        // light interaction warrants) but still surfaces a real failure.
         const newExpertise = [...expertise, valueToAdd];
         setExpertise(newExpertise);
         await updateSkills(newExpertise);
+        await reportSyncOutcome("skills", null);
         break;
       case "workPreferences": {
         const newWorkPreferences = [...workPreferences, valueToAdd];
         setWorkPreferences(newWorkPreferences);
         await updateWorkPreferencesStore(newWorkPreferences);
+        await reportSyncOutcome("workPreferences", null);
         break;
       }
       case "desiredRoles": {
@@ -725,6 +746,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         const newDesiredRoles = [...desiredRoles, valueToAdd];
         setDesiredRoles(newDesiredRoles);
         await updateDesiredRolesStore(newDesiredRoles);
+        await reportSyncOutcome("desiredRoles", null);
         break;
       }
     }
@@ -737,6 +759,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       : [...workPreferences, preference];
     setWorkPreferences(updated);
     await updateWorkPreferencesStore(updated);
+    await reportSyncOutcome("workPreferences", null);
   };
 
   const handleRemoveTag = async (
@@ -748,18 +771,21 @@ export function ProfileView({ userType }: ProfileViewProps) {
         const updatedExpertise = expertise.filter((_, i) => i !== index);
         setExpertise(updatedExpertise);
         await updateSkills(updatedExpertise);
+        await reportSyncOutcome("skills", null);
         break;
       }
       case "workPreferences": {
         const updatedWorkPrefs = workPreferences.filter((_, i) => i !== index);
         setWorkPreferences(updatedWorkPrefs);
         await updateWorkPreferencesStore(updatedWorkPrefs);
+        await reportSyncOutcome("workPreferences", null);
         break;
       }
       case "desiredRoles": {
         const updatedRoles = desiredRoles.filter((_, i) => i !== index);
         setDesiredRoles(updatedRoles);
         await updateDesiredRolesStore(updatedRoles);
+        await reportSyncOutcome("desiredRoles", null);
         break;
       }
     }
@@ -891,13 +917,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
     updateCertifications(updated);
   };
 
-  const handleDeleteCertification = (index: number) => {
+  const handleDeleteCertification = async (index: number) => {
     const updated = certifications.filter((_, i) => i !== index);
     setCertifications(updated);
-    updateCertifications(updated);
+    await updateCertifications(updated);
     if (expandedCertification === index) {
       setExpandedCertification(null);
     }
+    // Matches handleDeleteExperience/handleDeleteEducation's pattern — a
+    // deletion had no feedback path at all before this, success or
+    // failure, unlike its sibling entry types.
+    await reportSyncOutcome("certifications", "Certification removed.");
   };
 
   // Handlers for Languages — same persist-at-the-mutation-site pattern.
@@ -920,13 +950,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
     updateLanguages(updated);
   };
 
-  const handleDeleteLanguage = (index: number) => {
+  const handleDeleteLanguage = async (index: number) => {
     const updated = languages.filter((_, i) => i !== index);
     setLanguages(updated);
-    updateLanguages(updated);
+    await updateLanguages(updated);
     if (expandedLanguage === index) {
       setExpandedLanguage(null);
     }
+    // See handleDeleteCertification above — same gap, same fix.
+    await reportSyncOutcome("languages", "Language removed.");
   };
 
   // Render Certification Card
@@ -1348,6 +1380,14 @@ export function ProfileView({ userType }: ProfileViewProps) {
   };
 
   const handleImageSelected = async (uri: string) => {
+    // Captured before the optimistic update below so a failure can revert
+    // to it — a local device file:// URI isn't guaranteed to survive a
+    // cache eviction or app restart, so leaving it in place on failure
+    // (the old behavior) risked a permanently broken avatar for a
+    // first-time photo (nothing valid to fall back to) and, for an
+    // existing photo, showed a picture that visually looked like it had
+    // already changed right next to a toast saying it hadn't.
+    const previousImage = profileImage;
     // Show local preview immediately so the UI feels responsive
     setProfileImage(uri);
     updatePersonal({ profileImage: uri });
@@ -1385,6 +1425,16 @@ export function ProfileView({ userType }: ProfileViewProps) {
       Sentry.captureException(err, {
         tags: { feature: "profile_photo_upload" },
       });
+      // Revert rather than leaving the failed attempt's local URI in
+      // place — true whether the CDN upload itself failed or it
+      // succeeded but the follow-up PATCH didn't: either way the backend
+      // never actually got the new photo, so the display shouldn't imply
+      // otherwise. (A partial success — upload landed, PATCH didn't — does
+      // mean re-selecting the same photo re-uploads it; a wasted upload is
+      // an acceptable tradeoff for not risking a permanently broken avatar
+      // on a temp file that may not even survive to the next app launch.)
+      updatePersonal({ profileImage: previousImage ?? undefined });
+      setProfileImage(previousImage);
       showToast("Failed to upload photo. Please try again.", "error");
     }
   };
