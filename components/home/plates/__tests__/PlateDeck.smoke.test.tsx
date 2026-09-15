@@ -12,6 +12,12 @@ jest.mock("expo-haptics", () => ({
   ImpactFeedbackStyle: { Light: "light" },
 }));
 
+// PlateDeck reads/writes the deck-swipe-nudge flag (utils/deckSwipeHint) on
+// mount — official AsyncStorage jest mock (in-memory map, same API).
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+);
+
 const CARD: ProfileDeckCard = {
   id: "u1", USER_ID: "u1", name: "Jordan Okafor", location: "Chicago, IL",
   skills: ["Go"], desiredRole: "Staff Engineer", bio: "Six years of platform work.",

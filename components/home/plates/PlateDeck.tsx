@@ -38,15 +38,21 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import Animated, {
+  cancelAnimation,
+  Easing,
   Extrapolation,
   interpolate,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
+import { markDeckSwipeLearned, shouldPlayDeckSwipeHint } from "@/utils/deckSwipeHint";
 import type { Plate, PlateAnchor } from "./plateContent";
 import { PlateView } from "./PlateViews";
 import { ANCHOR_HEIGHT, plateStyles as s } from "./plateStyles";
@@ -112,6 +118,10 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
       indexRef.current = clamped;
       setIndex(clamped);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      // Advancing past the first plate — by drag OR by tap, either counts —
+      // is proof this device already knows the row slides. Retire the
+      // swipe-teaching nudge for good; see deckSwipeHint's doc comment.
+      if (clamped > 0) void markDeckSwipeLearned();
     },
     [count],
   );
@@ -128,6 +138,48 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
   const onRowSettle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     commitIndex(Math.round(e.nativeEvent.contentOffset.x / plateWidth));
   };
+
+  // ── swipe-teaching nudge: the first plate slides and springs back ──
+  // The static peek + "SLIDE FOR MORE →" label weren't enough on their
+  // own — testers didn't notice either cue on their first card. This
+  // demonstrates the actual gesture instead of just hinting at it, but
+  // only while shouldPlayDeckSwipeHint says this device still needs
+  // teaching (see its doc comment for the exact play-count/learned
+  // policy) and only when there's a second plate to reveal at all.
+  const nudgeX = useSharedValue(0);
+  const nudgeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: nudgeX.value }],
+  }));
+  useEffect(() => {
+    if (count < 2) return;
+    let cancelled = false;
+    (async () => {
+      const should = await shouldPlayDeckSwipeHint();
+      if (cancelled || !should) return;
+      // A beat to let the plate's own content register first, then slide
+      // out, hold just long enough to read as deliberate, and spring back
+      // with the same natural overshoot a released drag would have.
+      nudgeX.value = withDelay(
+        600,
+        withSequence(
+          withTiming(-40, { duration: 340, easing: Easing.out(Easing.cubic) }),
+          withDelay(260, withSpring(0, { damping: 9, stiffness: 120, mass: 0.6 })),
+        ),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Runs once per mount — PlateDeck remounts per card (see HomeView's
+    // `key={currentItemId}`), which is exactly the "per card" granularity
+    // shouldPlayDeckSwipeHint's cap is counting.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /** A real touch always wins — don't fight the user's own drag. */
+  const cancelNudge = useCallback(() => {
+    cancelAnimation(nudgeX);
+    nudgeX.value = 0;
+  }, [nudgeX]);
 
   // ── the read's section registry (ReadSections) ─────────────────────
   // Sections report their offsets as they lay out; a plate's cue scrolls
@@ -239,22 +291,35 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
               disableIntervalMomentum
               onMomentumScrollEnd={onRowSettle}
               onScrollEndDrag={onRowSettle}
+              onScrollBeginDrag={cancelNudge}
               contentContainerStyle={{ paddingRight: PEEK }}
               bounces={false}
             >
-              {plates.map((plate, i) => (
-                <PlateView
-                  key={`${plate.kind}-${i}`}
-                  plate={plate}
-                  width={plateWidth}
-                  height={rowHeight}
-                  underAnchor={i > 0}
-                  hint={i === 0 ? "SLIDE FOR MORE →" : undefined}
-                  readLabel={plate.readCta}
-                  onOpenRead={() => goToSection(plate.readTarget)}
-                  onTapZone={(zone) => goTo(zone === "forward" ? i + 1 : i - 1)}
-                />
-              ))}
+              {plates.map((plate, i) => {
+                const plateView = (
+                  <PlateView
+                    plate={plate}
+                    width={plateWidth}
+                    height={rowHeight}
+                    underAnchor={i > 0}
+                    hint={i === 0 ? "SLIDE FOR MORE →" : undefined}
+                    readLabel={plate.readCta}
+                    onOpenRead={() => goToSection(plate.readTarget)}
+                    onTapZone={(zone) => goTo(zone === "forward" ? i + 1 : i - 1)}
+                  />
+                );
+                // Only the first plate ever gets nudged — see the effect
+                // above for when.
+                return i === 0 ? (
+                  <Animated.View key={`${plate.kind}-${i}`} style={nudgeStyle}>
+                    {plateView}
+                  </Animated.View>
+                ) : (
+                  <React.Fragment key={`${plate.kind}-${i}`}>
+                    {plateView}
+                  </React.Fragment>
+                );
+              })}
             </ScrollView>
           </View>
         )}
