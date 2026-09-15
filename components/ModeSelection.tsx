@@ -63,6 +63,15 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
   const setUserType = useOnboardingStore((state) => state.setUserType);
 
   const handleSelect = (mode: "applicant" | "sponsor") => {
+    // Neither card disables itself once tapped (only the tapped one gets
+    // the "selected" border style — the OTHER card stays fully pressable),
+    // and onSelect/choose-role.tsx's own handler has no re-entrancy guard
+    // either. A fast double-tap hitting Applicant then Sponsor within the
+    // 200ms beat below fired two router.push("/intro", ...) calls with
+    // different modes, stacking two intro screens on top of choose-role —
+    // swiping/hardware-back from the one that lands then revealed the
+    // OTHER role's intro film instead of returning to role selection.
+    if (selected) return;
     setSelected(mode);
     setUserType(mode);
     trackSignUpRoleSelected(mode);

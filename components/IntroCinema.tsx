@@ -141,7 +141,15 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
   useEffect(() => {
     trackIntroFilmViewed('applicant');
   }, []);
+  // None of the exits (Skip, the main CTA, sign-in, back) disable
+  // themselves, so a fast double-tap — or Skip immediately followed by a
+  // tap on the CTA before the first navigation resolves — could
+  // independently call onContinue()/onSignIn()/onBack() twice, stacking a
+  // duplicate screen on the nav stack.
+  const dismissedRef = useRef(false);
   const dismiss = (action: 'skip' | 'cta' | 'sign_in' | 'back') => {
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
     const watchMs = Date.now() - mountedAt.current;
     trackIntroFilmDismissed({
       role: 'applicant',

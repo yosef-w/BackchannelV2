@@ -4,8 +4,9 @@
 // labels like "Someone Applied to Your Job" previously carried all the
 // explanatory weight on their own.
 
+import * as Notifications from "expo-notifications";
 import React from "react";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { Linking, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
@@ -75,6 +76,22 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
   const showToast = useToastStore((s) => s.showToast);
   const { status, run } = useAutosaveStatus();
 
+  // These toggles only control which push TYPES the backend will send —
+  // they say nothing about whether the OS will actually deliver them.
+  // usePushSetup.ts checks getPermissionsAsync() once, at registration
+  // time, and never surfaces that status anywhere — so a user who denied
+  // the permission (or later disabled it in iOS Settings) sees every
+  // switch here happily "on" with zero indication that no push will ever
+  // arrive regardless. Re-checked every time this screen opens, since
+  // permission can change in system Settings while the app isn't running.
+  const [osPermissionDenied, setOsPermissionDenied] = React.useState(false);
+  React.useEffect(() => {
+    if (!visible) return;
+    Notifications.getPermissionsAsync()
+      .then(({ status }) => setOsPermissionDenied(status !== "granted"))
+      .catch(() => {});
+  }, [visible]);
+
   // Backend gate lives in services/notifications.py:create_notification —
   // missing keys default to enabled, so `undefined` reads as `true`.
   const isEnabled = (key: NotifKey) => notificationPreferences[key] !== false;
@@ -108,6 +125,21 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
       title="Notifications"
       headerRight={<SaveStatusPill status={status} />}
     >
+      {osPermissionDenied && (
+        <TouchableOpacity
+          style={styles.permissionBanner}
+          onPress={() => Linking.openSettings()}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.permissionBannerText}>
+            Notifications are turned off for this app in your phone&apos;s
+            Settings — none of these will actually arrive until you turn
+            them back on.
+          </Text>
+          <Text style={styles.permissionBannerLink}>Open Settings →</Text>
+        </TouchableOpacity>
+      )}
+
       <Text style={styles.groupLabel}>MATCHES & INTEREST</Text>
       <View style={styles.group}>
         <Row
@@ -174,6 +206,25 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
 }
 
 const styles = StyleSheet.create({
+  permissionBanner: {
+    backgroundColor: Colors.offWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 14,
+    marginBottom: 20,
+    gap: 6,
+  },
+  permissionBannerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.body,
+  },
+  permissionBannerLink: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000",
+  },
   groupLabel: {
     fontSize: 12,
     fontWeight: "800",

@@ -315,8 +315,19 @@ export default function TabsLayout() {
   // from acting on the same tap twice.
   const lastNotificationResponse = Notifications.useLastNotificationResponse();
   useEffect(() => {
-    if (!isAuthenticated) return;
-    handlePushResponse(lastNotificationResponse ?? null);
+    if (!isAuthenticated || !lastNotificationResponse) return;
+    handlePushResponse(lastNotificationResponse);
+    // getLastNotificationResponse() is backed by a value the native side
+    // persists and keeps returning until explicitly cleared — it survives
+    // an app restart, not just this session. Without this, a cold start
+    // from the home-screen icon (not from tapping any notification) still
+    // gets this same old response handed to it: lastHandledPushIdRef
+    // starts fresh at null on a new process, so it isn't deduped, and the
+    // app silently re-runs whatever routing the ORIGINAL push triggered —
+    // e.g. jumping straight to Matches or a stale conversation — on what
+    // the user experiences as an ordinary app open. Repeats on every
+    // subsequent cold start until a genuinely new push arrives.
+    Notifications.clearLastNotificationResponseAsync().catch(() => {});
   }, [isAuthenticated, lastNotificationResponse, handlePushResponse]);
 
   // Foreground pushes: refresh the bell badge immediately and invalidate the
