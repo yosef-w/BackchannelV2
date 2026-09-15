@@ -49,6 +49,7 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -539,15 +540,20 @@ export function ApplicantJobsBrowseView() {
 
   const handleRequestSponsor = async (job: BrowseJobResponse) => {
     setIsRequesting(true);
-    setRequestMessage(null);
     const [requestRes] = await Promise.allSettled([
       requestSponsorForJob(job.JOB_ID),
       joinWaitlist(job.JOB_ID),
     ]);
     setIsRequesting(false);
-    setWaitlistedIds((prev) => new Set([...prev, job.JOB_ID]));
     if (requestRes.status === "fulfilled") {
-      setRequestMessage(requestRes.value.message ?? null);
+      // Own copy, not the backend's response message — it's meant for
+      // logging, not display (arbitrary length, no guaranteed tone), and
+      // BarFooter's title is a single line: anything longer just clips
+      // mid-sentence. Adding the job to waitlistedIds is enough on its
+      // own to flip the sheet to the same clean "You're on the waitlist"
+      // confirmation already shown when reopening a waitlisted job later
+      // — see that branch below.
+      setWaitlistedIds((prev) => new Set([...prev, job.JOB_ID]));
     } else {
       showToast(
         "Couldn't send the request right now. Please try again.",
@@ -563,11 +569,12 @@ export function ApplicantJobsBrowseView() {
     try {
       const response = await likeJob(job.JOB_ID);
       setLikedIds((prev) => new Set([...prev, job.JOB_ID]));
-      setRequestMessage(
-        response.matched
-          ? "It's a match! Find them in Matches."
-          : "Interest sent — you'll match when the sponsor likes back.",
-      );
+      // Only the mutual-match case needs its own message — a one-sided
+      // like already falls through to the same "Interest sent" copy the
+      // likedIds branch below shows on reopen.
+      if (response.matched) {
+        setRequestMessage("It's a match! Find them in Matches.");
+      }
     } catch (err) {
       console.warn("[ApplicantJobsBrowseView] Failed to like job:", err);
       showToast("Couldn't send your interest right now. Please try again.", "error");
@@ -714,7 +721,9 @@ export function ApplicantJobsBrowseView() {
               return (
                 <Animated.View
                   key={job.JOB_ID}
-                  entering={FadeInUp.delay(Math.min(index, 8) * 40).springify().damping(16)}
+                  entering={FadeInUp.delay(Math.min(index, 8) * 40)
+                    .duration(420)
+                    .easing(Easing.bezier(0.16, 1, 0.3, 1))}
                 >
                   <MarketplaceJobCard
                     job={job}
