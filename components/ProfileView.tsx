@@ -1436,6 +1436,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // previous session bleed into the new user's experience.
     resetJobsStore();
     clearOnboarding();
+    // The React Query cache + two AsyncStorage caches (check-in stage,
+    // sponsor-request outcome) are cleared centrally in (tabs)/_layout.tsx's
+    // isAuthenticated watcher now — that path also covers a reactive
+    // session-expiry logout, which never ran any of this before. clearAuth()
+    // above already flips isAuthenticated false, so that effect picks this
+    // up without any call needed here.
     router.replace("/splash");
   };
 
@@ -1464,6 +1470,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // (card index, session likes/matches) from the deleted account.
     resetJobsStore();
     clearOnboarding();
+    // Same centralized cache-clearing as confirmLogout — see the comment
+    // there. Arguably more important here: this account is gone for good,
+    // so its data lingering in an unscoped cache for whoever uses this
+    // device next is not just stale, it's the one copy of that data left
+    // anywhere.
     router.replace("/splash");
   };
 

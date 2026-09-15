@@ -34,6 +34,8 @@ import {
 import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { clearLocalCheckInCache } from "@/utils/checkInStageCache";
+import { clearSponsorRequestCache } from "@/utils/sponsorRequestCache";
 import type { PublicProfileUserData } from "@/types/profiles";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -131,11 +133,39 @@ export default function TabsLayout() {
     if (!isAuthenticated) {
       const timer = setTimeout(() => {
         console.log("[Shell] Not authenticated, redirecting to splash...");
+        // dismissAll() first — replace() acts on the FOCUSED screen, not
+        // necessarily this (tabs) shell. A deep link reachable while
+        // already authenticated (verify-email, reset-password) can be
+        // pushed on top of (tabs); if the session ends while one of those
+        // is focused, a plain replace() would swap just that pushed screen
+        // for splash and leave the entire authenticated shell — the Tabs
+        // navigator, its notification listeners, the unread-count poll —
+        // mounted underneath, running, instead of torn down. Same bug
+        // class already fixed at every pre-auth exit point, just in the
+        // auth-loss direction instead of the auth-gain direction.
+        router.dismissAll();
         router.replace("/splash");
+        // Single place every "session ended" path funnels through — manual
+        // logout, account deletion, AND a reactive 401 session expiry all
+        // flip isAuthenticated false and land here. Manual logout/delete
+        // used to clear these themselves (see ProfileView.tsx's old
+        // confirmLogout/handleAccountDeleted), which fixed the cross-
+        // account cache leak for those two paths but left the reactive-
+        // expiry path — arguably the MORE common way a device changes
+        // hands, since it needs no explicit action from the outgoing user
+        // — still leaking the previous account's cached matches, check-in
+        // stages, and sponsor-request state to whoever logs in next.
+        // Runs after the navigation above (not before), so the still-
+        // mounted authenticated screen tree isn't hit with a burst of
+        // now-401 refetches from queries that lost their cached data out
+        // from under them while still on screen.
+        queryClient.clear();
+        clearLocalCheckInCache().catch(() => {});
+        clearSponsorRequestCache().catch(() => {});
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, queryClient]);
 
   // ── Scroll-aware chrome shared values (HomeView writes, chrome reads) ───
   const navTranslateY = useSharedValue(0);

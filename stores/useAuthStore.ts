@@ -219,14 +219,24 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ refreshToken, role, hasPassword });
         const refreshed = await useAuthStore.getState().refreshAccessToken();
         if (!refreshed) {
-          // Both tokens are expired — the user must log in again.
-          set({
-            accessToken: null,
-            refreshToken: null,
-            role: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+          // refreshAccessToken() only calls clearAuth() (which nulls
+          // refreshToken) on a genuine 401/403 rejection — a transient
+          // failure (network blip, 5xx, malformed 200) deliberately leaves
+          // the staged tokens untouched. Use that to tell the two apart
+          // here too, the same distinction lib/api.ts's callers already
+          // make, instead of treating every `false` as proof both tokens
+          // are dead.
+          if (!useAuthStore.getState().refreshToken) {
+            // Genuinely expired — clearAuth() already reset everything.
+            set({ isLoading: false });
+            return;
+          }
+          // Transient — don't force a real, still-logged-in user back to
+          // the login screen over a network blip at cold start. Stay
+          // optimistically authenticated with the (expired) access token;
+          // the first real API call's own reactive-401 refresh handles it
+          // properly once the network is back.
+          set({ accessToken, isAuthenticated: true, isLoading: false });
           return;
         }
         // setAuthTokens was already called inside refreshAccessToken; role already in state.
@@ -260,8 +270,15 @@ export const useAuthStore = create<AuthState>((set) => ({
    * Uses a plain fetch() call directly against the API so we avoid a circular
    * dependency (useAuthStore → authApi → ApiClient → useAuthStore).
    *
-   * Returns true on success; returns false and clears auth if the session has
-   * fully expired.
+   * Returns true on success; returns false otherwise. Auth is only actually
+   * cleared when the refresh token itself is genuinely rejected (401/403) —
+   * a real expiry. Everything else (a network blip, a timeout, a 5xx from
+   * the refresh endpoint, a malformed-but-200 response) fails just this one
+   * attempt and leaves the stored tokens intact, so a request that happened
+   * to need a refresh during a bad connection doesn't force-log-out a user
+   * who's still genuinely authenticated — the previous version treated ANY
+   * failure here, including a plain fetch() throw from being offline, as
+   * full session expiry.
    */
   refreshAccessToken: async () => {
     const { refreshToken } = useAuthStore.getState();
@@ -278,13 +295,25 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
 
       if (!response.ok) {
-        await useAuthStore.getState().clearAuth();
+        if (response.status === 401 || response.status === 403) {
+          // The refresh token itself was rejected — a real expiry.
+          await useAuthStore.getState().clearAuth();
+        } else {
+          console.warn(
+            `[Auth] Token refresh got a transient error (${response.status}) — leaving the session intact for a later retry.`,
+          );
+        }
         return false;
       }
 
       const data = await response.json();
       if (!data?.access) {
-        await useAuthStore.getState().clearAuth();
+        // A 2xx with a missing field reads as a backend hiccup, not proof
+        // the session is invalid (a genuinely rejected refresh token comes
+        // back as 401/403, not 200) — don't clear auth over it.
+        console.warn(
+          "[Auth] Token refresh returned 200 with no access token — leaving the session intact for a later retry.",
+        );
         return false;
       }
 
@@ -292,8 +321,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       await useAuthStore.getState().setAuthTokens(data.access, refreshToken);
       return true;
     } catch (error) {
-      console.warn("[Auth] Token refresh failed:", error);
-      await useAuthStore.getState().clearAuth();
+      // fetch() itself threw — offline, DNS, timeout, TLS blip. Not
+      // evidence the session is invalid; leave auth intact.
+      console.warn(
+        "[Auth] Token refresh request failed (network) — leaving the session intact for a later retry:",
+        error,
+      );
       return false;
     }
   },

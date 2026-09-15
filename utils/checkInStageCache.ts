@@ -99,3 +99,19 @@ export async function getLocalCheckInStages(): Promise<StageMap> {
 export async function getLocalCheckInTimes(): Promise<StageMap> {
   return readKey(TIMES_KEY);
 }
+
+/**
+ * Wipe this device's cache — call on logout/account deletion. Both maps are
+ * keyed only by referralId, with no user-scoping of their own, so without
+ * this a different account (applicant or sponsor) logging into the same
+ * device would see whatever the previous account's own check-ins last
+ * recorded, rendered by PipelineStageTimeline as if it were current,
+ * authoritative data for a referral they may not even be party to.
+ */
+export async function clearLocalCheckInCache(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([STORAGE_KEY, TIMES_KEY]);
+  } catch {
+    // Best-effort — see saveLocalCheckInStage.
+  }
+}

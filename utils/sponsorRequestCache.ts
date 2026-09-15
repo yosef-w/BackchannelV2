@@ -44,3 +44,18 @@ export async function saveSponsorRequestOutcome(
 export async function getSponsorRequestOutcomes(): Promise<OutcomeMap> {
   return readMap();
 }
+
+/**
+ * Wipe this device's cache — call on logout/account deletion. This cache is
+ * keyed only by jobId, with no user-scoping of its own, so without this a
+ * different account logging into the same device would see whatever the
+ * previous account's own sponsor requests last recorded, rendered as if it
+ * were the result of their own request.
+ */
+export async function clearSponsorRequestCache(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Best-effort — see saveSponsorRequestOutcome.
+  }
+}

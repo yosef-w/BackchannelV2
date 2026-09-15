@@ -300,9 +300,20 @@ export function ApplicantQuestionnaire({
   // component unmounts) a slow classify landing in the background must no
   // longer flip resumeFilled — the data still lands server-side either way.
   const resumeHarvestClosedRef = useRef(false);
+  // The whole upload→classify→late-recovery pipeline below is explicitly
+  // designed to keep running past the API client's blanket 30s default
+  // timeout (see lib/api.ts's DEFAULT_REQUEST_TIMEOUT_MS) — that default
+  // was added elsewhere this session and would otherwise abort
+  // uploadAndParseResume/classifyResume/getExtractedResumeText mid-flight
+  // well before RESUME_FOREGROUND_WAIT_MS (75s) even elapses, defeating
+  // this exact pipeline. One controller per attempt gives it real headroom
+  // (mirroring the dedicated timeout uploadProfileImage already got) while
+  // still aborting cleanly on unmount.
+  const resumeAbortRef = useRef<AbortController | null>(null);
   useEffect(
     () => () => {
       resumeHarvestClosedRef.current = true;
+      resumeAbortRef.current?.abort();
     },
     [],
   );
@@ -799,8 +810,18 @@ export function ApplicantQuestionnaire({
       // classify can still be recovered after we release the user (see
       // attemptLateRecovery below).
       let resumePhaseStartedAt = Date.now();
+      // A hard backstop comfortably beyond RESUME_REQUEST_CEILING_MS (the
+      // late-recovery logic's own worst-case budget) rather than no cap at
+      // all — long enough to never fire before the pipeline's own timing
+      // logic would've given up anyway.
+      const resumeController = new AbortController();
+      resumeAbortRef.current = resumeController;
+      const resumeAbortTimer = setTimeout(
+        () => resumeController.abort(),
+        RESUME_REQUEST_CEILING_MS + 20_000,
+      );
       const pipeline = (async () => {
-        const parsed = await uploadAndParseResume(form);
+        const parsed = await uploadAndParseResume(form, resumeController.signal);
         // The backend returns 201 even when text extraction fails (scanned/
         // image-only PDFs) — extracted_text is null. This is a fast,
         // definitive answer from the backend, not a race, so it's flagged
@@ -817,7 +838,7 @@ export function ApplicantQuestionnaire({
         const text = parsed.extracted_text;
         setFilm((s) => (s ? { ...s, resumeText: text } : s));
         resumePhaseStartedAt = Date.now();
-        await classifyResume();
+        await classifyResume(resumeController.signal);
         await fetchFromBackend();
       })();
 
@@ -837,14 +858,14 @@ export function ApplicantQuestionnaire({
         await new Promise((resolve) => setTimeout(resolve, waitMs));
         if (resumeHarvestClosedRef.current) return;
         try {
-          const status = await getExtractedResumeText();
+          const status = await getExtractedResumeText(resumeController.signal);
           if (!status.extracted_resume_text) return; // genuinely never landed
           // Text is present now (freshly landed, or was already there from
           // before an ambiguous classify-phase failure) — (re-)classify is
           // safe to call again even if an earlier attempt secretly
           // succeeded too, since it just recomputes from the same stored
           // text and overwrites with an equivalent result.
-          await classifyResume();
+          await classifyResume(resumeController.signal);
           await fetchFromBackend();
           if (resumeHarvestClosedRef.current) return;
           setResumeFilled(true);
@@ -861,11 +882,17 @@ export function ApplicantQuestionnaire({
           Sentry.captureException(lateErr, {
             tags: { flow: "onboarding_resume", stage: "late_recovery" },
           });
+        } finally {
+          clearTimeout(resumeAbortTimer);
         }
       };
 
       try {
         await withTimeout(pipeline, RESUME_FOREGROUND_WAIT_MS);
+        // Pipeline actually finished — the backstop timer has nothing left
+        // to guard. (Left running in the ambiguous branch below, where
+        // attemptLateRecovery still needs resumeController usable.)
+        clearTimeout(resumeAbortTimer);
         // Real values for the film's build scene — the same derivations the
         // deck card ledger uses, from the freshly-refetched profile.
         const d = useUserProfileStore.getState().data;
@@ -916,6 +943,8 @@ export function ApplicantQuestionnaire({
           );
           void attemptLateRecovery(resumePhaseStartedAt);
         } else {
+          // Definitive — nothing left running for the backstop to guard.
+          clearTimeout(resumeAbortTimer);
           console.warn("[Questionnaire] Résumé processing failed:", err);
           // Onboarding's centerpiece — failures should page the dashboard,
           // not just toast (mirrors useResumePipeline).
