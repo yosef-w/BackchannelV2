@@ -50,6 +50,7 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -320,7 +321,20 @@ function MarketplaceJobCard({
             {/* Two lines before truncating — real titles ("Senior Staff
                 Software Engineer, Infrastructure") lose their meaning
                 cut at one. */}
-            <Text style={styles.jobCardTitle} numberOfLines={2}>
+            <Text
+              style={[
+                styles.jobCardTitle,
+                // The reserved space is only actually needed on sponsored
+                // cards — the "Sponsored" tag is the only thing absolutely
+                // positioned over the title. Applying it unconditionally to
+                // every (overwhelmingly non-sponsored) card lost 66px of
+                // title width for nothing, truncating ordinary listings at
+                // 2 lines far sooner than the numberOfLines comment above
+                // intends.
+                job.IS_SPONSORED && styles.jobCardTitleSponsored,
+              ]}
+              numberOfLines={2}
+            >
               {job.TITLE}
             </Text>
             <Text style={styles.jobCardCompany} numberOfLines={1}>
@@ -334,7 +348,10 @@ function MarketplaceJobCard({
           <View style={styles.jobCardBottom}>
             <View style={styles.pillRow}>
               {pills.map((p) => (
-                <View key={p} style={styles.pill}>
+                <View
+                  key={p}
+                  style={[styles.pill, job.IS_SPONSORED && styles.pillSponsored]}
+                >
                   <Text style={styles.pillText}>{p.toUpperCase()}</Text>
                 </View>
               ))}
@@ -376,6 +393,14 @@ function JobCardSkeleton() {
       -1,
       true,
     );
+    // Never cancelled before this — an infinite withRepeat keeps running
+    // on the UI thread for the life of the session otherwise. Three of
+    // these mount on first load and three more on EVERY debounced search
+    // (loading flips true/false repeatedly as the user types), each
+    // leaving an orphaned animation behind. Matches the cancelAnimation
+    // pattern used everywhere else in the app for an infinite loop tied to
+    // a mount (cinema/engine.tsx, PlateDeck.tsx, ReferralSigningScreen.tsx).
+    return () => cancelAnimation(opacity);
   }, [opacity]);
   const shimmer = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
@@ -540,20 +565,37 @@ export function ApplicantJobsBrowseView() {
 
   const handleRequestSponsor = async (job: BrowseJobResponse) => {
     setIsRequesting(true);
-    const [requestRes] = await Promise.allSettled([
+    const [requestRes, waitlistRes] = await Promise.allSettled([
       requestSponsorForJob(job.JOB_ID),
       joinWaitlist(job.JOB_ID),
     ]);
     setIsRequesting(false);
-    if (requestRes.status === "fulfilled") {
+
+    // Only mark the job waitlisted when that call actually succeeded — this
+    // used to fire unconditionally off requestRes alone, so a failed
+    // joinWaitlist still showed the "WAITLISTED" badge on the card even
+    // though the applicant was never actually queued, with joinWaitlist's
+    // own outcome never inspected at all.
+    if (waitlistRes.status === "fulfilled") {
+      setWaitlistedIds((prev) => new Set([...prev, job.JOB_ID]));
+    }
+
+    if (requestRes.status === "fulfilled" && waitlistRes.status === "fulfilled") {
       // Own copy, not the backend's response message — it's meant for
       // logging, not display (arbitrary length, no guaranteed tone), and
       // BarFooter's title is a single line: anything longer just clips
-      // mid-sentence. Adding the job to waitlistedIds is enough on its
-      // own to flip the sheet to the same clean "You're on the waitlist"
-      // confirmation already shown when reopening a waitlisted job later
-      // — see that branch below.
-      setWaitlistedIds((prev) => new Set([...prev, job.JOB_ID]));
+      // mid-sentence. Adding the job to waitlistedIds above is enough on
+      // its own to flip the sheet to the same clean "You're on the
+      // waitlist" confirmation already shown when reopening a waitlisted
+      // job later — see that branch below.
+    } else if (requestRes.status === "fulfilled") {
+      // The sponsor request landed but the waitlist half didn't — say so
+      // plainly instead of the clean success copy, since only half the
+      // action actually happened and the badge above won't show waitlisted.
+      showToast(
+        "Sponsor request sent, but we couldn't add you to the waitlist. Try again from this listing.",
+        "error",
+      );
     } else {
       showToast(
         "Couldn't send the request right now. Please try again.",
@@ -996,7 +1038,10 @@ const styles = StyleSheet.create({
   // at a glance while scrolling, not just after opening the detail sheet.
   jobCardSponsored: {
     backgroundColor: Colors.surface,
-    borderColor: Colors.surface,
+    // Was Colors.surface — identical to the fill above, which erased the
+    // card's border entirely right when it's supposed to stand out most.
+    // borderStrong is the theme's own "emphasized border" token.
+    borderColor: Colors.borderStrong,
   },
   sponsoredTag: {
     position: "absolute",
@@ -1021,7 +1066,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.ink,
     lineHeight: 19,
-    // Room for the absolutely-positioned sponsored tag above/right.
+  },
+  // Room for the absolutely-positioned sponsored tag above/right — only
+  // applied on sponsored cards (see the IS_SPONSORED check above), not
+  // every card.
+  jobCardTitleSponsored: {
     paddingRight: 66,
   },
   // Company · location — plain weight now that "Remote" has its own pill
@@ -1045,6 +1094,14 @@ const styles = StyleSheet.create({
     borderRadius: Radii.sm,
     paddingHorizontal: 7,
     paddingVertical: 3,
+  },
+  // Sponsored cards tint their own background to Colors.surface — the
+  // same fill the plain pill above uses, which made every fact pill
+  // (Remote/type/level) blend invisibly into the card exactly where the
+  // redesign means to make a sponsored row stand out most. Paper (white)
+  // reads as a distinct chip against the tinted card.
+  pillSponsored: {
+    backgroundColor: Colors.paper,
   },
   pillText: {
     fontSize: 9,
