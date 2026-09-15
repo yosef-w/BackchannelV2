@@ -26,6 +26,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Linking,
@@ -304,6 +305,11 @@ export function ReferralSigningScreen({
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [signAborts, setSignAborts] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  // Synchronous re-entrancy guard for handleSubmit — see its own comment.
+  // `submitting` state stays the source of truth for render (disabling
+  // buttons, showing the spinner, gating navigation); this ref exists only
+  // to close the same-tick double-invocation window state can't.
+  const submittingRef = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [profile, setProfile] = useState<PublicProfileResponse | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -335,6 +341,7 @@ export function ReferralSigningScreen({
     setChecks({});
     setSignAborts(0);
     setSubmitting(false);
+    submittingRef.current = false;
     setSubmitError(null);
     setProfile(null);
     setApplicantEmail(null);
@@ -420,11 +427,18 @@ export function ReferralSigningScreen({
     // SignatureCanvas's onComplete firing alongside a fallback tap) could
     // fire submitReferral twice concurrently — the second landing as a
     // confusing "referral already exists" error for an action the user
-    // only took once.
-    if (submitting) return;
+    // only took once. A ref, not just the `submitting` state check below:
+    // the render that actually disables/unmounts the buttons only commits
+    // on the NEXT tick, so two same-tick calls (a genuine double-tap, or
+    // two different triggers firing together) would both still read
+    // submitting===false from this render's closure. The ref is set
+    // synchronously, before either call can race past this line.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     const applicantUserId = conversation.otherParticipant?.id;
     const jobId = conversation.jobContext?.jobId;
     if (!applicantUserId || !jobId) {
+      submittingRef.current = false;
       setSubmitError("Missing applicant or job information. Please try again.");
       return;
     }
@@ -468,6 +482,7 @@ export function ReferralSigningScreen({
       // Whatever went wrong, don't make them re-earn the gesture.
       setSignAborts(FALLBACK_AFTER_ABORTS);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -492,20 +507,38 @@ export function ReferralSigningScreen({
   const statement = STATEMENTS[statementIndex];
   const StatementIcon = statement.icon;
 
+  // Android hardware back maps straight to onClose regardless of which act
+  // is showing or what the header's own back button would do — previously
+  // this let a back-button press dismiss the whole screen while
+  // handleSubmit's request was still in flight. The submit isn't cancelled
+  // by leaving, so it can still succeed in the background; reopening this
+  // screen later (not knowing it already went through) then hits a
+  // confusing "referral already exists" error on the second attempt. A
+  // flat no-op closed that, but with no request timeout anywhere in
+  // lib/api.ts, a connection that never resolves left `submitting` true
+  // forever — there was then no way out of this full-screen modal short of
+  // force-quitting. Confirming instead keeps the same protection (leaving
+  // takes a deliberate second tap) without ever fully trapping the user.
+  const handleRequestClose = () => {
+    if (!submitting) {
+      onClose();
+      return;
+    }
+    Alert.alert(
+      "Still submitting…",
+      "This referral is still being sent. Leaving now won't cancel it, but if it doesn't finish you may need to try again later.",
+      [
+        { text: "Stay", style: "cancel" },
+        { text: "Leave anyway", style: "destructive", onPress: onClose },
+      ],
+    );
+  };
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      // Android hardware back maps straight to onClose regardless of which
-      // act is showing or what the header's own back button would do —
-      // previously this let a back-button press dismiss the whole screen
-      // while handleSubmit's request was still in flight. The submit isn't
-      // cancelled by leaving, so it can still succeed in the background;
-      // reopening this screen later (not knowing it already went through)
-      // then hits a confusing "referral already exists" error on the
-      // second attempt. No-op while submitting, matching the header
-      // button's own guard below.
-      onRequestClose={submitting ? () => {} : onClose}
+      onRequestClose={handleRequestClose}
     >
       <View style={[styles.root, dark && styles.rootDark]}>
         <SafeAreaView style={styles.safe}>
