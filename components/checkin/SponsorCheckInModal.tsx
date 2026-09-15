@@ -166,27 +166,62 @@ export function SponsorCheckInModal({
           const toSubmit = mapped.slice(0, BATCH_LIMIT);
           const dropped = mapped.length - toSubmit.length;
 
+          let res: { checkin_ids: string[]; count: number; message: string };
           try {
-            await submitSponsorBatchCheckIn(toSubmit);
+            res = await submitSponsorBatchCheckIn(toSubmit);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             trackCheckInFailed({ role: "sponsor", reason: msg || "unknown" });
             showToast(msg || "Failed to save updates. Try again.", "error");
             throw err; // stay on the recap so nothing is lost
           }
-          trackSponsorBatchCheckInSubmitted({ updateCount: toSubmit.length });
-          // Mirror locally so the Matches screen's pipeline timeline reflects
-          // these updates immediately — see checkInStageCache.ts for why this
-          // is necessary until the backend returns stages on GET /api/referrals/.
-          saveLocalCheckInStages(
-            toSubmit.map((u) => ({ referralId: u.referral_id, stage: u.stage })),
-          );
+
+          // The endpoint can partially apply a batch (e.g. one referral was
+          // withdrawn by the applicant moments earlier) and reports how many
+          // actually landed via `count` — it doesn't return here failed.
+          // The response doesn't say WHICH updates landed, so when the count
+          // comes back short we can't tell which of toSubmit to trust: caching
+          // all of them locally would show stages the backend never recorded
+          // (and they'd silently vanish once §N2 ships and the backend value
+          // takes over), so we only mirror locally on a full match.
+          const appliedCount =
+            typeof res?.count === "number" ? res.count : toSubmit.length;
+          const shortBy = toSubmit.length - appliedCount;
+          trackSponsorBatchCheckInSubmitted({ updateCount: appliedCount });
+
+          if (shortBy <= 0) {
+            // Mirror locally so the Matches screen's pipeline timeline
+            // reflects these updates immediately — see checkInStageCache.ts
+            // for why this is necessary until the backend returns stages on
+            // GET /api/referrals/.
+            saveLocalCheckInStages(
+              toSubmit.map((u) => ({ referralId: u.referral_id, stage: u.stage })),
+            );
+          }
           onSubmitted?.();
+
           if (dropped > 0) {
             showToast(
-              `Updated ${toSubmit.length} referrals; ${dropped} more will need a second pass.`,
+              `Updated ${appliedCount} referrals; ${dropped} more will need a second pass.`,
               "success",
             );
+          } else if (shortBy > 0) {
+            trackCheckInFailed({
+              role: "sponsor",
+              reason: `partial batch: ${appliedCount}/${toSubmit.length} applied`,
+            });
+            showToast(
+              appliedCount === 0
+                ? "None of those updates went through. Try again."
+                : `Only ${appliedCount} of ${toSubmit.length} updates went through. Try again to finish the rest.`,
+              "error",
+            );
+            // Stay on the recap (like a hard failure above) instead of
+            // dismissing — the batch endpoint sets stages rather than
+            // diffing them, so re-sending the ones that already landed is a
+            // harmless no-op, and this is the only way to retry the ones
+            // that didn't.
+            throw new Error("Partial batch check-in");
           }
         }}
         onDone={onDismiss}

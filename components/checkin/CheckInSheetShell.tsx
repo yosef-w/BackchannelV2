@@ -65,7 +65,20 @@ export function CheckInSheetShell({
     heightFraction ?? (Platform.OS === "ios" ? 0.94 : 0.92);
 
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      // Android hardware back fires onRequestClose regardless of whether one
+      // is passed — omitting it left Android's back button free to dismiss
+      // the modal at the OS level while React state still thought it was
+      // open, breaking the "finish the pass you started" lock this sheet is
+      // built around. No-op keeps back truly inert, matching iOS (which has
+      // no hardware back to intercept) and the documented non-dismissible
+      // design above.
+      onRequestClose={() => {}}
+    >
       {/* Non-dismissible blur backdrop */}
       <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
 

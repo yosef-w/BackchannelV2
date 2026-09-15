@@ -23,6 +23,14 @@ interface PipelineStageTimelineProps {
    * "Referred" when absent — matching every referral's actual starting
    * state. */
   currentStage?: string | null;
+  /**
+   * True when `currentStage` is only this device's locally-cached mirror,
+   * not a backend-confirmed value (see Referral.checkInStageIsLocal). Shows
+   * a quiet "as reported by you" qualifier so the stage doesn't read as
+   * confirmed by the other party when it's really just a local echo of
+   * what this user last submitted.
+   */
+  isLocalOnly?: boolean;
 }
 
 /**
@@ -33,14 +41,19 @@ interface PipelineStageTimelineProps {
  */
 export function PipelineStageTimeline({
   currentStage,
+  isLocalOnly,
 }: PipelineStageTimelineProps) {
   const stage = currentStage || "Referred";
+  const qualifier = isLocalOnly ? " · as reported by you" : "";
 
   if (OFF_TRACK_VALUES.includes(stage)) {
     return (
       <View style={styles.offTrackRow}>
         <View style={styles.offTrackDot} />
-        <Text style={styles.offTrackText}>{stage}</Text>
+        <Text style={styles.offTrackText}>
+          {stage}
+          {qualifier}
+        </Text>
       </View>
     );
   }
@@ -65,6 +78,7 @@ export function PipelineStageTimeline({
       </View>
       <Text style={styles.stageLabel} numberOfLines={1}>
         {CORE_STAGES[currentIndex]}
+        {qualifier}
       </Text>
     </View>
   );

@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -198,6 +199,32 @@ export function CheckInStack({
 
   const handleSend = async () => {
     if (!current || !hasSelection || submitting) return;
+    // The terminal stage ends this referral's pipeline tracking — unlike
+    // every other stage (which can be freely revised on a later pass), so
+    // it gets one distinct confirmation instead of firing on the same tap
+    // as a routine "still in Recruiter Screen" update.
+    if (terminal) {
+      Alert.alert(
+        `Mark as "${terminalLabel}"?`,
+        "This ends pipeline tracking for this referral. You can still check in on it again later if that changes.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Confirm",
+            style: "destructive",
+            onPress: () => {
+              void submitCurrent();
+            },
+          },
+        ],
+      );
+      return;
+    }
+    await submitCurrent();
+  };
+
+  const submitCurrent = async () => {
+    if (!current || !hasSelection || submitting) return;
     const selection: StackSelection = {
       stageIndex: terminal ? -1 : (stageIndex as number),
       terminal,
@@ -349,6 +376,11 @@ export function CheckInStack({
                 key={item.id}
                 style={styles.overviewRow}
                 onPress={() => {
+                  // Defense in depth: the "See all referrals" entry point is
+                  // already blocked while a submit is in-flight, so this
+                  // shouldn't be reachable mid-submit — but never let a jump
+                  // land while one is, regardless of how overview was opened.
+                  if (submitting) return;
                   setIndex(i);
                   setShowOverview(false);
                 }}
@@ -451,12 +483,28 @@ export function CheckInStack({
                 {position} of {items.length}
               </Text>
               <TouchableOpacity
-                onPress={() => setShowOverview(true)}
+                onPress={() => {
+                  // Entering the overview lets the user jump to a different
+                  // card by index. If a submit for THIS card is still
+                  // in-flight, that jump would let the submit's own
+                  // completion (advance(), keyed to the index captured when
+                  // it started) yank the user back off whatever card they
+                  // manually navigated to — silently discarding the
+                  // in-progress selection there. Blocking entry while
+                  // submitting closes that race at its only entry point.
+                  if (submitting) return;
+                  setShowOverview(true);
+                }}
+                disabled={submitting}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityRole="button"
                 accessibilityLabel="See all referrals"
               >
-                <List color={Colors.muted} size={18} strokeWidth={2.2} />
+                <List
+                  color={submitting ? Colors.faint : Colors.muted}
+                  size={18}
+                  strokeWidth={2.2}
+                />
               </TouchableOpacity>
             </View>
           )}
