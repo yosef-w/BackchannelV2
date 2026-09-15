@@ -291,6 +291,14 @@ export function HomeView({
     return userType === "applicant" ? jobs.length === 0 : false;
   });
   const [showCelebration, setShowCelebration] = useState(false);
+  // The name/title the celebration copy below reads — captured at the
+  // moment the like actually succeeds, not derived live from currentData
+  // at render time. currentData can't actually change while the
+  // celebration is up now that isActionPending blocks a second tap for its
+  // whole duration, but snapshotting is what makes that true by
+  // construction rather than by relying on that guard staying correct
+  // forever elsewhere.
+  const [celebrationSubject, setCelebrationSubject] = useState("");
   // Auto-dismiss timer for the "Interest Sent!" moment; null = nothing in
   // flight. finishCelebration's null guard makes the timer and
   // tap-anywhere-to-continue idempotent (the loser of the race no-ops).
@@ -362,6 +370,25 @@ export function HomeView({
   // showCelebration/matchedUser only cover the celebration/match-modal
   // window that precedes it, not this trailing fade-out window.
   const [leavingItemId, setLeavingItemId] = useState<string | null>(null);
+  // Guards handleSwipe against a second tap landing while the first is
+  // still resolving — the like API's network round-trip, or the
+  // celebration/match-modal window before nextProfile actually fires.
+  // Without this, tapping accept then pass on the same still-visible card
+  // (well within human reach, not an exotic double-tap) could: show the
+  // "Interest Sent!" celebration with a title read live off whatever card
+  // nextProfile has *already* advanced to by the time it resolves; call
+  // nextProfile a second time and silently skip a card the user never
+  // actually saw a decision register for; or double-fire the like API and
+  // its analytics before likedIds (only set after the first call resolves)
+  // is around to de-dupe. A ref backs the actual guard check so a same-tick
+  // double-tap is blocked even before React re-renders with the state
+  // mirror; the state mirror only drives VerdictBar's visual disabled look.
+  const isActionPendingRef = useRef(false);
+  const [isActionPending, setIsActionPendingState] = useState(false);
+  const setActionPending = (pending: boolean) => {
+    isActionPendingRef.current = pending;
+    setIsActionPendingState(pending);
+  };
 
   // Drives the cross-fade between profiles. The old swipeX horizontal
   // translation + rotateY card-flip shared values were removed with the
@@ -419,11 +446,31 @@ export function HomeView({
     profilesJobId === activeSponsoredJobId &&
     !profilesError;
 
+  const activeDeckLength =
+    userType === "sponsor" ? sponsorProfiles.length : applicantJobs.length;
   const currentData =
     userType === "sponsor"
       ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
       : applicantJobs[currentProfileIndex % applicantJobs.length];
-  const isDeckFinished = progress > DECK_SIZE;
+  // Capped at the deck's ACTUAL length, not just DECK_SIZE (10) — a sponsor
+  // with a small applicant pool, or an applicant in a thin niche, can
+  // easily get fewer than 10 back from the backend. Without the cap,
+  // currentData's index-modulo-length wraps around and starts silently
+  // re-showing already-passed cards (progress keeps climbing toward 10,
+  // dishonestly implying fresh content) long before progress > DECK_SIZE
+  // would ever trip. activeDeckLength is 0 during initial load — Math.min
+  // then evaluates to 0, and progress starts at 0 too, so this doesn't
+  // prematurely read as "finished" before a deck has loaded.
+  const isDeckFinished =
+    activeDeckLength > 0 && progress > Math.min(DECK_SIZE, activeDeckLength);
+  // Same real-length cap for every place the deck's total is DISPLAYED —
+  // isDeckFinished alone being capped left the counter/dots/DeckDoneCard
+  // still claiming DECK_SIZE (10), so a 3-card deck showed "1/10 … 3/10"
+  // against 10 dots (7 of which could never fill) and then a "you reviewed
+  // 10" done card. Falls back to DECK_SIZE while activeDeckLength is still
+  // 0 (nothing loaded yet), matching isDeckFinished's own load-guard.
+  const displayDeckSize =
+    activeDeckLength > 0 ? Math.min(DECK_SIZE, activeDeckLength) : DECK_SIZE;
 
   // True when the current card is one we've already liked this session —
   // most commonly because "Review again" replayed the deck from the top.
@@ -971,6 +1018,14 @@ export function HomeView({
       return;
     }
 
+    // Every path from here either commits to advancing the deck (eventually
+    // calling nextProfile, which releases this) or explicitly releases it
+    // itself (the apiError branch below) — a second tap landing anywhere in
+    // between is exactly the rapid accept-then-pass race this guards
+    // against. Checked via the ref, not the state mirror, so a same-tick
+    // double-tap can't sneak in before React re-renders.
+    if (isActionPendingRef.current) return;
+
     // If applicant tries to apply to Non-Sponsored Job, intercept
     if (
       userType === "applicant" &&
@@ -982,10 +1037,13 @@ export function HomeView({
       // Route through nextProfile so progress (and the dots/number) bumps
       // in lock-step with currentIndex, like every other action.
       if (waitlistedJobIds.has(String(currentData.id))) {
+        setActionPending(true);
         nextProfile(true);
         return;
       }
-      // Applicant branch — currentData is a Job here (deck invariant).
+      // Applicant branch — currentData is a Job here (deck invariant). Opens
+      // a separate modal rather than advancing the deck itself, so this
+      // doesn't set the pending guard — nothing here would ever release it.
       setPendingJob(currentData as Job);
       setApplyStep("select");
       setShowApplyModal(true);
@@ -997,10 +1055,12 @@ export function HomeView({
     // entirely (no duplicate like, no duplicate match celebration) and just
     // advance, the same way a fresh like would.
     if (isAccept && currentItemId && likedIds.has(String(currentItemId))) {
+      setActionPending(true);
       nextProfile(true);
       return;
     }
 
+    setActionPending(true);
     if (isAccept) {
       // The stamp lands the instant the verb is pressed — a physical mark,
       // not a network receipt — and clears itself as the card lifts.
@@ -1148,9 +1208,22 @@ export function HomeView({
         nextProfile(true);
       } else if (apiError) {
         showToast("Couldn't connect right now. Please try again.", "error");
-        // Keep the card in place so the user can retry the swipe.
+        // Keep the card in place so the user can retry the swipe — release
+        // the guard explicitly since this is the one path that doesn't
+        // eventually call nextProfile (which releases it for every other
+        // outcome).
+        setActionPending(false);
       } else if (!didMatch) {
         // Standard swipe-right toast — only shown when there is no mutual match
+        setCelebrationSubject(
+          userType === "sponsor"
+            ? "name" in currentData
+              ? String(currentData.name)
+              : "this applicant"
+            : "title" in currentData
+              ? String(currentData.title)
+              : "this role",
+        );
         setShowCelebration(true);
         celebrationTimerRef.current = setTimeout(finishCelebration, 1800);
       }
@@ -1248,6 +1321,12 @@ export function HomeView({
       }
       swipeOpacity.value = withTiming(1, { duration: 280 });
       setLeavingItemId(null);
+      // The transition this action was waiting on has now actually
+      // happened — safe to accept another swipe. Every handleSwipe outcome
+      // that isn't the immediate-retry apiError path (which releases this
+      // itself) eventually reaches nextProfile, directly or via
+      // finishCelebration/handleMatchModalDismiss/handleMatchModalMessage.
+      setActionPending(false);
     }, 220);
   };
 
@@ -1258,6 +1337,10 @@ export function HomeView({
   // was the "switching resets the progress bar" complaint.
   const handleSwitchRole = (newJobId: string) => {
     setShowJobSwitcher(false);
+    // Defense in depth alongside the pill's own guard above — the switcher
+    // sheet shouldn't be reachable while pending, but never let an actual
+    // switch land mid-action regardless of how it was triggered.
+    if (isActionPendingRef.current) return;
     if (!newJobId || newJobId === activeSponsoredJobId) return;
     if (
       activeSponsoredJobId &&
@@ -1555,12 +1638,12 @@ export function HomeView({
             >
               <View style={styles.progressLabelRow}>
                 <Text style={styles.progressCurrent}>
-                  {deckIsActive ? Math.min(progress, DECK_SIZE) : 0}
+                  {deckIsActive ? Math.min(progress, displayDeckSize) : 0}
                 </Text>
-                <Text style={styles.progressTotal}>/{DECK_SIZE}</Text>
+                <Text style={styles.progressTotal}>/{displayDeckSize}</Text>
               </View>
               <View style={styles.progressDotsRow}>
-                {Array.from({ length: DECK_SIZE }).map((_, i) => {
+                {Array.from({ length: displayDeckSize }).map((_, i) => {
                   const cardNumber = i + 1;
                   const isPast = cardNumber < progress;
                   const isCurrent = cardNumber === progress;
@@ -1611,7 +1694,20 @@ export function HomeView({
                 signal lives right in the header. */}
             {userType === "sponsor" && sponsoredJobs.length > 0 && (
               <TouchableOpacity
-                onPress={() => setShowJobSwitcher(true)}
+                onPress={() => {
+                  // A swipe action still in flight for the CURRENT role
+                  // closes over this render's deck position (nextProfile/
+                  // finishCelebration aren't functional updates) — if a
+                  // role switch resets the deck position for a NEW role
+                  // while that stale completion is still pending, it lands
+                  // on the new role's fresh state and silently advances (or
+                  // mis-skips) cards the user never saw a decision on.
+                  // Blocking entry to the switcher while pending closes
+                  // this at its one entry point, same as isActionPending
+                  // already does for the swipe buttons themselves.
+                  if (isActionPending) return;
+                  setShowJobSwitcher(true);
+                }}
                 activeOpacity={0.85}
                 style={styles.roleSwitcherPill}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -1643,7 +1739,7 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <DeckDoneCard
                 userType={userType}
-                deckSize={DECK_SIZE}
+                deckSize={displayDeckSize}
                 sessionLikes={sessionLikes}
                 sessionMatches={sessionMatches}
                 isPremium={isPremium}
@@ -2114,6 +2210,7 @@ export function HomeView({
                   <VerdictBar
                     onPass={() => handleSwipe(false)}
                     onAccept={() => handleSwipe(true)}
+                    disabled={isActionPending}
                     acceptLabel={
                       userType === "sponsor"
                         ? "CONNECT"
@@ -2174,8 +2271,8 @@ export function HomeView({
                 <Text style={styles.celebrationTitle}>Interest Sent!</Text>
                 <Text style={styles.celebrationSub}>
                   {userType === "sponsor"
-                    ? `You've shown interest in ${"name" in currentData ? currentData.name : "this applicant"} — we'll let you know if they connect back.`
-                    : `You've shown interest in ${"title" in currentData ? currentData.title : "this role"} — we'll let you know if the sponsor connects.`}
+                    ? `You've shown interest in ${celebrationSubject} — we'll let you know if they connect back.`
+                    : `You've shown interest in ${celebrationSubject} — we'll let you know if the sponsor connects.`}
                 </Text>
               </Animated.View>
             </View>
