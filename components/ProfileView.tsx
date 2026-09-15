@@ -49,9 +49,7 @@ import {
 import {
     logout,
     unregisterDevice,
-    updateApplicantProfile,
     updateGeneralProfile,
-    updateSponsorProfile,
     uploadProfileImage,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -62,6 +60,7 @@ import { useToastStore } from "@/stores/useToastStore";
 import {
     EducationEntry,
     ProfessionalExperience,
+    SyncableField,
     useUserProfileStore,
 } from "@/stores/useUserProfileStore";
 import {
@@ -194,6 +193,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const updateEducationEntries = useUserProfileStore(
     (state) => state.updateEducationEntries,
   );
+  const flushProfileSync = useUserProfileStore((state) => state.flushSyncNow);
 
   // "Two Faces": EDIT is the management hub, PREVIEW renders the live
   // deck card exactly as the other side sees it.
@@ -439,6 +439,38 @@ export function ProfileView({ userType }: ProfileViewProps) {
     setTempValue(currentValue);
   };
 
+  // Central place to turn a store write into honest user feedback. Forces
+  // the store's debounced sync to run now and waits for the real network
+  // result instead of assuming success — see the profile-save audit: most
+  // handlers below used to fire an extra direct API call in parallel with
+  // the store's own debounced sync and only reacted to THAT call's
+  // outcome. A slow/failed direct call could show "failed" (and revert
+  // local state) while the store's copy — the thing actually still live —
+  // had already synced fine, or vice versa: the store's write would
+  // eventually succeed silently while the user was told it failed. Reading
+  // the store's own post-flush dirty/error state instead of a second
+  // network call removes the race entirely, since there's only ever one
+  // write in flight per field group now.
+  const reportSyncOutcome = async (
+    group: SyncableField,
+    successMessage = "Saved.",
+  ) => {
+    await flushProfileSync();
+    const { dirtyFields, syncError } = useUserProfileStore.getState();
+    if (!dirtyFields.has(group)) {
+      showToast(successMessage, "success");
+    } else if (syncError && syncError !== "offline") {
+      showToast("Failed to save. Please try again.", "error");
+    } else {
+      // Still dirty but no hard failure: either genuinely offline (will
+      // sync once connectivity returns) or another sync was already in
+      // flight when we flushed (will pick this up on its next pass). Either
+      // way the edit is captured — reverting it here would be the exact
+      // false-negative this audit was called in to fix.
+      showToast("Saved — finishing up in the background…", "info");
+    }
+  };
+
   // `valueOverride` lets autosave-on-blur screens (e.g. EditProfileScreen)
   // pass the field's current text directly, since they don't go through the
   // tap-to-edit `editingField`/`tempValue` flow the older modals used.
@@ -455,6 +487,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
       return;
     }
     const valueToSave = cleaned;
+    // Every case below used to follow its store write with an immediate
+    // direct API call for the same data — redundant with (and racing) the
+    // store's own debounced sync, and the sole source of the toast/revert
+    // this handler showed. The store write alone is sufficient; `touchedGroup`
+    // records which SyncableField group it landed in so we can flush that
+    // sync now and report its real outcome below instead of guessing.
+    let touchedGroup: SyncableField | null = null;
     try {
       switch (field) {
         case "firstName":
@@ -464,7 +503,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             firstName: valueToSave,
             fullName: `${valueToSave} ${lastName}`.trim(),
           });
-          await updateGeneralProfile({ first_name: valueToSave });
+          touchedGroup = "personal";
           break;
         case "lastName":
           setLastName(valueToSave);
@@ -473,16 +512,25 @@ export function ProfileView({ userType }: ProfileViewProps) {
             lastName: valueToSave,
             fullName: `${firstName} ${valueToSave}`.trim(),
           });
-          await updateGeneralProfile({ last_name: valueToSave });
+          touchedGroup = "personal";
           break;
         case "role":
+        case "jobTitle":
+          // `title` feeds the sponsor rolePayload (job_title); `currentRole`
+          // feeds the applicant rolePayload (current_role) — two backend
+          // fields for the same on-screen concept. The old code only ever
+          // wrote `title` here and patched `current_role` via a direct call
+          // that bypassed the store, so the store's cached `currentRole`
+          // stayed stale and got re-sent (silently overwriting a newer
+          // server value) the next time ANY other professional-group edit
+          // synced. Writing both keeps them consistent going forward.
           setRole(valueToSave);
-          await updateProfessional({ title: valueToSave });
-          if (userType === "applicant") {
-            await updateApplicantProfile({ current_role: valueToSave });
-          } else {
-            await updateSponsorProfile({ job_title: valueToSave });
-          }
+          setJobTitle(valueToSave);
+          await updateProfessional({
+            title: valueToSave,
+            currentRole: valueToSave,
+          });
+          touchedGroup = "professional";
           break;
         case "company":
           // A verified sponsor's company is locked — the verified work email
@@ -495,87 +543,65 @@ export function ProfileView({ userType }: ProfileViewProps) {
           }
           setCompany(valueToSave);
           await updateProfessional({ company: valueToSave });
-          if (userType === "sponsor") {
-            await updateSponsorProfile({ company: valueToSave });
-          }
+          touchedGroup = "professional";
           break;
         // email is read-only — changes require a dedicated change-email flow with verification
         case "bio":
+        case "summary":
           setBio(valueToSave);
+          setSummary(valueToSave);
           await updateProfessional({ summary: valueToSave });
-          // API call for bio
-          await updateGeneralProfile({ bio: valueToSave });
+          touchedGroup = "professional";
           break;
         case "achievements":
           setAchievements(valueToSave);
           await updateAchievements(valueToSave);
-          if (userType === "applicant") {
-            await updateApplicantProfile({ achievements: valueToSave });
-          }
-          break;
-        case "jobTitle":
-          setJobTitle(valueToSave);
-          await updateProfessional({ title: valueToSave });
-          if (userType === "applicant") {
-            await updateApplicantProfile({ current_role: valueToSave });
-          } else {
-            await updateSponsorProfile({ job_title: valueToSave });
-          }
+          touchedGroup = "achievements";
           break;
         case "yearsExperience":
           setYearsExperience(valueToSave);
           await updateProfessional({ yearsExperience: valueToSave });
-          // API call for years of experience - applicant only
-          if (userType === "applicant") {
-            await updateApplicantProfile({ years_experience: valueToSave });
-          }
-          break;
-        case "summary":
-          setSummary(valueToSave);
-          await updateProfessional({ summary: valueToSave });
-          // API call for summary/bio
-          await updateGeneralProfile({ bio: valueToSave });
+          touchedGroup = "professional";
           break;
         case "degree":
           setDegree(valueToSave);
           await updateEducation({ degree: valueToSave });
+          touchedGroup = "education";
           break;
         case "major":
           setMajor(valueToSave);
           await updateEducation({ major: valueToSave });
+          touchedGroup = "education";
           break;
         case "university":
           setUniversity(valueToSave);
           await updateEducation({ university: valueToSave });
+          touchedGroup = "education";
           break;
         case "graduationYear":
           setGraduationYear(valueToSave);
           await updateEducation({ graduationYear: valueToSave });
+          touchedGroup = "education";
           break;
         case "gpa":
           setGpa(valueToSave);
           await updateEducation({ gpa: valueToSave });
+          touchedGroup = "education";
           break;
         case "workAuthorization":
           setWorkAuthorization(valueToSave);
           await updatePreferences({ workAuthorization: valueToSave });
-          if (userType === "applicant") {
-            await updateApplicantProfile({ work_authorization: valueToSave });
-          }
+          touchedGroup = "preferences";
           break;
         case "willingToRelocate":
           setWillingToRelocate(valueToSave);
           await updatePreferences({ willingToRelocate: valueToSave });
-          if (userType === "applicant") {
-            await updateApplicantProfile({ willing_to_relocate: valueToSave });
-          }
+          touchedGroup = "preferences";
           break;
         case "requiresSponsorship":
           setRequiresSponsorship(valueToSave);
           await updatePreferences({ requiresSponsorship: valueToSave });
-          if (userType === "applicant") {
-            await updateApplicantProfile({ requires_sponsorship: valueToSave });
-          }
+          touchedGroup = "preferences";
           break;
         // city/state are saved as a combined "location" string —
         // see handleSaveLocation, used by EditProfileScreen's Location field.
@@ -585,7 +611,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
       }
       setEditingField(null);
       setTempValue("");
-      showToast("Profile updated.", "success");
+      if (touchedGroup) {
+        await reportSyncOutcome(touchedGroup, "Profile updated.");
+      }
     } catch (error) {
       console.warn("Failed to save field:", error);
       showToast("Failed to save changes. Please try again.", "error");
@@ -599,31 +627,59 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const handleSaveLocation = async (value: string) => {
     const trimmed = value.trim();
     const [cityPart, statePart] = trimmed.split(",").map((s) => s.trim());
+    setCity(cityPart || "");
+    setState(statePart || "");
+    setLocation(trimmed);
+    // Write the store's address too — the profile UI re-seeds city/state/
+    // location from the store on every data change, so patching only the
+    // backend left the store stale and the display flipped back to the
+    // old city moments later (and the autosave sync then pushed that
+    // stale city/state on the next unrelated "personal" edit).
+    const currentAddress = useUserProfileStore.getState().data.personal.address;
+    await updatePersonal({
+      address: {
+        ...currentAddress,
+        city: cityPart || "",
+        state: statePart || "",
+      },
+    });
+
+    // LOCATION is a separate canonical column every reader uses (matching,
+    // public profiles, our own fetch) that the store's own sync doesn't
+    // cover — see AutofillData's `personal.address` vs. this flat column —
+    // so it's patched directly here instead of through the store, and has
+    // no debounce/retry of its own. Deliberately does NOT revert the local
+    // city/state/location state if this fails: the edit is real, and the
+    // store write above may well still succeed — reverting on a transient
+    // blip is exactly the false-negative/revert bug this audit fixed
+    // everywhere else.
+    let locationError: unknown = null;
     try {
-      setCity(cityPart || "");
-      setState(statePart || "");
-      setLocation(trimmed);
-      // Write the store's address too — the profile UI re-seeds city/state/
-      // location from the store on every data change, so patching only the
-      // backend left the store stale and the display flipped back to the
-      // old city moments later (and the autosave sync then pushed that
-      // stale city/state on the next unrelated "personal" edit).
-      const currentAddress =
-        useUserProfileStore.getState().data.personal.address;
-      await updatePersonal({
-        address: {
-          ...currentAddress,
-          city: cityPart || "",
-          state: statePart || "",
-        },
-      });
-      // LOCATION is the canonical column every reader uses (matching,
-      // public profiles, our own fetch) — patch it directly as before.
       await updateGeneralProfile({ location: trimmed });
-      showToast("Profile updated.", "success");
     } catch (error) {
+      locationError = error;
       console.warn("Failed to save location:", error);
+      try {
+        Sentry.captureException(error, {
+          tags: { flow: "profile_location_sync" },
+        });
+      } catch {
+        // Observability never blocks the save path.
+      }
+    }
+
+    await flushProfileSync();
+    const { dirtyFields, syncError } = useUserProfileStore.getState();
+    const addressSynced = !dirtyFields.has("personal");
+    const addressFailed =
+      dirtyFields.has("personal") && !!syncError && syncError !== "offline";
+
+    if (!locationError && addressSynced) {
+      showToast("Profile updated.", "success");
+    } else if (locationError && addressFailed) {
       showToast("Failed to save changes. Please try again.", "error");
+    } else {
+      showToast("Saved — finishing up in the background…", "info");
     }
   };
 
@@ -643,24 +699,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
           setNewTag("");
           return;
         }
+        // Store update only — its own debounced sync covers this field
+        // (see authApi.updateProfile's rolePayload.skills); a redundant
+        // direct call here used to fire in parallel and race it.
         const newExpertise = [...expertise, valueToAdd];
         setExpertise(newExpertise);
         await updateSkills(newExpertise);
-        if (userType === "applicant") {
-          await updateApplicantProfile({ skills: newExpertise });
-        } else {
-          await updateSponsorProfile({ skills: newExpertise });
-        }
         break;
       case "workPreferences": {
         const newWorkPreferences = [...workPreferences, valueToAdd];
         setWorkPreferences(newWorkPreferences);
         await updateWorkPreferencesStore(newWorkPreferences);
-        if (userType === "applicant") {
-          await updateApplicantProfile({
-            work_preferences: newWorkPreferences,
-          });
-        }
         break;
       }
       case "desiredRoles": {
@@ -676,9 +725,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
         const newDesiredRoles = [...desiredRoles, valueToAdd];
         setDesiredRoles(newDesiredRoles);
         await updateDesiredRolesStore(newDesiredRoles);
-        if (userType === "applicant") {
-          await updateApplicantProfile({ desired_roles: newDesiredRoles });
-        }
         break;
       }
     }
@@ -691,9 +737,6 @@ export function ProfileView({ userType }: ProfileViewProps) {
       : [...workPreferences, preference];
     setWorkPreferences(updated);
     await updateWorkPreferencesStore(updated);
-    if (userType === "applicant") {
-      await updateApplicantProfile({ work_preferences: updated });
-    }
   };
 
   const handleRemoveTag = async (
@@ -705,52 +748,35 @@ export function ProfileView({ userType }: ProfileViewProps) {
         const updatedExpertise = expertise.filter((_, i) => i !== index);
         setExpertise(updatedExpertise);
         await updateSkills(updatedExpertise);
-        if (userType === "applicant") {
-          await updateApplicantProfile({ skills: updatedExpertise });
-        } else {
-          await updateSponsorProfile({ skills: updatedExpertise });
-        }
         break;
       }
       case "workPreferences": {
         const updatedWorkPrefs = workPreferences.filter((_, i) => i !== index);
         setWorkPreferences(updatedWorkPrefs);
         await updateWorkPreferencesStore(updatedWorkPrefs);
-        if (userType === "applicant") {
-          await updateApplicantProfile({ work_preferences: updatedWorkPrefs });
-        }
         break;
       }
       case "desiredRoles": {
         const updatedRoles = desiredRoles.filter((_, i) => i !== index);
         setDesiredRoles(updatedRoles);
         await updateDesiredRolesStore(updatedRoles);
-        if (userType === "applicant") {
-          await updateApplicantProfile({ desired_roles: updatedRoles });
-        }
         break;
       }
     }
   };
 
   // Single source of truth for the prompts editor — PromptsIntake hands back
-  // the full array; we persist it (locally + backend, role-specific). Optimistic
-  // local update; revert on failure.
+  // the full array; the store is the sole writer (its own debounced sync
+  // covers `insights` for both roles — see authApi.updateProfile's
+  // rolePayload). This used to also fire a direct API call in parallel and
+  // only reverted on THAT call's failure, which meant a slow/failed direct
+  // call could wipe out an edit the store had already saved successfully.
+  // flushProfileSync + reportSyncOutcome reports the store's own real
+  // outcome instead, and never reverts a captured edit.
   const handleInsightsChange = async (next: ProfileInsight[]) => {
-    const prev = profileInsights;
     setProfileInsights(next);
-    try {
-      await updateInsights(next);
-      if (userType === "applicant") {
-        await updateApplicantProfile({ insights: next });
-      } else {
-        await updateSponsorProfile({ insights: next });
-      }
-    } catch (error) {
-      console.warn("Failed to save insights:", error);
-      setProfileInsights(prev);
-      showToast("Failed to save. Please try again.", "error");
-    }
+    await updateInsights(next);
+    await reportSyncOutcome("insights", "Saved.");
   };
 
   // Handlers for Professional Experiences
@@ -776,57 +802,30 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
+  // Store update only, on every keystroke — its own debounced sync covers
+  // this field (authApi.updateProfile's rolePayload.professional_experiences),
+  // coalescing rapid edits into one request 2s after typing stops. This used
+  // to ALSO fire a direct API call per keystroke in parallel, racing the
+  // debounced sync for the same data; a failure on either side showed a
+  // jarring toast mid-typing even though the other path might already have
+  // saved the same edit fine. No toast here — see handleSaveExperience
+  // (the card's Save button) for the real, user-facing save checkpoint.
   const handleUpdateExperience = async (
     id: string,
     updates: Partial<ProfessionalExperience>,
   ) => {
-    try {
-      const updated = professionalExperiences.map((exp) =>
-        exp.id === id ? { ...exp, ...updates } : exp,
-      );
-      setProfessionalExperiences(updated);
-      await updateProfessionalExperiences(updated);
-
-      // API call to sync with backend - applicant only
-      if (userType === "applicant") {
-        const professional_experiences = updated.map((exp) => ({
-          jobTitle: exp.jobTitle,
-          company: exp.company,
-          startDate: exp.startDate,
-          endDate: exp.current ? undefined : exp.endDate || undefined,
-          description: exp.description || "",
-          current: exp.current,
-        }));
-        await updateApplicantProfile({ professional_experiences });
-      }
-    } catch (error) {
-      console.warn("Failed to update experience:", error);
-      showToast("Failed to save experience. Please try again.", "error");
-    }
+    const updated = professionalExperiences.map((exp) =>
+      exp.id === id ? { ...exp, ...updates } : exp,
+    );
+    setProfessionalExperiences(updated);
+    await updateProfessionalExperiences(updated);
   };
 
   const handleDeleteExperience = async (id: string) => {
-    try {
-      const updated = professionalExperiences.filter((exp) => exp.id !== id);
-      setProfessionalExperiences(updated);
-      await updateProfessionalExperiences(updated);
-
-      // API call to sync with backend - applicant only
-      if (userType === "applicant") {
-        const professional_experiences = updated.map((exp) => ({
-          jobTitle: exp.jobTitle,
-          company: exp.company,
-          startDate: exp.startDate,
-          endDate: exp.current ? undefined : exp.endDate || undefined,
-          description: exp.description || "",
-          current: exp.current,
-        }));
-        await updateApplicantProfile({ professional_experiences });
-      }
-    } catch (error) {
-      console.warn("Failed to delete experience:", error);
-      showToast("Failed to delete experience. Please try again.", "error");
-    }
+    const updated = professionalExperiences.filter((exp) => exp.id !== id);
+    setProfessionalExperiences(updated);
+    await updateProfessionalExperiences(updated);
+    await reportSyncOutcome("professional", "Experience removed.");
   };
 
   // Handlers for Education Entries
@@ -851,55 +850,23 @@ export function ProfileView({ userType }: ProfileViewProps) {
     }
   };
 
+  // See handleUpdateExperience above — same reasoning, same fix.
   const handleUpdateEducation = async (
     id: string,
     updates: Partial<EducationEntry>,
   ) => {
-    try {
-      const updated = educationEntries.map((edu) =>
-        edu.id === id ? { ...edu, ...updates } : edu,
-      );
-      setEducationEntries(updated);
-      await updateEducationEntries(updated);
-
-      // API call to sync with backend - applicant only
-      if (userType === "applicant") {
-        const education_entries = updated.map((edu) => ({
-          degree: edu.degree,
-          major: edu.major,
-          university: edu.university,
-          graduationYear: edu.graduationYear,
-          gpa: edu.gpa,
-        }));
-        await updateApplicantProfile({ education_entries });
-      }
-    } catch (error) {
-      console.warn("Failed to update education:", error);
-      showToast("Failed to save education. Please try again.", "error");
-    }
+    const updated = educationEntries.map((edu) =>
+      edu.id === id ? { ...edu, ...updates } : edu,
+    );
+    setEducationEntries(updated);
+    await updateEducationEntries(updated);
   };
 
   const handleDeleteEducation = async (id: string) => {
-    try {
-      const updated = educationEntries.filter((edu) => edu.id !== id);
-      setEducationEntries(updated);
-      await updateEducationEntries(updated);
-
-      // API call to sync with backend - applicant only
-      if (userType === "applicant") {
-        const education_entries = updated.map((edu) => ({
-          degree: edu.degree,
-          major: edu.major,
-          university: edu.university,
-          graduationYear: edu.graduationYear,
-          gpa: edu.gpa,
-        }));
-        await updateApplicantProfile({ education_entries });
-      }
-    } catch (error) {
-      console.warn("Failed to delete education:", error);
-      showToast("Failed to delete education. Please try again.", "error");
-    }
+    const updated = educationEntries.filter((edu) => edu.id !== id);
+    setEducationEntries(updated);
+    await updateEducationEntries(updated);
+    await reportSyncOutcome("education", "Education removed.");
   };
 
   // Handlers for Certifications — each persists via updateCertifications
@@ -984,10 +951,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
         return;
       }
       setExpandedCertification(null);
-      await updateCertifications(certifications);
-      if (userType === "applicant") {
-        await updateApplicantProfile({ certifications });
-      }
+      // Every edit already went to the store as it happened (see
+      // handleUpdateCertification) — no need to re-send it here. This
+      // used to ALSO fire a direct API call for the same data, racing
+      // whichever debounced sync was already in flight from typing.
+      await reportSyncOutcome("certifications", "Certification saved.");
     };
 
     return (
@@ -1165,10 +1133,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
         return;
       }
       setExpandedLanguage(null);
-      await updateLanguages(languages);
-      if (userType === "applicant") {
-        await updateApplicantProfile({ languages });
-      }
+      // Every edit already went to the store as it happened (see
+      // handleUpdateLanguage) — no need to re-send it here. This used to
+      // ALSO fire a direct API call for the same data, racing whichever
+      // debounced sync was already in flight from typing.
+      await reportSyncOutcome("languages", "Language saved.");
     };
 
     return (
@@ -1531,7 +1500,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     const hasRequiredFields =
       !isJobTitleMissing && !isCompanyMissing && !isStartDateMissing;
 
-    const handleSaveExperience = () => {
+    const handleSaveExperience = async () => {
       if (!hasRequiredFields) {
         showToast(
           "Please fill in Job Title, Company, and Start Date before saving.",
@@ -1540,6 +1509,12 @@ export function ProfileView({ userType }: ProfileViewProps) {
         return;
       }
       setExpandedExperience(null);
+      // Every field edit already reached the store as it was typed (see
+      // handleUpdateExperience) — this used to just collapse the card with
+      // no network activity at all, so tapping Save gave no real signal
+      // that anything had (or hadn't) actually persisted. Flushing here
+      // makes Save the real, user-facing checkpoint for this entry.
+      await reportSyncOutcome("professional", "Experience saved.");
     };
 
     return (
@@ -1770,7 +1745,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     const hasRequiredFields =
       !isDegreeMissing && !isUniversityMissing && !isGradYearMissing;
 
-    const handleSaveEducation = () => {
+    const handleSaveEducation = async () => {
       if (!hasRequiredFields) {
         showToast(
           "Please fill in Degree, University, and Graduation Year before saving.",
@@ -1779,6 +1754,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
         return;
       }
       setExpandedEducation(null);
+      // See handleSaveExperience above — same reasoning, same fix.
+      await reportSyncOutcome("education", "Education saved.");
     };
 
     return (
