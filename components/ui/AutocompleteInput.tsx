@@ -12,7 +12,7 @@ import {
     type StyleProp,
     type TextStyle,
 } from "react-native";
-import { Colors } from "@/constants/theme";
+import { AndroidInputFix, Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const DROPDOWN_MAX_HEIGHT = 200;
@@ -174,17 +174,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
     color: "#000",
-    // Single-line input alignment hardening: Android adds default vertical
-    // padding and font ascent padding that sit placeholder text below
-    // center (tester-reported on the signup city search); these pin it.
-    textAlignVertical: "center",
-    includeFontPadding: false,
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: Colors.offWhite,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
+    ...AndroidInputFix,
   },
   suggestionsContainer: {
     position: "absolute",

@@ -41,7 +41,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY } from "@/constants/config";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Fonts, Type } from "@/constants/theme";
 import {
   APPLICANT_PROMPT_CATEGORIES,
   APPLICANT_PROMPT_EXAMPLES,
@@ -1834,7 +1834,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     marginBottom: 24,
   },
-  searchInput: { flex: 1, fontSize: 16, color: "#000", fontWeight: "500" },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#000",
+    fontWeight: "500",
+    // The wrap owns the height — zero the input's own padding and pin
+    // vertical centering (see AndroidInputFix's doc comment).
+    paddingVertical: 0,
+    ...AndroidInputFix,
+  },
   skillsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   skillItem: {
     paddingVertical: 12,
@@ -1953,12 +1962,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     color: "#000",
-    // Single-line input alignment hardening: Android adds default vertical
-    // padding and font ascent padding that sit placeholder text below
-    // center (tester-reported on the signup city search); these pin it.
-    textAlignVertical: "center",
-    includeFontPadding: false,
     paddingVertical: 14,
+    ...AndroidInputFix,
   },
 
   // ── Résumé review sheet (plays right after the parse film) ──────────────

@@ -33,7 +33,7 @@ import { PlacesAutocomplete } from "../ui/PlacesAutocomplete";
 import { EditorScreen } from "./EditorScreen";
 import { SaveStatusPill } from "./SaveStatusPill";
 import { useAutosaveStatus } from "./useAutosaveStatus";
-import { Colors } from "@/constants/theme";
+import { AndroidInputFix, Colors } from "@/constants/theme";
 
 interface Props {
   visible: boolean;
@@ -494,12 +494,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: "#000",
-    // Single-line input alignment hardening: Android adds default vertical
-    // padding and font ascent padding that sit placeholder text below
-    // center (tester-reported on the signup city search); these pin it.
-    textAlignVertical: "center",
-    includeFontPadding: false,
     paddingVertical: 12,
+    ...AndroidInputFix,
   },
   lockedInput: {
     flexDirection: "row",

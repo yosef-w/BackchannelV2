@@ -31,7 +31,7 @@ import {
   ParsedAddress,
   parseAddressComponents,
 } from "@/lib/addressParser";
-import { Colors } from "@/constants/theme";
+import { AndroidInputFix, Colors } from "@/constants/theme";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL_BASE = "https://places.googleapis.com/v1/places";
@@ -354,14 +354,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
     color: "#000",
-    // Single-line input alignment hardening: Android adds default vertical
-    // padding and font ascent padding that sit placeholder text below
-    // center (tester-reported on the signup city search); these pin it.
-    textAlignVertical: "center",
-    includeFontPadding: false,
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: Colors.offWhite,
+    ...AndroidInputFix,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,

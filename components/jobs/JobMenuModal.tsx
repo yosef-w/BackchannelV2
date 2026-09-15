@@ -18,7 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { UNSPONSOR_REASONS } from "./jobTransforms";
-import { Colors, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -128,7 +128,7 @@ export function JobMenuModal({
               />
             </View>
             <TextInput
-              style={styles.reasonOtherInput}
+              style={styles.urlInput}
               placeholder="https://example.com/logo.png"
               placeholderTextColor={Colors.faint}
               value={logoUrlInput}
@@ -340,6 +340,21 @@ const styles = StyleSheet.create({
     color: "#000",
     minHeight: 72,
     textAlignVertical: "top",
+  },
+  // Single-line — the logo-URL field used to reuse reasonOtherInput above
+  // (a multiline textarea style), which pinned its placeholder to the top
+  // of an oversized 72px box instead of centering it.
+  urlInput: {
+    marginTop: 14,
+    backgroundColor: Colors.offWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 14,
+    color: "#000",
+    ...AndroidInputFix,
   },
   unsponsorConfirmBtn: {
     marginTop: 16,
