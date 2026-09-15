@@ -45,10 +45,17 @@ export function PipelineStageTimeline({
     );
   }
 
-  const currentIndex = Math.max(
-    0,
-    (CORE_STAGES as readonly string[]).indexOf(stage),
-  );
+  // -1 when `stage` isn't one of the known values — a future backend stage
+  // vocabulary, or a stale/legacy value. The label must never silently
+  // substitute a lookup into CORE_STAGES for what was actually received —
+  // that's what previously mislabeled any unrecognized stage as "Referred"
+  // with no indication anything was off. Segments follow the same honesty:
+  // an unrecognized stage fills NONE (not one, which visually asserted the
+  // "Referred" position right next to a label that plainly disagreed with
+  // it — the bar and the label told two different stories for the same
+  // referral).
+  const knownIndex = (CORE_STAGES as readonly string[]).indexOf(stage);
+  const label = knownIndex >= 0 ? CORE_STAGES[knownIndex] : stage;
 
   return (
     <View style={styles.container}>
@@ -58,13 +65,13 @@ export function PipelineStageTimeline({
             key={s}
             style={[
               styles.segment,
-              i <= currentIndex && styles.segmentFilled,
+              knownIndex >= 0 && i <= knownIndex && styles.segmentFilled,
             ]}
           />
         ))}
       </View>
       <Text style={styles.stageLabel} numberOfLines={1}>
-        {CORE_STAGES[currentIndex]}
+        {label}
       </Text>
     </View>
   );
