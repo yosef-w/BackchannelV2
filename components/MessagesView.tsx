@@ -18,6 +18,7 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+    AppState,
     Dimensions,
     Keyboard,
     Pressable,
@@ -203,7 +204,25 @@ export function MessagesView({
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<Conversation[]> => {
       try {
-        const response = await getConversations({ limit: 20, offset: 0 });
+        // Any REFETCH of this query (React Query's own retry, the inbox
+        // socket's reconnect-triggered refreshConversations, or the
+        // AppState foreground listener below) used to always re-fetch just
+        // the first page and replace the cache outright — silently
+        // truncating anyone who had paginated further via "Load more" back
+        // down to 20. Re-fetching at least as many rows as are already
+        // cached keeps every one of those refetch triggers from discarding
+        // pages the user already loaded; a first load (nothing cached yet)
+        // still asks for the normal page size.
+        const alreadyLoaded =
+          queryClient.getQueryData<Conversation[]>([
+            "conversations",
+            "list",
+            currentUserId,
+          ])?.length ?? 0;
+        const response = await getConversations({
+          limit: Math.max(20, alreadyLoaded),
+          offset: 0,
+        });
         setConversationsTotalCount(
           response.total_count ?? response.conversations.length,
         );
@@ -411,6 +430,29 @@ export function MessagesView({
     await refetchConversations();
   };
 
+  // Freshness on foreground, independent of the inbox WebSocket's own
+  // reconnect logic. That logic only refreshes once ITS onclose/reconnect
+  // cycle actually fires — but backgrounding the app can suspend the socket
+  // (and the JS timers driving its reconnect backoff) without ever
+  // delivering a close event, so returning to the app could otherwise sit
+  // on an arbitrarily stale conversations list/unread badges until the
+  // socket layer eventually notices on its own. staleTime: Infinity on the
+  // query means nothing else would trigger a refetch either. This is a
+  // second, independent trigger that doesn't depend on the socket noticing
+  // anything at all. (The queryFn above re-fetches at least as many rows as
+  // are already cached specifically so THIS firing on every trivial
+  // foreground — control center, a permission dialog, a phone call — can't
+  // silently truncate anyone who had paginated past the first page.)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" && currentUserId) {
+        refreshConversations(true);
+      }
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
   const loadMoreConversations = async () => {
     if (isLoadingMore || conversations.length >= conversationsTotalCount)
       return;
@@ -456,8 +498,8 @@ export function MessagesView({
           limit: 100,
         });
         if (cancelled) return;
-        setMessages((prev) =>
-          response.messages.reduce(
+        setMessages((prev) => {
+          const merged = response.messages.reduce(
             (acc, msg) =>
               mergeIncomingMessage(acc, {
                 id: msg.MESSAGE_ID,
@@ -466,8 +508,35 @@ export function MessagesView({
                 createdAt: msg.CREATED_AT,
               }),
             prev,
-          ),
-        );
+          );
+          // mergeIncomingMessage only ever appends genuinely-new history to
+          // the end — but catch-up history can include messages the OTHER
+          // party sent (and the server timestamped) before an optimistic
+          // temp message this device queued while the socket was down. That
+          // temp message already sits later in `prev`, so appending catch-up
+          // history after it can leave the thread out of chronological
+          // order until the next full refetch silently fixes it.
+          //
+          // Sorting the whole merged array by raw timestamp is NOT safe,
+          // though: a still-pending temp message carries a device-clock
+          // createdAt (new Date().toISOString() at send time), while every
+          // server message carries server time — comparing across those two
+          // clock domains directly means an ordinary clock skew (routinely
+          // tens of seconds on a phone) can jump the user's own just-sent
+          // message ABOVE genuinely older history, the opposite of what
+          // this is supposed to fix. Only ever compare server-timestamped
+          // messages against each other; every temp message keeps its
+          // existing relative position (Array.sort is a stable sort — equal
+          // keys preserve input order) and always sorts after them, since
+          // "still sending" is definitionally the newest thing on this
+          // device regardless of what its local clock claims.
+          return [...merged].sort((a, b) => {
+            const aTemp = a.id.startsWith("temp-");
+            const bTemp = b.id.startsWith("temp-");
+            if (aTemp || bTemp) return aTemp && bTemp ? 0 : aTemp ? 1 : -1;
+            return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+          });
+        });
       } catch (err) {
         console.warn("[MessagesView] Reconnect catch-up fetch failed:", err);
       }
@@ -797,9 +866,11 @@ export function MessagesView({
         }
       } catch (err) {
         console.warn("[MessagesView] Failed to fetch messages:", err);
-        setMessagesError(
-          err instanceof Error ? err.message : "Failed to fetch messages",
-        );
+        // A fixed, friendly string — ThreadScreen renders this verbatim as
+        // user-facing copy with no length cap, so it must never be the raw
+        // backend/network error text (which could be arbitrarily long,
+        // technical, or just ugly).
+        setMessagesError("We couldn't load this conversation. Please try again.");
       } finally {
         setMessagesLoading(false);
       }
