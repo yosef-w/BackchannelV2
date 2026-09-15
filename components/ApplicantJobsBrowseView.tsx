@@ -29,11 +29,13 @@ import {
 import { formatSalary } from "@/types/jobs";
 import type { BrowseJobResponse } from "@/types/jobs";
 import { Check, Heart, MapPin, Search, X } from "@/components/ui/icons";
+import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Keyboard,
   Modal,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -43,7 +45,16 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  ZoomIn, FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+  ZoomIn,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
 import {
   BarFooter,
@@ -52,7 +63,6 @@ import {
   ReadMoreText,
   SectionCard,
   SkillChips,
-  SkeletonCard,
   StatStrip,
 } from "./matches/JobSheetKit";
 import {
@@ -63,7 +73,7 @@ import { CompanyLogo } from "./ui/CompanyLogo";
 import { MarketplaceGateModal } from "./jobs/MarketplaceGateModal";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { PREMIUM_ENABLED } from "@/constants/config";
-import { AndroidInputFix, Colors, Fonts, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 function parseSkillsField(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -240,6 +250,183 @@ const isMockJob = (job: BrowseJobResponse) =>
 const SEARCH_DEBOUNCE_MS = 400;
 /** Results per page — also the "View more" page size via `offset`. */
 const PAGE_SIZE = 20;
+
+/**
+ * One role, as its own bordered card — logo/title/company up top, a row of
+ * fact pills (remote/type/level) and a salary badge underneath. Its own
+ * component (not inlined in the parent's .map()) because it needs its own
+ * Reanimated shared value for the press-scale below; a shared value can't
+ * live inside a loop body without breaking the rules of hooks.
+ */
+function MarketplaceJobCard({
+  job,
+  isDone,
+  doneLabel,
+  onPress,
+}: {
+  job: BrowseJobResponse;
+  isDone: boolean;
+  doneLabel: string;
+  onPress: () => void;
+}) {
+  const scale = useSharedValue(1);
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const pills: string[] = [];
+  if (job.IS_REMOTE) pills.push("Remote");
+  if (job.EMPLOYMENT_TYPES) pills.push(job.EMPLOYMENT_TYPES);
+  if (job.EXPERIENCE_LEVEL) pills.push(job.EXPERIENCE_LEVEL);
+  const hasSalary = !!(job.SALARY_ANNUAL_MIN || job.SALARY_ANNUAL_MAX);
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        scale.value = withTiming(0.985, { duration: 120 });
+      }}
+      onPressOut={() => {
+        scale.value = withTiming(1, { duration: 180 });
+      }}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`${job.TITLE} at ${job.ORGANIZATION}`}
+    >
+      <Animated.View
+        style={[
+          styles.jobCard,
+          job.IS_SPONSORED && styles.jobCardSponsored,
+          pressStyle,
+        ]}
+      >
+        {job.IS_SPONSORED && (
+          <View style={styles.sponsoredTag}>
+            <Text style={styles.sponsoredTagText}>Sponsored</Text>
+          </View>
+        )}
+        <View style={styles.jobCardTop}>
+          <CompanyLogo
+            logoUrl={job.ORGANIZATION_LOGO ?? undefined}
+            name={job.ORGANIZATION}
+            size={44}
+            borderRadius={Radii.md}
+            initialFontSize={18}
+          />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            {/* Two lines before truncating — real titles ("Senior Staff
+                Software Engineer, Infrastructure") lose their meaning
+                cut at one. */}
+            <Text style={styles.jobCardTitle} numberOfLines={2}>
+              {job.TITLE}
+            </Text>
+            <Text style={styles.jobCardCompany} numberOfLines={1}>
+              {job.ORGANIZATION}
+              {job.FULL_LOCATION ? ` · ${job.FULL_LOCATION}` : ""}
+            </Text>
+          </View>
+        </View>
+
+        {(pills.length > 0 || hasSalary || isDone) && (
+          <View style={styles.jobCardBottom}>
+            <View style={styles.pillRow}>
+              {pills.map((p) => (
+                <View key={p} style={styles.pill}>
+                  <Text style={styles.pillText}>{p.toUpperCase()}</Text>
+                </View>
+              ))}
+            </View>
+            {isDone ? (
+              <Animated.View entering={ZoomIn.duration(240)} style={styles.doneBadge}>
+                <Check size={10} color={Colors.muted} strokeWidth={3} />
+                <Text style={styles.doneBadgeText}>{doneLabel.toUpperCase()}</Text>
+              </Animated.View>
+            ) : hasSalary ? (
+              <View style={styles.salaryBadge}>
+                <Text style={styles.salaryBadgeText} numberOfLines={1}>
+                  {formatSalary(
+                    job.SALARY_ANNUAL_MIN,
+                    job.SALARY_ANNUAL_MAX,
+                    job.SALARY_CURRENCY,
+                  ).replace(" - ", "–")}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+/** Loading placeholder shaped like MarketplaceJobCard, not a borrowed
+ * profile-card skeleton — a loading state that doesn't preview the shape
+ * of what's coming reads as an afterthought, not "not done loading yet". */
+function JobCardSkeleton() {
+  const opacity = useSharedValue(0.3);
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 800 }),
+        withTiming(0.3, { duration: 800 }),
+      ),
+      -1,
+      true,
+    );
+  }, [opacity]);
+  const shimmer = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <View style={styles.jobCard}>
+      <View style={styles.jobCardTop}>
+        <Animated.View
+          style={[
+            { width: 44, height: 44, borderRadius: Radii.md, backgroundColor: Colors.border },
+            shimmer,
+          ]}
+        />
+        <View style={{ flex: 1, gap: 7 }}>
+          <Animated.View
+            style={[
+              { width: "70%", height: 13, borderRadius: 4, backgroundColor: Colors.border },
+              shimmer,
+            ]}
+          />
+          <Animated.View
+            style={[
+              { width: "45%", height: 10, borderRadius: 4, backgroundColor: Colors.border },
+              shimmer,
+            ]}
+          />
+        </View>
+      </View>
+      <View style={styles.jobCardBottom}>
+        <View style={styles.pillRow}>
+          <Animated.View
+            style={[
+              { width: 54, height: 18, borderRadius: Radii.pill, backgroundColor: Colors.border },
+              shimmer,
+            ]}
+          />
+          <Animated.View
+            style={[
+              { width: 40, height: 18, borderRadius: Radii.pill, backgroundColor: Colors.border },
+              shimmer,
+            ]}
+          />
+        </View>
+        <Animated.View
+          style={[
+            { width: 70, height: 22, borderRadius: Radii.pill, backgroundColor: Colors.border },
+            shimmer,
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
 
 export function ApplicantJobsBrowseView() {
   const showToast = useToastStore((s) => s.showToast);
@@ -492,11 +679,11 @@ export function ApplicantJobsBrowseView() {
         )}
 
         {loading ? (
-          <>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </>
+          <View style={{ marginTop: 18, gap: 12 }}>
+            <JobCardSkeleton />
+            <JobCardSkeleton />
+            <JobCardSkeleton />
+          </View>
         ) : jobs.length === 0 ? (
           <View style={styles.centerBlock}>
             <View style={styles.emptyIconCircle}>
@@ -509,7 +696,7 @@ export function ApplicantJobsBrowseView() {
           </View>
         ) : (
           <>
-          {/* The market's size, stated — then the classifieds rules. */}
+          {/* The market's size, stated — then the card stack begins. */}
           <Text style={styles.countLine}>
             {(showingSamples ? jobs.length : totalCount) || jobs.length} OPEN
             {" "}ROLE
@@ -517,71 +704,33 @@ export function ApplicantJobsBrowseView() {
               ? ""
               : "S"}
           </Text>
-          {jobs.map((job, index) => {
-            const isDone =
-              waitlistedIds.has(job.JOB_ID) || likedIds.has(job.JOB_ID);
-            const doneLabel = likedIds.has(job.JOB_ID)
-              ? "Liked"
-              : "Waitlisted";
-            return (
-              <Animated.View
-                key={job.JOB_ID}
-                entering={FadeInUp.delay(Math.min(index, 8) * 40)}
-              >
-                <TouchableOpacity
-                  style={styles.jobCard}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    // The search keyboard may be up — drop it so the
-                    // detail sheet gets the whole bottom half.
-                    Keyboard.dismiss();
-                    setSelectedJob(job);
-                  }}
+          <View style={{ marginTop: 14, gap: 12 }}>
+            {jobs.map((job, index) => {
+              const isDone =
+                waitlistedIds.has(job.JOB_ID) || likedIds.has(job.JOB_ID);
+              const doneLabel = likedIds.has(job.JOB_ID)
+                ? "Liked"
+                : "Waitlisted";
+              return (
+                <Animated.View
+                  key={job.JOB_ID}
+                  entering={FadeInUp.delay(Math.min(index, 8) * 40).springify().damping(16)}
                 >
-                  <CompanyLogo
-                    logoUrl={job.ORGANIZATION_LOGO ?? undefined}
-                    name={job.ORGANIZATION}
-                    size={44}
-                    borderRadius={12}
-                    initialFontSize={18}
+                  <MarketplaceJobCard
+                    job={job}
+                    isDone={isDone}
+                    doneLabel={doneLabel}
+                    onPress={() => {
+                      // The search keyboard may be up — drop it so the
+                      // detail sheet gets the whole bottom half.
+                      Keyboard.dismiss();
+                      setSelectedJob(job);
+                    }}
                   />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    {/* Two lines before truncating — real titles ("Senior
-                        Staff Software Engineer, Infrastructure") lose
-                        their meaning cut at one. */}
-                    <Text style={styles.jobCardTitle} numberOfLines={2}>
-                      {job.TITLE}
-                    </Text>
-                    <Text style={styles.jobCardCompany} numberOfLines={1}>
-                      {job.ORGANIZATION}
-                      {job.FULL_LOCATION ? ` · ${job.FULL_LOCATION}` : ""}
-                      {job.IS_REMOTE ? " · Remote" : ""}
-                    </Text>
-                  </View>
-                  {/* Right column: the done-state, or the price in serif. */}
-                  {isDone ? (
-                    <Animated.View
-                      entering={ZoomIn.duration(240)}
-                      style={styles.doneChip}
-                    >
-                      <Check size={10} color={Colors.muted} strokeWidth={3} />
-                      <Text style={styles.doneChipText}>
-                        {doneLabel.toUpperCase()}
-                      </Text>
-                    </Animated.View>
-                  ) : job.SALARY_ANNUAL_MIN || job.SALARY_ANNUAL_MAX ? (
-                    <Text style={styles.jobRowSalary} numberOfLines={1}>
-                      {formatSalary(
-                        job.SALARY_ANNUAL_MIN,
-                        job.SALARY_ANNUAL_MAX,
-                        job.SALARY_CURRENCY,
-                      ).replace(" - ", "–")}
-                    </Text>
-                  ) : null}
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          })}
+                </Animated.View>
+              );
+            })}
+          </View>
           </>
         )}
 
@@ -822,45 +971,102 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  // Flat classifieds rows between hairlines (AC "Listings") — the cards,
-  // shadows, and recessed logo tiles retire.
+  // Each role as its own bordered object — real breathing room instead of
+  // adjoining hairline rows (AC "Card Stack"). position:relative anchors
+  // the sponsored tag.
   jobCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    position: "relative",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radii.md,
+    padding: 14,
     gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
+  // Sponsored roles like directly (the deck's real action) rather than
+  // requesting a sponsor — a tinted card makes that distinction visible
+  // at a glance while scrolling, not just after opening the detail sheet.
+  jobCardSponsored: {
+    backgroundColor: Colors.surface,
+    borderColor: Colors.surface,
+  },
+  sponsoredTag: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    borderWidth: 1,
+    borderColor: Colors.ink,
+    borderRadius: Radii.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  sponsoredTagText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    color: Colors.ink,
+    textTransform: "uppercase",
+  },
+  jobCardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   jobCardTitle: {
     fontSize: 14.5,
     fontWeight: "700",
     color: Colors.ink,
     lineHeight: 19,
+    // Room for the absolutely-positioned sponsored tag above/right.
+    paddingRight: 66,
   },
-  // Company · location in the caps ledger-key voice.
+  // Company · location — plain weight now that "Remote" has its own pill
+  // below instead of running on into this line.
   jobCardCompany: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
+    fontSize: 12,
+    fontWeight: "600",
     color: Colors.body,
     marginTop: 3,
   },
-  // The price, in serif — the site's stat-number language.
-  jobRowSalary: {
-    fontFamily: Fonts.serif,
-    fontSize: 14.5,
-    color: Colors.ink,
-    marginLeft: 8,
+  jobCardBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
   },
-  doneChip: {
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, flexShrink: 1 },
+  pill: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radii.sm,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  pillText: {
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    color: Colors.body,
+  },
+  // The price, in serif — the site's stat-number language — now in a
+  // bordered pill so it reads as a distinct fact, not a same-weight
+  // sibling to the title.
+  salaryBadge: {
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  salaryBadgeText: { fontFamily: Fonts.serif, fontSize: 13, color: Colors.ink },
+  doneBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginLeft: 8,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  doneChipText: {
+  doneBadgeText: {
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1,
@@ -880,11 +1086,19 @@ const styles = StyleSheet.create({
     // resolve against DismissibleSheet's content-sized gesture root.
     height: Dimensions.get("window").height * 0.88,
   },
-  // Quiet centered link — the ledger's "there is more" note.
+  // A bordered pill, not a bare link — matches the card stack's own
+  // vocabulary (see salaryBadge/pill) instead of reading as a leftover
+  // classifieds-era text link sitting under a stack of bordered cards.
   viewMoreBtn: {
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radii.pill,
   },
-  viewMoreText: { fontSize: 13, fontWeight: "700", color: Colors.muted },
+  viewMoreText: { fontSize: 13, fontWeight: "700", color: Colors.ink },
 });
