@@ -79,6 +79,7 @@ import {
 import {
   clearOnboardingDraft,
   clearOnboardingRegistered,
+  getPendingOnboardingRole,
   loadOnboardingDraft,
   markOnboardingRegistered,
   saveOnboardingDraft,
@@ -95,12 +96,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Upper bound on how long we'll block onboarding waiting for the final save
 // before proceeding anyway — a new user must never be trapped on a spinner.
-// This pipeline does real work beyond a single request (a profile PATCH, an
-// optional photo upload, a location PATCH, then a full refetch), so 25s was
-// too tight for a slow connection's photo upload alone — raised to give
-// that realistic headroom. Losing this race no longer means the save is
-// abandoned either — see handleFinalize's pipeline continuation below.
-const RESUME_PROCESS_TIMEOUT_MS = 45000;
+// This was briefly raised to 45s on the reasoning that a slow photo upload
+// needs more than 25s of headroom — true, but irrelevant to THIS constant:
+// losing this race doesn't abandon the pipeline (see handleFinalize's
+// pipeline continuation below, which lets it keep running and self-correct
+// via fetchFromBackend() regardless), so the upload still gets all the time
+// it needs either way. Once losing the race stopped meaning "cut off",
+// there was no more upside to making a new user wait longer for it — back
+// to 25s.
+const RESUME_PROCESS_TIMEOUT_MS = 25000;
 
 // How long we HOLD the user on the "building your profile" beat for the
 // résumé pipeline (upload → parse → AI classify → refetch). Parsing/classify
@@ -276,6 +280,22 @@ export function ApplicantQuestionnaire({
   const registeredRef = useRef(
     isAuthenticated && !useOnboardingStore.getState().ssoSession,
   );
+  // The seed above is only correct on this component's very FIRST mount.
+  // ssoSession lives in memory and is only cleared at actual onboarding
+  // completion (finishOnboardingNow), not once registration succeeds — so
+  // a REMOUNT after the résumé step already ran (e.g. the user backs out
+  // to /choose-role, per onboarding.tsx's SSO back-routing, then re-enters
+  // the funnel) still sees ssoSession set and re-seeds `false`, which would
+  // fire completeSsoOnboardingMutation a second time on an account that
+  // already has a role. markOnboardingRegistered's AsyncStorage flag is set
+  // durably the moment either registration path first succeeds (below) and
+  // only cleared at true completion — checking it here corrects the ref for
+  // every mount after the first, independent of ssoSession's lifetime.
+  useEffect(() => {
+    getPendingOnboardingRole().then((role) => {
+      if (role) registeredRef.current = true;
+    });
+  }, []);
   // Closes the late-résumé harvest window: once the final save starts (or the
   // component unmounts) a slow classify landing in the background must no
   // longer flip resumeFilled — the data still lands server-side either way.
@@ -978,18 +998,33 @@ export function ApplicantQuestionnaire({
     try {
       await withTimeout(pipeline, RESUME_PROCESS_TIMEOUT_MS);
     } catch (err) {
+      // withTimeout's own race throws exactly `new Error("timeout")" when
+      // the foreground wait wins — anything else is a real, likely
+      // immediate rejection from the pipeline itself (a 400/401 from one
+      // of its requests), not slowness. Both used to log/report under the
+      // identical "taking longer than expected" message and Sentry tag,
+      // which meant a genuine finalize failure was indistinguishable from
+      // ordinary slowness in Sentry — exactly the case worth telling apart.
+      const isTimeout = err instanceof Error && err.message === "timeout";
       console.warn(
-        "[Questionnaire] Finalize is taking longer than expected — letting it keep running in the background:",
+        isTimeout
+          ? "[Questionnaire] Finalize is taking longer than expected — letting it keep running in the background:"
+          : "[Questionnaire] Finalize failed (not a timeout) — letting it keep running in the background:",
         err,
       );
-      Sentry.captureException(err, { tags: { flow: "onboarding_finalize" } });
-      // Deliberately not re-thrown or awaited further: the pipeline above
-      // is still running (a timeout here doesn't cancel it) and its own
-      // fetchFromBackend() at the end will still correct local state
-      // whenever it actually finishes, even though the user has already
-      // moved on. Attach a no-op catch so a genuine later failure doesn't
-      // surface as an unhandled promise rejection — it's already reported
-      // above.
+      Sentry.captureException(err, {
+        tags: {
+          flow: "onboarding_finalize",
+          outcome: isTimeout ? "timeout" : "error",
+        },
+      });
+      // Deliberately not re-thrown or awaited further either way: the
+      // pipeline above is still running (a timeout here doesn't cancel it)
+      // and its own fetchFromBackend() at the end will still correct local
+      // state whenever it actually finishes, even though the user has
+      // already moved on. Attach a no-op catch so a genuine later failure
+      // doesn't surface as an unhandled promise rejection — it's already
+      // reported above.
       pipeline.catch(() => {});
     }
 
