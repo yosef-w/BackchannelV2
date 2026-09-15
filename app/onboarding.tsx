@@ -43,7 +43,8 @@ export default function OnboardingScreen() {
   // detects that (see utils/onboardingDraft's markOnboardingRegistered)
   // and routes here with resume=1 instead of sending them to the
   // dashboard. ApplicantQuestionnaire's own registeredRef (seeded from
-  // isAuthenticated) skips re-registration for them.
+  // isAuthenticated + ssoSession, then corrected against the durable
+  // markOnboardingRegistered flag on mount) skips re-registration for them.
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const ssoSession = useOnboardingStore((state) => state.ssoSession);
   const skipToQuestionnaire =
