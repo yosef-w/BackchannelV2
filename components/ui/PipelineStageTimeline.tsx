@@ -44,7 +44,12 @@ export function PipelineStageTimeline({
   isLocalOnly,
 }: PipelineStageTimelineProps) {
   const stage = currentStage || "Referred";
-  const qualifier = isLocalOnly ? " · as reported by you" : "";
+  // Short by design: appended inside a numberOfLines={1} label alongside
+  // the stage name itself (e.g. "Recruiter Screen") on a compact match
+  // row — the longer "· as reported by you" phrasing was the first thing
+  // to get silently clipped on a real stage name, defeating the whole
+  // point of the qualifier.
+  const qualifier = isLocalOnly ? " · unconfirmed" : "";
 
   if (OFF_TRACK_VALUES.includes(stage)) {
     return (

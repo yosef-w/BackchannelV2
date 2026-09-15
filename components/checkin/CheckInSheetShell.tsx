@@ -74,10 +74,15 @@ export function CheckInSheetShell({
       // is passed — omitting it left Android's back button free to dismiss
       // the modal at the OS level while React state still thought it was
       // open, breaking the "finish the pass you started" lock this sheet is
-      // built around. No-op keeps back truly inert, matching iOS (which has
-      // no hardware back to intercept) and the documented non-dismissible
-      // design above.
-      onRequestClose={() => {}}
+      // built around. Only the `content` state is actually meant to be
+      // that non-dismissible session lock, though (it has Skip as its own
+      // escape hatch) — `loading` renders a bare spinner with no affordance
+      // at all, so making back inert there too turned an unlucky hung
+      // fetch (nothing here has a request timeout) into a screen with
+      // truly no way out short of force-quitting. `empty` already has an
+      // explicit exit ("Got it"); wiring the same onClose here just gives
+      // back the identical result instead of silently doing nothing.
+      onRequestClose={state === "content" ? () => {} : onClose}
     >
       {/* Non-dismissible blur backdrop */}
       <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />

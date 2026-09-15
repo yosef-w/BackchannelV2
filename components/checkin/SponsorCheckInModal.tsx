@@ -200,20 +200,28 @@ export function SponsorCheckInModal({
           }
           onSubmitted?.();
 
-          if (dropped > 0) {
-            showToast(
-              `Updated ${appliedCount} referrals; ${dropped} more will need a second pass.`,
-              "success",
-            );
-          } else if (shortBy > 0) {
+          // shortBy (the backend silently applying fewer than it was sent)
+          // takes priority over the dropped-by-the-50-cap notice below —
+          // these two conditions are independent and can co-occur (56
+          // updates → 50 sent, backend only applies 48 of THOSE), and an
+          // `else if` here used to let the dropped>0 branch win outright,
+          // showing a plain success toast for a batch that actually failed
+          // partway, with no error, no retry, and the sheet dismissing as
+          // if everything had gone through.
+          if (shortBy > 0) {
             trackCheckInFailed({
               role: "sponsor",
               reason: `partial batch: ${appliedCount}/${toSubmit.length} applied`,
             });
+            const droppedNote =
+              dropped > 0
+                ? ` (${dropped} more weren't sent this pass either and will need a second pass regardless.)`
+                : "";
             showToast(
-              appliedCount === 0
+              (appliedCount === 0
                 ? "None of those updates went through. Try again."
-                : `Only ${appliedCount} of ${toSubmit.length} updates went through. Try again to finish the rest.`,
+                : `Only ${appliedCount} of ${toSubmit.length} updates went through. Try again to finish the rest.`) +
+                droppedNote,
               "error",
             );
             // Stay on the recap (like a hard failure above) instead of
@@ -222,6 +230,11 @@ export function SponsorCheckInModal({
             // harmless no-op, and this is the only way to retry the ones
             // that didn't.
             throw new Error("Partial batch check-in");
+          } else if (dropped > 0) {
+            showToast(
+              `Updated ${appliedCount} referrals; ${dropped} more will need a second pass.`,
+              "success",
+            );
           }
         }}
         onDone={onDismiss}

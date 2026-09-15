@@ -202,8 +202,14 @@ export function CheckInStack({
     // The terminal stage ends this referral's pipeline tracking — unlike
     // every other stage (which can be freely revised on a later pass), so
     // it gets one distinct confirmation instead of firing on the same tap
-    // as a routine "still in Recruiter Screen" update.
-    if (terminal) {
+    // as a routine "still in Recruiter Screen" update. Only in immediate
+    // mode, though (onSubmitCard present) — accumulate mode (sponsor)
+    // doesn't actually submit anything at this tap, just records the
+    // answer for the recap, which is itself already a review-then-confirm
+    // step before the real API call. Without this gate, marking 8
+    // candidates "No Longer Active" in one pass fired 8 confirmation
+    // dialogs before a single request had even been made.
+    if (terminal && onSubmitCard) {
       Alert.alert(
         `Mark as "${terminalLabel}"?`,
         "This ends pipeline tracking for this referral. You can still check in on it again later if that changes.",
@@ -355,12 +361,27 @@ export function CheckInStack({
         <View style={styles.overviewHeader}>
           <Text style={styles.overviewTitle}>This pass</Text>
           <TouchableOpacity
-            onPress={() => setShowOverview(false)}
+            onPress={() => {
+              // Leaving the overview while the bulk-answer loop is still
+              // running lands the user on whatever card `index` currently
+              // is — unchanged by bulk itself, but handleBulk's own
+              // completion (setShowRecap(true)) still fires moments later
+              // and yanks them away from it regardless. Block leaving until
+              // it's done, same as entering is already blocked while a
+              // per-card submit is in flight.
+              if (bulkRunning) return;
+              setShowOverview(false);
+            }}
+            disabled={bulkRunning}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="Back to cards"
           >
-            <X color="#000" size={20} strokeWidth={2.2} />
+            <X
+              color={bulkRunning ? Colors.faint : "#000"}
+              size={20}
+              strokeWidth={2.2}
+            />
           </TouchableOpacity>
         </View>
 
@@ -380,7 +401,13 @@ export function CheckInStack({
                   // already blocked while a submit is in-flight, so this
                   // shouldn't be reachable mid-submit — but never let a jump
                   // land while one is, regardless of how overview was opened.
-                  if (submitting) return;
+                  // bulkRunning too: handleBulk's sequential real submits
+                  // (immediate mode) run under this separate flag, not
+                  // `submitting` — a jump mid-bulk changes `index` while the
+                  // loop's own completion still fires setShowRecap(true)
+                  // moments later, yanking the user off whatever card they
+                  // just manually navigated to. Same race, different flag.
+                  if (submitting || bulkRunning) return;
                   setIndex(i);
                   setShowOverview(false);
                 }}
@@ -492,16 +519,21 @@ export function CheckInStack({
                   // manually navigated to — silently discarding the
                   // in-progress selection there. Blocking entry while
                   // submitting closes that race at its only entry point.
-                  if (submitting) return;
+                  // bulkRunning shouldn't be reachable from here (the bulk
+                  // button only exists inside the overview itself), but
+                  // guarded for the same reason as the overview's own X and
+                  // row taps: never assume a flag can't be true just
+                  // because today's code paths don't reach it that way.
+                  if (submitting || bulkRunning) return;
                   setShowOverview(true);
                 }}
-                disabled={submitting}
+                disabled={submitting || bulkRunning}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityRole="button"
                 accessibilityLabel="See all referrals"
               >
                 <List
-                  color={submitting ? Colors.faint : Colors.muted}
+                  color={submitting || bulkRunning ? Colors.faint : Colors.muted}
                   size={18}
                   strokeWidth={2.2}
                 />
