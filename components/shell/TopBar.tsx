@@ -63,7 +63,7 @@ export function TopBar({
         <TouchableOpacity
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            // Don't optimistically zero the badge here — NotificationsView
+            // Don't optimistically zero the badge here — NotificationsFeedView
             // does NOT auto-mark-all-read; the real count is refetched when
             // the user leaves the screen.
             onOpenNotifications();

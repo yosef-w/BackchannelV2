@@ -75,7 +75,7 @@ import {
   SponsorCheckInModal,
   type SponsorCheckInReferral,
 } from "@/components/checkin/SponsorCheckInModal";
-import { NotificationsView } from "@/components/NotificationsView";
+import { NotificationsFeedView } from "@/components/NotificationsFeedView";
 import { FloatingTabBar } from "@/components/shell/FloatingTabBar";
 import {
   ShellContext,
@@ -489,7 +489,7 @@ export default function TabsLayout() {
                 bookkeeping is gone: the router state never changed). */}
             {notificationsOpen && (
               <View style={StyleSheet.absoluteFillObject}>
-                <NotificationsView
+                <NotificationsFeedView
                   onBack={() => {
                     setNotificationsOpen(false);
                     // Refresh the real unread count now that the user has
