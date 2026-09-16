@@ -1244,7 +1244,7 @@ export function MessagesView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
   headerTitleContainer: { marginBottom: 32 },
   title: { ...Type.title, color: Colors.ink },
@@ -1298,7 +1298,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -1327,7 +1327,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1364,7 +1364,7 @@ const styles = StyleSheet.create({
   bioText: { fontSize: 14, color: Colors.body, lineHeight: 20, marginBottom: 15 },
   skillsContainer: { flexDirection: "row", gap: 8, marginBottom: 15 },
   skillChip: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
@@ -1377,7 +1377,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -1394,9 +1394,9 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 12,
   },
-  resumeBtnText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  resumeBtnText: { color: Colors.paper, fontSize: 12, fontWeight: "700" },
   promptCardInModal: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -1420,7 +1420,7 @@ const styles = StyleSheet.create({
   promptQuestionInModal: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: 0.5,
   },
   promptAnswerInModal: {
@@ -1439,11 +1439,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginTop: 24,
   },
-  fullProfileBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  fullProfileBtnText: { color: Colors.paper, fontSize: 16, fontWeight: "700" },
   referFromModalBtn: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1452,7 +1452,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginTop: 12,
   },
-  referFromModalBtnText: { color: "#000", fontSize: 16, fontWeight: "800" },
+  referFromModalBtnText: { color: Colors.ink, fontSize: 16, fontWeight: "800" },
 
   /* ── Sponsor profile (applicant view) ── */
   sponsorTitleText: {
@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
   },
   sponsorOpenBadgeText: {
     fontSize: 12,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "700",
   },
   sponsorMatchBadge: {
@@ -1576,7 +1576,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 16,
   },
   summarySkills: { flexDirection: "row", flexWrap: "wrap" },

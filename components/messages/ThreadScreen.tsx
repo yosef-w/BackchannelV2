@@ -493,7 +493,7 @@ if (!conversation) {
           borderRadius: 12,
         }}
       >
-        <Text style={{ color: "#FFF", fontWeight: "700" }}>
+        <Text style={{ color: Colors.paper, fontWeight: "700" }}>
           Back to Messages
         </Text>
       </TouchableOpacity>
@@ -509,7 +509,7 @@ return (
           onPress={() => handleConversationSelect(null)}
           style={styles.backButton}
         >
-          <ArrowLeft color="#000" size={24} />
+          <ArrowLeft color={Colors.ink} size={24} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.headerIdentity}
@@ -581,7 +581,7 @@ return (
                   return alreadyReferred ? (
                     <View style={styles.headerReferBtn}>
                       <CheckCircle
-                        color="#000"
+                        color={Colors.ink}
                         size={17}
                         strokeWidth={2.5}
                       />
@@ -600,7 +600,7 @@ return (
                       onPress={openReferral}
                       activeOpacity={0.7}
                     >
-                      <UserCheck color="#000" size={20} />
+                      <UserCheck color={Colors.ink} size={20} />
                       <Text style={styles.headerReferText}>Refer</Text>
                     </TouchableOpacity>
                   );
@@ -611,7 +611,7 @@ return (
                 onPress={() => setShowUnmatchMenu(true)}
                 activeOpacity={0.7}
               >
-                <MoreHorizontal color="#000" size={20} />
+                <MoreHorizontal color={Colors.ink} size={20} />
               </TouchableOpacity>
             </>
           )}
@@ -833,7 +833,7 @@ return (
               activeOpacity={0.8}
             >
               <View style={styles.referralNudgeIconCircle}>
-                <UserCheck color="#FFF" size={16} strokeWidth={2.5} />
+                <UserCheck color={Colors.paper} size={16} strokeWidth={2.5} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.referralNudgeTitle}>
@@ -876,7 +876,7 @@ return (
             onPress={onSend}
             disabled={!messageText.trim() || sendingMessage}
           >
-            <Send color="#FFF" size={18} strokeWidth={2.5} />
+            <Send color={Colors.paper} size={18} strokeWidth={2.5} />
           </TouchableOpacity>
           </View>
         </View>
@@ -917,13 +917,13 @@ return (
             ? {
                 label: "Provide Referral",
                 icon: (
-                  <UserCheck color="#FFF" size={18} strokeWidth={2.5} />
+                  <UserCheck color={Colors.paper} size={18} strokeWidth={2.5} />
                 ),
                 onPress: openReferral,
               }
             : {
                 label: "View Full Profile",
-                icon: <User color="#FFF" size={18} strokeWidth={2.5} />,
+                icon: <User color={Colors.paper} size={18} strokeWidth={2.5} />,
                 onPress: () => {
                   setShowProfileModal(false);
                   const otherUserId = conversation.otherParticipant?.id;
@@ -942,7 +942,7 @@ return (
           userType === "sponsor"
             ? {
                 label: "View Full Profile",
-                icon: <User color="#000" size={18} strokeWidth={2.5} />,
+                icon: <User color={Colors.ink} size={18} strokeWidth={2.5} />,
                 onPress: () => {
                   setShowProfileModal(false);
                   const otherUserId = conversation.otherParticipant?.id;
@@ -972,7 +972,7 @@ return (
         onClose={() => setJobDetail(null)}
         cta={{
           label: "Back to conversation",
-          icon: <MessageCircle color="#FFF" size={18} strokeWidth={2.5} />,
+          icon: <MessageCircle color={Colors.paper} size={18} strokeWidth={2.5} />,
           onPress: () => setJobDetail(null),
         }}
       />

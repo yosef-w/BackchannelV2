@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   subRowRole: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     flexShrink: 1,
   },
 });
