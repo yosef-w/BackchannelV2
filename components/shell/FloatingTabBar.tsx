@@ -20,16 +20,22 @@ import {
   Star,
   User,
 } from "@/components/ui/icons";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  LayoutChangeEvent,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, useAnimatedStyle } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useShell } from "./ShellContext";
 import { Colors } from "@/constants/theme";
 
@@ -62,22 +68,33 @@ function TabItem({
   isActive,
   badge,
   onPress,
+  onMeasured,
 }: {
   item: (typeof TAB_ITEMS)[number];
   isActive: boolean;
   /** Count pill on the icon — "someone is waiting for you here". */
   badge?: number;
   onPress: () => void;
+  /** Reports this tab's own content-driven width/position (relative to the
+   * row) so the shared sliding indicator can size and place itself to
+   * exactly match — no more a fixed-width well that's narrower than a
+   * longer label like "Matches"/"Account". */
+  onMeasured: (name: string, x: number, width: number) => void;
 }) {
   const Icon = item.icon;
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const { x, width } = e.nativeEvent.layout;
+    onMeasured(item.name, x, width);
+  };
   return (
     <TouchableOpacity
+      onLayout={handleLayout}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
       activeOpacity={0.8}
-      style={[styles.tab, isActive && styles.tabActive]}
+      style={styles.tab}
       accessibilityRole="tab"
       accessibilityLabel={
         badge ? `${item.label}, ${badge} waiting for you` : item.label
@@ -116,6 +133,10 @@ type FloatingTabBarProps = BottomTabBarProps & {
   badges?: Partial<Record<string, number>>;
 };
 
+// Matches DismissibleSheet's settle spring — one motion language for the
+// whole app rather than a bespoke feel per component.
+const INDICATOR_SPRING = { damping: 20, stiffness: 220 };
+
 export function FloatingTabBar({
   state,
   navigation,
@@ -131,6 +152,46 @@ export function FloatingTabBar({
   const visibleItems = TAB_ITEMS.filter(
     (item) => !item.sponsorOnly || shell.userType === "sponsor",
   );
+
+  const activeItem = visibleItems.find(
+    (item) => state.routes[state.index]?.name === item.name,
+  );
+
+  // The sliding active-tab pill. Each TabItem reports its own
+  // content-driven layout on mount/resize; this glides between those
+  // measured positions instead of each tab popping its own background in
+  // and out. `measuredOnce` gates the very first placement so the pill
+  // snaps directly onto the initial tab rather than sliding in from 0.
+  const indicatorX = useSharedValue(0);
+  const indicatorWidth = useSharedValue(0);
+  const layoutsRef = useRef<Record<string, { x: number; width: number }>>({});
+  const measuredOnceRef = useRef(false);
+  const [layoutTick, setLayoutTick] = useState(0);
+
+  const handleTabMeasured = (name: string, x: number, width: number) => {
+    layoutsRef.current[name] = { x, width };
+    setLayoutTick((t) => t + 1);
+  };
+
+  useEffect(() => {
+    const layout = activeItem && layoutsRef.current[activeItem.name];
+    if (!layout) return;
+    if (!measuredOnceRef.current) {
+      indicatorX.value = layout.x;
+      indicatorWidth.value = layout.width;
+      measuredOnceRef.current = true;
+    } else {
+      indicatorX.value = withSpring(layout.x, INDICATOR_SPRING);
+      indicatorWidth.value = withSpring(layout.width, INDICATOR_SPRING);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeItem?.name, layoutTick]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+    width: indicatorWidth.value,
+    opacity: indicatorWidth.value > 0 ? 1 : 0,
+  }));
 
   return (
     <Animated.View
@@ -153,6 +214,10 @@ export function FloatingTabBar({
         <View style={styles.wash} pointerEvents="none" />
         <View style={styles.edgeLight} pointerEvents="none" />
         <View style={styles.row}>
+          <Animated.View
+            style={[styles.indicator, indicatorStyle]}
+            pointerEvents="none"
+          />
           {visibleItems.map((item) => {
             const routeIndex = state.routes.findIndex(
               (r) => r.name === item.name,
@@ -164,6 +229,7 @@ export function FloatingTabBar({
                 item={item}
                 isActive={isActive}
                 badge={badges?.[item.name]}
+                onMeasured={handleTabMeasured}
                 onPress={() => {
                   const route = state.routes[routeIndex];
                   const event = navigation.emit({
@@ -232,17 +298,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-around",
     paddingHorizontal: 6,
+    position: "relative",
   },
+  // Content-driven width (no fixed size) — a longer label like "Matches"
+  // or "Account" simply takes more room, instead of overflowing a
+  // fixed-width well sized for the shortest label.
   tab: {
-    width: 54,
     height: 50,
-    borderRadius: 25,
+    paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
   },
-  // The soft well the active tab sits in.
-  tabActive: {
+  // The active tab's well — one shared pill that measures and glides to
+  // whichever tab is active (see indicatorX/indicatorWidth) instead of
+  // each tab toggling its own fixed-size background in and out.
+  indicator: {
+    position: "absolute",
+    top: (BAR_HEIGHT - 50) / 2,
+    left: 0,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "rgba(10,10,10,0.08)",
   },
   label: {
