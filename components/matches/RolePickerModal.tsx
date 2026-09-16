@@ -90,7 +90,7 @@ export function RolePickerModal({
                     style={{
                       fontSize: 20,
                       fontWeight: "800",
-                      color: "#FFF",
+                      color: Colors.paper,
                     }}
                   >
                     {(roleGroup.items[0].name || "?")[0].toUpperCase()}
@@ -140,7 +140,7 @@ export function RolePickerModal({
                     activeOpacity={0.8}
                     onPress={() => onMessageRole(m)}
                   >
-                    <MessageCircle color="#FFF" size={16} strokeWidth={2.5} />
+                    <MessageCircle color={Colors.paper} size={16} strokeWidth={2.5} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -155,7 +155,7 @@ export function RolePickerModal({
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     marginBottom: 10,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "rgba(15,23,42,0.06)",
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  rolePickerRole: { fontSize: 15, fontWeight: "700", color: "#000" },
+  rolePickerRole: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   rolePickerMeta: { fontSize: 13, color: Colors.muted, marginTop: 2 },
   rolePickerMsgBtn: {
     width: 44,

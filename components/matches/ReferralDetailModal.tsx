@@ -1,4 +1,5 @@
 import { MessageCircle } from "@/components/ui/icons";
+import { Colors } from "@/constants/theme";
 import { BlurView } from "expo-blur";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -230,7 +231,7 @@ export function ReferralDetailModal({
                       label: "Message",
                       icon: (
                         <MessageCircle
-                          color="#FFF"
+                          color={Colors.paper}
                           size={17}
                           strokeWidth={2.5}
                         />

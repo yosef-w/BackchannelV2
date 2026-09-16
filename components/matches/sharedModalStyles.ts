@@ -1,4 +1,5 @@
 import { Dimensions, Platform, StyleSheet } from "react-native";
+import { Colors } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -13,7 +14,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 export const modalStyles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
@@ -42,7 +43,7 @@ export const modalStyles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.88,
   },
   applyBtnLarge: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingVertical: 16,
     borderRadius: 18,
     flexDirection: "row",
@@ -50,17 +51,17 @@ export const modalStyles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  applyBtnLargeText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+  applyBtnLargeText: { color: Colors.paper, fontSize: 16, fontWeight: "800" },
   detailSection: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     padding: 20,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.surface,
     marginBottom: 12,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: Colors.ink,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 15,
@@ -75,13 +76,13 @@ export const modalStyles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: Colors.surface,
   },
   detailSectionTitle: {
     fontWeight: "800",
     fontSize: 13,
     textTransform: "uppercase",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: 0.8,
   },
   jobDetailText: {
@@ -98,12 +99,12 @@ export const modalStyles = StyleSheet.create({
   },
   jobModalCompCellBorder: {
     borderLeftWidth: 1,
-    borderLeftColor: "#EEEEEE",
+    borderLeftColor: Colors.border,
   },
   jobModalCompLabel: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#BBB",
+    color: Colors.faint,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
@@ -114,12 +115,12 @@ export const modalStyles = StyleSheet.create({
     marginBottom: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEEEEE",
+    borderColor: Colors.border,
   },
   jobModalCompValue: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   jobModalHero: {
     alignItems: "center",
@@ -134,14 +135,14 @@ export const modalStyles = StyleSheet.create({
   jobModalHeroTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     textAlign: "center",
     marginBottom: 6,
     letterSpacing: -0.5,
   },
   jobModalLikedDate: {
     fontSize: 12,
-    color: "#BBB",
+    color: Colors.faint,
     fontWeight: "600",
   },
   jobModalLocationRow: {
@@ -152,7 +153,7 @@ export const modalStyles = StyleSheet.create({
   },
   jobModalLocationText: {
     fontSize: 13,
-    color: "#999",
+    color: Colors.muted,
     fontWeight: "500",
   },
   jobModalTopRow: {
@@ -173,14 +174,14 @@ export const modalStyles = StyleSheet.create({
   jobRemoteText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   jobSection: { marginBottom: 24 },
   jobSectionText: { fontSize: 14, color: "#555", lineHeight: 22 },
   jobSectionTitle: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#000",
+    color: Colors.ink,
     textTransform: "uppercase",
     marginBottom: 12,
     letterSpacing: 0.5,
@@ -189,25 +190,25 @@ export const modalStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   jobSponsorInitialText: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
   },
   roleDetailChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  roleDetailChipText: { fontSize: 13, fontWeight: "600", color: "#000" },
+  roleDetailChipText: { fontSize: 13, fontWeight: "600", color: Colors.ink },
   sponsorCardAvatar: { width: 40, height: 40, borderRadius: 20 },
   sponsorCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
   sponsorCardHeader: {
@@ -216,17 +217,17 @@ export const modalStyles = StyleSheet.create({
     gap: 6,
     marginBottom: 12,
   },
-  sponsorCardName: { fontSize: 14, fontWeight: "800", color: "#000" },
+  sponsorCardName: { fontSize: 14, fontWeight: "800", color: Colors.ink },
   sponsorCardRole: {
     fontSize: 12,
-    color: "#666",
+    color: Colors.body,
     fontWeight: "600",
     marginTop: 2,
   },
   sponsorCardTitle: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#000",
+    color: Colors.ink,
     textTransform: "uppercase",
   },
   sponsorInfoCard: {
@@ -235,7 +236,7 @@ export const modalStyles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: Colors.border,
   },
   benefitRow: {
     flexDirection: "row",
@@ -249,7 +250,7 @@ export const modalStyles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: Colors.surface,
   },
   jobMatchedSponsorBadge: {
     flexDirection: "row",
@@ -263,7 +264,7 @@ export const modalStyles = StyleSheet.create({
   jobMatchedSponsorText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   jobModalMatchedBadge: {
     flexDirection: "row",
@@ -279,13 +280,13 @@ export const modalStyles = StyleSheet.create({
   jobModalMatchedText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   jobModalPendingBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: "#E0E0E0",
     paddingHorizontal: 10,
@@ -301,6 +302,6 @@ export const modalStyles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#999",
+    backgroundColor: Colors.muted,
   },
 });

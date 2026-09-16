@@ -117,7 +117,7 @@ export function WithdrawReferralModal({
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     padding: 28,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Colors.dangerLight,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -150,13 +150,13 @@ const styles = StyleSheet.create({
   },
   withdrawModalEmphasis: {
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   withdrawWarningCard: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Colors.dangerLight,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FEF2F2",
+    borderColor: Colors.dangerLight,
     padding: 16,
     marginBottom: 24,
     gap: 10,

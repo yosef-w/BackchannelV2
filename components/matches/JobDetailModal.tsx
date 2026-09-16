@@ -1,4 +1,5 @@
 import { Check, MessageCircle } from "@/components/ui/icons";
+import { Colors } from "@/constants/theme";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
@@ -187,7 +188,7 @@ export function JobDetailModal({
                 <SectionCard title="Highlights">
                   {job.benefits.map((benefit, idx) => (
                     <View key={idx} style={modalStyles.benefitRow}>
-                      <Check size={14} color="#000" />
+                      <Check size={14} color={Colors.ink} />
                       <Text style={modalStyles.benefitText}>{benefit}</Text>
                     </View>
                   ))}
@@ -264,7 +265,7 @@ export function JobDetailModal({
                 button={{
                   label: "Message",
                   icon: (
-                    <MessageCircle color="#FFF" size={17} strokeWidth={2.5} />
+                    <MessageCircle color={Colors.paper} size={17} strokeWidth={2.5} />
                   ),
                   onPress: () => {
                     const jid = job.jobId as string;
