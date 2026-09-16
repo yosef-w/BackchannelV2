@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 6,
     textAlign: "center",
   },
@@ -78,5 +78,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 999,
   },
-  actionText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  actionText: { color: Colors.paper, fontSize: 14, fontWeight: "700" },
 });

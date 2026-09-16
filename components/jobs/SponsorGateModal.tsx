@@ -38,7 +38,7 @@ export function SponsorGateModal({
         </TouchableOpacity>
 
         <View style={styles.gateIconContainer}>
-          <Lock size={32} color="#000" />
+          <Lock size={32} color={Colors.ink} />
         </View>
         <Text style={styles.gateTitle}>Sponsor to View</Text>
         <Text style={styles.gateDesc}>
@@ -73,13 +73,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   gateModalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 24,
     padding: 32,
     alignItems: "center",
     width: "100%",
     maxWidth: 340,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.2,
     shadowRadius: 20,
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
   },
-  gateBtnPrimaryText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  gateBtnPrimaryText: { color: Colors.paper, fontSize: 16, fontWeight: "700" },
   gateBtnSecondary: { paddingVertical: 12, alignItems: "center" },
   gateBtnSecondaryText: { color: Colors.body, fontSize: 15, fontWeight: "600" },
 });

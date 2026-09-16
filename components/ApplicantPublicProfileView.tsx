@@ -145,7 +145,7 @@ export function ApplicantPublicProfileView({
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color="#000" size={28} strokeWidth={2} />
+            <ChevronLeft color={Colors.ink} size={28} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.avatarWrapper}>
             {photoUrl ? (
@@ -163,7 +163,7 @@ export function ApplicantPublicProfileView({
 
           {currentRole || currentCompany ? (
             <View style={styles.infoRow}>
-              <Briefcase color="#000" size={14} strokeWidth={2} />
+              <Briefcase color={Colors.ink} size={14} strokeWidth={2} />
               <Text style={styles.infoText}>
                 {currentRole}
                 {currentCompany ? ` @ ${currentCompany}` : ""}
@@ -203,7 +203,7 @@ export function ApplicantPublicProfileView({
           </View>
         ) : (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color="#000" size="small" />
+            <ActivityIndicator color={Colors.ink} size="small" />
             <Text style={styles.loadingText}>Loading profile details…</Text>
           </View>
         )}
@@ -214,7 +214,7 @@ export function ApplicantPublicProfileView({
             <Text style={styles.sectionTitle}>CONNECTED VIA</Text>
             <View style={styles.connectedCard}>
               <View style={styles.connectedIconCircle}>
-                <Briefcase size={16} color="#000" strokeWidth={2} />
+                <Briefcase size={16} color={Colors.ink} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.connectedJobTitle}>{matchedJobTitle}</Text>
@@ -249,7 +249,7 @@ export function ApplicantPublicProfileView({
             <View style={styles.tagCloud}>
               {desiredRoles.map((role: string, idx: number) => (
                 <View key={idx} style={styles.roleTag}>
-                  <Target size={14} color="#FFF" strokeWidth={2.5} />
+                  <Target size={14} color={Colors.paper} strokeWidth={2.5} />
                   <Text style={styles.roleTagText}>{role}</Text>
                 </View>
               ))}
@@ -263,7 +263,7 @@ export function ApplicantPublicProfileView({
         {experiences.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Briefcase size={15} color="#000" strokeWidth={2} />
+              <Briefcase size={15} color={Colors.ink} strokeWidth={2} />
               {/* marginBottom override — the standalone sectionTitle has
                   marginBottom:16 (needed when the label sits directly above
                   content), but inside a flex row that bottom margin makes
@@ -300,7 +300,7 @@ export function ApplicantPublicProfileView({
         {educationEntries.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <GraduationCap size={15} color="#000" strokeWidth={2} />
+              <GraduationCap size={15} color={Colors.ink} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 EDUCATION
               </Text>
@@ -331,7 +331,7 @@ export function ApplicantPublicProfileView({
         {certifications.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Award size={15} color="#000" strokeWidth={2} />
+              <Award size={15} color={Colors.ink} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 CERTIFICATIONS
               </Text>
@@ -375,7 +375,7 @@ export function ApplicantPublicProfileView({
         {languages.length > 0 && (
           <View style={styles.section}>
             <View style={styles.resumeSectionHeader}>
-              <Globe size={15} color="#000" strokeWidth={2} />
+              <Globe size={15} color={Colors.ink} strokeWidth={2} />
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
                 LANGUAGES
               </Text>
@@ -416,7 +416,7 @@ export function ApplicantPublicProfileView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     ...Platform.select({
       android: {
         paddingTop: StatusBar.currentHeight,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   },
   whiteBtn: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -558,14 +558,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1.5,
     borderColor: Colors.border,
   },
   tagText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   preferenceTag: {
     paddingHorizontal: 16,
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   roleTagText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: Colors.paper,
   },
   // ── Resume section styles ──
   resumeSectionHeader: {
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
   resumeCardTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     flex: 1,
     marginRight: 8,
   },
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
   certName: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   certSub: {
     fontSize: 12,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   langName: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   langSub: {
     fontSize: 12,
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
   connectedJobTitle: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: "#000",
+    color: Colors.ink,
   },
   connectedCompany: {
     fontSize: 13,

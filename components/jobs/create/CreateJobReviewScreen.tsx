@@ -154,7 +154,7 @@ export function CreateJobReviewScreen({
             >
               Continue
             </Text>
-            {canContinue && <ChevronRight color="#FFF" size={18} />}
+            {canContinue && <ChevronRight color={Colors.paper} size={18} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -197,7 +197,7 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFF" },
+  screen: { flex: 1, backgroundColor: Colors.paper },
   flex: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 48 },
   // Serif-italic footnote — the house "honest aside" voice.
@@ -268,6 +268,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   continueBtnDisabled: { backgroundColor: Colors.border },
-  continueBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
+  continueBtnText: { color: Colors.paper, fontSize: 15.5, fontWeight: "700" },
   continueBtnTextDisabled: { color: Colors.faint },
 });

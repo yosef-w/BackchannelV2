@@ -107,7 +107,7 @@ export function CreateJobInsightsScreen({
             activeOpacity={0.85}
           >
             {isPublishing ? (
-              <ActivityIndicator color="#FFF" size="small" />
+              <ActivityIndicator color={Colors.paper} size="small" />
             ) : (
               <Text style={styles.publishBtnText}>Publish Job</Text>
             )}
@@ -171,7 +171,7 @@ export function CreateJobSuccessScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFF" },
+  screen: { flex: 1, backgroundColor: Colors.paper },
   flex: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 48 },
   // Editorial section intro — serif head + light body, per the site's
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   publishBtnDisabled: { opacity: 0.6 },
-  publishBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
+  publishBtnText: { color: Colors.paper, fontSize: 15.5, fontWeight: "700" },
   skipBtn: { paddingVertical: 14, alignItems: "center" },
   // Quiet link — the house secondary voice (no underline).
   skipBtnText: {

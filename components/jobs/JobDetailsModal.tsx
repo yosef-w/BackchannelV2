@@ -146,13 +146,13 @@ export function JobDetailsModal({
             {(!!job.workArrangement || !!job.type) && (
               <View style={styles.detailSection}>
                 <View style={styles.detailSectionHeader}>
-                  <Info size={16} color="#000" />
+                  <Info size={16} color={Colors.ink} />
                   <Text style={styles.detailSectionTitle}>Role Details</Text>
                 </View>
                 <View style={styles.skillsRow}>
                   {!!job.workArrangement && (
                     <View style={styles.roleDetailChip}>
-                      <MapPin size={13} color="#000" />
+                      <MapPin size={13} color={Colors.ink} />
                       <Text style={styles.roleDetailChipText}>
                         {job.workArrangement}
                       </Text>
@@ -160,7 +160,7 @@ export function JobDetailsModal({
                   )}
                   {!!job.type && (
                     <View style={styles.roleDetailChip}>
-                      <Briefcase size={13} color="#000" />
+                      <Briefcase size={13} color={Colors.ink} />
                       <Text style={styles.roleDetailChipText}>{job.type}</Text>
                     </View>
                   )}
@@ -172,7 +172,7 @@ export function JobDetailsModal({
             {!!job.coreResponsibilities && (
               <View style={styles.detailSection}>
                 <View style={styles.detailSectionHeader}>
-                  <Briefcase size={16} color="#000" />
+                  <Briefcase size={16} color={Colors.ink} />
                   <Text style={styles.detailSectionTitle}>
                     Core Responsibilities
                   </Text>
@@ -189,7 +189,7 @@ export function JobDetailsModal({
             {(job.skills || []).length > 0 && (
               <View style={styles.detailSection}>
                 <View style={styles.detailSectionHeader}>
-                  <TrendingUp size={16} color="#000" />
+                  <TrendingUp size={16} color={Colors.ink} />
                   <Text style={styles.detailSectionTitle}>
                     Required Skills
                   </Text>
@@ -202,7 +202,7 @@ export function JobDetailsModal({
             {(job.skills || []).length === 0 && !!job.requirements && (
               <View style={styles.detailSection}>
                 <View style={styles.detailSectionHeader}>
-                  <TrendingUp size={16} color="#000" />
+                  <TrendingUp size={16} color={Colors.ink} />
                   <Text style={styles.detailSectionTitle}>Requirements</Text>
                 </View>
                 <View style={styles.jobDetailCard}>
@@ -219,7 +219,7 @@ export function JobDetailsModal({
                 </View>
                 {job.benefits.map((benefit, i) => (
                   <View key={i} style={styles.benefitRow}>
-                    <Check size={14} color="#000" />
+                    <Check size={14} color={Colors.ink} />
                     <Text style={styles.benefitText}>{benefit}</Text>
                   </View>
                 ))}
@@ -260,7 +260,7 @@ export function JobDetailsModal({
             {(job.currentSponsors || []).length > 0 && (
               <View style={styles.sponsorInfoCard}>
                 <View style={styles.sponsorCardHeader}>
-                  <Users size={16} color="#000" />
+                  <Users size={16} color={Colors.ink} />
                   <Text style={styles.sponsorCardTitle}>Job Sponsors</Text>
                 </View>
                 <View style={{ gap: 12 }}>
@@ -286,7 +286,7 @@ export function JobDetailsModal({
                             style={{
                               fontSize: 16,
                               fontWeight: "800",
-                              color: "#FFF",
+                              color: Colors.paper,
                             }}
                           >
                             {(sponsor.name || "?")[0].toUpperCase()}
@@ -305,7 +305,7 @@ export function JobDetailsModal({
                       </View>
                       {sponsor.canRefer && (
                         <View style={styles.canReferBadge}>
-                          <CheckCircle size={12} color="#000" />
+                          <CheckCircle size={12} color={Colors.ink} />
                         </View>
                       )}
                     </View>
@@ -322,7 +322,7 @@ export function JobDetailsModal({
                 return (
                   <View style={styles.unsponsorBtnContainer}>
                     <View style={styles.unsponsorBtn}>
-                      <Check color="#000" size={18} strokeWidth={3} />
+                      <Check color={Colors.ink} size={18} strokeWidth={3} />
                       <Text style={styles.unsponsorBtnText}>
                         Already Sponsoring
                       </Text>
@@ -340,10 +340,10 @@ export function JobDetailsModal({
                       }}
                     >
                       {isBusy ? (
-                        <ActivityIndicator size="small" color="#FFF" />
+                        <ActivityIndicator size="small" color={Colors.paper} />
                       ) : (
                         <>
-                          <Trash2 size={15} color="#FFF" />
+                          <Trash2 size={15} color={Colors.paper} />
                           <Text style={styles.unsponsorActiveBtnText}>
                             Remove Sponsorship
                           </Text>
@@ -358,7 +358,7 @@ export function JobDetailsModal({
                 style={styles.applyBtnLarge}
                 onPress={() => onSponsor(job)}
               >
-                <Zap color="#FFF" size={20} fill="#FFF" />
+                <Zap color={Colors.paper} size={20} fill={Colors.paper} />
                 <Text style={styles.applyBtnLargeText}>Sponsor</Text>
               </TouchableOpacity>
             )}
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   },
   sponsorCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
   sponsorCardAvatar: { width: 40, height: 40, borderRadius: 12 },
-  sponsorCardName: { fontSize: 14, fontWeight: "800", color: "#000" },
+  sponsorCardName: { fontSize: 14, fontWeight: "800", color: Colors.ink },
   sponsorCardRole: {
     fontSize: 12,
     color: Colors.body,
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   unsponsorBtnText: {
-    color: "#000",
+    color: Colors.ink,
     fontSize: 16,
     fontWeight: "800" as const,
   },
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   unsponsorActiveBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 15,
     fontWeight: "700" as const,
   },
@@ -568,5 +568,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  applyBtnLargeText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+  applyBtnLargeText: { color: Colors.paper, fontSize: 16, fontWeight: "800" },
 });

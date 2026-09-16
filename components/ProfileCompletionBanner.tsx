@@ -45,7 +45,7 @@ export function ProfileCompletionBanner({
           activeOpacity={0.8}
         >
           <Text style={styles.completeButtonText}>Complete Now</Text>
-          <ChevronRight color="#000" size={18} />
+          <ChevronRight color={Colors.ink} size={18} />
         </TouchableOpacity>
       </View>
 
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -94,11 +94,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     flex: 1,
   },
   percentageBadge: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   completeButtonText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   closeButton: {
     padding: 4,

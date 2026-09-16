@@ -125,7 +125,7 @@ export function ResumeScreen({
         return React.cloneElement(card, { key: exp.id || `exp-${idx}` });
       })}
       <TouchableOpacity style={styles.addItemBtn} onPress={handleAddExperience}>
-        <Plus color="#000" size={18} />
+        <Plus color={Colors.ink} size={18} />
         <Text style={styles.addItemText}>Add Work Experience</Text>
       </TouchableOpacity>
 
@@ -145,7 +145,7 @@ export function ResumeScreen({
         return React.cloneElement(card, { key: entry.id || `edu-${idx}` });
       })}
       <TouchableOpacity style={styles.addItemBtn} onPress={handleAddEducation}>
-        <Plus color="#000" size={18} />
+        <Plus color={Colors.ink} size={18} />
         <Text style={styles.addItemText}>Add Education</Text>
       </TouchableOpacity>
 
@@ -155,7 +155,7 @@ export function ResumeScreen({
         <Text style={styles.fieldLabel}>CERTIFICATIONS & LICENSES</Text>
         {certifications.map((cert, index) => renderCertificationCard(cert, index))}
         <TouchableOpacity style={styles.addItemBtn} onPress={handleAddCertification}>
-          <Plus color="#000" size={18} />
+          <Plus color={Colors.ink} size={18} />
           <Text style={styles.addItemText}>Add Certification</Text>
         </TouchableOpacity>
       </View>
@@ -164,7 +164,7 @@ export function ResumeScreen({
         <Text style={styles.fieldLabel}>LANGUAGES</Text>
         {languages.map((lang, index) => renderLanguageCard(lang, index))}
         <TouchableOpacity style={styles.addItemBtn} onPress={handleAddLanguage}>
-          <Plus color="#000" size={18} />
+          <Plus color={Colors.ink} size={18} />
           <Text style={styles.addItemText}>Add Language</Text>
         </TouchableOpacity>
       </View>
@@ -236,13 +236,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     borderStyle: "dashed",
     borderRadius: 12,
     paddingVertical: 12,
     marginBottom: 12,
   },
-  addItemText: { fontSize: 14, fontWeight: "700", color: "#000" },
+  addItemText: { fontSize: 14, fontWeight: "700", color: Colors.ink },
   field: { marginBottom: 24 },
   fieldLabel: {
     fontSize: 12,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
   },
-  fieldText: { flex: 1, fontSize: 14, color: "#000", lineHeight: 20 },
+  fieldText: { flex: 1, fontSize: 14, color: Colors.ink, lineHeight: 20 },
   bioInput: {
     backgroundColor: Colors.offWhite,
     borderRadius: 12,
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     minHeight: 100,
     textAlignVertical: "top",
   },

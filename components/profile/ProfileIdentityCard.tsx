@@ -59,7 +59,7 @@ export function ProfileIdentityCard({
           accessibilityRole="button"
           accessibilityLabel="Change profile photo"
         >
-          <Edit color="#FFF" size={12} strokeWidth={2.5} />
+          <Edit color={Colors.paper} size={12} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
 

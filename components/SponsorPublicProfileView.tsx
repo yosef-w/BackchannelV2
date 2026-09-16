@@ -112,7 +112,7 @@ export function SponsorPublicProfileView({
         {/* ── Profile Header ───────────────────────────────────────────── */}
         <View style={styles.profileHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color="#000" size={28} strokeWidth={2} />
+            <ChevronLeft color={Colors.ink} size={28} strokeWidth={2} />
           </TouchableOpacity>
 
           <View style={styles.avatarWrapper}>
@@ -131,7 +131,7 @@ export function SponsorPublicProfileView({
 
           {jobTitle || company ? (
             <View style={styles.infoRow}>
-              <Briefcase color="#000" size={14} strokeWidth={2} />
+              <Briefcase color={Colors.ink} size={14} strokeWidth={2} />
               <Text style={styles.infoText}>
                 {jobTitle}
                 {company ? ` @ ${company}` : ""}
@@ -160,7 +160,7 @@ export function SponsorPublicProfileView({
             See conversation history if/when INDIVIDUALS_REFERRED ships. */}
         {loadingProfile && (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color="#000" size="small" />
+            <ActivityIndicator color={Colors.ink} size="small" />
             <Text style={styles.loadingText}>Loading profile details…</Text>
           </View>
         )}
@@ -171,7 +171,7 @@ export function SponsorPublicProfileView({
             <Text style={styles.sectionTitle}>CONNECTED VIA</Text>
             <View style={styles.connectedCard}>
               <View style={styles.connectedIconCircle}>
-                <Briefcase size={16} color="#000" strokeWidth={2} />
+                <Briefcase size={16} color={Colors.ink} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.connectedJobTitle}>{matchedJobTitle}</Text>
@@ -190,7 +190,7 @@ export function SponsorPublicProfileView({
                 {openToReferrals === false ? (
                   <Award size={11} color={Colors.danger} strokeWidth={2.5} />
                 ) : (
-                  <ShieldCheck size={11} color="#000" strokeWidth={2.5} />
+                  <ShieldCheck size={11} color={Colors.ink} strokeWidth={2.5} />
                 )}
                 <Text
                   style={[
@@ -225,9 +225,9 @@ export function SponsorPublicProfileView({
                     <View style={styles.insightQuestionRow}>
                       <View style={styles.insightIconCircle}>
                         {idx % 2 === 0 ? (
-                          <Check size={13} color="#000" strokeWidth={2.5} />
+                          <Check size={13} color={Colors.ink} strokeWidth={2.5} />
                         ) : (
-                          <Award size={13} color="#000" strokeWidth={2.5} />
+                          <Award size={13} color={Colors.ink} strokeWidth={2.5} />
                         )}
                       </View>
                       <Text style={styles.insightQuestion}>
@@ -269,7 +269,7 @@ export function SponsorPublicProfileView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     ...Platform.select({
       android: { paddingTop: StatusBar.currentHeight },
     }),
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   connectedJobTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   connectedCompany: {
     fontSize: 13,
@@ -462,14 +462,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   statusPillClosed: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Colors.dangerLight,
   },
   statusPillText: {
     fontSize: 12,
     fontWeight: "700",
   },
   statusPillTextOpen: {
-    color: "#000",
+    color: Colors.ink,
   },
   statusPillTextClosed: {
     color: Colors.danger,
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   insightQuestion: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     flex: 1,
     lineHeight: 20,
   },

@@ -73,9 +73,9 @@ export function EditorScreen({
             accessibilityLabel={onBack ? "Back" : "Close"}
           >
             {onBack ? (
-              <ChevronLeft color="#000" size={24} strokeWidth={2.2} />
+              <ChevronLeft color={Colors.ink} size={24} strokeWidth={2.2} />
             ) : (
-              <X color="#000" size={22} strokeWidth={2.2} />
+              <X color={Colors.ink} size={22} strokeWidth={2.2} />
             )}
           </TouchableOpacity>
           <Text style={styles.title} numberOfLines={1}>
@@ -110,7 +110,7 @@ export function EditorScreen({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFF" },
+  safeArea: { flex: 1, backgroundColor: Colors.paper },
   flex: { flex: 1 },
   header: {
     flexDirection: "row",

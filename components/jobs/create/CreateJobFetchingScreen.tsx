@@ -298,7 +298,7 @@ export function CreateJobFetchingScreen({
             <Text style={styles.continueBtnText}>
               {foundNothing ? "Fill in details" : "Continue"}
             </Text>
-            <ChevronRight color="#FFF" size={18} />
+            <ChevronRight color={Colors.paper} size={18} />
           </TouchableOpacity>
         )}
       </View>
@@ -322,7 +322,7 @@ export function CreateJobFetchingScreen({
                 style={styles.rawViewNavBtn}
                 activeOpacity={0.7}
               >
-                <ChevronLeft color="#000" size={22} />
+                <ChevronLeft color={Colors.ink} size={22} />
               </TouchableOpacity>
               <View style={styles.rawViewUrlWrap}>
                 <Globe color={Colors.muted} size={13} />
@@ -338,7 +338,7 @@ export function CreateJobFetchingScreen({
                   activeOpacity={0.7}
                 >
                   <ChevronLeft
-                    color={rawCanGoBack ? "#000" : Colors.faint}
+                    color={rawCanGoBack ? Colors.ink : Colors.faint}
                     size={20}
                   />
                 </TouchableOpacity>
@@ -349,7 +349,7 @@ export function CreateJobFetchingScreen({
                   activeOpacity={0.7}
                 >
                   <ChevronRight
-                    color={rawCanGoForward ? "#000" : Colors.faint}
+                    color={rawCanGoForward ? Colors.ink : Colors.faint}
                     size={20}
                   />
                 </TouchableOpacity>
@@ -378,7 +378,7 @@ export function CreateJobFetchingScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFF" },
+  screen: { flex: 1, backgroundColor: Colors.paper },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
   statusRow: { marginTop: 20, alignItems: "center", paddingHorizontal: 8 },
   statusText: {
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  continueBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
+  continueBtnText: { color: Colors.paper, fontSize: 15.5, fontWeight: "700" },
   skipBtn: {
     paddingVertical: 14,
     alignItems: "center",
@@ -439,9 +439,9 @@ const styles = StyleSheet.create({
   webview: { flex: 1 },
   rawViewContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
-  rawViewSafeArea: { backgroundColor: "#FFF" },
+  rawViewSafeArea: { backgroundColor: Colors.paper },
   rawViewHeader: {
     flexDirection: "row",
     alignItems: "center",

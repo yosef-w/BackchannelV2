@@ -502,7 +502,7 @@ export function NotificationsView({
             style={styles.retryButton}
             activeOpacity={0.8}
           >
-            <RefreshCw color="#FFF" size={15} strokeWidth={2.5} />
+            <RefreshCw color={Colors.paper} size={15} strokeWidth={2.5} />
             <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
@@ -549,7 +549,7 @@ export function NotificationsView({
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={handlePullToRefresh}
-          tintColor="#000"
+          tintColor={Colors.ink}
         />
       }
       renderItem={({ item: notification, index: rowIdx }) => {
@@ -632,7 +632,7 @@ export function NotificationsView({
                 renderRightActions={() => (
                   <View style={styles.swipeActionContainer}>
                     <View style={styles.swipeActionDelete}>
-                      <Trash2 color="#FFF" size={18} strokeWidth={2.5} />
+                      <Trash2 color={Colors.paper} size={18} strokeWidth={2.5} />
                       <Text style={styles.swipeActionText}>Delete</Text>
                     </View>
                   </View>
@@ -652,7 +652,7 @@ export function NotificationsView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: Colors.paper,
   },
 
   // ── Section grouping ──
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
     minWidth: 96,
   },
   swipeActionText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,

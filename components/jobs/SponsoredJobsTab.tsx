@@ -42,7 +42,7 @@ export function SponsoredJobsTab({
   if (myJobs.length === 0) {
     return (
       <JobsEmptyState
-        icon={<Award size={28} color="#000" strokeWidth={2} />}
+        icon={<Award size={28} color={Colors.ink} strokeWidth={2} />}
         title="Nothing sponsored yet"
         description="Sponsor a listing to unlock applicant profiles and get featured."
         actionText="Browse Jobs"

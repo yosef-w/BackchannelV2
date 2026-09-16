@@ -64,7 +64,7 @@ export function TopApplicantsModal({
             onPress={onClose}
             style={jobsModalStyles.closeButton}
           >
-            <X color="#000" size={24} />
+            <X color={Colors.ink} size={24} />
           </TouchableOpacity>
         </View>
 
@@ -74,7 +74,7 @@ export function TopApplicantsModal({
         >
           {isLoading ? (
             <View style={{ padding: 40, alignItems: "center" }}>
-              <ActivityIndicator size="small" color="#000" />
+              <ActivityIndicator size="small" color={Colors.ink} />
               <Text
                 style={{
                   marginTop: 12,
@@ -158,14 +158,14 @@ export function TopApplicantsModal({
                     centered against the avatar, not pinned to the name. */}
                 {applicant.status === "MATCHED" && (
                   <View style={styles.applicantMatchedTag}>
-                    <CheckCircle size={11} color="#000" />
+                    <CheckCircle size={11} color={Colors.ink} />
                     <Text style={styles.applicantMatchedTagText}>Matched</Text>
                   </View>
                 )}
                 {/* Chevron now a visual affordance only — the entire
                     row above handles the tap. */}
                 <View style={styles.messageApplicantBtn}>
-                  <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                  <ChevronRight color={Colors.paper} size={18} strokeWidth={2.5} />
                 </View>
               </TouchableOpacity>
             ))
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: Colors.surface,
   },
-  applicantName: { fontSize: 16, fontWeight: "700", color: "#000" },
+  applicantName: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   applicantRole: { fontSize: 13, color: Colors.body, marginTop: 2 },
   applicantMatchedTag: {
     flexDirection: "row",
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.2,
-    color: "#000",
+    color: Colors.ink,
   },
   messageApplicantBtn: {
     backgroundColor: Colors.ink,
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,

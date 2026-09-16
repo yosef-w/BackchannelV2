@@ -147,7 +147,7 @@ export function JobMenuModal({
               activeOpacity={0.8}
             >
               {isSavingLogo ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={Colors.paper} />
               ) : (
                 <Text style={styles.unsponsorConfirmBtnText}>Save Logo</Text>
               )}
@@ -236,7 +236,7 @@ export function JobMenuModal({
                   onPress={onShowUnsponsorReasons}
                   activeOpacity={0.7}
                 >
-                  <Trash2 size={18} color="#FFF" strokeWidth={2} />
+                  <Trash2 size={18} color={Colors.paper} strokeWidth={2} />
                   <Text style={styles.actionPrimaryText}>Unsponsor Job</Text>
                 </TouchableOpacity>
               </>
@@ -246,7 +246,7 @@ export function JobMenuModal({
                 onPress={onClose}
                 activeOpacity={0.7}
               >
-                <ThumbsDown size={18} color="#FFF" strokeWidth={2} />
+                <ThumbsDown size={18} color={Colors.paper} strokeWidth={2} />
                 <Text style={styles.actionPrimaryText}>Not Interested</Text>
               </TouchableOpacity>
             )}
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ink,
     marginBottom: 12,
   },
-  actionPrimaryText: { fontSize: 15, fontWeight: "700", color: "#FFF" },
+  actionPrimaryText: { fontSize: 15, fontWeight: "700", color: Colors.paper },
   actionCancelBtn: {
     height: 54,
     borderRadius: 27,
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: 14,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     minHeight: 72,
     textAlignVertical: "top",
   },
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 48,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     ...AndroidInputFix,
   },
   unsponsorConfirmBtn: {
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   unsponsorConfirmBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  radioOuterActive: { borderColor: "#000" },
+  radioOuterActive: { borderColor: Colors.ink },
   radioInner: {
     width: 11,
     height: 11,
@@ -397,6 +397,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
 });

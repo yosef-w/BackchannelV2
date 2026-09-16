@@ -832,7 +832,7 @@ export function JobsView() {
           </Animated.View>
         ) : error ? (
           <JobsEmptyState
-            icon={<Zap size={28} color="#000" strokeWidth={2} />}
+            icon={<Zap size={28} color={Colors.ink} strokeWidth={2} />}
             title="Something went wrong"
             description="We couldn't load jobs right now. Please try again in a moment."
             actionText="Retry"
@@ -1164,7 +1164,7 @@ export function JobsView() {
           badge={
             selectedApplicantForMessage.status === "MATCHED"
               ? // Monochrome to match the "Matched" tag on the list row.
-                { label: "Matched", color: "#000", bgColor: Colors.surface }
+                { label: "Matched", color: Colors.ink, bgColor: Colors.surface }
               : { label: "Liked your role" }
           }
           roleContext={
@@ -1182,7 +1182,7 @@ export function JobsView() {
                   // than asking the sponsor to match again.
                   label: "Matched",
                   icon: (
-                    <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />
+                    <CheckCircle color={Colors.paper} size={18} strokeWidth={2.5} />
                   ),
                   disabled: true,
                   onPress: () => {},
@@ -1190,7 +1190,7 @@ export function JobsView() {
               : {
                   label: `Match with ${selectedApplicantForMessage.name.split(" ")[0]}`,
                   icon: (
-                    <CheckCircle color="#FFF" size={18} strokeWidth={2.5} />
+                    <CheckCircle color={Colors.paper} size={18} strokeWidth={2.5} />
                   ),
                   loading: isMatching,
                   disabled: !matchJobPostingsId,
@@ -1257,7 +1257,7 @@ export function JobsView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 20 },
   header: { marginBottom: 24, paddingHorizontal: 4 },
   headerRow: {

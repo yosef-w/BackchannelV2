@@ -107,8 +107,8 @@ interface ProfileViewProps {
 // `ios_backgroundColor` (NOT `trackColor.false`), which wasn't set at all. The
 // gray below frames the white thumb clearly while staying on-brand.
 const SWITCH_COLORS = {
-  trackColor: { false: Colors.faint, true: "#000" },
-  thumbColor: "#FFF",
+  trackColor: { false: Colors.faint, true: Colors.ink },
+  thumbColor: Colors.paper,
   ios_backgroundColor: Colors.faint,
 } as const;
 
@@ -1073,7 +1073,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isNameMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isNameMissing && { borderColor: Colors.dangerLight, borderWidth: 2 },
                 ]}
                 value={cert.name}
                 autoCapitalize="words"
@@ -1105,7 +1105,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isOrgMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isOrgMissing && { borderColor: Colors.dangerLight, borderWidth: 2 },
                 ]}
                 value={cert.organization}
                 autoCapitalize="words"
@@ -1137,7 +1137,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isYearMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isYearMissing && { borderColor: Colors.dangerLight, borderWidth: 2 },
                 ]}
                 value={cert.year}
                 autoCapitalize="none"
@@ -1162,7 +1162,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveCertification}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={Colors.paper} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -1255,7 +1255,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isLanguageMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Colors.dangerLight,
                     borderWidth: 2,
                   },
                 ]}
@@ -1290,7 +1290,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isProficiencyMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Colors.dangerLight,
                     borderWidth: 2,
                   },
                 ]}
@@ -1316,7 +1316,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveLanguage}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={Colors.paper} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -1695,7 +1695,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isJobTitleMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Colors.dangerLight,
                     borderWidth: 2,
                   },
                 ]}
@@ -1730,7 +1730,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isCompanyMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Colors.dangerLight,
                     borderWidth: 2,
                   },
                 ]}
@@ -1765,7 +1765,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isStartDateMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Colors.dangerLight,
                     borderWidth: 2,
                   },
                 ]}
@@ -1840,7 +1840,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveExperience}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={Colors.paper} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -1930,7 +1930,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               <TextInput
                 style={[
                   styles.entryFieldInput,
-                  isDegreeMissing && { borderColor: "#FECACA", borderWidth: 2 },
+                  isDegreeMissing && { borderColor: Colors.dangerLight, borderWidth: 2 },
                 ]}
                 value={education.degree}
                 autoCapitalize="words"
@@ -1977,7 +1977,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isUniversityMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Colors.dangerLight,
                     borderWidth: 2,
                   },
                 ]}
@@ -2012,7 +2012,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 style={[
                   styles.entryFieldInput,
                   isGradYearMissing && {
-                    borderColor: "#FECACA",
+                    borderColor: Colors.dangerLight,
                     borderWidth: 2,
                   },
                 ]}
@@ -2054,7 +2054,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
               ]}
               onPress={handleSaveEducation}
             >
-              <Check color="#FFF" size={18} />
+              <Check color={Colors.paper} size={18} />
               <Text style={styles.blackBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -2070,10 +2070,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
   // surfacing here). The ring on the identity card shows the official
   // percentage; this list shows the "why".
   const FINISH_PROFILE_ICON: Record<string, React.ReactNode> = {
-    profileImage: <Camera color="#000" size={16} strokeWidth={2} />,
-    skills: <Target color="#000" size={16} strokeWidth={2} />,
-    experiences: <Briefcase color="#000" size={16} strokeWidth={2} />,
-    entries: <GraduationCap color="#000" size={16} strokeWidth={2} />,
+    profileImage: <Camera color={Colors.ink} size={16} strokeWidth={2} />,
+    skills: <Target color={Colors.ink} size={16} strokeWidth={2} />,
+    experiences: <Briefcase color={Colors.ink} size={16} strokeWidth={2} />,
+    entries: <GraduationCap color={Colors.ink} size={16} strokeWidth={2} />,
   };
   const FINISH_PROFILE_TARGET: Record<string, () => void> = {
     profileImage: openImagePicker,
@@ -2083,7 +2083,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const finishProfileRows = profileCompletion.missingFields.map((f) => ({
     key: f.field,
     icon: FINISH_PROFILE_ICON[f.field] || (
-      <Edit color="#000" size={16} strokeWidth={2} />
+      <Edit color={Colors.ink} size={16} strokeWidth={2} />
     ),
     label:
       f.label === "Photo"
@@ -2094,7 +2094,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   if (profileInsights.length < 2) {
     finishProfileRows.push({
       key: "prompts",
-      icon: <MessageSquareQuote color="#000" size={16} strokeWidth={2} />,
+      icon: <MessageSquareQuote color={Colors.ink} size={16} strokeWidth={2} />,
       label:
         profileInsights.length === 0
           ? "Answer 2 profile prompts"
@@ -2118,7 +2118,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <>
                       <View style={styles.docCard}>
                         <View style={styles.docGlyph}>
-                          <FileText size={22} color="#000" strokeWidth={1.75} />
+                          <FileText size={22} color={Colors.ink} strokeWidth={1.75} />
                         </View>
                         <View style={styles.docInfo}>
                           <Text style={styles.docTitle}>Your résumé</Text>
@@ -2136,7 +2136,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                           onPress={handleResumeUpload}
                           activeOpacity={0.75}
                         >
-                          <Upload size={15} color="#000" strokeWidth={2} />
+                          <Upload size={15} color={Colors.ink} strokeWidth={2} />
                           <Text style={styles.docReplaceText}>Replace</Text>
                         </TouchableOpacity>
                       </View>
@@ -2149,7 +2149,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                         activeOpacity={0.75}
                       >
                         <View style={styles.dropzoneIcon}>
-                          <Upload size={24} color="#000" strokeWidth={2} />
+                          <Upload size={24} color={Colors.ink} strokeWidth={2} />
                         </View>
                         <Text style={styles.dropzoneTitle}>Upload your résumé</Text>
                         <Text style={styles.dropzoneSub}>
@@ -2166,7 +2166,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {resumeUploadStep === "uploading" && (
                   <View style={styles.resumeProgressCard}>
                     <View style={styles.resumeProgressRow}>
-                      <ActivityIndicator color="#000" size="small" />
+                      <ActivityIndicator color={Colors.ink} size="small" />
                       <View style={styles.resumeProgressTextCol}>
                         <Text style={styles.resumeProgressTitle}>
                           Uploading your resume...
@@ -2198,7 +2198,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {resumeUploadStep === "analyzing" && (
                   <View style={styles.resumeProgressCard}>
                     <View style={styles.resumeProgressRow}>
-                      <ActivityIndicator color="#000" size="small" />
+                      <ActivityIndicator color={Colors.ink} size="small" />
                       <View style={styles.resumeProgressTextCol}>
                         <Text style={styles.resumeProgressTitle}>
                           AI is analyzing your resume...
@@ -2235,7 +2235,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     style={styles.resumeSuccessCard}
                   >
                     <View style={styles.resumeSuccessHeader}>
-                      <CheckCircle2 size={20} color="#000" strokeWidth={2.5} />
+                      <CheckCircle2 size={20} color={Colors.ink} strokeWidth={2.5} />
                       <Text style={styles.resumeSuccessTitle}>Profile Updated!</Text>
                     </View>
                     {resumeFieldsUpdated.length > 0 && (
@@ -2268,7 +2268,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 {/* Error state */}
                 {resumeUploadStep === "error" && (
                   <View style={styles.resumeErrorCard}>
-                    <AlertCircle size={18} color="#000" strokeWidth={2} />
+                    <AlertCircle size={18} color={Colors.ink} strokeWidth={2} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.resumeErrorTitle}>Upload failed</Text>
                       <Text style={styles.resumeErrorSub}>{resumeUploadError}</Text>
@@ -2554,7 +2554,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
           group holds the personal-details editor entry. */}
       <HubSection title="Profile">
         <HubRow
-          icon={<Edit color="#000" size={16} strokeWidth={2} />}
+          icon={<Edit color={Colors.ink} size={16} strokeWidth={2} />}
           label="Personal Details"
           badgeCount={personalMissingCount}
           onPress={() => {
@@ -2566,18 +2566,18 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
       <HubSection title="Settings">
         <HubRow
-          icon={<Bell color="#000" size={16} strokeWidth={2} />}
+          icon={<Bell color={Colors.ink} size={16} strokeWidth={2} />}
           label="Notifications"
           onPress={() => setShowNotifications(true)}
         />
         <HubRow
-          icon={<Lock color="#000" size={16} strokeWidth={2} />}
+          icon={<Lock color={Colors.ink} size={16} strokeWidth={2} />}
           label="Privacy & Security"
           onPress={() => setShowPrivacySecurity(true)}
         />
         {PREMIUM_ENABLED && (
           <HubRow
-            icon={<Star color="#000" size={16} strokeWidth={2} />}
+            icon={<Star color={Colors.ink} size={16} strokeWidth={2} />}
             label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
             disabled={isTogglingPremium}
             onPress={async () => {
@@ -2606,7 +2606,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         onPress={handleLogout}
         activeOpacity={0.7}
       >
-        <LogOut color="#000" size={16} strokeWidth={2} />
+        <LogOut color={Colors.ink} size={16} strokeWidth={2} />
         <Text style={styles.logOutText}>Log Out</Text>
       </TouchableOpacity>
         </>
@@ -2618,10 +2618,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
         title="Profile Photo"
         subtitle="Choose how you'd like to add your profile photo"
         primaryLabel="Take Photo"
-        primaryIcon={<Camera color="#FFF" size={18} />}
+        primaryIcon={<Camera color={Colors.paper} size={18} />}
         onPrimary={takePhoto}
         secondaryLabel="Choose from Gallery"
-        secondaryIcon={<ImageIcon color="#000" size={18} />}
+        secondaryIcon={<ImageIcon color={Colors.ink} size={18} />}
         onSecondary={pickImage}
         onClose={() => setShowImagePickerModal(false)}
       />
@@ -2632,7 +2632,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
         title="Log Out"
         subtitle="Are you sure you want to log out? You'll need to sign in again to access your account."
         primaryLabel="Log Out"
-        primaryIcon={<LogOut color="#FFF" size={18} />}
+        primaryIcon={<LogOut color={Colors.paper} size={18} />}
         onPrimary={confirmLogout}
         secondaryLabel="Cancel"
         onSecondary={() => setShowLogoutModal(false)}
@@ -2769,7 +2769,7 @@ function EditInsightsModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
   scrollContent: {
     paddingHorizontal: 28,
@@ -2874,7 +2874,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   blackBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontWeight: "700",
     fontSize: 14,
   },
@@ -2883,17 +2883,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     paddingVertical: 14,
     marginBottom: 24,
   },
   logOutText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   entryCard: {
     backgroundColor: Colors.offWhite,
@@ -2908,7 +2908,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
   entryCardTitle: {
     flex: 1,
@@ -2917,7 +2917,7 @@ const styles = StyleSheet.create({
   entryCardMainText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   entryCardSubText: {
     fontSize: 13,
@@ -2946,11 +2946,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   entryFieldInput: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     padding: 12,
     borderRadius: 10,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -2963,7 +2963,7 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   resumeSection: {
     marginBottom: 24,
@@ -2990,14 +2990,14 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   docInfo: { flex: 1, gap: 3 },
-  docTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
+  docTitle: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   docMeta: { fontSize: 13, color: Colors.muted, fontWeight: "500" },
   docCaption: {
     fontSize: 13,
@@ -3015,12 +3015,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
-  docReplaceText: { fontSize: 14, fontWeight: "700", color: "#000" },
+  docReplaceText: { fontSize: 14, fontWeight: "700", color: Colors.ink },
   dropzone: {
     borderWidth: 1.5,
     borderStyle: "dashed",
@@ -3041,7 +3041,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
-  dropzoneTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
+  dropzoneTitle: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   dropzoneSub: { fontSize: 13, color: Colors.muted, marginTop: 6 },
   resumeProgressCard: {
     flexDirection: "column",
@@ -3064,7 +3064,7 @@ const styles = StyleSheet.create({
   resumeProgressTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   resumeProgressSub: {
     fontSize: 12,
@@ -3088,7 +3088,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
   resumeCancelText: {
     fontSize: 12,
@@ -3111,7 +3111,7 @@ const styles = StyleSheet.create({
   resumeSuccessTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   resumeSuccessSubtitle: {
     fontSize: 13,
@@ -3134,7 +3134,7 @@ const styles = StyleSheet.create({
   resumeFieldPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   resumeUploadAgainBtn: {
     flexDirection: "row",
@@ -3161,7 +3161,7 @@ const styles = StyleSheet.create({
   resumeErrorTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 2,
   },
   resumeErrorSub: {
@@ -3176,7 +3176,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   resumeRetryText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 12,
     fontWeight: "700",
   },
