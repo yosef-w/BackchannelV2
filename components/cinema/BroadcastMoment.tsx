@@ -128,7 +128,7 @@ export function BroadcastMoment({
           <BroadcastRing t={t} at={0.273} />
           <BroadcastRing t={t} at={0.369} />
           <Animated.View style={[styles.iconCircle, iconStyle]}>
-            {icon ?? <Check color="#FFF" size={36} strokeWidth={3} />}
+            {icon ?? <Check color={Colors.paper} size={36} strokeWidth={3} />}
           </Animated.View>
         </View>
       </View>

@@ -105,7 +105,7 @@ export function CheckInSheetShell({
 
           {state === "loading" ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#000" />
+              <ActivityIndicator color={Colors.ink} />
               <Text style={styles.stateText}>{loadingText}</Text>
             </View>
           ) : state === "empty" ? (
@@ -135,14 +135,14 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     paddingTop: 12,
     paddingHorizontal: 28,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: Colors.ink,
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ink,
   },
   emptyDismissBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 14,
     fontWeight: "700",
   },
