@@ -22,7 +22,7 @@ import {
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 interface WorkEmailVerificationModalProps {
   visible: boolean;
@@ -398,8 +398,8 @@ const styles = StyleSheet.create({
   emailVerifOverlay: { flex: 1, justifyContent: "flex-end" },
   emailVerifModal: {
     backgroundColor: Colors.paper,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,

@@ -90,7 +90,7 @@ export function ConfirmPop({
         ]}
       >
         {icon ?? (
-          <Check color="#FFF" size={Math.round(size * 0.45)} strokeWidth={3} />
+          <Check color={Colors.paper} size={Math.round(size * 0.45)} strokeWidth={3} />
         )}
       </Animated.View>
     </View>

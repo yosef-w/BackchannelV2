@@ -40,7 +40,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { DismissibleSheet, SheetScrollView } from "./DismissibleSheet";
-import { Colors } from "@/constants/theme";
+import { Colors, Radii } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -420,9 +420,9 @@ const dynamicSheet: ViewStyle = {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   sheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  darkChipText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  darkChipText: { fontSize: 12, fontWeight: "700", color: Colors.ink },
   // Inset tint deep enough to read as a distinct block inside a white
   // card — #F8F9FB was invisible against it.
   insightCard: {

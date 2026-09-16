@@ -11,7 +11,7 @@ import {
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import { BarFooter, canvasSheet, QuietAction } from "./JobSheetKit";
 import type { Referral } from "./matchesQueries";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -117,9 +117,9 @@ export function WithdrawReferralModal({
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     padding: 28,
     paddingBottom: 40,
   },
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Colors.dangerLight,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -150,13 +150,13 @@ const styles = StyleSheet.create({
   },
   withdrawModalEmphasis: {
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   withdrawWarningCard: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Colors.dangerLight,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FEF2F2",
+    borderColor: Colors.dangerLight,
     padding: 16,
     marginBottom: 24,
     gap: 10,

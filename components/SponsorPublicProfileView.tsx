@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
@@ -112,7 +112,7 @@ export function SponsorPublicProfileView({
         {/* ── Profile Header ───────────────────────────────────────────── */}
         <View style={styles.profileHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <ChevronLeft color="#000" size={28} strokeWidth={2} />
+            <ChevronLeft color={Colors.ink} size={28} strokeWidth={2} />
           </TouchableOpacity>
 
           <View style={styles.avatarWrapper}>
@@ -131,7 +131,7 @@ export function SponsorPublicProfileView({
 
           {jobTitle || company ? (
             <View style={styles.infoRow}>
-              <Briefcase color="#000" size={14} strokeWidth={2} />
+              <Briefcase color={Colors.ink} size={14} strokeWidth={2} />
               <Text style={styles.infoText}>
                 {jobTitle}
                 {company ? ` @ ${company}` : ""}
@@ -157,10 +157,13 @@ export function SponsorPublicProfileView({
         {/* Stats grid removed — the only quantified field we have is
             DURATION (now inlined into the header role line) and the
             former "REFERRED" cell was never populated by the backend.
-            See conversation history if/when INDIVIDUALS_REFERRED ships. */}
+            See conversation history if/when INDIVIDUALS_REFERRED ships.
+            Intentional asymmetry vs. ApplicantPublicProfileView's facts
+            strip (YRS EXP / SKILLS) — a data gap, not a missed design
+            pass; do not add a placeholder stat here to force parity. */}
         {loadingProfile && (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color="#000" size="small" />
+            <ActivityIndicator color={Colors.ink} size="small" />
             <Text style={styles.loadingText}>Loading profile details…</Text>
           </View>
         )}
@@ -171,7 +174,7 @@ export function SponsorPublicProfileView({
             <Text style={styles.sectionTitle}>CONNECTED VIA</Text>
             <View style={styles.connectedCard}>
               <View style={styles.connectedIconCircle}>
-                <Briefcase size={16} color="#000" strokeWidth={2} />
+                <Briefcase size={16} color={Colors.ink} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.connectedJobTitle}>{matchedJobTitle}</Text>
@@ -190,7 +193,7 @@ export function SponsorPublicProfileView({
                 {openToReferrals === false ? (
                   <Award size={11} color={Colors.danger} strokeWidth={2.5} />
                 ) : (
-                  <ShieldCheck size={11} color="#000" strokeWidth={2.5} />
+                  <ShieldCheck size={11} color={Colors.ink} strokeWidth={2.5} />
                 )}
                 <Text
                   style={[
@@ -225,9 +228,9 @@ export function SponsorPublicProfileView({
                     <View style={styles.insightQuestionRow}>
                       <View style={styles.insightIconCircle}>
                         {idx % 2 === 0 ? (
-                          <Check size={13} color="#000" strokeWidth={2.5} />
+                          <Check size={13} color={Colors.ink} strokeWidth={2.5} />
                         ) : (
-                          <Award size={13} color="#000" strokeWidth={2.5} />
+                          <Award size={13} color={Colors.ink} strokeWidth={2.5} />
                         )}
                       </View>
                       <Text style={styles.insightQuestion}>
@@ -269,7 +272,7 @@ export function SponsorPublicProfileView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     ...Platform.select({
       android: { paddingTop: StatusBar.currentHeight },
     }),
@@ -343,49 +346,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 10,
   },
-  // ── Stats Grid ────────────────────────────────────────────────────────────
-  statsGrid: {
-    flexDirection: "row",
-    backgroundColor: Colors.offWhite,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 32,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: 8,
-  },
-  // Matches the site's .stat-num (serif for stat/count displays).
-  statValue: {
-    fontFamily: Fonts.serif,
-    fontSize: 26,
-    color: Colors.ink,
-    textAlign: "center",
-  },
-  statValueOpen: {
-    color: Colors.ink,
-    fontSize: 18,
-  },
-  statValueClosed: {
-    color: Colors.danger,
-    fontSize: 18,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: Colors.faint,
-    marginTop: 4,
-    letterSpacing: 1,
-    textAlign: "center",
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 4,
-    alignSelf: "stretch" as const,
-  },
-
   // ── Loading ───────────────────────────────────────────────────────────────
   loadingRow: {
     flexDirection: "row",
@@ -442,7 +402,7 @@ const styles = StyleSheet.create({
   connectedJobTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
   },
   connectedCompany: {
     fontSize: 13,
@@ -462,14 +422,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   statusPillClosed: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Colors.dangerLight,
   },
   statusPillText: {
     fontSize: 12,
     fontWeight: "700",
   },
   statusPillTextOpen: {
-    color: "#000",
+    color: Colors.ink,
   },
   statusPillTextClosed: {
     color: Colors.danger,
@@ -503,7 +463,7 @@ const styles = StyleSheet.create({
   insightQuestion: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     flex: 1,
     lineHeight: 20,
   },

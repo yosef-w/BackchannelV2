@@ -237,7 +237,7 @@ function HoldToSign({
               cx={RING_R + 6}
               cy={RING_R + 6}
               r={RING_R}
-              stroke="#FFF"
+              stroke={Colors.paper}
               strokeWidth={4}
               strokeLinecap="round"
               fill="none"
@@ -269,7 +269,7 @@ const holdStyles = StyleSheet.create({
     width: RING_R * 2 - 18,
     height: RING_R * 2 - 18,
     borderRadius: RING_R - 9,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -569,9 +569,9 @@ export function ReferralSigningScreen({
                 }
               >
                 {act === "vouch" || act === "sign" ? (
-                  <ChevronLeft size={22} color={dark ? "#FFF" : "#000"} />
+                  <ChevronLeft size={22} color={dark ? Colors.paper : Colors.ink} />
                 ) : (
-                  <X size={20} color={dark ? "#FFF" : "#000"} />
+                  <X size={20} color={dark ? Colors.paper : Colors.ink} />
                 )}
               </TouchableOpacity>
               <View
@@ -623,7 +623,7 @@ export function ReferralSigningScreen({
                   return (
                     <View key={f.title} style={styles.introFrame}>
                       <View style={styles.introIconTile}>
-                        <FrameIcon size={34} color="#000" strokeWidth={2} />
+                        <FrameIcon size={34} color={Colors.ink} strokeWidth={2} />
                       </View>
                       <Text style={styles.introTitle}>{f.title}</Text>
                       <Text style={styles.introBody}>
@@ -829,7 +829,7 @@ export function ReferralSigningScreen({
             >
               <View style={styles.statementWrap}>
                 <View style={styles.statementIconTile}>
-                  <StatementIcon size={24} color="#000" strokeWidth={2.2} />
+                  <StatementIcon size={24} color={Colors.ink} strokeWidth={2.2} />
                 </View>
                 <Text style={styles.statementQuote}>
                   &ldquo;{statement.text(firstName)}&rdquo;
@@ -839,14 +839,14 @@ export function ReferralSigningScreen({
                     entering={ZoomIn.duration(260)}
                     style={styles.stamp}
                   >
-                    <Check size={34} color="#FFF" strokeWidth={3.5} />
+                    <Check size={34} color={Colors.paper} strokeWidth={3.5} />
                   </Animated.View>
                 )}
               </View>
               <View style={styles.footer}>
                 <PillButton
                   label="I stand behind this"
-                  icon={<Check size={17} color="#FFF" strokeWidth={2.8} />}
+                  icon={<Check size={17} color={Colors.paper} strokeWidth={2.8} />}
                   onPress={stampStatement}
                 />
                 <QuietAction
@@ -892,7 +892,7 @@ export function ReferralSigningScreen({
 
                 {submitting ? (
                   <View style={styles.signSubmitting}>
-                    <ActivityIndicator color="#FFF" size="large" />
+                    <ActivityIndicator color={Colors.paper} size="large" />
                     <Text style={styles.signSubmittingText}>Signing…</Text>
                   </View>
                 ) : (
@@ -930,7 +930,7 @@ export function ReferralSigningScreen({
                   entering={ZoomIn.delay(120).duration(320)}
                   style={styles.receiptCheck}
                 >
-                  <Check color="#FFF" size={32} strokeWidth={3} />
+                  <Check color={Colors.paper} size={32} strokeWidth={3} />
                 </Animated.View>
                 <Text style={styles.receiptTitle}>
                   Thank you{sponsorFirstName ? `, ${sponsorFirstName}` : ""}.
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: Colors.ink,
   },
-  progressFillDark: { backgroundColor: "#FFF" },
+  progressFillDark: { backgroundColor: Colors.paper },
   body: { flex: 1 },
   footer: {
     paddingHorizontal: 20,
@@ -1183,7 +1183,7 @@ const styles = StyleSheet.create({
   signLead: {
     fontFamily: Fonts.serif,
     fontSize: 26,
-    color: "#FFF",
+    color: Colors.paper,
     letterSpacing: -0.6,
     textAlign: "center",
     lineHeight: 33,
@@ -1191,7 +1191,7 @@ const styles = StyleSheet.create({
   },
   signCard: {
     alignSelf: "stretch",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 22,
     alignItems: "center",
     paddingVertical: 24,
@@ -1227,7 +1227,7 @@ const styles = StyleSheet.create({
   signError: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#FCA5A5",
+    color: Colors.danger,
     textAlign: "center",
     marginBottom: 16,
     lineHeight: 18,

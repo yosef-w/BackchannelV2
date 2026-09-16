@@ -47,7 +47,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 // delete, clear) write to this cache via setQueryData.
 const NOTIFICATIONS_QUERY_KEY = ["notifications", "list"] as const;
 
-interface NotificationsViewProps {
+interface NotificationsFeedViewProps {
   onBack: () => void;
   /** Open the Messages tab and focus a specific conversation */
   onOpenConversation: (conversationId: string) => void;
@@ -156,11 +156,11 @@ function bucketForDate(iso: string): SectionKey {
   return "earlier";
 }
 
-export function NotificationsView({
+export function NotificationsFeedView({
   onBack,
   onOpenConversation,
   onOpenTab,
-}: NotificationsViewProps) {
+}: NotificationsFeedViewProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [isClearingRead, setIsClearingRead] = useState(false);
@@ -253,7 +253,7 @@ export function NotificationsView({
           ),
         );
         console.warn(
-          "[NotificationsView] Failed to mark notification as read:",
+          "[NotificationsFeedView] Failed to mark notification as read:",
           err,
         );
       }
@@ -271,7 +271,7 @@ export function NotificationsView({
       trackAllNotificationsMarkedRead({ count: unreadCount });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (err) {
-      console.warn("[NotificationsView] Failed to mark all read:", err);
+      console.warn("[NotificationsFeedView] Failed to mark all read:", err);
       showToast("Failed to mark all as read. Please try again.", "error");
     } finally {
       setIsMarkingAll(false);
@@ -294,7 +294,7 @@ export function NotificationsView({
         await deleteNotification(n.NOTIFICATION_ID);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (err) {
-        console.warn("[NotificationsView] Failed to delete:", err);
+        console.warn("[NotificationsFeedView] Failed to delete:", err);
         queryClient.setQueryData(NOTIFICATIONS_QUERY_KEY, previous);
         showToast("Couldn't delete that. Please try again.", "error");
       }
@@ -315,7 +315,7 @@ export function NotificationsView({
       await clearReadNotifications();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (err) {
-      console.warn("[NotificationsView] Failed to clear read:", err);
+      console.warn("[NotificationsFeedView] Failed to clear read:", err);
       queryClient.setQueryData(NOTIFICATIONS_QUERY_KEY, previous);
       showToast("Couldn't clear read notifications.", "error");
     } finally {
@@ -502,7 +502,7 @@ export function NotificationsView({
             style={styles.retryButton}
             activeOpacity={0.8}
           >
-            <RefreshCw color="#FFF" size={15} strokeWidth={2.5} />
+            <RefreshCw color={Colors.paper} size={15} strokeWidth={2.5} />
             <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
@@ -549,7 +549,7 @@ export function NotificationsView({
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={handlePullToRefresh}
-          tintColor="#000"
+          tintColor={Colors.ink}
         />
       }
       renderItem={({ item: notification, index: rowIdx }) => {
@@ -632,7 +632,7 @@ export function NotificationsView({
                 renderRightActions={() => (
                   <View style={styles.swipeActionContainer}>
                     <View style={styles.swipeActionDelete}>
-                      <Trash2 color="#FFF" size={18} strokeWidth={2.5} />
+                      <Trash2 color={Colors.paper} size={18} strokeWidth={2.5} />
                       <Text style={styles.swipeActionText}>Delete</Text>
                     </View>
                   </View>
@@ -652,7 +652,7 @@ export function NotificationsView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFF",
+    color: Colors.paper,
   },
 
   // ── Section grouping ──
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
     minWidth: 96,
   },
   swipeActionText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,

@@ -103,7 +103,7 @@ export function PrivacySecurityScreen({
   const renderSetPasswordGate = (headline: string, subtitle: string) => (
     <>
       <View style={styles.deleteIconCircle}>
-        <Lock color="#000" size={26} strokeWidth={2.2} />
+        <Lock color={Colors.ink} size={26} strokeWidth={2.2} />
       </View>
       {setupLinkSent ? (
         <>
@@ -128,7 +128,7 @@ export function PrivacySecurityScreen({
             activeOpacity={0.8}
           >
             {setupLinkSending ? (
-              <ActivityIndicator size="small" color="#FFF" />
+              <ActivityIndicator size="small" color={Colors.paper} />
             ) : (
               <Text style={styles.updateBtnText}>Email Me a Setup Link</Text>
             )}
@@ -414,7 +414,7 @@ export function PrivacySecurityScreen({
         {emailRequestSent ? (
           <>
             <View style={styles.deleteIconCircle}>
-              <Mail color="#000" size={26} strokeWidth={2.2} />
+              <Mail color={Colors.ink} size={26} strokeWidth={2.2} />
             </View>
             <Text style={styles.deleteHeadline}>Check your new inbox</Text>
             <Text style={styles.deleteSubtitle}>
@@ -479,7 +479,7 @@ export function PrivacySecurityScreen({
               disabled={changingEmail}
             >
               {changingEmail ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={Colors.paper} />
               ) : (
                 <Text style={styles.updateBtnText}>Send Confirmation Link</Text>
               )}
@@ -534,7 +534,7 @@ export function PrivacySecurityScreen({
         title="Delete Account"
       >
         <View style={styles.deleteIconCircle}>
-          <Trash2 color="#000" size={26} strokeWidth={2.2} />
+          <Trash2 color={Colors.ink} size={26} strokeWidth={2.2} />
         </View>
 
         <Text style={styles.deleteHeadline}>This is permanent</Text>
@@ -589,7 +589,7 @@ export function PrivacySecurityScreen({
           activeOpacity={0.8}
         >
           {deleting ? (
-            <ActivityIndicator size="small" color="#FFF" />
+            <ActivityIndicator size="small" color={Colors.paper} />
           ) : (
             <Text style={styles.deleteConfirmBtnText}>
               Permanently Delete My Account
@@ -697,7 +697,7 @@ export function PrivacySecurityScreen({
         style={styles.deleteRow}
         onPress={() => setStep("delete")}
       >
-        <Trash2 color="#000" size={18} />
+        <Trash2 color={Colors.ink} size={18} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.deleteTitle}>Delete Account</Text>
           <Text style={styles.rowDescription}>
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     // The wrapper owns the height — zero the input's own padding and pin
     // vertical centering (see AndroidInputFix's doc comment).
     paddingVertical: 0,
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 8,
   },
-  updateBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
+  updateBtnText: { color: Colors.paper, fontSize: 15, fontWeight: "800" },
   // ── Delete-account confirmation step ────────────────────────────────
   // Monochrome like the rest of the app's primary/destructive actions
   // (Unmatch, Send, etc.) — severity is carried by the copy, the warning
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
   deleteConfirmBtnDisabled: {
     opacity: 0.4,
   },
-  deleteConfirmBtnText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
+  deleteConfirmBtnText: { color: Colors.paper, fontSize: 15, fontWeight: "800" },
   deleteCancelBtn: {
     height: 52,
     borderRadius: 14,
@@ -890,5 +890,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 10,
   },
-  deleteCancelBtnText: { color: "#000", fontSize: 15, fontWeight: "700" },
+  deleteCancelBtnText: { color: Colors.ink, fontSize: 15, fontWeight: "700" },
 });

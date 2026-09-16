@@ -4,7 +4,7 @@ import {
     trackReferralWithdrawn,
     trackSponsorLikedBack,
 } from "@/lib/analytics/mixpanel";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 import {
     getJobDetail,
     type SilverJobDetail,
@@ -1073,7 +1073,7 @@ export function MatchesView({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#000"
+            tintColor={Colors.ink}
           />
         }
       >
@@ -1102,7 +1102,7 @@ export function MatchesView({
             activeOpacity={0.85}
           >
             <View style={styles.staleReferralIconCircle}>
-              <Clock size={18} color="#000" strokeWidth={2} />
+              <Clock size={18} color={Colors.ink} strokeWidth={2} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.staleReferralTitle}>
@@ -1219,7 +1219,7 @@ export function MatchesView({
           }
           primaryCta={{
             label: `Message ${selectedProfile.name?.split(" ")[0] ?? (userType === "sponsor" ? "Applicant" : "Sponsor")}`,
-            icon: <MessageCircle color="#FFF" size={18} strokeWidth={2.5} />,
+            icon: <MessageCircle color={Colors.paper} size={18} strokeWidth={2.5} />,
             onPress: () => {
               trackMatchMessageTapped({ jobId: selectedProfile.jobId });
               closeAllModals();
@@ -1277,7 +1277,7 @@ export function MatchesView({
           badge={{
             label: "Interested in Your Job",
             color: Colors.danger,
-            bgColor: "#FEF2F2",
+            bgColor: Colors.dangerLight,
           }}
           roleContext={
             selectedInterestedApplicant.jobTitle
@@ -1293,7 +1293,7 @@ export function MatchesView({
               likingApplicantId === selectedInterestedApplicant.applicantUserId
                 ? "Connecting..."
                 : `Connect with ${selectedInterestedApplicant.name.split(" ")[0]}`,
-            icon: <Heart color="#FFF" size={18} strokeWidth={2.5} />,
+            icon: <Heart color={Colors.paper} size={18} strokeWidth={2.5} />,
             loading:
               likingApplicantId === selectedInterestedApplicant.applicantUserId,
             onPress: () => handleLikeBackApplicant(selectedInterestedApplicant),
@@ -1384,7 +1384,7 @@ export function MatchesView({
               ? `Wants to connect · ${getRelativeTime(selectedInterestedSponsor.likedAt)}`
               : "Wants to connect with you",
             color: Colors.danger,
-            bgColor: "#FEF2F2",
+            bgColor: Colors.dangerLight,
           }}
           roleContext={
             selectedInterestedSponsor.jobTitle ||
@@ -1409,7 +1409,7 @@ export function MatchesView({
               likingBackSponsorId === selectedInterestedSponsor.likeId
                 ? "Connecting..."
                 : `Connect with ${selectedInterestedSponsor.firstName}`,
-            icon: <Heart color="#FFF" size={18} strokeWidth={2.5} />,
+            icon: <Heart color={Colors.paper} size={18} strokeWidth={2.5} />,
             loading: likingBackSponsorId === selectedInterestedSponsor.likeId,
             onPress: () => handleLikeBackSponsor(selectedInterestedSponsor),
           }}
@@ -1437,7 +1437,7 @@ export function MatchesView({
                 likingBackSponsorId === selectedInterestedSponsor.likeId
                   ? "Connecting..."
                   : `Connect with ${selectedInterestedSponsor.firstName}`,
-              icon: <Heart color="#FFF" size={18} strokeWidth={2.5} />,
+              icon: <Heart color={Colors.paper} size={18} strokeWidth={2.5} />,
               loading:
                 likingBackSponsorId === selectedInterestedSponsor.likeId,
               onPress: () => handleLikeBackSponsor(selectedInterestedSponsor),
@@ -1588,9 +1588,13 @@ export function MatchesView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
-  scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 100 },
-  header: { marginBottom: 30 },
+  container: { flex: 1, backgroundColor: Colors.paper },
+  scrollContent: {
+    paddingHorizontal: Spacing.xxl,
+    paddingTop: 20,
+    paddingBottom: 100,
+  },
+  header: { marginBottom: Spacing.xxl },
   title: { ...Type.title, color: Colors.ink },
   titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   subtitle: {
@@ -1614,7 +1618,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: "center",
@@ -1623,7 +1627,7 @@ const styles = StyleSheet.create({
   staleReferralTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   staleReferralSubtitle: {
     fontSize: 12,
@@ -1642,14 +1646,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
   },
   undoToastText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 14,
     fontWeight: "600",
     flex: 1,
@@ -1657,13 +1661,13 @@ const styles = StyleSheet.create({
   },
   undoToastBtn: {
     // White on the dark (#1A1A1A) toast — a black button would vanish.
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
   undoToastBtnText: {
-    color: "#000",
+    color: Colors.ink,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,

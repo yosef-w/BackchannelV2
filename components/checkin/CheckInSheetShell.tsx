@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -105,7 +105,7 @@ export function CheckInSheetShell({
 
           {state === "loading" ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#000" />
+              <ActivityIndicator color={Colors.ink} />
               <Text style={styles.stateText}>{loadingText}</Text>
             </View>
           ) : state === "empty" ? (
@@ -135,14 +135,14 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     paddingTop: 12,
     paddingHorizontal: 28,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: Colors.ink,
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ink,
   },
   emptyDismissBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 14,
     fontWeight: "700",
   },

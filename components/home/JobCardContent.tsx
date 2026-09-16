@@ -163,14 +163,14 @@ export function JobCardContent({
           {statusLabel && (
             <Animated.View entering={FadeIn.duration(220)}>
               <View style={cardStyles.statusBanner}>
-                <Check color="#FFF" size={13} strokeWidth={3} />
+                <Check color={Colors.paper} size={13} strokeWidth={3} />
                 <Text style={cardStyles.statusBannerText}>{statusLabel}</Text>
               </View>
             </Animated.View>
           )}
           {isSponsored === true && (
             <View style={cardStyles.statusBanner}>
-              <Check color="#FFF" size={13} strokeWidth={3} />
+              <Check color={Colors.paper} size={13} strokeWidth={3} />
               <Text style={cardStyles.statusBannerText}>SPONSORED ROLE</Text>
             </View>
           )}

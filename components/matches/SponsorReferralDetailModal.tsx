@@ -235,7 +235,7 @@ export function SponsorReferralDetailModal({
                           label: "Message",
                           icon: (
                             <MessageCircle
-                              color="#FFF"
+                              color={Colors.paper}
                               size={17}
                               strokeWidth={2.5}
                             />

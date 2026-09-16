@@ -113,7 +113,7 @@ export function SponsorJobModal({
             onPress={onClose}
             style={jobsModalStyles.closeButton}
           >
-            <X color="#000" size={24} />
+            <X color={Colors.ink} size={24} />
           </TouchableOpacity>
         </View>
         {step === 1 ? (
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 12,
   },
   formSection: { marginBottom: 24 },
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.faint,
   },
-  radioCircleActive: { borderColor: "#000", borderWidth: 6 },
+  radioCircleActive: { borderColor: Colors.ink, borderWidth: 6 },
   radioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   radioOption: {
     backgroundColor: Colors.paper,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   radioText: { fontSize: 15, color: Colors.body, fontWeight: "600" },
-  radioTextActive: { color: "#000", fontWeight: "600" },
+  radioTextActive: { color: Colors.ink, fontWeight: "600" },
   sideBySide: { flexDirection: "row", gap: 12 },
   successDesc: {
     fontSize: 14,

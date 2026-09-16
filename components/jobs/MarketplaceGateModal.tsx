@@ -26,7 +26,7 @@ import {
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
-import { Colors, Fonts } from "@/constants/theme";
+import { Colors, Fonts, Radii } from "@/constants/theme";
 
 interface MarketplaceGateModalProps {
   visible: boolean;
@@ -78,7 +78,7 @@ export function MarketplaceGateModal({
           <ConfirmPop
             size={64}
             haptic={null}
-            icon={<Lock color="#FFF" size={24} strokeWidth={2.2} />}
+            icon={<Lock color={Colors.paper} size={24} strokeWidth={2.2} />}
           />
           <Text style={styles.eyebrow}>MEMBERS ONLY</Text>
           <Text style={styles.title}>
@@ -98,7 +98,7 @@ export function MarketplaceGateModal({
             activeOpacity={0.85}
           >
             {purchasing ? (
-              <ActivityIndicator color="#FFF" size="small" />
+              <ActivityIndicator color={Colors.paper} size="small" />
             ) : (
               <Text style={styles.ctaText}>Unlock with Premium</Text>
             )}
@@ -124,8 +124,8 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: Colors.paper,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     paddingTop: 12,
     paddingHorizontal: 28,
     paddingBottom: 40,

@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   doc: {
     width: 124,
     height: 160,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 10,

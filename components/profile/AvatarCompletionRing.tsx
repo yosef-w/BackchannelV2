@@ -52,7 +52,7 @@ export function AvatarCompletionRing({
             cx={svgSize / 2}
             cy={svgSize / 2}
             r={radius}
-            stroke="#000"
+            stroke={Colors.ink}
             strokeWidth={strokeWidth}
             fill="none"
             strokeLinecap="round"

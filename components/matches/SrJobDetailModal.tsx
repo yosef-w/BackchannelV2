@@ -99,7 +99,7 @@ export function SrJobDetailModal({
           onPress={onBack}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ChevronLeft size={18} color="#000" />
+          <ChevronLeft size={18} color={Colors.ink} />
           <Text style={styles.backText}>Back to Request</Text>
         </TouchableOpacity>
 
@@ -154,7 +154,7 @@ export function SrJobDetailModal({
             <BarFooter
               button={{
                 label: "Back to Request",
-                icon: <ChevronLeft size={17} color="#FFF" strokeWidth={2.5} />,
+                icon: <ChevronLeft size={17} color={Colors.paper} strokeWidth={2.5} />,
                 onPress: onBack,
               }}
             />
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   errorContainer: {
     alignItems: "center",

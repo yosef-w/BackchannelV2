@@ -127,7 +127,7 @@ export default function ResetPasswordRoute() {
           {status === "form" && (
             <View style={styles.center}>
               <View style={styles.iconCircle}>
-                <Lock color="#FFF" size={32} strokeWidth={2.5} />
+                <Lock color={Colors.paper} size={32} strokeWidth={2.5} />
               </View>
               <Text style={styles.title}>Choose a new password</Text>
               <Text style={styles.subtitle}>
@@ -173,7 +173,7 @@ export default function ResetPasswordRoute() {
                   activeOpacity={0.8}
                 >
                   {submitting ? (
-                    <ActivityIndicator color="#FFF" />
+                    <ActivityIndicator color={Colors.paper} />
                   ) : (
                     <Text style={styles.primaryButtonText}>
                       Reset Password
@@ -187,7 +187,7 @@ export default function ResetPasswordRoute() {
           {status === "missingToken" && (
             <View style={styles.center}>
               <View style={styles.iconCircleError}>
-                <X color="#FFF" size={36} strokeWidth={3} />
+                <X color={Colors.paper} size={36} strokeWidth={3} />
               </View>
               <Text style={styles.title}>Link not valid</Text>
               <Text style={styles.subtitle}>
@@ -231,7 +231,7 @@ export default function ResetPasswordRoute() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   flex: { flex: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
   // Full-bleed container for BroadcastMoment (it manages its own
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 50,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     // Fixed height with no separate wrapper — pin vertical centering
     // directly (see AndroidInputFix's doc comment).
     ...AndroidInputFix,
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.faint,
   },
   primaryButtonText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 16,
     fontWeight: "700",
   },

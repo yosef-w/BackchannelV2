@@ -898,7 +898,7 @@ export function ApplicantJobsBrowseView() {
                       ? "Like this Role"
                       : "Get a Sponsor",
                     icon: selectedJob.IS_SPONSORED ? (
-                      <Heart color="#FFF" size={16} strokeWidth={2.5} />
+                      <Heart color={Colors.paper} size={16} strokeWidth={2.5} />
                     ) : undefined,
                     disabled: true,
                     onPress: () => {},
@@ -931,7 +931,7 @@ export function ApplicantJobsBrowseView() {
                 <BarFooter
                   button={{
                     label: "Like this Role",
-                    icon: <Heart color="#FFF" size={16} strokeWidth={2.5} />,
+                    icon: <Heart color={Colors.paper} size={16} strokeWidth={2.5} />,
                     loading: isRequesting,
                     spinnerOnLoading: true,
                     onPress: () =>
@@ -968,7 +968,7 @@ export function ApplicantJobsBrowseView() {
 const styles = StyleSheet.create({
   // #FFF to match every other tab screen (Home/Matches/Jobs) — the
   // canvas tint is for SHEETS; screens are white.
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
   header: { marginBottom: 18 },
   title: {
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: Colors.ink,
     // The wrap owns the height — zero the input's own padding and pin
     // vertical centering (see AndroidInputFix's doc comment).
     paddingVertical: 0,
@@ -1173,8 +1173,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   detailSheet: {
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Fixed (not max) height — same stuck-sheet class as the Matches
     // sheets: a fixed frame presents full-height from the first frame
     // and nothing can clip outside the scroll. Absolute px — a % would

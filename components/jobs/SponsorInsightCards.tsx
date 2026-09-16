@@ -153,7 +153,7 @@ export function SponsorInsightCards({
               style={engaged ? styles.siIconCircleActive : styles.siIconCircle}
             >
               <Icon
-                color={engaged ? "#FFF" : Colors.muted}
+                color={engaged ? Colors.paper : Colors.muted}
                 size={16}
                 strokeWidth={2.2}
               />
@@ -179,7 +179,7 @@ export function SponsorInsightCards({
               <Text style={styles.siEditText}>Edit</Text>
             ) : (
               <View style={styles.siPlusCircle}>
-                <Plus color="#000" size={16} strokeWidth={2.6} />
+                <Plus color={Colors.ink} size={16} strokeWidth={2.6} />
               </View>
             )}
           </View>
@@ -216,9 +216,9 @@ export function SponsorInsightCards({
                       activeOpacity={0.7}
                     >
                       {on ? (
-                        <Check color="#FFF" size={12} strokeWidth={2.8} />
+                        <Check color={Colors.paper} size={12} strokeWidth={2.8} />
                       ) : (
-                        <Plus color="#000" size={12} strokeWidth={2.6} />
+                        <Plus color={Colors.ink} size={12} strokeWidth={2.6} />
                       )}
                       <Text
                         style={[
@@ -238,7 +238,7 @@ export function SponsorInsightCards({
                 onPress={collapse}
                 activeOpacity={0.85}
               >
-                <Check color="#FFF" size={15} strokeWidth={2.6} />
+                <Check color={Colors.paper} size={15} strokeWidth={2.6} />
                 <Text style={styles.siDoneBtnText}>Done</Text>
               </TouchableOpacity>
             </View>
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   },
   siChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   siChipText: { fontSize: 13, fontWeight: "600", color: Colors.body },
-  siChipTextActive: { color: "#FFF" },
+  siChipTextActive: { color: Colors.paper },
   siDoneBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -391,5 +391,5 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: Colors.ink,
   },
-  siDoneBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
+  siDoneBtnText: { color: Colors.paper, fontSize: 15, fontWeight: "700" },
 });

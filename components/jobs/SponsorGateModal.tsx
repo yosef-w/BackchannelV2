@@ -1,9 +1,9 @@
-import { Lock, X } from "@/components/ui/icons";
+import { Lock } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { Colors, Type } from "@/constants/theme";
+import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 interface SponsorGateModalProps {
   onSponsorNow: () => void;
@@ -12,117 +12,113 @@ interface SponsorGateModalProps {
 
 /**
  * "Sponsor to View" gate — shown when a non-sponsor taps the applicant list
- * on a job they haven't sponsored. Extracted from JobsView.
+ * on a job they haven't sponsored. Extracted from JobsView. Rebuilt on the
+ * same bottom-sheet + dark blur@60 shell as MarketplaceGateModal so the
+ * app's two "velvet rope" gates read as one family instead of one being a
+ * sheet and the other a centered, drop-shadowed dialog.
  */
 export function SponsorGateModal({
   onSponsorNow,
   onClose,
 }: SponsorGateModalProps) {
   return (
-    <View style={styles.gateModalOverlay}>
+    <View style={styles.overlay}>
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
         onPress={onClose}
       >
-        <BlurView intensity={40} style={StyleSheet.absoluteFill} tint="dark" />
+        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
-      <Animated.View
-        entering={FadeIn.duration(200)}
-        exiting={FadeOut.duration(150)}
-        style={styles.gateModalContent}
-      >
-        <TouchableOpacity style={styles.gateCloseBtn} onPress={onClose}>
-          <X color={Colors.body} size={20} />
-        </TouchableOpacity>
+      <DismissibleSheet onDismiss={onClose} fullSheetGesture style={styles.sheet}>
+        <View style={styles.body}>
+          <View style={styles.iconContainer}>
+            <Lock size={28} color={Colors.ink} strokeWidth={2.2} />
+          </View>
+          <Text style={styles.title}>Sponsor to View</Text>
+          <Text style={styles.sub}>
+            You must be a sponsor of this job listing to view the full
+            applicant list.
+          </Text>
 
-        <View style={styles.gateIconContainer}>
-          <Lock size={32} color="#000" />
-        </View>
-        <Text style={styles.gateTitle}>Sponsor to View</Text>
-        <Text style={styles.gateDesc}>
-          You must be a sponsor of this job listing to view the full applicant
-          list.
-        </Text>
-
-        <View style={styles.gateActions}>
           <TouchableOpacity
-            style={styles.gateBtnPrimary}
+            style={styles.cta}
             onPress={onSponsorNow}
+            activeOpacity={0.85}
           >
-            <Text style={styles.gateBtnPrimaryText}>Sponsor Now</Text>
+            <Text style={styles.ctaText}>Sponsor Now</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.gateBtnSecondary}
             onPress={onClose}
+            hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+            activeOpacity={0.7}
           >
-            <Text style={styles.gateBtnSecondaryText}>Cancel</Text>
+            <Text style={styles.later}>Cancel</Text>
           </TouchableOpacity>
         </View>
-      </Animated.View>
+      </DismissibleSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gateModalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+    zIndex: 20,
   },
-  gateModalContent: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 32,
-    alignItems: "center",
-    width: "100%",
-    maxWidth: 340,
-    shadowColor: "#000",
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
+  sheet: {
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
+    paddingTop: 12,
+    paddingHorizontal: 28,
+    paddingBottom: 40,
   },
-  gateCloseBtn: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    zIndex: 10,
-    padding: 4,
-  },
-  gateIconContainer: {
+  body: { alignItems: "center" },
+  iconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: Radii.xl,
     backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 6,
     marginBottom: 20,
   },
-  gateTitle: {
+  title: {
     ...Type.heading,
     color: Colors.ink,
-    marginBottom: 12,
+    marginBottom: 8,
     textAlign: "center",
   },
-  gateDesc: {
-    fontSize: 15,
+  sub: {
+    fontSize: 14,
+    lineHeight: 21,
     color: Colors.body,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: 22,
+    paddingHorizontal: 6,
   },
-  gateActions: { width: "100%", gap: 12 },
-  gateBtnPrimary: {
+  cta: {
+    alignSelf: "stretch",
+    height: 54,
+    borderRadius: 27,
     backgroundColor: Colors.ink,
-    paddingVertical: 16,
-    borderRadius: 16,
     alignItems: "center",
-    width: "100%",
+    justifyContent: "center",
   },
-  gateBtnPrimaryText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  gateBtnSecondary: { paddingVertical: 12, alignItems: "center" },
-  gateBtnSecondaryText: { color: Colors.body, fontSize: 15, fontWeight: "600" },
+  ctaText: {
+    color: Colors.paper,
+    fontSize: 15.5,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  later: {
+    marginTop: 14,
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: Colors.muted,
+  },
 });

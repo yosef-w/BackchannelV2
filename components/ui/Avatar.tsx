@@ -1,14 +1,15 @@
-import { Image } from "expo-image";
-import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import React from "react";
+import { ViewStyle } from "react-native";
 import { Colors } from "@/constants/theme";
+import { InitialTile } from "./InitialTile";
 
 /**
  * Renders a person's avatar photo, falling back to a black tile with their
  * first initial when there's no photo or it fails to load. Mirrors
  * CompanyLogo's API so the two can sit side by side in the same list
  * (e.g. Matches rows, which show either a person or a company as the
- * leading element depending on row type) without visually clashing.
+ * leading element depending on row type) without visually clashing —
+ * both are variant wrappers around the shared InitialTile implementation.
  *
  * Usage:
  *   <Avatar photoUrl={applicant.image} name={applicant.name} size={52} />
@@ -32,57 +33,22 @@ export function Avatar({
   name,
   size,
   borderRadius,
-  backgroundColor = "#000",
-  textColor = "#FFF",
+  backgroundColor = Colors.ink,
+  textColor = Colors.paper,
   initialFontSize,
   style,
 }: AvatarProps) {
-  const usableUrl = (photoUrl || "").trim();
-  const [imgFailed, setImgFailed] = useState(false);
-
-  useEffect(() => {
-    setImgFailed(false);
-  }, [usableUrl]);
-
-  const radius = borderRadius ?? Math.round(size * 0.3);
-  const initial = (name || "?").trim().charAt(0).toUpperCase() || "?";
-  const showImage = !!usableUrl && !imgFailed;
-
-  const containerStyle: ViewStyle = {
-    width: size,
-    height: size,
-    borderRadius: radius,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: showImage ? Colors.surface : backgroundColor,
-  };
-
   return (
-    <View style={[containerStyle, style]}>
-      {showImage ? (
-        <Image
-          source={{ uri: usableUrl }}
-          style={{ width: size, height: size }}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          transition={150}
-          onError={() => setImgFailed(true)}
-        />
-      ) : (
-        <Text
-          style={[
-            styles.initial,
-            { fontSize: initialFontSize ?? Math.round(size * 0.4), color: textColor },
-          ]}
-        >
-          {initial}
-        </Text>
-      )}
-    </View>
+    <InitialTile
+      imageUrl={photoUrl}
+      name={name}
+      size={size}
+      borderRadius={borderRadius ?? Math.round(size * 0.3)}
+      backgroundColor={backgroundColor}
+      textColor={textColor}
+      initialFontSize={initialFontSize ?? Math.round(size * 0.4)}
+      style={style}
+      resizeMode="cover"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  initial: { fontWeight: "800" },
-});

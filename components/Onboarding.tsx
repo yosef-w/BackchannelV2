@@ -228,7 +228,7 @@ export function Onboarding({
               accessibilityRole="button"
             >
               <Text style={styles.nextButtonText}>Get Started</Text>
-              <ArrowRight color="#FFF" size={20} />
+              <ArrowRight color={Colors.paper} size={20} />
             </PressableScale>
           ) : (
             <TouchableOpacity
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     fontFamily: Fonts.sansSemiBold,
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 17,
     letterSpacing: -0.2,
   },
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginBottom: 18,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
     shadowRadius: 16,
@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.paper,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: 14,
     gap: 4,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
     shadowRadius: 16,
@@ -842,7 +842,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 18,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.07,
     shadowRadius: 20,

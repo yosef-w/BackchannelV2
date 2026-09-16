@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { ProfileCompletenessResult } from "@/utils/profileCompletion";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 interface ProfileCompletionModalProps {
   visible: boolean;
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
     backgroundColor: Colors.paper,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,

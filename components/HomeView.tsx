@@ -102,7 +102,7 @@ import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { PLATES_ENABLED } from "@/constants/config";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
 function parseVariant<T>(v: string | T[] | null | undefined): T[] {
@@ -156,7 +156,10 @@ interface HomeViewProps {
 export const DECK_SIZE = 10;
 // Horizontal padding of the deck page — PlateDeck cancels it so plates run
 // edge to edge while the full read below keeps the normal column.
-const PAGE_PADDING = 24;
+// Matches Matches/Messages tabs' outer horizontal padding — was 24 (off
+// the Spacing scale), causing a visible content-margin shift on Home vs
+// its sibling tabs.
+const PAGE_PADDING = Spacing.xxl;
 // How long a cached per-role deck stays "fresh" before a role re-fetches on
 // re-entry (so new applicants surface). Keeps rapid role-switching instant
 // without serving a stale deck all day.
@@ -1783,7 +1786,7 @@ export function HomeView({
                   <View
                     style={[styles.emptyDeckCard, styles.emptyDeckCardFront]}
                   >
-                    <Briefcase color="#000" size={28} strokeWidth={1.8} />
+                    <Briefcase color={Colors.ink} size={28} strokeWidth={1.8} />
                   </View>
                 </View>
 
@@ -1803,7 +1806,7 @@ export function HomeView({
                   <Text style={styles.sponsorEmptyPrimaryText}>
                     Browse Jobs
                   </Text>
-                  <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                  <ChevronRight color={Colors.paper} size={18} strokeWidth={2.5} />
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -1899,7 +1902,7 @@ export function HomeView({
                     }}
                     activeOpacity={0.85}
                   >
-                    <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+                    <RefreshCcw color={Colors.ink} size={16} strokeWidth={2.2} />
                     <Text style={styles.sponsorEmptySecondaryText}>
                       Refresh
                     </Text>
@@ -1914,7 +1917,7 @@ export function HomeView({
                     <Text style={styles.sponsorEmptyPrimaryText}>
                       Sponsor Another
                     </Text>
-                    <ChevronRight color="#FFF" size={18} strokeWidth={2.5} />
+                    <ChevronRight color={Colors.paper} size={18} strokeWidth={2.5} />
                   </TouchableOpacity>
                 </View>
               </Animated.View>
@@ -1925,7 +1928,7 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <Animated.View entering={FadeInUp} style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <RefreshCcw color="#000" size={32} />
+                  <RefreshCcw color={Colors.ink} size={32} />
                 </View>
                 <Text style={styles.emptyTitle}>Couldn&apos;t Load Profiles</Text>
                 <Text style={styles.emptySub}>
@@ -1965,7 +1968,7 @@ export function HomeView({
                     }
                   }}
                 >
-                  <RefreshCcw color="#FFF" size={18} />
+                  <RefreshCcw color={Colors.paper} size={18} />
                   <Text style={styles.primaryBtnText}>Try Again</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -1978,7 +1981,7 @@ export function HomeView({
             <View style={styles.fullEmptyContainer}>
               <Animated.View entering={FadeInUp} style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <RefreshCcw color="#000" size={32} />
+                  <RefreshCcw color={Colors.ink} size={32} />
                 </View>
                 <Text style={styles.emptyTitle}>Couldn&apos;t Load Roles</Text>
                 <Text style={styles.emptySub}>
@@ -2010,7 +2013,7 @@ export function HomeView({
                     })();
                   }}
                 >
-                  <RefreshCcw color="#FFF" size={18} />
+                  <RefreshCcw color={Colors.paper} size={18} />
                   <Text style={styles.primaryBtnText}>Try Again</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -2035,7 +2038,7 @@ export function HomeView({
                   <View
                     style={[styles.emptyDeckCard, styles.emptyDeckCardFront]}
                   >
-                    <Briefcase color="#000" size={28} strokeWidth={1.8} />
+                    <Briefcase color={Colors.ink} size={28} strokeWidth={1.8} />
                   </View>
                 </View>
 
@@ -2072,7 +2075,7 @@ export function HomeView({
                     }}
                     activeOpacity={0.85}
                   >
-                    <RefreshCcw color="#000" size={16} strokeWidth={2.2} />
+                    <RefreshCcw color={Colors.ink} size={16} strokeWidth={2.2} />
                     <Text style={styles.sponsorEmptySecondaryText}>
                       Refresh
                     </Text>
@@ -2404,7 +2407,7 @@ export function HomeView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   safeArea: { flex: 1 },
   // 2026-05-26 Hinge-style redesign — layout primitives.
   // `pageContainer` is the flex-column that holds the sticky header,
@@ -2455,7 +2458,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 28,
+    marginBottom: Spacing.xxl,
     gap: 12,
   },
   progressHeaderContainer: { flex: 1 },
@@ -2660,11 +2663,11 @@ const styles = StyleSheet.create({
   },
   celebrationCard: {
     width: "100%",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     padding: 40,
     borderRadius: 32,
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.2,
     shadowRadius: 25,
@@ -2717,7 +2720,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontWeight: "700",
     fontSize: 15,
   },
@@ -2750,7 +2753,7 @@ const styles = StyleSheet.create({
     height: 116,
     borderRadius: 18,
     position: "absolute",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1.5,
     borderColor: Colors.border,
   },
@@ -2799,14 +2802,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 999,
     backgroundColor: Colors.ink,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 6,
   },
   sponsorEmptyPrimaryText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.2,
@@ -2820,12 +2823,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 999,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: Colors.ink,
   },
   sponsorEmptySecondaryText: {
-    color: "#000",
+    color: Colors.ink,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.2,
@@ -2855,10 +2858,10 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
   livePillText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.2,
@@ -2875,11 +2878,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: 24,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -2888,7 +2891,7 @@ const styles = StyleSheet.create({
   sponsorWaitingJobTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: -0.2,
   },
   sponsorWaitingJobCompany: {

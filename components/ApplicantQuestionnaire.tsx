@@ -1185,7 +1185,7 @@ export function ApplicantQuestionnaire({
             disabled={isSubmitting}
             style={styles.iconBtn}
           >
-            <ArrowLeft color="#000" size={24} />
+            <ArrowLeft color={Colors.ink} size={24} />
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
             {safeIndex + 1} of {activeQuestions.length}
@@ -1252,7 +1252,7 @@ export function ApplicantQuestionnaire({
                             {option}
                           </Text>
                           {isSelected ? (
-                            <Check color="#FFF" size={20} />
+                            <Check color={Colors.paper} size={20} />
                           ) : (
                             <ChevronRight
                               color={isEnabled ? Colors.faint : Colors.border}
@@ -1492,7 +1492,7 @@ export function ApplicantQuestionnaire({
                         activeOpacity={0.75}
                       >
                         <View style={styles.fileUploadIconWrap}>
-                          <Upload color="#000" size={28} strokeWidth={2} />
+                          <Upload color={Colors.ink} size={28} strokeWidth={2} />
                         </View>
                         <Text style={styles.fileTitle}>
                           Tap to upload your resume
@@ -1506,7 +1506,7 @@ export function ApplicantQuestionnaire({
                         <View style={styles.fileConfirmCard}>
                           <View style={styles.fileIconCircle}>
                             <FileText
-                              color="#FFF"
+                              color={Colors.paper}
                               size={26}
                               strokeWidth={1.5}
                             />
@@ -1545,7 +1545,7 @@ export function ApplicantQuestionnaire({
 
                         <View style={styles.fileReadyRow}>
                           <View style={styles.fileReadyCheck}>
-                            <Check size={12} color="#FFF" strokeWidth={3} />
+                            <Check size={12} color={Colors.paper} strokeWidth={3} />
                           </View>
                           <Text style={styles.fileReadyText}>
                             Ready to submit
@@ -1577,7 +1577,7 @@ export function ApplicantQuestionnaire({
               ]}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={Colors.paper} />
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
@@ -1587,7 +1587,7 @@ export function ApplicantQuestionnaire({
                         ? "Complete Profile"
                         : "Continue"}
                   </Text>
-                  <ArrowRight color="#FFF" size={20} />
+                  <ArrowRight color={Colors.paper} size={20} />
                 </>
               )}
             </TouchableOpacity>
@@ -1614,7 +1614,7 @@ export function ApplicantQuestionnaire({
                 entering={ZoomIn.delay(200).duration(600)}
                 style={styles.successIconBox}
               >
-                <UserCheck color="#000" size={48} />
+                <UserCheck color={Colors.ink} size={48} />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.delay(400)}
@@ -1634,7 +1634,7 @@ export function ApplicantQuestionnaire({
                 entering={FadeIn.delay(800)}
                 style={styles.successSpinner}
               >
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color={Colors.ink} />
               </Animated.View>
             </View>
           </BlurView>
@@ -1758,7 +1758,7 @@ export function ApplicantQuestionnaire({
             <View style={styles.doneBeatContainer}>
               <BroadcastMoment
                 durationMs={DONE_BEAT_ANIMATION_MS}
-                icon={<UserCheck color="#FFF" size={38} />}
+                icon={<UserCheck color={Colors.paper} size={38} />}
                 words={[
                   { word: "Profile" },
                   { word: "complete.", accent: true },
@@ -1774,7 +1774,7 @@ export function ApplicantQuestionnaire({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
   topNav: {
@@ -1827,7 +1827,7 @@ const styles = StyleSheet.create({
   // compete with the primary action for visual weight.
   optionCardSelected: { backgroundColor: Colors.body, borderColor: Colors.body },
   optionCardDisabled: { backgroundColor: Colors.offWhite, borderColor: Colors.border },
-  optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
+  optionText: { fontSize: 17, fontWeight: "500", color: Colors.ink },
   optionTextDisabled: { color: Colors.borderStrong },
   comingSoonNote: {
     marginTop: 12,
@@ -1845,7 +1845,7 @@ const styles = StyleSheet.create({
     height: 64,
     justifyContent: "center",
   },
-  textInput: { fontSize: 18, color: "#000", fontWeight: "500" },
+  textInput: { fontSize: 18, color: Colors.ink, fontWeight: "500" },
   fileContainer: {
     borderWidth: 1.5,
     borderStyle: "dashed",
@@ -1869,7 +1869,7 @@ const styles = StyleSheet.create({
   fileTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 6,
     textAlign: "center",
   },
@@ -1897,7 +1897,7 @@ const styles = StyleSheet.create({
   fileConfirmName: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     lineHeight: 20,
   },
   fileConfirmMeta: { fontSize: 13, color: Colors.muted, fontWeight: "500" },
@@ -1925,7 +1925,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  fileReadyText: { flex: 1, fontSize: 13, fontWeight: "600", color: "#000" },
+  fileReadyText: { flex: 1, fontSize: 13, fontWeight: "600", color: Colors.ink },
   fileChangeLink: {
     fontSize: 13,
     fontWeight: "600",
@@ -1946,7 +1946,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "500",
     // The wrap owns the height — zero the input's own padding and pin
     // vertical centering (see AndroidInputFix's doc comment).
@@ -1958,15 +1958,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     marginBottom: 4,
   },
   // Softer than the CTA buttons' pure black — a selection shouldn't
   // compete with the primary action for visual weight.
   skillItemSelected: { backgroundColor: Colors.body },
-  skillText: { fontSize: 14, fontWeight: "600", color: "#000" },
+  skillText: { fontSize: 14, fontWeight: "600", color: Colors.ink },
   selectionCount: {
     marginTop: 24,
     fontSize: 14,
@@ -1991,8 +1991,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   nextButtonDisabled: { opacity: 0.3 },
-  nextButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  textWhite: { color: "#FFF" },
+  nextButtonText: { color: Colors.paper, fontSize: 18, fontWeight: "700" },
+  textWhite: { color: Colors.paper },
   textBold: { fontWeight: "700" },
   successContainer: {
     flex: 1,
@@ -2011,11 +2011,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
@@ -2052,7 +2052,7 @@ const styles = StyleSheet.create({
   photoInitials: { fontSize: 52, fontWeight: "800", color: Colors.muted },
   photoBtnRow: { flexDirection: "row", gap: 8, marginTop: 20 },
   photoPickBtn: { paddingVertical: 8, paddingHorizontal: 16 },
-  photoPickText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  photoPickText: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
   photoSkipText: { fontSize: 14, fontWeight: "600", color: Colors.faint },
   inputContainer: { paddingTop: 8 },
@@ -2065,12 +2065,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 4,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
   },
   locationInput: {
     flex: 1,
     fontSize: 18,
-    color: "#000",
+    color: Colors.ink,
     paddingVertical: 14,
     ...AndroidInputFix,
   },

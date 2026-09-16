@@ -13,7 +13,7 @@ import {
   DismissibleSheet,
   SheetScrollView,
 } from "../ui/DismissibleSheet";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 interface FullBioModalProps {
   visible: boolean;
@@ -46,8 +46,8 @@ export function FullBioModal({ visible, onClose, name, bio }: FullBioModalProps)
           onDismiss={onClose}
           style={{
             backgroundColor: Colors.paper,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
+            borderTopLeftRadius: Radii.xl,
+            borderTopRightRadius: Radii.xl,
             paddingTop: 12,
             paddingBottom: 40,
             // Absolute px — a % here resolves against DismissibleSheet's

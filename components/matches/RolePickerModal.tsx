@@ -18,7 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -58,7 +58,7 @@ export function RolePickerModal({
         activeOpacity={1}
         onPress={onClose}
       >
-        <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
+        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
       <DismissibleSheet
@@ -90,7 +90,7 @@ export function RolePickerModal({
                     style={{
                       fontSize: 20,
                       fontWeight: "800",
-                      color: "#FFF",
+                      color: Colors.paper,
                     }}
                   >
                     {(roleGroup.items[0].name || "?")[0].toUpperCase()}
@@ -140,7 +140,7 @@ export function RolePickerModal({
                     activeOpacity={0.8}
                     onPress={() => onMessageRole(m)}
                   >
-                    <MessageCircle color="#FFF" size={16} strokeWidth={2.5} />
+                    <MessageCircle color={Colors.paper} size={16} strokeWidth={2.5} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -155,9 +155,9 @@ export function RolePickerModal({
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,
@@ -183,33 +183,25 @@ const styles = StyleSheet.create({
     marginTop: 3,
     lineHeight: 18,
   },
-  // Each role is a floating white card on the canvas — a tappable object,
-  // not a divider-separated list row.
+  // Flat, bordered row — the same "Docket" ticket language JobSheetKit's
+  // RoleTicket uses elsewhere, not a floating drop-shadow card (the
+  // rebrand retired shadows on sheet content; this was the one leftover).
   rolePickerRow: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
     marginBottom: 10,
-    backgroundColor: "#FFF",
-    borderRadius: 18,
+    backgroundColor: Colors.paper,
+    borderRadius: Radii.lg,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#0F172A",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-      },
-      android: { elevation: 2 },
-    }),
+    borderColor: Colors.border,
   },
   rolePickerRowMain: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
   },
-  rolePickerRole: { fontSize: 15, fontWeight: "700", color: "#000" },
+  rolePickerRole: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   rolePickerMeta: { fontSize: 13, color: Colors.muted, marginTop: 2 },
   rolePickerMsgBtn: {
     width: 44,

@@ -44,6 +44,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: Colors.faint,
   },
-  near: { color: "#D97706" }, // amber — getting close
+  near: { color: Colors.warning }, // amber — getting close
   atLimit: { color: Colors.danger, fontWeight: "700" }, // red — stopped accepting
 });

@@ -1,6 +1,7 @@
 import type { PromptAnswer } from "@/components/ui/PromptsIntake";
 import { cleanJobText } from "@/components/jobs/jobTransforms";
 import { normalizeUrl } from "@/lib/validation";
+import { Colors } from "@/constants/theme";
 import React, { useEffect, useState } from "react";
 import {
     KeyboardAvoidingView,
@@ -204,7 +205,7 @@ export function CreateJobFlowScreen({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFF" },
+  safeArea: { flex: 1, backgroundColor: Colors.paper },
   flex: { flex: 1 },
 });
 

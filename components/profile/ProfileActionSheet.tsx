@@ -10,7 +10,7 @@ import {
     View,
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 interface ProfileActionSheetProps {
   visible: boolean;
@@ -63,7 +63,7 @@ export function ProfileActionSheet({
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
-              <X color="#000" size={24} />
+              <X color={Colors.ink} size={24} />
             </TouchableOpacity>
           </View>
 
@@ -101,9 +101,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,
@@ -142,13 +142,13 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   blackBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontWeight: "700",
     fontSize: 14,
   },
   whiteBtn: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   whiteBtnText: {
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "700",
     fontSize: 14,
   },

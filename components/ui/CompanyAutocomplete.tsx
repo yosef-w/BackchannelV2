@@ -23,6 +23,10 @@ import {
 } from "react-native";
 import { CompanyLogo } from "./CompanyLogo";
 import { Colors } from "@/constants/theme";
+import {
+  AUTOCOMPLETE_RADIUS,
+  autocompleteDropdownShell,
+} from "./autocompleteDropdownStyle";
 
 interface CompanyAutocompleteProps {
   value: string;
@@ -168,7 +172,7 @@ export function CompanyAutocomplete({
                       </Text>
                     )}
                   </View>
-                  {isExact && <Check size={16} color="#000" strokeWidth={2.5} />}
+                  {isExact && <Check size={16} color={Colors.ink} strokeWidth={2.5} />}
                 </TouchableOpacity>
               );
             })
@@ -183,9 +187,9 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 16,
+    borderRadius: AUTOCOMPLETE_RADIUS,
     paddingHorizontal: 16,
     backgroundColor: Colors.offWhite,
   },
@@ -193,22 +197,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     fontSize: 16,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "600",
   },
   dropdown: {
     marginTop: 8,
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
     overflow: "hidden",
-    // Soft elevation so it reads as a floating menu.
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    ...autocompleteDropdownShell,
   },
   dropdownLoadingRow: {
     flexDirection: "row",

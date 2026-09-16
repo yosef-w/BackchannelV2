@@ -93,7 +93,7 @@ export function CreateJobUrlScreen({
               }}
               activeOpacity={0.8}
             >
-              <Link2 size={15} color="#000" />
+              <Link2 size={15} color={Colors.ink} />
               <Text style={styles.clipboardChipText} numberOfLines={1}>
                 Use copied link: {clipboardUrl.replace(/^https?:\/\//, "")}
               </Text>
@@ -153,7 +153,7 @@ export function CreateJobUrlScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFF" },
+  screen: { flex: 1, backgroundColor: Colors.paper },
   flex: { flex: 1 },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
   heading: {
@@ -226,6 +226,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   continueBtnDisabled: { backgroundColor: Colors.border },
-  continueBtnText: { color: "#FFF", fontSize: 15.5, fontWeight: "700" },
+  continueBtnText: { color: Colors.paper, fontSize: 15.5, fontWeight: "700" },
   continueBtnTextDisabled: { color: Colors.faint },
 });

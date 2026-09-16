@@ -31,6 +31,7 @@ import {
   trackPushNotificationTapped,
   trackScreenViewed,
 } from "@/lib/analytics/mixpanel";
+import { Colors } from "@/constants/theme";
 import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
@@ -74,7 +75,7 @@ import {
   SponsorCheckInModal,
   type SponsorCheckInReferral,
 } from "@/components/checkin/SponsorCheckInModal";
-import { NotificationsView } from "@/components/NotificationsView";
+import { NotificationsFeedView } from "@/components/NotificationsFeedView";
 import { FloatingTabBar } from "@/components/shell/FloatingTabBar";
 import {
   ShellContext,
@@ -488,7 +489,7 @@ export default function TabsLayout() {
                 bookkeeping is gone: the router state never changed). */}
             {notificationsOpen && (
               <View style={StyleSheet.absoluteFillObject}>
-                <NotificationsView
+                <NotificationsFeedView
                   onBack={() => {
                     setNotificationsOpen(false);
                     // Refresh the real unread count now that the user has
@@ -557,7 +558,7 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.paper,
   },
   safeArea: {
     flex: 1,
@@ -566,10 +567,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scene: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.paper,
   },
   loggedOutBridge: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: Colors.ink,
   },
 });

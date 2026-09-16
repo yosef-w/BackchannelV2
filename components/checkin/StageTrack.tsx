@@ -97,7 +97,7 @@ function Node({
         ]}
       >
         {state === "completed" && (
-          <Check color="#FFF" size={9} strokeWidth={3.5} />
+          <Check color={Colors.paper} size={9} strokeWidth={3.5} />
         )}
         {state === "active" && <View style={styles.dotCore} />}
       </Animated.View>
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 2,
     borderColor: Colors.borderStrong,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 7,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
   terminalTextSelected: {
-    color: "#FFF",
+    color: Colors.paper,
     textDecorationLine: "none",
   },
 });

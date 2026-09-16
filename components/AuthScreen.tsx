@@ -405,7 +405,7 @@ export function AuthScreen({
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
-            <ArrowLeft color="#000" size={24} />
+            <ArrowLeft color={Colors.ink} size={24} />
           </TouchableOpacity>
         </View>
 
@@ -538,7 +538,7 @@ export function AuthScreen({
                     ]}
                   >
                     {loginMutation.isPending ? (
-                      <ActivityIndicator color="#FFF" />
+                      <ActivityIndicator color={Colors.paper} />
                     ) : (
                       <Text style={styles.submitButtonText}>Sign In</Text>
                     )}
@@ -782,7 +782,7 @@ export function AuthScreen({
                     ]}
                   >
                     {forgotPasswordMutation.isPending ? (
-                      <ActivityIndicator color="#FFF" />
+                      <ActivityIndicator color={Colors.paper} />
                     ) : (
                       <Text style={styles.modalButtonText}>
                         Send Reset Link
@@ -802,7 +802,7 @@ export function AuthScreen({
                   <View style={styles.successPopWrap}>
                     <ConfirmPop
                       size={64}
-                      icon={<Mail color="#FFF" size={26} />}
+                      icon={<Mail color={Colors.paper} size={26} />}
                     />
                   </View>
                   <Text style={styles.modalTitle}>Check Your Email</Text>
@@ -858,7 +858,7 @@ function FocusRing({ active }: { active: boolean }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.paper,
   },
   safeArea: {
     flex: 1,
@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -1017,7 +1017,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "500",
   },
   forgotBtn: {
@@ -1039,14 +1039,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   submitButtonText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 18,
     fontWeight: "700",
   },
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
   emailButton: {
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
     flexDirection: "row",
@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
   emailButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.ink,
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1078,12 +1078,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 24,
     padding: 32,
     width: "100%",
     maxWidth: 400,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.2,
     shadowRadius: 25,
@@ -1129,14 +1129,14 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   modalButtonText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -1156,6 +1156,6 @@ const styles = StyleSheet.create({
   },
   emailHighlight: {
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
 });

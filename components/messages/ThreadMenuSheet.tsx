@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import type { ReportReason } from "@/lib/api";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 interface ThreadMenuSheetProps {
   visible: boolean;
@@ -97,7 +97,7 @@ export function ThreadMenuSheet({
               onPress={() => setThreadMenuStep("report")}
               activeOpacity={0.7}
             >
-              <Flag size={18} color="#000" strokeWidth={2} />
+              <Flag size={18} color={Colors.ink} strokeWidth={2} />
               <Text style={styles.reportActionText}>
                 Report {participantName.split(" ")[0]}
               </Text>
@@ -110,7 +110,7 @@ export function ThreadMenuSheet({
               activeOpacity={0.7}
             >
               {isUnmatching ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={Colors.paper} />
               ) : (
                 <Text style={styles.unmatchActionText}>Unmatch</Text>
               )}
@@ -164,7 +164,7 @@ export function ThreadMenuSheet({
                       {label}
                     </Text>
                     {isSelected && (
-                      <Check size={16} color="#FFF" strokeWidth={3} />
+                      <Check size={16} color={Colors.paper} strokeWidth={3} />
                     )}
                   </TouchableOpacity>
                 );
@@ -191,7 +191,7 @@ export function ThreadMenuSheet({
               activeOpacity={0.7}
             >
               {isReporting ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={Colors.paper} />
               ) : (
                 <Text style={styles.unmatchActionText}>Submit Report</Text>
               )}
@@ -214,9 +214,9 @@ export function ThreadMenuSheet({
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   unmatchSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    backgroundColor: Colors.paper,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,

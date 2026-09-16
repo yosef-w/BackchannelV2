@@ -123,7 +123,7 @@ export function ApplicantProfileCard({
       {currentData.HAS_LIKED_JOB === true && (
         <View style={cardStyles.likedYourRoleRow}>
           <View style={cardStyles.likedYourRolePill}>
-            <Heart size={11} color="#FFF" fill="#FFF" strokeWidth={2} />
+            <Heart size={11} color={Colors.paper} fill={Colors.paper} strokeWidth={2} />
             <Text style={cardStyles.likedYourRolePillText}>
               LIKED YOUR ROLE
             </Text>

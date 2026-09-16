@@ -75,7 +75,7 @@ export function BrowseJobsTab({
       return (
         <View style={styles.didYouMeanCard}>
           <View style={styles.didYouMeanIcon}>
-            <Search size={28} color="#000" strokeWidth={2.5} />
+            <Search size={28} color={Colors.ink} strokeWidth={2.5} />
           </View>
           <Text style={styles.didYouMeanTitle}>
             No jobs found for &ldquo;{sponsorCompany}&rdquo;
@@ -115,7 +115,7 @@ export function BrowseJobsTab({
                     )}
                   </View>
                   {applying ? (
-                    <ActivityIndicator size="small" color="#000" />
+                    <ActivityIndicator size="small" color={Colors.ink} />
                   ) : (
                     <ChevronRight size={18} color={Colors.faint} />
                   )}
@@ -140,7 +140,7 @@ export function BrowseJobsTab({
     }
     return (
       <JobsEmptyState
-        icon={<Briefcase size={28} color="#000" strokeWidth={2} />}
+        icon={<Briefcase size={28} color={Colors.ink} strokeWidth={2} />}
         title="No available jobs"
         description="Check back soon for new opportunities, or create your own listing."
         actionText="Create Listing"
@@ -230,7 +230,7 @@ export function BrowseJobsTab({
           {availableJobs.length > displayLimit && (
             <TouchableOpacity style={styles.loadMoreBtn} onPress={onLoadMore}>
               <Text style={styles.loadMoreText}>Load More Jobs</Text>
-              <ChevronRight size={16} color="#000" />
+              <ChevronRight size={16} color={Colors.ink} />
             </TouchableOpacity>
           )}
 
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   didYouMeanList: {
     width: "100%",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   didYouMeanCreateText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: -0.2,

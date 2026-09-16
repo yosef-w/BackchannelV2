@@ -55,9 +55,16 @@ export const Colors = {
   muted: "#888880", // tertiary text, captions, italic accents — was "#999"
   faint: "#B8B8B0", // placeholders, disabled — was "#BBB"/"#AAA"
   danger: "#DC2626", // errors — unchanged, already the app's only red
+  dangerLight: "#FEF2F2", // error/destructive tint fill (badges, warning cards) — was ad hoc "#FEF2F2"/"#FECACA" scattered across jobs/matches/profile
+  warning: "#B45309", // in-progress/near-limit indicators (e.g. char counters) — was ad hoc "#D97706"
 } as const;
 
-/** Border radii — the app's existing pill/card language, named. */
+/**
+ * Border radii — the app's existing pill/card language, named.
+ * `xl` (20) doubles as the standard bottom-sheet top-corner radius — every
+ * sheet/modal should use it rather than inventing its own (audit found 14,
+ * 24, 28, 32, and 40 all in use for the same role before this was fixed).
+ */
 export const Radii = {
   sm: 8,
   md: 12,

@@ -154,7 +154,7 @@ export function ApplicantMatchesSections({
         }
         meta={
           <MetaLine
-            icon={<Award size={10} color="#000" />}
+            icon={<Award size={10} color={Colors.ink} />}
             text="Now sponsored"
           />
         }

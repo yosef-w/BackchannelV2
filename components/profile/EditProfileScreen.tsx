@@ -310,7 +310,7 @@ export function EditProfileScreen({
             <View key={index} style={styles.tag}>
               <Text style={styles.tagText}>{tag}</Text>
               <TouchableOpacity onPress={() => onRemoveTag("expertise", index)}>
-                <X color="#000" size={14} />
+                <X color={Colors.ink} size={14} />
               </TouchableOpacity>
             </View>
           ))}
@@ -334,7 +334,7 @@ export function EditProfileScreen({
               setNewTag("");
             }}
           >
-            <Plus color="#FFF" size={18} />
+            <Plus color={Colors.paper} size={18} />
           </TouchableOpacity>
         </View>
       </View>
@@ -356,7 +356,7 @@ export function EditProfileScreen({
                       style={[styles.checkbox, selected && styles.checkboxOn]}
                     >
                       {selected && (
-                        <Check color="#FFF" size={16} strokeWidth={3} />
+                        <Check color={Colors.paper} size={16} strokeWidth={3} />
                       )}
                     </View>
                     <Text style={styles.checkboxLabel}>{preference}</Text>
@@ -375,7 +375,7 @@ export function EditProfileScreen({
                   <TouchableOpacity
                     onPress={() => onRemoveTag("desiredRoles", index)}
                   >
-                    <X color="#000" size={14} />
+                    <X color={Colors.ink} size={14} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -400,7 +400,7 @@ export function EditProfileScreen({
                     setNewRoleTag("");
                   }}
                 >
-                  <Plus color="#FFF" size={18} />
+                  <Plus color={Colors.paper} size={18} />
                 </TouchableOpacity>
               </View>
             )}
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
   },
   bioInput: { minHeight: 100, textAlignVertical: "top" },
   locationInputWrap: {
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   locationInput: {
     flex: 1,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     paddingVertical: 12,
     ...AndroidInputFix,
   },
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  tagText: { fontSize: 13, fontWeight: "600", color: "#000" },
+  tagText: { fontSize: 13, fontWeight: "600", color: Colors.ink },
   addTagRow: { flexDirection: "row", gap: 8 },
   tagInput: {
     flex: 1,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
   },
   addTagBtn: {
     width: 40,
@@ -562,6 +562,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  checkboxOn: { backgroundColor: Colors.ink, borderColor: "#000" },
-  checkboxLabel: { fontSize: 14, fontWeight: "600", color: "#000" },
+  checkboxOn: { backgroundColor: Colors.ink, borderColor: Colors.ink },
+  checkboxLabel: { fontSize: 14, fontWeight: "600", color: Colors.ink },
 });

@@ -30,7 +30,7 @@ export function InboxEmpty() {
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.iconTile}>
-        <MessageCircle size={28} color="#000" strokeWidth={1.75} />
+        <MessageCircle size={28} color={Colors.ink} strokeWidth={1.75} />
       </View>
       <Text style={styles.emptyTitle}>No conversations yet</Text>
       <Text style={styles.emptySubtitle}>

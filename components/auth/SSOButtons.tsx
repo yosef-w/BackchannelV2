@@ -166,7 +166,7 @@ export function SSOButtons({ onSuccess, onError, disabled }: SSOButtonsProps) {
               gives clear feedback without touching the compliant asset. */}
           {loadingProvider === "apple" && (
             <View style={styles.loadingOverlay} pointerEvents="none">
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={Colors.paper} />
             </View>
           )}
         </View>
@@ -184,7 +184,7 @@ export function SSOButtons({ onSuccess, onError, disabled }: SSOButtonsProps) {
           accessibilityLabel="Continue with Google"
         >
           {loadingProvider === "google" ? (
-            <ActivityIndicator color="#000" />
+            <ActivityIndicator color={Colors.ink} />
           ) : (
             <>
               <GoogleLogo />

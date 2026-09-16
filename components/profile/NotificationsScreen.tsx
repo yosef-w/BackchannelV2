@@ -15,8 +15,8 @@ import { useAutosaveStatus } from "./useAutosaveStatus";
 import { Colors } from "@/constants/theme";
 
 const SWITCH_COLORS = {
-  trackColor: { false: Colors.faint, true: "#000" },
-  thumbColor: "#FFF",
+  trackColor: { false: Colors.faint, true: Colors.ink },
+  thumbColor: Colors.paper,
   ios_backgroundColor: Colors.faint,
 } as const;
 
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   permissionBannerLink: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   groupLabel: {
     fontSize: 12,

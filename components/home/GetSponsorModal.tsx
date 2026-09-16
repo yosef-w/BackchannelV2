@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 interface GetSponsorModalProps {
   visible: boolean;
@@ -129,8 +129,8 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   sheet: {
     backgroundColor: Colors.paper,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     paddingTop: 12,
     paddingHorizontal: 28,
     paddingBottom: 40,

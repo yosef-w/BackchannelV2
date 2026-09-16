@@ -324,7 +324,7 @@ export function CheckInStack({
                 </Text>
                 {r?.kind === "updated" ? (
                   <View style={styles.recapRowBadge}>
-                    <Check color="#FFF" size={10} strokeWidth={3.5} />
+                    <Check color={Colors.paper} size={10} strokeWidth={3.5} />
                     <Text style={styles.recapRowBadgeText}>
                       {r.terminal ? terminalLabel : stages[r.stageIndex]}
                     </Text>
@@ -344,7 +344,7 @@ export function CheckInStack({
           activeOpacity={0.85}
         >
           {finalizing ? (
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator color={Colors.paper} />
           ) : (
             <Text style={styles.primaryBtnText}>{primaryLabel}</Text>
           )}
@@ -378,7 +378,7 @@ export function CheckInStack({
             accessibilityLabel="Back to cards"
           >
             <X
-              color={bulkRunning ? Colors.faint : "#000"}
+              color={bulkRunning ? Colors.faint : Colors.ink}
               size={20}
               strokeWidth={2.2}
             />
@@ -423,7 +423,7 @@ export function CheckInStack({
                 </View>
                 {r?.kind === "updated" ? (
                   <View style={styles.recapRowBadge}>
-                    <Check color="#FFF" size={10} strokeWidth={3.5} />
+                    <Check color={Colors.paper} size={10} strokeWidth={3.5} />
                     <Text style={styles.recapRowBadgeText}>
                       {r.terminal ? terminalLabel : stages[r.stageIndex]}
                     </Text>
@@ -448,7 +448,7 @@ export function CheckInStack({
             activeOpacity={0.85}
           >
             {bulkRunning ? (
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={Colors.paper} />
             ) : (
               <Text style={styles.primaryBtnText}>
                 {bulkAction.label(pendingCount)}
@@ -634,7 +634,7 @@ export function CheckInStack({
           activeOpacity={0.85}
         >
           {submitting ? (
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator color={Colors.paper} />
           ) : (
             <>
               <Text
@@ -646,7 +646,7 @@ export function CheckInStack({
                 Send update
               </Text>
               {hasSelection && (
-                <ChevronRight color="#FFF" size={17} strokeWidth={2.5} />
+                <ChevronRight color={Colors.paper} size={17} strokeWidth={2.5} />
               )}
             </>
           )}
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   overviewRowHeading: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   overviewRowSub: {
     fontSize: 12,
@@ -818,7 +818,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: 14,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     lineHeight: 20,
   },
 
@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   sendBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   recapRowBadge: {
     flexDirection: "row",
@@ -917,7 +917,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   recapRowBadgeText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 11,
     fontWeight: "700",
   },
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   primaryBtnText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 15,
     fontWeight: "700",
   },

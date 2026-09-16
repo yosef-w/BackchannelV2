@@ -165,7 +165,7 @@ export function SponsorRequestModal({
                 <>
                   {/* Header tag */}
                   <View style={styles.interestedModalTag}>
-                    <BellRing size={12} color="#000" />
+                    <BellRing size={12} color={Colors.ink} />
                     <Text style={styles.interestedModalTagText}>
                       Asked for sponsorship
                       {request.createdAt
@@ -392,7 +392,7 @@ export function SponsorRequestModal({
                         label="Message Now"
                         icon={
                           <MessageCircle
-                            color="#FFF"
+                            color={Colors.paper}
                             size={17}
                             strokeWidth={2.5}
                           />
@@ -418,7 +418,7 @@ export function SponsorRequestModal({
                 button={{
                   label: "Sponsor & Connect",
                   icon: (
-                    <Briefcase color="#FFF" size={17} strokeWidth={2.5} />
+                    <Briefcase color={Colors.paper} size={17} strokeWidth={2.5} />
                   ),
                   onPress: () => onSetStep(2),
                 }}
@@ -439,7 +439,7 @@ export function SponsorRequestModal({
               <BarFooter
                 button={{
                   label: "Confirm Sponsorship",
-                  icon: <Check color="#FFF" size={17} strokeWidth={2.5} />,
+                  icon: <Check color={Colors.paper} size={17} strokeWidth={2.5} />,
                   loading: sponsoring,
                   spinnerOnLoading: true,
                   onPress: () => onSponsorAndConnect(request),
@@ -458,9 +458,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: Colors.dangerLight,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: Colors.dangerLight,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   srFieldLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 12,
   },
   srFormSection: { marginBottom: 24 },
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: "rgba(15,23,42,0.06)",
   },
@@ -519,10 +519,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.faint,
   },
-  srRadioCircleActive: { borderColor: "#000", borderWidth: 6 },
+  srRadioCircleActive: { borderColor: Colors.ink, borderWidth: 6 },
   srRadioLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   srRadioOption: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     padding: 18,
     borderRadius: 16,
     borderWidth: 1,
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   srRadioText: { fontSize: 15, color: Colors.body, fontWeight: "600" },
-  srRadioTextActive: { color: "#000", fontWeight: "600" },
+  srRadioTextActive: { color: Colors.ink, fontWeight: "600" },
   srSideBySide: { flexDirection: "row", gap: 12 },
   srStepLabel: { fontSize: 12, fontWeight: "700", color: Colors.muted },
   srStepRow: {
@@ -569,14 +569,14 @@ const styles = StyleSheet.create({
     color: Colors.ink,
   },
   srTextInput: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: "rgba(15,23,42,0.06)",
     borderRadius: 12,
     padding: 16,
     paddingTop: 16,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     minHeight: 110,
     textAlignVertical: "top",
   },

@@ -23,7 +23,7 @@ export function MatchesEmptyState({
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Heart size={28} color="#000" strokeWidth={1.75} />
+        <Heart size={28} color={Colors.ink} strokeWidth={1.75} />
       </View>
       <Text style={styles.title}>Nothing here yet</Text>
       <Text style={styles.subtitle}>
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 16,
   },
-  title: { fontSize: 17, fontWeight: "800", color: "#000", marginBottom: 6 },
+  title: { fontSize: 17, fontWeight: "800", color: Colors.ink, marginBottom: 6 },
   subtitle: {
     fontSize: 13,
     color: Colors.muted,
@@ -69,5 +69,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
   },
-  actionText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  actionText: { color: Colors.paper, fontSize: 14, fontWeight: "700" },
 });

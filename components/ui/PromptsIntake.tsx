@@ -190,7 +190,7 @@ export function PromptsIntake({
           onPress={openLibraryForNew}
         >
           <View style={styles.emptyPlus}>
-            <Plus size={18} color="#000" />
+            <Plus size={18} color={Colors.ink} />
           </View>
           <Text style={styles.emptyText}>{emptySlotLabel}</Text>
           <ChevronRight size={18} color={Colors.faint} />
@@ -235,7 +235,7 @@ export function PromptsIntake({
                 onPress={() => setLibraryOpen(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <X size={24} color="#000" />
+                <X size={24} color={Colors.ink} />
               </TouchableOpacity>
             </View>
 
@@ -299,7 +299,7 @@ export function PromptsIntake({
                 onPress={closeEditor}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <X size={24} color="#000" />
+                <X size={24} color={Colors.ink} />
               </TouchableOpacity>
             </View>
 
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   promptBadge: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   promptBadgeText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: 0.5,
   },
   filledActions: {
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     gap: 18,
     paddingLeft: 12,
   },
-  filledAnswer: { fontSize: 16, color: "#000", lineHeight: 22, fontWeight: "500" },
+  filledAnswer: { fontSize: 16, color: Colors.ink, lineHeight: 22, fontWeight: "500" },
 
   // Empty slot
   emptySlot: {
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: Colors.ink,
     borderStyle: "dashed",
     borderRadius: 16,
     paddingVertical: 20,
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  emptyText: { flex: 1, fontSize: 16, fontWeight: "700", color: "#000" },
+  emptyText: { flex: 1, fontSize: 16, fontWeight: "700", color: Colors.ink },
 
   addAnother: {
     flexDirection: "row",
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   },
 
   // Library sheet
-  sheet: { flex: 1, backgroundColor: "#FFF" },
+  sheet: { flex: 1, backgroundColor: Colors.paper },
   sheetSafe: { flex: 1 },
   sheetHeader: {
     flexDirection: "row",
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     // sitting low.
     height: 48,
     fontSize: 16,
-    color: "#000",
+    color: Colors.ink,
     fontWeight: "500",
     paddingVertical: 0,
     ...AndroidInputFix,
@@ -503,14 +503,14 @@ const styles = StyleSheet.create({
   promptRowText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     letterSpacing: 0.3,
     flex: 1,
   },
   noResults: { fontSize: 15, color: Colors.muted, textAlign: "center", marginTop: 24 },
 
   // Answer editor
-  editorSafe: { flex: 1, backgroundColor: "#FFF" },
+  editorSafe: { flex: 1, backgroundColor: Colors.paper },
   editorFlex: { flex: 1 },
   editorHeader: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 },
   editorScroll: { paddingHorizontal: 28, paddingTop: 12 },
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     alignSelf: "flex-start",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -566,5 +566,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   saveBtnDisabled: { opacity: 0.3 },
-  saveBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  saveBtnText: { color: Colors.paper, fontSize: 16, fontWeight: "700" },
 });
