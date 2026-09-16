@@ -420,7 +420,7 @@ const dynamicSheet: ViewStyle = {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   sheet: {
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  darkChipText: { fontSize: 12, fontWeight: "700", color: "#000" },
+  darkChipText: { fontSize: 12, fontWeight: "700", color: Colors.ink },
   // Inset tint deep enough to read as a distinct block inside a white
   // card — #F8F9FB was invisible against it.
   insightCard: {

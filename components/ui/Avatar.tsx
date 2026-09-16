@@ -32,8 +32,8 @@ export function Avatar({
   name,
   size,
   borderRadius,
-  backgroundColor = "#000",
-  textColor = "#FFF",
+  backgroundColor = Colors.ink,
+  textColor = Colors.paper,
   initialFontSize,
   style,
 }: AvatarProps) {

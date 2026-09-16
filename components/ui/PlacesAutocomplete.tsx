@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: Colors.ink,
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: Colors.offWhite,
@@ -371,14 +371,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     marginTop: 4,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
     maxHeight: 240,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: Colors.ink,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   suggestionMain: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#000",
+    color: Colors.ink,
   },
   suggestionSecondary: {
     fontSize: 13,

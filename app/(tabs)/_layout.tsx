@@ -31,6 +31,7 @@ import {
   trackPushNotificationTapped,
   trackScreenViewed,
 } from "@/lib/analytics/mixpanel";
+import { Colors } from "@/constants/theme";
 import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
@@ -557,7 +558,7 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.paper,
   },
   safeArea: {
     flex: 1,
@@ -566,10 +567,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scene: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.paper,
   },
   loggedOutBridge: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: Colors.ink,
   },
 });

@@ -35,9 +35,9 @@ export interface CompanyLogoProps {
    * Pass `size / 2` for a circle.
    */
   borderRadius?: number;
-  /** Background color of the fallback tile. Defaults to "#000". */
+  /** Background color of the fallback tile. Defaults to Colors.ink. */
   backgroundColor?: string;
-  /** Text color of the fallback initial. Defaults to "#FFF". */
+  /** Text color of the fallback initial. Defaults to Colors.paper. */
   textColor?: string;
   /**
    * Override the initial font size if the auto-derived value
@@ -58,8 +58,8 @@ export function CompanyLogo({
   name,
   size,
   borderRadius,
-  backgroundColor = "#000",
-  textColor = "#FFF",
+  backgroundColor = Colors.ink,
+  textColor = Colors.paper,
   initialFontSize,
   style,
   resizeMode = "contain",

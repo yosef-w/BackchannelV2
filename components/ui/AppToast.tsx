@@ -29,10 +29,10 @@ const SWIPE_DISMISS_VELOCITY = -600;
 
 function ToastIcon({ variant }: { variant: string }) {
   if (variant === "success")
-    return <CheckCircle size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
+    return <CheckCircle size={ICON_SIZE} color={Colors.paper} strokeWidth={2.5} />;
   if (variant === "error")
-    return <XCircle size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
-  return <Info size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />;
+    return <XCircle size={ICON_SIZE} color={Colors.paper} strokeWidth={2.5} />;
+  return <Info size={ICON_SIZE} color={Colors.paper} strokeWidth={2.5} />;
 }
 
 export function AppToast() {
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    shadowColor: "#000",
+    shadowColor: Colors.ink,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   message: {
     flex: 1,
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 14,
     fontWeight: "500",
     lineHeight: 20,
