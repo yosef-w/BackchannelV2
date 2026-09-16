@@ -209,9 +209,17 @@ export function PromptsIntake({
         </TouchableOpacity>
       ) : null}
 
-      {min > 0 ? (
+      {min > 0 && value.length < min ? (
+        // Below the requirement — count toward the minimum still needed.
         <Text style={styles.progress}>
           {value.length} of {min} answered
+        </Text>
+      ) : min > 0 && max > min ? (
+        // Requirement met, room left to add more — count toward the max
+        // instead. Was always "of {min}", which read as "3 of 2 answered"
+        // once you'd answered past the minimum.
+        <Text style={styles.progress}>
+          {value.length} of {max} answered
         </Text>
       ) : value.length > 0 ? (
         <Text style={styles.progress}>
