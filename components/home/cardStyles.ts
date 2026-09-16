@@ -301,7 +301,7 @@ export const cardStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
@@ -309,7 +309,7 @@ export const cardStyles = StyleSheet.create({
   statusBannerText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
     letterSpacing: 0.4,
   },
 
@@ -469,7 +469,7 @@ export const cardStyles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     gap: 5,
-    backgroundColor: "#000",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
@@ -478,7 +478,7 @@ export const cardStyles = StyleSheet.create({
   likedYourRolePillText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#FFF",
+    color: Colors.paper,
     letterSpacing: 0.8,
   },
   benefitsList: { gap: 10, marginTop: 4 },
