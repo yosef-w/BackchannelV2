@@ -13,6 +13,10 @@ import {
     type TextStyle,
 } from "react-native";
 import { AndroidInputFix, Colors } from "@/constants/theme";
+import {
+    AUTOCOMPLETE_RADIUS,
+    autocompleteDropdownShell,
+} from "./autocompleteDropdownStyle";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const DROPDOWN_MAX_HEIGHT = 200;
@@ -177,7 +181,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: Colors.offWhite,
-    borderRadius: 12,
+    borderRadius: AUTOCOMPLETE_RADIUS,
     borderWidth: 1,
     borderColor: Colors.border,
     ...AndroidInputFix,
@@ -186,22 +190,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    backgroundColor: Colors.paper,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...autocompleteDropdownShell,
     maxHeight: DROPDOWN_MAX_HEIGHT,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.ink,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
     zIndex: 1001,
   },
   // Default — menu hangs below the input.

@@ -23,6 +23,10 @@ import {
 } from "react-native";
 import { CompanyLogo } from "./CompanyLogo";
 import { Colors } from "@/constants/theme";
+import {
+  AUTOCOMPLETE_RADIUS,
+  autocompleteDropdownShell,
+} from "./autocompleteDropdownStyle";
 
 interface CompanyAutocompleteProps {
   value: string;
@@ -183,9 +187,9 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 16,
+    borderRadius: AUTOCOMPLETE_RADIUS,
     paddingHorizontal: 16,
     backgroundColor: Colors.offWhite,
   },
@@ -198,17 +202,8 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     marginTop: 8,
-    backgroundColor: Colors.paper,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
     overflow: "hidden",
-    // Soft elevation so it reads as a floating menu.
-    shadowColor: Colors.ink,
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    ...autocompleteDropdownShell,
   },
   dropdownLoadingRow: {
     flexDirection: "row",
