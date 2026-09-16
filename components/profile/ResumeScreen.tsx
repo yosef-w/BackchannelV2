@@ -22,6 +22,8 @@ import type {
 } from "@/stores/useUserProfileStore";
 import { CharCounter } from "../ui/CharCounter";
 import { EditorScreen } from "./EditorScreen";
+import { SaveStatusPill } from "./SaveStatusPill";
+import { useAutosaveStatus } from "./useAutosaveStatus";
 import { Colors } from "@/constants/theme";
 
 interface Props {
@@ -43,7 +45,7 @@ interface Props {
   tempValue: string;
   setTempValue: (value: string) => void;
   handleEditField: (field: string, currentValue: string) => void;
-  handleSaveField: (field: string) => void;
+  handleSaveField: (field: string) => Promise<void>;
   renderExperienceCard: (experience: ProfessionalExperience) => React.ReactElement | null;
   renderEducationCard: (education: EducationEntry) => React.ReactElement | null;
   renderCertificationCard: (
@@ -85,8 +87,14 @@ export function ResumeScreen({
   handleAddCertification,
   handleAddLanguage,
 }: Props) {
+  const { status, run } = useAutosaveStatus();
   return (
-    <EditorScreen visible={visible} onClose={onClose} title="Edit Resume">
+    <EditorScreen
+      visible={visible}
+      onClose={onClose}
+      title="Edit Resume"
+      headerRight={<SaveStatusPill status={status} />}
+    >
       {professionalMissingCount > 0 && (
         <View style={styles.progressContainer}>
           <Text style={styles.progressText}>
@@ -182,7 +190,9 @@ export function ResumeScreen({
               maxLength={1000}
               autoCapitalize="sentences"
               autoFocus
-              onBlur={() => handleSaveField("achievements")}
+              onBlur={() =>
+                run(() => handleSaveField("achievements")).catch(() => {})
+              }
             />
             <CharCounter count={tempValue.length} max={1000} />
           </View>
