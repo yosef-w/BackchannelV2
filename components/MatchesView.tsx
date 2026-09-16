@@ -4,7 +4,7 @@ import {
     trackReferralWithdrawn,
     trackSponsorLikedBack,
 } from "@/lib/analytics/mixpanel";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 import {
     getJobDetail,
     type SilverJobDetail,
@@ -1589,8 +1589,12 @@ export function MatchesView({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.paper },
-  scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 100 },
-  header: { marginBottom: 30 },
+  scrollContent: {
+    paddingHorizontal: Spacing.xxl,
+    paddingTop: 20,
+    paddingBottom: 100,
+  },
+  header: { marginBottom: Spacing.xxl },
   title: { ...Type.title, color: Colors.ink },
   titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   subtitle: {

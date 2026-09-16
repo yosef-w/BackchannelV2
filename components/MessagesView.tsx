@@ -36,7 +36,7 @@ import { InboxList } from "./messages/InboxList";
 import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
 import { ThreadScreen } from "./messages/ThreadScreen";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 
 
 /** UI-shaped conversation, as transformConversation() produces from a raw
@@ -1240,8 +1240,12 @@ export function MessagesView({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.paper },
-  scrollContent: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 140 },
-  headerTitleContainer: { marginBottom: 32 },
+  scrollContent: {
+    paddingHorizontal: Spacing.xxl,
+    paddingTop: 20,
+    paddingBottom: 140,
+  },
+  headerTitleContainer: { marginBottom: Spacing.xxl },
   title: { ...Type.title, color: Colors.ink },
   titleEm: { fontFamily: Fonts.serifItalic, color: Colors.muted },
   archiveEyebrow: {

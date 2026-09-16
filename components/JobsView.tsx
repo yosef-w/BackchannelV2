@@ -22,7 +22,7 @@ import {
 } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useJobsStore } from "@/stores/useJobsStore";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import type { Job } from "@/types/jobs";
@@ -1258,8 +1258,12 @@ export function JobsView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.paper },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 20 },
-  header: { marginBottom: 24, paddingHorizontal: 4 },
+  scrollContent: {
+    paddingHorizontal: Spacing.xxl,
+    paddingBottom: 100,
+    paddingTop: 20,
+  },
+  header: { marginBottom: Spacing.xxl, paddingHorizontal: 4 },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

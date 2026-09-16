@@ -102,7 +102,7 @@ import { CompanyLogo } from "./ui/CompanyLogo";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { PLATES_ENABLED } from "@/constants/config";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
 function parseVariant<T>(v: string | T[] | null | undefined): T[] {
@@ -156,7 +156,10 @@ interface HomeViewProps {
 export const DECK_SIZE = 10;
 // Horizontal padding of the deck page — PlateDeck cancels it so plates run
 // edge to edge while the full read below keeps the normal column.
-const PAGE_PADDING = 24;
+// Matches Matches/Messages tabs' outer horizontal padding — was 24 (off
+// the Spacing scale), causing a visible content-margin shift on Home vs
+// its sibling tabs.
+const PAGE_PADDING = Spacing.xxl;
 // How long a cached per-role deck stays "fresh" before a role re-fetches on
 // re-entry (so new applicants surface). Keeps rapid role-switching instant
 // without serving a stale deck all day.
@@ -2455,7 +2458,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 28,
+    marginBottom: Spacing.xxl,
     gap: 12,
   },
   progressHeaderContainer: { flex: 1 },
