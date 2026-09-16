@@ -18,7 +18,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -58,7 +58,7 @@ export function RolePickerModal({
         activeOpacity={1}
         onPress={onClose}
       >
-        <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
+        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
       </TouchableOpacity>
 
       <DismissibleSheet
@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
     backgroundColor: Colors.paper,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,
@@ -183,26 +183,18 @@ const styles = StyleSheet.create({
     marginTop: 3,
     lineHeight: 18,
   },
-  // Each role is a floating white card on the canvas — a tappable object,
-  // not a divider-separated list row.
+  // Flat, bordered row — the same "Docket" ticket language JobSheetKit's
+  // RoleTicket uses elsewhere, not a floating drop-shadow card (the
+  // rebrand retired shadows on sheet content; this was the one leftover).
   rolePickerRow: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
     marginBottom: 10,
     backgroundColor: Colors.paper,
-    borderRadius: 18,
+    borderRadius: Radii.lg,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#0F172A",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-      },
-      android: { elevation: 2 },
-    }),
+    borderColor: Colors.border,
   },
   rolePickerRowMain: {
     flex: 1,

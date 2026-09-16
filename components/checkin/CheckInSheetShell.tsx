@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -136,8 +136,8 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: Colors.paper,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     paddingTop: 12,
     paddingHorizontal: 28,
     ...Platform.select({

@@ -1173,8 +1173,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   detailSheet: {
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
     // Fixed (not max) height — same stuck-sheet class as the Matches
     // sheets: a fixed frame presents full-height from the first frame
     // and nothing can clip outside the scroll. Absolute px — a % would
