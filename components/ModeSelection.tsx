@@ -91,7 +91,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <ArrowLeft color="#000" size={24} />
+          <ArrowLeft color={Colors.ink} size={24} />
         </TouchableOpacity>
 
         <View style={styles.content}>
@@ -153,7 +153,7 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.paper,
   },
   safeArea: {
     flex: 1,

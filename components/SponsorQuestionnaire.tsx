@@ -756,7 +756,7 @@ export function SponsorQuestionnaire({
             disabled={isSubmitting}
             style={styles.iconBtn}
           >
-            <ArrowLeft color="#000" size={24} />
+            <ArrowLeft color={Colors.ink} size={24} />
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>
             {currentQuestion + 1} of {questions.length}
@@ -928,7 +928,7 @@ export function SponsorQuestionnaire({
                         >
                           {option}
                         </Text>
-                        {isSelected && <Check color="#FFF" size={20} />}
+                        {isSelected && <Check color={Colors.paper} size={20} />}
                       </TouchableOpacity>
                     );
                   })}
@@ -947,13 +947,13 @@ export function SponsorQuestionnaire({
               ]}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={Colors.paper} />
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
                     {isLastQuestion ? "Complete Profile" : "Continue"}
                   </Text>
-                  <ArrowRight color="#FFF" size={20} />
+                  <ArrowRight color={Colors.paper} size={20} />
                 </>
               )}
             </TouchableOpacity>
@@ -971,7 +971,7 @@ export function SponsorQuestionnaire({
                 <>
                   <View style={styles.rolePickerHeader}>
                     <View style={styles.rolePickerBadge}>
-                      <Briefcase color="#000" size={22} />
+                      <Briefcase color={Colors.ink} size={22} />
                     </View>
                     <Text style={styles.rolePickerTitle}>
                       We found {roleOptions.length} open role
@@ -1110,7 +1110,7 @@ export function SponsorQuestionnaire({
                       disabled={isSponsoringRole || roleCanRefer === null}
                     >
                       {isSponsoringRole ? (
-                        <ActivityIndicator size="small" color="#FFF" />
+                        <ActivityIndicator size="small" color={Colors.paper} />
                       ) : (
                         <Text style={styles.rolePickerSponsorText}>
                           Sponsor this role
@@ -1134,7 +1134,7 @@ export function SponsorQuestionnaire({
             <View style={styles.successContainer}>
               <BroadcastMoment
                 durationMs={2200}
-                icon={<UserCheck color="#FFF" size={38} />}
+                icon={<UserCheck color={Colors.paper} size={38} />}
                 words={[
                   { word: "Welcome" },
                   { word: "to" },
@@ -1151,7 +1151,7 @@ export function SponsorQuestionnaire({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   safeArea: { flex: 1 },
   topNav: {
     flexDirection: "row",
@@ -1192,7 +1192,7 @@ const styles = StyleSheet.create({
   // Softer than the CTA buttons' pure black — a selection shouldn't
   // compete with the primary action for visual weight.
   optionCardSelected: { backgroundColor: Colors.body, borderColor: Colors.body },
-  optionText: { fontSize: 17, fontWeight: "500", color: "#000" },
+  optionText: { fontSize: 17, fontWeight: "500", color: Colors.ink },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -1203,7 +1203,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 64,
   },
-  textInput: { flex: 1, fontSize: 18, color: "#000", fontWeight: "500" },
+  textInput: { flex: 1, fontSize: 18, color: Colors.ink, fontWeight: "500" },
   companyHelper: {
     fontSize: 13,
     color: Colors.muted,
@@ -1224,8 +1224,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   nextButtonDisabled: { opacity: 0.3 },
-  nextButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  textWhite: { color: "#FFF" },
+  nextButtonText: { color: Colors.paper, fontSize: 18, fontWeight: "700" },
+  textWhite: { color: Colors.paper },
   // Full-bleed container for BroadcastMoment (which manages its own
   // centering) — no alignItems here or the stage would shrink-wrap.
   successContainer: {
@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
   rolePickerRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 16,
@@ -1312,7 +1312,7 @@ const styles = StyleSheet.create({
   rolePickerRowTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   rolePickerRowSub: {
     fontSize: 13,
@@ -1350,7 +1350,7 @@ const styles = StyleSheet.create({
   rolePickerBackText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   rolePickerSponsorBtn: {
     flex: 1,
@@ -1363,12 +1363,12 @@ const styles = StyleSheet.create({
   rolePickerSponsorText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#FFF",
+    color: Colors.paper,
   },
   rolePickerQuestionLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
     marginBottom: 10,
   },
   rolePickerChoiceBtn: {
@@ -1389,10 +1389,10 @@ const styles = StyleSheet.create({
   rolePickerChoiceText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#000",
+    color: Colors.ink,
   },
   rolePickerChoiceTextSelected: {
-    color: "#FFF",
+    color: Colors.paper,
   },
   rolePickerNoteInput: {
     backgroundColor: Colors.offWhite,
@@ -1402,7 +1402,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#000",
+    color: Colors.ink,
     minHeight: 90,
     textAlignVertical: "top",
   },

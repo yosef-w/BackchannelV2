@@ -128,7 +128,7 @@ export default function VerifyEmailRoute() {
       <View style={styles.content}>
         {status === "loading" && (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#000" />
+            <ActivityIndicator size="large" color={Colors.ink} />
             <Text style={styles.loadingText}>Verifying your email…</Text>
           </View>
         )}
@@ -164,14 +164,14 @@ export default function VerifyEmailRoute() {
         {status === "error" && (
           <View style={styles.center}>
             <View style={styles.iconCircleError}>
-              <X color="#FFF" size={36} strokeWidth={3} />
+              <X color={Colors.paper} size={36} strokeWidth={3} />
             </View>
             <Text style={styles.title}>Verification failed</Text>
             <Text style={styles.subtitle}>{errorMessage}</Text>
 
             {resendSent ? (
               <View style={styles.resendSentBlock}>
-                <ConfirmPop size={56} icon={<Mail color="#FFF" size={22} />} />
+                <ConfirmPop size={56} icon={<Mail color={Colors.paper} size={22} />} />
                 <Text style={styles.resendSentText}>
                   If an account exists for that address, a new verification
                   email is on its way.
@@ -203,7 +203,7 @@ export default function VerifyEmailRoute() {
                   activeOpacity={0.8}
                 >
                   {resending ? (
-                    <ActivityIndicator color="#FFF" />
+                    <ActivityIndicator color={Colors.paper} />
                   ) : (
                     <Text style={styles.primaryButtonText}>Resend</Text>
                   )}
@@ -226,7 +226,7 @@ export default function VerifyEmailRoute() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  container: { flex: 1, backgroundColor: Colors.paper },
   content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
   center: {
     flex: 1,
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.faint,
   },
   primaryButtonText: {
-    color: "#FFF",
+    color: Colors.paper,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 50,
     fontSize: 15,
-    color: "#000",
+    color: Colors.ink,
     // Fixed height with no separate wrapper — pin vertical centering
     // directly (see AndroidInputFix's doc comment).
     ...AndroidInputFix,
