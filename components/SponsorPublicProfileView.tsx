@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { Colors, Type } from "@/constants/theme";
 
 interface SponsorPublicProfileViewProps {
   /** Full conversation object passed from MessagesView via onShowPublicProfile */
@@ -157,7 +157,10 @@ export function SponsorPublicProfileView({
         {/* Stats grid removed — the only quantified field we have is
             DURATION (now inlined into the header role line) and the
             former "REFERRED" cell was never populated by the backend.
-            See conversation history if/when INDIVIDUALS_REFERRED ships. */}
+            See conversation history if/when INDIVIDUALS_REFERRED ships.
+            Intentional asymmetry vs. ApplicantPublicProfileView's facts
+            strip (YRS EXP / SKILLS) — a data gap, not a missed design
+            pass; do not add a placeholder stat here to force parity. */}
         {loadingProfile && (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={Colors.ink} size="small" />
@@ -343,49 +346,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 10,
   },
-  // ── Stats Grid ────────────────────────────────────────────────────────────
-  statsGrid: {
-    flexDirection: "row",
-    backgroundColor: Colors.offWhite,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 32,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: 8,
-  },
-  // Matches the site's .stat-num (serif for stat/count displays).
-  statValue: {
-    fontFamily: Fonts.serif,
-    fontSize: 26,
-    color: Colors.ink,
-    textAlign: "center",
-  },
-  statValueOpen: {
-    color: Colors.ink,
-    fontSize: 18,
-  },
-  statValueClosed: {
-    color: Colors.danger,
-    fontSize: 18,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: Colors.faint,
-    marginTop: 4,
-    letterSpacing: 1,
-    textAlign: "center",
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 4,
-    alignSelf: "stretch" as const,
-  },
-
   // ── Loading ───────────────────────────────────────────────────────────────
   loadingRow: {
     flexDirection: "row",
