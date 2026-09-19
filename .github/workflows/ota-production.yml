@@ -1,0 +1,76 @@
+# Publishes an over-the-air JS/asset update to the "production" channel on
+# every push to main — reaches real users' phones within seconds, no App
+# Store review, for JS/asset-only changes. A change that touched native
+# code simply won't be delivered to any installed binary (its computed
+# fingerprint won't match), so this is safe to leave on push-triggered
+# rather than needing to distinguish "JS change" from "native change" here.
+#
+# Gated behind the "production" GitHub Environment. Add required reviewers
+# to that environment (Settings → Environments → production) to make this
+# pause for a human approval before it actually publishes to real users —
+# recommended once this pipeline is trusted, not optional busywork. See
+# docs/CI_CD_PIPELINE.md.
+#
+# Requires the same EXPO_TOKEN and SENTRY_AUTH_TOKEN secrets as
+# ota-preview.yml.
+name: OTA Update (production)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+# See ota-preview.yml's identical comment — the newest push should always
+# be the one that ends up published, not whichever run happens to finish
+# last.
+concurrency:
+  group: ota-production
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test -- --ci
+
+      - uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish update to production
+        # See ota-preview.yml's identical comment — a quote character in the
+        # commit message broke this exact interpolation pattern on the first
+        # real test of this pipeline.
+        run: |
+          eas update \
+            --branch production \
+            --message "$(git log -1 --pretty=%s)" \
+            --non-interactive
+
+      - name: Upload source maps to Sentry
+        # See ota-preview.yml's identical comment — uploads from the exact
+        # dist/ that eas update just published, so crash reports from this
+        # update are readable instead of minified.
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: npx sentry-expo-upload-sourcemaps dist

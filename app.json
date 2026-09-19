@@ -4,7 +4,7 @@
     "slug": "backchannelv2",
     "version": "1.0.0",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/541c04b4-9798-40e0-ac48-6435ad517940",
@@ -123,7 +123,7 @@
         }
       ],
       [
-        "@sentry/react-native",
+        "@sentry/react-native/expo",
         {
           "organization": "backchannel-f6",
           "project": "react-native"

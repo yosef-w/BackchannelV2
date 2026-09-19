@@ -1,0 +1,106 @@
+# Builds a new production iOS binary and submits it to TestFlight when a
+# version tag (v1.2.3) is pushed — the one step in this pipeline that's
+# deliberately NOT triggered by every merge to main. A native build is
+# slow, costs EAS build credits, and (for production) goes through Apple
+# review, so it only fires when someone explicitly decides "this is a
+# release candidate," not on every commit.
+#
+# Promote the SAME build from TestFlight to the public App Store manually
+# in App Store Connect once it's been tested there — don't rebuild for
+# that step. What you tested in TestFlight should be exactly what ships;
+# rebuilding risks shipping something subtly different from what testers
+# actually verified.
+#
+# Cut a release with:
+#   git tag v1.2.3 && git push origin v1.2.3
+#
+# The tag MUST point at a commit that's actually on main, and its version
+# number MUST match app.json's "version" — both are asserted below before
+# any build starts. Tag creation itself is additionally restricted to
+# repo admins via a tag protection rule (Settings → Tags) — see
+# docs/CI_CD_PIPELINE.md — so a stray tag from a feature branch can't
+# reach TestFlight even if someone tries.
+#
+# Requires the same EXPO_TOKEN secret as the OTA workflows. Apple
+# credentials are already stored in EAS (see eas.json's submit.production
+# block) from prior manual `eas build --auto-submit` runs — nothing new
+# needed there. See docs/CI_CD_PIPELINE.md.
+name: Release Build (iOS → TestFlight)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-and-submit:
+    runs-on: ubuntu-latest
+    # A real iOS build + App Store Connect submission routinely takes
+    # 15-30 minutes on EAS's infrastructure. This job WAITS for it (see
+    # the final step) so a build or submit failure shows up as a failed
+    # GitHub Actions run — not as a silent green checkmark you'd only
+    # learn was wrong from a separate email.
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Need real history (not the default shallow clone) for the
+          # "is this tag on main" ancestry check below.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag is on main
+        # A tag pushed from a feature/develop commit would otherwise
+        # build and submit code that never went through the main-branch
+        # promotion gate — the tag protection rule keeps most people
+        # from creating v* tags at all, but an admin (exempt from that
+        # rule) could still tag the wrong branch by mistake. This catches
+        # that specific slip regardless of who made it.
+        run: |
+          git fetch origin main --depth=1000
+          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "::error::Tag ${{ github.ref_name }} (${{ github.sha }}) is not on main. Refusing to build/submit — retag a commit that's actually on main."
+            exit 1
+          fi
+
+      - name: Verify tag version matches app.json
+        # A tag of v1.2.3 submitted against an app.json still saying
+        # 1.1.0 would ship to Apple with a version that doesn't match
+        # what you meant to release, and would confuse the next person
+        # who looks at the tag history trying to match it to a build.
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          APP_VERSION=$(node -p "require('./app.json').expo.version")
+          if [ "$TAG_VERSION" != "$APP_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) doesn't match app.json's version ($APP_VERSION). Update app.json's version and commit it before tagging, or retag with the matching number."
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test -- --ci
+
+      - uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build and submit to TestFlight
+        run: |
+          eas build \
+            --platform ios \
+            --profile production \
+            --auto-submit \
+            --non-interactive \
+            --wait
