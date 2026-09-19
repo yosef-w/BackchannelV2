@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import {
   trackChangeEmailRequested,
+  trackContactSupportTapped,
   trackPasswordChanged,
   trackPrivacyPolicyTapped,
   trackTermsTapped,
@@ -32,6 +33,7 @@ import { AndroidInputFix, Colors, Type } from "@/constants/theme";
 
 const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
+const SUPPORT_EMAIL = "support@backchannel.app";
 
 type Step = "main" | "password" | "delete" | "email";
 
@@ -652,6 +654,30 @@ export function PrivacySecurityScreen({
             <Text style={styles.rowLabel}>Change Email</Text>
             <Text style={styles.rowDescription}>
               Update the email you log in with
+            </Text>
+          </View>
+          <ChevronRight color={Colors.faint} size={20} />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.groupLabel}>SUPPORT</Text>
+      <View style={styles.group}>
+        <TouchableOpacity
+          style={[styles.actionRow, { borderBottomWidth: 0 }]}
+          onPress={() => {
+            trackContactSupportTapped();
+            Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() =>
+              showToast(
+                `Couldn't open your mail app. Reach us at ${SUPPORT_EMAIL}.`,
+                "error",
+              ),
+            );
+          }}
+        >
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.rowLabel}>Contact Support</Text>
+            <Text style={styles.rowDescription}>
+              Report a problem or get help — {SUPPORT_EMAIL}
             </Text>
           </View>
           <ChevronRight color={Colors.faint} size={20} />
