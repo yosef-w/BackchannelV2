@@ -11,7 +11,8 @@
 # recommended once this pipeline is trusted, not optional busywork. See
 # docs/CI_CD_PIPELINE.md.
 #
-# Requires the same EXPO_TOKEN secret as ota-preview.yml.
+# Requires the same EXPO_TOKEN and SENTRY_AUTH_TOKEN secrets as
+# ota-preview.yml.
 name: OTA Update (production)
 
 on:
@@ -20,6 +21,13 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+
+# See ota-preview.yml's identical comment — the newest push should always
+# be the one that ends up published, not whichever run happens to finish
+# last.
+concurrency:
+  group: ota-production
+  cancel-in-progress: true
 
 jobs:
   update:
@@ -58,3 +66,11 @@ jobs:
             --branch production \
             --message "$(git log -1 --pretty=%s)" \
             --non-interactive
+
+      - name: Upload source maps to Sentry
+        # See ota-preview.yml's identical comment — uploads from the exact
+        # dist/ that eas update just published, so crash reports from this
+        # update are readable instead of minified.
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: npx sentry-expo-upload-sourcemaps dist

@@ -8,8 +8,9 @@
 # Requires an EXPO_TOKEN repo secret (Settings → Secrets and variables →
 # Actions). Generate it at https://expo.dev/settings/access-tokens —
 # prefer a robot-user token scoped to this project over a personal one, so
-# CI access doesn't depend on any one person's account. See
-# docs/CI_CD_PIPELINE.md for the full setup.
+# CI access doesn't depend on any one person's account. Also requires a
+# SENTRY_AUTH_TOKEN repo secret so the update's source maps upload — see
+# docs/CI_CD_PIPELINE.md for both.
 name: OTA Update (preview)
 
 on:
@@ -20,6 +21,15 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+
+# If two pushes land close together, only the newest one should actually
+# publish — without this, a slower-finishing older run could publish
+# AFTER a newer one and briefly put testers back on older code. This
+# cancels an in-flight run for this branch the moment a newer push starts
+# one; it does not affect ci.yml's own run, which still checks every push.
+concurrency:
+  group: ota-preview
+  cancel-in-progress: true
 
 jobs:
   update:
@@ -61,3 +71,16 @@ jobs:
             --branch preview \
             --message "$(git log -1 --pretty=%s)" \
             --non-interactive
+
+      - name: Upload source maps to Sentry
+        # `eas update` leaves the exact bundle it just published in dist/ —
+        # uploading FROM that directory (rather than a separate `expo
+        # export` run) guarantees the source maps match the real published
+        # bundle byte-for-byte. Without this, a crash from a phone running
+        # this OTA update shows up in Sentry as minified/unreadable, even
+        # though native builds already get this for free via EAS Build.
+        # Org/project are read from app.json's Sentry plugin config —
+        # only the auth token needs to be supplied here.
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: npx sentry-expo-upload-sourcemaps dist
