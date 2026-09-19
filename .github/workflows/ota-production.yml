@@ -1,0 +1,57 @@
+# Publishes an over-the-air JS/asset update to the "production" channel on
+# every push to main — reaches real users' phones within seconds, no App
+# Store review, for JS/asset-only changes. A change that touched native
+# code simply won't be delivered to any installed binary (its computed
+# fingerprint won't match), so this is safe to leave on push-triggered
+# rather than needing to distinguish "JS change" from "native change" here.
+#
+# Gated behind the "production" GitHub Environment. Add required reviewers
+# to that environment (Settings → Environments → production) to make this
+# pause for a human approval before it actually publishes to real users —
+# recommended once this pipeline is trusted, not optional busywork. See
+# docs/CI_CD_PIPELINE.md.
+#
+# Requires the same EXPO_TOKEN secret as ota-preview.yml.
+name: OTA Update (production)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test -- --ci
+
+      - uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish update to production
+        run: |
+          eas update \
+            --branch production \
+            --message "${{ github.event.head_commit.message }}" \
+            --non-interactive

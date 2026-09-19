@@ -1,0 +1,56 @@
+# Publishes an over-the-air JS/asset update to the "preview" channel on
+# every push to develop — the mobile equivalent of an auto-deploy-on-merge
+# to a staging environment. Only reaches devices already running a build
+# whose native fingerprint matches this commit's (see app.json's
+# runtimeVersion policy) — a build that changed native code simply won't
+# receive it, by design, rather than crashing on an incompatible update.
+#
+# Requires an EXPO_TOKEN repo secret (Settings → Secrets and variables →
+# Actions). Generate it at https://expo.dev/settings/access-tokens —
+# prefer a robot-user token scoped to this project over a personal one, so
+# CI access doesn't depend on any one person's account. See
+# docs/CI_CD_PIPELINE.md for the full setup.
+name: OTA Update (preview)
+
+on:
+  push:
+    branches: [develop]
+    # Skip publishing a no-op update for changes that can't affect what
+    # ships to a device — same spirit as ci.yml only gating real changes.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test -- --ci
+
+      - uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish update to preview
+        run: |
+          eas update \
+            --branch preview \
+            --message "${{ github.event.head_commit.message }}" \
+            --non-interactive
