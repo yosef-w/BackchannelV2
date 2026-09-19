@@ -3,10 +3,9 @@ import { captureApiServerError, logBreadcrumb, Sentry } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { BrowseJobResponse, JobApiResponse } from "@/types/jobs";
 import type { ProfilePackRow } from "@/types/profiles";
+import { API_BASE_URL } from "@/constants/config";
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ??
-  "https://oyster-app-4pg5w.ondigitalocean.app";
+export { API_BASE_URL };
 
 /**
  * WebSocket origin derived from API_BASE_URL (https→wss, http→ws) so the

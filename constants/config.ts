@@ -1,3 +1,19 @@
+// ─── API ──────────────────────────────────────────────────────────────────────
+//
+// Single source of truth for the backend host — both lib/api.ts (REST + WS)
+// and stores/useAuthStore.ts (its own direct token-refresh fetch) import
+// this instead of each hardcoding the same fallback. They used to define it
+// independently specifically to avoid a circular import (useAuthStore →
+// lib/api.ts → useAuthStore), which is why this constant lives in this
+// file — a leaf module with no imports of its own, safely importable from
+// both sides of that cycle. Set per environment via EXPO_PUBLIC_API_BASE_URL
+// (see .env.example / eas.json's per-environment config); the fallback
+// below is production and only applies if that's ever unset.
+
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  "https://oyster-app-4pg5w.ondigitalocean.app";
+
 // ─── App Feature Flags ────────────────────────────────────────────────────────
 //
 // Flip these booleans to enable / disable features globally.

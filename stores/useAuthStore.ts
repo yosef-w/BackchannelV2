@@ -1,22 +1,19 @@
 import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 import { Sentry } from "@/lib/sentry";
+// Base URL used for direct token refresh calls below. Imported from
+// constants/config.ts rather than lib/api.ts specifically to avoid a
+// circular dependency: lib/api.ts already imports useAuthStore, so
+// useAuthStore importing back from lib/api.ts would cycle. config.ts is a
+// leaf module (no imports of its own) that both sides can safely import,
+// which is also what keeps this in sync with lib/api.ts's copy instead of
+// two independent literals silently drifting apart.
+import { API_BASE_URL } from "@/constants/config";
 
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const ROLE_KEY = "user_role";
 const HAS_PASSWORD_KEY = "has_password";
-
-/**
- * Base URL used for direct token refresh calls.
- * Defined here (reading the same env var lib/api.ts does, rather than
- * importing it) to avoid a circular dependency: useAuthStore → authApi → api
- * → useAuthStore. Must stay in sync with EXPO_PUBLIC_API_BASE_URL so a
- * staging/dev build's token refresh doesn't silently hit production.
- */
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ??
-  "https://oyster-app-4pg5w.ondigitalocean.app";
 
 /**
  * Decode the `exp` claim from a JWT without any external library.
