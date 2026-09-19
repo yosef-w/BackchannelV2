@@ -1,10 +1,10 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-08-19 (§S: `SSO_ENABLED = true` is now committed on frontend `main` — remaining §S work is backend deploy + console credentials/env vars only)
+**Last updated:** 2026-09-18 (added **§F** — feed relevance: both decks are random/PK-ordered pools with scoring applied only as a partial Python re-sort; sponsored jobs never scored, sponsor deck never scoped to the job)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
+> **Open items:** **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -19,6 +19,31 @@
 3. **Admin (Google):** create iOS/Android/Web OAuth client IDs in Google Cloud Console. Feeds backend `GOOGLE_OAUTH_CLIENT_IDS` (comma-separated, web ID is the token `aud`) and the frontend `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` env vars; the iOS ID's reversed form also goes into app.json's google-signin plugin as `iosUrlScheme`.
 4. **Frontend:** set the env vars from #3, then EAS build (native modules + entitlement must ship in a real build; the config plugin `plugins/withGoogleSigninModularHeaders.js` already handles the Podfile patch on every prebuild). ~~Flip `SSO_ENABLED = true`~~ — **done 2026-08-19**, committed on `main`; the next build ships with SSO buttons rendering, so sequence the backend deploy (#1) before or alongside that build.
 5. **E2E test against dev first** — their handoff's §5 has the recipe; test users land in `BACKCHANNEL_DEV`, never prod.
+
+---
+
+## §F — Feed relevance: signup answers barely shape the decks 🔴 High priority (core product — sponsored jobs unscored, sponsor deck unscoped)
+
+**Status (2026-09-18):** traced end-to-end against the local backend checkout after a founder question ("if someone says they want to be a software engineer, do we show them those roles?"). Short answer: only weakly, and not for the part of the product that matters. Nothing is wrong on the frontend side — it sends no filters and renders server order — so this is entirely a backend item.
+
+**What the frontend sends:** `GET /api/jobs/pack/` with **no params** (`lib/api.ts:471`); `GET /api/profiles/pack/?job_id=<sponsored JOB_ID>` with only that one param (`lib/api.ts:808`). All personalization is expected server-side. The applicant questionnaire does collect the right inputs and persists them via `PATCH /api/profile/applicant/update/` — `positions` (the "What position are you seeking?" answer), `skills`, `industry`, `current_role`, `work_preferences`, plus `location` via `updateGeneralProfile` (`ApplicantQuestionnaire.tsx:995-1024`).
+
+**What the backend actually does:**
+
+1. **Applicant deck — sponsored jobs are never scored.** `services/jobs.py:551 get_job_pack` pulls two pools, both `ORDER BY random()` with no profile predicate (`queries/jobs.py:454-459` ATS, `:789-818` sponsored; the only filters are active/not-blocked/not-in-`job_feed_history`). It oversamples ~30, then **scores only `ats_raw`** (`services/jobs.py:574-584`) — `spn_raw` is truncated in random order and interleaved ~50/50 (`:589-607`). So roughly half of every deck — the sponsored jobs, i.e. the referral product — is pure random relative to what the user asked for.
+2. **Applicant deck — ranking is a re-sort of a random window, not a filter.** `services/scoring.py` (skills 40 / experience 20 / role 20 / location 10 / recency 10) reads `SKILLS, YEARS_EXPERIENCE, current_role, DESIRED_ROLES, WORK_PREFERENCES, LOCATION` (`queries/profiles.py:341`) — but it can only reorder the ~30 rows `random()` happened to return. A strong-fit job outside that window never surfaces. Scoring failures fall back silently to unranked (`services/jobs.py:571-572`).
+3. **Sponsor deck — not scoped to the job at all.** `queries/profiles.py:213 fetch_profile_pack` has no predicate on the sponsored job's title/skills/location or the sponsor's company; `job_id` is used only for the `matching.likes` liker flag (`:239-241`). Order is likers-first, then **primary key** (`:248`). `services/profiles.py:329-344` applies scoring only when the pool exceeds the page limit. Net: a sponsor sponsoring a PM role swipes through every applicant in the database.
+4. **Browse/search/likes are unranked.** `/api/jobs/browse/` is newest-first with no profile pre-fill (`services/jobs.py:788`, `queries/jobs.py:658`); `/api/jobs/<id>/likes/applicants/` has no score, so the app's "Top Applicants" is just an unordered likes list.
+
+**Collected but read by no feed/matching query** (distinct from §L — these should be *wired in*, not dropped): applicant `INDUSTRY`, `RANGE_MILES`, `WILLING_TO_RELOCATE`, `REQUIRES_SPONSORSHIP`, `INSIGHTS`, `RESUME_DATA`; sponsor `COMPANIES_CAN_REFER_TO`, `JOB_TITLE`, `REFERRAL_ELIGIBLE`, `OPEN_TO_REFERRALS`. `COMPANIES_CAN_REFER_TO` is the notable one — it's the field that most directly encodes which jobs a sponsor can actually refer into, and nothing reads it (`services/profiles.py:237, 318` write/display only). Sponsor `COMPANY` is the only sponsor field that shapes any query, and only for their own job-browse tab (`services/jobs.py:800`).
+
+**Ask (in leverage order):**
+1. **Score `spn_raw` too** — pass the sponsored pool through the same `services/scoring.py` path at `services/jobs.py:574-584` before interleaving. Smallest change, fixes the half of the deck that's currently random.
+2. **Scope the sponsor deck to the job** — add title/skills/location predicates to `fetch_profile_pack` from `queries/jobs.py:248 get_job_scoring_criteria`, so sponsors see candidates for the role they sponsored, not the whole table. (`docs/ARCHITECTURE.md:465`'s "finite pool" note still applies — scoping shrinks the pool further, so pair with the replenishment redesign it describes.)
+3. **Filter in SQL, not just re-sort in Python** — push at least skills/title predicates into the applicant pack `WHERE` (or widen the oversample) so a good fit isn't lost to the random-30 window.
+4. **Emit `relevance_score` consistently.** `docs/API_REFERENCE.md:694, 708` documents a 0–1 score on pack cards; jobs never emit it (`services/jobs.py:615`) and profiles emit 0–100 (`profiles.py:337`), and `docs/FRONTEND_WIRING_GUIDE.md:643` says the opposite. Pick one contract — the app renders a "YOUR FIT — N% match" badge from `relevanceScore` (`types/jobs.ts:369`, `components/home/JobCardContent.tsx:119`), so today that badge is either absent or a client-side skill-overlap figure, not the server's ranking.
+
+**Frontend status:** nothing to change for #1–#3 — the app renders whatever order the server returns and the "YOUR FIT" plate already computes skill overlap locally (`components/home/plates/plateContent.ts:477`). If #4 settles on the server emitting a 0–100 score for jobs, the frontend should drop the local overlap fallback and display the server value. One open question worth answering on-device before then: what the "YOUR FIT — N%" badge actually shows a user right now.
 
 ---
 
