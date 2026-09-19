@@ -49,8 +49,15 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Publish update to preview
+        # Deliberately NOT `--message "${{ github.event.head_commit.message }}"`
+        # — a commit message containing a literal quote character (this repo
+        # has already hit this) closes the shell argument early and the rest
+        # of the message gets fed to `eas update` as stray extra arguments,
+        # failing the whole publish. `"$(git log -1 --pretty=%s)"` captures
+        # just the subject line via a real shell variable, which bash treats
+        # as an opaque string — embedded quotes can't break out of it.
         run: |
           eas update \
             --branch preview \
-            --message "${{ github.event.head_commit.message }}" \
+            --message "$(git log -1 --pretty=%s)" \
             --non-interactive

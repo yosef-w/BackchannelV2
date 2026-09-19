@@ -50,8 +50,11 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Publish update to production
+        # See ota-preview.yml's identical comment — a quote character in the
+        # commit message broke this exact interpolation pattern on the first
+        # real test of this pipeline.
         run: |
           eas update \
             --branch production \
-            --message "${{ github.event.head_commit.message }}" \
+            --message "$(git log -1 --pretty=%s)" \
             --non-interactive
