@@ -1,5 +1,5 @@
 import { trackApiError } from "@/lib/analytics/mixpanel";
-import { captureApiServerError, logBreadcrumb } from "@/lib/sentry";
+import { captureApiServerError, logBreadcrumb, Sentry } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { BrowseJobResponse, JobApiResponse } from "@/types/jobs";
 import type { ProfilePackRow } from "@/types/profiles";
@@ -1198,6 +1198,12 @@ export async function reportUser(params: {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("[api] reportUser failed:", msg);
+    // Deliberately silent to the user (see this function's doc comment
+    // above) — which means this Sentry call is the ONLY place a failed
+    // report is visible at all. A trust & safety promise ("we'll never let
+    // you hear from this person again") silently not landing server-side
+    // is worth knowing about even though the local unmatch still happens.
+    Sentry.captureException(err, { tags: { flow: "report_user" } });
     return false;
   }
 }

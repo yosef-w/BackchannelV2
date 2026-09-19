@@ -8,6 +8,11 @@ import {
   scheduleDailyDeckReminder,
   scheduleUnfinishedDeckReminder,
 } from "@/lib/localNotifications";
+import {
+  trackPushPermissionPrompted,
+  trackPushPermissionResolved,
+} from "@/lib/analytics/mixpanel";
+import { Sentry } from "@/lib/sentry";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useJobsStore } from "@/stores/useJobsStore";
 import Constants from "expo-constants";
@@ -71,8 +76,10 @@ export function usePushSetup(userType: UserType) {
             );
             return;
           }
+          trackPushPermissionPrompted();
           const { status } = await Notifications.requestPermissionsAsync();
           finalStatus = status;
+          trackPushPermissionResolved({ granted: status === "granted" });
         } else if (current !== "granted") {
           // Previously denied — the OS won't re-prompt anyway.
           console.log("[Shell] Push notification permission previously denied");
@@ -108,8 +115,13 @@ export function usePushSetup(userType: UserType) {
         // "your deck is ready" local reminder. Idempotent.
         scheduleDailyDeckReminder(userType);
       } catch (err) {
-        // Non-fatal — the app works without push notifications.
+        // Non-fatal — the app works without push notifications. But this
+        // device silently gets none until the next successful run, with
+        // nothing but a stripped console.warn to explain why (see
+        // babel.config.js) — worth knowing rather than discovering via a
+        // support message that "I never get notified about anything."
         console.warn("[Shell] Failed to register push token:", err);
+        Sentry.captureException(err, { tags: { flow: "push_registration" } });
       }
     };
 

@@ -292,7 +292,7 @@ export function HomeView({
   const handleUnlockMoreCards = async () => {
     setUnlockingPremium(true);
     try {
-      const purchased = await presentPaywall();
+      const purchased = await presentPaywall("deck_done");
       if (purchased) resetNavigation();
     } finally {
       setUnlockingPremium(false);
@@ -1129,7 +1129,6 @@ export function HomeView({
                   : undefined,
               });
               trackMatchCreated({
-                matchedWithName: matchName,
                 jobId: String(jobId),
                 origin: "applicant_swipe",
               });
@@ -1189,7 +1188,6 @@ export function HomeView({
                 userId: String(applicantUserId),
               });
               trackMatchCreated({
-                matchedWithName: matchName,
                 jobId: activeSponsoredJobId || undefined,
                 origin: "sponsor_swipe",
               });

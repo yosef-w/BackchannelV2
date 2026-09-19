@@ -12,13 +12,10 @@
  *    callers having to remember to pass it.
  *  - Properties are typed via the helper signatures — when adding a new
  *    property to an event, update the helper's argument type.
- *
- * 🔑  Replace the placeholder token on the line marked `// TOKEN` below.
- *     Better: move it to a `MIXPANEL_TOKEN` env var (see notes at end of file).
  */
 
 import { Mixpanel } from "mixpanel-react-native";
-import { clearSentryUser, setSentryUser } from "../sentry";
+import { clearSentryUser, logBreadcrumb, setSentryUser } from "../sentry";
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
@@ -100,10 +97,11 @@ interface IdentifyArgs {
 export async function identifyUser(args: IdentifyArgs): Promise<void> {
   currentUserType = args.userType;
   // Mirror identity into Sentry (id-only) so a crash report can always be
-  // matched to the account that hit it. Kept here — rather than at each
-  // login/signup call site — so the two systems can't drift apart.
+  // matched to the account that hit it, and tag it with user_type so
+  // issues can be filtered Applicant vs Sponsor. Kept here — rather than
+  // at each login/signup call site — so the two systems can't drift apart.
   try {
-    setSentryUser(args.userId);
+    setSentryUser(args.userId, args.userType);
   } catch {
     // Sentry identity is best-effort, never blocks analytics.
   }
@@ -165,40 +163,6 @@ export async function resetUser(): Promise<void> {
   }
 }
 
-/**
- * Update one or more People-record fields outside of an explicit identify call
- * (e.g. when a user edits their profile). Silent on failure.
- */
-export function setUserProperties(
-  props: Partial<Omit<IdentifyArgs, "userId">>,
-): void {
-  if (!initialized || !mixpanel) return;
-  try {
-    if (props.userType) {
-      currentUserType = props.userType;
-      mixpanel.registerSuperProperties({ user_type: props.userType });
-    }
-    const peopleProps: Record<string, any> = {
-      $email: props.email ?? undefined,
-      $first_name: props.firstName ?? undefined,
-      $last_name: props.lastName ?? undefined,
-      email_verified: props.emailVerified ?? undefined,
-      work_email_verified: props.workEmailVerified ?? undefined,
-      company: props.company ?? undefined,
-      job_title: props.jobTitle ?? undefined,
-      location: props.location ?? undefined,
-      current_role: props.currentRole ?? undefined,
-    };
-    const cleaned = Object.fromEntries(
-      Object.entries(peopleProps).filter(([, v]) => v !== undefined),
-    );
-    if (Object.keys(cleaned).length > 0) mixpanel.getPeople().set(cleaned);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn("[Analytics] setUserProperties failed:", err);
-  }
-}
-
 // ─── Internal track wrapper ───────────────────────────────────────────────────
 
 type EventProps = Record<string, string | number | boolean | null | undefined>;
@@ -234,6 +198,16 @@ export function trackScreenViewed(
   extra?: EventProps,
 ): void {
   safeTrack("Screen Viewed", { screen_name: screenName, ...extra });
+  // No navigation-integration is wired for Sentry, so this is the only
+  // place a crash report can learn which screen the user was on — leaving
+  // it out means every issue reads "somewhere in the app". Runs even if
+  // Mixpanel itself is uninitialized (logBreadcrumb no-ops safely without
+  // a DSN), unlike safeTrack above.
+  try {
+    logBreadcrumb(`Screen: ${screenName}`, undefined, "navigation");
+  } catch {
+    // Best-effort — never let a breadcrumb failure break screen tracking.
+  }
 }
 
 // ─── First-run Home intro overlay ─────────────────────────────────────────────
@@ -248,35 +222,89 @@ export function trackHomeIntroDismissed(action: "complete" | "skip"): void {
 
 // ─── Auth & onboarding ────────────────────────────────────────────────────────
 
+export type AuthMethod = "email" | "apple" | "google";
+
 export function trackSignUpRoleSelected(role: AnalyticsUserType): void {
   safeTrack("Sign Up Role Selected", { selected_role: role });
 }
 
-export function trackSignUpFormSubmitted(role: AnalyticsUserType): void {
-  safeTrack("Sign Up Form Submitted", { selected_role: role });
+export function trackSignUpFormSubmitted(
+  role: AnalyticsUserType,
+  authMethod: AuthMethod = "email",
+): void {
+  safeTrack("Sign Up Form Submitted", {
+    selected_role: role,
+    auth_method: authMethod,
+  });
 }
 
-export function trackSignUpSucceeded(role: AnalyticsUserType): void {
-  safeTrack("Sign Up Succeeded", { selected_role: role });
+export function trackSignUpSucceeded(
+  role: AnalyticsUserType,
+  authMethod: AuthMethod = "email",
+): void {
+  safeTrack("Sign Up Succeeded", {
+    selected_role: role,
+    auth_method: authMethod,
+  });
 }
 
 export function trackSignUpFailed(
   role: AnalyticsUserType,
   reason: string,
+  authMethod: AuthMethod = "email",
 ): void {
-  safeTrack("Sign Up Failed", { selected_role: role, reason });
+  safeTrack("Sign Up Failed", {
+    selected_role: role,
+    reason,
+    auth_method: authMethod,
+  });
 }
 
-export function trackLoginSubmitted(): void {
-  safeTrack("Login Submitted");
+/**
+ * Fired the moment a user starts an SSO sign-in/sign-up attempt (the
+ * provider's native sheet is about to open). Pairs with
+ * trackLoginSucceeded/trackSignUpSucceeded/trackSSOFailed to give SSO the
+ * same started→outcome funnel the email path gets from
+ * trackLoginSubmitted/trackSignUpFormSubmitted — previously nothing fired
+ * until a new SSO account reached the questionnaire's Sign Up Succeeded,
+ * so failed and abandoned attempts were invisible.
+ */
+export function trackSsoStarted(authMethod: "apple" | "google"): void {
+  safeTrack("SSO Started", { auth_method: authMethod });
 }
 
-export function trackLoginSucceeded(role: AnalyticsUserType): void {
-  safeTrack("Login Succeeded", { logged_in_as: role });
+/**
+ * The provider sheet closed without completing — a canceled tap, not an
+ * error, so this is a separate event from trackSsoFailed rather than a
+ * `reason: "cancelled"` bucket on it.
+ */
+export function trackSsoCancelled(authMethod: "apple" | "google"): void {
+  safeTrack("SSO Cancelled", { auth_method: authMethod });
 }
 
-export function trackLoginFailed(reason: string): void {
-  safeTrack("Login Failed", { reason });
+export function trackSsoFailed(
+  authMethod: "apple" | "google",
+  reason: string,
+): void {
+  safeTrack("SSO Failed", { auth_method: authMethod, reason });
+}
+
+export function trackLoginSubmitted(authMethod: AuthMethod = "email"): void {
+  safeTrack("Login Submitted", { auth_method: authMethod });
+}
+
+export function trackLoginSucceeded(
+  role: AnalyticsUserType,
+  authMethod: AuthMethod = "email",
+): void {
+  safeTrack("Login Succeeded", { logged_in_as: role, auth_method: authMethod });
+}
+
+export function trackLoginFailed(
+  reason: string,
+  authMethod: AuthMethod = "email",
+): void {
+  safeTrack("Login Failed", { reason, auth_method: authMethod });
 }
 
 export function trackLogout(): void {
@@ -435,6 +463,40 @@ export function trackSponsorRequested(args: { jobId: string }): void {
   safeTrack("Sponsor Requested", { job_id: args.jobId });
 }
 
+// ─── Applicant job browse/search (ApplicantJobsBrowseView) ────────────────────
+// Previously the one major applicant surface with zero analytics — likes/
+// waitlist joins from here reuse trackJobLiked/trackJobWaitlistJoined/
+// trackSponsorRequested above (same actions as the deck), but browsing and
+// searching had no equivalent anywhere, so those two are new.
+
+export function trackApplicantBrowseViewed(): void {
+  safeTrack("Applicant Browse Viewed");
+}
+
+export function trackApplicantJobSearchPerformed(args: {
+  queryLength: number;
+  hasLocation: boolean;
+  resultCount: number;
+  usedFallback: boolean;
+}): void {
+  safeTrack("Applicant Job Search Performed", {
+    query_length: args.queryLength,
+    has_location: args.hasLocation,
+    result_count: args.resultCount,
+    used_fallback: args.usedFallback,
+  });
+}
+
+export function trackApplicantJobDetailsOpened(args: {
+  jobId: string;
+  isSponsored: boolean;
+}): void {
+  safeTrack("Applicant Job Details Opened", {
+    job_id: args.jobId,
+    is_sponsored: args.isSponsored,
+  });
+}
+
 // ─── Feed: sponsor (applicants deck) ──────────────────────────────────────────
 
 export function trackProfileCardViewed(args: {
@@ -472,12 +534,10 @@ export function trackProfileSkipped(args: {
 // ─── Matches ──────────────────────────────────────────────────────────────────
 
 export function trackMatchCreated(args: {
-  matchedWithName?: string;
   jobId?: string;
   origin: "applicant_swipe" | "sponsor_swipe";
 }): void {
   safeTrack("Match Created", {
-    matched_with_name: args.matchedWithName,
     job_id: args.jobId,
     match_origin: args.origin,
   });
@@ -628,6 +688,28 @@ export function trackJobCreateFromUrlFailed(args: {
   });
 }
 
+// ─── Subscription ─────────────────────────────────────────────────────────────
+// Staged ahead of PREMIUM_ENABLED going live so the funnel exists from day
+// one of monetization rather than being added in a follow-up release —
+// every helper here is a genuine no-op today since presentPaywall() itself
+// short-circuits while the flag is off (see useSubscriptionStore.ts).
+
+export function trackPaywallShown(args: { trigger: string }): void {
+  safeTrack("Paywall Shown", { trigger: args.trigger });
+}
+
+export function trackPurchaseSucceeded(args: { restored: boolean }): void {
+  safeTrack("Purchase Succeeded", { restored: args.restored });
+}
+
+export function trackPurchaseFailed(reason: string): void {
+  safeTrack("Purchase Failed", { reason });
+}
+
+export function trackRestorePurchasesRequested(): void {
+  safeTrack("Restore Purchases Requested");
+}
+
 // ─── Check-ins (PR #37) ───────────────────────────────────────────────────────
 
 export function trackCheckInModalOpened(args: {
@@ -709,13 +791,44 @@ export function trackTermsTapped(): void {
   safeTrack("Terms Tapped");
 }
 
+export function trackContactSupportTapped(): void {
+  safeTrack("Contact Support Tapped");
+}
+
 export function trackTesterModeEnabled(args: {
   source: "profile_completion_modal" | "email_verification_modal";
 }): void {
   safeTrack("Tester Mode Enabled", { entry_point: args.source });
+  // Stamp is_tester as a super property (every future event from this
+  // device) AND a People property — without this, tester activity was
+  // fully mixed into real-user charts with no way to filter it out once
+  // the beta has actual users alongside testers.
+  if (!initialized || !mixpanel) return;
+  try {
+    mixpanel.registerSuperProperties({ is_tester: true });
+    mixpanel.getPeople().set({ is_tester: true });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[Analytics] Failed to stamp is_tester:", err);
+  }
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
+
+/** The native OS permission dialog is about to be shown (only happens once
+ * a contextual trigger fires — see usePushSetup.ts). */
+export function trackPushPermissionPrompted(): void {
+  safeTrack("Push Permission Prompted");
+}
+
+/** Outcome of that dialog. Fired once per actual ask, not on every app
+ * launch/re-check of an already-decided permission — otherwise an already-
+ * granted or already-denied user would re-fire this every session. */
+export function trackPushPermissionResolved(args: {
+  granted: boolean;
+}): void {
+  safeTrack("Push Permission Resolved", { granted: args.granted });
+}
 
 export function trackNotificationTapped(args: {
   notificationId: string;
@@ -754,7 +867,3 @@ export function trackApiError(args: {
     status_or_reason: args.statusOrReason,
   });
 }
-
-// ─── Default export ───────────────────────────────────────────────────────────
-
-export default mixpanel;

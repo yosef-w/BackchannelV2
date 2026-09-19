@@ -28,6 +28,13 @@ import {
     REVENUECAT_API_KEY_ANDROID,
     REVENUECAT_API_KEY_IOS,
 } from "@/constants/config";
+import { Sentry } from "@/lib/sentry";
+import {
+    trackPaywallShown,
+    trackPurchaseFailed,
+    trackPurchaseSucceeded,
+    trackRestorePurchasesRequested,
+} from "@/lib/analytics/mixpanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,8 +80,11 @@ interface SubscriptionState {
   /**
    * Present the RevenueCat paywall for the current offering.
    * Returns true if the user purchased or restored, false otherwise.
+   * `trigger` identifies which entry point opened it (deck-done, profile
+   * upgrade row, marketplace gate, …) for the Paywall Shown event — see
+   * mixpanel.ts's Subscription section.
    */
-  presentPaywall: () => Promise<boolean>;
+  presentPaywall: (trigger: string) => Promise<boolean>;
 
   /**
    * Open the RevenueCat Customer Center (subscription management / support).
@@ -158,6 +168,13 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       }
     } catch (err) {
       console.warn("[Subscription] initialize failed:", err);
+      // If RC never configures, isPremium stays false and every entitlement
+      // check silently behaves as "not premium" — indistinguishable from a
+      // real free user with nothing in the logs to explain why (console.warn
+      // is stripped in release builds — see babel.config.js).
+      Sentry.captureException(err, {
+        tags: { flow: "revenuecat_initialize" },
+      });
     }
   },
 
@@ -173,6 +190,13 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       });
     } catch (err) {
       console.warn("[Subscription] identifyUser failed:", err);
+      // A failed logIn() leaves this device's RC identity un-linked to the
+      // backend account — purchases made here won't restore on a reinstall
+      // or another device. Worth knowing about even though the local
+      // customerInfo from initialize() still works for this session.
+      Sentry.captureException(err, {
+        tags: { flow: "revenuecat_identify" },
+      });
     }
   },
 
@@ -196,7 +220,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   // ── presentPaywall ─────────────────────────────────────────────────────────
 
-  presentPaywall: async (): Promise<boolean> => {
+  presentPaywall: async (trigger: string): Promise<boolean> => {
     if (!PREMIUM_ENABLED) return false;
     // Guard lives here instead of in each caller so every entry point gets
     // it for free — MarketplaceGateModal already had its own local
@@ -208,6 +232,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     // was the one RC operation that didn't actually set it.
     if (get().isLoading) return false;
     set({ isLoading: true });
+    trackPaywallShown({ trigger });
     try {
       const result = await RevenueCatUI.presentPaywall();
       switch (result) {
@@ -217,18 +242,34 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
           // A NEW purchase gets the celebration; a restore (below) does
           // not — restoring isn't buying.
           set({ celebrationPending: true });
+          trackPurchaseSucceeded({ restored: false });
           return true;
         case PAYWALL_RESULT.RESTORED:
           await get().refreshCustomerInfo();
+          trackPurchaseSucceeded({ restored: true });
           return true;
-        case PAYWALL_RESULT.NOT_PRESENTED:
         case PAYWALL_RESULT.ERROR:
+          // A real presentation/processing failure, distinct from the
+          // user simply closing the sheet (CANCELLED, below) — that
+          // distinction is exactly what was missing before this event.
+          trackPurchaseFailed("presentation_error");
+          return false;
+        case PAYWALL_RESULT.NOT_PRESENTED:
         case PAYWALL_RESULT.CANCELLED:
         default:
           return false;
       }
     } catch (err) {
       console.warn("[Subscription] presentPaywall failed:", err);
+      trackPurchaseFailed(err instanceof Error ? err.message : "unknown");
+      // Returns false identically to a plain user cancel (PAYWALL_RESULT
+      // .CANCELLED, above) — without this, a real SDK/network failure here
+      // is completely indistinguishable from someone just closing the
+      // sheet, in the one place in the app where that ambiguity costs
+      // actual revenue.
+      Sentry.captureException(err, {
+        tags: { flow: "revenuecat_present_paywall" },
+      });
       return false;
     } finally {
       set({ isLoading: false });
@@ -245,6 +286,9 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       await RevenueCatUI.presentCustomerCenter();
     } catch (err) {
       console.warn("[Subscription] presentCustomerCenter failed:", err);
+      Sentry.captureException(err, {
+        tags: { flow: "revenuecat_customer_center" },
+      });
     }
   },
 
@@ -252,14 +296,27 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   restorePurchases: async (): Promise<boolean> => {
     if (!PREMIUM_ENABLED) return false;
+    trackRestorePurchasesRequested();
     try {
       set({ isLoading: true });
       const info = await Purchases.restorePurchases();
       const nowPremium = isEntitlementActive(info);
       set({ customerInfo: info, isPremium: nowPremium });
+      // A false return here just means "nothing to restore" (no prior
+      // purchase found), which is an expected outcome, not a failure — only
+      // a thrown error below counts as Purchase Failed.
+      if (nowPremium) trackPurchaseSucceeded({ restored: true });
       return nowPremium;
     } catch (err) {
       console.warn("[Subscription] restorePurchases failed:", err);
+      trackPurchaseFailed(err instanceof Error ? err.message : "unknown");
+      // A user who paid on another device/reinstall and taps "Restore"
+      // expecting it to just work — a failure here with nothing but a
+      // stripped console.warn means they'd have no way to tell us why it
+      // didn't, and we'd have no way to know it happened.
+      Sentry.captureException(err, {
+        tags: { flow: "revenuecat_restore_purchases" },
+      });
       return false;
     } finally {
       set({ isLoading: false });

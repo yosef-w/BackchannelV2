@@ -606,10 +606,17 @@ export function MessagesView({
             console.warn("[MessagesView] WebSocket error:", data.message);
           }
         } catch (err) {
+          // Backend contract drift, not a transient network issue — the
+          // socket stays open and simply drops this message with nothing
+          // but a stripped console.warn (see babel.config.js) to show it
+          // ever happened.
           console.warn(
             "[MessagesView] Failed to parse WebSocket message:",
             err,
           );
+          Sentry.captureException(err, {
+            tags: { flow: "chat_ws_bad_payload" },
+          });
         }
       };
 
@@ -629,6 +636,14 @@ export function MessagesView({
         if (event.code === 4001 || event.code === 4003) {
           console.warn(
             `[MessagesView] WebSocket rejected: ${event.code}`,
+          );
+          // Reconnect deliberately stops here, so from this point on the
+          // thread just looks dead to the user — nothing else in the app
+          // surfaces that the socket was rejected, and console.warn alone
+          // is stripped in release builds.
+          Sentry.captureException(
+            new Error(`Chat WebSocket rejected: ${event.code}`),
+            { tags: { flow: "chat_ws_auth_reject" } },
           );
           return;
         }
@@ -747,6 +762,9 @@ export function MessagesView({
           if (data.type === "inbox.update") applyInboxUpdate(data);
         } catch (err) {
           console.warn("[MessagesView] Bad inbox WebSocket payload:", err);
+          Sentry.captureException(err, {
+            tags: { flow: "inbox_ws_bad_payload" },
+          });
         }
       };
 
@@ -760,6 +778,13 @@ export function MessagesView({
         // an auth failure that won't fix itself.
         if (event.code === 4001 || event.code === 4003) {
           console.warn("[MessagesView] Inbox WebSocket rejected:", event.code);
+          // Stops reconnecting here, so unread counts/new-message previews
+          // just silently go stale — worth knowing, since nothing else in
+          // the app surfaces that this happened.
+          Sentry.captureException(
+            new Error(`Inbox WebSocket rejected: ${event.code}`),
+            { tags: { flow: "inbox_ws_auth_reject" } },
+          );
           return;
         }
         scheduleReconnect();

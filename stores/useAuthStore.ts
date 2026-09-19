@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
+import { Sentry } from "@/lib/sentry";
 
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
@@ -120,8 +121,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         await SecureStore.setItemAsync(ROLE_KEY, role);
       }
     } catch (error) {
-      // Fail gracefully — state is always updated even if persistence fails.
+      // Fail gracefully — state is always updated even if persistence fails,
+      // so THIS session stays logged in — but a SecureStore write failure
+      // here means the tokens never actually landed on disk: the user will
+      // be silently logged out the next time the app relaunches, with
+      // nothing in the logs to explain why (console.warn is stripped in
+      // release builds — see babel.config.js).
       console.warn("[Auth] Failed to persist tokens:", error);
+      Sentry.captureException(error, { tags: { flow: "auth_token_persist" } });
     }
     set({
       accessToken,
@@ -253,7 +260,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
       });
     } catch (error) {
+      // A SecureStore read failure here logs an otherwise-still-valid
+      // session out completely — indistinguishable from a real expired
+      // session to the user, and with nothing in the logs to explain it
+      // (console.warn is stripped in release builds).
       console.warn("[Auth] Failed to load tokens:", error);
+      Sentry.captureException(error, { tags: { flow: "auth_token_load" } });
       set({
         accessToken: null,
         refreshToken: null,

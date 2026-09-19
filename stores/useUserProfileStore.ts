@@ -276,6 +276,13 @@ interface UserProfileStore {
   workEmailVerified: boolean;
   setWorkEmailVerified: (verified: boolean) => void;
 
+  /**
+   * The backend's USER_ID for the signed-in account, set by fetchFromBackend.
+   * Exists so a session restored from a stored token (no fresh login/signup)
+   * can still re-identify against Mixpanel/Sentry — see app/_layout.tsx.
+   */
+  userId: string | null;
+
   // Sponsor's pending (unverified) work email — what they typed into the
   // "Update it" flow on the verification modal but haven't yet confirmed via
   // the emailed link. Persists across mount/unmount and app launches so the
@@ -412,6 +419,8 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   notificationPreferencesPending: 0,
   workEmailVerified: false,
   setWorkEmailVerified: (verified) => set({ workEmailVerified: verified }),
+
+  userId: null,
 
   pendingWorkEmail: null,
   setPendingWorkEmail: async (email) => {
@@ -937,6 +946,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // Set user type based on backend flags
       const userType = profile.IS_SPONSOR ? "sponsor" : "applicant";
       useOnboardingStore.getState().setUserType(userType);
+      set({ userId: profile.USER_ID ?? null });
 
       // Preserve all locally-stored data so fields not returned by the backend
       // (insights, skills, address details, portfolio, etc.) are not wiped.
@@ -1341,6 +1351,7 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       syncFailureCount: 0,
       workEmailVerified: false,
       pendingWorkEmail: null,
+      userId: null,
     });
   },
 }));

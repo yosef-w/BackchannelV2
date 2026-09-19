@@ -193,9 +193,11 @@ export function AuthScreen({
       seedSessionEmail(data.email);
 
       // Identify the user for the rest of their session, and stamp basic
-      // profile attributes onto the People record. Other profile fields will
-      // be filled in by `setUserProperties()` once the profile fetch
-      // completes elsewhere — keep this lean.
+      // profile attributes onto the People record. Other profile fields get
+      // filled in by app/_layout.tsx's own identifyUser() call once the
+      // profile fetch completes (and again on every future app relaunch,
+      // which is what keeps a returning user's session identified) — keep
+      // this one lean.
       const role: "applicant" | "sponsor" =
         data.role === "Sponsor" ? "sponsor" : "applicant";
       identifyUser({
@@ -285,7 +287,7 @@ export function AuthScreen({
       userType: role,
       email: response.email,
     });
-    trackLoginSucceeded(role);
+    trackLoginSucceeded(role, provider);
     rcIdentifyUser(String(response.user_id));
     showToast("Welcome back!", "success");
     if (onLoginComplete) {
@@ -369,7 +371,6 @@ export function AuthScreen({
   };
 
   const handleForgotPassword = () => {
-    trackForgotPasswordRequested();
     setShowForgotPasswordModal(true);
     setForgotPasswordSent(false);
     setForgotPasswordEmail("");
@@ -384,6 +385,9 @@ export function AuthScreen({
       showToast("Please enter a valid email address.", "error");
       return;
     }
+    // Fired here, not on opening the modal — this is the point the email
+    // actually gets sent, which is what "Requested" is supposed to mean.
+    trackForgotPasswordRequested();
     forgotPasswordMutation.mutate();
   };
 

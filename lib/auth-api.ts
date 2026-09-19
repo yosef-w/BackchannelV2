@@ -200,6 +200,7 @@ export interface RawEducationRow {
  * was reading through `as any`).
  */
 export interface ProfileResponse {
+  USER_ID?: string;
   IS_SPONSOR?: boolean;
   FIRST_NAME?: string | null;
   LAST_NAME?: string | null;

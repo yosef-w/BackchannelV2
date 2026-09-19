@@ -1,19 +1,21 @@
 import { AppToast } from "@/components/ui/AppToast";
 import { PremiumCelebration } from "@/components/cinema/PremiumCelebration";
 import {
-    initAnalytics,
-    setUserProperties,
-    trackAppOpened,
+  identifyUser,
+  initAnalytics,
+  trackAppOpened,
 } from "@/lib/analytics/mixpanel";
-import { initSentry, sentryWrap } from "@/lib/sentry";
+import { initSentry, SentryErrorBoundary, sentryWrap } from "@/lib/sentry";
+import { AppErrorFallback } from "@/components/shell/AppErrorFallback";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import {
-    focusManager,
-    QueryClient,
-    QueryClientProvider,
+  focusManager,
+  QueryClient,
+  QueryClientProvider,
 } from "@tanstack/react-query";
 // Imported from each weight's own subpath, NOT the package's barrel index
 // — the barrel unconditionally `require()`s every weight (100–900, each
@@ -172,24 +174,34 @@ function RootLayout() {
         .finally(() => {
           fetchFromBackend()
             .then(() => {
-              // Enrich the Mixpanel People record from the freshly-fetched
-              // profile. Login only knows the email (identifyUser at the
-              // AuthScreen is deliberately lean); without this, accounts
-              // that log in — rather than sign up — show up in Mixpanel
-              // with no name/company/verification state, which makes the
-              // People view useless for matching testers to behavior.
-              const { data, workEmailVerified } =
+              // Re-identify against Mixpanel AND Sentry from the freshly-
+              // fetched profile. This runs on every authenticated app
+              // launch, not just fresh login/signup — without it, a
+              // returning user's session carries no identity at all: the
+              // in-memory user_type resets to "unknown" on every cold
+              // start (identifyUser/setSentryUser are otherwise only
+              // called from AuthScreen/the questionnaires), so Mixpanel's
+              // Applicant-vs-Sponsor funnels and Sentry's user attribution
+              // both silently stopped working after the user's first
+              // session. fetchFromBackend() is what populates userId and
+              // userType (via IS_SPONSOR), so this has to live here.
+              const { data, workEmailVerified, userId } =
                 useUserProfileStore.getState();
-              setUserProperties({
-                firstName: data.personal.firstName || undefined,
-                lastName: data.personal.lastName || undefined,
-                email: data.personal.email || undefined,
-                company: data.professional.company || undefined,
-                jobTitle: data.professional.title || undefined,
-                location: data.personal.address.city || undefined,
-                currentRole: data.professional.currentRole || undefined,
-                workEmailVerified,
-              });
+              const { userType } = useOnboardingStore.getState();
+              if (userId && userType) {
+                identifyUser({
+                  userId,
+                  userType,
+                  firstName: data.personal.firstName || undefined,
+                  lastName: data.personal.lastName || undefined,
+                  email: data.personal.email || undefined,
+                  company: data.professional.company || undefined,
+                  jobTitle: data.professional.title || undefined,
+                  location: data.personal.address.city || undefined,
+                  currentRole: data.professional.currentRole || undefined,
+                  workEmailVerified,
+                });
+              }
             })
             .catch((error) => {
               console.warn(
@@ -219,42 +231,61 @@ function RootLayout() {
           <KeyboardProvider>
             <StatusBar style="dark" />
 
-            {/* Main navigation stack for BackChannel */}
-            <Stack initialRouteName="splash">
-              <Stack.Screen name="splash" options={{ headerShown: false }} />
-              <Stack.Screen name="choose-role" options={{ headerShown: false }} />
-              {/* Role-tailored product films — splash → choose-role → intro
+            {/* Main navigation stack for BackChannel. Wrapped (not the whole
+                tree above) so a render crash still falls back inside
+                GestureHandlerRootView/KeyboardProvider/ThemeProvider rather
+                than losing them too — see lib/sentry.ts's SentryErrorBoundary
+                doc comment for why Sentry.wrap alone doesn't catch this. */}
+            <SentryErrorBoundary
+              fallback={({ resetError }) => (
+                <AppErrorFallback resetError={resetError} />
+              )}
+            >
+              <Stack initialRouteName="splash">
+                <Stack.Screen name="splash" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="choose-role"
+                  options={{ headerShown: false }}
+                />
+                {/* Role-tailored product films — splash → choose-role → intro
                   (IntroCinema or SponsorCinema by ?mode=) → onboarding
                   (sign-up; the "10 a day" slides only appear post-signup,
                   on first Home view — see components/ui/HomeIntro.tsx). */}
-              <Stack.Screen name="intro" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              {/* Direct sign-in entry for returning users — skips role
+                <Stack.Screen name="intro" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="onboarding"
+                  options={{ headerShown: false }}
+                />
+                {/* Direct sign-in entry for returning users — skips role
                   selection and the intro film. */}
-              <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-              {/* Legacy alias — redirects into the (tabs) shell, preserving
+                <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+                {/* Legacy alias — redirects into the (tabs) shell, preserving
                   ?tab= / ?mode= params from older navigation call sites. */}
-              <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="(tabs)"
-                options={{
-                  headerShown: false,
-                  // Prevent iOS swipe-back from ever leaving the authenticated
-                  // shell — tab switching happens inside the Tabs navigator.
-                  gestureEnabled: false,
-                }}
-              />
-              {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
-              <Stack.Screen
-                name="verify-email"
-                options={{ headerShown: false }}
-              />
-              {/* Deep-link target for `backchannelv2://reset-password?token=…` */}
-              <Stack.Screen
-                name="reset-password"
-                options={{ headerShown: false }}
-              />
-            </Stack>
+                <Stack.Screen
+                  name="dashboard"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{
+                    headerShown: false,
+                    // Prevent iOS swipe-back from ever leaving the authenticated
+                    // shell — tab switching happens inside the Tabs navigator.
+                    gestureEnabled: false,
+                  }}
+                />
+                {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
+                <Stack.Screen
+                  name="verify-email"
+                  options={{ headerShown: false }}
+                />
+                {/* Deep-link target for `backchannelv2://reset-password?token=…` */}
+                <Stack.Screen
+                  name="reset-password"
+                  options={{ headerShown: false }}
+                />
+              </Stack>
+            </SentryErrorBoundary>
 
             {/* Global toast — overlays all screens */}
             <AppToast />

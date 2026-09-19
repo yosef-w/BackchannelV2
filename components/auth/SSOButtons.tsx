@@ -36,6 +36,12 @@ import {
 } from "@/lib/sso";
 import { authApi, type SsoLoginResponse } from "@/lib/auth-api";
 import { Colors } from "@/constants/theme";
+import {
+  trackSsoCancelled,
+  trackSsoFailed,
+  trackSsoStarted,
+} from "@/lib/analytics/mixpanel";
+import { Sentry } from "@/lib/sentry";
 
 // Lazy/guarded exactly like lib/sso.ts's native calls — this is the
 // PROVIDER'S OWN rendered button (a native view), so importing it eagerly
@@ -116,9 +122,16 @@ export function SSOButtons({ onSuccess, onError, disabled }: SSOButtonsProps) {
   ) => {
     if (loadingProvider || disabled) return;
     setLoadingProvider(provider);
+    trackSsoStarted(provider);
     try {
       const identity = await getIdentity();
-      if (!identity) return; // user cancelled — nothing to report
+      if (!identity) {
+        // User cancelled — nothing to show, but distinct from a real
+        // failure so the funnel can tell "backed out of the sheet" apart
+        // from "the provider errored".
+        trackSsoCancelled(provider);
+        return;
+      }
       const response = await authApi.ssoLogin(
         provider,
         identity.identityToken,
@@ -143,6 +156,15 @@ export function SSOButtons({ onSuccess, onError, disabled }: SSOButtonsProps) {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.warn(`[SSOButtons] ${provider} sign-in failed:`, error);
+      trackSsoFailed(provider, error.message || "unknown");
+      // A real provider/network/backend-exchange failure, not a user
+      // cancel (handled above without reaching this catch) — SSO shipped
+      // 2026-08-25 with device testing only, so this was previously the
+      // one auth path where a broken provider integration would be
+      // invisible in production.
+      Sentry.captureException(error, {
+        tags: { flow: "sso_sign_in", provider },
+      });
       onError?.(error, provider);
     } finally {
       setLoadingProvider(null);

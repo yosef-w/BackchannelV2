@@ -297,7 +297,7 @@ export function SponsorQuestionnaire({
       jobTitle: answers[1] ?? null,
       workEmailVerified: false,
     });
-    trackSignUpSucceeded("sponsor");
+    trackSignUpSucceeded("sponsor", ssoSession ? ssoSession.provider : "email");
     trackOnboardingCompleted("sponsor");
     // Show the first-run Home intro once on their first Home view.
     AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
@@ -384,7 +384,7 @@ export function SponsorQuestionnaire({
     onError: (error: Error) => {
       console.warn("[SponsorQuestionnaire] Registration failed:", error);
       setIsSubmitting(false);
-      trackSignUpFailed("sponsor", error.message || "unknown");
+      trackSignUpFailed("sponsor", error.message || "unknown", "email");
 
       // Handle specific error cases
       const errorMessage = error.message.toLowerCase();
@@ -452,7 +452,11 @@ export function SponsorQuestionnaire({
         error,
       );
       setIsSubmitting(false);
-      trackSignUpFailed("sponsor", error.message || "unknown");
+      trackSignUpFailed(
+        "sponsor",
+        error.message || "unknown",
+        ssoSession?.provider ?? "email",
+      );
       showToast(`Couldn't finish setting up your account: ${error.message}`, "error");
     },
   });

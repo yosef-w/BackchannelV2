@@ -7,6 +7,16 @@
  *     SDK errors are swallowed rather than crashing.
  */
 
+jest.mock("@/lib/analytics/mixpanel", () => ({
+  trackPaywallShown: jest.fn(),
+  trackPurchaseSucceeded: jest.fn(),
+  trackPurchaseFailed: jest.fn(),
+  trackRestorePurchasesRequested: jest.fn(),
+}));
+jest.mock("@/lib/sentry", () => ({
+  Sentry: { captureException: jest.fn() },
+}));
+
 const mockPurchases = {
   setLogLevel: jest.fn(),
   configure: jest.fn(),
@@ -140,13 +150,13 @@ describe("PREMIUM_ENABLED = true", () => {
     mockPurchases.getCustomerInfo.mockResolvedValueOnce(
       activeInfo("Backchannel Pro"),
     );
-    expect(await store().presentPaywall()).toBe(true);
+    expect(await store().presentPaywall("test")).toBe(true);
     expect(store().isPremium).toBe(true);
   });
 
   it("presentPaywall returns false on cancel", async () => {
     mockRCUI.presentPaywall.mockResolvedValueOnce("CANCELLED");
-    expect(await store().presentPaywall()).toBe(false);
+    expect(await store().presentPaywall("test")).toBe(false);
   });
 
   it("reset logs out and clears premium even when logOut throws (anonymous)", async () => {

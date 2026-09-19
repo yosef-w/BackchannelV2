@@ -2594,7 +2594,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 if (isPremium) {
                   await presentCustomerCenter();
                 } else {
-                  await presentPaywall();
+                  await presentPaywall("profile_upgrade_row");
                 }
               } finally {
                 setIsTogglingPremium(false);

@@ -621,7 +621,7 @@ export function ApplicantQuestionnaire({
         lastName: applicantData.lastName ?? null,
         currentRole: answers["currentRole"] ?? null,
       });
-      trackSignUpSucceeded("applicant");
+      trackSignUpSucceeded("applicant", "email");
       // Show the first-run Home intro once on their first Home view.
       AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
       rcIdentifyUser(String(data.user_id));
@@ -646,7 +646,7 @@ export function ApplicantQuestionnaire({
     onError: (error: Error) => {
       console.warn("[ApplicantQuestionnaire] Registration failed:", error);
       setIsSubmitting(false);
-      trackSignUpFailed("applicant", error.message || "unknown");
+      trackSignUpFailed("applicant", error.message || "unknown", "email");
 
       // Handle specific error cases
       const errorMessage = error.message.toLowerCase();
@@ -711,7 +711,7 @@ export function ApplicantQuestionnaire({
         lastName: applicantData.lastName ?? null,
         currentRole: answers["currentRole"] ?? null,
       });
-      trackSignUpSucceeded("applicant");
+      trackSignUpSucceeded("applicant", ssoSession.provider);
       AsyncStorage.setItem(HOME_INTRO_PENDING_KEY, "1").catch(() => {});
       rcIdentifyUser(ssoSession.userId);
 
@@ -736,7 +736,11 @@ export function ApplicantQuestionnaire({
         error,
       );
       setIsSubmitting(false);
-      trackSignUpFailed("applicant", error.message || "unknown");
+      trackSignUpFailed(
+        "applicant",
+        error.message || "unknown",
+        ssoSession?.provider ?? "email",
+      );
       showToast(`Couldn't finish setting up your account: ${error.message}`, "error");
     },
   });

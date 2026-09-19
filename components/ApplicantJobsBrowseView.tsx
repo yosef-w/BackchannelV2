@@ -76,6 +76,14 @@ import { MarketplaceGateModal } from "./jobs/MarketplaceGateModal";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { PREMIUM_ENABLED } from "@/constants/config";
 import { AndroidInputFix, Colors, Fonts, Radii, Type } from "@/constants/theme";
+import {
+  trackApplicantBrowseViewed,
+  trackApplicantJobDetailsOpened,
+  trackApplicantJobSearchPerformed,
+  trackJobLiked,
+  trackJobWaitlistJoined,
+  trackSponsorRequested,
+} from "@/lib/analytics/mixpanel";
 
 function parseSkillsField(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -518,7 +526,19 @@ export function ApplicantJobsBrowseView() {
       setJobs((prev) => (isMore ? [...prev, ...live] : live));
       setTotalCount(response.total_count ?? live.length);
       setShowingSamples(false);
-      if (!isMore) setLoadedQuery({ title, location });
+      if (!isMore) {
+        setLoadedQuery({ title, location });
+        // Only an actual typed search, not the initial empty-query mount
+        // load (that fires trackApplicantBrowseViewed separately below).
+        if (title.trim() || location.trim()) {
+          trackApplicantJobSearchPerformed({
+            queryLength: title.trim().length,
+            hasLocation: location.trim().length > 0,
+            resultCount: response.total_count ?? live.length,
+            usedFallback: false,
+          });
+        }
+      }
     } catch (err) {
       console.warn("[ApplicantJobsBrowseView] Failed to browse jobs:", err);
       if (seq !== searchSeq.current) return;
@@ -536,6 +556,14 @@ export function ApplicantJobsBrowseView() {
         setJobs(mocks);
         setTotalCount(mocks.length);
         setShowingSamples(true);
+        if (title.trim() || location.trim()) {
+          trackApplicantJobSearchPerformed({
+            queryLength: title.trim().length,
+            hasLocation: location.trim().length > 0,
+            resultCount: mocks.length,
+            usedFallback: true,
+          });
+        }
       }
     }
     if (seq === searchSeq.current) {
@@ -546,6 +574,7 @@ export function ApplicantJobsBrowseView() {
 
   // Initial load + waitlist pre-marks.
   useEffect(() => {
+    trackApplicantBrowseViewed();
     loadJobs("", "", 0);
     getWaitlistedJobs()
       .then((res) => {
@@ -586,6 +615,10 @@ export function ApplicantJobsBrowseView() {
     // own outcome never inspected at all.
     if (waitlistRes.status === "fulfilled") {
       setWaitlistedIds((prev) => new Set([...prev, job.JOB_ID]));
+      trackJobWaitlistJoined({ jobId: job.JOB_ID });
+    }
+    if (requestRes.status === "fulfilled") {
+      trackSponsorRequested({ jobId: job.JOB_ID });
     }
 
     if (requestRes.status === "fulfilled" && waitlistRes.status === "fulfilled") {
@@ -630,6 +663,11 @@ export function ApplicantJobsBrowseView() {
     try {
       const response = await likeJob(job.JOB_ID);
       setLikedIds((prev) => new Set([...prev, job.JOB_ID]));
+      trackJobLiked({
+        jobId: job.JOB_ID,
+        isSponsored: true,
+        matched: Boolean(response.matched),
+      });
       // Only the mutual-match case needs its own message — a one-sided
       // like already falls through to the same "Interest sent" copy the
       // likedIds branch below shows on reopen.
@@ -745,10 +783,20 @@ export function ApplicantJobsBrowseView() {
         {/* Sample-data banner — honest about §R until the backend serves
             applicant callers. */}
         {showingSamples && !loading && jobs.length > 0 && (
-          <Animated.View entering={FadeIn}>
+          <Animated.View
+            entering={FadeIn}
+            style={styles.sampleBannerRow}
+          >
             <Text style={styles.sampleBannerText}>
-              Sample listings — live roles are coming soon.
+              You&apos;re offline, or live roles aren&apos;t loading — here
+              are some examples.
             </Text>
+            <TouchableOpacity
+              onPress={() => loadJobs(titleQuery, locationQuery, 0)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.sampleBannerRetry}>Retry</Text>
+            </TouchableOpacity>
           </Animated.View>
         )}
 
@@ -801,6 +849,12 @@ export function ApplicantJobsBrowseView() {
                       // detail sheet gets the whole bottom half.
                       Keyboard.dismiss();
                       setSelectedJob(job);
+                      if (!isMockJob(job)) {
+                        trackApplicantJobDetailsOpened({
+                          jobId: job.JOB_ID,
+                          isSponsored: Boolean(job.IS_SPONSORED),
+                        });
+                      }
                     }}
                   />
                 </Animated.View>
@@ -1008,11 +1062,23 @@ const styles = StyleSheet.create({
     ...AndroidInputFix,
   },
   // Serif-italic footnote — honest, quiet, editorial.
+  sampleBannerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
   sampleBannerText: {
     fontFamily: Fonts.serifItalic,
     fontSize: 13,
     color: Colors.muted,
-    marginTop: 10,
+  },
+  sampleBannerRetry: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.ink,
+    textDecorationLine: "underline",
   },
   centerBlock: {
     alignItems: "center",

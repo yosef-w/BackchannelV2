@@ -49,7 +49,7 @@ export function MarketplaceGateModal({
   const handleUnlock = async () => {
     setPurchasing(true);
     try {
-      const purchased = await presentPaywall();
+      const purchased = await presentPaywall("marketplace_gate");
       if (purchased) {
         onClose();
         // The celebration overlay (global host) is already opening on
