@@ -88,6 +88,7 @@ import { PrivacySecurityScreen } from "./profile/PrivacySecurityScreen";
 import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
 import { PromptsIntake } from "./ui/PromptsIntake";
+import { normalizeLocation } from "@/utils/normalizeLocation";
 import { ApplicantProfileCard } from "./home/ApplicantProfileCard";
 import { cardStyles } from "./home/cardStyles";
 import type {
@@ -654,7 +655,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
   // matching/display (see utils/profileCompletion.ts), so there's no
   // separate street/zip/country to save here.
   const handleSaveLocation = async (value: string) => {
-    const trimmed = value.trim();
+    // Canonical "City, ST" whether this came from a tapped Google
+    // suggestion (long state name) or the manual text field.
+    const trimmed = normalizeLocation(value);
     const [cityPart, statePart] = trimmed.split(",").map((s) => s.trim());
     // City is a required field (profileCompletion.ts's own required set —
     // it's the app's only location matching signal) and this is the one

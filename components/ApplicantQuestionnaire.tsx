@@ -48,6 +48,7 @@ import {
 } from "@/constants/prompts";
 import { SKILLS_BY_INDUSTRY } from "@/constants/skills";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
+import { normalizeLocation } from "@/utils/normalizeLocation";
 import { PromptsIntake } from "./ui/PromptsIntake";
 import {
   identifyUser,
@@ -1018,8 +1019,9 @@ export function ApplicantQuestionnaire({
         const { cdn_url } = await uploadProfileImage(photoForm);
         if (cdn_url) await updateGeneralProfile({ photo_url: cdn_url });
       }
-      if (locationText.trim()) {
-        await updateGeneralProfile({ location: locationText.trim() });
+      const location = normalizeLocation(locationText);
+      if (location) {
+        await updateGeneralProfile({ location });
       }
       await fetchFromBackend();
     })();
@@ -1071,6 +1073,12 @@ export function ApplicantQuestionnaire({
     } else if (isLastQuestion) {
       handleFinalize();
     } else {
+      if (question.type === "location") {
+        // Tidy free text on the way out ("san francisco ca" → "San
+        // Francisco, CA") so the field shows — and later saves — the same
+        // canonical form the Google path produces.
+        setLocationText(normalizeLocation(locationText));
+      }
       setCurrentQuestion((q) => q + 1);
     }
   };
@@ -1455,11 +1463,18 @@ export function ApplicantQuestionnaire({
                         placeholder="e.g., San Francisco"
                         initialValue={locationText}
                         inputStyle={styles.locationInput}
+                        // Typed text counts on its own — a tapped suggestion
+                        // just upgrades it to Google's spelling. Without this,
+                        // an outage left the Continue button dead with no
+                        // explanation, since only onSelect reached this state.
+                        onChangeText={setLocationText}
                         onSelect={(addr) => {
                           const combined = [addr.city, addr.state]
                             .filter(Boolean)
                             .join(", ");
-                          setLocationText(combined || addr.city);
+                          // Google returns the long state name ("California");
+                          // the canonical stored form is "City, ST".
+                          setLocationText(normalizeLocation(combined || addr.city));
                         }}
                         onError={(m) => showToast(m, "error")}
                         onSwitchToManual={() => setLocationManual(true)}

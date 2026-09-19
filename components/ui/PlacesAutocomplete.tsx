@@ -97,6 +97,15 @@ const newSessionToken = () =>
 
 interface PlacesAutocompleteProps {
   onSelect: (address: ParsedAddress) => void;
+  /**
+   * Fires on every keystroke with the raw typed text. Lets the parent
+   * treat what the user typed as a value in its own right — previously
+   * only `onSelect` (tapping a suggestion) ever reached the parent, so
+   * when the Places API was down and no suggestions appeared, a form's
+   * "can continue" check never saw the text and the user was stuck with
+   * no explanation of why.
+   */
+  onChangeText?: (text: string) => void;
   onSwitchToManual?: () => void;
   onError?: (message: string) => void;
   initialValue?: string;
@@ -115,6 +124,7 @@ interface PlacesAutocompleteProps {
 
 export function PlacesAutocomplete({
   onSelect,
+  onChangeText,
   onSwitchToManual,
   onError,
   initialValue = "",
@@ -131,6 +141,10 @@ export function PlacesAutocomplete({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [resolving, setResolving] = useState(false);
+  // The suggestions request itself failed (network down, bad key, quota).
+  // Surfaced inline so the user knows why nothing is appearing instead of
+  // watching an input that silently does nothing.
+  const [serviceError, setServiceError] = useState(false);
   const sessionTokenRef = useRef<string>(newSessionToken());
   const requestIdRef = useRef(0);
   const justSelectedRef = useRef(false);
@@ -197,6 +211,7 @@ export function PlacesAutocomplete({
             await res.text().catch(() => ""),
           );
           setSuggestions([]);
+          setServiceError(true);
           return;
         }
 
@@ -211,10 +226,12 @@ export function PlacesAutocomplete({
             secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
           }));
         setSuggestions(parsed);
+        setServiceError(false);
       } catch (err) {
         if (myRequestId !== requestIdRef.current) return;
         console.warn("Places autocomplete error:", err);
         setSuggestions([]);
+        setServiceError(true);
       } finally {
         if (myRequestId === requestIdRef.current) setLoading(false);
       }
@@ -282,7 +299,10 @@ export function PlacesAutocomplete({
           <TextInput
             style={[styles.input, inputStyle]}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={(text) => {
+              setQuery(text);
+              onChangeText?.(text);
+            }}
             placeholder={placeholder}
             placeholderTextColor={Colors.muted}
             autoFocus={autoFocus}
@@ -327,6 +347,12 @@ export function PlacesAutocomplete({
           </View>
         )}
       </View>
+
+      {serviceError && (
+        <Text style={styles.serviceNotice}>
+          Can’t load suggestions right now — you can type it in manually.
+        </Text>
+      )}
 
       {onSwitchToManual && (
         <TouchableOpacity
@@ -397,6 +423,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.body,
     marginTop: 2,
+  },
+  serviceNotice: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.body,
   },
   manualLink: {
     marginTop: 8,
