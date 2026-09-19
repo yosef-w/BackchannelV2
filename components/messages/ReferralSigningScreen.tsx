@@ -29,7 +29,6 @@ import {
   Alert,
   Dimensions,
   Image,
-  Linking,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -62,6 +61,7 @@ import {
   type PublicProfileResponse,
 } from "@/lib/api";
 import { trackReferralSubmitted } from "@/lib/analytics/mixpanel";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import {
@@ -796,9 +796,7 @@ export function ReferralSigningScreen({
                 {!!portfolioUrl && (
                   <SectionCard title="Portfolio">
                     <TouchableOpacity
-                      onPress={() =>
-                        Linking.openURL(portfolioUrl).catch(() => {})
-                      }
+                      onPress={() => openExternalUrl(portfolioUrl)}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.portfolioLink} numberOfLines={1}>

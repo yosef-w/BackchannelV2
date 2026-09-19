@@ -1,7 +1,7 @@
 import { Check, ExternalLink } from "@/components/ui/icons";
 import { Image } from "expo-image";
 import React from "react";
-import { Linking, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import type { Job } from "@/types/jobs";
 import type { EnrichedSponsorProfile } from "@/types/profiles";
@@ -11,6 +11,7 @@ import { extractDisplayDomain } from "../jobs/jobTransforms";
 import { cardStyles } from "./cardStyles";
 import { ReadSection } from "./plates/ReadSections";
 import { formatExperienceLevelLabel, joinFacts } from "./dossierFacts";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 import { Colors } from "@/constants/theme";
 
 /**
@@ -357,7 +358,7 @@ export function JobCardContent({
             <Text style={cardStyles.hingeSectionLabel}>SOURCE</Text>
             <TouchableOpacity
               style={cardStyles.originalPostingRow}
-              onPress={() => Linking.openURL(currentData.url).catch(() => {})}
+              onPress={() => openExternalUrl(currentData.url)}
               activeOpacity={0.7}
             >
               <ExternalLink size={14} color={Colors.body} strokeWidth={2} />

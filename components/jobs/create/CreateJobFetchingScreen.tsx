@@ -366,10 +366,22 @@ export function CreateJobFetchingScreen({
             setRawCanGoBack(nav.canGoBack);
             setRawCanGoForward(nav.canGoForward);
           }}
+          // Security: the initial URL is validated (isValidUrl) before this
+          // screen ever mounts, but the loaded page can still navigate itself
+          // — a redirect, an ad, or a compromised page — to a non-http(s)
+          // scheme (intent://, custom app schemes, etc.). originWhitelist
+          // alone only restricts the *initial* load on Android; this handler
+          // is what actually blocks in-page navigation on both platforms.
+          onShouldStartLoadWithRequest={(request) =>
+            /^https?:\/\//i.test(request.url)
+          }
+          originWhitelist={["https://*", "http://*"]}
           onMessage={handleMessage}
           javaScriptEnabled
           domStorageEnabled
-          thirdPartyCookiesEnabled
+          // No third-party cookies — this WebView only scrapes public job
+          // postings, it never needs cross-site session state.
+          thirdPartyCookiesEnabled={false}
           allowsBackForwardNavigationGestures={Platform.OS === "ios"}
         />
       </View>

@@ -19,7 +19,6 @@ import {
     ActivityIndicator,
     Dimensions,
     Image,
-    Linking,
       StyleSheet,
     Text,
     TouchableOpacity,
@@ -33,6 +32,7 @@ import {
 } from "../ui/DismissibleSheet";
 import { SkillChips } from "../matches/JobSheetKit";
 import { extractDisplayDomain } from "./jobTransforms";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
@@ -237,7 +237,7 @@ export function JobDetailsModal({
                 </View>
                 <TouchableOpacity
                   style={cardStyles.originalPostingRow}
-                  onPress={() => Linking.openURL(job.url).catch(() => {})}
+                  onPress={() => openExternalUrl(job.url)}
                   activeOpacity={0.7}
                 >
                   <ExternalLink size={14} color={Colors.body} strokeWidth={2} />

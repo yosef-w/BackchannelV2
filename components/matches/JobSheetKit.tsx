@@ -13,7 +13,6 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Image,
-    Linking,
     Share,
     StyleSheet,
     Text,
@@ -28,6 +27,7 @@ import Animated, { FadeIn,
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
 // expo-clipboard's NATIVE module may be missing from the running binary
@@ -312,7 +312,7 @@ export function PosterHero({
       {!!domain && (
         <TouchableOpacity
           style={g.sourceRow}
-          onPress={() => Linking.openURL(sourceUrl!).catch(() => {})}
+          onPress={() => openExternalUrl(sourceUrl)}
           activeOpacity={0.7}
           accessibilityLabel={`View original posting on ${domain}`}
         >
