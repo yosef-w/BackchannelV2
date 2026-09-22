@@ -1,7 +1,8 @@
 import { Check, MessageCircle } from "@/components/ui/icons";
 import { Colors } from "@/constants/theme";
+import { reportUser } from "@/lib/api";
 import { BlurView } from "expo-blur";
-import React from "react";
+import React, { useState } from "react";
 import {
     StyleSheet,
     Text,
@@ -12,11 +13,14 @@ import {
     DismissibleSheet,
     SheetScrollView,
 } from "../ui/DismissibleSheet";
+import { ReportUserSheet } from "../ui/ReportUserSheet";
+import { useToastStore } from "@/stores/useToastStore";
 import {
     BarFooter,
     canvasSheet,
     HostCard,
     PosterHero,
+    QuietAction,
     ReadMoreText,
     SectionCard,
     SkeletonCard,
@@ -87,6 +91,31 @@ export function JobDetailModal({
       ? job.sponsorInfo.name.split(" ")[0]
       : "the sponsor");
 
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const showToast = useToastStore((s) => s.showToast);
+  const sponsorUserId = job?.sponsorInfo.userId;
+
+  const handleSubmitReport = async (
+    reason: Parameters<typeof reportUser>[0]["reason"],
+    detail: string,
+  ) => {
+    if (!sponsorUserId) return;
+    setIsReporting(true);
+    const ok = await reportUser({ reportedUserId: sponsorUserId, reason, detail });
+    setIsReporting(false);
+    setReportSheetOpen(false);
+    if (ok) {
+      showToast("Reported. You won't be shown to each other again.", "success");
+      onClose();
+    } else {
+      showToast(
+        "Couldn't record your report. Please try again later.",
+        "error",
+      );
+    }
+  };
+
   const stats: { label: string; value: string }[] = [];
   if (job) {
     if (job.salary) {
@@ -117,12 +146,13 @@ export function JobDetailModal({
     job.benefits.length === 0;
 
   return (
-    /* Plain View, deliberately NOT a KeyboardAvoidingView: this sheet has
+    <>
+    {/* Plain View, deliberately NOT a KeyboardAvoidingView: this sheet has
        no inputs, and opening it while the thread's keyboard was up made
        the KAV compress the overlay while the sheet kept its full-screen
        height cap — the bottom of the sheet (footer included) was clipped
        OUTSIDE the scroll view, which read as "modal stuck / can't scroll
-       to the rest". Callers with a live keyboard also dismiss it. */
+       to the rest". Callers with a live keyboard also dismiss it. */}
     <View style={modalStyles.modalOverlay}>
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
@@ -219,7 +249,21 @@ export function JobDetailModal({
                     ? { label: "Matched with you" }
                     : undefined
                 }
-              />
+              >
+                {/* Only when there's an actual sponsor id to report AND the
+                    viewer isn't the insider themself (messageName is set
+                    when the viewer IS the sponsor looking at their own
+                    posting — "Report yourself" makes no sense there). */}
+                {!!sponsorUserId && !messageName && (
+                  <View style={{ marginTop: 12, alignItems: "center" }}>
+                    <QuietAction
+                      label={`Report ${counterpartFirstName}`}
+                      destructive
+                      onPress={() => setReportSheetOpen(true)}
+                    />
+                  </View>
+                )}
+              </HostCard>
 
               {/* Journey — liked → matched → chat. Only for liked jobs
                   (layered contexts carry their own action via cta). */}
@@ -290,6 +334,15 @@ export function JobDetailModal({
         )}
       </DismissibleSheet>
     </View>
+
+    <ReportUserSheet
+      visible={reportSheetOpen}
+      reportedName={counterpartFirstName}
+      isSubmitting={isReporting}
+      onSubmit={handleSubmitReport}
+      onClose={() => setReportSheetOpen(false)}
+    />
+    </>
   );
 }
 

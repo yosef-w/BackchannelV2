@@ -987,6 +987,12 @@ return (
               }
             : undefined
         }
+        // This thread already has its own Report entry (the header's •••
+        // menu → ThreadMenuSheet), which is conversation-aware — it closes
+        // THIS thread and moves it to Past Connections. A second report
+        // action here would just call reportUser() with no conversationId,
+        // leaving that thread-specific bookkeeping undone.
+        showReportAction={false}
       />
     )}
 
