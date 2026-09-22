@@ -51,6 +51,15 @@ export async function initAnalytics(): Promise<void> {
   initPromise = (async () => {
     try {
       await mixpanel.init();
+      // Off by default in this app. The SDK's default (on) has Mixpanel's
+      // ingest derive an approximate location — city/region/country — from
+      // every event's IP address and stamp it on the event and the
+      // person profile. We never asked for that, it isn't in the privacy
+      // policy or the App Store privacy manifest, and it would have had to
+      // be declared as "Coarse Location, linked to you". The profile's
+      // `location` prop (the city the user typed, set in identifyUser) is
+      // the only location analytics carries.
+      mixpanel.setUseIpAddressForGeolocation(false);
       initialized = true;
     } catch (err) {
       // Init failures shouldn't break the app — analytics will simply no-op.

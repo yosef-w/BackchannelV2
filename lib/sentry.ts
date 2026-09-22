@@ -65,11 +65,16 @@ export function initSentry(): void {
     // Light performance sampling — enough to spot slow screens during the
     // beta without burning quota.
     tracesSampleRate: 0.2,
-    // A screenshot of the screen at the moment of an unhandled error —
-    // no more sensitive than what the user already sees rendered, and
-    // often the fastest way to tell "which screen, what state" without
-    // guessing from a stack trace alone.
-    attachScreenshot: true,
+    // NO screenshot on error. It was on ("no more sensitive than what the
+    // user already sees rendered") — but what the user sees rendered is
+    // routinely someone ELSE's data: a chat thread, another user's photo
+    // and name, a résumé preview, the email/password fields in Privacy &
+    // Security. Uploading that to a third party on every unhandled error
+    // contradicts sendDefaultPii:false above, wasn't disclosed in the
+    // privacy policy, and is exactly what would read worst in a breach
+    // postmortem. The stack trace + breadcrumbs (screen name, endpoint,
+    // status — lib/api.ts) still say "which screen, what state".
+    attachScreenshot: false,
   });
 }
 
