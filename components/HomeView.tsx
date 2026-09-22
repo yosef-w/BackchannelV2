@@ -25,6 +25,7 @@ import {
   likeProfile,
   recordJobFeedAction,
   recordProfileFeedAction,
+  reportUser,
   requestSponsorForJob,
 } from "@/lib/api";
 import {
@@ -46,8 +47,10 @@ import {
   Briefcase,
   ChevronDown,
   ChevronRight,
+  Flag,
   RefreshCcw,
 } from "@/components/ui/icons";
+import { hitSlopTo44 } from "@/lib/responsive";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
@@ -99,6 +102,7 @@ import { SkeletonCard } from "./home/SkeletonCard";
 import { WorkEmailVerificationModal } from "./home/WorkEmailVerificationModal";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
+import { ReportUserSheet } from "./ui/ReportUserSheet";
 import { ScreenContainer } from "./ui/ScreenContainer";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
@@ -339,6 +343,13 @@ export function HomeView({
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showFullBio, setShowFullBio] = useState(false);
 
+  // Report — the small flag button floating over the card (see cardStage's
+  // render below). Reporting also blocks server-side, so a successful
+  // report advances the deck the same way a Pass does (handleSwipe(false))
+  // instead of leaving the reported card sitting there.
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+
   // Profile completion state
   const [showProfileCompletionModal, setShowProfileCompletionModal] =
     useState(false);
@@ -506,6 +517,22 @@ export function HomeView({
       ? (currentData as Job)?.id
       : (currentData as ProfileDeckCard)?.USER_ID ||
         (currentData as ProfileDeckCard)?.id
+    : null;
+  // Who the floating Report button (cardStage's render below) reports —
+  // the applicant behind the card (sponsor viewing) or the job's sponsor
+  // (applicant viewing). Nulls out to hide the button entirely rather than
+  // rendering one that can't actually report anyone (e.g. a sponsored job
+  // whose sponsor id hasn't loaded yet).
+  const reportTarget = currentData
+    ? userType === "applicant"
+      ? {
+          userId: (currentData as Job)?.sponsorInfo?.userId,
+          name: (currentData as Job)?.sponsorInfo?.name || "this sponsor",
+        }
+      : {
+          userId: (currentData as ProfileDeckCard)?.USER_ID,
+          name: (currentData as ProfileDeckCard)?.name || "this person",
+        }
     : null;
   // "Skim & Dive" plates for the current card (PLATES_ENABLED) — derived
   // from the same data the full read renders, so skim and dive never disagree.
@@ -1017,6 +1044,32 @@ export function HomeView({
     // profile change, not when the function identity churns.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, userType]);
+
+  const handleSubmitReport = async (
+    reason: Parameters<typeof reportUser>[0]["reason"],
+    detail: string,
+  ) => {
+    if (!reportTarget?.userId) return;
+    setIsReporting(true);
+    const ok = await reportUser({
+      reportedUserId: String(reportTarget.userId),
+      reason,
+      detail,
+    });
+    setIsReporting(false);
+    setReportSheetOpen(false);
+    if (ok) {
+      showToast("Reported. You won't be shown to each other again.", "success");
+      // Reporting also blocks server-side — advance off this card the same
+      // way Pass does, rather than leaving it sitting on screen.
+      handleSwipe(false);
+    } else {
+      showToast(
+        "Couldn't record your report. Please try again later.",
+        "error",
+      );
+    }
+  };
 
   const handleSwipe = async (isAccept: boolean) => {
     // Check profile completeness for applicants before any swipe action (unless they're a tester).
@@ -2174,6 +2227,30 @@ export function HomeView({
                 )}
               </Animated.View>
 
+              {/* Report — floats above the card as its own layer (a later
+                  sibling in cardStage, so it paints on top) rather than
+                  living inside PlateDeck/PlateView's tap-zone Pressables.
+                  Deliberately NOT touching that gesture code: the plate row
+                  advances on a right-two-thirds tap and reverses on a
+                  left-third tap, and a small fixed-position button here
+                  intercepts its own taps before they ever reach that
+                  Pressable underneath, with zero risk of shifting the
+                  advance/reverse boundary. Hidden during the "already
+                  liked" dimmed state — that overlay's own Continue button
+                  is the only interactive thing then. */}
+              {!!reportTarget?.userId && !isAlreadyLiked && (
+                <TouchableOpacity
+                  style={styles.reportFlagBtn}
+                  onPress={() => setReportSheetOpen(true)}
+                  activeOpacity={0.75}
+                  hitSlop={hitSlopTo44(32, 32)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Report ${reportTarget.name}`}
+                >
+                  <Flag size={14} color={Colors.paper} strokeWidth={2.25} />
+                </TouchableOpacity>
+              )}
+
               {stamp && <DecisionStamp label={stamp} />}
 
               {isAlreadyLiked ? (
@@ -2412,6 +2489,14 @@ export function HomeView({
         userType={userType}
         onDone={handleIntroDone}
       />
+
+      <ReportUserSheet
+        visible={reportSheetOpen}
+        reportedName={reportTarget?.name || "this person"}
+        isSubmitting={isReporting}
+        onSubmit={handleSubmitReport}
+        onClose={() => setReportSheetOpen(false)}
+      />
     </View>
   );
 }
@@ -2436,6 +2521,23 @@ const styles = StyleSheet.create({
   // exactly the card area below the header, so an absoluteFillObject
   // overlay inside it never bleeds over the header/progress bar.
   cardStage: { flex: 1 },
+  // Small dark scrim circle so a white Flag icon reads against ANY plate
+  // background (photo, dark plate, light plate) — same reasoning as a
+  // video player's overlay controls, not the app's usual light-glass
+  // chrome, since this has to sit on top of unpredictable card content
+  // rather than the page background.
+  reportFlagBtn: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 3,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(10,10,10,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   // The fade/translate wrapper around the active profile scroll. Drives
   // the cross-fade between deck entries via `mainAnimatedStyle` — which
   // also folds in the "already liked" dimmed-opacity look (see the comment
