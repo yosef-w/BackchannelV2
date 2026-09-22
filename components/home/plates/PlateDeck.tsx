@@ -204,6 +204,16 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
   // ── the read's section registry (ReadSections) ─────────────────────
   // Sections report their offsets as they lay out; a plate's cue scrolls
   // straight to its target section and flashes its landing hairline.
+  //
+  // Each ReadSection's onLayout `y` is relative to its own immediate
+  // parent — which is the <ScreenContainer> column below, NOT the
+  // ScrollView's content. That column's own onLayout `y` (captured here)
+  // IS relative to the ScrollView (it's a direct child of it), so it's
+  // exactly the piece missing from every section's reported position:
+  // the height of the plate carousel above it. Without adding it back,
+  // goToSection under-shoots by that entire amount — the scroll starts,
+  // but stops well short of the tapped section.
+  const readColumnOffsetRef = useRef(0);
   const sectionsRef = useRef(new Map<SectionId, { y: number; label: string }>());
   const [flashId, setFlashId] = useState<SectionId | null>(null);
   const register = useCallback((id: SectionId, y: number, label: string) => {
@@ -221,7 +231,10 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
     (id: SectionId) => {
       const entry = id === "top" ? undefined : sectionsRef.current.get(id);
       const y = entry
-        ? Math.max(0, entry.y - ANCHOR_HEIGHT - 10)
+        ? Math.max(
+            0,
+            readColumnOffsetRef.current + entry.y - ANCHOR_HEIGHT - 10,
+          )
         : Math.max(0, rowHeightRef.current - 4);
       scrollRef.current?.scrollTo({ y, animated: true });
       if (entry) {
@@ -347,8 +360,15 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
         {/* The full read runs at normal (padded) width already — this only
             matters on iPad, where that padded width is still ~130
             characters wide. Cap it to a real reading column, same as any
-            other feed screen (lib/responsive's ScreenContainer). */}
-        <ScreenContainer variant="content">
+            other feed screen (lib/responsive's ScreenContainer).
+            onLayout here feeds readColumnOffsetRef — see its comment by
+            the section registry above for why goToSection needs it. */}
+        <ScreenContainer
+          variant="content"
+          onLayout={(e) => {
+            readColumnOffsetRef.current = e.nativeEvent.layout.y;
+          }}
+        >
           <View style={s.readHead}>
             <Text style={s.readEyebrow}>THE FULL READ</Text>
             <Text style={s.readTitle}>
