@@ -184,6 +184,17 @@ export function FloatingTabBar({
   const [layoutTick, setLayoutTick] = useState(0);
 
   const handleTabMeasured = (name: string, x: number, width: number) => {
+    // `onLayout` isn't guaranteed to fire only when a tab's position
+    // genuinely changes — a re-render can trigger a redundant layout pass
+    // that reports the same (or a fractionally different, floating-point-
+    // noise) x/width. Bumping layoutTick unconditionally used to re-run the
+    // effect below every time, which could re-fire `withSpring` toward a
+    // target it was already at (or a hair off it) — invisible on its own,
+    // but stacked across several tabs re-measuring in the same frame it
+    // reads as the indicator jittering/re-settling instead of making one
+    // clean move. Only treat this as a real change worth reacting to.
+    const prev = layoutsRef.current[name];
+    if (prev && prev.x === x && prev.width === width) return;
     layoutsRef.current[name] = { x, width };
     setLayoutTick((t) => t + 1);
   };
@@ -195,7 +206,15 @@ export function FloatingTabBar({
       indicatorX.value = layout.x;
       indicatorWidth.value = layout.width;
       measuredOnceRef.current = true;
-    } else {
+    } else if (
+      indicatorX.value !== layout.x ||
+      indicatorWidth.value !== layout.width
+    ) {
+      // Second guard, at the point of animating: even if handleTabMeasured
+      // let a tick through (a genuinely NEW measurement for some tab), only
+      // spring the indicator if that measurement actually moved it from
+      // where it currently sits — e.g. a non-active tab re-measuring
+      // shouldn't retarget an already-correctly-placed indicator.
       indicatorX.value = withSpring(layout.x, INDICATOR_SPRING);
       indicatorWidth.value = withSpring(layout.width, INDICATOR_SPRING);
     }
