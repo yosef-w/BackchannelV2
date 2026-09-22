@@ -1070,16 +1070,19 @@ export function MessagesView({
   });
 
   useEffect(() => {
-    // In split (master-detail) mode the inbox list stays visible beside the
-    // open thread — the user hasn't "left" it the way the phone's
-    // full-screen push does — so the floating tab bar should stay up too.
-    // Only the non-split, phone-style full-screen thread hides it.
-    onThreadActiveChange?.(!isSplit && Boolean(selectedConversation));
+    // Hides the floating tab bar whenever a thread is open — including in
+    // split (master-detail) mode. An earlier version kept it up in split
+    // mode on the theory that the inbox is still visible alongside the
+    // thread, but the bar floats centered across the WHOLE window, not
+    // just the master pane, so on iPad it sat directly on top of the
+    // composer's text input with no clearance for it anywhere. Simplest
+    // correct fix: match the iPhone behavior exactly on every width.
+    onThreadActiveChange?.(Boolean(selectedConversation));
     if (selectedConversation) {
       setTimeout(() => scrollToBottom(false), 100);
     }
     return () => onThreadActiveChange?.(false);
-  }, [selectedConversation, isSplit]);
+  }, [selectedConversation]);
 
   // Refetch the list when the user backs out of a thread to the inbox.
   // The inbox socket already keeps previews live; this is a cheap, instant
