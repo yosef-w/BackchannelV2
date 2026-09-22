@@ -31,10 +31,11 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  Easing,
   FadeIn,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { useShell } from "./ShellContext";
 import { Colors } from "@/constants/theme";
@@ -139,9 +140,16 @@ type FloatingTabBarProps = BottomTabBarProps & {
   badges?: Partial<Record<string, number>>;
 };
 
-// Matches DismissibleSheet's settle spring — one motion language for the
-// whole app rather than a bespoke feel per component.
-const INDICATOR_SPRING = { damping: 20, stiffness: 220 };
+// A plain eased slide, not a spring — a spring here read as bouncy/
+// overshooting (worse the further the indicator has to travel, which
+// varies with the tab bar's width), where the DismissibleSheet's settle
+// spring it originally matched is a physical, damped motion for a much
+// bigger, weightier surface. Deliberately its own, calmer motion
+// language: a fixed-duration ease-out that just glides to the target with
+// no bounce, so it looks and feels identical regardless of distance,
+// device, or display refresh rate.
+const INDICATOR_DURATION_MS = 240;
+const INDICATOR_EASING = Easing.out(Easing.cubic);
 
 export function FloatingTabBar({
   state,
@@ -212,11 +220,15 @@ export function FloatingTabBar({
     ) {
       // Second guard, at the point of animating: even if handleTabMeasured
       // let a tick through (a genuinely NEW measurement for some tab), only
-      // spring the indicator if that measurement actually moved it from
+      // animate the indicator if that measurement actually moved it from
       // where it currently sits — e.g. a non-active tab re-measuring
       // shouldn't retarget an already-correctly-placed indicator.
-      indicatorX.value = withSpring(layout.x, INDICATOR_SPRING);
-      indicatorWidth.value = withSpring(layout.width, INDICATOR_SPRING);
+      const timingConfig = {
+        duration: INDICATOR_DURATION_MS,
+        easing: INDICATOR_EASING,
+      };
+      indicatorX.value = withTiming(layout.x, timingConfig);
+      indicatorWidth.value = withTiming(layout.width, timingConfig);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItem?.name, layoutTick]);
