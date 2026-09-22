@@ -2,11 +2,11 @@ import { BlurView } from "expo-blur";
 import { Briefcase, X } from "@/components/ui/icons";
 import React from "react";
 import {
-  Dimensions,
   Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -14,6 +14,7 @@ import {
   SheetScrollView,
 } from "../ui/DismissibleSheet";
 import { Colors, Radii, Type } from "@/constants/theme";
+import { hitSlopTo44, sheetMaxHeight } from "@/lib/responsive";
 
 interface JobDescriptionModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export function JobDescriptionModal({
   company,
   description,
 }: JobDescriptionModalProps) {
+  const { height: windowHeight } = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
@@ -55,9 +57,11 @@ export function JobDescriptionModal({
             borderTopRightRadius: Radii.xl,
             paddingTop: 12,
             paddingBottom: 40,
-            // Absolute px — a % here resolves against DismissibleSheet's
-            // content-sized gesture-root wrapper and collapses.
-            maxHeight: Dimensions.get("window").height * 0.5,
+            // Live window height — a % here resolves against
+            // DismissibleSheet's content-sized gesture-root wrapper and
+            // collapses; a frozen Dimensions.get() snapshot never
+            // re-measures after a rotation or Stage Manager resize.
+            maxHeight: sheetMaxHeight(windowHeight, 0.5),
           }}
         >
         {/* Header */}
@@ -117,6 +121,7 @@ export function JobDescriptionModal({
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Close"
+            hitSlop={hitSlopTo44(36, 36)}
           >
             <X color={Colors.body} size={18} />
           </TouchableOpacity>

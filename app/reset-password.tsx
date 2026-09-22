@@ -24,6 +24,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -37,6 +38,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 type Status = "form" | "missingToken" | "success";
 
@@ -123,7 +125,11 @@ export default function ResetPasswordRoute() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+        <ScreenContainer variant="form" style={styles.content}>
           {status === "form" && (
             <View style={styles.center}>
               <View style={styles.iconCircle}>
@@ -224,7 +230,8 @@ export default function ResetPasswordRoute() {
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </ScreenContainer>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -233,6 +240,10 @@ export default function ResetPasswordRoute() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.paper },
   flex: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
   // Full-bleed container for BroadcastMoment (it manages its own
   // centering) with the CTA beneath its caption zone.

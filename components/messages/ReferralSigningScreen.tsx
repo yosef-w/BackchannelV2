@@ -25,9 +25,9 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Alert,
-  Dimensions,
   Image,
   Modal,
   SafeAreaView,
@@ -74,9 +74,9 @@ import {
 } from "../matches/JobSheetKit";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import type { Conversation } from "../MessagesView";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
-const { width: SCREEN_W } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /** Shown once (AsyncStorage-flagged), replayable via the header's ⓘ. */
@@ -218,6 +218,19 @@ function HoldToSign({
         }}
         accessibilityRole="button"
         accessibilityLabel="Hold to sign and submit the referral"
+        // A VoiceOver/Switch Control "activate" (double-tap / switch select)
+        // normally synthesizes a near-instant press-in + press-out, which
+        // would abort the 1.2s hold every single time. Naming a custom
+        // action "activate" overrides that default gesture — VoiceOver and
+        // Switch Control invoke this handler directly instead of simulating
+        // a touch, so it goes straight to the exact same completion path
+        // (`finish`) a successful hold uses, with no duplicated logic.
+        accessibilityActions={[
+          { name: "activate", label: "Sign and submit the referral" },
+        ]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === "activate") finish();
+        }}
       >
         <Animated.View style={[holdStyles.button, pressScale]}>
           <Svg
@@ -300,6 +313,12 @@ export function ReferralSigningScreen({
   const [introSeen, setIntroSeen] = useState<boolean | null>(null);
   const [introFrame, setIntroFrame] = useState(0);
   const introPagerRef = useRef<ScrollView>(null);
+  // The pager's ACTUAL measured width — not the window's (same fix as
+  // Onboarding.tsx's pager). iPad rotation, Split View and Stage Manager
+  // can all resize this mid-session; a launch-time Dimensions.get snapshot
+  // would silently desync the frame width, the index math below, and the
+  // scrollTo targets from the pager's real size.
+  const [pagerWidth, setPagerWidth] = useState(0);
   const [statementIndex, setStatementIndex] = useState(0);
   const [stamped, setStamped] = useState(false);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
@@ -318,12 +337,51 @@ export function ReferralSigningScreen({
   // part of the submit response). Best-effort: the receipt already shows
   // without it, and PacketCard hides the row while it's empty.
   const [applicantEmail, setApplicantEmail] = useState<string | null>(null);
+  // §7 accessibility fix — a screen reader's "activate" gesture is now
+  // wired directly to the same completion handler as a successful hold
+  // (see HoldToSign's accessibilityActions above), so this is now a
+  // belt-and-suspenders fallback: if VoiceOver/TalkBack is on, skip
+  // straight to the plain "Sign & Submit" button instead of waiting for
+  // FALLBACK_AFTER_ABORTS failed holds first.
+  const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(INTRO_SEEN_KEY)
       .then((v) => setIntroSeen(v === "1"))
       .catch(() => setIntroSeen(true));
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isScreenReaderEnabled()
+      .then((enabled) => {
+        if (alive) setScreenReaderEnabled(enabled);
+      })
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener(
+      "screenReaderChanged",
+      (enabled) => setScreenReaderEnabled(enabled),
+    );
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, []);
+
+  // Re-sync the intro pager's scroll offset whenever its measured width
+  // changes (first layout, then any later rotation/Split View/Stage
+  // Manager resize) so it never sits mid-frame after the container's width
+  // shifts under it — same reasoning as Onboarding.tsx's pager.
+  useEffect(() => {
+    if (pagerWidth > 0 && act === "intro") {
+      introPagerRef.current?.scrollTo({
+        x: introFrame * pagerWidth,
+        y: 0,
+        animated: false,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagerWidth]);
 
   // Fresh state each open; first-timers start on the intro frames.
   useEffect(() => {
@@ -539,6 +597,7 @@ export function ReferralSigningScreen({
       visible={visible}
       animationType="slide"
       onRequestClose={handleRequestClose}
+      supportedOrientations={["portrait", "landscape"]}
     >
       <View style={[styles.root, dark && styles.rootDark]}>
         <SafeAreaView style={styles.safe}>
@@ -563,7 +622,8 @@ export function ReferralSigningScreen({
                   }
                 }}
                 disabled={submitting}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                // Icon-only, ~20-22pt — pad up to the 44pt minimum.
+                hitSlop={hitSlopTo44(22, 22)}
                 accessibilityLabel={
                   act === "vouch" || act === "sign" ? "Back" : "Close"
                 }
@@ -592,7 +652,8 @@ export function ReferralSigningScreen({
                     introPagerRef.current?.scrollTo({ x: 0, animated: false });
                     setAct("intro");
                   }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  // Icon-only, 18pt — pad up to the 44pt minimum.
+                  hitSlop={hitSlopTo44(18, 18)}
                   accessibilityLabel="About referrals"
                 >
                   <Info size={18} color={Colors.muted} strokeWidth={2.2} />
@@ -611,27 +672,33 @@ export function ReferralSigningScreen({
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) =>
+                onLayout={(e) => setPagerWidth(e.nativeEvent.layout.width)}
+                onMomentumScrollEnd={(e) => {
+                  if (!pagerWidth) return;
                   setIntroFrame(
-                    Math.round(e.nativeEvent.contentOffset.x / SCREEN_W),
-                  )
-                }
+                    Math.round(e.nativeEvent.contentOffset.x / pagerWidth),
+                  );
+                }}
                 style={{ flex: 1 }}
               >
-                {INTRO_FRAMES.map((f) => {
-                  const FrameIcon = f.icon;
-                  return (
-                    <View key={f.title} style={styles.introFrame}>
-                      <View style={styles.introIconTile}>
-                        <FrameIcon size={34} color={Colors.ink} strokeWidth={2} />
+                {pagerWidth > 0 &&
+                  INTRO_FRAMES.map((f) => {
+                    const FrameIcon = f.icon;
+                    return (
+                      <View
+                        key={f.title}
+                        style={[styles.introFrame, { width: pagerWidth }]}
+                      >
+                        <View style={styles.introIconTile}>
+                          <FrameIcon size={34} color={Colors.ink} strokeWidth={2} />
+                        </View>
+                        <Text style={styles.introTitle}>{f.title}</Text>
+                        <Text style={styles.introBody}>
+                          {f.body(firstName)}
+                        </Text>
                       </View>
-                      <Text style={styles.introTitle}>{f.title}</Text>
-                      <Text style={styles.introBody}>
-                        {f.body(firstName)}
-                      </Text>
-                    </View>
-                  );
-                })}
+                    );
+                  })}
               </ScrollView>
               <View style={styles.introDots}>
                 {INTRO_FRAMES.map((_, i) => (
@@ -654,7 +721,7 @@ export function ReferralSigningScreen({
                       const next = introFrame + 1;
                       setIntroFrame(next);
                       introPagerRef.current?.scrollTo({
-                        x: next * SCREEN_W,
+                        x: next * pagerWidth,
                         animated: true,
                       });
                     } else {
@@ -825,7 +892,18 @@ export function ReferralSigningScreen({
               entering={SlideInRight.duration(240)}
               style={styles.body}
             >
-              <View style={styles.statementWrap}>
+              {/* Wrapped in a ScrollView (rather than a fixed centered
+                  flex:1 View) so large Dynamic Type or a short window
+                  (landscape on a smaller iPad, Stage Manager) can scroll
+                  instead of clipping. flexGrow:1 + justifyContent:"center"
+                  on the content keeps today's vertical-centering look at
+                  normal sizes, where the content never exceeds the
+                  viewport. */}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.statementScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
                 <View style={styles.statementIconTile}>
                   <StatementIcon size={24} color={Colors.ink} strokeWidth={2.2} />
                 </View>
@@ -840,7 +918,7 @@ export function ReferralSigningScreen({
                     <Check size={34} color={Colors.paper} strokeWidth={3.5} />
                   </Animated.View>
                 )}
-              </View>
+              </ScrollView>
               <View style={styles.footer}>
                 <PillButton
                   label="I stand behind this"
@@ -862,7 +940,14 @@ export function ReferralSigningScreen({
           {/* ── ACT 3: The signature — the app's one dark screen ── */}
           {act === "sign" && (
             <Animated.View entering={FadeIn.duration(350)} style={styles.body}>
-              <View style={styles.signWrap}>
+              {/* Same ScrollView-wrap reasoning as the vouch act above — a
+                  fixed centered flex:1 stack can clip at large Dynamic Type
+                  or in a short landscape/Stage Manager window. */}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.signScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={styles.signLead}>
                   You&apos;re putting your name on this.
                 </Text>
@@ -899,7 +984,8 @@ export function ReferralSigningScreen({
                       onComplete={handleSubmit}
                       onAbort={() => setSignAborts((n) => n + 1)}
                     />
-                    {signAborts >= FALLBACK_AFTER_ABORTS && (
+                    {(screenReaderEnabled ||
+                      signAborts >= FALLBACK_AFTER_ABORTS) && (
                       <Animated.View
                         entering={FadeInDown}
                         style={{ marginTop: 22, alignSelf: "stretch" }}
@@ -913,7 +999,7 @@ export function ReferralSigningScreen({
                     )}
                   </>
                 )}
-              </View>
+              </ScrollView>
             </Animated.View>
           )}
 
@@ -1002,8 +1088,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   // ── Intro ──
+  // width is applied inline per-frame from the pager's measured
+  // `pagerWidth` (see the render), not a static/window value.
   introFrame: {
-    width: SCREEN_W,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 36,
@@ -1136,8 +1223,12 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
   // ── Vouch ──
-  statementWrap: {
-    flex: 1,
+  // Content container for the ScrollView wrapping this act (was a fixed
+  // flex:1 View — see the render). flexGrow:1 keeps it centered exactly
+  // like before at normal sizes, while allowing scroll when content grows
+  // past the viewport (large Dynamic Type, short landscape window).
+  statementScrollContent: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
@@ -1169,8 +1260,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   // ── Sign ──
-  signWrap: {
-    flex: 1,
+  // Same ScrollView-content-container treatment as statementScrollContent
+  // above.
+  signScrollContent: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 28,

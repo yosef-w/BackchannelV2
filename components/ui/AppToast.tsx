@@ -1,6 +1,14 @@
 import { CheckCircle, Info, XCircle } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import {
+  AccessibilityInfo,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Layout } from "@/lib/responsive";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   FadeInDown,
@@ -37,6 +45,7 @@ function ToastIcon({ variant }: { variant: string }) {
 
 export function AppToast() {
   const { visible, message, variant, hideToast } = useToastStore();
+  const insets = useSafeAreaInsets();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,6 +74,12 @@ export function AppToast() {
       } else {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
+
+      // VoiceOver/TalkBack never otherwise learn a toast appeared — it's
+      // not a live region and isn't focused. This was the app's only
+      // channel for many errors ("Couldn't open mail", failed saves) and
+      // was completely silent to screen-reader users.
+      AccessibilityInfo.announceForAccessibility(message);
 
       // Auto-dismiss after AUTO_DISMISS_MS
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -120,35 +135,65 @@ export function AppToast() {
   if (!shouldRender) return null;
 
   return (
-    <GestureDetector gesture={pan}>
-      <Animated.View
-        entering={FadeInDown.duration(300)}
-        exiting={FadeOutUp.duration(250)}
-        style={[styles.container, dragStyle]}
-      >
-        <ToastIcon variant={variant} />
-        <Text style={styles.message} numberOfLines={3}>
-          {message}
-        </Text>
-        <TouchableOpacity
-          onPress={hideToast}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.dismissBtn}
+    // Outer wrapper spans the full width and centers its child — this is
+    // what actually lets the capped inner card center on a wide screen.
+    // (A single view can't combine absolute `left`/`right` insets with a
+    // `maxWidth` cap and expect centering: once both `left` and `right`
+    // are set, RN/Yoga uses them to pin BOTH edges and derive the width
+    // directly, so a maxWidth clamp shrinks the box but leaves it pinned
+    // to the left edge instead of centering it — `alignSelf` has no effect
+    // once both edges are already pinned. Centering an absolutely
+    // positioned box requires a separate positioning parent.)
+    <View
+      style={[styles.wrapper, { top: insets.top + 12 }]}
+      pointerEvents="box-none"
+    >
+      <GestureDetector gesture={pan}>
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          exiting={FadeOutUp.duration(250)}
+          // accessible + a11y role: the swipe-to-dismiss card is otherwise
+          // just an unlabeled row to a screen reader.
+          accessible
+          accessibilityRole="alert"
+          accessibilityLabel={message}
+          style={[styles.container, dragStyle]}
         >
-          <Text style={styles.dismissText}>Dismiss</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </GestureDetector>
+          <ToastIcon variant={variant} />
+          <Text style={styles.message} numberOfLines={3}>
+            {message}
+          </Text>
+          <TouchableOpacity
+            onPress={hideToast}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.dismissBtn}
+          >
+            <Text style={styles.dismissText}>Dismiss</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </GestureDetector>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  // Full-width positioning layer — top set inline (insets.top + 12) — was a
+  // hardcoded 60, which sat over the TopBar on an iPad (shorter status bar,
+  // no notch) and ignored the Dynamic Island on newer iPhones.
+  wrapper: {
     position: "absolute",
-    top: 60,
-    left: 16,
-    right: 16,
+    left: 0,
+    right: 0,
     zIndex: 9999,
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  container: {
+    // Width-capped: was left/right:16 with no cap, so a ~1000pt banner with
+    // centered text on a 13" iPad. `width` (not maxWidth) lets it shrink to
+    // the 16pt gutters on a phone via the wrapper's paddingHorizontal.
+    width: "100%",
+    maxWidth: Layout.toastMaxWidth,
     backgroundColor: Colors.ink,
     borderRadius: 16,
     paddingVertical: 14,

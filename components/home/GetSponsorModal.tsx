@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { Colors, Fonts, Radii, Type } from "@/constants/theme";
+import { sheetColumn } from "@/lib/responsive";
 
 interface GetSponsorModalProps {
   visible: boolean;
@@ -128,6 +129,11 @@ export function GetSponsorModal({
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   sheet: {
+    // Capped + centered (sheetColumn) — this sheet doesn't go through
+    // DismissibleSheet (its own gesture-root wrapper carries the cap for
+    // every other bottom sheet), so it needs its own or it spans the full
+    // 744–1376pt iPad window edge to edge.
+    ...sheetColumn,
     backgroundColor: Colors.paper,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,

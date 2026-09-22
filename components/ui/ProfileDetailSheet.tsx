@@ -28,21 +28,20 @@ import {
 } from "@/components/matches/JobSheetKit";
 import React, { useEffect, useState } from "react";
 import {
-  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { DismissibleSheet, SheetScrollView } from "./DismissibleSheet";
 import { Colors, Radii } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { sheetMaxHeight } from "@/lib/responsive";
 
 export interface ProfileDetailSheetProps {
   visible: boolean;
@@ -150,6 +149,13 @@ export function ProfileDetailSheet({
     null,
   );
   const [loading, setLoading] = useState(false);
+  // LIVE window height — a module-level Dimensions.get() snapshot froze at
+  // launch and never re-measured after a rotation or Stage Manager resize.
+  const { height: windowHeight } = useWindowDimensions();
+  const dynamicSheet: ViewStyle = {
+    minHeight: windowHeight * 0.65,
+    maxHeight: sheetMaxHeight(windowHeight, 0.9),
+  };
 
   // Re-fetch on every open so stale data doesn't linger across separate
   // profiles. Reset state on close so the next open shows the spinner
@@ -411,11 +417,6 @@ export function ProfileDetailSheet({
     </Modal>
   );
 }
-
-const dynamicSheet: ViewStyle = {
-  minHeight: SCREEN_HEIGHT * 0.65,
-  maxHeight: SCREEN_HEIGHT * 0.9,
-};
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },

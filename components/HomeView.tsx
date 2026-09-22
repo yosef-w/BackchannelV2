@@ -99,6 +99,7 @@ import { SkeletonCard } from "./home/SkeletonCard";
 import { WorkEmailVerificationModal } from "./home/WorkEmailVerificationModal";
 import { ProfileCompletionModal } from "./ProfileCompletionModal";
 import { CompanyLogo } from "./ui/CompanyLogo";
+import { ScreenContainer } from "./ui/ScreenContainer";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { PLATES_ENABLED } from "@/constants/config";
@@ -2149,21 +2150,26 @@ export function HomeView({
                     onScroll={scrollHandler}
                     scrollEventThrottle={16}
                   >
-                    {userType === "sponsor" ? (
-                      <ApplicantProfileCard
-                        currentData={currentData as ProfileDeckCard}
-                        fullProfileCache={fullProfileCache}
-                        fullProfileLoading={fullProfileLoading}
-                      />
-                    ) : (
-                      <JobCardContent
-                        currentData={currentData as Job}
-                        waitlistedJobIds={waitlistedJobIds}
-                        requestedSponsorJobIds={requestedSponsorJobIds}
-                        appliedJobIds={appliedJobIds}
-                        sponsorProfileCache={sponsorProfileCache}
-                      />
-                    )}
+                    {/* PLATES_ENABLED's fallback path — same edge-to-edge-
+                        on-iPad issue as PlateDeck's read section, capped
+                        the same way. */}
+                    <ScreenContainer variant="content">
+                      {userType === "sponsor" ? (
+                        <ApplicantProfileCard
+                          currentData={currentData as ProfileDeckCard}
+                          fullProfileCache={fullProfileCache}
+                          fullProfileLoading={fullProfileLoading}
+                        />
+                      ) : (
+                        <JobCardContent
+                          currentData={currentData as Job}
+                          waitlistedJobIds={waitlistedJobIds}
+                          requestedSponsorJobIds={requestedSponsorJobIds}
+                          appliedJobIds={appliedJobIds}
+                          sponsorProfileCache={sponsorProfileCache}
+                        />
+                      )}
+                    </ScreenContainer>
                   </Animated.ScrollView>
                 )}
               </Animated.View>
@@ -2219,28 +2225,34 @@ export function HomeView({
                   {/* The verdict bar — one hairline instrument, PASS on
                       paper, the accept verb in ink. Verbs know the role
                       and the card: CONNECT (sponsor), INTERESTED
-                      (applicant), WAITLIST (a role with no sponsor yet). */}
-                  <VerdictBar
-                    onPass={() => handleSwipe(false)}
-                    onAccept={() => handleSwipe(true)}
-                    disabled={isActionPending}
-                    acceptLabel={
-                      userType === "sponsor"
-                        ? "CONNECT"
-                        : "isSponsored" in currentData &&
-                            currentData.isSponsored === false
-                          ? "WAITLIST"
-                          : "INTERESTED"
-                    }
-                    passAccessibilityLabel={
-                      userType === "applicant" ? "Pass on this role" : "Pass"
-                    }
-                    acceptAccessibilityLabel={
-                      userType === "applicant"
-                        ? "Show interest in this role"
-                        : "Connect with this applicant"
-                    }
-                  />
+                      (applicant), WAITLIST (a role with no sponsor yet).
+                      Capped and centered (styles.verdictBarWrap) — on
+                      iPad this control row would otherwise stretch to
+                      ~1000pt+, same phone-only oversight ScreenContainer
+                      fixes for reading columns elsewhere. */}
+                  <View style={styles.verdictBarWrap}>
+                    <VerdictBar
+                      onPass={() => handleSwipe(false)}
+                      onAccept={() => handleSwipe(true)}
+                      disabled={isActionPending}
+                      acceptLabel={
+                        userType === "sponsor"
+                          ? "CONNECT"
+                          : "isSponsored" in currentData &&
+                              currentData.isSponsored === false
+                            ? "WAITLIST"
+                            : "INTERESTED"
+                      }
+                      passAccessibilityLabel={
+                        userType === "applicant" ? "Pass on this role" : "Pass"
+                      }
+                      acceptAccessibilityLabel={
+                        userType === "applicant"
+                          ? "Show interest in this role"
+                          : "Connect with this applicant"
+                      }
+                    />
+                  </View>
                 </Animated.View>
               )}
               </View>
@@ -2449,6 +2461,15 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: Platform.OS === "ios" ? 28 : 20,
     paddingHorizontal: 24,
+  },
+  // Caps the verdict bar to a control's width instead of the full page —
+  // ~984pt in portrait, ~1328pt landscape on a 13" iPad otherwise. Same
+  // treatment a phone already gets (the row's own width there is well
+  // under this), just enforced on iPad too.
+  verdictBarWrap: {
+    width: "100%",
+    maxWidth: 480,
+    alignSelf: "center",
   },
 
 

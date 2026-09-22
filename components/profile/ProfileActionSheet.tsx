@@ -2,15 +2,16 @@ import { X } from "@/components/ui/icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
-    Dimensions,
     Modal,
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { Colors, Fonts, Radii, Type } from "@/constants/theme";
+import { hitSlopTo44, sheetColumn, sheetMaxHeight } from "@/lib/responsive";
 
 interface ProfileActionSheetProps {
   visible: boolean;
@@ -44,6 +45,14 @@ export function ProfileActionSheet({
   onSecondary,
   onClose,
 }: ProfileActionSheetProps) {
+  const { height } = useWindowDimensions();
+  // Absolute px — a % maxHeight resolves against DismissibleSheet's
+  // content-sized gesture-root wrapper, mis-measures, and floats the
+  // sheet off the bottom of the screen. sheetMaxHeight reads the LIVE
+  // window height so this stays correct after rotation / Stage Manager
+  // resize instead of freezing at whatever size the app launched at.
+  const maxHeight = sheetMaxHeight(height, 0.9);
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
@@ -58,11 +67,20 @@ export function ProfileActionSheet({
         <DismissibleSheet
           scrollDismiss
           onDismiss={onClose}
-          style={[styles.modalContent, { paddingBottom: 50 }]}
+          style={[
+            styles.modalContent,
+            sheetColumn,
+            { paddingBottom: 50, maxHeight },
+          ]}
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={hitSlopTo44(24, 24)}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
               <X color={Colors.ink} size={24} />
             </TouchableOpacity>
           </View>
@@ -109,10 +127,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 32,
     paddingBottom: 32,
-    // Absolute px — a % maxHeight resolves against DismissibleSheet's
-    // content-sized gesture-root wrapper, mis-measures, and floats the
-    // sheet off the bottom of the screen.
-    maxHeight: Dimensions.get("window").height * 0.9,
+    // maxHeight is computed live from useWindowDimensions() (see render)
+    // and passed inline — see the sheetMaxHeight comment above.
   },
   modalHeader: {
     flexDirection: "row",

@@ -25,6 +25,8 @@ import {
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import type { PromptCategory } from "@/constants/prompts";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
+import { ScreenContainer } from "./ScreenContainer";
+import { hitSlopTo44 } from "@/lib/responsive";
 
 export interface PromptAnswer {
   question: string;
@@ -160,13 +162,17 @@ export function PromptsIntake({
             <View style={styles.filledActions}>
               <TouchableOpacity
                 onPress={() => openEditorForExisting(index)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={hitSlopTo44(16, 16)}
+                accessibilityRole="button"
+                accessibilityLabel="Edit answer"
               >
                 <Pencil size={16} color={Colors.muted} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => removeAt(index)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={hitSlopTo44(16, 16)}
+                accessibilityRole="button"
+                accessibilityLabel="Remove answer"
               >
                 <X size={16} color={Colors.muted} />
               </TouchableOpacity>
@@ -237,11 +243,14 @@ export function PromptsIntake({
       >
         <View style={styles.sheet}>
           <SafeAreaView style={styles.sheetSafe}>
+            <ScreenContainer variant="form" style={styles.sheetSafe}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Choose a prompt</Text>
               <TouchableOpacity
                 onPress={() => setLibraryOpen(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
               >
                 <X size={24} color={Colors.ink} />
               </TouchableOpacity>
@@ -286,6 +295,7 @@ export function PromptsIntake({
                 <Text style={styles.noResults}>No prompts match “{search}”.</Text>
               ) : null}
             </ScrollView>
+            </ScreenContainer>
           </SafeAreaView>
         </View>
       </Modal>
@@ -302,10 +312,13 @@ export function PromptsIntake({
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             style={styles.editorFlex}
           >
+            <ScreenContainer variant="form" style={styles.editorFlex}>
             <View style={styles.editorHeader}>
               <TouchableOpacity
                 onPress={closeEditor}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
               >
                 <X size={24} color={Colors.ink} />
               </TouchableOpacity>
@@ -362,6 +375,7 @@ export function PromptsIntake({
                   <Text style={styles.saveBtnText}>Save answer</Text>
                 </TouchableOpacity>
               </Animated.View>
+            </ScreenContainer>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>

@@ -21,17 +21,19 @@
 // interpolations, problem act plays once then solution acts loop,
 // tap-to-advance, haptic beats, act-progress hairline.
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dimensions, Pressable, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Colors, Fonts, Type } from '@/constants/theme';
 import { ArrowLeft } from '@/components/ui/icons';
 import { PressableScale } from '@/components/ui/PressableScale';
+import { hitSlopTo44 } from '@/lib/responsive';
 import {
   ActProgress,
   backOut,
@@ -124,12 +126,10 @@ export function SponsorCinema({
     ACT_STARTS,
   );
   useCinemaHaptics(master, BEATS);
+  const reduceMotion = useReducedMotion();
 
   // Watch-time analytics: one dismissal event, whichever exit is taken.
   const mountedAt = useRef(Date.now());
-  useEffect(() => {
-    trackIntroFilmViewed('sponsor');
-  }, []);
   // Same guard as IntroCinema's dismiss — none of the exits disable
   // themselves, so a fast double-tap (or Skip immediately followed by the
   // CTA) could independently fire onContinue()/onSignIn()/onBack() twice,
@@ -149,6 +149,17 @@ export function SponsorCinema({
     else if (action === 'back') onBack();
     else onContinue();
   };
+
+  useEffect(() => {
+    trackIntroFilmViewed('sponsor');
+    // Reduce Motion is on: the master clock (useCinemaClock) never
+    // animates, so the ~23s film would otherwise sit frozen on its first
+    // frame with no story ever shown. Take the exact exit Skip takes,
+    // immediately — the one already-tested, correct way out.
+    if (reduceMotion) dismiss('skip');
+    // Mount-only: deliberately not re-run if Reduce Motion toggles later.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Act 0: the problem ────────────────────────────────────────────────
 
@@ -405,9 +416,17 @@ export function SponsorCinema({
     };
   });
 
-  const cx = W / 2;
+  // `cx` comes from the stage's own measured width (onLayout below), not
+  // the launch-time window width — after a rotation the two can differ,
+  // which mis-centers the dashed backchannel line.
+  const [stageWidth, setStageWidth] = useState(W);
+  const cx = stageWidth / 2;
   const cy = STAGE_H / 2;
   const lineD = `M ${cx - 52} ${cy + 6} Q ${cx} ${cy + 44} ${cx + 56} ${cy + 6}`;
+
+  // "Sign in" link tap target — measured so hitSlopTo44 can pad it up to
+  // the 44pt minimum regardless of the rendered text's actual size.
+  const [signInSize, setSignInSize] = useState({ width: 200, height: 20 });
 
   return (
     <View style={styles.container}>
@@ -442,6 +461,7 @@ export function SponsorCinema({
         <Pressable
           style={styles.stage}
           onPress={advance}
+          onLayout={(e) => setStageWidth(e.nativeEvent.layout.width)}
           accessibilityRole="button"
           accessibilityLabel="Skip to next scene"
         >
@@ -652,7 +672,8 @@ export function SponsorCinema({
           </PressableScale>
           <TouchableOpacity
             onPress={() => dismiss('sign_in')}
-            hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+            onLayout={(e) => setSignInSize(e.nativeEvent.layout)}
+            hitSlop={hitSlopTo44(signInSize.width, signInSize.height)}
             accessibilityRole="button"
             accessibilityLabel="Sign in"
           >
@@ -1166,7 +1187,10 @@ const styles = StyleSheet.create({
   },
   // ── Captions ──────────────────────────────────────────────────────────
   captionArea: {
-    height: 84,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    minHeight: 84,
     marginTop: 8,
     justifyContent: 'center',
   },
@@ -1212,6 +1236,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     width: '78%',
+    maxWidth: 360,
     height: 56,
     backgroundColor: Colors.ink,
     borderRadius: 28,

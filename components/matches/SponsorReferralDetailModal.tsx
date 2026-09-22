@@ -30,7 +30,7 @@ import {
     type PacketField,
 } from "./JobSheetKit";
 import { Referral } from "./matchesQueries";
-import { modalStyles } from "./sharedModalStyles";
+import { modalStyles, useModalSizing } from "./sharedModalStyles";
 import { Colors } from "@/constants/theme";
 
 interface SponsorReferralDetailModalProps {
@@ -56,6 +56,7 @@ export function SponsorReferralDetailModal({
   onMessage,
   onWithdraw,
 }: SponsorReferralDetailModalProps) {
+  const sizing = useModalSizing();
   const showToast = useToastStore((s) => s.showToast);
   const [profile, setProfile] = useState<PublicProfileResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -102,7 +103,7 @@ export function SponsorReferralDetailModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onClose}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[modalStyles.modalContent, canvasSheet, sizing.content]}
       >
         {referral &&
           (() => {

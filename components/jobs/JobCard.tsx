@@ -7,6 +7,7 @@ import {
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { Colors } from "@/constants/theme";
 
 interface JobCardProps {
@@ -99,7 +100,7 @@ export function JobCard({
               onApplicantPress();
             }}
             activeOpacity={0.7}
-            hitSlop={{ top: 6, bottom: 6, left: 4, right: 12 }}
+            hitSlop={hitSlopTo44(110, 24)}
           >
             <Text style={styles.applicantsLink}>
               {job.applicants === 1
@@ -122,6 +123,7 @@ export function JobCard({
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={`Sponsor ${job.title}`}
+            hitSlop={hitSlopTo44(100, 27)}
           >
             <Text style={styles.sponsorChipText}>SPONSOR</Text>
           </TouchableOpacity>
@@ -200,6 +202,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.6,
     color: Colors.ink,
+    flexShrink: 1,
   },
   sponsorChip: {
     borderWidth: 1.2,
@@ -220,5 +223,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.8,
     color: Colors.muted,
+    flexShrink: 1,
+    textAlign: "right",
   },
 });

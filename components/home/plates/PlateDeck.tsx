@@ -16,6 +16,7 @@
 // quarters (one bar answers "which card" AND "where in it").
 
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import React, {
@@ -93,6 +94,13 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
   { plates, anchor, scrollRef, onScroll, scrollY, bleed, onPlateChange, children },
   ref,
 ) {
+  // Deliberately window-derived, not container-measured: the plate row
+  // cancels its parent's horizontal padding via `marginHorizontal: -bleed`
+  // (below) so it always spans the full app window width, edge to edge —
+  // an immersive full-bleed card, not clipped inside HomeView's capped
+  // read column. That column cap (ScreenContainer below) only wraps the
+  // read content that scrolls under the plates, never this row, so the
+  // two never disagree about how wide the row actually renders.
   const { width: screenWidth } = useWindowDimensions();
   const plateWidth = screenWidth - PEEK;
   const count = plates.length;
@@ -138,6 +146,18 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
   const onRowSettle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     commitIndex(Math.round(e.nativeEvent.contentOffset.x / plateWidth));
   };
+
+  // Rotation, a Split View drag, or a Stage Manager resize changes
+  // `plateWidth` (it's live off useWindowDimensions), but the ScrollView's
+  // actual scroll offset doesn't move on its own — it stays at the OLD
+  // `index * oldPlateWidth`, which now lands mid-plate or on the wrong
+  // plate entirely under the new width. Snap it back to the correct
+  // offset for the current index whenever the width changes. Instant,
+  // not animated: this is a correction, not a user-initiated navigation,
+  // so it should be invisible rather than visibly slide.
+  useEffect(() => {
+    rowRef.current?.scrollTo({ x: indexRef.current * plateWidth, animated: false });
+  }, [plateWidth]);
 
   // ── swipe-teaching nudge: the first plate slides and springs back ──
   // The static peek + "SLIDE FOR MORE →" label weren't enough on their
@@ -324,15 +344,21 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
           </View>
         )}
 
-        <View style={s.readHead}>
-          <Text style={s.readEyebrow}>THE FULL READ</Text>
-          <Text style={s.readTitle}>
-            Every detail, <Text style={s.accent}>in full.</Text>
-          </Text>
-        </View>
-        <ReadSectionsContext.Provider value={sectionsApi}>
-          {children}
-        </ReadSectionsContext.Provider>
+        {/* The full read runs at normal (padded) width already — this only
+            matters on iPad, where that padded width is still ~130
+            characters wide. Cap it to a real reading column, same as any
+            other feed screen (lib/responsive's ScreenContainer). */}
+        <ScreenContainer variant="content">
+          <View style={s.readHead}>
+            <Text style={s.readEyebrow}>THE FULL READ</Text>
+            <Text style={s.readTitle}>
+              Every detail, <Text style={s.accent}>in full.</Text>
+            </Text>
+          </View>
+          <ReadSectionsContext.Provider value={sectionsApi}>
+            {children}
+          </ReadSectionsContext.Provider>
+        </ScreenContainer>
       </Animated.ScrollView>
 
       {/* Pinned identity — box-none so only the "back up" label takes a

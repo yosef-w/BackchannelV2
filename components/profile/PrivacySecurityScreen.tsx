@@ -322,6 +322,8 @@ export function PrivacySecurityScreen({
             onChangeText={setCurrentPassword}
             secureTextEntry
             autoCapitalize="none"
+            textContentType="password"
+            autoComplete="password"
           />
         </View>
 
@@ -336,6 +338,8 @@ export function PrivacySecurityScreen({
             onChangeText={setNewPassword}
             secureTextEntry
             autoCapitalize="none"
+            textContentType="newPassword"
+            autoComplete="password-new"
           />
         </View>
 
@@ -350,6 +354,8 @@ export function PrivacySecurityScreen({
             onChangeText={setConfirmPassword}
             secureTextEntry
             autoCapitalize="none"
+            textContentType="newPassword"
+            autoComplete="password-new"
           />
         </View>
 
@@ -468,6 +474,8 @@ export function PrivacySecurityScreen({
                 onChangeText={setEmailPassword}
                 secureTextEntry
                 autoCapitalize="none"
+                textContentType="password"
+                autoComplete="password"
               />
             </View>
 
@@ -574,6 +582,8 @@ export function PrivacySecurityScreen({
             autoCapitalize="none"
             autoCorrect={false}
             editable={!deleting}
+            textContentType="password"
+            autoComplete="password"
           />
         </View>
 
@@ -809,7 +819,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: 14,
-    height: 48,
+    // minHeight (not height) — a fixed height clips the input at large
+    // Dynamic Type; paddingVertical keeps single-line text centered while
+    // letting the wrapper grow if it ever needs to.
+    minHeight: 48,
+    paddingVertical: 8,
     marginBottom: 20,
   },
   input: {
@@ -830,7 +844,10 @@ const styles = StyleSheet.create({
   updateBtn: {
     backgroundColor: Colors.ink,
     borderRadius: 14,
-    height: 52,
+    // minHeight (not height) — lets the button grow instead of clipping
+    // its label at large Dynamic Type or in a narrow window.
+    minHeight: 52,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,
@@ -899,7 +916,11 @@ const styles = StyleSheet.create({
   deleteConfirmBtn: {
     backgroundColor: Colors.ink,
     borderRadius: 14,
-    height: 52,
+    // minHeight (not height) — "Permanently Delete My Account" (15pt,
+    // weight 800) can wrap at large Dynamic Type or in a narrow window
+    // (Slide Over); a fixed height clipped it instead of growing.
+    minHeight: 52,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
@@ -909,7 +930,8 @@ const styles = StyleSheet.create({
   },
   deleteConfirmBtnText: { color: Colors.paper, fontSize: 15, fontWeight: "800" },
   deleteCancelBtn: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: Colors.surface,
     alignItems: "center",

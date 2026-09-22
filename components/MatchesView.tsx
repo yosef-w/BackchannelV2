@@ -32,10 +32,7 @@ import {
   type MatchedUser,
 } from "@/components/home/MatchCelebrationModal";
 import {
-    Dimensions,
     Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -78,23 +75,14 @@ import { SrJobDetailModal } from "./matches/SrJobDetailModal";
 import { WaitlistedJobModal } from "./matches/WaitlistedJobModal";
 import { WithdrawReferralModal } from "./matches/WithdrawReferralModal";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const MODAL_PADDING = 28;
-const CARD_WIDTH = SCREEN_WIDTH - MODAL_PADDING * 2;
+import { ScreenContainer } from "./ui/ScreenContainer";
+import { Layout } from "@/lib/responsive";
 
 // React Query keys + shared query definitions, plus the Match/Referral/
 // JobOpportunity/SponsorRequest/InterestedApplicant/WaitlistedJob types and
 // the parseSkillsField helper, live in matchesQueries.ts so other screens
 // (e.g. HomeView's "Your Move" strip) can subscribe to the same cache
 // entries and reuse the same shapes.
-
-const QUICK_REPLIES = [
-  "Nice to meet you!",
-  "Great profile!",
-  "Let's chat!",
-  "Impressive skills!",
-];
 
 export function MatchesView({
   userType = "sponsor",
@@ -152,7 +140,6 @@ export function MatchesView({
   const selectedReferral =
     activeModal?.kind === "referral" ? activeModal.referral : null;
   const [modalMode, setModalMode] = useState<"view" | "message">("view");
-  const [activeSlide, setActiveSlide] = useState(0);
   const [message, setMessage] = useState("");
   // "See all" full-list screen for a MatchSection group that's over its row
   // cap. Only one role's sections are ever mounted at a time, so a single
@@ -616,18 +603,12 @@ export function MatchesView({
     });
   }, [referrals]);
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
-    setActiveSlide(slide);
-  };
-
   const openProfile = (profile: Match, mode: "view" | "message") => {
     // The matched-profile modal is now the shared ProfileDetailSheet,
     // which owns its own public-profile fetch. We just need to flag
     // which profile is selected; the sheet handles the rest.
     setModalMode(mode);
     setActiveModal({ kind: "profile", profile });
-    setActiveSlide(0);
   };
 
   // Row-grouping callbacks for renderMatchRows (components/matches/matchRowBuilders.tsx):
@@ -647,7 +628,6 @@ export function MatchesView({
 
   const openJob = (job: JobOpportunity) => {
     setActiveModal({ kind: "job", job });
-    setActiveSlide(0);
     // Parity with the layered opens: the liked-jobs payload is missing
     // fields the full posting carries (URL, responsibilities, work
     // arrangement — see BACKEND doc §P), so In Progress sheets looked
@@ -1077,6 +1057,10 @@ export function MatchesView({
           />
         }
       >
+        {/* Caps the column at Layout.contentMaxWidth — without this every
+            row/section here ran the full iPad width (690-980pt wide
+            OpportunityRows, title far from its trailing CTA/chevron). */}
+        <ScreenContainer variant="content">
         <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           {/* Renamed from "Opportunities" to match the "Matches" bottom-nav
               label — the screen and the tab that opens it should say the
@@ -1178,6 +1162,7 @@ export function MatchesView({
             matchRowCallbacks={matchRowCallbacks}
           />
         )}
+        </ScreenContainer>
       </ScrollView>
 
       {/* Matched-profile detail sheet — applicants see sponsor capabilities,
@@ -1540,28 +1525,38 @@ export function MatchesView({
         />
       </Modal>
 
-      {/* Undo toast — shown after confirming withdrawal, before API commit */}
+      {/* Undo toast — shown after confirming withdrawal, before API commit.
+          Two-layer structure (outer full-width positioning wrapper + inner
+          capped card) — same pattern as components/ui/AppToast.tsx. A
+          single view can't combine absolute left/right insets with a
+          maxWidth cap and still center: once both edges are pinned, Yoga
+          derives the width from them directly and a maxWidth clamp just
+          shrinks the box without re-centering it. The bottom offset stays
+          a hardcoded guess (see report) — nothing in this file or the
+          shell currently reads the live tab-bar height/safe-area inset. */}
       {undoToastVisible && (
-        <Animated.View
-          entering={SlideInDown.springify().damping(20)}
-          exiting={SlideOutDown.springify().damping(20)}
-          style={styles.undoToast}
-          pointerEvents="box-none"
-        >
-          <Text style={styles.undoToastText}>
-            Referral withdrawn
-            {pendingWithdrawApplicantName
-              ? ` for ${pendingWithdrawApplicantName}`
-              : ""}
-          </Text>
-          <TouchableOpacity
-            onPress={handleUndoWithdraw}
-            style={styles.undoToastBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        <View style={styles.undoToastWrapper} pointerEvents="box-none">
+          <Animated.View
+            entering={SlideInDown.springify().damping(20)}
+            exiting={SlideOutDown.springify().damping(20)}
+            style={styles.undoToast}
+            pointerEvents="box-none"
           >
-            <Text style={styles.undoToastBtnText}>Undo</Text>
-          </TouchableOpacity>
-        </Animated.View>
+            <Text style={styles.undoToastText}>
+              Referral withdrawn
+              {pendingWithdrawApplicantName
+                ? ` for ${pendingWithdrawApplicantName}`
+                : ""}
+            </Text>
+            <TouchableOpacity
+              onPress={handleUndoWithdraw}
+              style={styles.undoToastBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.undoToastBtnText}>Undo</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       )}
 
       <MatchCelebrationModal
@@ -1634,11 +1629,23 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     marginTop: 2,
   },
-  undoToast: {
+  // Full-width positioning layer — the bottom offset is still a hardcoded
+  // guess at the floating tab bar's footprint (see report); this only
+  // fixes the width/centering.
+  undoToastWrapper: {
     position: "absolute",
     bottom: 100,
-    left: 20,
-    right: 20,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  // Width-capped: was left/right:20 with no cap, so a ~700-990pt-wide bar
+  // on iPad. `width` (not maxWidth) lets it shrink to the wrapper's
+  // gutters on a phone.
+  undoToast: {
+    width: "100%",
+    maxWidth: Layout.toastMaxWidth,
     backgroundColor: Colors.ink,
     borderRadius: 16,
     paddingVertical: 14,

@@ -89,6 +89,7 @@ import { ProfileIdentityCard } from "./profile/ProfileIdentityCard";
 import { ResumeScreen } from "./profile/ResumeScreen";
 import { PromptsIntake } from "./ui/PromptsIntake";
 import { normalizeLocation } from "@/utils/normalizeLocation";
+import { contentColumn, hitSlopTo44 } from "@/lib/responsive";
 import { ApplicantProfileCard } from "./home/ApplicantProfileCard";
 import { cardStyles } from "./home/cardStyles";
 import type {
@@ -1043,6 +1044,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 handleDeleteCertification(index);
               }}
               style={{ padding: 4 }}
+              hitSlop={hitSlopTo44(26, 26)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove certification"
             >
               <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
@@ -1224,6 +1228,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 handleDeleteLanguage(index);
               }}
               style={{ padding: 4 }}
+              hitSlop={hitSlopTo44(26, 26)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove language"
             >
               <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
@@ -1376,36 +1383,78 @@ export function ProfileView({ userType }: ProfileViewProps) {
 
   const pickImage = async () => {
     logBreadcrumb("profile_photo: pick from library");
-    const hasPermission = await requestPermissions("gallery");
-    if (!hasPermission) return;
+    // Close the action sheet BEFORE presenting the native picker rather than
+    // after — leaving it visible let two modals (the sheet + the system
+    // picker) be on screen at once, an iOS race that can silently swallow
+    // the picker's presentation. Reopened below on cancel/permission-denied/
+    // error so the existing "sheet reopens if I cancel" behavior holds.
+    setShowImagePickerModal(false);
+    try {
+      const hasPermission = await requestPermissions("gallery");
+      if (!hasPermission) {
+        setShowImagePickerModal(true);
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      trackProfilePhotoUploaded({ source: "library" });
-      handleImageSelected(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        trackProfilePhotoUploaded({ source: "library" });
+        handleImageSelected(result.assets[0].uri);
+      } else {
+        setShowImagePickerModal(true);
+      }
+    } catch (err) {
+      // launchImageLibraryAsync can reject (e.g. no photo library access in
+      // some sandboxed/simulator contexts) — this was previously an
+      // unhandled promise rejection.
+      console.warn("[ProfileImage] Failed to open photo library:", err);
+      Sentry.captureException(err, {
+        tags: { feature: "profile_photo_picker" },
+      });
+      showToast("Couldn't open your photo library. Please try again.", "error");
+      setShowImagePickerModal(true);
     }
   };
 
   const takePhoto = async () => {
     logBreadcrumb("profile_photo: take photo (camera)");
-    const hasPermission = await requestPermissions("camera");
-    if (!hasPermission) return;
+    // See pickImage above — same close-before-present fix.
+    setShowImagePickerModal(false);
+    try {
+      const hasPermission = await requestPermissions("camera");
+      if (!hasPermission) {
+        setShowImagePickerModal(true);
+        return;
+      }
 
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      trackProfilePhotoUploaded({ source: "camera" });
-      handleImageSelected(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        trackProfilePhotoUploaded({ source: "camera" });
+        handleImageSelected(result.assets[0].uri);
+      } else {
+        setShowImagePickerModal(true);
+      }
+    } catch (err) {
+      // launchCameraAsync throws when no camera is available (iPad
+      // Simulator, some Stage Manager/sandboxed contexts) — this was
+      // previously an unhandled promise rejection.
+      console.warn("[ProfileImage] Failed to open camera:", err);
+      Sentry.captureException(err, {
+        tags: { feature: "profile_photo_picker" },
+      });
+      showToast("Camera isn't available on this device.", "error");
+      setShowImagePickerModal(true);
     }
   };
 
@@ -1664,6 +1713,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 handleDeleteExperience(experience.id);
               }}
               style={{ padding: 4 }}
+              hitSlop={hitSlopTo44(26, 26)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove experience"
             >
               <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
@@ -1900,6 +1952,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 handleDeleteEducation(education.id);
               }}
               style={{ padding: 4 }}
+              hitSlop={hitSlopTo44(26, 26)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove education"
             >
               <Trash2 size={18} color={Colors.body} />
             </TouchableOpacity>
@@ -2138,6 +2193,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                           style={styles.docReplaceBtn}
                           onPress={handleResumeUpload}
                           activeOpacity={0.75}
+                          hitSlop={hitSlopTo44(100, 39)}
                         >
                           <Upload size={15} color={Colors.ink} strokeWidth={2} />
                           <Text style={styles.docReplaceText}>Replace</Text>
@@ -2190,6 +2246,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.resumeCancelBtn}
                       onPress={cancelResumeUpload}
                       activeOpacity={0.7}
+                      hitSlop={hitSlopTo44(100, 27)}
                     >
                       <X size={12} color={Colors.body} strokeWidth={2.5} />
                       <Text style={styles.resumeCancelText}>Cancel</Text>
@@ -2224,6 +2281,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                       style={styles.resumeCancelBtn}
                       onPress={cancelResumeUpload}
                       activeOpacity={0.7}
+                      hitSlop={hitSlopTo44(100, 27)}
                     >
                       <X size={12} color={Colors.body} strokeWidth={2.5} />
                       <Text style={styles.resumeCancelText}>Cancel</Text>
@@ -2261,6 +2319,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <TouchableOpacity
                       style={styles.resumeUploadAgainBtn}
                       onPress={() => setResumeUploadStep("idle")}
+                      hitSlop={hitSlopTo44(100, 20)}
                     >
                       <RefreshCw size={14} color={Colors.body} strokeWidth={2} />
                       <Text style={styles.resumeUploadAgainText}>Upload again</Text>
@@ -2279,6 +2338,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     <TouchableOpacity
                       style={styles.resumeRetryBtn}
                       onPress={() => setResumeUploadStep("idle")}
+                      hitSlop={hitSlopTo44(100, 31)}
                     >
                       <Text style={styles.resumeRetryText}>Retry</Text>
                     </TouchableOpacity>
@@ -2775,6 +2835,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.paper,
   },
   scrollContent: {
+    // Caps the hub column at 640pt and centers it — on an iPad this used to
+    // stretch the segmented control, ledger, HubRows, the outlined Log Out
+    // button and the résumé cards to the full ~1024pt window width.
+    ...contentColumn,
     paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 140,

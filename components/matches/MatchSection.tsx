@@ -7,6 +7,12 @@ import {
   View,
 } from "react-native";
 import { Colors } from "@/constants/theme";
+import { hitSlopTo44 } from "@/lib/responsive";
+
+// The row (paddingVertical:12 + ~13pt text) renders at ~40pt tall — under
+// the 44pt minimum tap target. Width is always the full row, so only
+// height needs padding out.
+const SEE_ALL_HIT_SLOP = hitSlopTo44(320, 40);
 
 interface MatchSectionProps {
   title: string;
@@ -78,7 +84,11 @@ export function MatchSection({
                 : row,
             )}
             {overflow && (
-              <TouchableOpacity style={styles.seeAllRow} onPress={onSeeAll}>
+              <TouchableOpacity
+                style={styles.seeAllRow}
+                onPress={onSeeAll}
+                hitSlop={SEE_ALL_HIT_SLOP}
+              >
                 <Text style={styles.seeAllText}>
                   See all {count}
                 </Text>

@@ -30,7 +30,7 @@ import {
     JobOpportunity,
     Referral,
 } from "./matchesQueries";
-import { modalStyles } from "./sharedModalStyles";
+import { modalStyles, useModalSizing } from "./sharedModalStyles";
 
 interface ReferralDetailModalProps {
   /** The received referral being viewed, or null when closed. */
@@ -52,6 +52,7 @@ export function ReferralDetailModal({
   onClose,
   onNavigateToMessages,
 }: ReferralDetailModalProps) {
+  const sizing = useModalSizing();
   const [enriched, setEnriched] = useState<Partial<JobOpportunity> | null>(
     null,
   );
@@ -104,6 +105,8 @@ export function ReferralDetailModal({
           modalStyles.modalContent,
           canvasSheet,
           modalStyles.modalContentTall,
+          sizing.content,
+          sizing.tall,
         ]}
       >
         {referral &&

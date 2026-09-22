@@ -25,7 +25,7 @@ import {
     Timeline,
 } from "./JobSheetKit";
 import { JobOpportunity } from "./matchesQueries";
-import { modalStyles } from "./sharedModalStyles";
+import { modalStyles, useModalSizing } from "./sharedModalStyles";
 
 interface JobDetailModalProps {
   /** The liked job whose detail is being viewed, or null when closed. */
@@ -79,6 +79,7 @@ export function JobDetailModal({
   messageName,
   instant,
 }: JobDetailModalProps) {
+  const sizing = useModalSizing();
   const matched = job?.status === "MATCHED";
   const counterpartFirstName =
     messageName ||
@@ -139,6 +140,8 @@ export function JobDetailModal({
           modalStyles.modalContent,
           canvasSheet,
           modalStyles.modalContentTall,
+          sizing.content,
+          sizing.tall,
         ]}
       >
         {job && (

@@ -52,9 +52,22 @@ export const Colors = {
   border: "#E8E8E4", // hairlines — was "#EEE"/"#F0F0F0"
   borderStrong: "#D0D0CA", // focused/emphasized borders — was "#CCC"
   body: "#4A4A44", // secondary body copy — was "#666"
-  muted: "#888880", // tertiary text, captions, italic accents — was "#999"
-  faint: "#B8B8B0", // placeholders, disabled — was "#BBB"/"#AAA"
-  danger: "#DC2626", // errors — unchanged, already the app's only red
+  // Tertiary TEXT: captions, timestamps, placeholders, italic accents.
+  // Contrast (WCAG 1.4.3, needs 4.5:1): 5.37 on white, 4.91 on `surface`.
+  // Was #888880 = 3.57:1 on white — failed on 312 usages. NEVER put this on
+  // a dark (ink) surface — 3.69:1 there; use `mutedOnInk` instead.
+  muted: "#6B6B64",
+  // Text/icons on INK (dark) surfaces — toasts, ink pills. 5.54:1 on ink.
+  // (The previous `muted` value, kept for exactly this role.)
+  mutedOnInk: "#888880",
+  // NON-TEXT only: disabled controls, decorative icons, quiet dividers. It
+  // clears 3:1 on white (3.48) but NOT 4.5:1, so it must never carry
+  // meaningful text or a placeholder — use `muted` for those. Was #B8B8B0 =
+  // 2.00:1, which failed even the non-text 3:1 bar.
+  faint: "#8A8A82",
+  // Errors. Darkened from #DC2626 (4.42:1 on `surface`, 4.41 on dangerLight —
+  // both under 4.5) to 5.25 / 5.24; white-on-danger buttons rise 4.83 → 5.74.
+  danger: "#C81E1E",
   dangerLight: "#FEF2F2", // error/destructive tint fill (badges, warning cards) — was ad hoc "#FEF2F2"/"#FECACA" scattered across jobs/matches/profile
   warning: "#B45309", // in-progress/near-limit indicators (e.g. char counters) — was ad hoc "#D97706"
 } as const;

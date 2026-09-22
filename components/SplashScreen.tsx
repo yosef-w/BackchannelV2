@@ -398,7 +398,6 @@ const styles = StyleSheet.create({
   brandName: {
     fontFamily: Fonts.serif,
     fontSize: 42,
-    lineHeight: 46,
     color: Colors.ink,
     letterSpacing: -0.8,
     textAlign: 'center',
@@ -443,6 +442,7 @@ const styles = StyleSheet.create({
   // text — .submit-btn/.modal-btn-primary/.export-btn all share this).
   button: {
     width: '65%',
+    maxWidth: 320,
     height: 56,
     backgroundColor: Colors.ink,
     borderRadius: 28,

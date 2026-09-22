@@ -1,13 +1,13 @@
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
-  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -15,8 +15,7 @@ import {
     SheetScrollView,
 } from "../ui/DismissibleSheet";
 import { Colors, Fonts, Radii, Type } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { sheetMaxHeight } from "@/lib/responsive";
 
 interface SwitcherJob {
   jobId: string;
@@ -47,6 +46,10 @@ export function JobSwitcherSheet({
   onSwitch,
   onClose,
 }: JobSwitcherSheetProps) {
+  // LIVE window height — a module-level Dimensions.get() snapshot froze at
+  // launch and cropped the sheet after a rotation or a shorter Stage
+  // Manager window (never re-measured).
+  const { height: windowHeight } = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="none">
       <KeyboardAvoidingView
@@ -64,7 +67,7 @@ export function JobSwitcherSheet({
         <DismissibleSheet
           scrollDismiss
           onDismiss={onClose}
-          style={styles.sheet}
+          style={[styles.sheet, { maxHeight: sheetMaxHeight(windowHeight, 0.7) }]}
         >
           <Text style={styles.title}>
             Switch <Text style={styles.titleEm}>roles.</Text>
@@ -131,11 +134,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 28,
     paddingBottom: 40,
-    // Absolute px (not "70%") because the sheet sits inside
-    // DismissibleSheet's GestureHandlerRootView wrapper, which is
-    // content-sized. A % maxHeight against it would resolve to 0 / clip
-    // content — same fix we applied to MatchesView's modalContent.
-    maxHeight: SCREEN_HEIGHT * 0.7,
+    // maxHeight is computed live (see sheetMaxHeight call at the call
+    // site) — a % here would resolve against DismissibleSheet's
+    // content-sized GestureHandlerRootView wrapper and collapse, same as
+    // the reason it isn't a percentage; a static px would freeze across
+    // rotation / Stage Manager resize.
   },
   title: {
     ...Type.heading,

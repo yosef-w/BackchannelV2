@@ -20,7 +20,7 @@ import {
     Timeline,
 } from "./JobSheetKit";
 import { WaitlistedJob } from "./matchesQueries";
-import { modalStyles } from "./sharedModalStyles";
+import { modalStyles, useModalSizing } from "./sharedModalStyles";
 import { Colors } from "@/constants/theme";
 
 interface WaitlistedJobModalProps {
@@ -47,6 +47,7 @@ export function WaitlistedJobModal({
   isNudging,
   onNudge,
 }: WaitlistedJobModalProps) {
+  const sizing = useModalSizing();
   const sponsored = !!job?.is_now_sponsored;
   const canNudge =
     !!job &&
@@ -69,7 +70,7 @@ export function WaitlistedJobModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onClose}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[modalStyles.modalContent, canvasSheet, sizing.content]}
       >
         {job && (
           <>

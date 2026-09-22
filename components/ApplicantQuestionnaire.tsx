@@ -20,7 +20,6 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -48,6 +47,8 @@ import {
 } from "@/constants/prompts";
 import { SKILLS_BY_INDUSTRY } from "@/constants/skills";
 import { PlacesAutocomplete } from "./ui/PlacesAutocomplete";
+import { ScreenContainer } from "./ui/ScreenContainer";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { normalizeLocation } from "@/utils/normalizeLocation";
 import { PromptsIntake } from "./ui/PromptsIntake";
 import {
@@ -92,8 +93,6 @@ import {
   type ReadingRow,
 } from "@/components/cinema/resumeReadingContent";
 import { Sentry } from "@/lib/sentry";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Upper bound on how long we'll block onboarding waiting for the final save
 // before proceeding anyway — a new user must never be trapped on a spinner.
@@ -451,42 +450,54 @@ export function ApplicantQuestionnaire({
   // Pick a profile photo from the library. Kept local (URI only) until after
   // registration, when it's uploaded — the upload endpoint requires auth.
   const handlePickPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      showToast(
-        "Photo access is off — enable it in Settings to add a photo.",
-        "info",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setSelectedPhotoUri(result.assets[0].uri);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        showToast(
+          "Photo access is off — enable it in Settings to add a photo.",
+          "info",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setSelectedPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.warn(error);
+      showToast("Couldn't open your photo library — please try again.", "error");
     }
   };
 
   // Capture a photo with the camera (alternative to the library).
   const handleTakePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      showToast(
-        "Camera access is off — enable it in Settings to take a photo.",
-        "info",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setSelectedPhotoUri(result.assets[0].uri);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        showToast(
+          "Camera access is off — enable it in Settings to take a photo.",
+          "info",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setSelectedPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      // launchCameraAsync REJECTS (rather than resolving canceled) when no
+      // camera is available — iPad Simulator, some Mac Catalyst contexts.
+      console.warn(error);
+      showToast("Camera isn't available on this device.", "error");
     }
   };
 
@@ -1196,6 +1207,9 @@ export function ApplicantQuestionnaire({
             onPress={handleBack}
             disabled={isSubmitting}
             style={styles.iconBtn}
+            hitSlop={hitSlopTo44(40, 40)}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
           >
             <ArrowLeft color={Colors.ink} size={24} />
           </TouchableOpacity>
@@ -1220,7 +1234,7 @@ export function ApplicantQuestionnaire({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.content}>
+            <ScreenContainer variant="form" style={styles.content}>
               <Animated.View
                 key={currentQuestion}
                 entering={FadeInDown.duration(500)}
@@ -1482,6 +1496,16 @@ export function ApplicantQuestionnaire({
                         }}
                         onError={(m) => showToast(m, "error")}
                         onSwitchToManual={() => setLocationManual(true)}
+                        // Location is the LAST question — the newly-revealed
+                        // in-flow suggestion list can render below the
+                        // visible viewport with nothing to reveal it.
+                        // scrollToEnd is safe here specifically because
+                        // this question's content ends right after the
+                        // input; nothing below the dropdown needs to stay
+                        // in view once it appears.
+                        onSuggestionsExpand={() =>
+                          scrollViewRef.current?.scrollToEnd({ animated: true })
+                        }
                       />
                     ) : (
                       <View style={styles.locationInputWrap}>
@@ -1557,6 +1581,9 @@ export function ApplicantQuestionnaire({
                               setSelectedFile(null);
                             }}
                             activeOpacity={0.7}
+                            hitSlop={hitSlopTo44(32, 32)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Remove résumé"
                           >
                             <X size={16} color={Colors.body} strokeWidth={2.5} />
                           </TouchableOpacity>
@@ -1583,33 +1610,35 @@ export function ApplicantQuestionnaire({
                   </>
                 )}
               </Animated.View>
-            </View>
+            </ScreenContainer>
           </ScrollView>
 
           <View style={styles.footer}>
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={!canContinue || isSubmitting}
-              style={[
-                styles.nextButton,
-                (!canContinue || isSubmitting) && styles.nextButtonDisabled,
-              ]}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={Colors.paper} />
-              ) : (
-                <>
-                  <Text style={styles.nextButtonText}>
-                    {isResumeScreen && !selectedFileAsset
-                      ? "Skip for now"
-                      : isLastQuestion
-                        ? "Complete Profile"
-                        : "Continue"}
-                  </Text>
-                  <ArrowRight color={Colors.paper} size={20} />
-                </>
-              )}
-            </TouchableOpacity>
+            <ScreenContainer variant="form">
+              <TouchableOpacity
+                onPress={handleNext}
+                disabled={!canContinue || isSubmitting}
+                style={[
+                  styles.nextButton,
+                  (!canContinue || isSubmitting) && styles.nextButtonDisabled,
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color={Colors.paper} />
+                ) : (
+                  <>
+                    <Text style={styles.nextButtonText}>
+                      {isResumeScreen && !selectedFileAsset
+                        ? "Skip for now"
+                        : isLastQuestion
+                          ? "Complete Profile"
+                          : "Continue"}
+                    </Text>
+                    <ArrowRight color={Colors.paper} size={20} />
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScreenContainer>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -1667,21 +1696,24 @@ export function ApplicantQuestionnaire({
         >
           <SafeAreaView style={styles.reviewSafeArea}>
             <View style={styles.reviewHeader}>
-              <Text style={styles.reviewEyebrow}>FROM YOUR RÉSUMÉ</Text>
-              <Text style={styles.reviewTitle}>
-                Here&apos;s what we{" "}
-                <Text style={styles.reviewTitleAccent}>found.</Text>
-              </Text>
-              <Text style={styles.reviewSub}>
-                Your profile is built. A few questions remain — the parts a
-                résumé can&apos;t answer.
-              </Text>
+              <ScreenContainer variant="form">
+                <Text style={styles.reviewEyebrow}>FROM YOUR RÉSUMÉ</Text>
+                <Text style={styles.reviewTitle}>
+                  Here&apos;s what we{" "}
+                  <Text style={styles.reviewTitleAccent}>found.</Text>
+                </Text>
+                <Text style={styles.reviewSub}>
+                  Your profile is built. A few questions remain — the parts a
+                  résumé can&apos;t answer.
+                </Text>
+              </ScreenContainer>
             </View>
 
             <ScrollView
               contentContainerStyle={styles.reviewScroll}
               showsVerticalScrollIndicator={false}
             >
+              <ScreenContainer variant="form">
               {reviewData.experiences.length > 0 && (
                 <View style={styles.reviewSection}>
                   <Text style={styles.reviewSectionLabel}>
@@ -1746,22 +1778,25 @@ export function ApplicantQuestionnaire({
                   </View>
                 </View>
               )}
+              </ScreenContainer>
             </ScrollView>
 
             <View style={styles.reviewFooter}>
-              <TouchableOpacity
-                style={styles.reviewPrimaryBtn}
-                onPress={handleReviewConfirm}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.reviewPrimaryText}>
-                  Looks right — keep going
+              <ScreenContainer variant="form">
+                <TouchableOpacity
+                  style={styles.reviewPrimaryBtn}
+                  onPress={handleReviewConfirm}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.reviewPrimaryText}>
+                    Looks right — keep going
+                  </Text>
+                  <ArrowRight color={Colors.paper} size={18} />
+                </TouchableOpacity>
+                <Text style={styles.reviewFootnote}>
+                  You can fine-tune every detail later in your profile.
                 </Text>
-                <ArrowRight color={Colors.paper} size={18} />
-              </TouchableOpacity>
-              <Text style={styles.reviewFootnote}>
-                You can fine-tune every detail later in your profile.
-              </Text>
+              </ScreenContainer>
             </View>
           </SafeAreaView>
         </Animated.View>

@@ -70,6 +70,8 @@ import {
 } from "@/constants/prompts";
 import { CompanyAutocomplete } from "./ui/CompanyAutocomplete";
 import { PromptsIntake } from "./ui/PromptsIntake";
+import { ScreenContainer } from "./ui/ScreenContainer";
+import { hitSlopTo44 } from "@/lib/responsive";
 
 interface SponsorQuestionnaireProps {
   onComplete: () => void;
@@ -655,42 +657,54 @@ export function SponsorQuestionnaire({
   // Pick a profile photo. Kept local (URI) until after registration, when it's
   // uploaded — the upload endpoint requires auth.
   const handlePickPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      showToast(
-        "Photo access is off — enable it in Settings to add a photo.",
-        "info",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setSelectedPhotoUri(result.assets[0].uri);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        showToast(
+          "Photo access is off — enable it in Settings to add a photo.",
+          "info",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setSelectedPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.warn(error);
+      showToast("Couldn't open your photo library — please try again.", "error");
     }
   };
 
   // Capture a photo with the camera (alternative to the library).
   const handleTakePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      showToast(
-        "Camera access is off — enable it in Settings to take a photo.",
-        "info",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setSelectedPhotoUri(result.assets[0].uri);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        showToast(
+          "Camera access is off — enable it in Settings to take a photo.",
+          "info",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setSelectedPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      // launchCameraAsync REJECTS (rather than resolving canceled) when no
+      // camera is available — iPad Simulator, some Mac Catalyst contexts.
+      console.warn(error);
+      showToast("Camera isn't available on this device.", "error");
     }
   };
 
@@ -759,6 +773,9 @@ export function SponsorQuestionnaire({
             onPress={handleBack}
             disabled={isSubmitting}
             style={styles.iconBtn}
+            hitSlop={hitSlopTo44(40, 40)}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
           >
             <ArrowLeft color={Colors.ink} size={24} />
           </TouchableOpacity>
@@ -782,6 +799,7 @@ export function SponsorQuestionnaire({
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
+            <ScreenContainer variant="form">
             <Animated.View
               key={currentQuestion}
               layout={Layout.springify()}
@@ -939,28 +957,31 @@ export function SponsorQuestionnaire({
                 </View>
               )}
             </Animated.View>
+            </ScreenContainer>
           </ScrollView>
 
           <View style={styles.footer}>
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={!canContinue || isSubmitting}
-              style={[
-                styles.nextButton,
-                (!canContinue || isSubmitting) && styles.nextButtonDisabled,
-              ]}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={Colors.paper} />
-              ) : (
-                <>
-                  <Text style={styles.nextButtonText}>
-                    {isLastQuestion ? "Complete Profile" : "Continue"}
-                  </Text>
-                  <ArrowRight color={Colors.paper} size={20} />
-                </>
-              )}
-            </TouchableOpacity>
+            <ScreenContainer variant="form">
+              <TouchableOpacity
+                onPress={handleNext}
+                disabled={!canContinue || isSubmitting}
+                style={[
+                  styles.nextButton,
+                  (!canContinue || isSubmitting) && styles.nextButtonDisabled,
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color={Colors.paper} />
+                ) : (
+                  <>
+                    <Text style={styles.nextButtonText}>
+                      {isLastQuestion ? "Complete Profile" : "Continue"}
+                    </Text>
+                    <ArrowRight color={Colors.paper} size={20} />
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScreenContainer>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -974,23 +995,26 @@ export function SponsorQuestionnaire({
               {rolePickerStep === "pick" ? (
                 <>
                   <View style={styles.rolePickerHeader}>
-                    <View style={styles.rolePickerBadge}>
-                      <Briefcase color={Colors.ink} size={22} />
-                    </View>
-                    <Text style={styles.rolePickerTitle}>
-                      We found {roleOptions.length} open role
-                      {roleOptions.length === 1 ? "" : "s"} at {answers[0]}
-                    </Text>
-                    <Text style={styles.rolePickerSub}>
-                      Sponsor one now and land on a live deck of matched
-                      applicants instead of an empty one.
-                    </Text>
+                    <ScreenContainer variant="form">
+                      <View style={styles.rolePickerBadge}>
+                        <Briefcase color={Colors.ink} size={22} />
+                      </View>
+                      <Text style={styles.rolePickerTitle}>
+                        We found {roleOptions.length} open role
+                        {roleOptions.length === 1 ? "" : "s"} at {answers[0]}
+                      </Text>
+                      <Text style={styles.rolePickerSub}>
+                        Sponsor one now and land on a live deck of matched
+                        applicants instead of an empty one.
+                      </Text>
+                    </ScreenContainer>
                   </View>
 
                   <ScrollView
                     contentContainerStyle={styles.rolePickerScroll}
                     showsVerticalScrollIndicator={false}
                   >
+                    <ScreenContainer variant="form">
                     {roleOptions.map((role) => (
                       <TouchableOpacity
                         key={role.JOB_ID}
@@ -1017,35 +1041,44 @@ export function SponsorQuestionnaire({
                         <ChevronRight size={18} color={Colors.faint} />
                       </TouchableOpacity>
                     ))}
+                    </ScreenContainer>
                   </ScrollView>
 
                   <View style={styles.rolePickerFooter}>
-                    <TouchableOpacity
-                      onPress={handleSkipRolePicker}
-                      style={styles.rolePickerSkipBtn}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.rolePickerSkipText}>
-                        Skip for now
-                      </Text>
-                    </TouchableOpacity>
+                    <ScreenContainer variant="form">
+                      <TouchableOpacity
+                        onPress={handleSkipRolePicker}
+                        style={styles.rolePickerSkipBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.rolePickerSkipText}>
+                          Skip for now
+                        </Text>
+                      </TouchableOpacity>
+                    </ScreenContainer>
                   </View>
                 </>
               ) : (
-                <>
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === "ios" ? "padding" : "height"}
+                  style={{ flex: 1 }}
+                >
                   <View style={styles.rolePickerHeader}>
-                    <Text style={styles.rolePickerTitle}>
-                      {selectedRole?.TITLE || "This role"}
-                    </Text>
-                    <Text style={styles.rolePickerSub}>
-                      Two quick questions, then it is set.
-                    </Text>
+                    <ScreenContainer variant="form">
+                      <Text style={styles.rolePickerTitle}>
+                        {selectedRole?.TITLE || "This role"}
+                      </Text>
+                      <Text style={styles.rolePickerSub}>
+                        Two quick questions, then it is set.
+                      </Text>
+                    </ScreenContainer>
                   </View>
 
                   <ScrollView
                     contentContainerStyle={styles.rolePickerScroll}
                     showsVerticalScrollIndicator={false}
                   >
+                    <ScreenContainer variant="form">
                     <Text style={styles.rolePickerQuestionLabel}>
                       Can you refer people into this role?
                     </Text>
@@ -1091,9 +1124,11 @@ export function SponsorQuestionnaire({
                       multiline
                       maxLength={500}
                     />
+                    </ScreenContainer>
                   </ScrollView>
 
                   <View style={styles.rolePickerFooter}>
+                    <ScreenContainer variant="form" style={{ flexDirection: "row", gap: 10 }}>
                     <TouchableOpacity
                       onPress={() => setRolePickerStep("pick")}
                       style={styles.rolePickerBackBtn}
@@ -1121,8 +1156,9 @@ export function SponsorQuestionnaire({
                         </Text>
                       )}
                     </TouchableOpacity>
+                    </ScreenContainer>
                   </View>
-                </>
+                </KeyboardAvoidingView>
               )}
             </SafeAreaView>
           </BlurView>

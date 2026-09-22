@@ -18,6 +18,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    type TextLayoutEvent,
     type ViewStyle,
 } from "react-native";
 import Animated, { FadeIn,
@@ -28,6 +29,7 @@ import Animated, { FadeIn,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
 import { openExternalUrl } from "@/lib/openExternalUrl";
+import { hitSlopTo44, sheetColumn } from "@/lib/responsive";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
 // expo-clipboard's NATIVE module may be missing from the running binary
@@ -67,8 +69,16 @@ const TINT = Colors.surface;
  * so the bar reads as anchored, not floating. */
 const SHEET_BOTTOM = 36;
 
-/** Merge into the sheet's content style. */
+/** Merge into the sheet's content style.
+ *
+ * `sheetColumn` caps and centers the actual content box at a readable
+ * width (~600pt) even when the DismissibleSheet it's merged onto is
+ * allowed to be wider (a caller's own sizing, e.g. `sizing.content` in
+ * sharedModalStyles.ts, controls the sheet's outer bounds — this is the
+ * content-side cap, not a duplicate of that). On a phone `sheetColumn`'s
+ * cap is wider than the screen, so nothing changes there. */
 export const canvasSheet: ViewStyle = {
+  ...sheetColumn,
   backgroundColor: Colors.paper,
   padding: 20,
   paddingBottom: SHEET_BOTTOM,
@@ -120,10 +130,16 @@ export interface JourneyStep {
 
 // ── Long-form text ──────────────────────────────────────────────────────
 
-/** Collapsed description shorter than this never needs a Read more toggle. */
-const READ_MORE_THRESHOLD = 280;
-
-/** Body text that collapses to a preview with a Read more toggle. */
+/** Body text that collapses to a preview with a Read more toggle.
+ *
+ * Whether the toggle shows at all is decided by an actual line-count
+ * measurement, not a fixed character count — a fixed threshold either
+ * shows "Read more" on text that wraps to fewer lines than the collapsed
+ * cap at wide sheet widths (post-cap this is less severe, but a 600pt-wide
+ * sheet still fits far more per line than a phone) and reveals nothing, or
+ * hides it on short-but-heavily-wrapped text. An invisible full-height
+ * clone of the same text, at the same width, measures the real line count
+ * via `onTextLayout`; the visible Text only clamps once that's known. */
 export function ReadMoreText({
   text,
   collapsedLines = 5,
@@ -132,21 +148,44 @@ export function ReadMoreText({
   collapsedLines?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
-  useEffect(() => setExpanded(false), [text]);
-  const collapsible = text.length > READ_MORE_THRESHOLD;
+  const [truncated, setTruncated] = useState(false);
+  const [measured, setMeasured] = useState(false);
+  useEffect(() => {
+    setExpanded(false);
+    setTruncated(false);
+    setMeasured(false);
+  }, [text]);
+
+  const handleMeasureLayout = (e: TextLayoutEvent) => {
+    setTruncated(e.nativeEvent.lines.length > collapsedLines);
+    setMeasured(true);
+  };
+
   return (
     <>
+      {/* Measurement-only clone: zero height + clipped so it never paints
+          or takes space, but still lays out (and fires onTextLayout) at
+          the real rendered width. Unmounted once measured. */}
+      {!measured && (
+        <Text
+          style={[styles.bodyText, styles.measureText]}
+          onTextLayout={handleMeasureLayout}
+        >
+          {text}
+        </Text>
+      )}
       <Text
         style={styles.bodyText}
-        numberOfLines={collapsible && !expanded ? collapsedLines : undefined}
+        numberOfLines={truncated && !expanded ? collapsedLines : undefined}
       >
         {text}
       </Text>
-      {collapsible && (
+      {truncated && (
         <TouchableOpacity
           style={styles.readMoreBtn}
           onPress={() => setExpanded((e) => !e)}
           activeOpacity={0.7}
+          hitSlop={hitSlopTo44(60, 25)}
         >
           <Text style={styles.readMoreText}>
             {expanded ? "Show less" : "Read more"}
@@ -196,6 +235,7 @@ export function SkillChips({
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`Show ${hiddenCount} more skills`}
+          hitSlop={hitSlopTo44(60, 28)}
         >
           <Text style={g.skillMoreText}>+{hiddenCount} more</Text>
         </TouchableOpacity>
@@ -207,6 +247,7 @@ export function SkillChips({
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Show fewer skills"
+          hitSlop={hitSlopTo44(60, 28)}
         >
           <Text style={g.skillMoreText}>Show fewer</Text>
         </TouchableOpacity>
@@ -761,6 +802,7 @@ export function QuietAction({
       onPress={onPress}
       disabled={loading}
       activeOpacity={0.7}
+      hitSlop={hitSlopTo44(80, 32)}
     >
       {loading ? (
         <ActivityIndicator
@@ -1033,7 +1075,11 @@ const g = StyleSheet.create({
     borderBottomColor: HAIRLINE,
   },
   ledgerKey: {
-    width: 106,
+    // minWidth, not width: ledgerValue (flex:1, alongside it in the same
+    // row) absorbs whatever the key's own content needs beyond 106pt, so a
+    // caps-key label at large Dynamic Type can grow instead of clipping its
+    // numberOfLines={1} text.
+    minWidth: 106,
     flexShrink: 0,
     fontSize: 11,
     fontWeight: "800",
@@ -1259,10 +1305,17 @@ const g = StyleSheet.create({
   },
   footer: {
     // Bleed through the sheet's padding on all three closed sides so the
-    // bar's paper runs edge-to-edge AND down to the screen bottom.
-    marginHorizontal: -20,
+    // bar's paper runs edge-to-edge AND down to the screen bottom. The
+    // sheet's EFFECTIVE horizontal padding is 28, not 20: every consumer
+    // merges this kit's canvasSheet onto sharedModalStyles' modalContent,
+    // whose `paddingHorizontal: 28` is more specific than (and so wins
+    // over) canvasSheet's generic `padding: 20` for the left/right sides
+    // regardless of style-array order — RN always resolves the more
+    // specific padding property first. A -20 bleed here left the footer's
+    // hairline 8pt short of each edge on every device, not just iPad.
+    marginHorizontal: -28,
     marginBottom: -SHEET_BOTTOM,
-    paddingHorizontal: 20,
+    paddingHorizontal: 28,
     paddingTop: 14,
     paddingBottom: SHEET_BOTTOM,
     borderTopWidth: 1,
@@ -1354,7 +1407,10 @@ const g = StyleSheet.create({
     borderBottomColor: HAIRLINE,
   },
   packetLabel: {
-    width: 86,
+    // minWidth, not width — packetValue (flex:1 in the same row) absorbs
+    // the label's own growth at large Dynamic Type instead of it wrapping
+    // mid-word inside a fixed box.
+    minWidth: 86,
     fontSize: 10,
     fontWeight: "800",
     color: FAINT,
@@ -1401,6 +1457,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bodyText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
+  // Zero-height + clipped: lays out (so onTextLayout still fires with the
+  // real line count) without painting or taking up space.
+  measureText: { height: 0, overflow: "hidden" },
   readMoreBtn: {
     flexDirection: "row",
     alignItems: "center",

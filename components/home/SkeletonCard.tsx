@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Colors } from "@/constants/theme";
+import { contentColumn } from "@/lib/responsive";
 
 /**
  * Shimmering placeholder shown while a profile/job card is loading.
@@ -39,6 +40,11 @@ export function SkeletonCard() {
       showsVerticalScrollIndicator={false}
       scrollEnabled={false}
     >
+      {/* Same reading-column cap as the real card (ApplicantProfileCard /
+          JobCardContent's contentColumn) — otherwise the skeleton's
+          percentage-based stub widths balloon wider than the loaded card
+          on iPad, which is its own layout jump on top of the shape one. */}
+      <View style={contentColumn}>
       {/* ── Hero — dossier ID block (square photo + identity lines) ── */}
       <View style={{ paddingTop: 12 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -179,41 +185,11 @@ export function SkeletonCard() {
         style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }}
       />
 
-      {/* ── AT-A-GLANCE stats strip ───────────────────────────────── */}
-      <View style={{ paddingVertical: 18 }}>
-        <Animated.View
-          style={[
-            {
-              backgroundColor: Colors.border,
-              width: "38%",
-              height: 11,
-              borderRadius: 4,
-              marginBottom: 10,
-            },
-            shimmerStyle,
-          ]}
-        />
-        {/* 3-cell strip — single block that mirrors hingeStatsRow shape */}
-        <Animated.View
-          style={[
-            {
-              backgroundColor: Colors.surface,
-              borderRadius: 16,
-              height: 64,
-              overflow: "hidden",
-            },
-            shimmerStyle,
-          ]}
-        />
-      </View>
-
-      {/* ── Divider ──────────────────────────────────────────────── */}
-      <View
-        style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }}
-      />
-
-      {/* ── INSIGHTS section ─────────────────────────────────────── */}
-      <View style={{ paddingVertical: 18, gap: 10 }}>
+      {/* ── INSIGHTS section — flat quote bands, no boxed card (the
+          shadowed insight cards retired with the 2026-08 rebrand; the
+          real INSIGHTS section is a serif quote mark + text lines, same
+          voice as the hero pull-quote). ── */}
+      <View style={{ paddingVertical: 18, gap: 18 }}>
         <Animated.View
           style={[
             {
@@ -225,31 +201,33 @@ export function SkeletonCard() {
             shimmerStyle,
           ]}
         />
-        {/* 2 insight card placeholders matching hingeInsightCard shape */}
-        <Animated.View
-          style={[
-            {
-              backgroundColor: Colors.surface,
-              borderRadius: 14,
-              height: 80,
-              borderWidth: 1,
-              borderColor: Colors.border,
-            },
-            shimmerStyle,
-          ]}
-        />
-        <Animated.View
-          style={[
-            {
-              backgroundColor: Colors.surface,
-              borderRadius: 14,
-              height: 80,
-              borderWidth: 1,
-              borderColor: Colors.border,
-            },
-            shimmerStyle,
-          ]}
-        />
+        {/* 2 flat quote-band placeholders */}
+        {[0, 1].map((i) => (
+          <View key={i} style={{ gap: 8 }}>
+            <Animated.View
+              style={[
+                {
+                  backgroundColor: Colors.border,
+                  width: "94%",
+                  height: 15,
+                  borderRadius: 4,
+                },
+                shimmerStyle,
+              ]}
+            />
+            <Animated.View
+              style={[
+                {
+                  backgroundColor: Colors.border,
+                  width: "60%",
+                  height: 15,
+                  borderRadius: 4,
+                },
+                shimmerStyle,
+              ]}
+            />
+          </View>
+        ))}
       </View>
 
       {/* ── Divider ──────────────────────────────────────────────── */}
@@ -287,6 +265,7 @@ export function SkeletonCard() {
             />
           ))}
         </View>
+      </View>
       </View>
     </ScrollView>
   );

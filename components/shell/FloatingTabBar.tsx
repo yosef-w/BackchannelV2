@@ -22,12 +22,12 @@ import {
 } from "@/components/ui/icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
   LayoutChangeEvent,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
@@ -38,8 +38,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useShell } from "./ShellContext";
 import { Colors } from "@/constants/theme";
+import { FontScale, Layout } from "@/lib/responsive";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BAR_HEIGHT = 62;
 
 // Route name → tab chrome. Order here is the render order; must match the
@@ -121,6 +121,12 @@ function TabItem({
       <Text
         style={[styles.label, isActive && styles.labelActive]}
         numberOfLines={1}
+        // Capped, not uncapped like body text — this 8.5pt label lives in a
+        // fixed 50pt-tall well (styles.tab) that can't grow with it. Without
+        // a cap, large Dynamic Type both clips the label AND (since the
+        // capsule was previously a frozen SCREEN_WIDTH*0.9 — see below)
+        // could push tabs outside the bar entirely.
+        maxFontSizeMultiplier={FontScale.chrome}
       >
         {item.label}
       </Text>
@@ -143,6 +149,15 @@ export function FloatingTabBar({
   badges,
 }: FloatingTabBarProps) {
   const shell = useShell();
+  // LIVE width, capped — the capsule used to be a hardcoded 90% of a
+  // Dimensions.get() snapshot taken once at import. Launching on an iPad in
+  // one orientation and rotating (or resizing in Split View / Stage
+  // Manager) left the capsule sized for the WRONG window: wider than the
+  // new one (tabs clipped outside it, some unreachable) or narrower. A live
+  // width fixes that; the cap keeps 5 tabs from spreading into a mostly-
+  // empty 900pt+ pill on a 13" iPad.
+  const { width: windowWidth } = useWindowDimensions();
+  const capsuleWidth = Math.min(windowWidth * 0.9, Layout.tabBarMaxWidth);
 
   const navAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: shell.navTranslateY.value }],
@@ -198,7 +213,7 @@ export function FloatingTabBar({
       style={[styles.navContainer, navAnimatedStyle]}
       pointerEvents="box-none"
     >
-      <View style={styles.capsule}>
+      <View style={[styles.capsule, { width: capsuleWidth }]}>
         {/* The glass: system blur under a milky wash so type stays
             legible whatever scrolls beneath. Android gets the wash alone
             (no native blur) — still a light capsule, just opaque. */}
@@ -259,7 +274,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   capsule: {
-    width: SCREEN_WIDTH * 0.9,
+    // width set inline above (live + capped) — see capsuleWidth.
     height: BAR_HEIGHT,
     borderRadius: BAR_HEIGHT / 2,
     overflow: "hidden",
@@ -302,13 +317,19 @@ const styles = StyleSheet.create({
   },
   // Content-driven width (no fixed size) — a longer label like "Matches"
   // or "Account" simply takes more room, instead of overflowing a
-  // fixed-width well sized for the shortest label.
+  // fixed-width well sized for the shortest label. `flexShrink` +
+  // `minWidth: 0` let a tab give up its own padding before the capsule's
+  // `overflow: "hidden"` clips it outright — the one width this capsule
+  // can get pinned to (Split View's ~320pt minimum) combined with a large
+  // Dynamic Type multiplier on 5 labels can otherwise exceed it.
   tab: {
     height: 50,
     paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
+    flexShrink: 1,
+    minWidth: 0,
   },
   // The active tab's well — one shared pill that measures and glides to
   // whichever tab is active (see indicatorX/indicatorWidth) instead of

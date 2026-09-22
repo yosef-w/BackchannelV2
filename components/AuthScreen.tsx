@@ -3,7 +3,8 @@ import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "@/components/ui/icons"
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
     SafeAreaView,
     StatusBar,
     StyleSheet,
@@ -39,8 +40,8 @@ import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { SSOButtons } from "@/components/auth/SSOButtons";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { hitSlopTo44 } from "@/lib/responsive";
 
 interface AuthScreenProps {
   onComplete: () => void;
@@ -406,6 +407,7 @@ export function AuthScreen({
           <TouchableOpacity
             onPress={handleScreenBack}
             style={styles.backButton}
+            hitSlop={hitSlopTo44(40, 40)}
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
@@ -424,6 +426,7 @@ export function AuthScreen({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <ScreenContainer variant="form" style={styles.formShell}>
             {/* ── Mode switch — NEW HERE · SIGN IN. The rebrand's
                 underline tabs, the single visible source of truth for
                 the mode (replaces the buried one-word text link). ── */}
@@ -434,6 +437,7 @@ export function AuthScreen({
                 activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: !isLogin }}
+                hitSlop={hitSlopTo44(100, 28)}
               >
                 <Text
                   style={[styles.segText, !isLogin && styles.segTextActive]}
@@ -448,6 +452,7 @@ export function AuthScreen({
                 activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isLogin }}
+                hitSlop={hitSlopTo44(100, 28)}
               >
                 <Text style={[styles.segText, isLogin && styles.segTextActive]}>
                   SIGN IN
@@ -484,6 +489,8 @@ export function AuthScreen({
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        textContentType="emailAddress"
+                        autoComplete="email"
                         onFocus={() => setFocusedField("email")}
                         onBlur={() => clearFocus("email")}
                         style={styles.input}
@@ -503,6 +510,8 @@ export function AuthScreen({
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
+                        textContentType={isLogin ? "password" : "newPassword"}
+                        autoComplete={isLogin ? "password" : "password-new"}
                         onFocus={() => setFocusedField("password")}
                         onBlur={() => clearFocus("password")}
                         style={styles.input}
@@ -510,7 +519,7 @@ export function AuthScreen({
                       <TouchableOpacity
                         onPress={() => setShowPassword((v) => !v)}
                         style={styles.eyeBtn}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        hitSlop={hitSlopTo44(18, 18)}
                         accessibilityRole="button"
                         accessibilityLabel={
                           showPassword ? "Hide password" : "Show password"
@@ -528,6 +537,7 @@ export function AuthScreen({
                   <TouchableOpacity
                     onPress={handleForgotPassword}
                     style={styles.forgotBtn}
+                    hitSlop={hitSlopTo44(120, 20)}
                   >
                     <Text style={styles.forgotText}>Forgot password?</Text>
                   </TouchableOpacity>
@@ -652,6 +662,8 @@ export function AuthScreen({
                       value={firstName}
                       onChangeText={setFirstName}
                       autoCapitalize="words"
+                      textContentType="givenName"
+                      autoComplete="given-name"
                       onFocus={() => setFocusedField("firstName")}
                       onBlur={() => clearFocus("firstName")}
                       style={styles.input}
@@ -670,6 +682,8 @@ export function AuthScreen({
                       value={lastName}
                       onChangeText={setLastName}
                       autoCapitalize="words"
+                      textContentType="familyName"
+                      autoComplete="family-name"
                       onFocus={() => setFocusedField("lastName")}
                       onBlur={() => clearFocus("lastName")}
                       style={styles.input}
@@ -689,6 +703,8 @@ export function AuthScreen({
                       onChangeText={setEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      textContentType="emailAddress"
+                      autoComplete="email"
                       onFocus={() => setFocusedField("email")}
                       onBlur={() => clearFocus("email")}
                       style={styles.input}
@@ -708,6 +724,8 @@ export function AuthScreen({
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
+                      textContentType={isLogin ? "password" : "newPassword"}
+                      autoComplete={isLogin ? "password" : "password-new"}
                       onFocus={() => setFocusedField("password")}
                       onBlur={() => clearFocus("password")}
                       style={styles.input}
@@ -715,7 +733,7 @@ export function AuthScreen({
                     <TouchableOpacity
                       onPress={() => setShowPassword((v) => !v)}
                       style={styles.eyeBtn}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      hitSlop={hitSlopTo44(18, 18)}
                       accessibilityRole="button"
                       accessibilityLabel={
                         showPassword ? "Hide password" : "Show password"
@@ -740,10 +758,14 @@ export function AuthScreen({
               </View>
             </Animated.View>
             )}
+          </ScreenContainer>
         </KeyboardAwareScrollView>
 
         {showForgotPasswordModal && (
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
             <TouchableOpacity
               style={StyleSheet.absoluteFill}
               activeOpacity={1}
@@ -771,6 +793,10 @@ export function AuthScreen({
                       onChangeText={setForgotPasswordEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      textContentType="emailAddress"
+                      autoComplete="email"
+                      returnKeyType="send"
+                      onSubmitEditing={handleSendResetEmail}
                       onFocus={() => setFocusedField("forgotEmail")}
                       onBlur={() => clearFocus("forgotEmail")}
                       style={styles.input}
@@ -832,7 +858,7 @@ export function AuthScreen({
                 </>
               )}
             </Animated.View>
-          </View>
+          </KeyboardAvoidingView>
         )}
       </SafeAreaView>
     </View>
@@ -881,6 +907,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 28,
     paddingBottom: 30,
+  },
+  // Caps the form column at Layout.formMaxWidth on iPad — on a phone this
+  // is wider than the screen so nothing changes. flex:1 lets the mode
+  // content's own flex:1/justifyContent:center (the picker, sign-in/up)
+  // keep working since ScreenContainer itself is a plain, non-flex View.
+  formShell: {
+    flex: 1,
   },
   header: {
     marginBottom: 24,

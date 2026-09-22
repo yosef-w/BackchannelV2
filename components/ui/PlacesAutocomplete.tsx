@@ -17,7 +17,6 @@ import {
   ActivityIndicator,
   Keyboard,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -108,6 +107,18 @@ interface PlacesAutocompleteProps {
   onChangeText?: (text: string) => void;
   onSwitchToManual?: () => void;
   onError?: (message: string) => void;
+  /**
+   * Fires once, on the rising edge only (no suggestions → some suggestions),
+   * never again while the list stays non-empty. Suggestions render IN FLOW
+   * now (see the comment below), so on a screen near the bottom of its
+   * scroll content — this component has no way to know that on its own —
+   * the newly-revealed list can land below the visible viewport with
+   * nothing to scroll it into view. The caller (which owns the scroll
+   * container) uses this to scroll the dropdown into view; not fired again
+   * per keystroke since the list re-populating on every fetch would
+   * otherwise fight the user's own scroll position while they're reading it.
+   */
+  onSuggestionsExpand?: () => void;
   initialValue?: string;
   placeholder?: string;
   inputStyle?: TextStyle;
@@ -127,6 +138,7 @@ export function PlacesAutocomplete({
   onChangeText,
   onSwitchToManual,
   onError,
+  onSuggestionsExpand,
   initialValue = "",
   placeholder = "Start typing your address",
   inputStyle,
@@ -154,6 +166,14 @@ export function PlacesAutocomplete({
   // below and pop the dropdown open over the rest of the form before the
   // user has touched anything.
   const skipNextFetchRef = useRef(true);
+  // Rising-edge tracker for onSuggestionsExpand — see its doc comment above.
+  const prevSuggestionCountRef = useRef(0);
+  useEffect(() => {
+    if (prevSuggestionCountRef.current === 0 && suggestions.length > 0) {
+      onSuggestionsExpand?.();
+    }
+    prevSuggestionCountRef.current = suggestions.length;
+  }, [suggestions.length, onSuggestionsExpand]);
 
   useEffect(() => {
     if (skipNextFetchRef.current) {
@@ -291,62 +311,57 @@ export function PlacesAutocomplete({
 
   return (
     <View style={styles.container}>
-      {/* Anchor view: the absolute-positioned suggestions list anchors to the
-          bottom of THIS view via top: 100%, so it lands directly under the
-          input — not below the manual link. */}
-      <View style={styles.inputAnchor}>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={[styles.input, inputStyle]}
-            value={query}
-            onChangeText={(text) => {
-              setQuery(text);
-              onChangeText?.(text);
-            }}
-            placeholder={placeholder}
-            placeholderTextColor={Colors.muted}
-            autoFocus={autoFocus}
-            autoCorrect={false}
-            autoCapitalize="words"
-            editable={!resolving}
+      {/* Suggestions render IN NORMAL FLOW below the input (mirroring
+          CompanyAutocomplete's working pattern) instead of absolutely
+          positioned over the rest of the screen — that let the surrounding
+          ScrollView actually push the rest of the form down and scroll to
+          reveal the dropdown, instead of clipping it in a short/landscape
+          viewport where the absolute box had nowhere to draw. */}
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[styles.input, inputStyle]}
+          value={query}
+          onChangeText={(text) => {
+            setQuery(text);
+            onChangeText?.(text);
+          }}
+          placeholder={placeholder}
+          placeholderTextColor={Colors.muted}
+          autoFocus={autoFocus}
+          autoCorrect={false}
+          autoCapitalize="words"
+          editable={!resolving}
+        />
+        {(loading || resolving) && (
+          <ActivityIndicator
+            size="small"
+            color={Colors.body}
+            style={styles.spinner}
           />
-          {(loading || resolving) && (
-            <ActivityIndicator
-              size="small"
-              color={Colors.body}
-              style={styles.spinner}
-            />
-          )}
-        </View>
-
-        {suggestions.length > 0 && (
-          <View style={styles.suggestionsContainer}>
-            <ScrollView
-              style={styles.suggestionsList}
-              keyboardShouldPersistTaps="always"
-              nestedScrollEnabled
-            >
-              {suggestions.map((s) => (
-                <TouchableOpacity
-                  key={s.placeId}
-                  style={styles.suggestionItem}
-                  onPress={() => handleSelect(s)}
-                  disabled={resolving}
-                >
-                  <Text style={styles.suggestionMain} numberOfLines={1}>
-                    {s.mainText}
-                  </Text>
-                  {!!s.secondaryText && (
-                    <Text style={styles.suggestionSecondary} numberOfLines={1}>
-                      {s.secondaryText}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
         )}
       </View>
+
+      {suggestions.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {suggestions.map((s) => (
+            <TouchableOpacity
+              key={s.placeId}
+              style={styles.suggestionItem}
+              onPress={() => handleSelect(s)}
+              disabled={resolving}
+            >
+              <Text style={styles.suggestionMain} numberOfLines={1}>
+                {s.mainText}
+              </Text>
+              {!!s.secondaryText && (
+                <Text style={styles.suggestionSecondary} numberOfLines={1}>
+                  {s.secondaryText}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {serviceError && (
         <Text style={styles.serviceNotice}>
@@ -358,6 +373,7 @@ export function PlacesAutocomplete({
         <TouchableOpacity
           onPress={onSwitchToManual}
           style={styles.manualLink}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Text style={styles.manualLinkText}>Or enter manually</Text>
         </TouchableOpacity>
@@ -368,12 +384,7 @@ export function PlacesAutocomplete({
 
 const styles = StyleSheet.create({
   container: {
-    position: "relative",
-    zIndex: 1000,
     flex: 1,
-  },
-  inputAnchor: {
-    position: "relative",
   },
   inputRow: {
     flexDirection: "row",
@@ -396,17 +407,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   suggestionsContainer: {
-    position: "absolute",
-    top: "100%",
-    left: 0,
-    right: 0,
     marginTop: 4,
+    overflow: "hidden",
     ...autocompleteDropdownShell,
-    maxHeight: 240,
-    zIndex: 1001,
-  },
-  suggestionsList: {
-    maxHeight: 240,
   },
   suggestionItem: {
     paddingVertical: 12,

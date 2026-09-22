@@ -3,7 +3,7 @@ import { BlurView } from "expo-blur";
 import React from "react";
 import {
     ActivityIndicator,
-    Dimensions,
+    useWindowDimensions,
     Image,
     StyleSheet,
     Text,
@@ -15,6 +15,7 @@ import {
     SheetScrollView,
 } from "../ui/DismissibleSheet";
 import { jobsModalStyles } from "./jobsModalStyles";
+import { sheetColumn, sheetMaxHeight } from "@/lib/responsive";
 import { Applicant } from "./jobTransforms";
 import { Colors, Fonts } from "@/constants/theme";
 
@@ -38,6 +39,7 @@ export function TopApplicantsModal({
   onSelectApplicant,
   onClose,
 }: TopApplicantsModalProps) {
+  const { height: windowHeight } = useWindowDimensions();
   return (
     <View style={jobsModalStyles.modalOverlay}>
       <TouchableOpacity
@@ -55,7 +57,8 @@ export function TopApplicantsModal({
           jobsModalStyles.modalContent,
           // Absolute px — a % maxHeight resolves against the sheet's
           // content-sized gesture-root wrapper and mis-measures.
-          { maxHeight: Dimensions.get("window").height * 0.6 },
+          sheetColumn,
+          { maxHeight: sheetMaxHeight(windowHeight, 0.6) },
         ]}
       >
         <View style={jobsModalStyles.modalHeader}>

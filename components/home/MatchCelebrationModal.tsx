@@ -16,6 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { Colors, Fonts, Type } from "@/constants/theme";
+import { useResponsive } from "@/lib/responsive";
 
 export interface MatchedUser {
   name: string;
@@ -52,6 +53,12 @@ export function MatchCelebrationModal({
   onMessage,
 }: MatchCelebrationModalProps) {
   const profileData = useUserProfileStore((state) => state.data);
+  // On iPad the card is capped (see matchCard) rather than shrunk to look
+  // like a form, so it has real width to spare — scale the avatars up a
+  // touch to fill it instead of looking sparse.
+  const { isRegular } = useResponsive();
+  const avatarWrapperSize = isRegular ? 96 : 80;
+  const avatarSize = isRegular ? 88 : 74;
 
   const matchRingScale = useSharedValue(0.8);
   const matchRingOpacity = useSharedValue(0);
@@ -109,15 +116,47 @@ export function MatchCelebrationModal({
               style={styles.matchAvatarRow}
             >
               {/* Current user's avatar */}
-              <View style={styles.matchAvatarWrapper}>
-                <Animated.View style={[styles.matchAvatarRing, matchRingStyle]} />
+              <View
+                style={[
+                  styles.matchAvatarWrapper,
+                  { width: avatarWrapperSize, height: avatarWrapperSize },
+                ]}
+              >
+                <Animated.View
+                  style={[
+                    styles.matchAvatarRing,
+                    {
+                      width: avatarWrapperSize,
+                      height: avatarWrapperSize,
+                      borderRadius: avatarWrapperSize / 2,
+                    },
+                    matchRingStyle,
+                  ]}
+                />
                 {profileData?.personal?.profileImage ? (
                   <Image
                     source={{ uri: profileData.personal.profileImage }}
-                    style={styles.matchAvatar}
+                    style={[
+                      styles.matchAvatar,
+                      {
+                        width: avatarSize,
+                        height: avatarSize,
+                        borderRadius: avatarSize / 2,
+                      },
+                    ]}
                   />
                 ) : (
-                  <View style={[styles.matchAvatar, styles.matchAvatarInitial]}>
+                  <View
+                    style={[
+                      styles.matchAvatar,
+                      styles.matchAvatarInitial,
+                      {
+                        width: avatarSize,
+                        height: avatarSize,
+                        borderRadius: avatarSize / 2,
+                      },
+                    ]}
+                  >
                     <Text style={styles.matchAvatarInitialText}>
                       {(profileData?.personal?.firstName || "Y")[0].toUpperCase()}
                     </Text>
@@ -131,15 +170,47 @@ export function MatchCelebrationModal({
               </View>
 
               {/* Matched user's avatar */}
-              <View style={styles.matchAvatarWrapper}>
-                <Animated.View style={[styles.matchAvatarRing, matchRingStyle]} />
+              <View
+                style={[
+                  styles.matchAvatarWrapper,
+                  { width: avatarWrapperSize, height: avatarWrapperSize },
+                ]}
+              >
+                <Animated.View
+                  style={[
+                    styles.matchAvatarRing,
+                    {
+                      width: avatarWrapperSize,
+                      height: avatarWrapperSize,
+                      borderRadius: avatarWrapperSize / 2,
+                    },
+                    matchRingStyle,
+                  ]}
+                />
                 {matchedUser?.image ? (
                   <Image
                     source={{ uri: matchedUser.image }}
-                    style={styles.matchAvatar}
+                    style={[
+                      styles.matchAvatar,
+                      {
+                        width: avatarSize,
+                        height: avatarSize,
+                        borderRadius: avatarSize / 2,
+                      },
+                    ]}
                   />
                 ) : (
-                  <View style={[styles.matchAvatar, styles.matchAvatarInitial]}>
+                  <View
+                    style={[
+                      styles.matchAvatar,
+                      styles.matchAvatarInitial,
+                      {
+                        width: avatarSize,
+                        height: avatarSize,
+                        borderRadius: avatarSize / 2,
+                      },
+                    ]}
+                  >
                     <Text style={styles.matchAvatarInitialText}>
                       {(matchedUser?.name || "?")[0].toUpperCase()}
                     </Text>
@@ -210,6 +281,11 @@ const styles = StyleSheet.create({
   // itself, the way the Broadcast beats do.
   matchCard: {
     width: "100%",
+    // Capped like DeckDoneCard's 420 — a celebratory full-screen moment,
+    // so bounded-but-wide rather than shrunk to a form column. Uncapped,
+    // the 54pt action pills below stretched to ~952pt on a 13" iPad.
+    maxWidth: 460,
+    alignSelf: "center",
     alignItems: "center",
     paddingHorizontal: 12,
   },

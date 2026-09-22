@@ -1,7 +1,7 @@
-import { Dimensions, StyleSheet } from "react-native";
+import { useMemo } from "react";
+import { StyleSheet, useWindowDimensions } from "react-native";
 import { Colors, Radii } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { sheetMaxHeight } from "@/lib/responsive";
 
 /**
  * Shared style vocabulary for the "role/job preview" modals on the Matches
@@ -23,11 +23,13 @@ export const modalStyles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 40,
     // Sheet sizes to its content; only grows to fill (and scroll) when the
-    // content is taller than this cap — no empty whitespace for short modals.
-    // Absolute px (not "88%") so it doesn't depend on a parent with a fixed
-    // height — the GestureHandlerRootView wrapper inside DismissibleSheet is
-    // content-sized, and a % maxHeight against it would collapse to nothing.
-    maxHeight: SCREEN_HEIGHT * 0.88,
+    // content is taller than the cap — no empty whitespace for short modals.
+    // The cap is NOT here: it must come from the LIVE window height (see
+    // useModalSizing below) — a "88%" would collapse against the
+    // content-sized GestureHandlerRootView inside DismissibleSheet, and the
+    // old module-level `SCREEN_HEIGHT * 0.88` froze at launch, cropping the
+    // top (grabber, close button) off the sheet after a rotation or in a
+    // shorter Stage Manager window.
   },
   /**
    * Fixed-height variant for the enrichment-backed detail sheets (job,
@@ -37,11 +39,10 @@ export const modalStyles = StyleSheet.create({
    * height sidesteps the growth relayout entirely: the sheet presents
    * full-height from the first frame (standard detail-sheet behavior),
    * the skeleton breathes in the space, and the scroll area is stable.
-   * Merge AFTER modalContent + canvasSheet.
+   * Merge AFTER modalContent + canvasSheet, then add `sizing.tall` from
+   * useModalSizing() for the live height.
    */
-  modalContentTall: {
-    height: SCREEN_HEIGHT * 0.88,
-  },
+  modalContentTall: {},
   benefitRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -51,3 +52,18 @@ export const modalStyles = StyleSheet.create({
   benefitText: { fontSize: 14, color: Colors.body, fontWeight: "500" },
   jobSectionText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
 });
+
+/**
+ * Live sheet heights for the shared modals — spread into the sheet's style
+ * array: `[modalStyles.modalContent, canvasSheet, sizing.content]` (and
+ * `sizing.tall` after `modalStyles.modalContentTall` for the fixed-height
+ * detail sheets). Re-computes on rotation / Split View / Stage Manager
+ * resize, unlike the module-level constant this replaced.
+ */
+export function useModalSizing() {
+  const { height } = useWindowDimensions();
+  return useMemo(() => {
+    const h = sheetMaxHeight(height, 0.88);
+    return { content: { maxHeight: h }, tall: { height: h } };
+  }, [height]);
+}

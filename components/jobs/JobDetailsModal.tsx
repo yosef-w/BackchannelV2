@@ -17,11 +17,11 @@ import { BlurView } from "expo-blur";
 import React from "react";
 import {
     ActivityIndicator,
-    Dimensions,
     Image,
       StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from "react-native";
 import { cardStyles } from "../home/cardStyles";
@@ -35,8 +35,7 @@ import { extractDisplayDomain } from "./jobTransforms";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { jobsModalStyles } from "./jobsModalStyles";
 import { Colors, Fonts, Type } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { sheetColumn, sheetMaxHeight } from "@/lib/responsive";
 
 interface JobDetailsModalProps {
   /** The browse/sponsored job whose detail is being viewed, or null when closed. */
@@ -65,6 +64,10 @@ export function JobDetailsModal({
   onSponsor,
   onClose,
 }: JobDetailsModalProps) {
+  // LIVE window height — the old module-level Dimensions.get() snapshot froze
+  // at launch and cropped this sheet's top after a rotation or in a shorter
+  // Stage Manager window.
+  const { height: windowHeight } = useWindowDimensions();
   return (
     <View style={jobsModalStyles.modalOverlay}>
       <TouchableOpacity
@@ -80,7 +83,8 @@ export function JobDetailsModal({
         onDismiss={onClose}
         style={[
           jobsModalStyles.modalContent,
-          { maxHeight: SCREEN_HEIGHT * 0.88 },
+          sheetColumn,
+          { maxHeight: sheetMaxHeight(windowHeight, 0.88) },
         ]}
       >
         {job && (

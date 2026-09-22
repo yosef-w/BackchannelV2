@@ -28,6 +28,7 @@ import {
 // KeyboardAvoidingView+ScrollView on binaries without the native module.
 import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 import { Colors } from "@/constants/theme";
+import { formColumn } from "@/lib/responsive";
 
 interface EditorScreenProps {
   visible: boolean;
@@ -94,14 +95,23 @@ export function EditorScreen({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {children}
+            {/* Every Account editor (Edit Profile, Résumé, Privacy &
+                Security, Notifications, Prompts, and PrivacySecurityScreen's
+                Change Password/Email/Delete sub-steps) shares this one
+                shell, so capping the column HERE fixes all of them at once
+                — previously every field, row and button ran the full
+                iPad width (976pt+ on a 13"). formColumn reads no window
+                size (a static max-width), so it's correct at every size,
+                including mid-rotation, and is wider than any phone, so
+                iPhone is unchanged. */}
+            <View style={formColumn}>{children}</View>
           </KeyboardAwareScrollView>
         ) : (
           <KeyboardAvoidingView
             style={styles.flex}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            <View style={styles.flex}>{children}</View>
+            <View style={[styles.flex, formColumn]}>{children}</View>
           </KeyboardAvoidingView>
         )}
       </SafeAreaView>

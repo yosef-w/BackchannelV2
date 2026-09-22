@@ -11,6 +11,7 @@ import { ArrowLeft, ArrowRight } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
     SafeAreaView,
+    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -25,6 +26,7 @@ import {
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { Colors, Fonts, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 interface ModeSelectionProps {
   onSelect: (mode: "applicant" | "sponsor") => void;
@@ -94,52 +96,58 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
           <ArrowLeft color={Colors.ink} size={24} />
         </TouchableOpacity>
 
-        <View style={styles.content}>
-          <Animated.View
-            entering={FadeInDown.duration(500)}
-            style={styles.header}
-          >
-            <Text style={styles.title}>
-              How will you use{"\n"}
-              <Text style={styles.titleAccent}>BackChannel?</Text>
-            </Text>
-            <Text style={styles.subtitle}>
-              Pick the one that matches your real life.
-            </Text>
-          </Animated.View>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <ScreenContainer variant="form" style={styles.content}>
+            <Animated.View
+              entering={FadeInDown.duration(500)}
+              style={styles.header}
+            >
+              <Text style={styles.title}>
+                How will you use{"\n"}
+                <Text style={styles.titleAccent}>BackChannel?</Text>
+              </Text>
+              <Text style={styles.subtitle}>
+                Pick the one that matches your real life.
+              </Text>
+            </Animated.View>
 
-          <View style={styles.cardsContainer}>
-            {ROLES.map((role, i) => (
-              <Animated.View
-                key={role.mode}
-                entering={FadeInDown.delay(120 + i * 120).duration(500)}
-              >
-                <PressableScale
-                  onPress={() => handleSelect(role.mode)}
-                  style={[
-                    styles.card,
-                    selected === role.mode && styles.cardSelected,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: selected === role.mode }}
+            <View style={styles.cardsContainer}>
+              {ROLES.map((role, i) => (
+                <Animated.View
+                  key={role.mode}
+                  entering={FadeInDown.delay(120 + i * 120).duration(500)}
                 >
-                  <Text style={styles.cardEyebrow}>{role.eyebrow}</Text>
-                  <Text style={styles.cardTitle}>
-                    {role.titlePlain}
-                    <Text style={styles.cardTitleAccent}>
-                      {role.titleAccent}
+                  <PressableScale
+                    onPress={() => handleSelect(role.mode)}
+                    style={[
+                      styles.card,
+                      selected === role.mode && styles.cardSelected,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: selected === role.mode }}
+                  >
+                    <Text style={styles.cardEyebrow}>{role.eyebrow}</Text>
+                    <Text style={styles.cardTitle}>
+                      {role.titlePlain}
+                      <Text style={styles.cardTitleAccent}>
+                        {role.titleAccent}
+                      </Text>
                     </Text>
-                  </Text>
-                  <Text style={styles.cardDescription}>{role.description}</Text>
-                  <View style={styles.cardCtaRow}>
-                    <Text style={styles.cardCta}>{role.cta}</Text>
-                    <ArrowRight color={Colors.ink} size={15} strokeWidth={2.4} />
-                  </View>
-                </PressableScale>
-              </Animated.View>
-            ))}
-          </View>
-        </View>
+                    <Text style={styles.cardDescription}>{role.description}</Text>
+                    <View style={styles.cardCtaRow}>
+                      <Text style={styles.cardCta}>{role.cta}</Text>
+                      <ArrowRight color={Colors.ink} size={15} strokeWidth={2.4} />
+                    </View>
+                  </PressableScale>
+                </Animated.View>
+              ))}
+            </View>
+          </ScreenContainer>
+        </ScrollView>
 
         {/* Branding Footer */}
         <View style={styles.footer}>
@@ -163,10 +171,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignSelf: "flex-start",
   },
-  content: {
+  scroll: {
     flex: 1,
-    paddingHorizontal: 28,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
+  },
+  content: {
+    paddingHorizontal: 28,
   },
   header: {
     marginBottom: 36,
