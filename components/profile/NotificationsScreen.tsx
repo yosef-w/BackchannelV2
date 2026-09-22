@@ -7,6 +7,11 @@
 import * as Notifications from "expo-notifications";
 import React from "react";
 import { Linking, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import {
+  getDeckRemindersEnabled,
+  scheduleDailyDeckReminder,
+  setDeckRemindersEnabled,
+} from "@/lib/localNotifications";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
@@ -28,6 +33,14 @@ type NotifKey =
   | "job_like"
   | "sponsor_request";
 
+// The deck reminders are a device-local schedule, not a backend push type
+// (see lib/localNotifications.ts) — a distinct key space from NotifKey.
+// AnyNotifKey lets the shared Row component render either kind; handleToggle
+// below is what actually keeps their two very different persistence paths
+// (backend PATCH vs. AsyncStorage) from crossing.
+type LocalNotifKey = "deck_reminders";
+type AnyNotifKey = NotifKey | LocalNotifKey;
+
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -45,11 +58,11 @@ const Row = React.memo(function Row({
   value,
   onToggle,
 }: {
-  notifKey: NotifKey;
+  notifKey: AnyNotifKey;
   label: string;
   description: string;
   value: boolean;
-  onToggle: (key: NotifKey, next: boolean) => void;
+  onToggle: (key: AnyNotifKey, next: boolean) => void;
 }) {
   return (
     <View style={styles.row}>
@@ -92,15 +105,42 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
       .catch(() => {});
   }, [visible]);
 
+  // Local-only preference — see lib/localNotifications.ts. Defaults to true
+  // (its own default) until the read resolves, matching the reminders'
+  // original always-on behavior so the switch never flashes "off" on open.
+  const [deckRemindersEnabled, setDeckRemindersEnabledState] =
+    React.useState(true);
+  React.useEffect(() => {
+    if (!visible) return;
+    getDeckRemindersEnabled().then(setDeckRemindersEnabledState);
+  }, [visible]);
+
   // Backend gate lives in services/notifications.py:create_notification —
   // missing keys default to enabled, so `undefined` reads as `true`.
-  const isEnabled = (key: NotifKey) => notificationPreferences[key] !== false;
+  const isEnabled = (key: AnyNotifKey) =>
+    key === "deck_reminders"
+      ? deckRemindersEnabled
+      : notificationPreferences[key] !== false;
 
   // The store updates optimistically (and rolls back the key on failure),
   // so the switch stays enabled throughout — no dead time where the user
-  // can't re-toggle while the request is in flight.
+  // can't re-toggle while the request is in flight. The local deck-reminders
+  // key takes a completely different path (AsyncStorage, not a backend
+  // PATCH) — it can't fail the way a network request can, so it updates
+  // state directly rather than routing through the save-status pill.
   const handleToggle = React.useCallback(
-    (key: NotifKey, next: boolean) => {
+    (key: AnyNotifKey, next: boolean) => {
+      if (key === "deck_reminders") {
+        setDeckRemindersEnabledState(next);
+        setDeckRemindersEnabled(next).then(() => {
+          // Turning OFF cancels immediately inside setDeckRemindersEnabled.
+          // Turning back ON needs its own (re-)schedule call — the daily
+          // reminder otherwise only gets (re-)armed the next time push
+          // registration runs, i.e. the next app launch.
+          if (next) scheduleDailyDeckReminder(userType);
+        });
+        return;
+      }
       run(async () => {
         try {
           await updateNotificationPreferences({ [key]: next });
@@ -115,7 +155,7 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
         // Status pill + toast already reflect the failure.
       });
     },
-    [run, updateNotificationPreferences, showToast],
+    [run, updateNotificationPreferences, showToast, userType],
   );
 
   return (
@@ -139,6 +179,17 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
           <Text style={styles.permissionBannerLink}>Open Settings →</Text>
         </TouchableOpacity>
       )}
+
+      <Text style={styles.groupLabel}>DECK REMINDERS</Text>
+      <View style={styles.group}>
+        <Row
+          notifKey="deck_reminders"
+          label="Daily Deck Reminders"
+          description="A morning nudge when your fresh deck is ready, and an afternoon one if you haven't gone through it yet"
+          value={isEnabled("deck_reminders")}
+          onToggle={handleToggle}
+        />
+      </View>
 
       <Text style={styles.groupLabel}>MATCHES & INTEREST</Text>
       <View style={styles.group}>

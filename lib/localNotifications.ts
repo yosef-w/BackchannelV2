@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 
 /**
@@ -9,10 +10,23 @@ import * as Notifications from "expo-notifications";
  *
  * Both are best-effort: every call is wrapped so a scheduling failure (e.g.
  * permission revoked, OS quirk) never throws into a caller's flow.
+ *
+ * Unlike the server-driven types in NotificationsScreen (match/message/
+ * referral/etc — Apple 4.5.4-compliant because each is independently
+ * toggleable), these two used to be mandatory: every push-granted user got
+ * them with no way to turn them off short of disabling ALL notifications
+ * in iOS Settings. `getDeckRemindersEnabled`/`setDeckRemindersEnabled` below
+ * make them an explicit opt-out, surfaced as one combined toggle in
+ * Settings ("Daily Deck Reminders") since a user thinks of the morning
+ * "it's ready" nudge and the afternoon "you haven't finished it" nudge as
+ * one feature, not two independent ones. Local-only by design — this is a
+ * device-scheduling preference, not profile data, so there's nothing here
+ * worth syncing to the backend.
  */
 
 const DAILY_DECK_NOTIF_ID = "daily-deck-ready";
 const UNFINISHED_DECK_NOTIF_ID = "unfinished-deck-reminder";
+const DECK_REMINDERS_PREF_KEY = "@bc/deckRemindersEnabled";
 
 // 9am local time — well after the midnight deck refresh, and a normal
 // "check your phone" hour so it doesn't read as spammy.
@@ -25,6 +39,42 @@ const DAILY_DECK_MINUTE = 0;
 const UNFINISHED_DECK_DELAY_SECONDS = 6 * 60 * 60; // 6 hours
 
 /**
+ * Whether the user wants the daily/unfinished-deck reminders at all.
+ * Defaults to true — matches the reminders' original always-on behavior,
+ * so an existing user's notifications don't silently change; they now
+ * have an explicit way to turn them off in Settings instead.
+ */
+export async function getDeckRemindersEnabled(): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(DECK_REMINDERS_PREF_KEY);
+    return raw === null ? true : raw === "true";
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Persist the preference and, when turning reminders OFF, cancel whatever
+ * is already scheduled immediately — so the toggle takes effect right
+ * away rather than only applying to the next time something would have
+ * been (re)scheduled.
+ */
+export async function setDeckRemindersEnabled(enabled: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(DECK_REMINDERS_PREF_KEY, String(enabled));
+  } catch (err) {
+    console.warn(
+      "[localNotifications] Failed to persist deck-reminders preference:",
+      err,
+    );
+  }
+  if (!enabled) {
+    await cancelDailyDeckReminder();
+    await cancelUnfinishedDeckReminder();
+  }
+}
+
+/**
  * Schedule (or reschedule, if the role-specific copy changed) the daily
  * "your deck is ready" local notification. Idempotent — safe to call every
  * time push permission is confirmed granted (e.g. on every app open).
@@ -32,6 +82,7 @@ const UNFINISHED_DECK_DELAY_SECONDS = 6 * 60 * 60; // 6 hours
 export async function scheduleDailyDeckReminder(
   userType: "applicant" | "sponsor",
 ) {
+  if (!(await getDeckRemindersEnabled())) return;
   try {
     // Cancel any existing schedule first so re-calling this (e.g. after a
     // role change) doesn't stack duplicate daily notifications under the
@@ -50,7 +101,7 @@ export async function scheduleDailyDeckReminder(
         body:
           userType === "sponsor"
             ? "New applicants matched to your roles are waiting."
-            : "10 new roles are waiting for you today.",
+            : "New roles are waiting for you today.",
         data: { type: "daily_deck_ready" },
       },
       trigger: {
@@ -89,6 +140,7 @@ export async function scheduleUnfinishedDeckReminder(
   userType: "applicant" | "sponsor",
 ) {
   if (cardsRemaining <= 0) return;
+  if (!(await getDeckRemindersEnabled())) return;
   try {
     await Notifications.cancelScheduledNotificationAsync(
       UNFINISHED_DECK_NOTIF_ID,
