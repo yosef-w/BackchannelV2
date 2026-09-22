@@ -39,8 +39,14 @@ export const Layout = {
   sheetMaxWidth: 600,
   /** Multi-column grids (job lists on iPad). */
   wideMaxWidth: 1040,
-  /** The floating tab-bar capsule. */
-  tabBarMaxWidth: 440,
+  /** The floating tab-bar capsule. `windowWidth * 0.9` never actually
+   * reaches this on a phone (largest current iPhone: 430 * 0.9 = 387), so
+   * this cap is the one that always engages on iPad — every iPad, mini to
+   * 13" Pro, gets exactly this width. Set to match the largest iPhone's
+   * natural capsule (not some arbitrary wider number) so the 5 tabs sit
+   * the same distance apart everywhere: the sliding active-tab indicator
+   * travels the same distance and reads as the same motion on both. */
+  tabBarMaxWidth: 390,
   /** The toast pill. */
   toastMaxWidth: 480,
   /** Inbox pane in the two-pane Messages layout. */
