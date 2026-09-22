@@ -30,9 +30,8 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
+import { PRIVACY_POLICY_URL, TERMS_URL } from "@/constants/config";
 
-const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
-const PRIVACY_POLICY_URL = "https://backchannelapp.netlify.app/privacy.html";
 const SUPPORT_EMAIL = "support@backchannel.app";
 
 type Step = "main" | "password" | "delete" | "email";

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     SafeAreaView,
     StatusBar,
@@ -25,12 +26,18 @@ import {
     trackLoginFailed,
     trackLoginSubmitted,
     trackLoginSucceeded,
+    trackPrivacyPolicyTapped,
     trackSignUpFormSubmitted,
+    trackTermsTapped,
 } from "@/lib/analytics/mixpanel";
 import { authApi, LoginResponse, SsoLoginResponse } from "@/lib/auth-api";
 import { isAppleSignInSupported, isGoogleSignInSupported, SsoIdentity } from "@/lib/sso";
 import { isValidEmail } from "@/lib/validation";
-import { SSO_ENABLED } from "@/constants/config";
+import {
+  PRIVACY_POLICY_URL,
+  SSO_ENABLED,
+  TERMS_URL,
+} from "@/constants/config";
 import { Colors, Fonts, Type } from "@/constants/theme";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -61,6 +68,42 @@ interface AuthScreenProps {
    * and the in-place toggle is correct.
    */
   onRequestSignUp?: () => void;
+}
+
+/**
+ * Signup consent line — Apple's UGC guideline (1.2) expects a user to be
+ * shown terms that prohibit abusive content before they can use an app
+ * where strangers message each other, and it also matters independent of
+ * that: an affirmative "I agree" at signup ("clickwrap") is on much firmer
+ * ground than terms that merely exist somewhere in Settings ("browsewrap")
+ * if they're ever actually invoked. Shown on both signup paths (the SSO/
+ * email picker and the email form) since either one can create an
+ * account; deliberately NOT shown on the Sign In tab — re-agreeing on
+ * every login is unnecessary friction and isn't the pattern this
+ * guideline is aimed at (existing users already agreed once).
+ */
+function SignupConsentNote() {
+  const openTerms = () => {
+    trackTermsTapped();
+    Linking.openURL(TERMS_URL).catch(() => {});
+  };
+  const openPrivacy = () => {
+    trackPrivacyPolicyTapped();
+    Linking.openURL(PRIVACY_POLICY_URL).catch(() => {});
+  };
+  return (
+    <Text style={styles.consentText}>
+      By continuing, you agree to our{" "}
+      <Text style={styles.consentLink} onPress={openTerms}>
+        Terms of Service
+      </Text>{" "}
+      and{" "}
+      <Text style={styles.consentLink} onPress={openPrivacy}>
+        Privacy Policy
+      </Text>
+      .
+    </Text>
+  );
 }
 
 export function AuthScreen({
@@ -629,6 +672,10 @@ export function AuthScreen({
                     </Text>
                   </PressableScale>
                 </Animated.View>
+
+                <Animated.View entering={FadeInDown.duration(600).delay(240)}>
+                  <SignupConsentNote />
+                </Animated.View>
               </Animated.View>
             ) : (
             /* ── Sign up with email — the typed step behind the picker,
@@ -755,6 +802,8 @@ export function AuthScreen({
                 >
                   <Text style={styles.submitButtonText}>Get Started</Text>
                 </TouchableOpacity>
+
+                <SignupConsentNote />
               </View>
             </Animated.View>
             )}
@@ -1029,6 +1078,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.8,
     color: Colors.muted,
+  },
+  consentText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.muted,
+    textAlign: "center",
+    marginTop: 14,
+  },
+  consentLink: {
+    color: Colors.ink,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   // The "you are here" affordance the PM flagged as missing — rendered by
   // FocusRing as an overlay (see its comment for why it must not be a
