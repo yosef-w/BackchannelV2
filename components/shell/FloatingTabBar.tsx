@@ -31,11 +31,10 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  Easing,
   FadeIn,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from "react-native-reanimated";
 import { useShell } from "./ShellContext";
 import { Colors } from "@/constants/theme";
@@ -140,16 +139,15 @@ type FloatingTabBarProps = BottomTabBarProps & {
   badges?: Partial<Record<string, number>>;
 };
 
-// A plain eased slide, not a spring — a spring here read as bouncy/
-// overshooting (worse the further the indicator has to travel, which
-// varies with the tab bar's width), where the DismissibleSheet's settle
-// spring it originally matched is a physical, damped motion for a much
-// bigger, weightier surface. Deliberately its own, calmer motion
-// language: a fixed-duration ease-out that just glides to the target with
-// no bounce, so it looks and feels identical regardless of distance,
-// device, or display refresh rate.
-const INDICATOR_DURATION_MS = 240;
-const INDICATOR_EASING = Easing.out(Easing.cubic);
+// A gentle spring — the original (damping: 20, stiffness: 220, ratio≈0.67)
+// read as too bouncy, but a fully flat ease-out read as too mechanical; a
+// touch of overshoot is what "casual slide" actually wants. Uses the
+// duration+dampingRatio config rather than raw damping/stiffness/mass
+// because it's the one that's actually easy to reason about: 1.0 is
+// critically damped (no overshoot at all), and every step below that
+// is "how much bounce", not a physics unit you have to eyeball. 0.85 is
+// a single small, quick settle — present, not springy.
+const INDICATOR_SPRING = { duration: 260, dampingRatio: 0.85 };
 
 export function FloatingTabBar({
   state,
@@ -223,12 +221,8 @@ export function FloatingTabBar({
       // animate the indicator if that measurement actually moved it from
       // where it currently sits — e.g. a non-active tab re-measuring
       // shouldn't retarget an already-correctly-placed indicator.
-      const timingConfig = {
-        duration: INDICATOR_DURATION_MS,
-        easing: INDICATOR_EASING,
-      };
-      indicatorX.value = withTiming(layout.x, timingConfig);
-      indicatorWidth.value = withTiming(layout.width, timingConfig);
+      indicatorX.value = withSpring(layout.x, INDICATOR_SPRING);
+      indicatorWidth.value = withSpring(layout.width, INDICATOR_SPRING);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItem?.name, layoutTick]);
