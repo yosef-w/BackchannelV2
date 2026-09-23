@@ -3,7 +3,9 @@ import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "@/components/ui/icons"
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Dimensions,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
     SafeAreaView,
     StatusBar,
     StyleSheet,
@@ -24,12 +26,18 @@ import {
     trackLoginFailed,
     trackLoginSubmitted,
     trackLoginSucceeded,
+    trackPrivacyPolicyTapped,
     trackSignUpFormSubmitted,
+    trackTermsTapped,
 } from "@/lib/analytics/mixpanel";
 import { authApi, LoginResponse, SsoLoginResponse } from "@/lib/auth-api";
 import { isAppleSignInSupported, isGoogleSignInSupported, SsoIdentity } from "@/lib/sso";
 import { isValidEmail } from "@/lib/validation";
-import { SSO_ENABLED } from "@/constants/config";
+import {
+  PRIVACY_POLICY_URL,
+  SSO_ENABLED,
+  TERMS_URL,
+} from "@/constants/config";
 import { Colors, Fonts, Type } from "@/constants/theme";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
@@ -39,8 +47,8 @@ import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { SSOButtons } from "@/components/auth/SSOButtons";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { hitSlopTo44 } from "@/lib/responsive";
 
 interface AuthScreenProps {
   onComplete: () => void;
@@ -60,6 +68,42 @@ interface AuthScreenProps {
    * and the in-place toggle is correct.
    */
   onRequestSignUp?: () => void;
+}
+
+/**
+ * Signup consent line — Apple's UGC guideline (1.2) expects a user to be
+ * shown terms that prohibit abusive content before they can use an app
+ * where strangers message each other, and it also matters independent of
+ * that: an affirmative "I agree" at signup ("clickwrap") is on much firmer
+ * ground than terms that merely exist somewhere in Settings ("browsewrap")
+ * if they're ever actually invoked. Shown on both signup paths (the SSO/
+ * email picker and the email form) since either one can create an
+ * account; deliberately NOT shown on the Sign In tab — re-agreeing on
+ * every login is unnecessary friction and isn't the pattern this
+ * guideline is aimed at (existing users already agreed once).
+ */
+function SignupConsentNote() {
+  const openTerms = () => {
+    trackTermsTapped();
+    Linking.openURL(TERMS_URL).catch(() => {});
+  };
+  const openPrivacy = () => {
+    trackPrivacyPolicyTapped();
+    Linking.openURL(PRIVACY_POLICY_URL).catch(() => {});
+  };
+  return (
+    <Text style={styles.consentText}>
+      By continuing, you agree to our{" "}
+      <Text style={styles.consentLink} onPress={openTerms}>
+        Terms of Service
+      </Text>{" "}
+      and{" "}
+      <Text style={styles.consentLink} onPress={openPrivacy}>
+        Privacy Policy
+      </Text>
+      .
+    </Text>
+  );
 }
 
 export function AuthScreen({
@@ -406,6 +450,7 @@ export function AuthScreen({
           <TouchableOpacity
             onPress={handleScreenBack}
             style={styles.backButton}
+            hitSlop={hitSlopTo44(40, 40)}
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
@@ -424,6 +469,7 @@ export function AuthScreen({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <ScreenContainer variant="form" style={styles.formShell}>
             {/* ── Mode switch — NEW HERE · SIGN IN. The rebrand's
                 underline tabs, the single visible source of truth for
                 the mode (replaces the buried one-word text link). ── */}
@@ -434,6 +480,7 @@ export function AuthScreen({
                 activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: !isLogin }}
+                hitSlop={hitSlopTo44(100, 28)}
               >
                 <Text
                   style={[styles.segText, !isLogin && styles.segTextActive]}
@@ -448,6 +495,7 @@ export function AuthScreen({
                 activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isLogin }}
+                hitSlop={hitSlopTo44(100, 28)}
               >
                 <Text style={[styles.segText, isLogin && styles.segTextActive]}>
                   SIGN IN
@@ -484,6 +532,8 @@ export function AuthScreen({
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        textContentType="emailAddress"
+                        autoComplete="email"
                         onFocus={() => setFocusedField("email")}
                         onBlur={() => clearFocus("email")}
                         style={styles.input}
@@ -503,6 +553,8 @@ export function AuthScreen({
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
+                        textContentType={isLogin ? "password" : "newPassword"}
+                        autoComplete={isLogin ? "password" : "password-new"}
                         onFocus={() => setFocusedField("password")}
                         onBlur={() => clearFocus("password")}
                         style={styles.input}
@@ -510,7 +562,7 @@ export function AuthScreen({
                       <TouchableOpacity
                         onPress={() => setShowPassword((v) => !v)}
                         style={styles.eyeBtn}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        hitSlop={hitSlopTo44(18, 18)}
                         accessibilityRole="button"
                         accessibilityLabel={
                           showPassword ? "Hide password" : "Show password"
@@ -528,6 +580,7 @@ export function AuthScreen({
                   <TouchableOpacity
                     onPress={handleForgotPassword}
                     style={styles.forgotBtn}
+                    hitSlop={hitSlopTo44(120, 20)}
                   >
                     <Text style={styles.forgotText}>Forgot password?</Text>
                   </TouchableOpacity>
@@ -619,6 +672,10 @@ export function AuthScreen({
                     </Text>
                   </PressableScale>
                 </Animated.View>
+
+                <Animated.View entering={FadeInDown.duration(600).delay(240)}>
+                  <SignupConsentNote />
+                </Animated.View>
               </Animated.View>
             ) : (
             /* ── Sign up with email — the typed step behind the picker,
@@ -652,6 +709,8 @@ export function AuthScreen({
                       value={firstName}
                       onChangeText={setFirstName}
                       autoCapitalize="words"
+                      textContentType="givenName"
+                      autoComplete="given-name"
                       onFocus={() => setFocusedField("firstName")}
                       onBlur={() => clearFocus("firstName")}
                       style={styles.input}
@@ -670,6 +729,8 @@ export function AuthScreen({
                       value={lastName}
                       onChangeText={setLastName}
                       autoCapitalize="words"
+                      textContentType="familyName"
+                      autoComplete="family-name"
                       onFocus={() => setFocusedField("lastName")}
                       onBlur={() => clearFocus("lastName")}
                       style={styles.input}
@@ -689,6 +750,8 @@ export function AuthScreen({
                       onChangeText={setEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      textContentType="emailAddress"
+                      autoComplete="email"
                       onFocus={() => setFocusedField("email")}
                       onBlur={() => clearFocus("email")}
                       style={styles.input}
@@ -708,6 +771,8 @@ export function AuthScreen({
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
+                      textContentType={isLogin ? "password" : "newPassword"}
+                      autoComplete={isLogin ? "password" : "password-new"}
                       onFocus={() => setFocusedField("password")}
                       onBlur={() => clearFocus("password")}
                       style={styles.input}
@@ -715,7 +780,7 @@ export function AuthScreen({
                     <TouchableOpacity
                       onPress={() => setShowPassword((v) => !v)}
                       style={styles.eyeBtn}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      hitSlop={hitSlopTo44(18, 18)}
                       accessibilityRole="button"
                       accessibilityLabel={
                         showPassword ? "Hide password" : "Show password"
@@ -737,13 +802,19 @@ export function AuthScreen({
                 >
                   <Text style={styles.submitButtonText}>Get Started</Text>
                 </TouchableOpacity>
+
+                <SignupConsentNote />
               </View>
             </Animated.View>
             )}
+          </ScreenContainer>
         </KeyboardAwareScrollView>
 
         {showForgotPasswordModal && (
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
             <TouchableOpacity
               style={StyleSheet.absoluteFill}
               activeOpacity={1}
@@ -771,6 +842,10 @@ export function AuthScreen({
                       onChangeText={setForgotPasswordEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      textContentType="emailAddress"
+                      autoComplete="email"
+                      returnKeyType="send"
+                      onSubmitEditing={handleSendResetEmail}
                       onFocus={() => setFocusedField("forgotEmail")}
                       onBlur={() => clearFocus("forgotEmail")}
                       style={styles.input}
@@ -832,7 +907,7 @@ export function AuthScreen({
                 </>
               )}
             </Animated.View>
-          </View>
+          </KeyboardAvoidingView>
         )}
       </SafeAreaView>
     </View>
@@ -881,6 +956,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 28,
     paddingBottom: 30,
+  },
+  // Caps the form column at Layout.formMaxWidth on iPad — on a phone this
+  // is wider than the screen so nothing changes. flex:1 lets the mode
+  // content's own flex:1/justifyContent:center (the picker, sign-in/up)
+  // keep working since ScreenContainer itself is a plain, non-flex View.
+  formShell: {
+    flex: 1,
   },
   header: {
     marginBottom: 24,
@@ -996,6 +1078,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.8,
     color: Colors.muted,
+  },
+  consentText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.muted,
+    textAlign: "center",
+    marginTop: 14,
+  },
+  consentLink: {
+    color: Colors.ink,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   // The "you are here" affordance the PM flagged as missing — rendered by
   // FocusRing as an overlay (see its comment for why it must not be a

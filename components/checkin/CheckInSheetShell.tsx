@@ -1,21 +1,29 @@
 import { BlurView } from "expo-blur";
 
-import React from "react";
+import React, { cloneElement, isValidElement } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Modal,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { sheetMaxHeight, sheetColumn } from "@/lib/responsive";
 import { Colors, Radii, Type } from "@/constants/theme";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+/** Sheet chrome above wherever `children` starts rendering: the sheet's own
+ * `paddingTop` plus the drag handle's height and bottom margin. Combined
+ * with the sheet's own top position (`sheetTopOffset` below), this is how
+ * far down the SCREEN the content actually starts — which is what
+ * CheckInStack's KeyboardAvoidingView needs as its `keyboardVerticalOffset`
+ * (see CheckInStack.tsx for why). Keep in sync with `styles.sheet.paddingTop`
+ * and `styles.handle` below. */
+export const SHEET_CONTENT_INSET = 12 + 5 + 20;
 
 interface CheckInSheetShellProps {
   visible: boolean;
@@ -61,8 +69,31 @@ export function CheckInSheetShell({
   children,
 }: CheckInSheetShellProps) {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const fraction =
     heightFraction ?? (Platform.OS === "ios" ? 0.94 : 0.92);
+  // Live, not a frozen module-scope constant — recomputes on rotation,
+  // Split View and Stage Manager resize (see lib/responsive.ts).
+  const sheetHeight = sheetMaxHeight(windowHeight, fraction);
+  // The sheet's own absolute top on screen — how far down the leftover
+  // space above the bottom-anchored sheet leaves it (sheetWrapper's
+  // `justifyContent: "flex-end"`). This, not that PLUS the sheet's own
+  // inner chrome, is what CheckInStack's KeyboardAvoidingView needs as its
+  // `keyboardVerticalOffset`: RN measures the KAV's own `frame.y` via
+  // `onLayout`, which is already relative to ITS PARENT (the sheet) — so
+  // it already includes SHEET_CONTENT_INSET (the handle + paddingTop the
+  // KAV sits below). `keyboardVerticalOffset` only needs to supply the
+  // piece `onLayout` can't see: where that parent itself sits on the real
+  // screen. Adding SHEET_CONTENT_INSET here too would double-count it and
+  // overpad the gap above the keyboard by that same amount.
+  const sheetTopOffset = Math.max(0, windowHeight - sheetHeight);
+  const contentWithOffset =
+    state === "content" && isValidElement(children)
+      ? cloneElement(
+          children as React.ReactElement<{ sheetTopOffset?: number }>,
+          { sheetTopOffset },
+        )
+      : children;
 
   return (
     <Modal
@@ -93,9 +124,10 @@ export function CheckInSheetShell({
           exiting={SlideOutDown}
           style={[
             styles.sheet,
+            sheetColumn,
             {
               paddingBottom: Math.max(24, insets.bottom + 16),
-              height: SCREEN_HEIGHT * fraction,
+              height: sheetHeight,
             },
           ]}
         >
@@ -121,7 +153,7 @@ export function CheckInSheetShell({
               </TouchableOpacity>
             </View>
           ) : (
-            children
+            contentWithOffset
           )}
         </Animated.View>
       </View>

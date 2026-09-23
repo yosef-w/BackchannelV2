@@ -141,12 +141,19 @@ export function usePushSetup(userType: UserType) {
     const onAppStateChange = (state: string) => {
       if (state === "background" || state === "inactive") {
         const jobsState = useJobsStore.getState();
-        const hasDeck =
+        const activeDeckLength =
           userType === "sponsor"
-            ? jobsState.sponsoredJobs.length > 0
-            : jobsState.jobs.length > 0;
-        if (!hasDeck) return;
-        const remaining = DECK_SIZE - jobsState.progress + 1;
+            ? jobsState.sponsoredJobs.length
+            : jobsState.jobs.length;
+        if (activeDeckLength === 0) return;
+        // Same real-length cap HomeView uses for `displayDeckSize` — a
+        // sponsor with a small applicant pool, or an applicant in a thin
+        // niche, can get fewer than DECK_SIZE (10) back from the backend.
+        // Without this, a 3-card deck the user finished got "8 roles left"
+        // (DECK_SIZE - progress + 1), overstating by the exact gap between
+        // the deck's real size and the assumed 10.
+        const displaySize = Math.min(DECK_SIZE, activeDeckLength);
+        const remaining = displaySize - jobsState.progress + 1;
         if (remaining > 0) {
           scheduleUnfinishedDeckReminder(remaining, userType);
         }

@@ -14,12 +14,13 @@
 // already know (name, image, current role/company) for immediate render
 // while the richer fields arrive.
 
-import { getPublicProfile, type PublicProfileResponse } from "@/lib/api";
+import { getPublicProfile, reportUser, type PublicProfileResponse } from "@/lib/api";
 import {
   BarFooter,
   canvasSheet,
   PersonHero,
   PillButton,
+  QuietAction,
   ReadMoreText,
   RoleTicket,
   SectionCard,
@@ -28,21 +29,22 @@ import {
 } from "@/components/matches/JobSheetKit";
 import React, { useEffect, useState } from "react";
 import {
-  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { DismissibleSheet, SheetScrollView } from "./DismissibleSheet";
+import { ReportUserSheet } from "./ReportUserSheet";
+import { useToastStore } from "@/stores/useToastStore";
 import { Colors, Radii } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { sheetMaxHeight } from "@/lib/responsive";
 
 export interface ProfileDetailSheetProps {
   visible: boolean;
@@ -117,6 +119,27 @@ export interface ProfileDetailSheetProps {
     icon?: React.ReactNode;
     onPress: () => void;
   };
+
+  /**
+   * Called after a report is successfully recorded — reporting also
+   * blocks server-side (see lib/api.ts's reportUser doc comment), so a
+   * caller showing this person in a list (matches, top applicants) will
+   * usually want to remove them and close this sheet.
+   */
+  onReported?: () => void;
+
+  /**
+   * Hide the Report action. Defaults to shown — this is the one place
+   * most profile views (matches, top applicants) can report someone at
+   * all. The message-thread header is the one caller that opts out
+   * (`false`): it already has its own report flow via ThreadMenuSheet
+   * that's conversation-aware (closes the specific thread, moves it to
+   * Past Connections) — this sheet's plain reportUser() call has no
+   * conversationId and would leave that thread-specific bookkeeping
+   * undone, so surfacing a second, less-complete report path there would
+   * just be confusing.
+   */
+  showReportAction?: boolean;
 }
 
 // Helpers — parse JSON-encoded TEXT columns coming back from the Postgres
@@ -145,11 +168,23 @@ export function ProfileDetailSheet({
   roleContext,
   primaryCta,
   secondaryCta,
+  onReported,
+  showReportAction = true,
 }: ProfileDetailSheetProps) {
   const [profile, setProfile] = useState<PublicProfileResponse | null>(
     null,
   );
   const [loading, setLoading] = useState(false);
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const showToast = useToastStore((s) => s.showToast);
+  // LIVE window height — a module-level Dimensions.get() snapshot froze at
+  // launch and never re-measured after a rotation or Stage Manager resize.
+  const { height: windowHeight } = useWindowDimensions();
+  const dynamicSheet: ViewStyle = {
+    minHeight: windowHeight * 0.65,
+    maxHeight: sheetMaxHeight(windowHeight, 0.9),
+  };
 
   // Re-fetch on every open so stale data doesn't linger across separate
   // profiles. Reset state on close so the next open shows the spinner
@@ -225,6 +260,27 @@ export function ProfileDetailSheet({
     canReferTo.length === 0;
 
   const firstName = initial.name?.split(" ")[0] || "this person";
+
+  const handleSubmitReport = async (
+    reason: Parameters<typeof reportUser>[0]["reason"],
+    detail: string,
+  ) => {
+    if (!userId) return;
+    setIsReporting(true);
+    const ok = await reportUser({ reportedUserId: userId, reason, detail });
+    setIsReporting(false);
+    setReportSheetOpen(false);
+    if (ok) {
+      showToast(`Reported. You won't be shown to each other again.`, "success");
+      onDismiss();
+      onReported?.();
+    } else {
+      showToast(
+        "Couldn't record your report. Please try again later.",
+        "error",
+      );
+    }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="none">
@@ -380,6 +436,22 @@ export function ProfileDetailSheet({
                   )}
                 </>
               )}
+
+              {/* Report — quiet, at the end, below the primary CTAs'
+                  visual weight (the same "destructive actions don't
+                  compete with the primary action" convention used
+                  throughout this app). This is the one report entry point
+                  most profile views (matches, top applicants) have at
+                  all — see the audit note on showReportAction above. */}
+              {showReportAction && !!userId && (
+                <View style={styles.reportRow}>
+                  <QuietAction
+                    label={`Report ${firstName}`}
+                    destructive
+                    onPress={() => setReportSheetOpen(true)}
+                  />
+                </View>
+              )}
             </SheetScrollView>
 
             {/* ── Pinned action bar — primary pill, secondary outlined
@@ -408,17 +480,21 @@ export function ProfileDetailSheet({
           </View>
         </DismissibleSheet>
       </KeyboardAvoidingView>
+
+      <ReportUserSheet
+        visible={reportSheetOpen}
+        reportedName={firstName}
+        isSubmitting={isReporting}
+        onSubmit={handleSubmitReport}
+        onClose={() => setReportSheetOpen(false)}
+      />
     </Modal>
   );
 }
 
-const dynamicSheet: ViewStyle = {
-  minHeight: SCREEN_HEIGHT * 0.65,
-  maxHeight: SCREEN_HEIGHT * 0.9,
-};
-
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
+  reportRow: { alignItems: "center", marginTop: 4, marginBottom: 8 },
   sheet: {
     backgroundColor: Colors.paper,
     borderTopLeftRadius: Radii.xl,

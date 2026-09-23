@@ -21,6 +21,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { FontScale, hitSlopTo44 } from "@/lib/responsive";
 import { Colors } from "@/constants/theme";
 
 interface StageTrackProps {
@@ -108,6 +109,13 @@ function Node({
           state === "upcoming" && styles.labelMuted,
         ]}
         numberOfLines={3}
+        // The track lays out fixed-width nodes side by side with negative
+        // margins already borrowing space from their neighbors (see
+        // `label`/`rail` below) — there's no room for this box to grow at
+        // large Dynamic Type without nodes colliding, so it's capped
+        // instead of converted to a flexible width like JobSheetKit's
+        // ledger/packet labels.
+        maxFontSizeMultiplier={FontScale.control}
       >
         {/* Break multi-word labels at the space deliberately: the active
             state's heavier weight makes words a touch wider, and letting RN
@@ -176,6 +184,7 @@ export function StageTrack({
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityState={{ selected: terminalSelected }}
+        hitSlop={hitSlopTo44(80, 34)}
       >
         <Text
           style={[

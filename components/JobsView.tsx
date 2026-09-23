@@ -35,10 +35,7 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -46,6 +43,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { JobsEmptyState } from "./jobs/JobsEmptyState";
 import {
   type Applicant,
@@ -65,9 +63,6 @@ import { SponsorJobModal } from "./jobs/SponsorJobModal";
 import { SponsoredJobsTab } from "./jobs/SponsoredJobsTab";
 import { TopApplicantsModal } from "./jobs/TopApplicantsModal";
 import { ProfileDetailSheet } from "./ui/ProfileDetailSheet";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const MODAL_PADDING = 28;
 
 interface SponsorInfo {
   name: string;
@@ -466,12 +461,6 @@ export function JobsView() {
     initMyJobs();
   }, []);
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const slideWidth = SCREEN_WIDTH - MODAL_PADDING * 2;
-    const slide = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
-    setActiveSlide(slide);
-  };
-
   // Tapped the message icon on a row → open the messaging modal with what we
   // already have, then fetch the full public profile in the background and
   // merge BIO / LOCATION / current role + company / years experience /
@@ -567,6 +556,13 @@ export function JobsView() {
   // never actually submitted, or duplicating a job post the user believed
   // they'd cancelled.
   const createModalGenerationRef = useRef(0);
+  // Synchronous re-entrancy guard for handlePublishJob. `isCreatingJob`
+  // (state) only disables the Publish/Skip buttons on the NEXT render — two
+  // taps in the same tick (a fast double-tap, or Publish immediately
+  // followed by Skip, since both call this handler) would both read the
+  // pre-update `isCreatingJob=false` and both call createJobFromUrl. A ref
+  // is checked and set before anything else runs, closing that window.
+  const isPublishingRef = useRef(false);
 
   const handleOpenModal = (job: JobPosting) => {
     setSelectedJob(job);
@@ -687,6 +683,8 @@ export function JobsView() {
   };
 
   const handlePublishJob = async (payload: CreateJobPublishPayload) => {
+    if (isPublishingRef.current) return;
+    isPublishingRef.current = true;
     const myGeneration = createModalGenerationRef.current;
     if (__DEV__) {
       console.log("[JobsView] create-from-url payload", {
@@ -782,6 +780,7 @@ export function JobsView() {
       if (createModalGenerationRef.current === myGeneration) {
         setIsCreatingJob(false);
       }
+      isPublishingRef.current = false;
     }
   };
 
@@ -795,6 +794,7 @@ export function JobsView() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           <View style={styles.headerRow}>
@@ -811,6 +811,7 @@ export function JobsView() {
               style={styles.createAction}
               activeOpacity={0.7}
               onPress={openCreateModal}
+              hitSlop={hitSlopTo44(97, 33)}
             >
               <Plus color={Colors.ink} size={14} strokeWidth={3} />
               <Text style={styles.createActionText}>CREATE</Text>
@@ -871,6 +872,7 @@ export function JobsView() {
                 activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: activeTab === "browse" }}
+                hitSlop={hitSlopTo44(90, 30)}
               >
                 <Text
                   style={[
@@ -899,6 +901,7 @@ export function JobsView() {
                 activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: activeTab === "sponsored" }}
+                hitSlop={hitSlopTo44(90, 30)}
               >
                 <Text
                   style={[

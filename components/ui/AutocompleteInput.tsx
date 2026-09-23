@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
     Keyboard,
     Platform,
     ScrollView,
@@ -8,6 +7,7 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
+    useWindowDimensions,
     View,
     type StyleProp,
     type TextStyle,
@@ -18,7 +18,6 @@ import {
     autocompleteDropdownShell,
 } from "./autocompleteDropdownStyle";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const DROPDOWN_MAX_HEIGHT = 200;
 
 interface AutocompleteInputProps {
@@ -56,6 +55,10 @@ export function AutocompleteInput({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const inputRef = useRef<TextInput>(null);
   const containerRef = useRef<View>(null);
+  // Live window height — a frozen Dimensions.get() snapshot decided drop-up
+  // vs. drop-down using a value that goes stale after rotation, Split View,
+  // or a Stage Manager resize.
+  const { height: windowHeight } = useWindowDimensions();
 
   useEffect(() => {
     const showEvt =
@@ -102,13 +105,13 @@ export function AutocompleteInput({
     if (!showSuggestions) return;
     const id = setTimeout(() => {
       containerRef.current?.measureInWindow((_x, y, _w, h) => {
-        const spaceBelow = SCREEN_HEIGHT - keyboardHeight - (y + h);
+        const spaceBelow = windowHeight - keyboardHeight - (y + h);
         // Flip up when the visible space below the field can't fit the menu.
         setDropUp(spaceBelow < DROPDOWN_MAX_HEIGHT + 24);
       });
     }, 0);
     return () => clearTimeout(id);
-  }, [showSuggestions, keyboardHeight, filteredSuggestions.length]);
+  }, [showSuggestions, keyboardHeight, filteredSuggestions.length, windowHeight]);
 
   const handleSelectSuggestion = (item: string) => {
     setJustSelected(true);

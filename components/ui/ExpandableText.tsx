@@ -42,8 +42,6 @@ export function ExpandableText({
   // `true` once we've confirmed the collapsed text overflowed. Until then we
   // don't render a toggle, so short text shows nothing extra.
   const [isTruncatable, setIsTruncatable] = useState(false);
-  // Latches so the measurement only needs to happen once.
-  const [measured, setMeasured] = useState(false);
 
   const text = children ?? "";
   if (!text) return null;
@@ -53,14 +51,15 @@ export function ExpandableText({
       <Text
         style={style}
         numberOfLines={expanded ? undefined : numberOfLines}
-        // Fires with the laid-out lines. If the collapsed render produced more
-        // lines than allowed, the text is truncatable. Measured once.
+        // Fires with the laid-out lines on every layout pass (not just the
+        // first) — a bio that fit collapsed at a wide window can truncate
+        // after a rotation or a Split View resize, and the "Read more"
+        // toggle needs to reflect that, not a stale first measurement.
         onTextLayout={(e) => {
-          if (measured) return;
-          if (e.nativeEvent.lines.length > numberOfLines) {
-            setIsTruncatable(true);
-          }
-          setMeasured(true);
+          const overflowing = e.nativeEvent.lines.length > numberOfLines;
+          setIsTruncatable((prev) =>
+            prev === overflowing ? prev : overflowing,
+          );
         }}
       >
         {text}

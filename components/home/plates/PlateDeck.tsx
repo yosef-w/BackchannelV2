@@ -16,6 +16,7 @@
 // quarters (one bar answers "which card" AND "where in it").
 
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import React, {
@@ -93,6 +94,13 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
   { plates, anchor, scrollRef, onScroll, scrollY, bleed, onPlateChange, children },
   ref,
 ) {
+  // Deliberately window-derived, not container-measured: the plate row
+  // cancels its parent's horizontal padding via `marginHorizontal: -bleed`
+  // (below) so it always spans the full app window width, edge to edge —
+  // an immersive full-bleed card, not clipped inside HomeView's capped
+  // read column. That column cap (ScreenContainer below) only wraps the
+  // read content that scrolls under the plates, never this row, so the
+  // two never disagree about how wide the row actually renders.
   const { width: screenWidth } = useWindowDimensions();
   const plateWidth = screenWidth - PEEK;
   const count = plates.length;
@@ -139,6 +147,18 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
     commitIndex(Math.round(e.nativeEvent.contentOffset.x / plateWidth));
   };
 
+  // Rotation, a Split View drag, or a Stage Manager resize changes
+  // `plateWidth` (it's live off useWindowDimensions), but the ScrollView's
+  // actual scroll offset doesn't move on its own — it stays at the OLD
+  // `index * oldPlateWidth`, which now lands mid-plate or on the wrong
+  // plate entirely under the new width. Snap it back to the correct
+  // offset for the current index whenever the width changes. Instant,
+  // not animated: this is a correction, not a user-initiated navigation,
+  // so it should be invisible rather than visibly slide.
+  useEffect(() => {
+    rowRef.current?.scrollTo({ x: indexRef.current * plateWidth, animated: false });
+  }, [plateWidth]);
+
   // ── swipe-teaching nudge: the first plate slides and springs back ──
   // The static peek + "SLIDE FOR MORE →" label weren't enough on their
   // own — testers didn't notice either cue on their first card. This
@@ -184,6 +204,16 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
   // ── the read's section registry (ReadSections) ─────────────────────
   // Sections report their offsets as they lay out; a plate's cue scrolls
   // straight to its target section and flashes its landing hairline.
+  //
+  // Each ReadSection's onLayout `y` is relative to its own immediate
+  // parent — which is the <ScreenContainer> column below, NOT the
+  // ScrollView's content. That column's own onLayout `y` (captured here)
+  // IS relative to the ScrollView (it's a direct child of it), so it's
+  // exactly the piece missing from every section's reported position:
+  // the height of the plate carousel above it. Without adding it back,
+  // goToSection under-shoots by that entire amount — the scroll starts,
+  // but stops well short of the tapped section.
+  const readColumnOffsetRef = useRef(0);
   const sectionsRef = useRef(new Map<SectionId, { y: number; label: string }>());
   const [flashId, setFlashId] = useState<SectionId | null>(null);
   const register = useCallback((id: SectionId, y: number, label: string) => {
@@ -201,7 +231,10 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
     (id: SectionId) => {
       const entry = id === "top" ? undefined : sectionsRef.current.get(id);
       const y = entry
-        ? Math.max(0, entry.y - ANCHOR_HEIGHT - 10)
+        ? Math.max(
+            0,
+            readColumnOffsetRef.current + entry.y - ANCHOR_HEIGHT - 10,
+          )
         : Math.max(0, rowHeightRef.current - 4);
       scrollRef.current?.scrollTo({ y, animated: true });
       if (entry) {
@@ -324,15 +357,28 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
           </View>
         )}
 
-        <View style={s.readHead}>
-          <Text style={s.readEyebrow}>THE FULL READ</Text>
-          <Text style={s.readTitle}>
-            Every detail, <Text style={s.accent}>in full.</Text>
-          </Text>
-        </View>
-        <ReadSectionsContext.Provider value={sectionsApi}>
-          {children}
-        </ReadSectionsContext.Provider>
+        {/* The full read runs at normal (padded) width already — this only
+            matters on iPad, where that padded width is still ~130
+            characters wide. Cap it to a real reading column, same as any
+            other feed screen (lib/responsive's ScreenContainer).
+            onLayout here feeds readColumnOffsetRef — see its comment by
+            the section registry above for why goToSection needs it. */}
+        <ScreenContainer
+          variant="content"
+          onLayout={(e) => {
+            readColumnOffsetRef.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <View style={s.readHead}>
+            <Text style={s.readEyebrow}>THE FULL READ</Text>
+            <Text style={s.readTitle}>
+              Every detail, <Text style={s.accent}>in full.</Text>
+            </Text>
+          </View>
+          <ReadSectionsContext.Provider value={sectionsApi}>
+            {children}
+          </ReadSectionsContext.Provider>
+        </ScreenContainer>
       </Animated.ScrollView>
 
       {/* Pinned identity — box-none so only the "back up" label takes a

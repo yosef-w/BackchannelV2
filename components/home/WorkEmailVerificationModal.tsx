@@ -72,6 +72,7 @@ export function WorkEmailVerificationModal({
     tone: "error" | "success" | "info";
   } | null>(null);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   // Brief "you're in" beat between verification confirming and the gate
   // closing itself — see the "I've Verified" handler.
   const [showVerifiedBeat, setShowVerifiedBeat] = useState(false);
@@ -93,6 +94,63 @@ export function WorkEmailVerificationModal({
   };
 
   const displayedEmail = pendingWorkEmail ?? profileData?.personal?.workEmail ?? "";
+
+  // Extracted so both the "Save & resend" button's onPress AND the
+  // TextInput's Return key (added for keyboard-only submission — a short
+  // sheet in Split View/Stage Manager can otherwise leave a lone Save
+  // button pushed under the keyboard with no visible way to submit) call
+  // the exact same logic.
+  const handleSaveWorkEmail = async () => {
+    const trimmed = editedWorkEmail.trim();
+    if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
+      setEmailVerifStatus({
+        text: "That doesn't look like a valid email.",
+        tone: "error",
+      });
+      return;
+    }
+    setEmailVerifyLoading(true);
+    setEmailVerifStatus(null);
+    try {
+      // Two coordinated backend calls + a local mirror:
+      //   1. PATCH sponsor profile so the backend
+      //      persists work_email immediately and
+      //      auto-flips work_email_verified=FALSE
+      //      (services/profiles.py:162). Without this
+      //      the column doesn't update until the user
+      //      clicks the verification link.
+      //   2. Send the verification email — backend
+      //      embeds the email in a JWT; on link click
+      //      it re-saves and flips verified=TRUE.
+      // Run them in parallel since they're independent.
+      await Promise.all([
+        authApi.updateWorkEmail(trimmed),
+        authApi.sendWorkEmailVerification(trimmed),
+      ]);
+      await setPendingWorkEmail(trimmed);
+      trackWorkEmailUpdated();
+      // Mirror to data.personal.workEmail so ProfileView
+      // reflects the new address immediately without
+      // waiting for a full profile refetch.
+      await updatePersonalStore({ workEmail: trimmed });
+      setIsEditingWorkEmail(false);
+      setEditedWorkEmail("");
+      setEmailVerifStatus({
+        text: `Sent! Check ${trimmed} — including your spam folder.`,
+        tone: "success",
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Couldn't send.";
+      setEmailVerifStatus({
+        text: msg.toLowerCase().includes("rate")
+          ? "Too many sends — please wait a bit and try again."
+          : "Couldn't send to that address. Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setEmailVerifyLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -144,6 +202,9 @@ export function WorkEmailVerificationModal({
               autoCapitalize="none"
               autoCorrect={false}
               autoFocus
+              returnKeyType="send"
+              onSubmitEditing={handleSaveWorkEmail}
+              editable={!emailVerifyLoading}
             />
             <View style={styles.emailVerifEditActions}>
               <TouchableOpacity
@@ -159,58 +220,7 @@ export function WorkEmailVerificationModal({
                 <Text style={styles.emailVerifEditCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={async () => {
-                  const trimmed = editedWorkEmail.trim();
-                  if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
-                    setEmailVerifStatus({
-                      text: "That doesn't look like a valid email.",
-                      tone: "error",
-                    });
-                    return;
-                  }
-                  setEmailVerifyLoading(true);
-                  setEmailVerifStatus(null);
-                  try {
-                    // Two coordinated backend calls + a local mirror:
-                    //   1. PATCH sponsor profile so the backend
-                    //      persists work_email immediately and
-                    //      auto-flips work_email_verified=FALSE
-                    //      (services/profiles.py:162). Without this
-                    //      the column doesn't update until the user
-                    //      clicks the verification link.
-                    //   2. Send the verification email — backend
-                    //      embeds the email in a JWT; on link click
-                    //      it re-saves and flips verified=TRUE.
-                    // Run them in parallel since they're independent.
-                    await Promise.all([
-                      authApi.updateWorkEmail(trimmed),
-                      authApi.sendWorkEmailVerification(trimmed),
-                    ]);
-                    await setPendingWorkEmail(trimmed);
-                    trackWorkEmailUpdated();
-                    // Mirror to data.personal.workEmail so ProfileView
-                    // reflects the new address immediately without
-                    // waiting for a full profile refetch.
-                    await updatePersonalStore({ workEmail: trimmed });
-                    setIsEditingWorkEmail(false);
-                    setEditedWorkEmail("");
-                    setEmailVerifStatus({
-                      text: `Sent! Check ${trimmed} — including your spam folder.`,
-                      tone: "success",
-                    });
-                  } catch (err) {
-                    const msg =
-                      err instanceof Error ? err.message : "Couldn't send.";
-                    setEmailVerifStatus({
-                      text: msg.toLowerCase().includes("rate")
-                        ? "Too many sends — please wait a bit and try again."
-                        : "Couldn't send to that address. Please try again.",
-                      tone: "error",
-                    });
-                  } finally {
-                    setEmailVerifyLoading(false);
-                  }
-                }}
+                onPress={handleSaveWorkEmail}
                 style={styles.emailVerifEditSave}
                 activeOpacity={0.8}
                 disabled={emailVerifyLoading}
@@ -336,7 +346,14 @@ export function WorkEmailVerificationModal({
           file. Backend rate-limits to 5/hour per user. */}
         <TouchableOpacity
           style={styles.emailVerifTesterBtn}
+          disabled={resending}
           onPress={async () => {
+            // Only async action in this file with no in-flight guard before
+            // this fix — a fast double-tap fired two concurrent resend
+            // requests. Backend rate-limits (5/hr) so it failed safe, but
+            // with no UI feedback either; guard it like every sibling
+            // action in this file.
+            if (resending) return;
             const workEmail = pendingWorkEmail ?? profileData?.personal?.workEmail;
             if (!workEmail) {
               setEmailVerifStatus({
@@ -346,6 +363,7 @@ export function WorkEmailVerificationModal({
               return;
             }
             setEmailVerifStatus(null);
+            setResending(true);
             try {
               await authApi.sendWorkEmailVerification(workEmail);
               trackWorkEmailResendRequested();
@@ -361,11 +379,17 @@ export function WorkEmailVerificationModal({
                   : "Couldn't resend. Please try again.",
                 tone: "error",
               });
+            } finally {
+              setResending(false);
             }
           }}
           activeOpacity={0.8}
         >
-          <Text style={styles.emailVerifTesterBtnText}>Resend email</Text>
+          {resending ? (
+            <ActivityIndicator size="small" color={Colors.ink} />
+          ) : (
+            <Text style={styles.emailVerifTesterBtnText}>Resend email</Text>
+          )}
         </TouchableOpacity>
 
         {/* Dev-only bypass for internal testing — never shown in a

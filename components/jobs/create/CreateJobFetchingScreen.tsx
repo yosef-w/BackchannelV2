@@ -11,7 +11,25 @@ import {
 import { WebView } from "react-native-webview";
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { JobPreviewCard, type JobPreviewFields } from "./JobPreviewCard";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { Colors } from "@/constants/theme";
+
+// iPadOS's WKWebView requests desktop-class sites by default (its default
+// user agent identifies as macOS Safari on iPad), which can hand the
+// scraper a different DOM than the phone gets — different JSON-LD
+// placement, different lazy-render behavior, sometimes no JobPosting
+// schema at all. Forcing a mobile Safari UA keeps the scrape (JSON-LD →
+// OG tags → innerText fallback, all in JOB_SCRAPING_SCRIPT above)
+// consistent across iPhone and iPad instead of iPad silently seeing a
+// different page. iOS-only and undefined elsewhere: this is specifically
+// working around WKWebView's iPad behavior, and Android's own default
+// WebView UA already carries a "wv" marker some sites key off — replacing
+// it with an iPhone Safari string would be a platform mismatch some
+// bot-detection heuristics flag, with no upside on that platform.
+const MOBILE_SAFARI_USER_AGENT =
+  Platform.OS === "ios"
+    ? "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+    : undefined;
 
 export interface ScrapedJobData {
   url: string;
@@ -321,6 +339,7 @@ export function CreateJobFetchingScreen({
                 onPress={() => setShowRawView(false)}
                 style={styles.rawViewNavBtn}
                 activeOpacity={0.7}
+                hitSlop={hitSlopTo44(36, 36)}
               >
                 <ChevronLeft color={Colors.ink} size={22} />
               </TouchableOpacity>
@@ -336,6 +355,7 @@ export function CreateJobFetchingScreen({
                   disabled={!rawCanGoBack}
                   style={styles.rawViewNavBtn}
                   activeOpacity={0.7}
+                  hitSlop={hitSlopTo44(36, 36)}
                 >
                   <ChevronLeft
                     color={rawCanGoBack ? Colors.ink : Colors.faint}
@@ -347,6 +367,7 @@ export function CreateJobFetchingScreen({
                   disabled={!rawCanGoForward}
                   style={styles.rawViewNavBtn}
                   activeOpacity={0.7}
+                  hitSlop={hitSlopTo44(36, 36)}
                 >
                   <ChevronRight
                     color={rawCanGoForward ? Colors.ink : Colors.faint}
@@ -377,6 +398,7 @@ export function CreateJobFetchingScreen({
           }
           originWhitelist={["https://*", "http://*"]}
           onMessage={handleMessage}
+          userAgent={MOBILE_SAFARI_USER_AGENT}
           javaScriptEnabled
           domStorageEnabled
           // No third-party cookies — this WebView only scrapes public job

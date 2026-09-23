@@ -76,6 +76,7 @@ import {
   type SponsorCheckInReferral,
 } from "@/components/checkin/SponsorCheckInModal";
 import { NotificationsFeedView } from "@/components/NotificationsFeedView";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { FloatingTabBar } from "@/components/shell/FloatingTabBar";
 import {
   ShellContext,
@@ -489,23 +490,25 @@ export default function TabsLayout() {
                 bookkeeping is gone: the router state never changed). */}
             {notificationsOpen && (
               <View style={StyleSheet.absoluteFillObject}>
-                <NotificationsFeedView
-                  onBack={() => {
-                    setNotificationsOpen(false);
-                    // Refresh the real unread count now that the user has
-                    // seen (and possibly acted on) the list.
-                    fetchUnreadCount();
-                  }}
-                  onOpenConversation={(conversationId) => {
-                    setSelectedConversationId(conversationId);
-                    setNotificationsOpen(false);
-                    router.navigate("/(tabs)/messages");
-                  }}
-                  onOpenTab={(tab) => {
-                    setNotificationsOpen(false);
-                    router.navigate(`/(tabs)/${tab}`);
-                  }}
-                />
+                <ScreenContainer variant="content" style={styles.overlayColumn}>
+                  <NotificationsFeedView
+                    onBack={() => {
+                      setNotificationsOpen(false);
+                      // Refresh the real unread count now that the user has
+                      // seen (and possibly acted on) the list.
+                      fetchUnreadCount();
+                    }}
+                    onOpenConversation={(conversationId) => {
+                      setSelectedConversationId(conversationId);
+                      setNotificationsOpen(false);
+                      router.navigate("/(tabs)/messages");
+                    }}
+                    onOpenTab={(tab) => {
+                      setNotificationsOpen(false);
+                      router.navigate(`/(tabs)/${tab}`);
+                    }}
+                  />
+                </ScreenContainer>
               </View>
             )}
 
@@ -515,17 +518,21 @@ export default function TabsLayout() {
             {publicProfileData &&
               (userType === "sponsor" ? (
                 <View style={StyleSheet.absoluteFillObject}>
-                  <ApplicantPublicProfileView
-                    userData={publicProfileData}
-                    onClose={() => setPublicProfileData(null)}
-                  />
+                  <ScreenContainer variant="content" style={styles.overlayColumn}>
+                    <ApplicantPublicProfileView
+                      userData={publicProfileData}
+                      onClose={() => setPublicProfileData(null)}
+                    />
+                  </ScreenContainer>
                 </View>
               ) : (
                 <View style={StyleSheet.absoluteFillObject}>
-                  <SponsorPublicProfileView
-                    userData={publicProfileData}
-                    onClose={() => setPublicProfileData(null)}
-                  />
+                  <ScreenContainer variant="content" style={styles.overlayColumn}>
+                    <SponsorPublicProfileView
+                      userData={publicProfileData}
+                      onClose={() => setPublicProfileData(null)}
+                    />
+                  </ScreenContainer>
                 </View>
               ))}
           </View>
@@ -572,5 +579,13 @@ const styles = StyleSheet.create({
   loggedOutBridge: {
     flex: 1,
     backgroundColor: Colors.ink,
+  },
+  // Overlays are StyleSheet.absoluteFillObject (full-bleed) — cap their
+  // inner content at the reading-column width on iPad instead of letting
+  // NotificationsFeedView / the public-profile views stretch edge to edge.
+  // flex:1 makes the cap fill the overlay's height too, since ScreenContainer
+  // itself is a plain (non-flex) View.
+  overlayColumn: {
+    flex: 1,
   },
 });

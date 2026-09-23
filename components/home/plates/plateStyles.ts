@@ -38,7 +38,12 @@ export const plateStyles = StyleSheet.create({
     backgroundColor: Colors.paper,
   },
   plateUnderAnchor: { paddingTop: ANCHOR_HEIGHT + 6 },
-  plateBody: { alignItems: "center", width: "100%" },
+  // Capped and centered so the plate's TEXT stays a readable line length
+  // even though the plate card itself (`plate`, above) stays full-bleed —
+  // at 900pt+ (iPad landscape) `brief`'s 19pt serif prose would otherwise
+  // run edge to edge. Under this cap (phones, most iPad portrait widths)
+  // it's a no-op, same as every other cap in lib/responsive.
+  plateBody: { alignItems: "center", width: "100%", maxWidth: 560, alignSelf: "center" },
   eyebrow: {
     fontFamily: Fonts.sansBold,
     fontSize: 11,

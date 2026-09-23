@@ -105,7 +105,15 @@ export const cardStyles = StyleSheet.create({
   // exactly the widow bug this width exists to prevent. Call sites also
   // set numberOfLines={1} as the backstop.
   kLedgerKey: {
-    width: 118,
+    // minWidth, not width: at larger Dynamic Type sizes "COMPENSATION" /
+    // "SHARPEST AT" need more than 118 to stay on the one line
+    // numberOfLines={1} enforces — a fixed width truncated them instead of
+    // wrapping. minWidth keeps every row's key column aligned at the
+    // normal size (the common case) but lets it grow when the text needs
+    // it; kLedgerValueWrap's flex:1/minWidth:0 already absorbs the rest of
+    // the row, so the value column shrinks to make room instead of
+    // overflowing.
+    minWidth: 118,
     flexShrink: 0,
     fontSize: 11,
     fontWeight: "800",

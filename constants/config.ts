@@ -123,3 +123,12 @@ export const GOOGLE_WEB_CLIENT_ID =
 
 export const GOOGLE_ANDROID_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? "";
+
+// ─── Legal ──────────────────────────────────────────────────────────────────
+// Single source of truth — was duplicated as local constants in
+// PrivacySecurityScreen.tsx; AuthScreen's signup consent line reads the same
+// two URLs, so they moved here rather than being copied a second time.
+
+export const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
+export const PRIVACY_POLICY_URL =
+  "https://backchannelapp.netlify.app/privacy.html";

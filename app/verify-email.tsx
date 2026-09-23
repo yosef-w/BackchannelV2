@@ -20,7 +20,10 @@ import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -35,6 +38,7 @@ import {
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 type Status = "loading" | "success" | "alreadyVerified" | "error";
 
@@ -125,7 +129,15 @@ export default function VerifyEmailRoute() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+      <ScreenContainer variant="form" style={styles.content}>
         {status === "loading" && (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.ink} />
@@ -191,6 +203,10 @@ export default function VerifyEmailRoute() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                  returnKeyType="send"
+                  onSubmitEditing={handleResend}
                 />
                 <TouchableOpacity
                   style={[
@@ -220,13 +236,20 @@ export default function VerifyEmailRoute() {
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </ScreenContainer>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.paper },
+  flex: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   content: { flex: 1, paddingHorizontal: 28, paddingVertical: 32 },
   center: {
     flex: 1,

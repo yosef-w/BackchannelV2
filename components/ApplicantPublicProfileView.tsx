@@ -23,6 +23,8 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
+import { ScreenContainer } from "./ui/ScreenContainer";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { Colors, Fonts, Type } from "@/constants/theme";
 
 interface ApplicantPublicProfileViewProps {
@@ -142,9 +144,16 @@ export function ApplicantPublicProfileView({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+      <ScreenContainer variant="content">
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.backBtn}
+            hitSlop={hitSlopTo44(36, 36)}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
             <ChevronLeft color={Colors.ink} size={28} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.avatarWrapper}>
@@ -408,6 +417,7 @@ export function ApplicantPublicProfileView({
             </View>
           </View>
         ) : null}
+      </ScreenContainer>
       </ScrollView>
     </View>
   );
@@ -455,6 +465,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 32,
     color: Colors.ink,
+    textAlign: "center",
   },
   infoRow: {
     flexDirection: "row",
@@ -466,6 +477,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: Colors.ink,
+    flexShrink: 1,
   },
   locationText: {
     fontSize: 14,

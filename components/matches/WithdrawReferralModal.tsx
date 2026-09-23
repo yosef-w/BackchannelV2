@@ -1,19 +1,12 @@
 import { BlurView } from "expo-blur";
 import { AlertTriangle } from "@/components/ui/icons";
 import React from "react";
-import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
 import { BarFooter, canvasSheet, QuietAction } from "./JobSheetKit";
 import type { Referral } from "./matchesQueries";
 import { Colors, Radii, Type } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { useSheetMaxHeight } from "@/lib/responsive";
 
 interface WithdrawReferralModalProps {
   /** The referral pending withdrawal confirmation, or null when closed. */
@@ -40,6 +33,7 @@ export function WithdrawReferralModal({
   onCancel,
   onConfirm,
 }: WithdrawReferralModalProps) {
+  const sheetMaxHeight = useSheetMaxHeight(0.6);
   return (
     <View style={styles.modalOverlay}>
       <TouchableOpacity
@@ -53,11 +47,7 @@ export function WithdrawReferralModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onCancel}
-        style={[
-          styles.modalContent,
-          canvasSheet,
-          { maxHeight: SCREEN_HEIGHT * 0.6 },
-        ]}
+        style={[styles.modalContent, canvasSheet, { maxHeight: sheetMaxHeight }]}
       >
         {referral && (
           <View>

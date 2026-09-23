@@ -4,11 +4,13 @@ import { BlurView } from "expo-blur";
 import React from "react";
 import {
     ActivityIndicator,
-    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
@@ -19,8 +21,7 @@ import {
 import { jobsModalStyles } from "./jobsModalStyles";
 import { UNSPONSOR_REASONS } from "./jobTransforms";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { sheetColumn, sheetMaxHeight } from "@/lib/responsive";
 
 interface JobMenuModalProps {
   /** The job whose menu is open, or null when closed. */
@@ -71,8 +72,21 @@ export function JobMenuModal({
   onSaveLogoUrl,
   onClose,
 }: JobMenuModalProps) {
+  // LIVE window height (see JobDetailsModal's identical comment) — this
+  // sheet also holds the two text inputs below, which is exactly the case
+  // a frozen height breaks worst: the keyboard changes the usable height
+  // and the sheet needs to size against what's ACTUALLY on screen now.
+  const { height: windowHeight } = useWindowDimensions();
   return (
-    <View style={jobsModalStyles.modalOverlay}>
+    // KeyboardAvoidingView — this sheet holds the logo-URL and "Other"
+    // reason TextInputs and previously had NO keyboard handling at all,
+    // unlike every sibling sheet in matches/*Modal.tsx (which all wrap in
+    // this same way). The URL field and Save button sat directly under the
+    // keyboard on both iPhone and iPad.
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={jobsModalStyles.modalOverlay}
+    >
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
@@ -86,10 +100,11 @@ export function JobMenuModal({
         onDismiss={onClose}
         style={[
           jobsModalStyles.modalContent,
+          sheetColumn,
           // Absolute maxHeight — a "%" value resolves against the
           // gesture-root wrapper (which is content-sized), so the sheet
           // mis-measures and floats above the bottom. Absolute doesn't.
-          { maxHeight: SCREEN_HEIGHT * 0.9 },
+          { maxHeight: sheetMaxHeight(windowHeight, 0.9) },
         ]}
       >
         {/* Job context — centered serif title + subtitle, the same
@@ -260,7 +275,7 @@ export function JobMenuModal({
           </View>
         )}
       </DismissibleSheet>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -11,7 +11,15 @@ import {
 import { CreateJobStepHeader } from "./CreateJobStepHeader";
 import { JobPreviewCard } from "./JobPreviewCard";
 import { useKeyboardVisible } from "./useKeyboardVisible";
+import { useResponsive } from "@/lib/responsive";
 import { Colors, Fonts } from "@/constants/theme";
+
+/** Below this width (iPhone SE and similar), a placeholder like "Full-time"
+ * no longer fits comfortably in a half-row field once the row's 12px gap
+ * and the field's own padding are subtracted — stack Salary/Type instead
+ * of squeezing them side by side. The current iPhone SE is 375pt wide in
+ * portrait — this needs to clear that, not sit just under it. */
+const NARROW_STACK_WIDTH = 400;
 
 export interface EditableJobFields {
   title: string;
@@ -50,6 +58,8 @@ export function CreateJobReviewScreen({
 }: CreateJobReviewScreenProps) {
   const [fields, setFields] = useState(initial);
   const keyboardVisible = useKeyboardVisible();
+  const { width } = useResponsive();
+  const stackSalaryType = width < NARROW_STACK_WIDTH;
 
   // Re-seed local edit state whenever a fresh scrape result arrives.
   useEffect(() => {
@@ -110,16 +120,14 @@ export function CreateJobReviewScreen({
             placeholder="e.g. New York, NY or Remote"
             autoCapitalize="words"
           />
-          <View style={styles.row}>
-            <View style={styles.rowField}>
+          {stackSalaryType ? (
+            <>
               <Field
                 label="SALARY"
                 value={fields.salary}
                 onChangeText={set("salary")}
                 placeholder="e.g. $120k - $150k"
               />
-            </View>
-            <View style={styles.rowField}>
               <Field
                 label="TYPE"
                 value={fields.type}
@@ -127,8 +135,28 @@ export function CreateJobReviewScreen({
                 placeholder="Full-time"
                 autoCapitalize="words"
               />
+            </>
+          ) : (
+            <View style={styles.row}>
+              <View style={styles.rowField}>
+                <Field
+                  label="SALARY"
+                  value={fields.salary}
+                  onChangeText={set("salary")}
+                  placeholder="e.g. $120k - $150k"
+                />
+              </View>
+              <View style={styles.rowField}>
+                <Field
+                  label="TYPE"
+                  value={fields.type}
+                  onChangeText={set("type")}
+                  placeholder="Full-time"
+                  autoCapitalize="words"
+                />
+              </View>
             </View>
-          </View>
+          )}
           <Field
             label="DESCRIPTION"
             value={fields.description}

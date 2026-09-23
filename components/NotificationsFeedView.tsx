@@ -572,6 +572,19 @@ export function NotificationsFeedView({
             activeOpacity={0.6}
             onPress={() => handleNotificationPress(notification)}
             style={[styles.row, isUnread ? styles.rowUnread : styles.rowRead]}
+            // Deleting was swipe-only — no path for VoiceOver/Switch
+            // Control/keyboard users, who can't perform a swipe gesture.
+            // This exposes the exact same delete the swipe commits to
+            // (handleSwipeCommit → handleDeleteNotification) as a named
+            // accessibility action instead.
+            accessibilityActions={[
+              { name: "delete", label: "Delete notification" },
+            ]}
+            onAccessibilityAction={(event) => {
+              if (event.nativeEvent.actionName === "delete") {
+                handleSwipeCommit(notification);
+              }
+            }}
           >
             {/* Leading avatar or monochrome icon */}
             {hasAvatar ? (

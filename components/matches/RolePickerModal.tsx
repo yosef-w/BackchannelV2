@@ -1,13 +1,13 @@
 import { ChevronRight, MessageCircle } from "@/components/ui/icons";
 import React from "react";
 import {
-    Dimensions,
     Image,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from "react-native";
 import { BlurView } from "expo-blur";
@@ -19,8 +19,7 @@ import {
 import { canvasSheet, SheetCloseButton } from "./JobSheetKit";
 import { Match } from "./matchesQueries";
 import { Colors, Radii, Type } from "@/constants/theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { sheetMaxHeight } from "@/lib/responsive";
 
 export interface RoleGroup {
   items: Match[];
@@ -48,6 +47,7 @@ export function RolePickerModal({
   onSelectRole,
   onMessageRole,
 }: RolePickerModalProps) {
+  const { height } = useWindowDimensions();
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -64,7 +64,11 @@ export function RolePickerModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onClose}
-        style={[styles.modalContent, canvasSheet]}
+        style={[
+          styles.modalContent,
+          canvasSheet,
+          { maxHeight: sheetMaxHeight(height, 0.88) },
+        ]}
       >
         {roleGroup && (
           <>
@@ -139,6 +143,8 @@ export function RolePickerModal({
                     style={styles.rolePickerMsgBtn}
                     activeOpacity={0.8}
                     onPress={() => onMessageRole(m)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Message ${m.name}`}
                   >
                     <MessageCircle color={Colors.paper} size={16} strokeWidth={2.5} />
                   </TouchableOpacity>
@@ -163,12 +169,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 28,
     paddingBottom: 40,
-    // Sheet sizes to its content; only grows to fill (and scroll) when the
-    // content is taller than this cap — no empty whitespace for short modals.
-    // Absolute px (not "88%") so it doesn't depend on a parent with a fixed
-    // height — the GestureHandlerRootView wrapper inside DismissibleSheet is
-    // content-sized, and a % maxHeight against it would collapse to nothing.
-    maxHeight: SCREEN_HEIGHT * 0.88,
+    // maxHeight (sheet sizes to its content; only grows to fill/scroll past
+    // this cap) is applied inline above via sheetMaxHeight(), computed from
+    // the live useWindowDimensions() height — not a frozen Dimensions.get
+    // snapshot, so it stays correct across rotation / Split View / Stage
+    // Manager resize.
   },
   rolePickerHeader: {
     flexDirection: "row",

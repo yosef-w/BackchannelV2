@@ -26,6 +26,7 @@ import {
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { sheetColumn } from "@/lib/responsive";
 import { Colors, Fonts, Radii } from "@/constants/theme";
 
 interface MarketplaceGateModalProps {
@@ -73,7 +74,7 @@ export function MarketplaceGateModal({
       </TouchableOpacity>
 
       <DismissibleSheet onDismiss={onClose} fullSheetGesture style={styles.sheet}>
-        <View style={styles.body}>
+        <View style={[styles.body, sheetColumn]}>
           {/* Silent pop — a gate isn't a success. */}
           <ConfirmPop
             size={64}

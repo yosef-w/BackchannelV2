@@ -2,6 +2,14 @@ import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors } from "@/constants/theme";
+import { hitSlopTo44 } from "@/lib/responsive";
+
+// Tap-target padding for the CTA pill. Its rendered box (padding 13h/7v +
+// ~10.5pt caps text) is a hair under 44pt tall even with the existing
+// hitSlop of 8 — hitSlopTo44 with the pill's approximate box (width is
+// always comfortably >44 given its horizontal padding + text, so only
+// height needs padding out) closes that gap.
+const CTA_HIT_SLOP = hitSlopTo44(60, 27);
 
 interface OpportunityRowProps {
   onPress: () => void;
@@ -58,9 +66,15 @@ export function OpportunityRow({
     >
       {leading}
       <View style={styles.info}>
+        {/* Two lines instead of one: at accessibility Dynamic Type sizes or
+            in Slide Over (~320pt) the trailing CTA/chip can leave very
+            little width for the title, and a single line crushed it to a
+            handful of characters. Two lines gives it room without the row
+            needing a different structure — the row's alignItems:"center"
+            still reads fine when the title wraps and its neighbors don't. */}
         <Text
           style={[styles.title, muted && styles.titleMuted]}
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {title}
         </Text>
@@ -81,7 +95,7 @@ export function OpportunityRow({
             <TouchableOpacity
               style={styles.ctaPill}
               onPress={onPressCta}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={CTA_HIT_SLOP}
             >
               <Text style={styles.ctaText}>{cta}</Text>
             </TouchableOpacity>

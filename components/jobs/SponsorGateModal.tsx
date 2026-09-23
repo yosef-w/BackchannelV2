@@ -3,6 +3,7 @@ import { BlurView } from "expo-blur";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
+import { sheetColumn } from "@/lib/responsive";
 import { Colors, Radii, Type } from "@/constants/theme";
 
 interface SponsorGateModalProps {
@@ -32,7 +33,7 @@ export function SponsorGateModal({
       </TouchableOpacity>
 
       <DismissibleSheet onDismiss={onClose} fullSheetGesture style={styles.sheet}>
-        <View style={styles.body}>
+        <View style={[styles.body, sheetColumn]}>
           <View style={styles.iconContainer}>
             <Lock size={28} color={Colors.ink} strokeWidth={2.2} />
           </View>

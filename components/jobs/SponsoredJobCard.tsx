@@ -8,6 +8,7 @@ import {
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { FontScale } from "@/lib/responsive";
 import { Colors, Fonts } from "@/constants/theme";
 
 interface SponsoredJobCardProps {
@@ -61,7 +62,10 @@ export function SponsoredJobCard({
           >
             {applicants}
           </Text>
-          <Text style={styles.countLabel}>
+          <Text
+            style={styles.countLabel}
+            maxFontSizeMultiplier={FontScale.chrome}
+          >
             {applicants === 0
               ? "QUIET"
               : applicants === 1
@@ -239,5 +243,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.6,
     color: Colors.ink,
+    flexShrink: 1,
   },
 });

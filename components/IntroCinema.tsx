@@ -38,17 +38,19 @@
 //   muted problem lines, the thesis in serif with the italic accent,
 //   light mechanics, serif finale.
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dimensions, Pressable, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Colors, Fonts, Type } from '@/constants/theme';
 import { ArrowLeft } from '@/components/ui/icons';
 import { PressableScale } from '@/components/ui/PressableScale';
+import { hitSlopTo44 } from '@/lib/responsive';
 import {
   ActProgress,
   backOut,
@@ -135,12 +137,10 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
     ACT_STARTS,
   );
   useCinemaHaptics(master, BEATS);
+  const reduceMotion = useReducedMotion();
 
   // Watch-time analytics: one dismissal event, whichever exit is taken.
   const mountedAt = useRef(Date.now());
-  useEffect(() => {
-    trackIntroFilmViewed('applicant');
-  }, []);
   // None of the exits (Skip, the main CTA, sign-in, back) disable
   // themselves, so a fast double-tap — or Skip immediately followed by a
   // tap on the CTA before the first navigation resolves — could
@@ -161,6 +161,17 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
     else if (action === 'back') onBack();
     else onContinue();
   };
+
+  useEffect(() => {
+    trackIntroFilmViewed('applicant');
+    // Reduce Motion is on: the master clock (useCinemaClock) never
+    // animates, so the ~23s film would otherwise sit frozen on its first
+    // frame with no story ever shown. Take the exact exit Skip takes,
+    // immediately — the one already-tested, correct way out.
+    if (reduceMotion) dismiss('skip');
+    // Mount-only: deliberately not re-run if Reduce Motion toggles later.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Act 0: the problem ────────────────────────────────────────────────
 
@@ -449,10 +460,18 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
   });
 
   // Backchannel line geometry: from the (shifted) avatar pair to the
-  // company tile, dipping gently below their shared centerline.
-  const cx = W / 2;
+  // company tile, dipping gently below their shared centerline. `cx` comes
+  // from the stage's own measured width (onLayout below), not the
+  // launch-time window width — after a rotation the two can differ, which
+  // mis-centers the dashed line.
+  const [stageWidth, setStageWidth] = useState(W);
+  const cx = stageWidth / 2;
   const cy = STAGE_H / 2;
   const lineD = `M ${cx - 52} ${cy + 6} Q ${cx} ${cy + 44} ${cx + 56} ${cy + 6}`;
+
+  // "Sign in" link tap target — measured so hitSlopTo44 can pad it up to
+  // the 44pt minimum regardless of the rendered text's actual size.
+  const [signInSize, setSignInSize] = useState({ width: 200, height: 20 });
 
   return (
     <View style={styles.container}>
@@ -487,6 +506,7 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
         <Pressable
           style={styles.stage}
           onPress={advance}
+          onLayout={(e) => setStageWidth(e.nativeEvent.layout.width)}
           accessibilityRole="button"
           accessibilityLabel="Skip to next scene"
         >
@@ -708,7 +728,8 @@ export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) 
           </PressableScale>
           <TouchableOpacity
             onPress={() => dismiss('sign_in')}
-            hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+            onLayout={(e) => setSignInSize(e.nativeEvent.layout)}
+            hitSlop={hitSlopTo44(signInSize.width, signInSize.height)}
             accessibilityRole="button"
             accessibilityLabel="Sign in"
           >
@@ -1231,7 +1252,10 @@ const styles = StyleSheet.create({
   },
   // ── Captions ──────────────────────────────────────────────────────────
   captionArea: {
-    height: 84,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    minHeight: 84,
     marginTop: 8,
     justifyContent: 'center',
   },
@@ -1280,6 +1304,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     width: '78%',
+    maxWidth: 360,
     height: 56,
     backgroundColor: Colors.ink,
     borderRadius: 28,

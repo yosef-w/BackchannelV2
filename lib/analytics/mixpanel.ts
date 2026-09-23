@@ -51,6 +51,15 @@ export async function initAnalytics(): Promise<void> {
   initPromise = (async () => {
     try {
       await mixpanel.init();
+      // Off by default in this app. The SDK's default (on) has Mixpanel's
+      // ingest derive an approximate location — city/region/country — from
+      // every event's IP address and stamp it on the event and the
+      // person profile. We never asked for that, it isn't in the privacy
+      // policy or the App Store privacy manifest, and it would have had to
+      // be declared as "Coarse Location, linked to you". The profile's
+      // `location` prop (the city the user typed, set in identifyUser) is
+      // the only location analytics carries.
+      mixpanel.setUseIpAddressForGeolocation(false);
       initialized = true;
     } catch (err) {
       // Init failures shouldn't break the app — analytics will simply no-op.
@@ -118,11 +127,15 @@ export async function identifyUser(args: IdentifyArgs): Promise<void> {
       user_id: args.userId,
       user_type: args.userType,
       email_verified: args.emailVerified ?? undefined,
-      work_email_verified: args.workEmailVerified ?? undefined,
       company: args.company ?? undefined,
       job_title: args.jobTitle ?? undefined,
       location: args.location ?? undefined,
-      current_role: args.currentRole ?? undefined,
+      // work_email_verified and current_role are deliberately NOT sent here:
+      // the Privacy Policy's analytics section discloses account/profile
+      // fields like company and job_title, but doesn't cover these two, and
+      // this is the actual outbound record — the policy has to match what
+      // we send, not the other way around. Add them to the policy first if
+      // they're ever needed here.
     };
     // Strip undefined values — Mixpanel persists nulls but ignores undefineds
     // unevenly across SDK versions, so we filter for predictability.
