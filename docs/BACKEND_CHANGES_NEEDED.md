@@ -1,10 +1,10 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-22 (added **§W** — App Store submission alignment: the published Privacy Policy/Terms now make promises the backend has to keep, SSO-only accounts can't delete themselves, support/alert email plumbing; elevated §V #1 to launch-blocking)
+**Last updated:** 2026-09-22 (added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§W** — App Store submission alignment (🔴 high, new, 2026-09-22): the rewritten Privacy Policy/Terms going live at `backchannelapp.netlify.app` state things the backend has to keep true (résumé only after match → §V #1 is now launch-blocking), SSO-only accounts (Apple "Hide My Email") have no working path to delete their account (Apple 5.1.1(v)), and support/moderation email needs `Reply-To` + `MODERATION_ALERT_EMAIL` + Apple relay-domain registration — see §W. **§V** — security audit (🔴 high): a joint frontend+backend read-only audit ahead of App Store submission found no broken authorization or SQL injection (both clean), but the sponsor feed returns applicant phone/DOB/résumé before any match, uploaded images are public-read forever, and Django + a few libs are past their security-support window. Entirely backend-owned — see §V for the full breakdown and fix order. **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
+> **Open items:** **§X** — two ready-to-apply fixes (🟠 medium, new, 2026-09-22), written up as full explanation + exact diff rather than pushed as a branch/PR since this is Nico's repo: transactional emails (verify/reset/welcome) link to the marketing website instead of deep-linking into the app, and a Daphne-proxy-timeout-vs-Anthropic-call race that produces false "resume couldn't be parsed" errors on requests that actually succeeded — see §X. **§W** — App Store submission alignment (🔴 high, new, 2026-09-22): the rewritten Privacy Policy/Terms going live at `backchannelapp.netlify.app` state things the backend has to keep true (résumé only after match → §V #1 is now launch-blocking), SSO-only accounts (Apple "Hide My Email") have no working path to delete their account (Apple 5.1.1(v)), and support/moderation email needs `Reply-To` + `MODERATION_ALERT_EMAIL` + Apple relay-domain registration — see §W. **§V** — security audit (🔴 high): a joint frontend+backend read-only audit ahead of App Store submission found no broken authorization or SQL injection (both clean), but the sponsor feed returns applicant phone/DOB/résumé before any match, uploaded images are public-read forever, and Django + a few libs are past their security-support window. Entirely backend-owned — see §V for the full breakdown and fix order. **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -48,6 +48,52 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 9. **Job-search text** — if applicant search queries (`title`/`location` params on browse) are logged or retained server-side, tell us and we'll add "search history" to the policy; today it says analytics never receives them (true on the client).
 
 **Fix order suggestion:** 1 → 3 → 4 → 5 → 6/7 (confirm) → 2 as its own items ship.
+
+---
+
+## §X — Two ready-to-apply fixes, written up here instead of pushed as a branch 🟠 Medium priority (new section, 2026-09-22 — for Nico)
+
+**Why this is here instead of a PR:** these were worked out locally against a checkout of this repo while chasing down a couple of bugs, but since this repo is Nico's, they're written up as a full explanation + exact diff instead of a branch/PR — so it's his call whether to take them as-is, adapt them, or have his own AI regenerate the same fix from this description. Nothing has been pushed anywhere; the local branch these came from has been deleted.
+
+### 1. Transactional emails link to the marketing website instead of deep-linking into the app
+
+**Symptom:** the verification, password-reset, email-change, and work-email-verification links (and the welcome email's "Open BackChannel" button) all point to `{FRONTEND_URL}/<path>?token=...` — the marketing website. That site has no page to hand the token off to the app, so a user tapping the link lands on the website with nothing happening. The app-side routes (`app/verify-email.tsx`, `app/reset-password.tsx`) are already fully built to handle a token arriving via deep link — they just never receive one today.
+
+**Fix:** add an `APP_SCHEME_URL` setting (defaults to the app's real custom scheme, `backchannelv2://`, so it works with zero deployment config changes) and switch the five affected links to use it instead of `FRONTEND_URL`. `FRONTEND_URL` is untouched and still used for the actual website and the operator report-queue link.
+
+- **`django_bc/settings.py`** — add near `FRONTEND_URL` (~line 262):
+  ```python
+  # Custom URL scheme for deep-linking transactional email links (email
+  # verification, password reset, welcome) directly into the mobile app
+  # instead of the marketing website — see the BackchannelV2 app's app.json
+  # "scheme" and app/verify-email.tsx / app/reset-password.tsx, which already
+  # read `?token=` off whatever URL opened them. No trailing "/" — call
+  # sites append the path directly (e.g. f"{APP_SCHEME_URL}verify-email?token=...").
+  APP_SCHEME_URL = os.environ.get("APP_SCHEME_URL", "backchannelv2://")
+  ```
+- **`bc_microservices/services/email.py`** — swap `settings.FRONTEND_URL` for `settings.APP_SCHEME_URL` (and drop the leading `/`) in: `send_password_reset_email`'s `reset_url`, `send_welcome_email`'s `frontend_url` template var, `send_verification_email`'s `verify_url`, `send_email_change_verification`'s `verify_url`, `send_work_email_verification`'s `verify_url`. Five call sites total, same one-line change each: `f"{settings.FRONTEND_URL}/verify-email?token={token}"` → `f"{settings.APP_SCHEME_URL}verify-email?token={token}"` (and equivalent for the other paths).
+- **`.env.example`** — document the new var next to `FRONTEND_URL`, with a one-line comment noting the default already matches `app.json`'s scheme.
+
+**Acceptance:** a fresh signup's verification email link opens the app (not a browser) and lands on `app/verify-email.tsx` with the token populated; same for password reset.
+
+**Known follow-up, not part of this fix:** `backchannelv2://` is a custom scheme, not a Universal Link (`https://...`) — fine for now, but a custom scheme fails silently if the app isn't installed (no "open in App Store" fallback the way a Universal Link gets). Not urgent, just flagging for whenever there's bandwidth to move to real Universal Links.
+
+### 2. Résumé-parse false-failure race between Daphne's proxy timeout and the Anthropic call
+
+**Symptom:** applicants intermittently get a "resume couldn't be parsed" error, but the résumé ends up correctly parsed/classified moments later anyway — the client is told it failed for a request that actually succeeded.
+
+**Root cause:** Daphne's `--http-timeout` was `60s` (`Dockerfile`), under the `90s` read-timeout budget for the extraction call to Anthropic (`bc_microservices/services/documents.py`) and close to the `60s` classify budget. When a call took 60–90s, Daphne severed the client's connection and reported failure at the 60s mark, while the Django view kept running in its worker thread, finished when Anthropic responded, and unconditionally wrote the successful result to Postgres anyway. Compounding it: neither Anthropic client had `max_retries` set, so the SDK's default (2 retries) retries an *entire* 60–90s call on a plain read timeout — silently tripling worst-case latency and making the race against Daphne's timeout far more likely to fire.
+
+**Fix:**
+- **`bc_microservices/services/documents.py`** — add `max_retries=0` to both `anthropic.Anthropic(...)` constructions (`_extract_text_anthropic` and `_classify_text_anthropic`), so a slow call fails fast and predictably instead of silently retrying into a proxy timeout.
+- **`Dockerfile`** — raise daphne's `--http-timeout` from `60` to `150`, clearing the 90s extraction budget (now tightly bounded since retries are off) with real margin for the base64/CDN-upload/DB-write work around it.
+- **`docker-compose.yml`** — pass the same `--http-timeout 150` explicitly on the local dev command, so local runs match production instead of silently falling back to Daphne's own default.
+
+**Verification note:** wasn't able to run the Django test suite when this was worked out (no local Python env at hand). Checked `bc_microservices/tests/test_document_parsing.py` by reading it directly — it doesn't assert on the Anthropic client's constructor kwargs, so `max_retries=0` shouldn't change any existing test's expected call shape, but this should still run through CI before merging.
+
+**Frontend companion (already shipped, no backend dependency):** the frontend's own client-side timeouts were reconciled to match, plus a "harvest" mechanism so a request that outlives whatever timeout fires still gets its result picked up instead of leaving the UI stuck on a stale error.
+
+**Not done, flagged separately:** the backend still collapses every résumé-parse failure — a genuinely corrupt file, a rate limit, a transient 5xx — into one generic message with no way for the client to tell retryable from terminal. Left alone since it changes the response contract; worth a follow-up if it comes up again.
 
 ---
 
