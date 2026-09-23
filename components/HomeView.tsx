@@ -97,6 +97,7 @@ import {
 } from "./home/plates/plateContent";
 import { JobDescriptionModal } from "./home/JobDescriptionModal";
 import { JobSwitcherSheet } from "./home/JobSwitcherSheet";
+import { LikeLimitGateModal } from "./home/LikeLimitGateModal";
 import { MatchCelebrationModal } from "./home/MatchCelebrationModal";
 import { SkeletonCard } from "./home/SkeletonCard";
 import { WorkEmailVerificationModal } from "./home/WorkEmailVerificationModal";
@@ -106,7 +107,15 @@ import { ReportUserSheet } from "./ui/ReportUserSheet";
 import { ScreenContainer } from "./ui/ScreenContainer";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-import { PLATES_ENABLED } from "@/constants/config";
+import {
+  PLATES_ENABLED,
+  PREMIUM_ENABLED,
+  getDailyLikeCap,
+} from "@/constants/config";
+import {
+  getDailyLikesUsed,
+  incrementDailyLikesUsed,
+} from "@/lib/dailyLikeLimit";
 import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
@@ -290,10 +299,24 @@ export function HomeView({
   // handleUnlock, which already tracked this locally.
   const [unlockingPremium, setUnlockingPremium] = useState(false);
 
+  // Daily like cap — see constants/config.ts's DAILY_LIKE_LIMITS and
+  // lib/dailyLikeLimit.ts. The gate check itself lives in handleSwipe and
+  // reads live values at the moment of the swipe (useSubscriptionStore's
+  // getState() + a fresh AsyncStorage read) rather than trusting component
+  // state, specifically so a same-render retry right after a purchase
+  // (LikeLimitGateModal's onUnlocked → handleSwipe(true) again) can't see a
+  // stale pre-purchase snapshot of isPremium. This state is only for the
+  // sheet's visibility, not for the gating decision itself.
+  const [likeLimitGateOpen, setLikeLimitGateOpen] = useState(false);
+
   // Tapping "Unlock more cards" opens the paywall. On a successful purchase we
-  // reset the deck so they can keep swiping immediately. (A larger/unlimited
-  // daily allotment for premium users needs backend support — see note in
-  // docs/BACKEND_CHANGES_NEEDED.md; for now this returns them to the top.)
+  // reset the deck so they can keep swiping immediately — over the SAME
+  // already-loaded set of cards, since a genuinely larger/fresh daily card
+  // volume for premium needs backend support that doesn't exist yet (see
+  // docs/BACKEND_CHANGES_NEEDED.md §Y). What premium actually raises today
+  // is the daily LIKE cap (DAILY_LIKE_LIMITS in constants/config.ts) — the
+  // paywall copy only promises that, not a bigger deck, so this is honest
+  // as-is.
   const handleUnlockMoreCards = async () => {
     setUnlockingPremium(true);
     try {
@@ -1152,6 +1175,27 @@ export function HomeView({
       return;
     }
 
+    // Daily like cap (constants/config.ts's DAILY_LIKE_LIMITS). Checked
+    // here, not via VerdictBar's `disabled`, so Pass keeps working and the
+    // rest of today's deck stays browsable — only the accept verb stops,
+    // same precedent as the completeness/work-email gates above (open a
+    // sheet, don't disable the whole bar). Inert while PREMIUM_ENABLED is
+    // false, so beta/dev behavior is unchanged. Reads live state
+    // (getState(), a fresh AsyncStorage read) instead of a memoized
+    // component value — this same check re-runs on LikeLimitGateModal's
+    // post-purchase retry (onUnlocked → handleSwipe(true) again), and a
+    // stale pre-purchase isPremium snapshot there would just reopen the
+    // gate it was supposed to have cleared.
+    if (isAccept && PREMIUM_ENABLED) {
+      const currentIsPremium = useSubscriptionStore.getState().isPremium;
+      const likeCap = getDailyLikeCap(currentIsPremium);
+      const usedToday = await getDailyLikesUsed(userType);
+      if (usedToday >= likeCap) {
+        setLikeLimitGateOpen(true);
+        return;
+      }
+    }
+
     setActionPending(true);
     if (isAccept) {
       // The stamp lands the instant the verb is pressed — a physical mark,
@@ -1177,6 +1221,14 @@ export function HomeView({
             setAppliedJobIds((prev) => new Set([...prev, String(jobId)]));
             setLikedIds((prev) => new Set([...prev, String(jobId)]));
             incrementSessionLikes();
+            // Persistent daily cap counter — separate from sessionLikes
+            // above, which resets on "review again"/premium-unlock and so
+            // can't be what a real cap is built on. Fire-and-forget: a
+            // missed write here just means one extra like slips through
+            // before the day-boundary check catches up, not a hard bug.
+            if (PREMIUM_ENABLED) {
+              incrementDailyLikesUsed(userType).catch(() => {});
+            }
 
             // Record "liked" in the feed history (fire-and-forget)
             recordJobFeedAction(String(jobId), "liked").catch(() => {});
@@ -1232,6 +1284,10 @@ export function HomeView({
             console.log("[HomeView] Like profile response:", response);
             setLikedIds((prev) => new Set([...prev, String(applicantUserId)]));
             incrementSessionLikes();
+            // See the applicant branch's identical comment above.
+            if (PREMIUM_ENABLED) {
+              incrementDailyLikesUsed(userType).catch(() => {});
+            }
 
             trackProfileLiked({
               applicantUserId: String(applicantUserId),
@@ -2520,6 +2576,18 @@ export function HomeView({
         isSubmitting={isReporting}
         onSubmit={handleSubmitReport}
         onClose={() => setReportSheetOpen(false)}
+      />
+
+      <LikeLimitGateModal
+        visible={likeLimitGateOpen}
+        onClose={() => setLikeLimitGateOpen(false)}
+        isPremium={isPremium}
+        userType={userType}
+        // Purchase already justifies proceeding — re-running the same
+        // handleSwipe(true) re-checks the cap with fresh (post-purchase)
+        // state rather than replaying a stale pre-purchase decision (see
+        // the comment on the gate check itself).
+        onUnlocked={() => handleSwipe(true)}
       />
     </View>
   );
