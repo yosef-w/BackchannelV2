@@ -1060,9 +1060,33 @@ export function HomeView({
     setReportSheetOpen(false);
     if (ok) {
       showToast("Reported. You won't be shown to each other again.", "success");
-      // Reporting also blocks server-side — advance off this card the same
-      // way Pass does, rather than leaving it sitting on screen.
-      handleSwipe(false);
+      // Remove this card from the deck's own array — not just advance past
+      // it — so it can never come back, including via "Review again"
+      // (resetNavigation only resets index/progress; it never restores the
+      // array, so once removed it stays removed for the rest of this
+      // session). Without this, the exact person/job just reported could
+      // reappear fully interactive a few cards later or on a deck replay,
+      // directly contradicting the Privacy Policy's "you will no longer be
+      // shown to each other" — this is exactly what an Apple 1.2 reviewer
+      // tests by hand (report, keep swiping, replay).
+      if (currentItemId) {
+        if (userType === "applicant") {
+          setJobs(jobs.filter((j) => j.id !== currentItemId));
+        } else {
+          setProfiles(
+            profiles.filter(
+              (p) => (p.USER_ID || p.id) !== currentItemId,
+            ),
+          );
+        }
+      }
+      // Advance directly rather than through handleSwipe(false) — a report
+      // isn't a real swipe decision, and routing it through the full swipe
+      // handler re-ran the profile-completeness/work-email gates on an
+      // incomplete/unverified account, popping that modal over the
+      // "Reported" toast instead of just moving on. nextProfile is the same
+      // gate-free advance the "already liked" overlay's Continue uses.
+      nextProfile(true);
     } else {
       showToast(
         "Couldn't record your report. Please try again later.",

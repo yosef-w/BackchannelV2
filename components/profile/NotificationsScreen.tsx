@@ -8,6 +8,10 @@ import * as Notifications from "expo-notifications";
 import React from "react";
 import { Linking, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import {
+  getCheckInNudgesEnabled,
+  setCheckInNudgesEnabled,
+} from "@/lib/checkInNudges";
+import {
   getDeckRemindersEnabled,
   scheduleDailyDeckReminder,
   setDeckRemindersEnabled,
@@ -33,12 +37,13 @@ type NotifKey =
   | "job_like"
   | "sponsor_request";
 
-// The deck reminders are a device-local schedule, not a backend push type
-// (see lib/localNotifications.ts) — a distinct key space from NotifKey.
-// AnyNotifKey lets the shared Row component render either kind; handleToggle
-// below is what actually keeps their two very different persistence paths
-// (backend PATCH vs. AsyncStorage) from crossing.
-type LocalNotifKey = "deck_reminders";
+// Deck reminders and check-in nudges are both device-local schedules, not
+// backend push types (see lib/localNotifications.ts and lib/checkInNudges.ts)
+// — a distinct key space from NotifKey. AnyNotifKey lets the shared Row
+// component render either kind; handleToggle below is what actually keeps
+// their two very different persistence paths (backend PATCH vs. AsyncStorage)
+// from crossing.
+type LocalNotifKey = "deck_reminders" | "checkin_nudges";
 type AnyNotifKey = NotifKey | LocalNotifKey;
 
 interface Props {
@@ -115,12 +120,25 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
     getDeckRemindersEnabled().then(setDeckRemindersEnabledState);
   }, [visible]);
 
+  // Same idiom, same reason — see lib/checkInNudges.ts's own comment on
+  // getCheckInNudgesEnabled for why this needed its own toggle rather than
+  // riding on "referral" (which only gates the backend push for a formal
+  // referral/status change, not this on-device recurring nudge).
+  const [checkInNudgesEnabled, setCheckInNudgesEnabledState] =
+    React.useState(true);
+  React.useEffect(() => {
+    if (!visible) return;
+    getCheckInNudgesEnabled().then(setCheckInNudgesEnabledState);
+  }, [visible]);
+
   // Backend gate lives in services/notifications.py:create_notification —
   // missing keys default to enabled, so `undefined` reads as `true`.
   const isEnabled = (key: AnyNotifKey) =>
     key === "deck_reminders"
       ? deckRemindersEnabled
-      : notificationPreferences[key] !== false;
+      : key === "checkin_nudges"
+        ? checkInNudgesEnabled
+        : notificationPreferences[key] !== false;
 
   // The store updates optimistically (and rolls back the key on failure),
   // so the switch stays enabled throughout — no dead time where the user
@@ -139,6 +157,18 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
           // registration runs, i.e. the next app launch.
           if (next) scheduleDailyDeckReminder(userType);
         });
+        return;
+      }
+      if (key === "checkin_nudges") {
+        setCheckInNudgesEnabledState(next);
+        // Turning OFF cancels immediately inside setCheckInNudgesEnabled.
+        // Turning back ON doesn't need an explicit re-arm here the way deck
+        // reminders does — useCheckInReferrals' effect already recomputes +
+        // reschedules this role's nudge any time the referral list changes
+        // (every fetch, e.g. next app open or check-in sheet open), and
+        // scheduleCheckInNudges re-checks this same preference before it
+        // schedules anything.
+        setCheckInNudgesEnabled(next);
         return;
       }
       run(async () => {
@@ -180,13 +210,20 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
         </TouchableOpacity>
       )}
 
-      <Text style={styles.groupLabel}>DECK REMINDERS</Text>
+      <Text style={styles.groupLabel}>REMINDERS</Text>
       <View style={styles.group}>
         <Row
           notifKey="deck_reminders"
           label="Daily Deck Reminders"
           description="A morning nudge when your fresh deck is ready, and an afternoon one if you haven't gone through it yet"
           value={isEnabled("deck_reminders")}
+          onToggle={handleToggle}
+        />
+        <Row
+          notifKey="checkin_nudges"
+          label="Referral Check-In Nudges"
+          description="A periodic reminder to check in on a referral's pipeline status"
+          value={isEnabled("checkin_nudges")}
           onToggle={handleToggle}
         />
       </View>

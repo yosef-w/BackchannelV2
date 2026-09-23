@@ -127,11 +127,15 @@ export async function identifyUser(args: IdentifyArgs): Promise<void> {
       user_id: args.userId,
       user_type: args.userType,
       email_verified: args.emailVerified ?? undefined,
-      work_email_verified: args.workEmailVerified ?? undefined,
       company: args.company ?? undefined,
       job_title: args.jobTitle ?? undefined,
       location: args.location ?? undefined,
-      current_role: args.currentRole ?? undefined,
+      // work_email_verified and current_role are deliberately NOT sent here:
+      // the Privacy Policy's analytics section discloses account/profile
+      // fields like company and job_title, but doesn't cover these two, and
+      // this is the actual outbound record — the policy has to match what
+      // we send, not the other way around. Add them to the policy first if
+      // they're ever needed here.
     };
     // Strip undefined values — Mixpanel persists nulls but ignores undefineds
     // unevenly across SDK versions, so we filter for predictability.
