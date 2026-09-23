@@ -12,6 +12,7 @@ import { cardStyles } from "./cardStyles";
 import { ReadSection } from "./plates/ReadSections";
 import { deriveExperienceFact, joinFacts } from "./dossierFacts";
 import { Colors } from "@/constants/theme";
+import { contentColumn } from "@/lib/responsive";
 
 interface ApplicantProfileCardProps {
   /** The current sponsor-side profile pack entry (the transformed deck
@@ -116,7 +117,9 @@ export function ApplicantProfileCard({
     /* ────────────────────────────────────────────────────
        SPONSOR VIEW — applicant profile, vertical scroll
        ──────────────────────────────────────────────────── */
-    <>
+    // Reading column cap (contentColumn, 640) — body/hinge text ran to
+    // ~140 characters per line on a 13" iPad with no cap of its own.
+    <View style={contentColumn}>
       {/* "Liked your role" badge (PR #56) — high-conviction
           interest, anchored at the top before the hero so
           it's the first thing the sponsor sees. */}
@@ -408,6 +411,6 @@ export function ApplicantProfileCard({
           <Text style={cardStyles.hingeBodyText}>{achievements}</Text>
         </View></ReadSection>
       )}
-    </>
+    </View>
   );
 }

@@ -19,7 +19,7 @@
 //   simultaneously with the sheet's pan, so the handoff is seamless.
 
 import React, { createContext, useContext } from "react";
-import { Dimensions, StyleSheet, View, ViewStyle } from "react-native";
+import { StyleSheet, useWindowDimensions, View, ViewStyle } from "react-native";
 import {
   Gesture,
   GestureDetector,
@@ -38,8 +38,8 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import { Colors } from "@/constants/theme";
+import { sheetColumn } from "@/lib/responsive";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 // Drag down past this many px — or flick down faster than this — to dismiss.
 const DISMISS_DISTANCE = 110;
 const DISMISS_VELOCITY = 900;
@@ -133,6 +133,9 @@ export function DismissibleSheet({
   scrollDismiss = false,
   instant = false,
 }: DismissibleSheetProps) {
+  // LIVE window height (not a module-level snapshot): the slide-out target
+  // must clear the CURRENT window after a rotation / Stage Manager resize.
+  const { height: windowHeight } = useWindowDimensions();
   const translateY = useSharedValue(0);
   const scrollOffset = useSharedValue(0);
   // While the finger is down but the content isn't at the top yet, the pan
@@ -151,7 +154,7 @@ export function DismissibleSheet({
       (velocityY > DISMISS_VELOCITY && translateY.value > 0)
     ) {
       translateY.value = withTiming(
-        SCREEN_HEIGHT,
+        windowHeight,
         { duration: 220 },
         (finished) => {
           if (finished) runOnJS(onDismiss)();
@@ -261,7 +264,13 @@ export function DismissibleSheet({
 const styles = StyleSheet.create({
   // No flex — the sheet keeps sizing to its own content (the parent overlay's
   // justifyContent: "flex-end" anchors it to the bottom).
-  root: { width: "100%" },
+  //
+  // Width is CAPPED and centered (sheetColumn): on an iPad this was the
+  // root cause of every bottom sheet in the app — 27 consumers — spanning
+  // the full 744–1376pt window as a phone sheet stretched edge to edge.
+  // The cap (600) is wider than any phone, so iPhone is unchanged. A static
+  // max-width reads no window size, so it holds mid-rotation too.
+  root: { ...sheetColumn },
   // Full-width touch target around the visible pill so it's easy to grab.
   handleZone: {
     width: "100%",

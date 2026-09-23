@@ -15,7 +15,7 @@
 
 import { Check, ChevronRight, List, X } from "@/components/ui/icons";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,6 +32,7 @@ import Animated, { FadeIn, SlideInRight, ZoomIn } from "react-native-reanimated"
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { CharCounter } from "../ui/CharCounter";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { hitSlopTo44 } from "@/lib/responsive";
 import {
   nextPendingIndex,
   summarize,
@@ -70,6 +71,18 @@ interface CheckInStackProps {
   terminalLabel: string;
   noteEnabled?: boolean;
   notePlaceholder?: string;
+  /**
+   * How far down the SCREEN this stack's sheet starts (injected by
+   * CheckInSheetShell via cloneElement — see its `sheetTopOffset`). The
+   * card frame's KeyboardAvoidingView needs this as its
+   * `keyboardVerticalOffset`: RN measures a KAV's frame relative to its
+   * OWN PARENT, not the screen, so without this the keyboard-overlap math
+   * compares an absolute keyboard Y against a small parent-relative frame
+   * Y and under-pads — the Send/Skip footer can end up under the keyboard.
+   * Defaults to 0 (top-of-screen), matching a KAV that isn't inside a
+   * partway-down sheet.
+   */
+  sheetTopOffset?: number;
   /** Immediate mode: submit this card now; throw to keep the card open. */
   onSubmitCard?: (item: StackCardItem, selection: StackSelection) => Promise<void>;
   /** Accumulate mode: submit everything from the recap. */
@@ -102,6 +115,7 @@ export function CheckInStack({
   finalizeLabel,
   recapSubtitle,
   bulkAction,
+  sheetTopOffset = 0,
   onDone,
 }: CheckInStackProps) {
   const ids = useMemo(() => items.map((i) => i.id), [items]);
@@ -119,6 +133,13 @@ export function CheckInStack({
   const [noteOpen, setNoteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  // Synchronous re-entrancy guards. `submitting`/`finalizing` (state) only
+  // disable their buttons on the NEXT render — two invocations in the same
+  // tick (a fast double-tap, or an assistive-tech double-activate) would
+  // both read the pre-update `false` and both fire a real backend write. A
+  // ref is checked and set before anything else runs, closing that window.
+  const submittingRef = useRef(false);
+  const finalizingRef = useRef(false);
 
   const current = items[index] ?? null;
 
@@ -230,7 +251,8 @@ export function CheckInStack({
   };
 
   const submitCurrent = async () => {
-    if (!current || !hasSelection || submitting) return;
+    if (!current || !hasSelection || submitting || submittingRef.current) return;
+    submittingRef.current = true;
     const selection: StackSelection = {
       stageIndex: terminal ? -1 : (stageIndex as number),
       terminal,
@@ -250,9 +272,13 @@ export function CheckInStack({
         // The role sheet surfaced the error (toast); keep the card open so
         // the answer isn't lost.
         setSubmitting(false);
+        submittingRef.current = false;
         return;
       }
       setSubmitting(false);
+      submittingRef.current = false;
+    } else {
+      submittingRef.current = false;
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
@@ -264,6 +290,7 @@ export function CheckInStack({
   };
 
   const handleFinalize = async () => {
+    if (finalizingRef.current) return;
     if (!onFinalize) {
       onDone();
       return;
@@ -281,6 +308,7 @@ export function CheckInStack({
       return;
     }
 
+    finalizingRef.current = true;
     try {
       setFinalizing(true);
       await onFinalize(updates);
@@ -289,6 +317,7 @@ export function CheckInStack({
       // Role sheet surfaced the error — stay on the recap so nothing is lost.
     } finally {
       setFinalizing(false);
+      finalizingRef.current = false;
     }
   };
 
@@ -469,6 +498,7 @@ export function CheckInStack({
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={sheetTopOffset}
     >
       {/* Stories-style segmented progress — one segment per referral. */}
       {items.length > 1 && (
@@ -606,6 +636,7 @@ export function CheckInStack({
                 style={styles.noteToggle}
                 onPress={() => setNoteOpen(true)}
                 activeOpacity={0.7}
+                hitSlop={hitSlopTo44(80, 30)}
               >
                 <Text style={styles.noteToggleText}>+ Add a note</Text>
               </TouchableOpacity>

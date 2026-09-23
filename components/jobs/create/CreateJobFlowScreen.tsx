@@ -1,5 +1,6 @@
 import type { PromptAnswer } from "@/components/ui/PromptsIntake";
 import { cleanJobText } from "@/components/jobs/jobTransforms";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { normalizeUrl } from "@/lib/validation";
 import { Colors } from "@/constants/theme";
 import React, { useEffect, useState } from "react";
@@ -163,7 +164,13 @@ export function CreateJobFlowScreen({
             onDone={onDone}
           />
         ) : (
-          <>
+          // One cap for the whole flow — every step below is a full-screen
+          // `flex:1` view that otherwise stretches to the Modal's full
+          // width (~984pt on an iPad Pro 13"). Capping here, at the flow
+          // root, covers all four steps (URL input, the scraping preview
+          // card, the review fields, insights) in one place instead of
+          // each step wrapping itself.
+          <ScreenContainer variant="form" style={styles.flex}>
             <CreateJobUrlScreen
               visible={step === "url"}
               url={url}
@@ -196,7 +203,7 @@ export function CreateJobFlowScreen({
               onBack={() => setStep("review")}
               onClose={onClose}
             />
-          </>
+          </ScreenContainer>
         )}
         </KeyboardAvoidingView>
       </SafeAreaView>

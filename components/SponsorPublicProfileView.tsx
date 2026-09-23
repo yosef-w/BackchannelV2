@@ -22,6 +22,8 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ExpandableText } from "./ui/ExpandableText";
+import { ScreenContainer } from "./ui/ScreenContainer";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { Colors, Type } from "@/constants/theme";
 
 interface SponsorPublicProfileViewProps {
@@ -109,9 +111,16 @@ export function SponsorPublicProfileView({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+      <ScreenContainer variant="content">
         {/* ── Profile Header ───────────────────────────────────────────── */}
         <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.backBtn}
+            hitSlop={hitSlopTo44(36, 36)}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
             <ChevronLeft color={Colors.ink} size={28} strokeWidth={2} />
           </TouchableOpacity>
 
@@ -264,6 +273,7 @@ export function SponsorPublicProfileView({
             </View>
           </View>
         ) : null}
+      </ScreenContainer>
       </ScrollView>
     </View>
   );
@@ -332,6 +342,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: Colors.ink,
+    flexShrink: 1,
   },
   locationText: {
     fontSize: 14,

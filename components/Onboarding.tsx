@@ -19,7 +19,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { trackScreenViewed } from "@/lib/analytics/mixpanel";
 import { Colors, Fonts, Type } from "@/constants/theme";
 import {
-  Dimensions,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -41,8 +40,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { PressableScale } from "@/components/ui/PressableScale";
-
-const { width: W } = Dimensions.get("window");
 
 interface OnboardingProps {
   /** Finishing the deck (the last slide's CTA). */
@@ -131,6 +128,13 @@ export function Onboarding({
   const [index, setIndex] = useState(0);
   // Guards against momentum-end overwriting an in-flight button scroll.
   const targetIndex = useRef(0);
+  // The ScrollView's ACTUAL measured width — not the window's. The pager
+  // lives inside whatever padding/container wraps it, and the window width
+  // may not equal it; this also re-syncs correctly on rotation/resize,
+  // where a frozen launch-time width would silently desync the pager.
+  const [pagerWidth, setPagerWidth] = useState(0);
+  const indexRef = useRef(index);
+  indexRef.current = index;
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollX.value = event.contentOffset.x;
@@ -151,8 +155,24 @@ export function Onboarding({
   const goTo = (next: number) => {
     targetIndex.current = next;
     setIndex(next);
-    scrollRef.current?.scrollTo({ x: next * W, y: 0, animated: true });
+    scrollRef.current?.scrollTo({ x: next * pagerWidth, y: 0, animated: true });
   };
+
+  // Re-sync the scroll offset whenever the measured width changes (first
+  // layout, then any later rotation/resize) so the pager never sits
+  // mid-page after the container's width shifts under it.
+  useEffect(() => {
+    if (pagerWidth > 0) {
+      scrollRef.current?.scrollTo({
+        x: indexRef.current * pagerWidth,
+        y: 0,
+        animated: false,
+      });
+    }
+    // Deliberately keyed on pagerWidth only — indexRef avoids re-running
+    // (and cutting off an in-flight animated scroll) on every page change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagerWidth]);
 
   const nextSlide = () => {
     if (index < slides.length - 1) goTo(index + 1);
@@ -188,23 +208,27 @@ export function Onboarding({
           bounces={false}
           onScroll={scrollHandler}
           scrollEventThrottle={16}
+          onLayout={(e) => setPagerWidth(e.nativeEvent.layout.width)}
           onMomentumScrollEnd={(e) => {
-            const landed = Math.round(e.nativeEvent.contentOffset.x / W);
+            if (!pagerWidth) return;
+            const landed = Math.round(e.nativeEvent.contentOffset.x / pagerWidth);
             targetIndex.current = landed;
             setIndex(landed);
           }}
           style={styles.pager}
         >
-          {slides.map((slide, i) => (
-            <SlidePage
-              key={slide.kind}
-              slide={slide}
-              index={i}
-              scrollX={scrollX}
-              breath={breath}
-              userType={userType}
-            />
-          ))}
+          {pagerWidth > 0 &&
+            slides.map((slide, i) => (
+              <SlidePage
+                key={slide.kind}
+                slide={slide}
+                index={i}
+                scrollX={scrollX}
+                breath={breath}
+                userType={userType}
+                pageWidth={pagerWidth}
+              />
+            ))}
         </Animated.ScrollView>
 
         {/* Footer Navigation — the button's weight signals what this IS:
@@ -216,7 +240,7 @@ export function Onboarding({
         <View style={isLastSlide ? styles.footer : styles.footerRow}>
           <View style={styles.dotsContainer}>
             {slides.map((_, i) => (
-              <PagerDot key={i} index={i} scrollX={scrollX} />
+              <PagerDot key={i} index={i} scrollX={scrollX} pageWidth={pagerWidth} />
             ))}
           </View>
 
@@ -256,31 +280,45 @@ function SlidePage({
   scrollX,
   breath,
   userType,
+  pageWidth,
 }: {
   slide: Slide;
   index: number;
   scrollX: SharedValue<number>;
   breath: SharedValue<number>;
   userType: "applicant" | "sponsor";
+  pageWidth: number;
 }) {
-  const range = [(index - 1) * W, index * W, (index + 1) * W];
+  const range = [(index - 1) * pageWidth, index * pageWidth, (index + 1) * pageWidth];
 
   // Depth: the vignette drifts slower than the page (classic parallax),
   // the text crossfades through the transition.
   const vignetteStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: interpolate(scrollX.value, range, [W * 0.18, 0, -W * 0.18]) },
+      {
+        translateX: interpolate(
+          scrollX.value,
+          range,
+          [pageWidth * 0.18, 0, -pageWidth * 0.18],
+        ),
+      },
     ],
   }));
   const textStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollX.value, range, [0, 1, 0]),
     transform: [
-      { translateX: interpolate(scrollX.value, range, [W * 0.06, 0, -W * 0.06]) },
+      {
+        translateX: interpolate(
+          scrollX.value,
+          range,
+          [pageWidth * 0.06, 0, -pageWidth * 0.06],
+        ),
+      },
     ],
   }));
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, { width: pageWidth }]}>
       <Animated.View style={[styles.vignetteArea, vignetteStyle]}>
         {slide.kind === "deck" && (
           <DeckVignette breath={breath} userType={userType} />
@@ -307,11 +345,13 @@ function SlidePage({
 function PagerDot({
   index,
   scrollX,
+  pageWidth,
 }: {
   index: number;
   scrollX: SharedValue<number>;
+  pageWidth: number;
 }) {
-  const range = [(index - 1) * W, index * W, (index + 1) * W];
+  const range = [(index - 1) * pageWidth, index * pageWidth, (index + 1) * pageWidth];
   const style = useAnimatedStyle(() => ({
     width: interpolate(scrollX.value, range, [8, 24, 8], "clamp"),
     backgroundColor: interpolateColor(scrollX.value, range, [
@@ -563,7 +603,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   page: {
-    width: W,
+    // Width is set inline per-instance from the measured pager width.
     paddingHorizontal: 32,
     justifyContent: "center",
   },
@@ -593,7 +633,13 @@ const styles = StyleSheet.create({
     color: Colors.body,
     lineHeight: 26,
   },
+  // A plain UI control row (not the films' cinematic composition), so it
+  // can be width-capped on iPad without hurting the intended full-bleed
+  // feel elsewhere in the deck.
   footer: {
+    width: "100%",
+    maxWidth: 480,
+    alignSelf: "center",
     paddingHorizontal: 32,
     paddingBottom: 40,
     gap: 28,
@@ -602,6 +648,9 @@ const styles = StyleSheet.create({
   // instead of the dots-then-full-pill stack — visually lighter, reads
   // as "flip through a couple more" rather than "complete this step."
   footerRow: {
+    width: "100%",
+    maxWidth: 480,
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

@@ -34,6 +34,7 @@ import { EditorScreen } from "./EditorScreen";
 import { SaveStatusPill } from "./SaveStatusPill";
 import { useAutosaveStatus } from "./useAutosaveStatus";
 import { AndroidInputFix, Colors } from "@/constants/theme";
+import { hitSlopTo44 } from "@/lib/responsive";
 
 interface Props {
   visible: boolean;
@@ -309,7 +310,10 @@ export function EditProfileScreen({
           {expertise.map((tag, index) => (
             <View key={index} style={styles.tag}>
               <Text style={styles.tagText}>{tag}</Text>
-              <TouchableOpacity onPress={() => onRemoveTag("expertise", index)}>
+              <TouchableOpacity
+                onPress={() => onRemoveTag("expertise", index)}
+                hitSlop={hitSlopTo44(14, 14)}
+              >
                 <X color={Colors.ink} size={14} />
               </TouchableOpacity>
             </View>
@@ -351,6 +355,7 @@ export function EditProfileScreen({
                     key={preference}
                     style={styles.checkboxRow}
                     onPress={() => onToggleWorkPreference(preference)}
+                    hitSlop={hitSlopTo44(300, 22)}
                   >
                     <View
                       style={[styles.checkbox, selected && styles.checkboxOn]}
@@ -374,6 +379,7 @@ export function EditProfileScreen({
                   <Text style={styles.tagText}>{tag}</Text>
                   <TouchableOpacity
                     onPress={() => onRemoveTag("desiredRoles", index)}
+                    hitSlop={hitSlopTo44(14, 14)}
                   >
                     <X color={Colors.ink} size={14} />
                   </TouchableOpacity>

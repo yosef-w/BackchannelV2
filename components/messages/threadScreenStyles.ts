@@ -1,4 +1,5 @@
 import { Platform, StyleSheet } from "react-native";
+import { contentColumn } from "@/lib/responsive";
 import { Colors, Fonts } from "@/constants/theme";
 
 /**
@@ -131,7 +132,12 @@ export const threadScreenStyles = StyleSheet.create({
   // Spacing between messages lives on each messageWrapper (via an inline
   // marginTop) rather than a container gap, so clustered messages from the
   // same sender can sit tight while cluster boundaries keep the full gap.
-  messagesContent: { paddingTop: 20, paddingBottom: 28 },
+  // Capped + centered on wide screens (contentColumn, max 640pt) so the
+  // existing 85%-of-container bubble width (messageWrapper below) reads as
+  // reasonable line lengths on an iPad instead of 85% of the full window.
+  // On a phone contentColumn's cap is wider than the screen, so nothing
+  // changes there.
+  messagesContent: { ...contentColumn, paddingTop: 20, paddingBottom: 28 },
   messageWrapper: { maxWidth: "85%" },
   msgLeft: { alignSelf: "flex-start" },
   msgRight: { alignSelf: "flex-end" },

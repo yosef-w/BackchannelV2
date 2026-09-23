@@ -64,6 +64,12 @@ export function VerdictBar({
 const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
+    width: "100%",
+    // Capped so it doesn't stretch full-width under HomeView's
+    // left:0/right:0 wrapper on iPad — HomeView positions the wrapper,
+    // this caps + centers the bar's own width inside it.
+    maxWidth: 460,
+    alignSelf: "center",
     height: 54,
     borderRadius: 27,
     borderWidth: 1,

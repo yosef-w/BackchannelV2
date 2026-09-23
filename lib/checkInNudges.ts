@@ -51,6 +51,47 @@ export const PAST_DUE_FIRE_DELAY_MS = 60 * 1000;
 const NUDGE_NOTIF_ID = (role: "applicant" | "sponsor") =>
   `checkin-nudge-${role}`;
 
+const CHECKIN_NUDGES_PREF_KEY = "@bc/checkInNudgesEnabled";
+
+/**
+ * Whether the user wants check-in nudges at all. Defaults to true — matches
+ * this feature's original always-on behavior, so an existing user's
+ * notifications don't silently change; they now have an explicit way to
+ * turn it off in Settings instead. Same opt-out idiom as
+ * lib/localNotifications.ts's deck reminders (see that file's comment for
+ * why these local types need their own per-type toggle rather than riding
+ * on "all notifications").
+ */
+export async function getCheckInNudgesEnabled(): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(CHECKIN_NUDGES_PREF_KEY);
+    return raw === null ? true : raw === "true";
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Persist the preference and, when turning nudges OFF, cancel whatever is
+ * already scheduled for both roles immediately — so the toggle takes effect
+ * right away rather than only applying the next time something would have
+ * been (re)scheduled.
+ */
+export async function setCheckInNudgesEnabled(enabled: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CHECKIN_NUDGES_PREF_KEY, String(enabled));
+  } catch (err) {
+    console.warn(
+      "[checkInNudges] Failed to persist check-in-nudges preference:",
+      err,
+    );
+  }
+  if (!enabled) {
+    await cancelCheckInNudges("applicant");
+    await cancelCheckInNudges("sponsor");
+  }
+}
+
 /**
  * referralId -> the checkpoint a nudge was scheduled for and the absolute
  * time it fires. firesAt <= now means it's already been delivered; firesAt
@@ -276,6 +317,8 @@ export async function scheduleCheckInNudges(
     await Notifications.cancelScheduledNotificationAsync(notifId).catch(
       () => {},
     );
+
+    if (!(await getCheckInNudgesEnabled())) return;
 
     const now = Date.now();
     const sentRecords = await readSentRecords(role);

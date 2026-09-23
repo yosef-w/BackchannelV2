@@ -32,8 +32,8 @@ import { Check, Heart, MapPin, Search, X } from "@/components/ui/icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
   Keyboard,
+  LayoutChangeEvent,
   Modal,
   Pressable,
   ScrollView,
@@ -42,6 +42,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
@@ -73,8 +74,15 @@ import {
 } from "./ui/DismissibleSheet";
 import { CompanyLogo } from "./ui/CompanyLogo";
 import { MarketplaceGateModal } from "./jobs/MarketplaceGateModal";
+import { ScreenContainer } from "./ui/ScreenContainer";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { PREMIUM_ENABLED } from "@/constants/config";
+import {
+  gridItemWidth,
+  hitSlopTo44,
+  sheetMaxHeight,
+  useResponsive,
+} from "@/lib/responsive";
 import { AndroidInputFix, Colors, Fonts, Radii, Type } from "@/constants/theme";
 import {
   trackApplicantBrowseViewed,
@@ -260,6 +268,9 @@ const isMockJob = (job: BrowseJobResponse) =>
 const SEARCH_DEBOUNCE_MS = 400;
 /** Results per page — also the "View more" page size via `offset`. */
 const PAGE_SIZE = 20;
+/** Horizontal gap between grid cells — vertical rhythm comes from the
+ * stack's own `gap` below. */
+const GRID_GAP = 12;
 
 /**
  * One role, as its own bordered card — logo/title/company up top, a row of
@@ -464,6 +475,14 @@ function JobCardSkeleton() {
 
 export function ApplicantJobsBrowseView() {
   const showToast = useToastStore((s) => s.showToast);
+  const { columns, isRegular } = useResponsive();
+  const { height: windowHeight } = useWindowDimensions();
+  // Measured from the actual rendered row, not the window — this list
+  // lives inside a padded ScrollView plus its own `wide` ScreenContainer
+  // cap (lib/responsive rule 3: measure the container, not the window).
+  const [gridWidth, setGridWidth] = useState(0);
+  const cardWidth =
+    gridWidth > 0 ? gridItemWidth(gridWidth, columns, GRID_GAP) : undefined;
   const [jobs, setJobs] = useState<BrowseJobResponse[]>([]);
   const [showingSamples, setShowingSamples] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -721,6 +740,7 @@ export function ApplicantJobsBrowseView() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <ScreenContainer variant="wide">
         <Animated.View entering={FadeInDown.duration(350)} style={styles.header}>
           <Text style={styles.title}>
             The <Text style={styles.titleEm}>marketplace.</Text>
@@ -732,9 +752,10 @@ export function ApplicantJobsBrowseView() {
         </Animated.View>
 
         {/* Search — as-you-type, with clear buttons; no Search button to
-            hunt for. */}
-        <View style={styles.searchStack}>
-          <View style={styles.searchInputWrap}>
+            hunt for. At iPad-class width the two fields sit side by side,
+            like a search bar using the extra width instead of stacking. */}
+        <View style={[styles.searchStack, isRegular && styles.searchStackRow]}>
+          <View style={[styles.searchInputWrap, isRegular && styles.searchInputWrapRegular]}>
             <Search size={17} color={Colors.body} strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
@@ -749,14 +770,14 @@ export function ApplicantJobsBrowseView() {
             {titleQuery.length > 0 && (
               <TouchableOpacity
                 onPress={() => setTitleQuery("")}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={hitSlopTo44(15, 15)}
                 accessibilityLabel="Clear role search"
               >
                 <X size={15} color={Colors.muted} />
               </TouchableOpacity>
             )}
           </View>
-          <View style={styles.searchInputWrap}>
+          <View style={[styles.searchInputWrap, isRegular && styles.searchInputWrapRegular]}>
             <MapPin size={17} color={Colors.body} strokeWidth={2.2} />
             <TextInput
               style={styles.searchInput}
@@ -771,7 +792,7 @@ export function ApplicantJobsBrowseView() {
             {locationQuery.length > 0 && (
               <TouchableOpacity
                 onPress={() => setLocationQuery("")}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={hitSlopTo44(15, 15)}
                 accessibilityLabel="Clear location search"
               >
                 <X size={15} color={Colors.muted} />
@@ -826,7 +847,12 @@ export function ApplicantJobsBrowseView() {
               ? ""
               : "S"}
           </Text>
-          <View style={{ marginTop: 14, gap: 12 }}>
+          <View
+            style={styles.grid}
+            onLayout={(e: LayoutChangeEvent) =>
+              setGridWidth(e.nativeEvent.layout.width)
+            }
+          >
             {jobs.map((job, index) => {
               const isDone =
                 waitlistedIds.has(job.JOB_ID) || likedIds.has(job.JOB_ID);
@@ -836,6 +862,7 @@ export function ApplicantJobsBrowseView() {
               return (
                 <Animated.View
                   key={job.JOB_ID}
+                  style={cardWidth ? { width: cardWidth } : styles.fullWidthItem}
                   entering={FadeInUp.delay(Math.min(index, 8) * 40)
                     .duration(420)
                     .easing(Easing.bezier(0.16, 1, 0.3, 1))}
@@ -886,6 +913,7 @@ export function ApplicantJobsBrowseView() {
             </Text>
           </TouchableOpacity>
         )}
+        </ScreenContainer>
       </ScrollView>
 
       {/* Job detail — the same Gallery sheet language as every other job
@@ -906,7 +934,11 @@ export function ApplicantJobsBrowseView() {
             <DismissibleSheet
               scrollDismiss
               onDismiss={closeDetail}
-              style={[styles.detailSheet, canvasSheet]}
+              style={[
+                styles.detailSheet,
+                canvasSheet,
+                { height: sheetMaxHeight(windowHeight) },
+              ]}
             >
               <SheetScrollView
                 style={{ flex: 1 }}
@@ -1040,6 +1072,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   searchStack: { marginBottom: 4 },
+  // At iPad-class width the two fields sit side by side instead of
+  // stacking, using the extra width the way a search bar naturally would.
+  searchStackRow: {
+    flexDirection: "row",
+    gap: 24,
+  },
   // Letterpress rule-line inputs (AC "Listings") — no filled boxes; each
   // field is a hairline underline, the classifieds' own vocabulary.
   searchInputWrap: {
@@ -1051,6 +1089,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     height: 48,
   },
+  searchInputWrapRegular: { flex: 1 },
   searchInput: {
     flex: 1,
     fontSize: 15,
@@ -1117,6 +1156,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  // 1 column on phone (unchanged), 2 on iPad portrait, 3 on iPad
+  // landscape/large iPad — see useResponsive()'s `columns`. `gap` (not
+  // columnGap) is intentional here — unlike JobCard.tsx, MarketplaceJobCard
+  // has no built-in marginBottom, so this single property owns spacing in
+  // both directions.
+  grid: {
+    marginTop: 14,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: GRID_GAP,
+  },
+  fullWidthItem: { width: "100%" },
   // Each role as its own bordered object — real breathing room instead of
   // adjoining hairline rows (AC "Card Stack"). position:relative anchors
   // the sponsored tag.
@@ -1244,8 +1295,11 @@ const styles = StyleSheet.create({
     // Fixed (not max) height — same stuck-sheet class as the Matches
     // sheets: a fixed frame presents full-height from the first frame
     // and nothing can clip outside the scroll. Absolute px — a % would
-    // resolve against DismissibleSheet's content-sized gesture root.
-    height: Dimensions.get("window").height * 0.88,
+    // resolve against DismissibleSheet's content-sized gesture root. The
+    // actual height value is computed live from useWindowDimensions() at
+    // render time (see the `height` spread where this style is used) —
+    // a static Dimensions.get() here would freeze at import and go stale
+    // after a rotation / Split View / Stage Manager resize.
   },
   // A bordered pill, not a bare link — matches the card stack's own
   // vocabulary (see salaryBadge/pill) instead of reading as a leftover

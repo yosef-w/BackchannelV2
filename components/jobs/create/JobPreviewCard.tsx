@@ -208,8 +208,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
+    // Without a shrink, a long scraped location ignores the row's own
+    // width at narrow widths (320-375pt) and overflows past the card edge
+    // — numberOfLines={1} on tagText only elides once the box is actually
+    // capped to its parent's available width.
+    flexShrink: 1,
+    maxWidth: "100%",
   },
-  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body },
+  tagText: { fontSize: 12, fontWeight: "600", color: Colors.body, flexShrink: 1 },
   tagShimmer: {
     width: 76,
     height: 26,

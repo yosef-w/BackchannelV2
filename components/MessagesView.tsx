@@ -25,6 +25,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
     FadeInDown,
@@ -36,6 +37,8 @@ import { InboxList } from "./messages/InboxList";
 import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
 import { ThreadScreen } from "./messages/ThreadScreen";
+import { MessageCircle } from "@/components/ui/icons";
+import { Layout, useResponsive } from "@/lib/responsive";
 import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 
 
@@ -175,6 +178,11 @@ export function MessagesView({
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard();
+  // Master-detail on wide screens (iPad mini portrait, ~744pt, and up) —
+  // see the render branch near the bottom of this component. `isSplit`
+  // re-derives live from useWindowDimensions, so rotating into/out of a
+  // Split View width mid-session switches layouts without a remount.
+  const { isSplit } = useResponsive();
 
   // Real data state
   const [conversationsTotalCount, setConversationsTotalCount] = useState(0);
@@ -1062,6 +1070,13 @@ export function MessagesView({
   });
 
   useEffect(() => {
+    // Hides the floating tab bar whenever a thread is open — including in
+    // split (master-detail) mode. An earlier version kept it up in split
+    // mode on the theory that the inbox is still visible alongside the
+    // thread, but the bar floats centered across the WHOLE window, not
+    // just the master pane, so on iPad it sat directly on top of the
+    // composer's text input with no clearance for it anywhere. Simplest
+    // correct fix: match the iPhone behavior exactly on every width.
     onThreadActiveChange?.(Boolean(selectedConversation));
     if (selectedConversation) {
       setTimeout(() => scrollToBottom(false), 100);
@@ -1088,38 +1103,44 @@ export function MessagesView({
     return () => showSub.remove();
   }, []);
 
-  if (selectedConversation) {
-    return (
-      <ThreadScreen
-        // Keying on the conversation id forces a clean unmount/remount when
-        // switching directly between two threads (e.g. a push-notification
-        // deep link while another thread is already open) — the same reset
-        // that already happens naturally when going back to the list first.
-        // This is what makes ThreadScreen's own local state (draft text,
-        // tapped-timestamp reveal, referral-flow visibility) start fresh
-        // per conversation instead of leaking from the previous one.
-        key={selectedConversation}
-        conversations={conversations}
-        setConversations={setConversations}
-        selectedConversation={selectedConversation}
-        userType={userType}
-        referredSet={referredSet}
-        setReferredSet={setReferredSet}
-        messages={messages}
-        currentUserId={currentUserId}
-        conversationsLoading={conversationsLoading}
-        handleConversationSelect={handleConversationSelect}
-        keyboardSpacerStyle={keyboardSpacerStyle}
-        scrollViewRef={scrollViewRef}
-        scrollToBottom={scrollToBottom}
-        messagesLoading={messagesLoading}
-        messagesError={messagesError}
-        initialMessageCountRef={initialMessageCountRef}
-        sendingMessage={sendingMessage}
-        handleSendMessage={handleSendMessage}
-        onShowPublicProfile={onShowPublicProfile}
-      />
-    );
+  // The open-thread element — built once, unconditionally on whether a
+  // conversation is selected, and reused by both the non-split (full-screen
+  // swap, unchanged from before) and split (side-by-side) render branches
+  // below so the props list exists in exactly one place.
+  const threadScreenElement = selectedConversation ? (
+    <ThreadScreen
+      // Keying on the conversation id forces a clean unmount/remount when
+      // switching directly between two threads (e.g. a push-notification
+      // deep link while another thread is already open) — the same reset
+      // that already happens naturally when going back to the list first.
+      // This is what makes ThreadScreen's own local state (draft text,
+      // tapped-timestamp reveal, referral-flow visibility) start fresh
+      // per conversation instead of leaking from the previous one.
+      key={selectedConversation}
+      conversations={conversations}
+      setConversations={setConversations}
+      selectedConversation={selectedConversation}
+      userType={userType}
+      referredSet={referredSet}
+      setReferredSet={setReferredSet}
+      messages={messages}
+      currentUserId={currentUserId}
+      conversationsLoading={conversationsLoading}
+      handleConversationSelect={handleConversationSelect}
+      keyboardSpacerStyle={keyboardSpacerStyle}
+      scrollViewRef={scrollViewRef}
+      scrollToBottom={scrollToBottom}
+      messagesLoading={messagesLoading}
+      messagesError={messagesError}
+      initialMessageCountRef={initialMessageCountRef}
+      sendingMessage={sendingMessage}
+      handleSendMessage={handleSendMessage}
+      onShowPublicProfile={onShowPublicProfile}
+    />
+  ) : null;
+
+  if (selectedConversation && !isSplit) {
+    return threadScreenElement;
   }
 
   // Split conversations into three buckets:
@@ -1155,7 +1176,10 @@ export function MessagesView({
     (conv) => conv.status !== "CLOSED" && conv.isHidden,
   );
 
-  return (
+  // The inbox list — built once and reused as either the whole screen
+  // (non-split) or the master pane (split), same reasoning as
+  // threadScreenElement above.
+  const inboxBody = (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
@@ -1261,6 +1285,33 @@ export function MessagesView({
       </Pressable>
     </ScrollView>
   );
+
+  if (isSplit) {
+    // Master-detail: inbox list capped to Layout.masterPaneWidth (~340pt)
+    // on the left, the thread (or a placeholder) filling the rest. Only
+    // taken at ≥720pt (Breakpoints.split) — iPad mini portrait and up —
+    // where there's genuinely room for both without cramming either.
+    return (
+      <View style={styles.splitRoot}>
+        <View style={styles.splitMasterPane}>{inboxBody}</View>
+        <View style={styles.splitDetailPane}>
+          {threadScreenElement ?? (
+            <View style={styles.splitEmptyState}>
+              <View style={styles.splitEmptyIconTile}>
+                <MessageCircle color={Colors.faint} size={26} strokeWidth={2} />
+              </View>
+              <Text style={styles.splitEmptyTitle}>Select a conversation</Text>
+              <Text style={styles.splitEmptySubtitle}>
+                Choose a thread from the list to read and reply.
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  return inboxBody;
 }
 
 const styles = StyleSheet.create({
@@ -1299,5 +1350,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.body,
+  },
+  // ── Master-detail split (isSplit ≥720pt) ──
+  splitRoot: { flex: 1, flexDirection: "row", backgroundColor: Colors.paper },
+  splitMasterPane: {
+    width: Layout.masterPaneWidth,
+    borderRightWidth: 1,
+    borderRightColor: Colors.border,
+  },
+  splitDetailPane: { flex: 1 },
+  splitEmptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  splitEmptyIconTile: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  splitEmptyTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.body,
+    marginBottom: 6,
+  },
+  splitEmptySubtitle: {
+    fontSize: 13,
+    color: Colors.faint,
+    textAlign: "center",
+    lineHeight: 18,
   },
 });

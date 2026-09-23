@@ -22,8 +22,14 @@ import {
 import { MatchSection } from "./MatchSection";
 import { MetaLine, OpportunityRow } from "./OpportunityRow";
 import { Colors } from "@/constants/theme";
+import { hitSlopTo44 } from "@/lib/responsive";
 
 const MATCH_SECTION_ROW_CAP = 4;
+
+// The Withdraw button (minWidth:74, paddingVertical:6 + ~12pt text) renders
+// at ~26pt tall, so even its existing hitSlop of 8 leaves it a couple of
+// points under the 44pt minimum tap target.
+const WITHDRAW_HIT_SLOP = hitSlopTo44(74, 26);
 
 interface MatchRowCallbacks {
   onOpenRoleGroup: (group: {
@@ -213,7 +219,9 @@ export function SponsorMatchesSections({
               <TouchableOpacity
                 style={styles.withdrawBtn}
                 onPress={() => onConfirmWithdrawReferral(referral)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={WITHDRAW_HIT_SLOP}
+                accessibilityRole="button"
+                accessibilityLabel={`Withdraw referral for ${applicantName}`}
               >
                 <Text style={styles.withdrawBtnText}>Withdraw</Text>
               </TouchableOpacity>

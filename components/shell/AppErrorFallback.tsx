@@ -18,6 +18,7 @@ import { RefreshCw } from "@/components/ui/icons";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { formColumn } from "@/lib/responsive";
 
 export function AppErrorFallback({
   resetError,
@@ -49,6 +50,7 @@ export function AppErrorFallback({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.paper },
   content: {
+    ...formColumn,
     flex: 1,
     alignItems: "center",
     justifyContent: "center",

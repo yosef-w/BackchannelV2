@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { ProfileCompletenessResult } from "@/utils/profileCompletion";
 import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
@@ -49,6 +50,7 @@ export function ProfileCompletionModal({
           onDismiss={onClose}
           style={styles.modalContent}
         >
+        <ScreenContainer variant="sheet">
         <Text style={styles.eyebrow}>BEFORE YOU DECIDE</Text>
         <Text style={styles.title}>
           Finish your <Text style={styles.titleEm}>profile.</Text>
@@ -102,6 +104,7 @@ export function ProfileCompletionModal({
             <Text style={styles.testerButtonText}>I am a tester (dev only)</Text>
           </TouchableOpacity>
         )}
+        </ScreenContainer>
         </DismissibleSheet>
       </View>
     </Modal>

@@ -6,9 +6,10 @@ import {
     X,
 } from "@/components/ui/icons";
 import type { Job } from "@/types/jobs";
-import React from "react";
+import React, { useState } from "react";
 import {
     ActivityIndicator,
+    LayoutChangeEvent,
     StyleSheet,
     Text,
     TextInput,
@@ -17,9 +18,15 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { ScreenContainer } from "../ui/ScreenContainer";
 import { JobCard } from "./JobCard";
 import { JobsEmptyState } from "./JobsEmptyState";
+import { gridItemWidth, hitSlopTo44, useResponsive } from "@/lib/responsive";
 import { AndroidInputFix, Colors, Fonts, Type } from "@/constants/theme";
+
+// Horizontal gap between grid cells — the list's own vertical rhythm
+// already comes from JobCard's `marginBottom`, so this only spaces columns.
+const GRID_GAP = 12;
 
 interface BrowseJobsTabProps {
   jobs: Job[];
@@ -66,6 +73,15 @@ export function BrowseJobsTab({
   onMenuJob,
   onApplicantPress,
 }: BrowseJobsTabProps) {
+  const { columns } = useResponsive();
+  // Measured from the actual rendered row (not the window) — this list
+  // lives inside JobsView's padded ScrollView plus this component's own
+  // `wide` ScreenContainer cap, so the window width would overestimate
+  // what's really available per lib/responsive's rule 3.
+  const [gridWidth, setGridWidth] = useState(0);
+  const cardWidth =
+    gridWidth > 0 ? gridItemWidth(gridWidth, columns, GRID_GAP) : undefined;
+
   if (jobs.length === 0) {
     if (companySuggestions.length > 0) {
       /* "Did you mean…" — the board is empty for the sponsor's stored
@@ -160,7 +176,7 @@ export function BrowseJobsTab({
   );
 
   return (
-    <>
+    <ScreenContainer variant="wide">
       <View style={styles.searchWrap}>
         <Search size={16} color={Colors.muted} />
         <TextInput
@@ -176,7 +192,7 @@ export function BrowseJobsTab({
         {searchQuery.length > 0 && (
           <TouchableOpacity
             onPress={() => onSetSearchQuery("")}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={hitSlopTo44(16, 16)}
           >
             <X size={16} color={Colors.muted} />
           </TouchableOpacity>
@@ -207,24 +223,32 @@ export function BrowseJobsTab({
               {sponsorCompany ? ` AT ${sponsorCompany.toUpperCase()}` : " ROLES"}
             </Text>
           )}
-          {availableJobs.slice(0, displayLimit).map((job, index) => (
-            <Animated.View
-              key={job.id}
-              // Cap the stagger — a full 20-card page shouldn't take a
-              // second to finish animating in past the first screenful.
-              entering={FadeInUp.delay(100 + Math.min(index, 8) * 40).duration(
-                300,
-              )}
-            >
-              <JobCard
-                job={job}
-                isSponsored={false}
-                onSponsor={() => onSponsor(job)}
-                onPress={() => onPressJob(job)}
-                onMenu={() => onMenuJob(job)}
-              />
-            </Animated.View>
-          ))}
+          <View
+            style={styles.grid}
+            onLayout={(e: LayoutChangeEvent) =>
+              setGridWidth(e.nativeEvent.layout.width)
+            }
+          >
+            {availableJobs.slice(0, displayLimit).map((job, index) => (
+              <Animated.View
+                key={job.id}
+                style={cardWidth ? { width: cardWidth } : styles.fullWidthItem}
+                // Cap the stagger — a full 20-card page shouldn't take a
+                // second to finish animating in past the first screenful.
+                entering={FadeInUp.delay(100 + Math.min(index, 8) * 40).duration(
+                  300,
+                )}
+              >
+                <JobCard
+                  job={job}
+                  isSponsored={false}
+                  onSponsor={() => onSponsor(job)}
+                  onPress={() => onPressJob(job)}
+                  onMenu={() => onMenuJob(job)}
+                />
+              </Animated.View>
+            ))}
+          </View>
 
           {/* Load More Button */}
           {availableJobs.length > displayLimit && (
@@ -260,22 +284,29 @@ export function BrowseJobsTab({
                   }
                 />
               </TouchableOpacity>
-              {showSponsoredInBrowse &&
-                sponsoredInBrowse.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    job={job}
-                    isSponsored
-                    onPress={() => onPressJob(job)}
-                    onMenu={() => onMenuJob(job)}
-                    onApplicantPress={() => onApplicantPress(job)}
-                  />
-                ))}
+              {showSponsoredInBrowse && (
+                <View style={styles.grid}>
+                  {sponsoredInBrowse.map((job) => (
+                    <View
+                      key={job.id}
+                      style={cardWidth ? { width: cardWidth } : styles.fullWidthItem}
+                    >
+                      <JobCard
+                        job={job}
+                        isSponsored
+                        onPress={() => onPressJob(job)}
+                        onMenu={() => onMenuJob(job)}
+                        onApplicantPress={() => onApplicantPress(job)}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
             </>
           )}
         </>
       )}
-    </>
+    </ScreenContainer>
   );
 }
 
@@ -387,6 +418,14 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     ...AndroidInputFix,
   },
+  // 1 column on phone (unchanged), 2 on iPad portrait, 3 on iPad
+  // landscape/large iPad — see useResponsive()'s `columns`.
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: GRID_GAP,
+  },
+  fullWidthItem: { width: "100%" },
   noMatchesWrap: { paddingVertical: 32, alignItems: "center" },
   noMatchesText: { fontSize: 14, color: Colors.muted, fontWeight: "600" },
   // Quiet centered link — the ledger's "there is more" note.

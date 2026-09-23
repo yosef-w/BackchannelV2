@@ -35,7 +35,7 @@ import {
     SectionCard,
 } from "./JobSheetKit";
 import { SponsorRequest } from "./matchesQueries";
-import { modalStyles } from "./sharedModalStyles";
+import { modalStyles, useModalSizing } from "./sharedModalStyles";
 import { Colors, Type } from "@/constants/theme";
 
 interface SrJobDetailPreview {
@@ -98,6 +98,7 @@ export function SponsorRequestModal({
   onSponsorAndConnect,
   onNavigateToMessages,
 }: SponsorRequestModalProps) {
+  const sizing = useModalSizing();
   const {
     step,
     relationship,
@@ -126,7 +127,7 @@ export function SponsorRequestModal({
       <DismissibleSheet
         scrollDismiss
         onDismiss={onClose}
-        style={[modalStyles.modalContent, canvasSheet]}
+        style={[modalStyles.modalContent, canvasSheet, sizing.content]}
       >
         {request && (
           <>

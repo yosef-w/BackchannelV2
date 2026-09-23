@@ -13,6 +13,7 @@ import { ReadSection } from "./plates/ReadSections";
 import { formatExperienceLevelLabel, joinFacts } from "./dossierFacts";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { Colors } from "@/constants/theme";
+import { contentColumn } from "@/lib/responsive";
 
 /**
  * Turns a raw relevance score (either a 0-1 fraction or an already-scaled
@@ -155,7 +156,9 @@ export function JobCardContent({
     /* ────────────────────────────────────────────────────
        APPLICANT VIEW — job, vertical scroll
        ──────────────────────────────────────────────────── */
-    <>
+    // Reading column cap (contentColumn, 640) — body/hinge text ran to
+    // ~140 characters per line on a 13" iPad with no cap of its own.
+    <View style={contentColumn}>
       {/* Top badge row — action status (waitlisted / sponsor-requested /
           applied) plus the sponsorship signal, in the ledger's caps
           voice. Left-aligned to match the dossier hero's rag. */}
@@ -546,6 +549,6 @@ export function JobCardContent({
           );
         })()
       )}
-    </>
+    </View>
   );
 }

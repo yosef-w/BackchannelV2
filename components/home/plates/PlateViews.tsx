@@ -6,7 +6,7 @@
 
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Image } from "expo-image";
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import {
   Pressable,
   Text,
@@ -225,12 +225,36 @@ export function PlateView({
   onOpenRead,
   onTapZone,
 }: PlateViewProps) {
-  const handlePress = (e: GestureResponderEvent) => {
-    const x = e.nativeEvent.locationX;
-    onTapZone(x < width / 3 ? "back" : "forward");
-  };
+  // `locationX` is documented as "relative to the element", but the
+  // element it's actually relative to is whichever view was hit-tested
+  // (the deepest one under the finger) — not necessarily this Pressable's
+  // own root. Almost the entire plate surface is covered by nested
+  // Text/Image content (the eyebrow, name, claim, avatar…), so a tap
+  // there would report an X relative to THAT child, not to this
+  // Pressable — silently shifting the back/forward boundary depending on
+  // what's under the finger. `pageX` (the touch's absolute screen
+  // position) has no such ambiguity, PROVIDED the reference we subtract
+  // it from is fresh. All plates in a card mount up front inside one
+  // horizontal ScrollView (no per-plate remount on scroll), so an
+  // `onLayout`-time measurement is only ever this plate's position at
+  // scroll-offset 0 — for every plate after the first, that position
+  // goes stale the moment the row scrolls, silently misclassifying every
+  // tap as "back". Measuring fresh inside the press handler itself keeps
+  // this correct regardless of which plate is currently in view.
+  const rootRef = useRef<View>(null);
+  const handlePress = useCallback(
+    (e: GestureResponderEvent) => {
+      const { pageX } = e.nativeEvent;
+      rootRef.current?.measure((_x, _y, _w, _h, rootPageX) => {
+        const zoneX = pageX - rootPageX;
+        onTapZone(zoneX < width / 3 ? "back" : "forward");
+      });
+    },
+    [onTapZone, width],
+  );
   return (
     <Pressable
+      ref={rootRef}
       onPress={handlePress}
       style={[
         s.plate,

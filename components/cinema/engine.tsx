@@ -21,6 +21,7 @@ import Animated, {
   type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
@@ -76,6 +77,14 @@ export function useCinemaClock(
   const master = useSharedValue(0);
   const breath = useSharedValue(0);
   const march = useSharedValue(0);
+  // `withTiming` et al. default to `ReduceMotion.System`, which — when the
+  // OS setting is on — completes a value change INSTANTLY instead of
+  // animating. Since `master` is read reactively to decide what's on
+  // screen, that would jump straight to the reel's final frame with no
+  // story ever shown. Callers are expected to take their Skip/dismiss path
+  // immediately when this is true (see IntroCinema/SponsorCinema); this
+  // hook additionally just never bothers starting the pointless animation.
+  const reduceMotion = useReducedMotion();
 
   const run = useCallback(
     (from: number) => {
@@ -102,6 +111,7 @@ export function useCinemaClock(
   );
 
   useEffect(() => {
+    if (reduceMotion) return;
     run(0);
     march.value = withRepeat(
       withTiming(-240, { duration: 16000, easing: Easing.linear }),
@@ -119,7 +129,7 @@ export function useCinemaClock(
       cancelAnimation(march);
       cancelAnimation(breath);
     };
-  }, [run, master, march, breath]);
+  }, [run, master, march, breath, reduceMotion]);
 
   const advance = useCallback(() => {
     // Reading .value from JS is a one-off snapshot — fine outside worklets.

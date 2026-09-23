@@ -24,7 +24,7 @@ import {
     StatStrip,
 } from "./JobSheetKit";
 import { parseSkillsField } from "./matchesQueries";
-import { modalStyles } from "./sharedModalStyles";
+import { modalStyles, useModalSizing } from "./sharedModalStyles";
 
 import type { SilverJobDetail } from "@/lib/api";
 import { Colors } from "@/constants/theme";
@@ -52,6 +52,7 @@ export function SrJobDetailModal({
   detail,
   onBack,
 }: SrJobDetailModalProps) {
+  const sizing = useModalSizing();
   const stats: { label: string; value: string }[] = [];
   if (detail) {
     if (detail.SALARY_ANNUAL_MIN && detail.SALARY_ANNUAL_MAX) {
@@ -91,6 +92,8 @@ export function SrJobDetailModal({
           modalStyles.modalContent,
           canvasSheet,
           modalStyles.modalContentTall,
+          sizing.content,
+          sizing.tall,
         ]}
       >
         {/* Header row — drill-in affordance back to the request. */}

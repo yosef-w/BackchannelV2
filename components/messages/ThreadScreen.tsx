@@ -37,6 +37,7 @@ import Animated, {
   type AnimatedStyle,
 } from "react-native-reanimated";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
+import { hitSlopTo44 } from "@/lib/responsive";
 import type { Conversation, ThreadMessage } from "../MessagesView";
 import { JobDetailModal } from "../matches/JobDetailModal";
 import {
@@ -508,6 +509,9 @@ return (
         <TouchableOpacity
           onPress={() => handleConversationSelect(null)}
           style={styles.backButton}
+          // backButton is ~40x40 (24 icon + 8 padding each side) — bump to
+          // Apple's 44pt minimum.
+          hitSlop={hitSlopTo44(40, 40)}
         >
           <ArrowLeft color={Colors.ink} size={24} />
         </TouchableOpacity>
@@ -552,7 +556,7 @@ return (
             <Text style={styles.headerName} numberOfLines={1}>
               {conversation.otherParticipant.name}
             </Text>
-            <Text style={styles.headerRole}>
+            <Text style={styles.headerRole} numberOfLines={1}>
               {conversation.otherParticipant.role &&
               conversation.otherParticipant.company
                 ? `${conversation.otherParticipant.role} @ ${conversation.otherParticipant.company}`
@@ -599,6 +603,10 @@ return (
                       style={styles.headerReferBtn}
                       onPress={openReferral}
                       activeOpacity={0.7}
+                      // ~36pt tall, variable (text-driven) width — pad the
+                      // vertical axis to 44 and leave width alone rather
+                      // than guessing a fixed target.
+                      hitSlop={hitSlopTo44(999, 36)}
                     >
                       <UserCheck color={Colors.ink} size={20} />
                       <Text style={styles.headerReferText}>Refer</Text>
@@ -610,6 +618,8 @@ return (
                 style={styles.headerMoreBtn}
                 onPress={() => setShowUnmatchMenu(true)}
                 activeOpacity={0.7}
+                // headerMoreBtn is 36x36.
+                hitSlop={hitSlopTo44(36, 36)}
               >
                 <MoreHorizontal color={Colors.ink} size={20} />
               </TouchableOpacity>
@@ -787,6 +797,11 @@ return (
                     >
                       <Text
                         style={isMyMessage ? styles.txtMe : styles.txtThem}
+                        // iPad/pointer users expect to select and copy
+                        // message text. The outer TouchableOpacity still
+                        // owns the tap-to-toggle-timestamp gesture; only
+                        // this inner Text becomes selectable.
+                        selectable
                       >
                         {message.content}
                       </Text>
@@ -867,6 +882,18 @@ return (
             maxLength={2000}
             autoCapitalize="sentences"
             onFocus={() => setTimeout(() => scrollToBottom(true), 150)}
+            // Hardware-keyboard "Return to send" (common on iPad): 'submit'
+            // is the RN 0.74+ replacement for blurOnSubmit that, unlike the
+            // 'newline' default for multiline inputs, fires onSubmitEditing
+            // on Return instead of inserting "\n" — without blurring the
+            // field, so the keyboard stays up for the next message. Note:
+            // RN's TextInput doesn't expose modifier keys (no `shiftKey`)
+            // via onKeyPress on iOS, so a genuine Shift+Return-inserts-
+            // newline can't be distinguished from a plain Return with the
+            // public API — a bare Return now always sends, matching the
+            // convention several chat apps use on mobile.
+            submitBehavior="submit"
+            onSubmitEditing={onSend}
           />
           <TouchableOpacity
             style={[
@@ -875,6 +902,8 @@ return (
             ]}
             onPress={onSend}
             disabled={!messageText.trim() || sendingMessage}
+            // sendBtn is 40x40.
+            hitSlop={hitSlopTo44(40, 40)}
           >
             <Send color={Colors.paper} size={18} strokeWidth={2.5} />
           </TouchableOpacity>
@@ -958,6 +987,12 @@ return (
               }
             : undefined
         }
+        // This thread already has its own Report entry (the header's •••
+        // menu → ThreadMenuSheet), which is conversation-aware — it closes
+        // THIS thread and moves it to Past Connections. A second report
+        // action here would just call reportUser() with no conversationId,
+        // leaving that thread-specific bookkeeping undone.
+        showReportAction={false}
       />
     )}
 
@@ -965,7 +1000,12 @@ return (
         (and background enrichment) the Matches screen uses. The CTA just
         returns to the conversation: the user is already exactly where the
         default "Message" action would take them. */}
-    <Modal visible={!!jobDetail} transparent animationType="none">
+    <Modal
+      visible={!!jobDetail}
+      transparent
+      animationType="none"
+      supportedOrientations={["portrait", "landscape"]}
+    >
       <JobDetailModal
         job={jobDetail}
         enriching={enrichingJobDetail}
@@ -1000,7 +1040,12 @@ return (
         components/messages/ThreadMenuSheet.tsx (self-contained: its
         step/reason/detail state has zero readers outside the sheet,
         per the state-ownership audit). */}
-    <Modal visible={showUnmatchMenu} transparent animationType="none">
+    <Modal
+      visible={showUnmatchMenu}
+      transparent
+      animationType="none"
+      supportedOrientations={["portrait", "landscape"]}
+    >
       <ThreadMenuSheet
         visible={showUnmatchMenu}
         participantName={conversation.otherParticipant.name}

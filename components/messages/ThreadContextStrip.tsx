@@ -2,6 +2,7 @@ import { ChevronRight } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { hitSlopTo44 } from "@/lib/responsive";
 import { Colors } from "@/constants/theme";
 
 interface ThreadContextStripProps {
@@ -32,6 +33,9 @@ export function ThreadContextStrip({
       style={styles.strip}
       onPress={onPress}
       activeOpacity={0.7}
+      // The strip is ~40pt tall (paddingVertical 9 + ~22pt content); its
+      // width is text-driven, so only pad the vertical axis to 44.
+      hitSlop={hitSlopTo44(999, 40)}
     >
       <CompanyLogo
         logoUrl={logoUrl}

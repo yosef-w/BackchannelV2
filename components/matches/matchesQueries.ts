@@ -193,6 +193,18 @@ export interface JobOpportunity {
     role: string;
     image: string;
     canRefer: boolean;
+    /**
+     * Not yet confirmed present on /api/likes/jobs/'s response for this
+     * specific endpoint — SPONSOR_USER_ID is a field this same file reads
+     * from a sibling sponsor-record endpoint (getInterestedSponsors,
+     * above), and this record carries the same SPONSOR_FIRST_NAME/
+     * LAST_NAME/JOB_TITLE/PHOTO_URL fields, so it's a reasonable bet the
+     * backend's serialization is consistent — but unverified for this
+     * exact call. Present here so Report lights up automatically once
+     * confirmed; the UI that reads this gates on it being non-empty
+     * rather than assuming it's always there.
+     */
+    userId?: string;
   };
 }
 
@@ -574,6 +586,7 @@ export const likedJobsQuery = (userType: string) => ({
         role: likedJob.SPONSOR_JOB_TITLE || "Sponsor",
         image: likedJob.SPONSOR_PHOTO_URL || "",
         canRefer: likedJob.STATUS === "MATCHED",
+        userId: likedJob.SPONSOR_USER_ID || undefined,
       },
     }));
   },

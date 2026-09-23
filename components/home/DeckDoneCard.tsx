@@ -5,6 +5,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { PREMIUM_ENABLED } from "@/constants/config";
 import { Colors, Fonts, Type } from "@/constants/theme";
+import { hitSlopTo44 } from "@/lib/responsive";
 
 interface DeckDoneCardProps {
   userType: "applicant" | "sponsor";
@@ -112,6 +113,12 @@ export function DeckDoneCard({
           onPress={sessionMatches > 0 ? onViewMatches : undefined}
           disabled={sessionMatches === 0}
           activeOpacity={0.7}
+          accessibilityRole={sessionMatches > 0 ? "button" : undefined}
+          accessibilityLabel={
+            sessionMatches > 0
+              ? `View ${sessionMatches} ${sessionMatches === 1 ? "match" : "matches"}`
+              : undefined
+          }
         >
           <Text style={styles.recapValue}>{sessionMatches}</Text>
           <Text style={styles.recapLabel}>Matches</Text>
@@ -188,7 +195,7 @@ export function DeckDoneCard({
         <TouchableOpacity
           onPress={onReviewAgain}
           activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+          hitSlop={hitSlopTo44(200, 20)}
         >
           <Text style={styles.quietLink}>
             Review today&apos;s deck again
