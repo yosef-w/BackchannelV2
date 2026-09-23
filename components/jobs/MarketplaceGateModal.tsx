@@ -28,6 +28,7 @@ import { DismissibleSheet } from "@/components/ui/DismissibleSheet";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { sheetColumn } from "@/lib/responsive";
 import { Colors, Fonts, Radii } from "@/constants/theme";
+import { DAILY_LIKE_LIMITS } from "@/constants/config";
 
 interface MarketplaceGateModalProps {
   visible: boolean;
@@ -88,8 +89,9 @@ export function MarketplaceGateModal({
           </Text>
           <Text style={styles.sub}>
             Keep searching every open role for free — liking and sponsor
-            requests here are part of BackChannel Premium, along with an
-            unlimited daily deck.
+            requests here are part of BackChannel Premium, along with a
+            bigger daily like allowance ({DAILY_LIKE_LIMITS.free} →{" "}
+            {DAILY_LIKE_LIMITS.premium}).
           </Text>
 
           <TouchableOpacity

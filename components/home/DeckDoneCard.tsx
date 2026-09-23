@@ -3,7 +3,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-import { PREMIUM_ENABLED } from "@/constants/config";
+import { DAILY_LIKE_LIMITS, PREMIUM_ENABLED } from "@/constants/config";
 import { Colors, Fonts, Type } from "@/constants/theme";
 import { hitSlopTo44 } from "@/lib/responsive";
 
@@ -146,7 +146,8 @@ export function DeckDoneCard({
             <Text style={styles.gateTitleAccent}>members.</Text>
           </Text>
           <Text style={styles.gateSub}>
-            Unlimited swiping, plus the full job marketplace.
+            {DAILY_LIKE_LIMITS.premium} daily likes instead of{" "}
+            {DAILY_LIKE_LIMITS.free}, plus the full job marketplace.
           </Text>
         </View>
       )}

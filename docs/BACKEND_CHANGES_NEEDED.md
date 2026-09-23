@@ -1,6 +1,6 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-22 (added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
+**Last updated:** 2026-09-23 (added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
@@ -94,6 +94,20 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 **Frontend companion (already shipped, no backend dependency):** the frontend's own client-side timeouts were reconciled to match, plus a "harvest" mechanism so a request that outlives whatever timeout fires still gets its result picked up instead of leaving the UI stuck on a stale error.
 
 **Not done, flagged separately:** the backend still collapses every résumé-parse failure — a genuinely corrupt file, a rate limit, a transient 5xx — into one generic message with no way for the client to tell retryable from terminal. Left alone since it changes the response contract; worth a follow-up if it comes up again.
+
+---
+
+## §Y — Premium: real "unlimited" daily deck volume 🟢 Not urgent — queued for whenever PREMIUM_ENABLED flips on for real (new section, 2026-09-23 — for Nico)
+
+**Status/context:** `PREMIUM_ENABLED` is currently `false` — the whole subscription system is dark in the shipped app, so nothing below is needed yet. A frontend-only subscription audit this week found the Premium paywall's copy promised "unlimited swiping," but the code never actually delivered it — the "unlock more cards" button just rewound the same already-loaded 10-card deck, not a bigger or fresh one. That's been fixed on our side: the paywall now promises (and actually enforces) a **higher daily LIKE cap only** — 2/day free, 5/day Premium (`constants/config.ts`'s `DAILY_LIKE_LIMITS`, plus a new `lib/dailyLikeLimit.ts` persistent counter so it can't be reset by tapping "review again"). Nothing in this fix needs anything from you — flagging this section only for the *next* step, which does.
+
+**What's still missing, purely a future nice-to-have, not required for launch:**
+
+1. **Real dependency first — entitlement has to be backend-verifiable before this is safe to build.** Don't build a bigger deck on top of a client-supplied "is this user premium" flag — trusting the app's own claim here would let anyone fake premium deck volume the same way §V already flagged for server-mediated actions generally. This needs RevenueCat's REST API or a webhook receiver landing first — not a new ask, this is the same "server-side receipt validation" gap §V and §W already have on file.
+2. **Once that exists, the simplest version:** have `GET /api/profiles/pack/` (sponsor deck) and the applicant job-pack endpoint return a larger batch — e.g. 30 instead of 10 — for a caller the backend has independently confirmed is Premium, rather than the app needing a whole new endpoint. A paginated "give me more" follow-up call is a reasonable v2 if a flat larger pack turns out not to be enough; not necessary to start with.
+3. Whatever the real ceiling ends up being, it's still bounded by the actual pool of unseen candidates for that user — "unlimited" should mean "no artificial cap, real candidates only," never literally infinite.
+
+**Fix order:** nothing to do right now. Whenever Premium goes live for real and there's appetite to grow the deck-size promise beyond the like-cap increase (which is already live and self-contained frontend-side), come back to item 1 first.
 
 ---
 

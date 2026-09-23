@@ -80,6 +80,33 @@ export const REVENUECAT_API_KEY_ANDROID =
 /** The entitlement ID as configured in the RevenueCat dashboard. */
 export const RC_ENTITLEMENT_ID = "Backchannel Pro";
 
+// ─── Deck & Like Limits ────────────────────────────────────────────────────
+//
+// Daily caps on outbound likes ("Interested"/"Connect"), per subscription
+// tier — shared by both the applicant and sponsor decks (one entitlement,
+// one set of numbers). Centralized here so tuning either cap later is a
+// one-line change: nothing else in the app hardcodes these numbers, and the
+// paywall/gate copy that mentions them (MarketplaceGateModal, DeckDoneCard)
+// reads straight from this object too, so the copy can't silently drift out
+// of sync with the actual enforcement again (see docs/BACKEND_CHANGES_
+// NEEDED.md §Y — that's exactly what happened with the old "unlimited deck"
+// claim, which the enforcement never actually delivered).
+//
+// The daily *card count* (10, see HomeView's DECK_SIZE) is NOT part of this
+// object — it's currently the same for free and premium, since a genuinely
+// larger/unlimited card volume for premium needs backend support that
+// doesn't exist yet (§Y). This object only controls how many of those cards
+// a user is allowed to swipe right on per day.
+export const DAILY_LIKE_LIMITS = {
+  free: 2,
+  premium: 5,
+} as const;
+
+/** The daily like cap for a given entitlement state. */
+export function getDailyLikeCap(isPremium: boolean): number {
+  return isPremium ? DAILY_LIKE_LIMITS.premium : DAILY_LIKE_LIMITS.free;
+}
+
 // ─── Google Places ────────────────────────────────────────────────────────────
 //
 // API key for Google Places Autocomplete, used by the profile editor's address

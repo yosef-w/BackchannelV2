@@ -159,7 +159,17 @@ export function ProfileView({ userType }: ProfileViewProps) {
   const presentCustomerCenter = useSubscriptionStore(
     (state) => state.presentCustomerCenter,
   );
+  const restorePurchases = useSubscriptionStore(
+    (state) => state.restorePurchases,
+  );
   const [isTogglingPremium, setIsTogglingPremium] = useState(false);
+  // Apple 3.1.1 requires a real, always-reachable Restore Purchases control
+  // — not just whatever RevenueCat's own paywall/Customer Center templates
+  // happen to include by default. This is the one BackChannel-authored
+  // fallback: visible regardless of the current isPremium read (that's
+  // exactly the case that matters — a reinstall where local state says
+  // "not premium" until a restore proves otherwise).
+  const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
   const userProfileData = useUserProfileStore((state) => state.data);
   // Once a sponsor's work email is verified, their Company is locked — they've
   // vouched for that employer, so they can't silently swap it while keeping
@@ -2658,6 +2668,27 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 }
               } finally {
                 setIsTogglingPremium(false);
+              }
+            }}
+          />
+        )}
+        {PREMIUM_ENABLED && (
+          <HubRow
+            icon={<RefreshCw color={Colors.ink} size={16} strokeWidth={2} />}
+            label="Restore Purchases"
+            disabled={isRestoringPurchases}
+            onPress={async () => {
+              setIsRestoringPurchases(true);
+              try {
+                const restored = await restorePurchases();
+                showToast(
+                  restored
+                    ? "Subscription restored."
+                    : "No active subscription found to restore.",
+                  restored ? "success" : "info",
+                );
+              } finally {
+                setIsRestoringPurchases(false);
               }
             }}
           />
