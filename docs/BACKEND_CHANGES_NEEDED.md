@@ -1,6 +1,6 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-22 (added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
+**Last updated:** 2026-09-23 (added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
@@ -94,6 +94,54 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 **Frontend companion (already shipped, no backend dependency):** the frontend's own client-side timeouts were reconciled to match, plus a "harvest" mechanism so a request that outlives whatever timeout fires still gets its result picked up instead of leaving the UI stuck on a stale error.
 
 **Not done, flagged separately:** the backend still collapses every résumé-parse failure — a genuinely corrupt file, a rate limit, a transient 5xx — into one generic message with no way for the client to tell retryable from terminal. Left alone since it changes the response contract; worth a follow-up if it comes up again.
+
+---
+
+## §Y — Premium: real "unlimited" daily deck volume 🟢 Not urgent — queued for whenever PREMIUM_ENABLED flips on for real (new section, 2026-09-23 — for Nico)
+
+**Status/context:** `PREMIUM_ENABLED` is currently `false` — the whole subscription system is dark in the shipped app, so nothing below is needed yet. A frontend-only subscription audit this week found the Premium paywall's copy promised "unlimited swiping," but the code never actually delivered it — the "unlock more cards" button just rewound the same already-loaded 10-card deck, not a bigger or fresh one. That's been fixed on our side: the paywall now promises (and actually enforces) a **higher daily LIKE cap only** — 2/day free, 5/day Premium (`constants/config.ts`'s `DAILY_LIKE_LIMITS`, plus a new `lib/dailyLikeLimit.ts` persistent counter so it can't be reset by tapping "review again"). Nothing in this fix needs anything from you — flagging this section only for the *next* step, which does.
+
+**What's still missing, purely a future nice-to-have, not required for launch:**
+
+1. **Real dependency first — entitlement has to be backend-verifiable before this is safe to build.** Don't build a bigger deck on top of a client-supplied "is this user premium" flag — trusting the app's own claim here would let anyone fake premium deck volume the same way §V already flagged for server-mediated actions generally. This needs RevenueCat's REST API or a webhook receiver landing first — not a new ask, this is the same "server-side receipt validation" gap §V and §W already have on file.
+2. **Once that exists, the simplest version:** have `GET /api/profiles/pack/` (sponsor deck) and the applicant job-pack endpoint return a larger batch — e.g. 30 instead of 10 — for a caller the backend has independently confirmed is Premium, rather than the app needing a whole new endpoint. A paginated "give me more" follow-up call is a reasonable v2 if a flat larger pack turns out not to be enough; not necessary to start with.
+3. Whatever the real ceiling ends up being, it's still bounded by the actual pool of unseen candidates for that user — "unlimited" should mean "no artificial cap, real candidates only," never literally infinite.
+
+**Fix order:** nothing to do right now. Whenever Premium goes live for real and there's appetite to grow the deck-size promise beyond the like-cap increase (which is already live and self-contained frontend-side), come back to item 1 first.
+
+---
+
+## §Z — Premium: real interest counts on browse rows, for honest social proof 🟢 Not urgent — same trigger as §Y (new section, 2026-09-24 — for Nico)
+
+**Status/context:** The marketplace premium gate (`MarketplaceGateModal`) was rebuilt this week to sell the outcome rather than the rule — it now names the role and company, plays a request → review → introduction reel, and pulls live prices from RevenueCat. One conversion lever was deliberately left out because the data doesn't exist yet: **social proof on the gate** ("4 applicants requested a sponsor here this week"). We won't fabricate that number — it goes in only when it's real.
+
+**What's needed, one field:** `GET /api/jobs/browse/` rows (applicant callers) gain an integer `REQUEST_COUNT_7D` — distinct applicants who have hit `POST /api/jobs/<job_id>/request-sponsor/` for that job in the trailing 7 days (for sponsored rows, the equivalent from `POST /api/jobs/like/` is fine, same field name). Zero is a valid value and the app hides the line below a small threshold, so no need to null it out.
+
+**Fix order:** nothing until PREMIUM_ENABLED is on. The app already has the surface waiting — it's a one-line copy addition on our side once the field lands.
+
+---
+
+## §AA — Dev (staging) database has no ATS jobs and thin seed data — the jobs board is empty on `development` builds 🟠 Medium priority (new section, 2026-09-25 — for Nico)
+
+**Status/context:** Since the CI/CD split, the app's `development` env (`.env.development`) points at `backchannel-dev` → the `BACKCHANNEL_DEV` Postgres, while `preview`/`production` point at `oyster-app` → prod. On a dev build the applicant Jobs tab now shows "No roles available", and both decks look sparse compared to a few weeks ago (when every build hit prod).
+
+**Verified 2026-09-25** against `https://backchannel-dev-hl72i.ondigitalocean.app` with a throwaway `inttest_*@test.backchannel.local` applicant (deleted afterwards via `/api/account/delete/`, per the DEV_ENVIRONMENT.md convention):
+
+- `GET /api/jobs/browse/` → `total_count: 0`. The marketplace reads `ats.silver_jobs`, and that table is empty on dev.
+- `GET /api/jobs/pack/` → 10 rows, so the deck's *sponsored* `job_postings` side has something; the ATS side has nothing.
+- `/api/health/ready/` is fine on both environments — this is a data gap, not an outage.
+
+**Root cause (from the backend repo):** `scripts/ats_etl.py` (RapidAPI → `ats.silver_jobs`, every 12h) and `scripts/ats_staleness_purge.py` run as DigitalOcean **scheduled jobs on the prod app only**. Nothing ever populates `BACKCHANNEL_DEV`'s ATS table. Likewise the two seed commands (`seed_demo_data`, `seed_personas` — 12 applicants / 12 sponsors / 20 jobs) don't appear to have been run against dev, so the profile and sponsored-job pools are just whatever integration tests and manual signups left behind.
+
+**Asks, cheapest first:**
+
+1. **One-shot backfill now:** run `python scripts/ats_etl.py --max-pages 2` with the dev `POSTGRES_URL` so the board has real listings today. (Two pages keeps the RapidAPI quota hit small.)
+2. **Seed the decks:** `python manage.py seed_personas --execute` (and/or `seed_demo_data`) against dev so applicants see sponsors, sponsors see applicants, and the sponsored-job flows have real rows.
+3. **Keep it from drifting again:** add the `ats_etl` scheduled job to the `backchannel-dev` DO app too, on a lighter cadence (e.g. daily, `--max-pages 2`), plus the staleness purge. If RapidAPI quota is the concern, a nightly copy of `ats.silver_jobs` from prod → dev is an acceptable alternative — that table holds no user PII.
+
+**Why it matters now:** the marketplace premium gate (§Z and the frontend's `fix/subscription-paywall-audit` branch) can only be exercised on a board with listings. Until dev has data, testing it means running a `preview` build against **prod** — every like/sponsor request/waitlist join from that testing lands in the real database.
+
+**Frontend side:** nothing to change. The env split itself is correct; it just exposed that dev was never given its own data.
 
 ---
 
