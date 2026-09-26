@@ -542,6 +542,9 @@ const styles = StyleSheet.create({
   },
   docHeading: {
     height: 9,
+    // One-off illustration tint for the skeleton document graphic, not a
+    // real UI surface — no shared token is a close enough match.
+    // eslint-disable-next-line no-restricted-syntax
     backgroundColor: "#E9E6DE",
     width: "52%",
     marginTop: 14,
