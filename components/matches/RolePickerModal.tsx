@@ -106,13 +106,19 @@ export function RolePickerModal({
                   {roleGroup.items[0].name}
                 </Text>
                 <Text style={styles.rolePickerSub}>
-                  Matched on {roleGroup.items.length} roles — pick one to view
+                  Matched on {roleGroup.items.length} roles. Pick one to view
                   or message
                 </Text>
               </View>
             </View>
 
-            <SheetScrollView style={{ marginTop: 8 }}>
+            <SheetScrollView
+              style={{
+                marginTop: 8,
+                borderTopWidth: 1,
+                borderTopColor: Colors.border,
+              }}
+            >
               {roleGroup.items.map((m) => (
                 <View key={m.id} style={styles.rolePickerRow}>
                   <TouchableOpacity
@@ -146,7 +152,7 @@ export function RolePickerModal({
                     accessibilityRole="button"
                     accessibilityLabel={`Message ${m.name}`}
                   >
-                    <MessageCircle color={Colors.paper} size={16} strokeWidth={2.5} />
+                    <MessageCircle color={Colors.ink} size={16} strokeWidth={2.5} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -188,18 +194,14 @@ const styles = StyleSheet.create({
     marginTop: 3,
     lineHeight: 18,
   },
-  // Flat, bordered row — the same "Docket" ticket language JobSheetKit's
-  // RoleTicket uses elsewhere, not a floating drop-shadow card (the
-  // rebrand retired shadows on sheet content; this was the one leftover).
+  // Flat rows between hairlines, the same Docket group language as the
+  // Matches sections themselves; no card, no shadow.
   rolePickerRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    marginBottom: 10,
-    backgroundColor: Colors.paper,
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   rolePickerRowMain: {
     flex: 1,
@@ -208,11 +210,15 @@ const styles = StyleSheet.create({
   },
   rolePickerRole: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   rolePickerMeta: { fontSize: 13, color: Colors.muted, marginTop: 2 },
+  // Outline, not filled: one filled ink action per surface, and this
+  // sheet has a row of them.
   rolePickerMsgBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.ink,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.paper,
+    borderWidth: 1.5,
+    borderColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,

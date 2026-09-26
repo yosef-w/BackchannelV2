@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { Check, Flag } from "@/components/ui/icons";
+import { Check } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { DismissibleSheet } from "../ui/DismissibleSheet";
+import { QuietAction } from "../matches/JobSheetKit";
 import type { ReportReason } from "@/lib/api";
 import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
@@ -93,17 +94,6 @@ export function ThreadMenuSheet({
             </Text>
 
             <TouchableOpacity
-              style={styles.reportActionBtn}
-              onPress={() => setThreadMenuStep("report")}
-              activeOpacity={0.7}
-            >
-              <Flag size={18} color={Colors.ink} strokeWidth={2} />
-              <Text style={styles.reportActionText}>
-                Report {participantName.split(" ")[0]}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={[styles.unmatchActionBtn, isUnmatching && { opacity: 0.6 }]}
               onPress={onUnmatch}
               disabled={isUnmatching}
@@ -115,14 +105,14 @@ export function ThreadMenuSheet({
                 <Text style={styles.unmatchActionText}>Unmatch</Text>
               )}
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.unmatchCancelBtn}
-              onPress={handleDismiss}
-              disabled={isUnmatching}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.unmatchCancelText}>Cancel</Text>
-            </TouchableOpacity>
+
+            <View style={styles.quietRow}>
+              <QuietAction
+                label={`Report ${participantName.split(" ")[0]}`}
+                onPress={() => setThreadMenuStep("report")}
+              />
+              <QuietAction label="Cancel" onPress={handleDismiss} />
+            </View>
           </>
         ) : (
           <>
@@ -196,14 +186,13 @@ export function ThreadMenuSheet({
                 <Text style={styles.unmatchActionText}>Submit Report</Text>
               )}
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.unmatchCancelBtn}
-              onPress={() => setThreadMenuStep("actions")}
-              disabled={isReporting}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.unmatchCancelText}>Back</Text>
-            </TouchableOpacity>
+            <View style={styles.quietRow}>
+              <QuietAction
+                label="Back"
+                onPress={() => setThreadMenuStep("actions")}
+                loading={isReporting}
+              />
+            </View>
           </>
         )}
       </DismissibleSheet>
@@ -257,38 +246,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     color: Colors.paper,
   },
-  unmatchCancelBtn: {
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  unmatchCancelText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: Colors.ink,
-  },
-  // Report — outlined (not filled) to sit visually below Unmatch's solid
-  // black CTA without resorting to red; severity is communicated by copy
-  // and icon, matching the app's monochrome-only convention for
-  // destructive actions (see the comment on unmatchActionBtn above).
-  reportActionBtn: {
+  // One filled ink pill per surface (Unmatch / Submit Report); Report and
+  // Cancel/Back are quiet text, same as every other sheet in the app.
+  quietRow: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 1.5,
-    borderColor: Colors.ink,
-    marginBottom: 12,
-  },
-  reportActionText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: Colors.ink,
+    gap: 24,
+    marginTop: 4,
   },
   reportReasonList: {
     gap: 8,

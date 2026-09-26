@@ -1,4 +1,4 @@
-import { Image as ImageIcon, ThumbsDown, Trash2 } from "@/components/ui/icons";
+import { ThumbsDown, Trash2 } from "@/components/ui/icons";
 import type { Job } from "@/types/jobs";
 import { BlurView } from "expo-blur";
 import React from "react";
@@ -14,6 +14,7 @@ import {
     View,
 } from "react-native";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { QuietAction } from "../matches/JobSheetKit";
 import {
     DismissibleSheet,
     SheetScrollView,
@@ -239,14 +240,6 @@ export function JobMenuModal({
             {activeTab === "sponsored" && job ? (
               <>
                 <TouchableOpacity
-                  style={styles.actionOutlineBtn}
-                  onPress={onOpenLogoEditor}
-                  activeOpacity={0.7}
-                >
-                  <ImageIcon size={18} color={Colors.ink} strokeWidth={2} />
-                  <Text style={styles.actionOutlineText}>Replace Logo</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
                   style={styles.actionPrimaryBtn}
                   onPress={onShowUnsponsorReasons}
                   activeOpacity={0.7}
@@ -254,24 +247,26 @@ export function JobMenuModal({
                   <Trash2 size={18} color={Colors.paper} strokeWidth={2} />
                   <Text style={styles.actionPrimaryText}>Unsponsor Job</Text>
                 </TouchableOpacity>
+                <View style={styles.quietRow}>
+                  <QuietAction label="Replace Logo" onPress={onOpenLogoEditor} />
+                  <QuietAction label="Cancel" onPress={onClose} />
+                </View>
               </>
             ) : (
-              <TouchableOpacity
-                style={styles.actionPrimaryBtn}
-                onPress={onClose}
-                activeOpacity={0.7}
-              >
-                <ThumbsDown size={18} color={Colors.paper} strokeWidth={2} />
-                <Text style={styles.actionPrimaryText}>Not Interested</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={styles.actionPrimaryBtn}
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                >
+                  <ThumbsDown size={18} color={Colors.paper} strokeWidth={2} />
+                  <Text style={styles.actionPrimaryText}>Not Interested</Text>
+                </TouchableOpacity>
+                <View style={styles.quietRow}>
+                  <QuietAction label="Cancel" onPress={onClose} />
+                </View>
+              </>
             )}
-            <TouchableOpacity
-              style={styles.actionCancelBtn}
-              onPress={onClose}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.actionCancelText}>Cancel</Text>
-            </TouchableOpacity>
           </View>
         )}
       </DismissibleSheet>
@@ -296,20 +291,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 24,
   },
-  // Stacked full-width actions — the thread menu's exact vocabulary:
-  // outlined secondary, ink primary, hairline cancel.
-  actionOutlineBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 1.5,
-    borderColor: Colors.ink,
-    marginBottom: 12,
-  },
-  actionOutlineText: { fontSize: 15, fontWeight: "700", color: Colors.ink },
+  // One filled ink pill per surface; everything else is quiet text.
   actionPrimaryBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -318,18 +300,14 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: 27,
     backgroundColor: Colors.ink,
-    marginBottom: 12,
+    marginBottom: 4,
   },
   actionPrimaryText: { fontSize: 15, fontWeight: "700", color: Colors.paper },
-  actionCancelBtn: {
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: "center",
+  quietRow: {
+    flexDirection: "row",
     justifyContent: "center",
+    gap: 24,
   },
-  actionCancelText: { fontSize: 15, fontWeight: "700", color: Colors.ink },
   unsponsorReasonHeading: {
     textAlign: "center",
     fontFamily: Type.heading.fontFamily,

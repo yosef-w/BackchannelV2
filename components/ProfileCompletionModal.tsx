@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontFamily: Fonts.sansBold,
     fontSize: 11,
-    letterSpacing: 2,
+    letterSpacing: 0.8,
     color: Colors.muted,
     marginBottom: 12,
   },
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   missingTitle: {
     fontFamily: Fonts.sansBold,
     fontSize: 11,
-    letterSpacing: 1.6,
+    letterSpacing: 0.8,
     color: Colors.muted,
     marginBottom: 8,
   },

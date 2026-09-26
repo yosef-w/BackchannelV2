@@ -20,7 +20,7 @@ import {
 import { jobsModalStyles } from "./jobsModalStyles";
 import { sheetColumn, sheetMaxHeight } from "@/lib/responsive";
 import { SponsorInsightCards } from "./SponsorInsightCards";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Radii, Type } from "@/constants/theme";
 
 export interface SponsorFlowState {
   step: number;
@@ -323,13 +323,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   formSection: { marginBottom: 24 },
+  // Radio options are inputs, so they keep a hairline frame; Docket
+  // radius (md), not the old Gallery card's 16.
   halfOption: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     padding: 18,
-    borderRadius: 16,
+    borderRadius: Radii.md,
     backgroundColor: Colors.paper,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -346,7 +348,7 @@ const styles = StyleSheet.create({
   radioOption: {
     backgroundColor: Colors.paper,
     padding: 18,
-    borderRadius: 16,
+    borderRadius: Radii.md,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: 12,

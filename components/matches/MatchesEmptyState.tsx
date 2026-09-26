@@ -1,4 +1,4 @@
-import { Heart } from "@/components/ui/icons";
+import { Handshake } from "@/components/ui/icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors } from "@/constants/theme";
@@ -23,7 +23,7 @@ export function MatchesEmptyState({
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Heart size={28} color={Colors.ink} strokeWidth={1.75} />
+        <Handshake size={28} color={Colors.ink} strokeWidth={1.75} />
       </View>
       <Text style={styles.title}>Nothing here yet</Text>
       <Text style={styles.subtitle}>
@@ -49,8 +49,9 @@ const styles = StyleSheet.create({
   iconCircle: {
     width: 64,
     height: 64,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -62,12 +63,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 19,
   },
+  // The app's CTA pill, not the pre-rebrand squared button.
   actionBtn: {
     marginTop: 20,
     backgroundColor: Colors.ink,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingHorizontal: 24,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionText: { color: Colors.paper, fontSize: 14, fontWeight: "700" },
 });

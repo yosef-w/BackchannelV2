@@ -38,6 +38,7 @@ import { InboxSection } from "./messages/InboxSection";
 import { InboxEmpty, InboxError, InboxLoading } from "./messages/InboxStates";
 import { ThreadScreen } from "./messages/ThreadScreen";
 import { MessageCircle } from "@/components/ui/icons";
+import { QuietAction } from "./matches/JobSheetKit";
 import { Layout, useResponsive } from "@/lib/responsive";
 import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 
@@ -1267,18 +1268,13 @@ export function MessagesView({
 
           {/* Load More */}
           {conversations.length < conversationsTotalCount && (
-            <TouchableOpacity
-              style={styles.loadMoreBtn}
-              onPress={loadMoreConversations}
-              disabled={isLoadingMore}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.loadMoreText}>
-                {isLoadingMore
-                  ? "Loading..."
-                  : `Load more (${conversationsTotalCount - conversations.length})`}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.loadMoreRow}>
+              <QuietAction
+                label={`Load more (${conversationsTotalCount - conversations.length})`}
+                onPress={loadMoreConversations}
+                loading={isLoadingMore}
+              />
+            </View>
           )}
         </>
       )}
@@ -1327,7 +1323,7 @@ const styles = StyleSheet.create({
   archiveEyebrow: {
     fontSize: 10,
     fontWeight: "800",
-    letterSpacing: 1.6,
+    letterSpacing: 0.8,
     color: Colors.faint,
     marginTop: 14,
     marginBottom: 8,
@@ -1338,13 +1334,9 @@ const styles = StyleSheet.create({
     color: Colors.body,
     marginTop: 8,
   },
-  loadMoreBtn: {
-    marginVertical: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  loadMoreRow: {
     alignItems: "center" as const,
+    marginVertical: 16,
   },
   loadMoreText: {
     fontSize: 14,

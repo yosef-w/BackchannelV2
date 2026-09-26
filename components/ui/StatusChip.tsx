@@ -11,7 +11,8 @@ const TONE_STYLES: Record<StatusTone, { dot: string; text: string }> = {
   // Sitting in a queue, nothing to do but wait — "Pending", "Waitlisted".
   waiting: { dot: Colors.muted, text: Colors.muted },
   // Terminal / de-emphasized — "Withdrawn", "Didn't move forward".
-  muted: { dot: Colors.faint, text: Colors.faint },
+  // `faint` is non-text only (3.48:1); the dot keeps it, the label doesn't.
+  muted: { dot: Colors.faint, text: Colors.muted },
 };
 
 interface StatusChipProps {

@@ -1,4 +1,4 @@
-import { Heart } from "@/components/ui/icons";
+import { Clock } from "@/components/ui/icons";
 import { getRelativeTime } from "@/utils/relativeTime";
 import React from "react";
 import {
@@ -155,7 +155,7 @@ export function SponsorMatchesSections({
         meta={
           applicant.likedAt ? (
             <MetaLine
-              icon={<Heart size={10} color={Colors.danger} />}
+              icon={<Clock size={10} color={Colors.muted} />}
               text={getRelativeTime(applicant.likedAt)}
             />
           ) : undefined
@@ -256,7 +256,7 @@ export function SponsorMatchesSections({
 
       <MatchSection
         title="Matched"
-        subtitle="Applicants you've matched with — message them to start a conversation"
+        subtitle="Applicants you've matched with. Message them to start a conversation"
         count={matches.length}
         loading={matchesLoading}
         error={matchesError}
@@ -269,7 +269,7 @@ export function SponsorMatchesSections({
 
       <MatchSection
         title="In Progress"
-        subtitle="Applicants you've formally referred — track their status here"
+        subtitle="Applicants you've formally referred. Track their status here"
         count={inProgressCount}
         loading={inProgressLoading}
         error={referralsError}
@@ -306,13 +306,11 @@ export function SponsorMatchesSections({
 }
 
 const styles = StyleSheet.create({
+  // Quiet destructive text, not a filled box: filled pills are reserved
+  // for the row's single positive action.
   withdrawBtn: {
-    paddingHorizontal: 11,
+    paddingHorizontal: 8,
     paddingVertical: 6,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: Colors.dangerLight,
-    backgroundColor: Colors.dangerLight,
     alignItems: "center",
     justifyContent: "center",
     minWidth: 74,

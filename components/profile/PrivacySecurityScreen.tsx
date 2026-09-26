@@ -111,8 +111,8 @@ export function PrivacySecurityScreen({
           <Text style={styles.deleteHeadline}>Check your inbox</Text>
           <Text style={styles.deleteSubtitle}>
             We sent a password setup link to {accountEmail}. Open it to
-            create your password, then come back here — don&apos;t forget
-            the spam folder if it doesn&apos;t show up in a minute.
+            create your password, then come back here. Check your spam
+            folder if it doesn&apos;t show up in a minute.
           </Text>
         </>
       ) : (
@@ -282,8 +282,8 @@ export function PrivacySecurityScreen({
           {renderSetPasswordGate(
             "Set a password",
             "You signed in with Apple or Google, so this account doesn't " +
-              "have a password yet. We'll email you a link to create one — " +
-              "after that, both sign-in methods work.",
+              "have a password yet. We'll email you a link to create one. " +
+              "After that, both sign-in methods work.",
           )}
         </EditorScreen>
       );
@@ -400,8 +400,8 @@ export function PrivacySecurityScreen({
           {renderSetPasswordGate(
             "Set a password first",
             "Changing your email requires confirming a password, and this " +
-              "account doesn't have one yet — you signed in with Apple or " +
-              "Google. We'll email you a link to create one.",
+              "account doesn't have one yet because you signed in with Apple " +
+              "or Google. We'll email you a link to create one.",
           )}
         </EditorScreen>
       );
@@ -426,8 +426,8 @@ export function PrivacySecurityScreen({
             <Text style={styles.deleteHeadline}>Check your new inbox</Text>
             <Text style={styles.deleteSubtitle}>
               We sent a confirmation link to {newEmail.trim()}. Your email
-              won&apos;t change until you open it and confirm — including
-              your spam folder if it doesn&apos;t show up in a minute.
+              won&apos;t change until you open it and confirm. Check your
+              spam folder if it doesn&apos;t show up in a minute.
             </Text>
             <TouchableOpacity
               style={styles.updateBtn}
@@ -443,7 +443,7 @@ export function PrivacySecurityScreen({
         ) : (
           <>
             <Text style={styles.subtitle}>
-              We&apos;ll send a confirmation link to your new address — your
+              We&apos;ll send a confirmation link to your new address. Your
               email won&apos;t change until you open it.
             </Text>
 
@@ -524,8 +524,8 @@ export function PrivacySecurityScreen({
           {renderSetPasswordGate(
             "Set a password first",
             "Deleting your account requires confirming a password, and " +
-              "this account doesn't have one yet — you signed in with " +
-              "Apple or Google. We'll email you a link to create one; once " +
+              "this account doesn't have one yet because you signed in with " +
+              "Apple or Google. We'll email you a link to create one. Once " +
               "it's set, come back here to delete your account.",
           )}
         </EditorScreen>
@@ -556,7 +556,7 @@ export function PrivacySecurityScreen({
           {[
             "Your profile, photo, and resume are permanently erased",
             "All matches and conversations are deleted for good",
-            "Your likes, referrals, and check-in history are removed",
+            "Your expressed interest, referrals, and check-in history are removed",
           ].map((line) => (
             <View key={line} style={styles.deleteWarningRow}>
               <View style={styles.deleteWarningDot} />
@@ -686,7 +686,7 @@ export function PrivacySecurityScreen({
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={styles.rowLabel}>Contact Support</Text>
             <Text style={styles.rowDescription}>
-              Report a problem or get help — {SUPPORT_EMAIL}
+              Report a problem or get help at {SUPPORT_EMAIL}
             </Text>
           </View>
           <ChevronRight color={Colors.faint} size={20} />
@@ -754,24 +754,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
+  // Flat hairline group — the Docket rebrand retired the recessed box;
+  // rows sit on the paper between rules, same as HubSection.
   group: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
     marginBottom: 28,
-    overflow: "hidden",
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
     paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -787,12 +786,10 @@ const styles = StyleSheet.create({
   deleteRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 16,
     paddingVertical: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
     marginBottom: 12,
   },
   deleteTitle: { fontSize: 15, fontWeight: "700", color: Colors.ink },
@@ -884,12 +881,12 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     paddingHorizontal: 4,
   },
+  // Flat between hairlines, not a tinted box.
   deleteWarningCard: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: Colors.border,
-    padding: 16,
+    paddingVertical: 14,
     marginBottom: 24,
     gap: 10,
   },
@@ -929,13 +926,10 @@ const styles = StyleSheet.create({
   },
   deleteConfirmBtnText: { color: Colors.paper, fontSize: 15, fontWeight: "800" },
   deleteCancelBtn: {
-    minHeight: 52,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: Colors.surface,
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10,
+    marginTop: 14,
   },
-  deleteCancelBtnText: { color: Colors.ink, fontSize: 15, fontWeight: "700" },
+  deleteCancelBtnText: { color: Colors.muted, fontSize: 14, fontWeight: "600" },
 });

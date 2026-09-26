@@ -110,7 +110,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.paper,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
-    padding: 28,
+    // Same shell as sharedModalStyles.modalContent: the grabber hugs the
+    // top edge at 12, not 28.
+    paddingTop: 12,
+    paddingHorizontal: 28,
     paddingBottom: 40,
   },
   withdrawIconCircle: {
@@ -142,12 +145,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: Colors.ink,
   },
+  // Flat between hairlines; the red lives in the icon and the dots, not a box.
   withdrawWarningCard: {
-    backgroundColor: Colors.dangerLight,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.dangerLight,
-    padding: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 14,
     marginBottom: 24,
     gap: 10,
   },

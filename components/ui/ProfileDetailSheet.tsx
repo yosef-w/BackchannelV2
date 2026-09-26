@@ -19,7 +19,6 @@ import {
   BarFooter,
   canvasSheet,
   PersonHero,
-  PillButton,
   QuietAction,
   ReadMoreText,
   RoleTicket,
@@ -27,6 +26,7 @@ import {
   SkeletonCard,
   SkillChips,
 } from "@/components/matches/JobSheetKit";
+import type { StatusTone } from "./StatusChip";
 import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -79,8 +79,7 @@ export interface ProfileDetailSheetProps {
    */
   badge?: {
     label: string;
-    color?: string;
-    bgColor?: string;
+    tone?: StatusTone;
   };
 
   /**
@@ -467,14 +466,10 @@ export function ProfileDetailSheet({
               }}
             >
               {secondaryCta && (
-                <View style={{ marginTop: 8 }}>
-                  <PillButton
-                    label={secondaryCta.label}
-                    icon={secondaryCta.icon}
-                    onPress={secondaryCta.onPress}
-                    variant="outline"
-                  />
-                </View>
+                <QuietAction
+                  label={secondaryCta.label}
+                  onPress={secondaryCta.onPress}
+                />
               )}
             </BarFooter>
           </View>
@@ -514,13 +509,12 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 16,
   },
+  // Chips match the kit's SkillChips: pill radius, tint fill, no border.
   capPill: {
     backgroundColor: Colors.surface,
-    borderRadius: 20,
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   capPillText: { fontSize: 11, fontWeight: "700", color: Colors.body },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
@@ -528,23 +522,21 @@ const styles = StyleSheet.create({
   // for display type and the CTA pill.
   darkChip: {
     backgroundColor: Colors.surface,
-    borderRadius: 8,
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   darkChipText: { fontSize: 12, fontWeight: "700", color: Colors.ink },
-  // Inset tint deep enough to read as a distinct block inside a white
-  // card — #F8F9FB was invisible against it.
+  // Flat blocks between hairlines, not tinted inset boxes.
   insightCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingVertical: 12,
   },
   insightQ: {
     fontSize: 10,
     fontWeight: "800",
-    color: Colors.faint,
+    color: Colors.muted,
     letterSpacing: 0.8,
     marginBottom: 6,
     textTransform: "uppercase",
