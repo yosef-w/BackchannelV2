@@ -28,7 +28,7 @@ import {
 // KeyboardAvoidingView+ScrollView on binaries without the native module.
 import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 import { Colors } from "@/constants/theme";
-import { formColumn } from "@/lib/responsive";
+import { contentColumn, formColumn } from "@/lib/responsive";
 
 interface EditorScreenProps {
   visible: boolean;
@@ -45,6 +45,10 @@ interface EditorScreenProps {
   children: React.ReactNode;
   /** Set false for screens that manage their own ScrollView/layout. */
   scrollable?: boolean;
+  /** Width cap for the content. Editors take the narrow form column;
+   * a list that pages deeper into a tab screen (Matches "See all") takes
+   * that screen's wider content column so it lines up with what it left. */
+  column?: "form" | "content";
 }
 
 export function EditorScreen({
@@ -55,7 +59,9 @@ export function EditorScreen({
   headerRight,
   children,
   scrollable = true,
+  column = "form",
 }: EditorScreenProps) {
+  const columnStyle = column === "content" ? contentColumn : formColumn;
   return (
     <Modal
       visible={visible}
@@ -104,14 +110,14 @@ export function EditorScreen({
                 size (a static max-width), so it's correct at every size,
                 including mid-rotation, and is wider than any phone, so
                 iPhone is unchanged. */}
-            <View style={formColumn}>{children}</View>
+            <View style={columnStyle}>{children}</View>
           </KeyboardAwareScrollView>
         ) : (
           <KeyboardAvoidingView
             style={styles.flex}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            <View style={[styles.flex, formColumn]}>{children}</View>
+            <View style={[styles.flex, columnStyle]}>{children}</View>
           </KeyboardAvoidingView>
         )}
       </SafeAreaView>
