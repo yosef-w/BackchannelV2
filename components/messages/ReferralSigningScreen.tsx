@@ -87,7 +87,7 @@ const INTRO_FRAMES = [
     icon: Handshake,
     title: "You're the bridge",
     body: (first: string) =>
-      `A referral here isn't a button click — it's your name opening a door for ${first}. Thank you for doing that.`,
+      `A referral here isn't a button click. It's your name opening a door for ${first}. Thank you for doing that.`,
   },
   {
     icon: Star,
@@ -99,7 +99,7 @@ const INTRO_FRAMES = [
     icon: ClipboardCheck,
     title: "We prep the paperwork",
     body: (first: string) =>
-      `You'll get a ready-to-copy packet of ${first}'s details for your company's referral portal — saved in Matches → Referrals whenever you need it.`,
+      `You'll get a ready-to-copy packet of ${first}'s details for your company's referral portal, saved in Matches → Referrals whenever you need it.`,
   },
 ] as const;
 
@@ -1020,7 +1020,7 @@ export function ReferralSigningScreen({
                   Thank you{sponsorFirstName ? `, ${sponsorFirstName}` : ""}.
                 </Text>
                 <Text style={styles.receiptSub}>
-                  Referrals like this are how people get real chances — you
+                  Referrals like this are how people get real chances. You
                   just gave {firstName} one.
                 </Text>
                 <Text style={styles.receiptNext}>
@@ -1032,7 +1032,7 @@ export function ReferralSigningScreen({
                   onCopied={(what) => showToast(`${what} copied.`, "success")}
                 />
                 <Text style={styles.savedHint}>
-                  Saved — find this packet anytime in Matches → Referrals.
+                  Saved. Find this packet anytime in Matches → Referrals.
                 </Text>
               </ScrollView>
               <View style={styles.footer}>

@@ -28,7 +28,11 @@ import {
 } from "@/lib/api";
 import { formatSalary } from "@/types/jobs";
 import type { BrowseJobResponse } from "@/types/jobs";
-import { Check, Heart, MapPin, Search, X } from "@/components/ui/icons";
+import { Check, Heart, Lock, MapPin, Search, X } from "@/components/ui/icons";
+import {
+  hasUsedFreeSponsorRequest,
+  markFreeSponsorRequestUsed,
+} from "@/lib/freeSponsorRequest";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -63,6 +67,7 @@ import {
   BarFooter,
   canvasSheet,
   PosterHero,
+  QuietAction,
   ReadMoreText,
   SectionCard,
   SkillChips,
@@ -73,7 +78,11 @@ import {
   SheetScrollView,
 } from "./ui/DismissibleSheet";
 import { CompanyLogo } from "./ui/CompanyLogo";
-import { MarketplaceGateModal } from "./jobs/MarketplaceGateModal";
+import {
+  type GateJob,
+  type MarketplaceGateIntent,
+  MarketplaceGateModal,
+} from "./jobs/MarketplaceGateModal";
 import { ScreenContainer } from "./ui/ScreenContainer";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { PREMIUM_ENABLED } from "@/constants/config";
@@ -88,6 +97,7 @@ import {
   trackApplicantBrowseViewed,
   trackApplicantJobDetailsOpened,
   trackApplicantJobSearchPerformed,
+  trackFreeSponsorRequestUsed,
   trackJobLiked,
   trackJobWaitlistJoined,
   trackSponsorRequested,
@@ -143,7 +153,7 @@ const MOCK_JOBS: BrowseJobResponse[] = [
     ORGANIZATION: "Snowflake",
     FULL_LOCATION: "San Mateo, CA",
     DESCRIPTION_TEXT:
-      "Build and scale the pipelines behind our analytics platform. You'll own ingestion end to end — modeling, orchestration, and the tooling other teams build on. We're looking for someone who treats data quality as a product, not a chore, and who's comfortable moving between Spark jobs and stakeholder conversations in the same afternoon.",
+      "Build and scale the pipelines behind our analytics platform. You'll own ingestion end to end: modeling, orchestration, and the tooling other teams build on. We're looking for someone who treats data quality as a product, not a chore, and who's comfortable moving between Spark jobs and stakeholder conversations in the same afternoon.",
     EMPLOYMENT_TYPES: "Full-time",
     IS_REMOTE: false,
     SALARY_ANNUAL_MIN: 165000,
@@ -160,7 +170,7 @@ const MOCK_JOBS: BrowseJobResponse[] = [
     ORGANIZATION: "Figma",
     FULL_LOCATION: "New York, NY",
     DESCRIPTION_TEXT:
-      "Design core editor experiences used by millions of designers daily. You'll partner with research and engineering from problem framing through polish, and you'll ship — our design team prototypes in production.",
+      "Design core editor experiences used by millions of designers daily. You'll partner with research and engineering from problem framing through polish, and you'll ship. Our design team prototypes in production.",
     EMPLOYMENT_TYPES: "Full-time",
     IS_REMOTE: true,
     SALARY_ANNUAL_MIN: 140000,
@@ -178,7 +188,7 @@ const MOCK_JOBS: BrowseJobResponse[] = [
     ORGANIZATION: "Stripe",
     FULL_LOCATION: "Seattle, WA",
     DESCRIPTION_TEXT:
-      "Work on the money-movement rails that process billions in volume. High ownership, high scrutiny, high leverage — you'll write code where correctness genuinely matters and design reviews are a team sport.",
+      "Work on the money-movement rails that process billions in volume. High ownership, high scrutiny, high leverage. You'll write code where correctness genuinely matters and design reviews are a team sport.",
     EMPLOYMENT_TYPES: "Full-time",
     IS_REMOTE: false,
     SALARY_ANNUAL_MIN: 170000,
@@ -195,7 +205,7 @@ const MOCK_JOBS: BrowseJobResponse[] = [
     ORGANIZATION: "Notion",
     FULL_LOCATION: "Austin, TX",
     DESCRIPTION_TEXT:
-      "Own paid and lifecycle experiments across our self-serve funnel. You'll run the full loop — hypothesis, launch, measure, decide — with a budget and the autonomy to spend it well.",
+      "Own paid and lifecycle experiments across our self-serve funnel. You'll run the full loop, from hypothesis to launch to decision, with a budget and the autonomy to spend it well.",
     EMPLOYMENT_TYPES: "Full-time",
     IS_REMOTE: true,
     SALARY_ANNUAL_MIN: 115000,
@@ -495,14 +505,40 @@ export function ApplicantJobsBrowseView() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   // Premium velvet rope: browsing/searching stays free — ACTIONS are the
   // members' privilege. Non-null = the gate sheet is up, holding the
-  // action the user attempted; a successful in-gate purchase runs it.
+  // action the user attempted (plus which action and on which role, so
+  // the sheet can name them); a successful in-gate purchase runs it.
   // Inert while PREMIUM_ENABLED is false (isPremium is hardwired false
   // then, but the guard checks the flag first so behavior is unchanged).
-  const [gateAction, setGateAction] = useState<(() => void) | null>(null);
+  const [gate, setGate] = useState<{
+    action: () => void;
+    intent: MarketplaceGateIntent;
+    job: GateJob;
+  } | null>(null);
   const isPremium = useSubscriptionStore((state) => state.isPremium);
-  const guardPremium = (action: () => void) => {
-    if (PREMIUM_ENABLED && !isPremium) {
-      setGateAction(() => action);
+  // Every free applicant gets ONE sponsor request before the rope goes
+  // up (lib/freeSponsorRequest.ts) — the second is asked to repeat an
+  // experience they've had, not gamble on one they haven't. "unknown"
+  // (waitlist fetch failed with no local proof either way) gates: the
+  // free one must never be granted on a failed read.
+  const [freeRequest, setFreeRequest] = useState<
+    "unknown" | "available" | "used"
+  >("unknown");
+  const membersCue = PREMIUM_ENABLED && !isPremium;
+  const guardPremium = (
+    intent: MarketplaceGateIntent,
+    job: BrowseJobResponse,
+    action: () => void,
+  ) => {
+    if (membersCue) {
+      if (intent === "request" && freeRequest === "available") {
+        action();
+        return;
+      }
+      setGate({
+        action,
+        intent,
+        job: { id: job.JOB_ID, title: job.TITLE, organization: job.ORGANIZATION },
+      });
       return;
     }
     action();
@@ -591,17 +627,27 @@ export function ApplicantJobsBrowseView() {
     }
   };
 
-  // Initial load + waitlist pre-marks.
+  // Initial load + waitlist pre-marks. The waitlist doubles as the
+  // backend's record of the free sponsor request (every request also
+  // joins the waitlist), with the local flag covering a failed fetch.
   useEffect(() => {
     trackApplicantBrowseViewed();
     loadJobs("", "", 0);
-    getWaitlistedJobs()
-      .then((res) => {
-        setWaitlistedIds(
-          new Set((res.jobs || []).map((j) => String(j.job_id))),
-        );
-      })
-      .catch(() => {});
+    Promise.allSettled([getWaitlistedJobs(), hasUsedFreeSponsorRequest()]).then(
+      ([waitlistRes, localRes]) => {
+        const localUsed =
+          localRes.status === "fulfilled" ? localRes.value : true;
+        if (waitlistRes.status === "fulfilled") {
+          const ids = (waitlistRes.value.jobs || []).map((j) =>
+            String(j.job_id),
+          );
+          setWaitlistedIds(new Set(ids));
+          setFreeRequest(ids.length > 0 || localUsed ? "used" : "available");
+        } else {
+          setFreeRequest(localUsed ? "used" : "unknown");
+        }
+      },
+    );
 
   }, []);
 
@@ -638,6 +684,14 @@ export function ApplicantJobsBrowseView() {
     }
     if (requestRes.status === "fulfilled") {
       trackSponsorRequested({ jobId: job.JOB_ID });
+      // A free applicant's request under the flag is, by definition,
+      // their complimentary one — burn it on the request landing, not on
+      // the waitlist half (which can fail independently, above).
+      if (membersCue) {
+        setFreeRequest("used");
+        markFreeSponsorRequestUsed();
+        trackFreeSponsorRequestUsed({ jobId: job.JOB_ID });
+      }
     }
 
     if (requestRes.status === "fulfilled" && waitlistRes.status === "fulfilled") {
@@ -704,12 +758,12 @@ export function ApplicantJobsBrowseView() {
   const closeDetail = () => {
     setSelectedJob(null);
     setRequestMessage(null);
-    // gateAction closes over whichever job was selected when the premium
+    // gate.action closes over whichever job was selected when the premium
     // gate was raised. Leaving it set here means the NEXT job's detail
     // sheet (which reopens the same outer Modal) would immediately show
     // MarketplaceGateModal again, and completing that gate would fire the
     // stale closure against this job, not the one the user is now viewing.
-    setGateAction(null);
+    setGate(null);
   };
 
   // Detail-sheet derivations.
@@ -746,7 +800,7 @@ export function ApplicantJobsBrowseView() {
             The <Text style={styles.titleEm}>marketplace.</Text>
           </Text>
           <Text style={styles.subtitle}>
-            Search beyond your daily deck — join a waitlist or request a
+            Search beyond today&apos;s roles. Join a waitlist or request a
             sponsor for any open role.
           </Text>
         </Animated.View>
@@ -809,7 +863,7 @@ export function ApplicantJobsBrowseView() {
             style={styles.sampleBannerRow}
           >
             <Text style={styles.sampleBannerText}>
-              You&apos;re offline, or live roles aren&apos;t loading — here
+              You&apos;re offline, or live roles aren&apos;t loading. Here
               are some examples.
             </Text>
             <TouchableOpacity
@@ -857,7 +911,7 @@ export function ApplicantJobsBrowseView() {
               const isDone =
                 waitlistedIds.has(job.JOB_ID) || likedIds.has(job.JOB_ID);
               const doneLabel = likedIds.has(job.JOB_ID)
-                ? "Liked"
+                ? "Interested"
                 : "Waitlisted";
               return (
                 <Animated.View
@@ -981,7 +1035,7 @@ export function ApplicantJobsBrowseView() {
                   }}
                   button={{
                     label: selectedJob.IS_SPONSORED
-                      ? "Like this Role"
+                      ? "Express Interest"
                       : "Get a Sponsor",
                     icon: selectedJob.IS_SPONSORED ? (
                       <Heart color={Colors.paper} size={16} strokeWidth={2.5} />
@@ -999,7 +1053,7 @@ export function ApplicantJobsBrowseView() {
                 <BarFooter
                   context={{
                     title: "Interest sent",
-                    sub: "You'll match when the sponsor likes back",
+                    sub: "You'll match if the sponsor is interested too",
                     done: true,
                   }}
                 />
@@ -1010,28 +1064,80 @@ export function ApplicantJobsBrowseView() {
                     sub: "We'll notify you when a sponsor picks this up",
                     done: true,
                   }}
-                />
+                >
+                  {/* The success moment is the one place a soft upsell
+                      earns its keep: they just felt what a request is. */}
+                  {membersCue && (
+                    <QuietAction
+                      label="Members request on every role"
+                      onPress={() =>
+                        setGate({
+                          action: () => {},
+                          intent: "request",
+                          job: {
+                            id: selectedJob.JOB_ID,
+                            title: selectedJob.TITLE,
+                            organization: selectedJob.ORGANIZATION,
+                          },
+                        })
+                      }
+                    />
+                  )}
+                </BarFooter>
               ) : selectedJob.IS_SPONSORED ? (
                 // Sponsored — the deck's real action: like it, match and
-                // all, exactly as a right-swipe on Home would.
+                // all, exactly as a right-swipe on Home would. Free users
+                // see the rope BEFORE they tap, so the gate is a door they
+                // chose to open, not a trap.
                 <BarFooter
+                  context={
+                    membersCue
+                      ? {
+                          title: "Members only",
+                          sub: "Unlock to express interest in sponsored roles",
+                          icon: (
+                            <Lock size={13} color={Colors.ink} strokeWidth={2.5} />
+                          ),
+                        }
+                      : undefined
+                  }
                   button={{
-                    label: "Like this Role",
+                    label: "Express Interest",
                     icon: <Heart color={Colors.paper} size={16} strokeWidth={2.5} />,
                     loading: isRequesting,
                     spinnerOnLoading: true,
                     onPress: () =>
-                      guardPremium(() => handleLikeSponsored(selectedJob)),
+                      guardPremium("like", selectedJob, () =>
+                        handleLikeSponsored(selectedJob),
+                      ),
                   }}
                 />
               ) : (
                 <BarFooter
+                  context={
+                    !membersCue
+                      ? undefined
+                      : freeRequest === "available"
+                        ? {
+                            title: "Your first request is on us",
+                            sub: "Members request on every role",
+                          }
+                        : {
+                            title: "Members only",
+                            sub: "Unlock to request on every role",
+                            icon: (
+                              <Lock size={13} color={Colors.ink} strokeWidth={2.5} />
+                            ),
+                          }
+                  }
                   button={{
                     label: "Get a Sponsor",
                     loading: isRequesting,
                     spinnerOnLoading: true,
                     onPress: () =>
-                      guardPremium(() => handleRequestSponsor(selectedJob)),
+                      guardPremium("request", selectedJob, () =>
+                        handleRequestSponsor(selectedJob),
+                      ),
                   }}
                 />
               )}
@@ -1041,9 +1147,11 @@ export function ApplicantJobsBrowseView() {
           {/* Rendered inside the detail Modal so it stacks above the
               sheet (a sibling outside the Modal never would). */}
           <MarketplaceGateModal
-            visible={!!gateAction}
-            onClose={() => setGateAction(null)}
-            onUnlocked={() => gateAction?.()}
+            visible={!!gate}
+            onClose={() => setGate(null)}
+            onUnlocked={() => gate?.action()}
+            intent={gate?.intent ?? "request"}
+            job={gate?.job ?? null}
           />
         </View>
       </Modal>
@@ -1292,6 +1400,11 @@ const styles = StyleSheet.create({
   detailSheet: {
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
+    // Every other job/referral sheet gets 28 from sharedModalStyles'
+    // modalContent; this one doesn't merge it, and BarFooter's -28 bleed
+    // assumes 28 — at canvasSheet's default 20 the bar overhung the sheet
+    // by 8pt a side (visible on iPad, where the sheet is capped/centered).
+    paddingHorizontal: 28,
     // Fixed (not max) height — same stuck-sheet class as the Matches
     // sheets: a fixed frame presents full-height from the first frame
     // and nothing can clip outside the scroll. Absolute px — a % would

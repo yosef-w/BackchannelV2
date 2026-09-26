@@ -160,7 +160,7 @@ export default function VerifyEmailRoute() {
               subtitle={
                 status === "success"
                   ? "Thanks for confirming. You're all set."
-                  : "Your email was already verified — nothing else to do."
+                  : "Your email was already verified. Nothing else to do."
               }
             />
             <TouchableOpacity

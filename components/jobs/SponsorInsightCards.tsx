@@ -50,7 +50,7 @@ const SPONSOR_INSIGHT_FIELDS: {
     title: "The real day-to-day",
     subtitle: "What this role actually looks like beyond the job description.",
     placeholder:
-      "Be honest about the daily work — pace, focus time, meetings, autonomy…",
+      "Be honest about the daily work: pace, focus time, meetings, autonomy…",
     chips: ["Pace", "Meetings", "Focus time", "Autonomy"],
   },
   {
@@ -75,7 +75,7 @@ const SPONSOR_INSIGHT_FIELDS: {
     key: "insiderInsights",
     Icon: Info,
     title: "Everything else worth knowing",
-    subtitle: "Interview process, growth path, comp — anything they should know.",
+    subtitle: "Interview process, growth path, comp. Anything they should know.",
     placeholder:
       "Interview format, timeline, promotion path, equity situation…",
     chips: ["Interview", "Timeline", "Growth", "Comp"],

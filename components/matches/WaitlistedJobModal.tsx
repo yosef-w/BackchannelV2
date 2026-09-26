@@ -113,12 +113,12 @@ export function WaitlistedJobModal({
                 <EmptySeatCard
                   filled
                   title="Someone picked this up!"
-                  body="A sponsor has taken on this role. Head back to your feed to connect with them directly."
+                  body="A sponsor has taken on this role. Head back to today's roles to connect with them directly."
                 />
               ) : (
                 <EmptySeatCard
                   title="No insider yet"
-                  body="This seat is waiting for your way in — you'll get a notification the moment a sponsor picks up this role."
+                  body="This seat is waiting for your way in. You'll get a notification the moment a sponsor picks up this role."
                 />
               )}
 
@@ -129,7 +129,7 @@ export function WaitlistedJobModal({
 
             {sponsored ? (
               <BarFooter
-                button={{ label: "Back to Your Feed", onPress: onClose }}
+                button={{ label: "Back to today's roles", onPress: onClose }}
               />
             ) : canNudge ? (
               <BarFooter
@@ -170,7 +170,6 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     lineHeight: 17,
     fontWeight: "500",
-    fontStyle: "italic",
     marginBottom: 8,
     paddingHorizontal: 4,
   },

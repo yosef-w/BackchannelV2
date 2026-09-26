@@ -31,7 +31,7 @@ export function AppErrorFallback({
       <View style={styles.content}>
         <Text style={styles.headline}>Something went wrong</Text>
         <Text style={styles.body}>
-          The app hit an unexpected error. We&apos;ve been notified — try
+          The app hit an unexpected error. We&apos;ve been notified. Try
           picking up where you left off.
         </Text>
         <TouchableOpacity
