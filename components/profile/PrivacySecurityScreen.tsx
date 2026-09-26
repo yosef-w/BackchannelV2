@@ -24,6 +24,12 @@ import {
 import { Sentry } from "@/lib/sentry";
 import { changeEmail, changePassword } from "@/lib/api";
 import { authApi } from "@/lib/auth-api";
+import {
+  isAppleSignInSupported,
+  isGoogleSignInSupported,
+  signInWithApple,
+  signInWithGoogle,
+} from "@/lib/sso";
 import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -60,6 +66,16 @@ export function PrivacySecurityScreen({
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  // Apple Guideline 5.1.1(v): a passwordless (SSO-only) account must be
+  // able to delete itself without a working password-reset email — Apple's
+  // private-relay addresses silently drop mail from senders it hasn't
+  // registered (see renderSetPasswordGate's email path above, which this
+  // replaces for deletion specifically). Re-verifies with a FRESH identity
+  // token from the same provider instead of a password.
+  const [ssoDeleteProvider, setSsoDeleteProvider] = useState<
+    "apple" | "google" | null
+  >(null);
+  const [ssoDeleteError, setSsoDeleteError] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -149,6 +165,7 @@ export function PrivacySecurityScreen({
   const resetDeleteFields = () => {
     setDeletePassword("");
     setDeleteError("");
+    setSsoDeleteError("");
   };
 
   const resetEmailFields = () => {
@@ -192,6 +209,41 @@ export function PrivacySecurityScreen({
           : msg || "Couldn't delete your account. Please try again.",
       );
       setDeleting(false);
+    }
+  };
+
+  const handleSsoDelete = async (provider: "apple" | "google") => {
+    if (ssoDeleteProvider) return;
+    setSsoDeleteError("");
+    setSsoDeleteProvider(provider);
+    try {
+      const identity =
+        provider === "apple"
+          ? await signInWithApple()
+          : await signInWithGoogle();
+      if (!identity) {
+        // User cancelled the native sheet — not an error, just back out.
+        setSsoDeleteProvider(null);
+        return;
+      }
+      await authApi.deleteAccountWithSso(
+        provider,
+        identity.identityToken,
+        refreshToken,
+      );
+      // Same as handleConfirmDelete: stay in the spinner state for the
+      // beat until the parent tears down and navigates away, rather than
+      // flashing back to tappable buttons on a dead account.
+      await onAccountDeleted();
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { flow: "account_delete_sso", provider },
+      });
+      setSsoDeleteError(
+        (err instanceof Error && err.message) ||
+          "Couldn't delete your account. Please try again.",
+      );
+      setSsoDeleteProvider(null);
     }
   };
 
@@ -501,33 +553,119 @@ export function PrivacySecurityScreen({
 
   if (step === "delete") {
     if (!hasPassword) {
+      const appleSupported = isAppleSignInSupported();
+      const googleSupported = isGoogleSignInSupported();
+      const ssoBusy = !!ssoDeleteProvider;
       return (
         <EditorScreen
           visible={visible}
           onClose={handleClose}
           onBack={() => {
-            // Same shared-state concern as handleSendSetupLink's own
-            // comment: setupLinkSending/setupLinkSent are single screen-
-            // level state reused by all three "no password yet" gates
-            // (password/email/delete). Leaving THIS gate while its own
-            // request is in flight, then opening a DIFFERENT gate, used to
-            // show that other gate a spinner/result it never triggered.
-            // Blocking navigation away while sending keeps every gate's
-            // request confined to the screen the user actually triggered
-            // it from.
-            if (setupLinkSending) return;
+            if (ssoBusy || setupLinkSending) return;
+            resetDeleteFields();
             setSetupLinkSent(false);
             setStep("main");
           }}
           title="Delete Account"
         >
-          {renderSetPasswordGate(
-            "Set a password first",
-            "Deleting your account requires confirming a password, and " +
-              "this account doesn't have one yet because you signed in with " +
-              "Apple or Google. We'll email you a link to create one. Once " +
-              "it's set, come back here to delete your account.",
+          <View style={styles.deleteIconCircle}>
+            <Trash2 color={Colors.ink} size={26} strokeWidth={2.2} />
+          </View>
+
+          <Text style={styles.deleteHeadline}>This is permanent</Text>
+          <Text style={styles.deleteSubtitle}>
+            Deleting your account erases everything, right away. There is
+            no grace period and no way to undo it. Since you signed in
+            with {appleSupported && googleSupported
+              ? "Apple or Google"
+              : appleSupported
+                ? "Apple"
+                : "Google"}, verify with that provider again to confirm
+            it&apos;s you.
+          </Text>
+
+          <View style={styles.deleteWarningCard}>
+            {[
+              "Your profile, photo, and resume are permanently erased",
+              "All matches and conversations are deleted for good",
+              "Your expressed interest, referrals, and check-in history are removed",
+            ].map((line) => (
+              <View key={line} style={styles.deleteWarningRow}>
+                <View style={styles.deleteWarningDot} />
+                <Text style={styles.deleteWarningText}>{line}</Text>
+              </View>
+            ))}
+          </View>
+
+          {ssoDeleteError ? (
+            <Text style={styles.errorText}>{ssoDeleteError}</Text>
+          ) : null}
+
+          {appleSupported && (
+            <TouchableOpacity
+              style={[
+                styles.deleteConfirmBtn,
+                ssoBusy && styles.deleteConfirmBtnDisabled,
+              ]}
+              onPress={() => handleSsoDelete("apple")}
+              disabled={ssoBusy}
+              activeOpacity={0.8}
+            >
+              {ssoDeleteProvider === "apple" ? (
+                <ActivityIndicator size="small" color={Colors.paper} />
+              ) : (
+                <Text style={styles.deleteConfirmBtnText}>
+                  Verify with Apple to Delete
+                </Text>
+              )}
+            </TouchableOpacity>
           )}
+          {googleSupported && (
+            <TouchableOpacity
+              style={[
+                styles.deleteConfirmBtn,
+                ssoBusy && styles.deleteConfirmBtnDisabled,
+                appleSupported && { marginTop: 10 },
+              ]}
+              onPress={() => handleSsoDelete("google")}
+              disabled={ssoBusy}
+              activeOpacity={0.8}
+            >
+              {ssoDeleteProvider === "google" ? (
+                <ActivityIndicator size="small" color={Colors.paper} />
+              ) : (
+                <Text style={styles.deleteConfirmBtnText}>
+                  Verify with Google to Delete
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.deleteCancelBtn}
+            onPress={() => {
+              if (ssoBusy) return;
+              resetDeleteFields();
+              setStep("main");
+            }}
+            disabled={ssoBusy}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.deleteCancelBtnText}>Keep My Account</Text>
+          </TouchableOpacity>
+
+          {/* Never a dead end: on the rare device where neither native SSO
+              module is available, fall back to the email-setup-link gate
+              instead of leaving no path to delete at all. */}
+          {!appleSupported &&
+            !googleSupported &&
+            renderSetPasswordGate(
+              "Set a password first",
+              "Deleting your account requires confirming a password, and " +
+                "this account doesn't have one yet because you signed in " +
+                "with Apple or Google. We'll email you a link to create " +
+                "one. Once it's set, come back here to delete your account.",
+            )}
         </EditorScreen>
       );
     }
