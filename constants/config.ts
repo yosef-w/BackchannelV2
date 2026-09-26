@@ -82,9 +82,10 @@ export const RC_ENTITLEMENT_ID = "Backchannel Pro";
 
 // ─── Deck & Like Limits ────────────────────────────────────────────────────
 //
-// Daily caps on outbound likes ("Interested"/"Connect"), per subscription
-// tier — shared by both the applicant and sponsor decks (one entitlement,
-// one set of numbers). Centralized here so tuning either cap later is a
+// Daily caps on an APPLICANT's outbound interest ("Interested"), per
+// subscription tier. Sponsors are deliberately uncapped — they can connect
+// with every one of their daily candidates, and they're not who we ask to
+// subscribe. Centralized here so tuning either cap later is a
 // one-line change: nothing else in the app hardcodes these numbers, and the
 // paywall/gate copy that mentions them (MarketplaceGateModal, DeckDoneCard)
 // reads straight from this object too, so the copy can't silently drift out

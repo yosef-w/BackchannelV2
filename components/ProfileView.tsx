@@ -25,6 +25,7 @@ import {
     X,
 } from "@/components/ui/icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { PremiumSheet } from "@/components/premium/PremiumSheet";
 import {
     ActivityIndicator,
     Alert,
@@ -155,7 +156,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
   );
   const rcReset = useSubscriptionStore((state) => state.reset);
   const isPremium = useSubscriptionStore((state) => state.isPremium);
-  const presentPaywall = useSubscriptionStore((state) => state.presentPaywall);
+  const [showPremiumSheet, setShowPremiumSheet] = useState(false);
   const presentCustomerCenter = useSubscriptionStore(
     (state) => state.presentCustomerCenter,
   );
@@ -500,7 +501,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
       // anyway: adding 3 skills quickly, each waiting on the previous
       // flush, meant up to 3 "finishing up" toasts for what should have
       // been a silent, successful operation.
-      showToast("Saved — finishing up in the background…", "info");
+      showToast("Saved. Finishing up in the background…", "info");
     }
   };
 
@@ -735,7 +736,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     } else if (locationError && addressFailed) {
       showToast("Failed to save changes. Please try again.", "error");
     } else {
-      showToast("Saved — finishing up in the background…", "info");
+      showToast("Saved. Finishing up in the background…", "info");
     }
   };
 
@@ -2424,8 +2425,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
             <View style={styles.liveDot} />
             <Text style={styles.liveBandText}>
               {userType === "applicant"
-                ? "LIVE — EXACTLY AS SPONSORS SEE IT"
-                : "LIVE — HOW APPLICANTS SEE YOU"}
+                ? "LIVE · EXACTLY AS SPONSORS SEE IT"
+                : "LIVE · HOW APPLICANTS SEE YOU"}
             </Text>
           </View>
           {userType === "applicant" ? (
@@ -2444,8 +2445,8 @@ export function ProfileView({ userType }: ProfileViewProps) {
                 </View>
               </View>
               <Text style={styles.previewFootnote}>
-                The buttons are for show — this is your card as it deals in
-                sponsor decks.
+                The buttons are for show. This is your profile exactly as
+                sponsors see it.
               </Text>
             </>
           ) : (
@@ -2552,10 +2553,10 @@ export function ProfileView({ userType }: ProfileViewProps) {
             </Text>
             <Text style={cardStyles.kLedgerValueSub} numberOfLines={2}>
               {profileCompletion.isComplete
-                ? "Complete — your card deals in full"
+                ? "Complete. Your profile shows in full"
                 : `${profileCompletion.missingFields.length} item${
                     profileCompletion.missingFields.length === 1 ? "" : "s"
-                  } left — finish below`}
+                  } left. Finish below`}
             </Text>
           </View>
         </View>
@@ -2651,25 +2652,30 @@ export function ProfileView({ userType }: ProfileViewProps) {
         {PREMIUM_ENABLED && (
           <HubRow
             icon={<Star color={Colors.ink} size={16} strokeWidth={2} />}
-            label={isPremium ? "Manage Subscription" : "Upgrade to Pro"}
+            label={isPremium ? "Manage Subscription" : "Upgrade to Premium"}
             disabled={isTogglingPremium}
             onPress={async () => {
-              // presentPaywall() itself now guards against a concurrent
-              // second call, but this row had no disabled state of its own
-              // — nothing stopped a fast double-tap from dispatching two
-              // presentCustomerCenter()/presentPaywall() calls before
-              // either had a chance to react.
+              if (!isPremium) {
+                setShowPremiumSheet(true);
+                return;
+              }
+              // Guarded so a fast double-tap can't open two Customer
+              // Center sheets before the row reacts.
               setIsTogglingPremium(true);
               try {
-                if (isPremium) {
-                  await presentCustomerCenter();
-                } else {
-                  await presentPaywall("profile_upgrade_row");
-                }
+                await presentCustomerCenter();
               } finally {
                 setIsTogglingPremium(false);
               }
             }}
+          />
+        )}
+        {PREMIUM_ENABLED && (
+          <PremiumSheet
+            visible={showPremiumSheet}
+            trigger="profile_upgrade_row"
+            onClose={() => setShowPremiumSheet(false)}
+            onUnlocked={() => {}}
           />
         )}
         {PREMIUM_ENABLED && (
@@ -2693,16 +2699,13 @@ export function ProfileView({ userType }: ProfileViewProps) {
             }}
           />
         )}
+        <HubRow
+          icon={<LogOut color={Colors.danger} size={16} strokeWidth={2} />}
+          label="Log Out"
+          destructive
+          onPress={handleLogout}
+        />
       </HubSection>
-
-      <TouchableOpacity
-        style={styles.logOutRow}
-        onPress={handleLogout}
-        activeOpacity={0.7}
-      >
-        <LogOut color={Colors.ink} size={16} strokeWidth={2} />
-        <Text style={styles.logOutText}>Log Out</Text>
-      </TouchableOpacity>
         </>
       )}
 
@@ -2854,7 +2857,7 @@ function EditInsightsModal({
         examples={examples}
         min={2}
         max={3}
-        subtitle="Pick prompts that show your personality — edit or swap anytime."
+        subtitle="Pick prompts that show your personality. Edit or swap anytime."
       />
     </EditorScreen>
   );
@@ -2975,23 +2978,6 @@ const styles = StyleSheet.create({
     color: Colors.paper,
     fontWeight: "700",
     fontSize: 14,
-  },
-  logOutRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.paper,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: Colors.ink,
-    paddingVertical: 14,
-    marginBottom: 24,
-  },
-  logOutText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: Colors.ink,
   },
   entryCard: {
     backgroundColor: Colors.offWhite,
