@@ -186,6 +186,25 @@ The frontend now supports **universal links** (site PR: `BackChannel-Netlify` #2
 
 ---
 
+## §AD — Moderation & account-safety gaps found while writing the ops runbooks 🔴 High priority for launch (new section, 2026-09-26 — for Nico)
+
+Found by reading the code while writing `docs/ops/MODERATION_RUNBOOK.md` / `INCIDENT_PLAN.md` (frontend repo). Nothing was run against a live system, so treat each as "verify, then fix." They matter because App Review (1.2) and the published Privacy Policy make promises these gaps quietly break.
+
+1. **The moderation alert pipe is probably dead today.** `MODERATION_ALERT_EMAIL` defaults to `""` (report is stored, nobody alerted) and `backchannel.app` has no MX record (mail to `support@` bounces). Also: the alert email carries only ids + reason (no names, detail text, or conversation id), and its `queue_url` is built from `FRONTEND_URL` (the Netlify marketing site), so the link is wrong. **Ask:** set the env var, include reporter/reported names + detail + conversation id, and build `queue_url` from the API/admin host. (Extends §W #4.)
+2. **Moderation tooling is JSON-only.** `GET /admin/api/reports/` + a resolve endpoint (which can deactivate the user) exist, but there's no HTML reports page (resolving needs a devtools `fetch` with a CSRF header) and `django.contrib.admin` isn't installed. There is deactivate/reactivate, but no *ban*: a deactivated user can re-register with a new email (trivial with Apple Hide My Email). **Ask (minimal):** a simple HTML reports queue with a "resolve + deactivate" button; consider blocking re-registration by SSO subject / device.
+3. **Deleting an account destroys moderation evidence.** `queries/purge.py` deletes `moderation.reports` rows where the user is reporter, reported, or resolver, plus all messages/conversations for both sides. A reported user can delete their account and erase the report and the thread. The Privacy Policy (§7) says report records are kept after deletion where necessary; the code doesn't do that. **Ask:** retain (or anonymize-but-keep) reports and the reported conversation on purge. This also makes the policy sentence true.
+4. **Policy says reporting withdraws pending referrals; code doesn't.** `report_user` withdraws likes, matches, and conversations only. **Ask:** also withdraw pending referrals between the two users, or soften the policy sentence.
+5. **Deactivation gaps to verify with a throwaway account:** (a) refresh uses the stock `TokenRefreshView`, so a deactivated user's refresh token still works; (b) `ws_auth.py` has no `is_active` check that we could find, so a deactivated user may keep sending over an open chat socket; (c) the SSO login path wasn't traced. **Ask:** check `is_active` on refresh + socket connect + SSO login.
+6. **CSAM / NCMEC.** No automated image scanning, photos are public-read on the CDN (§V #2), and no login IPs are stored (little to include in a report). Counsel should confirm the reporting duty, process, and evidence-preservation period **before launch**.
+7. **Health endpoints.** `/api/health/` is static (doesn't touch the DB); `/api/health/ready/` checks Postgres + Redis but is public and returns raw exception text on failure. **Ask:** don't leak exception text publicly; point uptime monitors at `/ready/`.
+8. **No global push kill switch** and no documented Sentry alert rules / uptime monitors (see `docs/ops/INCIDENT_PLAN.md` for suggested ones).
+9. **Data export vs. Privacy Policy (`docs/ops/DATA_RIGHTS_SPEC.md`):** Policy §3 says we don't collect phone/DOB/street/postal code, but those columns still exist (§L). An honest "download my data" export would contradict the policy, so land the §L cleanup first.
+10. **Lifecycle messaging (`docs/ops/LIFECYCLE_MESSAGING.md`) needs backend that doesn't exist:** a scheduler, `last_active_at`, and a user timezone (`last_login` is not "last active"), plus a new `reminders` notification type with its own toggle and an unsubscribe endpoint. The Privacy Policy discloses only transactional email; lifecycle email needs a policy update first. Not launch-blocking.
+
+**Fix order:** 1 → 3 → 5 → 2 → 4 → 7 → 6 (counsel, in parallel) → rest.
+
+---
+
 ## §V — Pre-production security audit: backend-owned findings 🔴 High priority (new section — separate from §S/§B/§L/§F, tracked here for Nico)
 
 **Status (2026-09-18):** a read-only security sweep across both repos, done ahead of App Store submission. Three parallel reviews (mobile frontend, Django backend, repo/CI hygiene) traced every ID-taking endpoint, the raw-SQL query layer, auth/session handling, file storage, and dependency freshness. **Overall backend grade: B.** The important context up front, so this doesn't read as "the backend is insecure" — it isn't:
