@@ -1,0 +1,44 @@
+# Pass one card, like one card, assert the deck advances each time.
+# Works for an applicant (labels: "Pass on this role" / "Show interest in this
+# role") or a sponsor ("Pass" / "Connect with this applicant").
+#
+# How "advanced" is detected: the deck's Report flag is labelled
+# "Report <name>". We copy that label before each verdict and assert it is
+# gone afterwards. (Fails spuriously if two consecutive cards share a name.)
+# The verdict buttons expose their accessibilityLabel, not the PASS /
+# INTERESTED / CONNECT text, hence the label-based selectors.
+appId: com.yosefwolday.backchannelv2
+---
+- runFlow: subflows/login.yaml
+- tapOn: "Feed.*"
+- extendedWaitUntil:
+    visible: "Report .*"
+    timeout: 30000
+
+# --- PASS ---
+- copyTextFrom:
+    text: "Report .*"
+- evalScript: ${output.cardBefore = maestro.copiedText}
+- tapOn: "Pass( on this role)?"
+# The deck cross-fades (opacity) between cards; give it time.
+- extendedWaitUntil:
+    notVisible: ${output.cardBefore}
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "Report .*|.*caught up.*|.*waiting.*"
+    timeout: 15000
+
+# --- LIKE ---
+- copyTextFrom:
+    text: "Report .*"
+- evalScript: ${output.cardBefore = maestro.copiedText}
+- tapOn: "Show interest in this role|Connect with this applicant"
+# Possible interruptions instead of a plain advance (all optional):
+- runFlow:
+    when:
+      visible: "KEEP GOING"   # MatchCelebrationModal (a mutual match)
+    commands:
+      - tapOn: "KEEP GOING"
+- extendedWaitUntil:
+    notVisible: ${output.cardBefore}
+    timeout: 10000

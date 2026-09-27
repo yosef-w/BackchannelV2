@@ -123,7 +123,7 @@ export function CompanyAutocomplete({
       <View style={[styles.inputWrapper, inputWrapperStyle]}>
         <TextInput
           placeholder={placeholder}
-          placeholderTextColor={Colors.faint}
+          placeholderTextColor={Colors.muted}
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}

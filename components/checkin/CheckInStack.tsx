@@ -620,7 +620,7 @@ export function CheckInStack({
                 <TextInput
                   style={styles.noteInput}
                   placeholder={notePlaceholder ?? "Add a note (optional)"}
-                  placeholderTextColor={Colors.faint}
+                  placeholderTextColor={Colors.muted}
                   multiline
                   value={note}
                   onChangeText={setNote}

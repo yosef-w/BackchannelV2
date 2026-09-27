@@ -17,7 +17,9 @@ import {
     Lock,
     LogOut,
     MessageSquareQuote,
+    Mail,
     RefreshCw,
+    UserPlus,
     Star,
     Target,
     Trash2,
@@ -44,6 +46,7 @@ import {
     trackAccountDeleted,
     trackLogout,
     trackProfileEditOpened,
+  trackSupportOpened,
     trackProfileFieldUpdated,
     trackProfilePhotoUploaded,
 } from "@/lib/analytics/mixpanel";
@@ -56,6 +59,9 @@ import {
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { shareInvite } from "@/lib/invite";
+import { contactSupport } from "@/lib/support";
+import { SUPPORT_EMAIL } from "@/constants/config";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import {
@@ -164,6 +170,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     (state) => state.restorePurchases,
   );
   const [isTogglingPremium, setIsTogglingPremium] = useState(false);
+  const profileStoreUserId = useUserProfileStore((state) => state.userId);
   // Apple 3.1.1 requires a real, always-reachable Restore Purchases control
   // — not just whatever RevenueCat's own paywall/Customer Center templates
   // happen to include by default. This is the one BackChannel-authored
@@ -1854,6 +1861,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     endDate: value ? "" : experience.endDate,
                   })
                 }
+                accessibilityLabel="I currently work here"
                 {...SWITCH_COLORS}
               />
               <Text style={styles.checkboxLabel}>I currently work here</Text>
@@ -2648,6 +2656,31 @@ export function ProfileView({ userType }: ProfileViewProps) {
           icon={<Lock color={Colors.ink} size={16} strokeWidth={2} />}
           label="Privacy & Security"
           onPress={() => setShowPrivacySecurity(true)}
+        />
+        <HubRow
+          icon={<UserPlus color={Colors.ink} size={16} strokeWidth={2} />}
+          label={userType === "sponsor" ? "Invite a Colleague" : "Invite Someone"}
+          onPress={() => {
+            shareInvite(userType, profileStoreUserId, "settings").catch(
+              () => {},
+            );
+          }}
+        />
+        <HubRow
+          icon={<Mail color={Colors.ink} size={16} strokeWidth={2} />}
+          label="Help & Feedback"
+          onPress={async () => {
+            trackSupportOpened();
+            // false = no mail app configured (fresh phone) — show the plain
+            // address instead of a button that silently does nothing.
+            const opened = await contactSupport(
+              "feedback",
+              profileStoreUserId,
+            );
+            if (!opened) {
+              showToast(`Email us at ${SUPPORT_EMAIL}`, "info");
+            }
+          }}
         />
         {PREMIUM_ENABLED && (
           <HubRow

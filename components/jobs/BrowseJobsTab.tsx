@@ -182,7 +182,7 @@ export function BrowseJobsTab({
         <TextInput
           style={styles.searchInput}
           placeholder="Search roles or locations"
-          placeholderTextColor={Colors.faint}
+          placeholderTextColor={Colors.muted}
           value={searchQuery}
           onChangeText={onSetSearchQuery}
           autoCapitalize="none"

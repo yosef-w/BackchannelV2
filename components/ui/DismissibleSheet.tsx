@@ -123,6 +123,11 @@ interface DismissibleSheetProps {
    * instant swap also reads better — the screen already has a sheet up.
    */
   instant?: boolean;
+  /**
+   * VoiceOver two-finger scrub (escape) handler. Defaults to `onDismiss`, so
+   * every sheet gets an accessible way out even when it has no visible Close.
+   */
+  onAccessibilityEscape?: () => void;
 }
 
 export function DismissibleSheet({
@@ -132,6 +137,7 @@ export function DismissibleSheet({
   fullSheetGesture = false,
   scrollDismiss = false,
   instant = false,
+  onAccessibilityEscape,
 }: DismissibleSheetProps) {
   // LIVE window height (not a module-level snapshot): the slide-out target
   // must clear the CURRENT window after a rotation / Stage Manager resize.
@@ -216,7 +222,15 @@ export function DismissibleSheet({
 
   // Handle pill (always visible — universal "drag me" affordance).
   const handle = (
-    <View style={styles.handleZone}>
+    // A View (not a Pressable) so a sighted tap on the pill does nothing new;
+    // onAccessibilityTap fires only on VoiceOver activation.
+    <View
+      style={styles.handleZone}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="Close sheet"
+      onAccessibilityTap={onDismiss}
+    >
       <View style={styles.handle} />
     </View>
   );
@@ -243,6 +257,7 @@ export function DismissibleSheet({
       entering={instant ? undefined : SlideInDown}
       exiting={instant ? undefined : SlideOutDown}
       style={[style, animatedStyle]}
+      onAccessibilityEscape={onAccessibilityEscape ?? onDismiss}
     >
       {inner}
     </Animated.View>

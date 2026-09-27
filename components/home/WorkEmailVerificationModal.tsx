@@ -1,11 +1,9 @@
-import { BlurView } from "expo-blur";
+import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import { ChevronRight, Info } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -153,18 +151,11 @@ export function WorkEmailVerificationModal({
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <SheetOverlay
+      onClose={resetAndClose}
+      keyboardAvoiding
       style={styles.emailVerifOverlay}
     >
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={resetAndClose}
-      >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
-
       <DismissibleSheet
         onDismiss={resetAndClose}
         fullSheetGesture
@@ -196,7 +187,7 @@ export function WorkEmailVerificationModal({
               value={editedWorkEmail}
               onChangeText={setEditedWorkEmail}
               placeholder="name@company.com"
-              placeholderTextColor={Colors.faint}
+              placeholderTextColor={Colors.muted}
               style={styles.emailVerifEditInput}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -414,7 +405,7 @@ export function WorkEmailVerificationModal({
           </>
         )}
       </DismissibleSheet>
-    </KeyboardAvoidingView>
+    </SheetOverlay>
   );
 }
 

@@ -1,0 +1,30 @@
+# Cold launch from a wiped app -> splash -> role picker reachable -> sign in.
+# Guards: launch crash, splash routing, auth form, login round-trip.
+appId: com.yosefwolday.backchannelv2
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: deny
+- extendedWaitUntil:
+    visible: "Get Connected"
+    timeout: 45000
+- assertVisible: "Already have an account.*"
+
+# Role picker is reachable (no account is created; we back out).
+- tapOn: "Get Connected"
+- assertVisible: "Continue as Applicant"
+- assertVisible: "Continue as Sponsor"
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: "Get Connected"
+    timeout: 10000
+
+# Sign in through the shared subflow (it re-launches without clearing state,
+# which is fine: we are still logged out, so it lands on the splash again).
+- runFlow: subflows/login.yaml
+
+# Landed on the deck tab, signed in.
+- assertVisible: "Feed.*"
+- assertVisible: "Account"
+- assertNotVisible: "Get Connected"

@@ -197,7 +197,7 @@ export default function VerifyEmailRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor={Colors.faint}
+                  placeholderTextColor={Colors.muted}
                   value={resendEmail}
                   onChangeText={setResendEmail}
                   keyboardType="email-address"

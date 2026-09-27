@@ -427,6 +427,8 @@ export function NotificationsFeedView({
           activeOpacity={0.6}
           style={styles.backButton}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
         >
           <ArrowLeft color={Colors.ink} size={24} strokeWidth={2.5} />
         </TouchableOpacity>

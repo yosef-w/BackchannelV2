@@ -1,0 +1,35 @@
+# Account tab -> Settings rows open -> log out returns to the splash.
+appId: com.yosefwolday.backchannelv2
+---
+- runFlow: subflows/login.yaml
+- tapOn: "Account.*"
+- assertVisible: "Settings"    # HubSection title (may render uppercase via style only)
+- scrollUntilVisible:
+    element: "Notifications"
+    direction: DOWN
+
+- tapOn: "Notifications"
+- assertVisible: "REMINDERS"
+- tapOn: "Close"
+
+- scrollUntilVisible:
+    element: "Privacy & Security"
+    direction: DOWN
+- tapOn: "Privacy & Security"
+- assertVisible: "ACCOUNT REMOVAL"
+- tapOn: "Close"
+
+- scrollUntilVisible:
+    element: "Log Out"
+    direction: DOWN
+- tapOn: "Log Out"
+- assertVisible: "Are you sure you want to log out.*"
+# The confirm sheet has "Log Out" as both its title and its primary button
+# (and possibly the row beneath). The button is the lowest match on screen.
+# Fragile -- see testID gaps in docs/E2E_TESTING.md.
+- tapOn:
+    text: "Log Out"
+    index: 1
+- extendedWaitUntil:
+    visible: "Get Connected"
+    timeout: 20000

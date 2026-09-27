@@ -1,6 +1,6 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-23 (added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
+**Last updated:** 2026-09-26 (added **§AB** — remote-config endpoint + https email links for the launch-readiness work; added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
@@ -142,6 +142,71 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 **Why it matters now:** the marketplace premium gate (§Z and the frontend's `fix/subscription-paywall-audit` branch) can only be exercised on a board with listings. Until dev has data, testing it means running a `preview` build against **prod** — every like/sponsor request/waitlist join from that testing lands in the real database.
 
 **Frontend side:** nothing to change. The env split itself is correct; it just exposed that dev was never given its own data.
+
+---
+
+## §AB — Launch-readiness: remote config endpoint + https email links 🟠 Medium priority (new section, 2026-09-26 — for Nico)
+
+Two small backend asks that unlock things the frontend has already built (branch `feat/launch-readiness`). Neither blocks App Review; both are the difference between "we can react to a bad launch" and "we can't."
+
+### 1. `GET /api/app-config/` — the break-glass endpoint
+
+**Why:** OTA updates ship JS fixes, but they can't tell an old native build "you're too old for this backend," and they can't switch a broken feature off in the minutes after you notice it. The app now checks this endpoint at boot and each time it returns to the foreground (throttled to once per 5 min) and honors the answer. **It is fail-open by design** — a 404 (today), a timeout, or garbage means "no restrictions," and the last good response is cached on-device — so shipping the app before this endpoint exists is safe, and a bug in this endpoint can never lock users out.
+
+**Contract** (unauthenticated — it must work on the sign-in screen and for logged-out users):
+```
+GET /api/app-config/
+200 { "min_version": "1.0.0", "maintenance_message": null, "flags": { } }
+```
+- `min_version` (string, dotted numeric): builds **below** this show a blocking "Update required" screen linking to the App Store. Compared numerically (`1.2.10` > `1.2.9`). `null`/`""` = no minimum. Compared against `app.json`'s `version`, **not** the build number.
+- `maintenance_message` (string|null): non-empty → the app shows this message instead of itself (incident/maintenance). `null`/`""` = normal.
+- `flags` (object of booleans): server-controlled kill switches / gradual rollouts. The frontend reads them via `useRemoteFlag(name, default)`; an absent key uses the caller's default, so adding a flag here never changes behavior until the app asks for it. Nothing reads any flag yet.
+
+**Implementation notes:** a tiny read-only view backed by settings/env (e.g. `APP_MIN_VERSION`, `APP_MAINTENANCE_MESSAGE`) is enough for v1 — being able to change it from the DO dashboard without a deploy is the point. Serve with `Cache-Control: public, max-age=60` (it's hit by every client on every foreground). Keep it dependency-free — no DB, no auth — so it stays up when the rest of the API doesn't; that's exactly when it's needed.
+**Acceptance:** `curl https://<api>/api/app-config/` → 200 JSON of the shape above. Setting `min_version` above the shipped app version makes the app show the update screen on next foreground.
+
+### 2. Transactional-email links: use `https://` (supersedes §X #1's `backchannelv2://` default)
+
+The frontend now supports **universal links** (site PR: `BackChannel-Netlify` #2 serves `apple-app-site-association` + a fallback page; app: `associatedDomains` in `app.json`). That changes the best fix for §X #1:
+
+- **Use `https://backchannelapp.netlify.app/verify-email?token=…` and `/reset-password?token=…`** — i.e. keep the original `{FRONTEND_URL}/<path>?token=…` pattern, just make sure `FRONTEND_URL` points at that site. With the app installed, iOS opens the link *directly in the app* (route `app/verify-email.tsx`); without it (or on a laptop) the visitor lands on a real page with an App Store button instead of a dead end. The original bug was the marketing site having no page at those paths — that page now exists.
+- Why this beats the custom scheme `backchannelv2://` from §X #1: a custom scheme does **nothing** when the app isn't installed and Gmail/Outlook/many webviews refuse to open non-http links at all (a link that silently does nothing). `https` links work everywhere and degrade gracefully.
+- **Ordering:** don't switch emails until (a) the Netlify PR is merged and (b) an app build containing `associatedDomains` is on users' phones — before that, an `https` link would open the fallback page rather than the app. Until then §X #1's custom-scheme change is still a strict improvement over today.
+- **Which domain? (decision for you + Nico.)** There are two sites: `backchannelapp.netlify.app` (Yosef's; legal pages + beta hub; the universal-link files are already written for it in `BackChannel-Netlify` PR #2) and `https://backchannel.it.com` (the public marketing/waitlist site, hosted on DigitalOcean behind Cloudflare, controlled by Nico; the backend's `waitlist_confirmation.html` already links to it). **The app now trusts both** (`associatedDomains` lists both hosts, so no rebuild is needed to switch), and a host with no verification file yet is simply ignored by iOS. Recommended: launch on the Netlify host (works today, no dependency), and move email links to `backchannel.it.com` once Nico adds the following there, since it's the canonical brand domain:
+  1. Serve `/.well-known/apple-app-site-association` with `Content-Type: application/json`, **HTTP 200, no redirects**, contents identical to the Netlify copy (`ZWFR8LC25W.com.yosefwolday.backchannelv2`; paths `/verify-email`, `/reset-password`, `/job/*`, `/invite/*`).
+  2. Make sure **Cloudflare doesn't challenge or rewrite that path** (Bot Fight Mode / "Under Attack" / a WAF rule can return a 403 or interstitial to Apple's fetcher, which silently breaks universal links). Add a WAF skip rule for `/.well-known/*`.
+  3. Add fallback pages for the same four paths (what the Netlify `open.html` does: App Store button + `backchannelv2://` hand-off) for people without the app.
+  4. Note `backchannel.it.com` has **no MX record** either, so it can't receive support email today.
+- If the site later moves to `backchannel.app`, change `FRONTEND_URL` and tell us: the app's `associatedDomains` and the site's AASA file both need the new host (and, unlike the two above, that one needs a rebuild).
+
+---
+
+## §AC — Invite loop: accept a `referred_by` on signup 🟢 Low priority, nice-to-have (new section, 2026-09-26 — for Nico)
+
+**Context:** the app now has an invite loop (Settings > "Invite Someone" / "Invite a Colleague", plus a quiet link on the end-of-deck card). It shares `https://backchannelapp.netlify.app/invite/<inviter user_id>`; opening that link stores the inviter id on the recipient's device (first touch wins), and the app's **Mixpanel** `Sign Up Succeeded` event carries it as `referred_by`. So attribution and funnel analysis already work **with no backend change**.
+
+**What the backend could add later (only if you want referral *features*, not just analytics):** accept an optional `referred_by` (string user_id) on the register endpoints (`register-applicant`, `register-sponsor`, and the SSO `complete-onboarding`) and persist it on the user row. That would enable server-side rewards/credit ("you invited 3 people"), fraud/self-referral checks, and reporting without depending on Mixpanel. Validate it exists and isn't the new user's own id; silently ignore it otherwise (never fail a signup over it). The frontend will send it once the field exists.
+
+**Fix order:** nothing to do for launch.
+
+---
+
+## §AD — Moderation & account-safety gaps found while writing the ops runbooks 🔴 High priority for launch (new section, 2026-09-26 — for Nico)
+
+Found by reading the code while writing `docs/ops/MODERATION_RUNBOOK.md` / `INCIDENT_PLAN.md` (frontend repo). Nothing was run against a live system, so treat each as "verify, then fix." They matter because App Review (1.2) and the published Privacy Policy make promises these gaps quietly break.
+
+1. **The moderation alert pipe is probably dead today.** `MODERATION_ALERT_EMAIL` defaults to `""` (report is stored, nobody alerted) and `backchannel.app` has no MX record (mail to `support@` bounces). Also: the alert email carries only ids + reason (no names, detail text, or conversation id), and its `queue_url` is built from `FRONTEND_URL` (the Netlify marketing site), so the link is wrong. **Ask:** set the env var, include reporter/reported names + detail + conversation id, and build `queue_url` from the API/admin host. (Extends §W #4.)
+2. **Moderation tooling is JSON-only.** `GET /admin/api/reports/` + a resolve endpoint (which can deactivate the user) exist, but there's no HTML reports page (resolving needs a devtools `fetch` with a CSRF header) and `django.contrib.admin` isn't installed. There is deactivate/reactivate, but no *ban*: a deactivated user can re-register with a new email (trivial with Apple Hide My Email). **Ask (minimal):** a simple HTML reports queue with a "resolve + deactivate" button; consider blocking re-registration by SSO subject / device.
+3. **Deleting an account destroys moderation evidence.** `queries/purge.py` deletes `moderation.reports` rows where the user is reporter, reported, or resolver, plus all messages/conversations for both sides. A reported user can delete their account and erase the report and the thread. The Privacy Policy (§7) says report records are kept after deletion where necessary; the code doesn't do that. **Ask:** retain (or anonymize-but-keep) reports and the reported conversation on purge. This also makes the policy sentence true.
+4. **Policy says reporting withdraws pending referrals; code doesn't.** `report_user` withdraws likes, matches, and conversations only. **Ask:** also withdraw pending referrals between the two users, or soften the policy sentence.
+5. **Deactivation gaps to verify with a throwaway account:** (a) refresh uses the stock `TokenRefreshView`, so a deactivated user's refresh token still works; (b) `ws_auth.py` has no `is_active` check that we could find, so a deactivated user may keep sending over an open chat socket; (c) the SSO login path wasn't traced. **Ask:** check `is_active` on refresh + socket connect + SSO login.
+6. **CSAM / NCMEC.** No automated image scanning, photos are public-read on the CDN (§V #2), and no login IPs are stored (little to include in a report). Counsel should confirm the reporting duty, process, and evidence-preservation period **before launch**.
+7. **Health endpoints.** `/api/health/` is static (doesn't touch the DB); `/api/health/ready/` checks Postgres + Redis but is public and returns raw exception text on failure. **Ask:** don't leak exception text publicly; point uptime monitors at `/ready/`.
+8. **No global push kill switch** and no documented Sentry alert rules / uptime monitors (see `docs/ops/INCIDENT_PLAN.md` for suggested ones).
+9. **Data export vs. Privacy Policy (`docs/ops/DATA_RIGHTS_SPEC.md`):** Policy §3 says we don't collect phone/DOB/street/postal code, but those columns still exist (§L). An honest "download my data" export would contradict the policy, so land the §L cleanup first.
+10. **Lifecycle messaging (`docs/ops/LIFECYCLE_MESSAGING.md`) needs backend that doesn't exist:** a scheduler, `last_active_at`, and a user timezone (`last_login` is not "last active"), plus a new `reminders` notification type with its own toggle and an unsubscribe endpoint. The Privacy Policy discloses only transactional email; lifecycle email needs a policy update first. Not launch-blocking.
+
+**Fix order:** 1 → 3 → 5 → 2 → 4 → 7 → 6 (counsel, in parallel) → rest.
 
 ---
 

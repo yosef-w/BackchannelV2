@@ -78,6 +78,10 @@ const Row = React.memo(function Row({
       <Switch
         value={value}
         onValueChange={(v) => onToggle(notifKey, v)}
+        // The label lives in a sibling Text; without this VoiceOver reads
+        // an unnamed "switch".
+        accessibilityLabel={label}
+        accessibilityHint={description}
         {...SWITCH_COLORS}
       />
     </View>

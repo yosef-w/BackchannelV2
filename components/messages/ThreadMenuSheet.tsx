@@ -1,10 +1,8 @@
-import { BlurView } from "expo-blur";
+import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import { Check } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -67,18 +65,12 @@ export function ThreadMenuSheet({
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <SheetOverlay
+      onClose={handleDismiss}
+      keyboardAvoiding
+      blurIntensity={30}
       style={styles.modalOverlay}
     >
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={handleDismiss}
-      >
-        <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
-
       <DismissibleSheet
         scrollDismiss
         onDismiss={handleDismiss}
@@ -120,7 +112,7 @@ export function ThreadMenuSheet({
               Report {participantName}
             </Text>
             <Text style={styles.unmatchSheetSubtitle}>
-              Reporting also ends this match and closes the conversation.
+              Reporting also blocks them, ends this match, and closes the conversation.
               What happened?
             </Text>
 
@@ -164,7 +156,7 @@ export function ThreadMenuSheet({
             <TextInput
               style={styles.reportDetailInput}
               placeholder="Add details (optional)"
-              placeholderTextColor={Colors.faint}
+              placeholderTextColor={Colors.muted}
               value={reportDetail}
               onChangeText={setReportDetail}
               multiline
@@ -183,7 +175,7 @@ export function ThreadMenuSheet({
               {isReporting ? (
                 <ActivityIndicator size="small" color={Colors.paper} />
               ) : (
-                <Text style={styles.unmatchActionText}>Submit Report</Text>
+                <Text style={styles.unmatchActionText}>Report and Block</Text>
               )}
             </TouchableOpacity>
             <View style={styles.quietRow}>
@@ -196,7 +188,7 @@ export function ThreadMenuSheet({
           </>
         )}
       </DismissibleSheet>
-    </KeyboardAvoidingView>
+    </SheetOverlay>
   );
 }
 

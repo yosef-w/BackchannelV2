@@ -82,3 +82,4 @@ export { default as Users } from "lucide-react-native/dist/esm/icons/users.js";
 export { default as X } from "lucide-react-native/dist/esm/icons/x.js";
 export { default as XCircle } from "lucide-react-native/dist/esm/icons/circle-x.js";
 export { default as Zap } from "lucide-react-native/dist/esm/icons/zap.js";
+export { default as WifiOff } from "lucide-react-native/dist/esm/icons/wifi-off.js";

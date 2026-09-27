@@ -36,9 +36,12 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
-import { PRIVACY_POLICY_URL, TERMS_URL } from "@/constants/config";
+import {
+  PRIVACY_POLICY_URL,
+  SUPPORT_EMAIL,
+  TERMS_URL,
+} from "@/constants/config";
 
-const SUPPORT_EMAIL = "support@backchannel.app";
 
 type Step = "main" | "password" | "delete" | "email";
 
@@ -368,7 +371,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Enter current password"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry
@@ -384,7 +387,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Enter new password"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
@@ -400,7 +403,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Re-enter new password"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -505,7 +508,7 @@ export function PrivacySecurityScreen({
               <TextInput
                 style={styles.input}
                 placeholder="name@example.com"
-                placeholderTextColor={Colors.faint}
+                placeholderTextColor={Colors.muted}
                 value={newEmail}
                 onChangeText={setNewEmail}
                 keyboardType="email-address"
@@ -520,7 +523,7 @@ export function PrivacySecurityScreen({
               <TextInput
                 style={styles.input}
                 placeholder="Enter your password to confirm"
-                placeholderTextColor={Colors.faint}
+                placeholderTextColor={Colors.muted}
                 value={emailPassword}
                 onChangeText={setEmailPassword}
                 secureTextEntry
@@ -709,7 +712,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Enter your password to continue"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={deletePassword}
             onChangeText={(t) => {
               setDeletePassword(t);

@@ -335,6 +335,8 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
                     width={plateWidth}
                     height={rowHeight}
                     underAnchor={i > 0}
+                    index={i}
+                    count={count}
                     hint={i === 0 ? "SLIDE FOR MORE →" : undefined}
                     readLabel={plate.readCta}
                     onOpenRead={() => goToSection(plate.readTarget)}

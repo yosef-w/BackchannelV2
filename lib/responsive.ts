@@ -85,6 +85,15 @@ export const FontScale = {
   label: 1.5,
 } as const;
 
+/**
+ * Above this OS font scale (roughly the AX1 accessibility size) side-by-side
+ * two-word-verb controls can't fit their labels even with the `label` cap, so
+ * they stack vertically instead. Pure so it's testable.
+ */
+export function shouldStackForFontScale(fontScale: number): boolean {
+  return fontScale > FontScale.label;
+}
+
 // ── Static column styles (read NO window size) ────────────────────────────
 
 /** Centered reading column. Spread into a ScrollView `contentContainerStyle`

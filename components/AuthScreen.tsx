@@ -3,9 +3,7 @@ import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "@/components/ui/icons"
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    KeyboardAvoidingView,
     Linking,
-    Platform,
     SafeAreaView,
     StatusBar,
     StyleSheet,
@@ -48,6 +46,7 @@ import { SSOButtons } from "@/components/auth/SSOButtons";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import { hitSlopTo44 } from "@/lib/responsive";
 
 interface AuthScreenProps {
@@ -527,7 +526,7 @@ export function AuthScreen({
                       <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                       <TextInput
                         placeholder="Email"
-                        placeholderTextColor={Colors.faint}
+                        placeholderTextColor={Colors.muted}
                         value={email}
                         onChangeText={setEmail}
                         keyboardType="email-address"
@@ -548,7 +547,7 @@ export function AuthScreen({
                       <Lock color={Colors.faint} size={18} style={styles.inputIcon} />
                       <TextInput
                         placeholder="Password"
-                        placeholderTextColor={Colors.faint}
+                        placeholderTextColor={Colors.muted}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
@@ -705,7 +704,7 @@ export function AuthScreen({
                     <User color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="First Name"
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={firstName}
                       onChangeText={setFirstName}
                       autoCapitalize="words"
@@ -725,7 +724,7 @@ export function AuthScreen({
                     <User color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Last Name"
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={lastName}
                       onChangeText={setLastName}
                       autoCapitalize="words"
@@ -745,7 +744,7 @@ export function AuthScreen({
                     <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email"
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={email}
                       onChangeText={setEmail}
                       keyboardType="email-address"
@@ -766,7 +765,7 @@ export function AuthScreen({
                     <Lock color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Password"
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
@@ -811,15 +810,12 @@ export function AuthScreen({
         </KeyboardAwareScrollView>
 
         {showForgotPasswordModal && (
-          <KeyboardAvoidingView
+          <SheetOverlay
+            onClose={handleCloseForgotPasswordModal}
+            keyboardAvoiding
+            blurIntensity={0}
             style={styles.modalOverlay}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={handleCloseForgotPasswordModal}
-            />
             <Animated.View
               entering={FadeInDown.duration(300)}
               style={styles.modalContent}
@@ -837,7 +833,7 @@ export function AuthScreen({
                     <Mail color={Colors.faint} size={18} style={styles.inputIcon} />
                     <TextInput
                       placeholder="Email Address"
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={forgotPasswordEmail}
                       onChangeText={setForgotPasswordEmail}
                       keyboardType="email-address"
@@ -907,7 +903,7 @@ export function AuthScreen({
                 </>
               )}
             </Animated.View>
-          </KeyboardAvoidingView>
+          </SheetOverlay>
         )}
       </SafeAreaView>
     </View>

@@ -25,6 +25,12 @@
       },
       "bundleIdentifier": "com.yosefwolday.backchannelv2",
       "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:backchannelapp.netlify.app",
+        "webcredentials:backchannelapp.netlify.app",
+        "applinks:backchannel.it.com",
+        "webcredentials:backchannel.it.com"
+      ],
       "privacyManifests": {
         "NSPrivacyTracking": false,
         "NSPrivacyCollectedDataTypes": [

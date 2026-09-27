@@ -1,0 +1,47 @@
+# Tap every tab in order and assert each screen's landmark.
+# Regression guard: dead tab-bar taps on iOS (touch-responder race, an early
+# return before GestureHandlerRootView in app/_layout.tsx; see commits
+# f1273ef + 89f55f5). If a tap silently does nothing, the landmark assertion
+# after it fails.
+#
+# Tab labels are accessibilityLabels; with a badge the label becomes
+# "<Label>, N waiting for you", hence the trailing .*.
+# Landmarks below are the APPLICANT versions (Jobs = marketplace).
+appId: com.yosefwolday.backchannelv2
+---
+- runFlow: subflows/login.yaml
+
+- tapOn: "Feed.*"
+- extendedWaitUntil:
+    visible: "Pass( on this role)?|.*caught up.*|.*waiting.*|Report .*"
+    timeout: 30000
+
+- tapOn: "Matches.*"
+- extendedWaitUntil:
+    visible: "Your matches."
+    timeout: 10000
+
+- tapOn: "Jobs.*"
+- extendedWaitUntil:
+    visible: "The marketplace."
+    timeout: 10000
+
+- tapOn: "Inbox.*"
+- extendedWaitUntil:
+    visible: "Direct lines to your connections"
+    timeout: 10000
+
+- tapOn: "Account.*"
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 10000
+
+# Round trip back, to catch taps that only die after several switches.
+- tapOn: "Inbox.*"
+- extendedWaitUntil:
+    visible: "Direct lines to your connections"
+    timeout: 10000
+- tapOn: "Feed.*"
+- extendedWaitUntil:
+    visible: "Pass( on this role)?|.*caught up.*|.*waiting.*|Report .*"
+    timeout: 15000

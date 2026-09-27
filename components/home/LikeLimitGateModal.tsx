@@ -23,7 +23,6 @@
 // - Premium, at the cap: nothing to sell — just says so, one dismiss.
 
 import { Clock } from "@/components/ui/icons";
-import { BlurView } from "expo-blur";
 import React, { useEffect } from "react";
 import {
   StyleSheet,
@@ -32,6 +31,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { PlanLedger } from "@/components/premium/PlanLedger";
 import { PremiumCheckout } from "@/components/premium/PremiumCheckout";
@@ -118,14 +118,7 @@ function GateSheet({
 
   if (isPremium) {
     return (
-      <View style={styles.overlay}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={dismiss}
-        >
-          <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-        </TouchableOpacity>
+      <SheetOverlay onClose={dismiss} style={styles.overlay}>
         <DismissibleSheet onDismiss={dismiss} fullSheetGesture style={styles.sheet}>
           <View style={[styles.body, sheetColumn, styles.scroll]}>
             <ConfirmPop
@@ -153,19 +146,12 @@ function GateSheet({
             </TouchableOpacity>
           </View>
         </DismissibleSheet>
-      </View>
+      </SheetOverlay>
     );
   }
 
   return (
-    <View style={styles.overlay}>
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={dismiss}
-      >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
+    <SheetOverlay onClose={dismiss} style={styles.overlay}>
 
       <DismissibleSheet
         scrollDismiss
@@ -240,7 +226,7 @@ function GateSheet({
           </View>
         </SheetScrollView>
       </DismissibleSheet>
-    </View>
+    </SheetOverlay>
   );
 }
 

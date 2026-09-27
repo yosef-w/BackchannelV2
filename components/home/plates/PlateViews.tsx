@@ -6,6 +6,7 @@
 
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Image } from "expo-image";
+import { useScreenReader } from "@/lib/useScreenReader";
 import React, { useCallback, useRef } from "react";
 import {
   Pressable,
@@ -49,6 +50,8 @@ function Avatar({ uri, name, styleKey }: { uri?: string; name: string; styleKey:
       <Image
         source={{ uri }}
         style={s[styleKey]}
+        // The name is read right next to the photo; a label would only repeat it.
+        accessible={false}
         contentFit="cover"
         cachePolicy="memory-disk"
         transition={150}
@@ -201,6 +204,8 @@ function PlateBody({ plate }: { plate: Plate }) {
   }
 }
 
+const srOnly = { position: "absolute", bottom: 0, right: 0, width: 1, height: 1 } as const;
+
 interface PlateViewProps {
   plate: Plate;
   width: number;
@@ -213,6 +218,9 @@ interface PlateViewProps {
   readLabel?: string;
   onOpenRead?: () => void;
   onTapZone: (zone: "back" | "forward") => void;
+  /** Position in the row, for the screen-reader step controls. */
+  index?: number;
+  count?: number;
 }
 
 export function PlateView({
@@ -224,7 +232,10 @@ export function PlateView({
   readLabel,
   onOpenRead,
   onTapZone,
+  index,
+  count,
 }: PlateViewProps) {
+  const screenReader = useScreenReader();
   // `locationX` is documented as "relative to the element", but the
   // element it's actually relative to is whichever view was hit-tested
   // (the deepest one under the finger) — not necessarily this Pressable's
@@ -263,8 +274,10 @@ export function PlateView({
         { width, height, paddingBottom: DECIDE_BAND + 28 },
         underAnchor && s.plateUnderAnchor,
       ]}
-      accessibilityRole="button"
-      accessibilityLabel="Next plate"
+      // Not accessible: an accessible parent hides its children from
+      // VoiceOver, so the whole plate used to read as just "Next plate".
+      // Touch behavior is unchanged; the screen-reader step controls are below.
+      accessible={false}
     >
       <View style={s.plateBody}>
         <PlateBody plate={plate} />
@@ -280,6 +293,30 @@ export function PlateView({
         )}
         {!!hint && <Text style={s.slideHint}>{hint}</Text>}
       </View>
+      {/* Screen-reader-only step controls (1pt, no touch): the tap zones are
+          otherwise the only way to move between plates. */}
+      {screenReader && index !== undefined && count !== undefined && (
+        <>
+          {index > 0 && (
+            <Pressable
+              pointerEvents="none"
+              style={srOnly}
+              onPress={() => onTapZone("back")}
+              accessibilityRole="button"
+              accessibilityLabel={`Previous plate, ${index} of ${count}`}
+            />
+          )}
+          {index < count - 1 && (
+            <Pressable
+              pointerEvents="none"
+              style={srOnly}
+              onPress={() => onTapZone("forward")}
+              accessibilityRole="button"
+              accessibilityLabel={`Next plate, ${index + 2} of ${count}`}
+            />
+          )}
+        </>
+      )}
     </Pressable>
   );
 }

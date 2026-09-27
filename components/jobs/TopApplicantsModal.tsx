@@ -67,6 +67,8 @@ export function TopApplicantsModal({
           <TouchableOpacity
             onPress={onClose}
             style={jobsModalStyles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
           >
             <X color={Colors.ink} size={24} />
           </TouchableOpacity>

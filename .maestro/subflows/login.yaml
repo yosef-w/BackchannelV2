@@ -1,0 +1,34 @@
+# Shared login. Idempotent: if the app is already signed in it does nothing,
+# so any flow can start with `- runFlow: subflows/login.yaml`.
+# Needs: -e TEST_EMAIL=... -e TEST_PASSWORD=...
+appId: com.yosefwolday.backchannelv2
+---
+- launchApp:
+    permissions:
+      notifications: deny
+# Splash -> either the sign-in entry ("Get Connected") or, if a session is
+# already stored, the Feed tab. Generous timeout: splash animation + cold start.
+- extendedWaitUntil:
+    visible: "Get Connected|Feed.*"
+    timeout: 45000
+- runFlow:
+    when:
+      visible: "Get Connected"
+    commands:
+      - tapOn: "Already have an account.*"
+      - assertVisible: "WELCOME BACK"
+      # TEXT-BASED (no testID on these inputs; see docs/E2E_TESTING.md gaps).
+      # Empty TextInputs expose their placeholder as their label.
+      - tapOn: "Email"
+      - inputText: ${TEST_EMAIL}
+      # "Password" also matches the field's caption above the input; the
+      # input is the lower of the two.
+      - tapOn:
+          text: "Password"
+          index: 1
+      - inputText: ${TEST_PASSWORD}
+      - hideKeyboard
+      - tapOn: "Sign In"
+- extendedWaitUntil:
+    visible: "Feed.*"
+    timeout: 45000
