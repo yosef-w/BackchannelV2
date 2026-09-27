@@ -1,4 +1,5 @@
 import { AppToast } from "@/components/ui/AppToast";
+import { AppConfigGate } from "@/components/ui/AppConfigGate";
 import { OfflineBanner } from "@/components/ui/OfflineBanner";
 import { PremiumCelebration } from "@/components/cinema/PremiumCelebration";
 import {
@@ -293,6 +294,10 @@ function RootLayout() {
             {/* Global overlays — connectivity strip, then the toast above it */}
             <OfflineBanner />
             <AppToast />
+
+            {/* Server-declared "update required" / maintenance blocker —
+                renders nothing unless the server asks (fail-open). */}
+            <AppConfigGate />
 
             {/* Post-purchase celebration — global so every paywall entry
                 point (deck, profile, future ones) gets it. Renders in an

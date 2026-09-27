@@ -1,6 +1,6 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-23 (added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
+**Last updated:** 2026-09-26 (added **§AB** — remote-config endpoint + https email links for the launch-readiness work; added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
@@ -142,6 +142,37 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 **Why it matters now:** the marketplace premium gate (§Z and the frontend's `fix/subscription-paywall-audit` branch) can only be exercised on a board with listings. Until dev has data, testing it means running a `preview` build against **prod** — every like/sponsor request/waitlist join from that testing lands in the real database.
 
 **Frontend side:** nothing to change. The env split itself is correct; it just exposed that dev was never given its own data.
+
+---
+
+## §AB — Launch-readiness: remote config endpoint + https email links 🟠 Medium priority (new section, 2026-09-26 — for Nico)
+
+Two small backend asks that unlock things the frontend has already built (branch `feat/launch-readiness`). Neither blocks App Review; both are the difference between "we can react to a bad launch" and "we can't."
+
+### 1. `GET /api/app-config/` — the break-glass endpoint
+
+**Why:** OTA updates ship JS fixes, but they can't tell an old native build "you're too old for this backend," and they can't switch a broken feature off in the minutes after you notice it. The app now checks this endpoint at boot and each time it returns to the foreground (throttled to once per 5 min) and honors the answer. **It is fail-open by design** — a 404 (today), a timeout, or garbage means "no restrictions," and the last good response is cached on-device — so shipping the app before this endpoint exists is safe, and a bug in this endpoint can never lock users out.
+
+**Contract** (unauthenticated — it must work on the sign-in screen and for logged-out users):
+```
+GET /api/app-config/
+200 { "min_version": "1.0.0", "maintenance_message": null, "flags": { } }
+```
+- `min_version` (string, dotted numeric): builds **below** this show a blocking "Update required" screen linking to the App Store. Compared numerically (`1.2.10` > `1.2.9`). `null`/`""` = no minimum. Compared against `app.json`'s `version`, **not** the build number.
+- `maintenance_message` (string|null): non-empty → the app shows this message instead of itself (incident/maintenance). `null`/`""` = normal.
+- `flags` (object of booleans): server-controlled kill switches / gradual rollouts. The frontend reads them via `useRemoteFlag(name, default)`; an absent key uses the caller's default, so adding a flag here never changes behavior until the app asks for it. Nothing reads any flag yet.
+
+**Implementation notes:** a tiny read-only view backed by settings/env (e.g. `APP_MIN_VERSION`, `APP_MAINTENANCE_MESSAGE`) is enough for v1 — being able to change it from the DO dashboard without a deploy is the point. Serve with `Cache-Control: public, max-age=60` (it's hit by every client on every foreground). Keep it dependency-free — no DB, no auth — so it stays up when the rest of the API doesn't; that's exactly when it's needed.
+**Acceptance:** `curl https://<api>/api/app-config/` → 200 JSON of the shape above. Setting `min_version` above the shipped app version makes the app show the update screen on next foreground.
+
+### 2. Transactional-email links: use `https://` (supersedes §X #1's `backchannelv2://` default)
+
+The frontend now supports **universal links** (site PR: `BackChannel-Netlify` #2 serves `apple-app-site-association` + a fallback page; app: `associatedDomains` in `app.json`). That changes the best fix for §X #1:
+
+- **Use `https://backchannelapp.netlify.app/verify-email?token=…` and `/reset-password?token=…`** — i.e. keep the original `{FRONTEND_URL}/<path>?token=…` pattern, just make sure `FRONTEND_URL` points at that site. With the app installed, iOS opens the link *directly in the app* (route `app/verify-email.tsx`); without it (or on a laptop) the visitor lands on a real page with an App Store button instead of a dead end. The original bug was the marketing site having no page at those paths — that page now exists.
+- Why this beats the custom scheme `backchannelv2://` from §X #1: a custom scheme does **nothing** when the app isn't installed and Gmail/Outlook/many webviews refuse to open non-http links at all (a link that silently does nothing). `https` links work everywhere and degrade gracefully.
+- **Ordering:** don't switch emails until (a) the Netlify PR is merged and (b) an app build containing `associatedDomains` is on users' phones — before that, an `https` link would open the fallback page rather than the app. Until then §X #1's custom-scheme change is still a strict improvement over today.
+- If the site later moves to `backchannel.app`, change `FRONTEND_URL` and tell us — the app's `associatedDomains` and the site's AASA file both need the new host.
 
 ---
 
