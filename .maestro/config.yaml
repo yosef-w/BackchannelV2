@@ -1,0 +1,17 @@
+# Maestro workspace config. Run everything with:  maestro test .maestro
+# (subflows/ is not picked up as a top-level flow; it is only run via runFlow)
+flows:
+  - "*.yaml"
+
+executionOrder:
+  # Stop at the first failure: every later flow depends on 01 having proven
+  # the login path, and 03 mutates data (a report) so we don't want to keep
+  # going on a half-broken state.
+  continueOnFailure: false
+  flowsOrder:
+    - 01_launch_and_signin
+    - 05_tab_navigation
+    - 02_deck_pass_and_like
+    - 03_report_from_deck
+    - 04_settings_and_logout
+    - 06_account_deletion_entry

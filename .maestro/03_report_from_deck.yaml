@@ -1,0 +1,30 @@
+# Report the current deck card, assert the toast and that the card is gone.
+# SIDE EFFECT: files a real report against a real (seed) user, which removes
+# them from this account's deck permanently. Use a throwaway test account and
+# a seeded (non-prod) database. See docs/E2E_TESTING.md.
+appId: com.yosefwolday.backchannelv2
+---
+- runFlow: subflows/login.yaml
+- tapOn: "Feed.*"
+- extendedWaitUntil:
+    visible: "Report .*"
+    timeout: 30000
+- copyTextFrom:
+    text: "Report .*"
+- evalScript: ${output.reportLabel = maestro.copiedText}
+
+# Open the sheet via the deck-card Flag button (label: "Report <name>").
+- tapOn: "Report .*"
+- assertVisible: "Report and Block"
+- assertVisible: "Harassment or bullying"
+# Submit is disabled until a reason is picked.
+- tapOn: "Spam or scam"
+- tapOn: "Report and Block"
+
+- extendedWaitUntil:
+    visible: "Reported and blocked. You won't be shown to each other again."
+    timeout: 15000
+# The reported card is removed from the deck array, so its flag label is gone.
+- extendedWaitUntil:
+    notVisible: ${output.reportLabel}
+    timeout: 10000
