@@ -167,3 +167,11 @@ export const PRIVACY_POLICY_URL =
 // that needs to send someone to the store page.
 export const APP_STORE_ID = "6762495044";
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
+
+// ─── Support ────────────────────────────────────────────────────────────────
+// Single source of truth for the support address (was a local constant in
+// PrivacySecurityScreen.tsx). NOTE: the backchannel.app domain has no MX
+// records yet (docs/BACKEND_CHANGES_NEEDED.md §W #4/#5) — mail to this
+// address bounces until that's set up. Nothing else in the app changes when
+// it is.
+export const SUPPORT_EMAIL = "support@backchannel.app";

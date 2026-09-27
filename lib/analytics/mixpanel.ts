@@ -866,6 +866,11 @@ export function trackProfileEditOpened(args: { section: string }): void {
   safeTrack("Profile Edit Opened", { profile_section: args.section });
 }
 
+/** User opened Help & Feedback (contact support) from Settings. */
+export function trackSupportOpened(): void {
+  safeTrack("Support Opened");
+}
+
 export function trackProfileFieldUpdated(args: { field: string }): void {
   safeTrack("Profile Field Updated", { profile_field: args.field });
 }
