@@ -1178,7 +1178,7 @@ export function HomeView({
     setIsReporting(false);
     setReportSheetOpen(false);
     if (ok) {
-      showToast("Reported. You won't be shown to each other again.", "success");
+      showToast("Reported and blocked. You won't be shown to each other again.", "success");
       // Remove this card from the deck's own array — not just advance past
       // it — so it can never come back, including via "Review again"
       // (resetNavigation only resets index/progress; it never restores the

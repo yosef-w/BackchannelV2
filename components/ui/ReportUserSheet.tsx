@@ -100,7 +100,7 @@ export function ReportUserSheet({
         <DismissibleSheet scrollDismiss onDismiss={handleDismiss} style={styles.sheet}>
         <Text style={styles.title}>Report {reportedName}</Text>
         <Text style={styles.subtitle}>
-          {subtitle ?? "You won't be shown to each other again. What happened?"}
+          {subtitle ?? "Reporting also blocks them: you won't be shown to each other again. What happened?"}
         </Text>
 
         <View style={styles.reasonList}>
@@ -145,7 +145,7 @@ export function ReportUserSheet({
           {isSubmitting ? (
             <ActivityIndicator size="small" color={Colors.paper} />
           ) : (
-            <Text style={styles.submitBtnText}>Submit Report</Text>
+            <Text style={styles.submitBtnText}>Report and Block</Text>
           )}
         </TouchableOpacity>
         <TouchableOpacity

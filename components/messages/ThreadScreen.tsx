@@ -359,7 +359,7 @@ export function ThreadScreen({
       handleConversationSelect(null);
       showToast(
         reportSucceeded
-          ? "Reported. This conversation has been closed."
+          ? "Reported and blocked. This conversation has been closed."
           : "This conversation has been closed, but we couldn't record your report. Please try again later.",
         reportSucceeded ? "success" : "error",
       );

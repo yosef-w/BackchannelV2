@@ -120,7 +120,7 @@ export function ThreadMenuSheet({
               Report {participantName}
             </Text>
             <Text style={styles.unmatchSheetSubtitle}>
-              Reporting also ends this match and closes the conversation.
+              Reporting also blocks them, ends this match, and closes the conversation.
               What happened?
             </Text>
 
@@ -183,7 +183,7 @@ export function ThreadMenuSheet({
               {isReporting ? (
                 <ActivityIndicator size="small" color={Colors.paper} />
               ) : (
-                <Text style={styles.unmatchActionText}>Submit Report</Text>
+                <Text style={styles.unmatchActionText}>Report and Block</Text>
               )}
             </TouchableOpacity>
             <View style={styles.quietRow}>
