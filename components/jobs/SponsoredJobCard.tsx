@@ -37,7 +37,31 @@ export function SponsoredJobCard({
   const pending = job.pendingApplicants ?? 0;
   const applicants = job.applicants ?? 0;
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.8}
+      onPress={onPress}
+      // One accessible card hides the nested More / applicants buttons from
+      // VoiceOver; expose them as rotor actions (touch is unchanged).
+      accessibilityRole="button"
+      accessibilityLabel={`${job.title}, ${job.company}, ${
+        applicants === 0
+          ? "no applicants yet"
+          : applicants === 1
+            ? "1 applicant"
+            : `${applicants} applicants`
+      }${pending > 0 ? `, ${pending} new` : ""}`}
+      accessibilityActions={[
+        ...(onMenu ? [{ name: "more", label: "More options" }] : []),
+        ...(onApplicantPress
+          ? [{ name: "applicants", label: "View applicants" }]
+          : []),
+      ]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "more") onMenu?.();
+        else if (e.nativeEvent.actionName === "applicants") onApplicantPress?.();
+      }}
+    >
       <View style={styles.cardHeader}>
         <CompanyLogo
           logoUrl={job.image}

@@ -1299,7 +1299,7 @@ export function ApplicantQuestionnaire({
                   <View style={styles.inputWrapper}>
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={answers[question.key] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [question.key]: v })
@@ -1325,7 +1325,7 @@ export function ApplicantQuestionnaire({
                       />
                       <TextInput
                         placeholder="Search skills..."
-                        placeholderTextColor={Colors.faint}
+                        placeholderTextColor={Colors.muted}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         autoCapitalize="none"
@@ -1426,6 +1426,12 @@ export function ApplicantQuestionnaire({
                       onPress={handlePickPhoto}
                       activeOpacity={0.8}
                       style={styles.photoCircle}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        selectedPhotoUri
+                          ? "Change profile photo"
+                          : "Choose profile photo"
+                      }
                     >
                       {selectedPhotoUri ? (
                         <Image
@@ -1512,7 +1518,7 @@ export function ApplicantQuestionnaire({
                         <MapPin color={Colors.faint} size={20} />
                         <TextInput
                           placeholder="e.g., San Francisco, CA"
-                          placeholderTextColor={Colors.faint}
+                          placeholderTextColor={Colors.muted}
                           value={locationText}
                           onChangeText={setLocationText}
                           autoCapitalize="words"

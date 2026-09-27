@@ -1861,6 +1861,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     endDate: value ? "" : experience.endDate,
                   })
                 }
+                accessibilityLabel="I currently work here"
                 {...SWITCH_COLORS}
               />
               <Text style={styles.checkboxLabel}>I currently work here</Text>

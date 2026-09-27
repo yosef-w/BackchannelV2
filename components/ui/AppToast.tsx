@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Layout } from "@/lib/responsive";
+import { useScreenReader } from "@/lib/useScreenReader";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   FadeInDown,
@@ -28,6 +29,8 @@ const ICON_SIZE = 18;
 // How long the fade-out takes (ms) — keep mounted this long after hide
 const EXIT_ANIMATION_MS = 300;
 const AUTO_DISMISS_MS = 3500;
+// A screen-reader user needs time to hear the message and reach Dismiss.
+const AUTO_DISMISS_SCREEN_READER_MS = 8000;
 
 // Swipe-up dismissal: either the finger travels this far up, or flicks
 // with this velocity — matching the system-notification gesture users
@@ -48,6 +51,11 @@ export function AppToast() {
   const insets = useSafeAreaInsets();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref, not an effect dep: toggling VoiceOver must not re-fire the haptic
+  // and announcement of a toast that's already showing.
+  const screenReader = useScreenReader();
+  const screenReaderRef = useRef(screenReader);
+  screenReaderRef.current = screenReader;
 
   // Keep the Animated.View mounted long enough for the exit animation to finish.
   // If we return null immediately when visible→false, SlideOutDown never plays.
@@ -79,13 +87,21 @@ export function AppToast() {
       // not a live region and isn't focused. This was the app's only
       // channel for many errors ("Couldn't open mail", failed saves) and
       // was completely silent to screen-reader users.
-      AccessibilityInfo.announceForAccessibility(message);
+      // Variant prefix: the icon is the only other signal for "Couldn't
+      // save" vs "Saved".
+      AccessibilityInfo.announceForAccessibility(
+        variant === "error"
+          ? `Error: ${message}`
+          : variant === "success"
+            ? `Success: ${message}`
+            : message,
+      );
 
       // Auto-dismiss after AUTO_DISMISS_MS
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         hideToast();
-      }, AUTO_DISMISS_MS);
+      }, screenReaderRef.current ? AUTO_DISMISS_SCREEN_READER_MS : AUTO_DISMISS_MS);
     } else {
       // Wait for exit animation to complete before unmounting
       exitTimerRef.current = setTimeout(() => {
@@ -152,21 +168,26 @@ export function AppToast() {
         <Animated.View
           entering={FadeInDown.duration(300)}
           exiting={FadeOutUp.duration(250)}
-          // accessible + a11y role: the swipe-to-dismiss card is otherwise
-          // just an unlabeled row to a screen reader.
-          accessible
-          accessibilityRole="alert"
-          accessibilityLabel={message}
+          // Not accessible: an accessible container swallowed the Dismiss
+          // button, leaving it unreachable by VoiceOver. The message Text
+          // carries the alert role instead.
+          accessible={false}
           style={[styles.container, dragStyle]}
         >
           <ToastIcon variant={variant} />
-          <Text style={styles.message} numberOfLines={3}>
+          <Text
+            style={styles.message}
+            numberOfLines={3}
+            accessibilityRole="alert"
+          >
             {message}
           </Text>
           <TouchableOpacity
             onPress={hideToast}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={styles.dismissBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
           >
             <Text style={styles.dismissText}>Dismiss</Text>
           </TouchableOpacity>
@@ -220,7 +241,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   dismissText: {
-    color: Colors.muted,
+    // On the ink card: muted is 3.69:1 here, mutedOnInk is 5.54:1.
+    color: Colors.mutedOnInk,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.3,

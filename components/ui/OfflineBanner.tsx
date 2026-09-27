@@ -7,8 +7,8 @@
 // See lib/network.ts for why "offline" is debounced and conservative.
 
 import { WifiOff } from "@/components/ui/icons";
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp, FadeOutUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Fonts } from "@/constants/theme";
@@ -17,6 +17,19 @@ import { useIsOffline } from "@/lib/network";
 export function OfflineBanner() {
   const offline = useIsOffline();
   const insets = useSafeAreaInsets();
+  const wasOffline = useRef(false);
+  // accessibilityLiveRegion is Android-only; on iOS nothing is spoken when
+  // the banner appears unless we announce it ourselves.
+  useEffect(() => {
+    if (offline) {
+      AccessibilityInfo.announceForAccessibility(
+        "You're offline. Some things won't load or save until you're back.",
+      );
+    } else if (wasOffline.current) {
+      AccessibilityInfo.announceForAccessibility("Back online");
+    }
+    wasOffline.current = offline;
+  }, [offline]);
   if (!offline) return null;
 
   return (

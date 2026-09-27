@@ -18,12 +18,11 @@
 // Only ever shown when PREMIUM_ENABLED && !isPremium (callers guard);
 // with the flag off, the marketplace behaves exactly as before.
 
-import { BlurView } from "expo-blur";
+import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import React, { useEffect } from "react";
 import {
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -89,15 +88,7 @@ function GateSheet({
   const title = job?.title?.trim();
 
   return (
-    <View style={styles.overlay}>
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={dismiss}
-      >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
-
+    <SheetOverlay onClose={dismiss} style={styles.overlay}>
       <DismissibleSheet
         scrollDismiss
         onDismiss={dismiss}
@@ -171,7 +162,7 @@ function GateSheet({
           </View>
         </SheetScrollView>
       </DismissibleSheet>
-    </View>
+    </SheetOverlay>
   );
 }
 

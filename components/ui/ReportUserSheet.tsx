@@ -129,7 +129,7 @@ export function ReportUserSheet({
         <TextInput
           style={styles.detailInput}
           placeholder="Add details (optional)"
-          placeholderTextColor={Colors.faint}
+          placeholderTextColor={Colors.muted}
           value={detail}
           onChangeText={setDetail}
           multiline

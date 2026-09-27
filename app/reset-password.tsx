@@ -145,7 +145,7 @@ export default function ResetPasswordRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="New password"
-                  placeholderTextColor={Colors.faint}
+                  placeholderTextColor={Colors.muted}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
@@ -156,7 +156,7 @@ export default function ResetPasswordRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm new password"
-                  placeholderTextColor={Colors.faint}
+                  placeholderTextColor={Colors.muted}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry

@@ -847,6 +847,12 @@ export function SponsorQuestionnaire({
                     onPress={handlePickPhoto}
                     activeOpacity={0.8}
                     style={styles.photoCircle}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      selectedPhotoUri
+                        ? "Change profile photo"
+                        : "Choose profile photo"
+                    }
                   >
                     {selectedPhotoUri ? (
                       <Image
@@ -888,7 +894,7 @@ export function SponsorQuestionnaire({
                 <View style={styles.bioWrapper}>
                   <TextInput
                     placeholder="A sentence or two about you"
-                    placeholderTextColor={Colors.faint}
+                    placeholderTextColor={Colors.muted}
                     value={bioText}
                     onChangeText={setBioText}
                     style={styles.bioInput}
@@ -905,7 +911,7 @@ export function SponsorQuestionnaire({
                     )}
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={answers[currentQuestion] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [currentQuestion]: v })
@@ -1118,7 +1124,7 @@ export function SponsorQuestionnaire({
                     <TextInput
                       style={styles.rolePickerNoteInput}
                       placeholder="e.g. what the team is like, what we look for..."
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={roleInsiderNote}
                       onChangeText={setRoleInsiderNote}
                       multiline

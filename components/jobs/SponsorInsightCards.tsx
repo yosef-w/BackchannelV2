@@ -193,7 +193,7 @@ export function SponsorInsightCards({
               <TextInput
                 style={styles.siInput}
                 placeholder={field.placeholder}
-                placeholderTextColor={Colors.faint}
+                placeholderTextColor={Colors.muted}
                 value={value}
                 onChangeText={(t) => onChange(field.key, t)}
                 multiline

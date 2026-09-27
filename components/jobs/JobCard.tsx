@@ -37,7 +37,32 @@ export function JobCard({
   onApplicantPress,
 }: JobCardProps) {
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.8}
+      onPress={onPress}
+      // The card is one accessible element, which hides the nested More /
+      // applicants / Sponsor buttons from VoiceOver. Expose them as rotor
+      // actions instead (touch behavior is unchanged).
+      accessibilityRole="button"
+      accessibilityLabel={[job.title, job.company, job.location, job.salary]
+        .filter(Boolean)
+        .join(", ")}
+      accessibilityActions={[
+        ...(onMenu ? [{ name: "more", label: "More options" }] : []),
+        ...(isSponsored && onApplicantPress
+          ? [{ name: "applicants", label: "View applicants" }]
+          : []),
+        ...(!isSponsored && onSponsor
+          ? [{ name: "sponsor", label: `Sponsor ${job.title}` }]
+          : []),
+      ]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "more") onMenu?.();
+        else if (e.nativeEvent.actionName === "applicants") onApplicantPress?.();
+        else if (e.nativeEvent.actionName === "sponsor") onSponsor?.();
+      }}
+    >
       <View style={styles.cardHeader}>
         <CompanyLogo
           logoUrl={job.image}

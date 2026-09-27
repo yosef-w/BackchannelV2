@@ -1,4 +1,4 @@
-import { BlurView } from "expo-blur";
+import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import { X } from "@/components/ui/icons";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React from "react";
@@ -45,15 +45,7 @@ export function GetSponsorModal({
 }: GetSponsorModalProps) {
   const company = companyName ?? "this company";
   return (
-    <View style={styles.modalOverlay}>
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
-
+    <SheetOverlay onClose={onClose} style={styles.modalOverlay}>
       <Animated.View
         entering={SlideInDown}
         exiting={SlideOutDown}
@@ -122,7 +114,7 @@ export function GetSponsorModal({
           </View>
         )}
       </Animated.View>
-    </View>
+    </SheetOverlay>
   );
 }
 

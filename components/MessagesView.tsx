@@ -1190,6 +1190,9 @@ export function MessagesView({
           responder, so their taps don't reach this. */}
       <Pressable
         style={{ flex: 1 }}
+        // Not accessible: as an accessible parent it hid every inbox row
+        // from VoiceOver. The tap-outside collapse is a touch-only nicety.
+        accessible={false}
         onPress={() => {
           if (expandedGroups.size) setExpandedGroups(new Set());
         }}

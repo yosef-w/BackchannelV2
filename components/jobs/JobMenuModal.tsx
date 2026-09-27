@@ -146,7 +146,7 @@ export function JobMenuModal({
             <TextInput
               style={styles.urlInput}
               placeholder="https://example.com/logo.png"
-              placeholderTextColor={Colors.faint}
+              placeholderTextColor={Colors.muted}
               value={logoUrlInput}
               onChangeText={onSetLogoUrlInput}
               autoCapitalize="none"
@@ -209,7 +209,7 @@ export function JobMenuModal({
                 <TextInput
                   style={styles.reasonOtherInput}
                   placeholder="Tell us more (optional)"
-                  placeholderTextColor={Colors.faint}
+                  placeholderTextColor={Colors.muted}
                   value={unsponsorReasonDetail}
                   onChangeText={onSetUnsponsorReasonDetail}
                   multiline

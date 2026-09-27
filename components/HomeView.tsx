@@ -53,8 +53,10 @@ import {
   RefreshCcw,
 } from "@/components/ui/icons";
 import { hitSlopTo44 } from "@/lib/responsive";
+import { isScreenReaderOn } from "@/lib/useScreenReader";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   Modal,
   Pressable,
   Platform,
@@ -443,6 +445,9 @@ export function HomeView({
   const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  // True while the celebration is up WITHOUT a timer (screen reader on: it
+  // waits for Continue instead of vanishing after 1.8s — WCAG 2.2.1).
+  const celebrationHeldRef = useRef(false);
   const [matchedUser, setMatchedUser] = useState<{
     name: string;
     image: string;
@@ -1492,7 +1497,17 @@ export function HomeView({
               : "this role",
         );
         setShowCelebration(true);
-        celebrationTimerRef.current = setTimeout(finishCelebration, 1800);
+        // Ref set synchronously so an early tap can't race the async check.
+        celebrationHeldRef.current = true;
+        void isScreenReaderOn().then((sr) => {
+          if (!celebrationHeldRef.current) return; // already dismissed
+          if (sr) {
+            AccessibilityInfo.announceForAccessibility("Interest sent");
+            return;
+          }
+          celebrationHeldRef.current = false;
+          celebrationTimerRef.current = setTimeout(finishCelebration, 1800);
+        });
       }
       // When didMatch=true, nextProfile is called when the match modal is dismissed
     } else {
@@ -1537,9 +1552,12 @@ export function HomeView({
   // 1.8s auto-dismiss timer or by tap-anywhere-to-continue, whichever
   // comes first.
   const finishCelebration = () => {
-    if (celebrationTimerRef.current === null) return;
-    clearTimeout(celebrationTimerRef.current);
+    if (celebrationTimerRef.current === null && !celebrationHeldRef.current)
+      return;
+    if (celebrationTimerRef.current !== null)
+      clearTimeout(celebrationTimerRef.current);
     celebrationTimerRef.current = null;
+    celebrationHeldRef.current = false;
     setShowCelebration(false);
     nextProfile(true);
   };

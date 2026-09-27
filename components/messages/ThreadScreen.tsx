@@ -521,6 +521,8 @@ return (
           // backButton is ~40x40 (24 icon + 8 padding each side) — bump to
           // Apple's 44pt minimum.
           hitSlop={hitSlopTo44(40, 40)}
+          accessibilityRole="button"
+          accessibilityLabel="Back to messages"
         >
           <ArrowLeft color={Colors.ink} size={24} />
         </TouchableOpacity>
@@ -528,6 +530,8 @@ return (
           style={styles.headerIdentity}
           onPress={() => setShowProfileModal(true)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${conversation.otherParticipant.name}'s profile`}
         >
           {conversation.otherParticipant.profileImageUrl ? (
             <Image
@@ -629,6 +633,8 @@ return (
                 activeOpacity={0.7}
                 // headerMoreBtn is 36x36.
                 hitSlop={hitSlopTo44(36, 36)}
+                accessibilityRole="button"
+                accessibilityLabel="Conversation options"
               >
                 <MoreHorizontal color={Colors.ink} size={20} />
               </TouchableOpacity>
@@ -755,6 +761,12 @@ return (
                 !isFirstOfDay && clustersWith(prevMessage, message);
               const clusteredWithNext = clustersWith(message, nextMessage);
               const isTapped = tappedMessageId === message.id;
+              // Always computed for the VoiceOver label: sender is otherwise
+              // only alignment/color, and the time only shows after a tap.
+              const timeString = new Date(message.createdAt).toLocaleTimeString(
+                "en-US",
+                { hour: "numeric", minute: "2-digit" },
+              );
 
               return (
                 <React.Fragment key={message.id}>
@@ -791,6 +803,12 @@ return (
                       onPress={() =>
                         setTappedMessageId(isTapped ? null : message.id)
                       }
+                      accessible
+                      accessibilityLabel={`${
+                        isMyMessage
+                          ? "You"
+                          : conversation.otherParticipant.name.split(" ")[0]
+                      }: ${message.content}, ${timeString}`}
                       style={[
                         styles.bubble,
                         isMyMessage ? styles.bubbleMe : styles.bubbleThem,
@@ -816,14 +834,13 @@ return (
                       </Text>
                     </TouchableOpacity>
                     {isTapped && (
-                      <Text style={styles.msgTime}>
-                        {new Date(message.createdAt).toLocaleTimeString(
-                          "en-US",
-                          {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          },
-                        )}
+                      // The bubble's label already includes the time.
+                      <Text
+                        style={styles.msgTime}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no"
+                      >
+                        {timeString}
                       </Text>
                     )}
                   </Animated.View>
@@ -885,7 +902,7 @@ return (
             value={messageText}
             onChangeText={setMessageText}
             placeholder="Write a message..."
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             style={styles.textInput}
             multiline
             maxLength={2000}
@@ -913,6 +930,9 @@ return (
             disabled={!messageText.trim() || sendingMessage}
             // sendBtn is 40x40.
             hitSlop={hitSlopTo44(40, 40)}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+            accessibilityState={{ disabled: !messageText.trim() || sendingMessage }}
           >
             <Send color={Colors.paper} size={18} strokeWidth={2.5} />
           </TouchableOpacity>

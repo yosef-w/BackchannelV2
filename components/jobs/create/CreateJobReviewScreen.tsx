@@ -217,7 +217,7 @@ function Field({
         style={[styles.input, style]}
         value={value}
         onChangeText={onChangeText}
-        placeholderTextColor={Colors.faint}
+        placeholderTextColor={Colors.muted}
         {...inputProps}
       />
     </View>
