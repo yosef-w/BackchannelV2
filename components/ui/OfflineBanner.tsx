@@ -31,7 +31,7 @@ export function OfflineBanner() {
       <View style={styles.row}>
         <WifiOff size={14} color={Colors.paper} strokeWidth={2.4} />
         <Text style={styles.text}>
-          You&apos;re offline — some things won&apos;t load or save until
+          You&apos;re offline. Some things won&apos;t load or save until
           you&apos;re back.
         </Text>
       </View>

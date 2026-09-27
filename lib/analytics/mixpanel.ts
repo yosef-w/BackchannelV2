@@ -14,6 +14,7 @@
  *    property to an event, update the helper's argument type.
  */
 
+import { getPendingReferrer } from "@/lib/referrer";
 import { Mixpanel } from "mixpanel-react-native";
 import { clearSentryUser, logBreadcrumb, setSentryUser } from "../sentry";
 
@@ -255,10 +256,23 @@ export function trackSignUpSucceeded(
   role: AnalyticsUserType,
   authMethod: AuthMethod = "email",
 ): void {
-  safeTrack("Sign Up Succeeded", {
-    selected_role: role,
-    auth_method: authMethod,
-  });
+  // `referred_by` closes the invite loop's attribution: set only when this
+  // install was opened from someone's /invite link (lib/referrer.ts).
+  // Read async, so the event fires a tick later — harmless for analytics.
+  getPendingReferrer()
+    .then((referrer) => {
+      safeTrack("Sign Up Succeeded", {
+        selected_role: role,
+        auth_method: authMethod,
+        ...(referrer ? { referred_by: referrer } : {}),
+      });
+    })
+    .catch(() => {
+      safeTrack("Sign Up Succeeded", {
+        selected_role: role,
+        auth_method: authMethod,
+      });
+    });
 }
 
 export function trackSignUpFailed(
@@ -864,6 +878,21 @@ export function trackCheckInFailed(args: {
 
 export function trackProfileEditOpened(args: { section: string }): void {
   safeTrack("Profile Edit Opened", { profile_section: args.section });
+}
+
+// ─── Growth: invites ─────────────────────────────────────────────────────────
+
+/** User completed the system share sheet for an invite link. */
+export function trackInviteShared(args: {
+  role: AnalyticsUserType;
+  source: string;
+}): void {
+  safeTrack("Invite Shared", { role: args.role, invite_source: args.source });
+}
+
+/** App was opened from someone's invite link (attribution starts here). */
+export function trackInviteOpened(args: { referrerId: string }): void {
+  safeTrack("Invite Opened", { referrer_id: args.referrerId });
 }
 
 /** User opened Help & Feedback (contact support) from Settings. */

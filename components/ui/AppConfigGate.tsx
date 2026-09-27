@@ -53,7 +53,7 @@ export function AppConfigGate() {
         </Text>
         <Text style={styles.body}>
           {needsUpdate
-            ? "This version of BackChannel is out of date and can no longer connect. Update from the App Store to keep going — your account and matches are safe."
+            ? "This version of BackChannel is out of date and can no longer connect. Update from the App Store to keep going. Your account and matches are safe."
             : maintenance}
         </Text>
         {needsUpdate && (

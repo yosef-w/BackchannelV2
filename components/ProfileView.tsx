@@ -19,6 +19,7 @@ import {
     MessageSquareQuote,
     Mail,
     RefreshCw,
+    UserPlus,
     Star,
     Target,
     Trash2,
@@ -58,6 +59,7 @@ import {
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { shareInvite } from "@/lib/invite";
 import { contactSupport } from "@/lib/support";
 import { SUPPORT_EMAIL } from "@/constants/config";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
@@ -2653,6 +2655,15 @@ export function ProfileView({ userType }: ProfileViewProps) {
           icon={<Lock color={Colors.ink} size={16} strokeWidth={2} />}
           label="Privacy & Security"
           onPress={() => setShowPrivacySecurity(true)}
+        />
+        <HubRow
+          icon={<UserPlus color={Colors.ink} size={16} strokeWidth={2} />}
+          label={userType === "sponsor" ? "Invite a Colleague" : "Invite Someone"}
+          onPress={() => {
+            shareInvite(userType, profileStoreUserId, "settings").catch(
+              () => {},
+            );
+          }}
         />
         <HubRow
           icon={<Mail color={Colors.ink} size={16} strokeWidth={2} />}

@@ -24,6 +24,8 @@ interface DeckDoneCardProps {
   /** Opens the PremiumSheet; on purchase the caller sends every held like. */
   onUnlockMore: () => void;
   onReviewAgain: () => void;
+  /** Optional quiet "Invite someone" action (the invite loop). Omitted → not shown. */
+  onInvite?: () => void;
   /** Deep-link to the Matches tab — turns the recap numbers into doors. */
   onViewMatches: () => void;
 }
@@ -58,6 +60,7 @@ export function DeckDoneCard({
   heldLikes,
   onUnlockMore,
   onReviewAgain,
+  onInvite,
   onViewMatches,
 }: DeckDoneCardProps) {
   const packages = useSubscriptionStore((state) => state.packages);
@@ -271,6 +274,15 @@ export function DeckDoneCard({
         </TouchableOpacity>
       ) : (
         <QuietAction label="Review again" onPress={onReviewAgain} />
+      )}
+
+      {/* The end of a deck is a good moment to bring someone in: they just
+          got value and the next card isn't until tomorrow. */}
+      {onInvite && (
+        <QuietAction
+          label={userType === "sponsor" ? "Invite a colleague" : "Invite someone"}
+          onPress={onInvite}
+        />
       )}
     </Animated.View>
   );

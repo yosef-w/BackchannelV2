@@ -121,6 +121,7 @@ import {
   getDailyLikesUsed,
   incrementDailyLikesUsed,
 } from "@/lib/dailyLikeLimit";
+import { shareInvite } from "@/lib/invite";
 import { maybeRequestReview } from "@/lib/ratingPrompt";
 import {
   getHeldLikes,
@@ -206,6 +207,7 @@ export function HomeView({
   );
 
   const showToast = useToastStore((state) => state.showToast);
+  const profileStoreUserId = useUserProfileStore((state) => state.userId);
 
   // Jobs store
   const jobs = useJobsStore((state) => state.jobs);
@@ -2020,6 +2022,11 @@ export function HomeView({
                 heldLikes={heldLikes}
                 onUnlockMore={handleUnlockMoreCards}
                 onReviewAgain={resetNavigation}
+                onInvite={() => {
+                  shareInvite(userType, profileStoreUserId, "deck_done").catch(
+                    () => {},
+                  );
+                }}
                 onViewMatches={() =>
                   router.navigate("/(tabs)/matches")
                 }

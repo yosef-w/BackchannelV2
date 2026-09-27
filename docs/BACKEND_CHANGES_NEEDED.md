@@ -176,6 +176,16 @@ The frontend now supports **universal links** (site PR: `BackChannel-Netlify` #2
 
 ---
 
+## §AC — Invite loop: accept a `referred_by` on signup 🟢 Low priority, nice-to-have (new section, 2026-09-26 — for Nico)
+
+**Context:** the app now has an invite loop (Settings > "Invite Someone" / "Invite a Colleague", plus a quiet link on the end-of-deck card). It shares `https://backchannelapp.netlify.app/invite/<inviter user_id>`; opening that link stores the inviter id on the recipient's device (first touch wins), and the app's **Mixpanel** `Sign Up Succeeded` event carries it as `referred_by`. So attribution and funnel analysis already work **with no backend change**.
+
+**What the backend could add later (only if you want referral *features*, not just analytics):** accept an optional `referred_by` (string user_id) on the register endpoints (`register-applicant`, `register-sponsor`, and the SSO `complete-onboarding`) and persist it on the user row. That would enable server-side rewards/credit ("you invited 3 people"), fraud/self-referral checks, and reporting without depending on Mixpanel. Validate it exists and isn't the new user's own id; silently ignore it otherwise (never fail a signup over it). The frontend will send it once the field exists.
+
+**Fix order:** nothing to do for launch.
+
+---
+
 ## §V — Pre-production security audit: backend-owned findings 🔴 High priority (new section — separate from §S/§B/§L/§F, tracked here for Nico)
 
 **Status (2026-09-18):** a read-only security sweep across both repos, done ahead of App Store submission. Three parallel reviews (mobile frontend, Django backend, repo/CI hygiene) traced every ID-taking endpoint, the raw-SQL query layer, auth/session handling, file storage, and dependency freshness. **Overall backend grade: B.** The important context up front, so this doesn't read as "the backend is insecure" — it isn't:

@@ -15,7 +15,7 @@ export type SupportTopic = "feedback" | "problem" | "account";
 
 const SUBJECTS: Record<SupportTopic, string> = {
   feedback: "BackChannel feedback",
-  problem: "BackChannel — something's not working",
+  problem: "BackChannel: something's not working",
   account: "BackChannel account help",
 };
 
@@ -31,7 +31,7 @@ export function buildSupportMailto(opts: {
   const footer = [
     "",
     "",
-    "— — — — — — — — —",
+    "----------------",
     "Helps us find your account and reproduce issues:",
     `App version: ${appVersion}`,
     `Device: ${os} ${osVersion}`,
