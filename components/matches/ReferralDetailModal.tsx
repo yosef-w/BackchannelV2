@@ -168,7 +168,7 @@ export function ReferralDetailModal({
                     <Text style={modalStyles.jobSectionText}>
                       {isReferred
                         ? `${sponsorFirst} has personally vouched for you and submitted you for this role at ${company}. A referral puts your application in front of their hiring team with a trusted employee's backing.`
-                        : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation — but you're still connected and can reach out anytime.`}
+                        : `${sponsorFirst} withdrew this referral, so it no longer counts as an active recommendation. You're still connected and can reach out anytime.`}
                     </Text>
                   </SectionCard>
 

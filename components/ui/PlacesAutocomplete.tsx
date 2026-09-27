@@ -365,7 +365,7 @@ export function PlacesAutocomplete({
 
       {serviceError && (
         <Text style={styles.serviceNotice}>
-          Can’t load suggestions right now — you can type it in manually.
+          Can’t load suggestions right now. You can type it in manually.
         </Text>
       )}
 

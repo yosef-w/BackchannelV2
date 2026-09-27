@@ -284,7 +284,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
 
           <View style={styles.chipRow}>
             <Animated.View style={[styles.chip, chipDeck]}>
-              <Text style={styles.chipText}>YOUR DECK</Text>
+              <Text style={styles.chipText}>DAILY TEN</Text>
             </Animated.View>
             <Animated.View style={[styles.chip, chipMarket]}>
               <Text style={styles.chipText}>THE MARKET</Text>

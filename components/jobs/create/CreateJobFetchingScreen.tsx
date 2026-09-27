@@ -275,16 +275,16 @@ export function CreateJobFetchingScreen({
           {stillReading ? (
             <>
               <Text style={styles.statusText}>
-                Reading the posting — this takes a few seconds…
+                Reading the posting. This takes a few seconds…
               </Text>
             </>
           ) : foundNothing ? (
             <Text style={styles.statusText}>
-              Couldn&apos;t auto-read this page. No problem — you can fill in the
+              Couldn&apos;t auto-read this page. No problem, you can fill in the
               details on the next screen.
             </Text>
           ) : (
-            <Text style={styles.statusTextDone}>Got it — take a look ↓</Text>
+            <Text style={styles.statusTextDone}>Got it. Take a look ↓</Text>
           )}
         </View>
 
@@ -305,7 +305,7 @@ export function CreateJobFetchingScreen({
             onPress={() => finishWith(scraped)}
             activeOpacity={0.7}
           >
-            <Text style={styles.skipBtnText}>Skip waiting — I&apos;ll fill it in</Text>
+            <Text style={styles.skipBtnText}>Skip the wait and fill it in myself</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity

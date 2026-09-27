@@ -222,7 +222,7 @@ export function EditProfileScreen({
         <LockedField
           label="WORK EMAIL"
           value={workEmail || "Not set"}
-          note="Your corporate email — helps verify your employer. Cannot be changed here. Contact support to update it."
+          note="Your corporate email. It helps verify your employer and can't be changed here. Contact support to update it."
         />
       )}
 

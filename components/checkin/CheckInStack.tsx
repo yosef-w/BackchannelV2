@@ -340,7 +340,7 @@ export function CheckInStack({
         <Text style={styles.recapSubtitle}>
           {summary.updated > 0
             ? recapSubtitle(summary.updated)
-            : "You skipped everything this pass — we'll nudge you again later."}
+            : "You skipped everything this pass. We'll nudge you again later."}
         </Text>
 
         <View style={styles.recapList}>

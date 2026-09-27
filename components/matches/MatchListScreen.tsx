@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { EditorScreen } from "../profile/EditorScreen";
 import { Colors } from "@/constants/theme";
 
@@ -13,10 +13,11 @@ interface MatchListScreenProps {
 
 /**
  * Full-screen "See all" list for a Matches group that's over its row cap.
- * Reuses the same EditorScreen shell as the Account redesign and renders
- * the exact same rows MatchSection would, just uncapped — so tapping
- * "See all" feels like paging deeper into the same list, not a different
- * screen.
+ * Reuses the EditorScreen shell and renders the exact same rows
+ * MatchSection would, just uncapped, in the same Docket dress: the
+ * section's caps eyebrow with its count, then rows flat on paper between
+ * hairlines, at the Matches screen's content width. Paging deeper into
+ * the same list, not a different screen.
  */
 export function MatchListScreen({
   visible,
@@ -26,7 +27,16 @@ export function MatchListScreen({
 }: MatchListScreenProps) {
   const rows = React.Children.toArray(children);
   return (
-    <EditorScreen visible={visible} onClose={onClose} title={title}>
+    <EditorScreen
+      visible={visible}
+      onClose={onClose}
+      title={title}
+      column="content"
+    >
+      <Text style={styles.eyebrow}>
+        {title.toUpperCase()}
+        {rows.length > 0 ? ` · ${rows.length}` : ""}
+      </Text>
       <View style={styles.group}>
         {rows.map((row, i) =>
           React.isValidElement(row)
@@ -41,11 +51,16 @@ export function MatchListScreen({
 }
 
 const styles = StyleSheet.create({
+  // Mirrors MatchSection's header/group exactly so the two read as one.
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: Colors.muted,
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
   group: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
 });

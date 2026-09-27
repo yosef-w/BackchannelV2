@@ -711,8 +711,38 @@ export function trackPaywallShown(args: { trigger: string }): void {
   safeTrack("Paywall Shown", { trigger: args.trigger });
 }
 
-export function trackPurchaseSucceeded(args: { restored: boolean }): void {
-  safeTrack("Purchase Succeeded", { restored: args.restored });
+/** A plan row tapped in our checkout (not the initial default). */
+export function trackPlanSelected(args: {
+  trigger: string;
+  packageType: string;
+}): void {
+  safeTrack("Plan Selected", {
+    trigger: args.trigger,
+    package_type: args.packageType,
+  });
+}
+
+export function trackPurchaseSucceeded(args: {
+  restored: boolean;
+  trigger?: string;
+  packageType?: string;
+}): void {
+  safeTrack("Purchase Succeeded", {
+    restored: args.restored,
+    trigger: args.trigger ?? null,
+    package_type: args.packageType ?? null,
+  });
+}
+
+/** The store deferred the purchase (Ask to Buy, bank approval). */
+export function trackPurchasePending(args: {
+  trigger: string;
+  packageType: string;
+}): void {
+  safeTrack("Purchase Pending", {
+    trigger: args.trigger,
+    package_type: args.packageType,
+  });
 }
 
 export function trackPurchaseFailed(reason: string): void {
@@ -721,6 +751,74 @@ export function trackPurchaseFailed(reason: string): void {
 
 export function trackRestorePurchasesRequested(): void {
   safeTrack("Restore Purchases Requested");
+}
+
+// The marketplace gate sits one step BEFORE Paywall Shown — a user can see
+// it and tap "Keep browsing" without the RevenueCat paywall ever opening,
+// so these two make the gate→paywall drop-off measurable on its own.
+export function trackMarketplaceGateShown(args: {
+  intent: "request" | "like";
+  jobId: string | null;
+}): void {
+  safeTrack("Marketplace Gate Shown", {
+    intent: args.intent,
+    job_id: args.jobId,
+  });
+}
+
+export function trackMarketplaceGateDismissed(args: {
+  intent: "request" | "like";
+}): void {
+  safeTrack("Marketplace Gate Dismissed", { intent: args.intent });
+}
+
+/** A free applicant spent their one complimentary sponsor request. */
+export function trackFreeSponsorRequestUsed(args: { jobId: string }): void {
+  safeTrack("Free Sponsor Request Used", { job_id: args.jobId });
+}
+
+// The deck's like-cap gate, same shape as the marketplace pair above so
+// the two funnels compare like for like.
+export function trackLikeLimitGateShown(args: {
+  role: "applicant" | "sponsor";
+  heldCount: number;
+  heldFull: boolean;
+}): void {
+  safeTrack("Like Limit Gate Shown", {
+    role: args.role,
+    held_count: args.heldCount,
+    held_full: args.heldFull,
+  });
+}
+
+export function trackLikeLimitGateDismissed(args: {
+  role: "applicant" | "sponsor";
+  held: boolean;
+}): void {
+  safeTrack("Like Limit Gate Dismissed", { role: args.role, held: args.held });
+}
+
+/** A capped like was held instead of dropped. */
+export function trackLikeHeld(args: {
+  role: "applicant" | "sponsor";
+  heldCount: number;
+}): void {
+  safeTrack("Like Held", { role: args.role, held_count: args.heldCount });
+}
+
+/** Held likes were sent after a purchase. */
+export function trackHeldLikesSent(args: {
+  role: "applicant" | "sponsor";
+  count: number;
+  matches: number;
+  trigger: "like_limit_gate" | "deck_done";
+}): void {
+  safeTrack("Held Likes Sent", {
+    role: args.role,
+    count: args.count,
+    matches: args.matches,
+    trigger: args.trigger,
+  });
 }
 
 // ─── Check-ins (PR #37) ───────────────────────────────────────────────────────

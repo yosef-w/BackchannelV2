@@ -5,6 +5,8 @@ import {
   trackJobLiked,
   trackJobSkipped,
   trackJobWaitlistJoined,
+  trackHeldLikesSent,
+  trackLikeHeld,
   trackMatchCreated,
   trackProfileCardViewed,
   trackProfileLiked,
@@ -97,6 +99,8 @@ import {
 } from "./home/plates/plateContent";
 import { JobDescriptionModal } from "./home/JobDescriptionModal";
 import { JobSwitcherSheet } from "./home/JobSwitcherSheet";
+import { LikeLimitGateModal } from "./home/LikeLimitGateModal";
+import { PremiumSheet } from "./premium/PremiumSheet";
 import { MatchCelebrationModal } from "./home/MatchCelebrationModal";
 import { SkeletonCard } from "./home/SkeletonCard";
 import { WorkEmailVerificationModal } from "./home/WorkEmailVerificationModal";
@@ -106,7 +110,23 @@ import { ReportUserSheet } from "./ui/ReportUserSheet";
 import { ScreenContainer } from "./ui/ScreenContainer";
 import { HOME_INTRO_PENDING_KEY, HomeIntro } from "./ui/HomeIntro";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-import { PLATES_ENABLED } from "@/constants/config";
+import { QuietAction } from "@/components/matches/JobSheetKit";
+import {
+  DAILY_LIKE_LIMITS,
+  PLATES_ENABLED,
+  PREMIUM_ENABLED,
+  getDailyLikeCap,
+} from "@/constants/config";
+import {
+  getDailyLikesUsed,
+  incrementDailyLikesUsed,
+} from "@/lib/dailyLikeLimit";
+import {
+  getHeldLikes,
+  holdLike,
+  releaseHeldLikes,
+  type HeldLike,
+} from "@/lib/heldLikes";
 import { Colors, Fonts, Spacing, Type } from "@/constants/theme";
 
 /** Parse a field that may be a JSON-encoded string, a real array, or absent. */
@@ -278,29 +298,125 @@ export function HomeView({
     (state) => state.incrementSessionMatches,
   );
 
-  // Premium / paywall — the end-of-deck "unlock more cards" upsell reuses the
-  // same RevenueCat paywall as ProfileView's "Upgrade to Pro". No-ops in
-  // builds where PREMIUM_ENABLED is false (presentPaywall returns false).
+  // Premium — the end-of-deck card opens our PremiumSheet (plans + purchase
+  // in one sheet); a completed purchase sends the held likes below.
   const isPremium = useSubscriptionStore((state) => state.isPremium);
-  const presentPaywall = useSubscriptionStore((state) => state.presentPaywall);
-  // presentPaywall() itself now guards against a concurrent second call
-  // succeeding, but DeckDoneCard's two "Unlock with Premium" buttons had no
-  // disabled/loading state of their own — a fast double-tap dispatched two
-  // calls before either button could react, unlike MarketplaceGateModal's
-  // handleUnlock, which already tracked this locally.
-  const [unlockingPremium, setUnlockingPremium] = useState(false);
+  const [premiumSheetOpen, setPremiumSheetOpen] = useState(false);
+
+  // Daily like cap — see constants/config.ts's DAILY_LIKE_LIMITS and
+  // lib/dailyLikeLimit.ts. The gate check itself lives in handleSwipe and
+  // reads live values at the moment of the swipe (useSubscriptionStore's
+  // getState() + a fresh AsyncStorage read) rather than trusting component
+  // state, specifically so a same-render retry right after a purchase
+  // (LikeLimitGateModal's onUnlocked → handleSwipe(true) again) can't see a
+  // stale pre-purchase snapshot of isPremium. This state is only for the
+  // sheet's visibility, not for the gating decision itself.
+  const [likeLimitGateOpen, setLikeLimitGateOpen] = useState(false);
+  // Held likes — the cards the cap refused today, kept instead of dropped
+  // (lib/heldLikes.ts). The gate shows the card it just held; the
+  // end-of-deck card lists them all; a purchase sends them (sendHeldLikes).
+  const [heldLikes, setHeldLikes] = useState<HeldLike[]>([]);
+  const [likeGateCard, setLikeGateCard] = useState<HeldLike | null>(null);
+  // True when today's queue already holds as many as Premium could still
+  // send before midnight — the gate then can't promise "this one goes now".
+  const [likeGateFull, setLikeGateFull] = useState(false);
+  useEffect(() => {
+    if (!PREMIUM_ENABLED || userType !== "applicant") return;
+    getHeldLikes(userType).then(setHeldLikes).catch(() => {});
+  }, [userType]);
+
+  const releaseHeld = (id: string) => {
+    if (!PREMIUM_ENABLED || userType !== "applicant") return;
+    setHeldLikes((prev) =>
+      prev.some((h) => h.id === id) ? prev.filter((h) => h.id !== id) : prev,
+    );
+    releaseHeldLikes(userType, [id]).catch(() => {});
+  };
 
   // Tapping "Unlock more cards" opens the paywall. On a successful purchase we
-  // reset the deck so they can keep swiping immediately. (A larger/unlimited
-  // daily allotment for premium users needs backend support — see note in
-  // docs/BACKEND_CHANGES_NEEDED.md; for now this returns them to the top.)
-  const handleUnlockMoreCards = async () => {
-    setUnlockingPremium(true);
-    try {
-      const purchased = await presentPaywall("deck_done");
-      if (purchased) resetNavigation();
-    } finally {
-      setUnlockingPremium(false);
+  // reset the deck so they can keep swiping immediately — over the SAME
+  // already-loaded set of cards, since a genuinely larger/fresh daily card
+  // volume for premium needs backend support that doesn't exist yet (see
+  // docs/BACKEND_CHANGES_NEEDED.md §Y). What premium actually raises today
+  // is the daily LIKE cap (DAILY_LIKE_LIMITS in constants/config.ts) — the
+  // paywall copy only promises that, not a bigger deck, so this is honest
+  // as-is.
+  // The purchase's payoff is the held likes going out — the recap stays
+  // put (sessionLikes climbs as they land) rather than rewinding the same
+  // deck, which promised more than Premium delivers (§Y).
+  const handleUnlockMoreCards = () => setPremiumSheetOpen(true);
+
+  const toHeldLike = (job: Job): HeldLike => ({
+    id: String(job.id),
+    kind: "job",
+    title: job.title || "This role",
+    sub: job.company || "",
+    image: job.logo || job.image || null,
+  });
+
+  // Send every held like now that the cap allows it — after a purchase
+  // from either gate. Applicants only (sponsors are never capped).
+  // Respects the (new, higher) cap: sends as many as fit, leaves the rest
+  // held. Matches are counted and toasted rather than opening the match
+  // modal, since the Two Doors celebration is already playing on top.
+  const sendHeldLikes = async (trigger: "like_limit_gate" | "deck_done") => {
+    if (userType !== "applicant") return;
+    const queue = heldLikes.filter((h) => !likedIds.has(h.id));
+    if (queue.length === 0) return;
+    const cap = getDailyLikeCap(useSubscriptionStore.getState().isPremium);
+    const usedToday = await getDailyLikesUsed(userType);
+    const room = Math.max(0, cap - usedToday);
+    const toSend = queue.slice(0, room);
+    if (toSend.length === 0) return;
+
+    const sentIds: string[] = [];
+    let matches = 0;
+    for (const item of toSend) {
+      try {
+        const response = await likeJob(item.id);
+        sentIds.push(item.id);
+        setLikedIds((prev) => new Set([...prev, item.id]));
+        setAppliedJobIds((prev) => new Set([...prev, item.id]));
+        incrementSessionLikes();
+        incrementDailyLikesUsed(userType).catch(() => {});
+        recordJobFeedAction(item.id, "liked").catch(() => {});
+        trackJobLiked({
+          jobId: item.id,
+          isSponsored: true,
+          matched: Boolean(response.matched),
+        });
+        if (response.matched) {
+          matches += 1;
+          incrementSessionMatches();
+          onMatchCreated?.();
+        }
+      } catch (err) {
+        // A gone/unsponsored card just drops out of the queue; a network
+        // failure leaves it held for a retry from the deck-done card.
+        console.warn("[HomeView] Held like failed:", item.id, err);
+        const msg = err instanceof Error ? err.message.toLowerCase() : "";
+        if (msg.includes("not found") || msg.includes("inactive") || msg.includes("404")) {
+          sentIds.push(item.id);
+        }
+      }
+    }
+
+    if (sentIds.length > 0) {
+      const remaining = await releaseHeldLikes(userType, sentIds).catch(
+        () => heldLikes.filter((h) => !sentIds.includes(h.id)),
+      );
+      setHeldLikes(remaining);
+    }
+    const sentCount = sentIds.length;
+    trackHeldLikesSent({ role: userType, count: sentCount, matches, trigger });
+    if (sentCount > 0) {
+      const lead = `Interest sent to ${sentCount} held ${sentCount === 1 ? "role" : "roles"}`;
+      showToast(
+        matches > 0
+          ? `${lead}. ${matches === 1 ? "One is already a match" : `${matches} are already matches`}. See Matches.`
+          : `${lead}.`,
+        "success",
+      );
     }
   };
 
@@ -1152,6 +1268,55 @@ export function HomeView({
       return;
     }
 
+    // Daily like cap (constants/config.ts's DAILY_LIKE_LIMITS). Checked
+    // here, not via VerdictBar's `disabled`, so Pass keeps working and the
+    // rest of today's deck stays browsable — only the accept verb stops,
+    // same precedent as the completeness/work-email gates above (open a
+    // sheet, don't disable the whole bar). Inert while PREMIUM_ENABLED is
+    // false, so beta/dev behavior is unchanged. Reads live state
+    // (getState(), a fresh AsyncStorage read) instead of a memoized
+    // component value — this same check re-runs on LikeLimitGateModal's
+    // post-purchase retry (onUnlocked → handleSwipe(true) again), and a
+    // stale pre-purchase isPremium snapshot there would just reopen the
+    // gate it was supposed to have cleared.
+    // Applicants only: the cap exists to keep them from expressing
+    // interest in everything they see. Sponsors connect with as many of
+    // their daily candidates as they like — they aren't the ones we're
+    // asking to subscribe.
+    if (isAccept && PREMIUM_ENABLED && userType === "applicant") {
+      const currentIsPremium = useSubscriptionStore.getState().isPremium;
+      const likeCap = getDailyLikeCap(currentIsPremium);
+      const usedToday = await getDailyLikesUsed(userType);
+      if (usedToday >= likeCap) {
+        // Hold the refused card (free users only) — up to what Premium
+        // could still send today, so "join and they all go now" is
+        // literally true. Past that, the gate still opens but is honest
+        // that this one waits.
+        if (!currentIsPremium && currentData) {
+          const card = toHeldLike(currentData as Job);
+          const capacity = Math.max(
+            0,
+            DAILY_LIKE_LIMITS.premium - usedToday,
+          );
+          const alreadyHeld = heldLikes.some((h) => h.id === card.id);
+          const full = !alreadyHeld && heldLikes.length >= capacity;
+          setLikeGateCard(card);
+          setLikeGateFull(full);
+          if (!full && !alreadyHeld) {
+            const next = [...heldLikes, card];
+            setHeldLikes(next);
+            holdLike(userType, card).catch(() => {});
+            trackLikeHeld({ role: userType, heldCount: next.length });
+          }
+        } else {
+          setLikeGateCard(null);
+          setLikeGateFull(false);
+        }
+        setLikeLimitGateOpen(true);
+        return;
+      }
+    }
+
     setActionPending(true);
     if (isAccept) {
       // The stamp lands the instant the verb is pressed — a physical mark,
@@ -1176,7 +1341,16 @@ export function HomeView({
             // Mark sponsored job as applied
             setAppliedJobIds((prev) => new Set([...prev, String(jobId)]));
             setLikedIds((prev) => new Set([...prev, String(jobId)]));
+            releaseHeld(String(jobId));
             incrementSessionLikes();
+            // Persistent daily cap counter — separate from sessionLikes
+            // above, which resets on "review again"/premium-unlock and so
+            // can't be what a real cap is built on. Fire-and-forget: a
+            // missed write here just means one extra like slips through
+            // before the day-boundary check catches up, not a hard bug.
+            if (PREMIUM_ENABLED) {
+              incrementDailyLikesUsed(userType).catch(() => {});
+            }
 
             // Record "liked" in the feed history (fire-and-forget)
             recordJobFeedAction(String(jobId), "liked").catch(() => {});
@@ -1833,8 +2007,8 @@ export function HomeView({
                 sessionLikes={sessionLikes}
                 sessionMatches={sessionMatches}
                 isPremium={isPremium}
+                heldLikes={heldLikes}
                 onUnlockMore={handleUnlockMoreCards}
-                unlocking={unlockingPremium}
                 onReviewAgain={resetNavigation}
                 onViewMatches={() =>
                   router.navigate("/(tabs)/matches")
@@ -1866,7 +2040,7 @@ export function HomeView({
                   </View>
                 </View>
 
-                <Text style={styles.sponsorEmptyTitle}>Build your deck</Text>
+                <Text style={styles.sponsorEmptyTitle}>Start seeing candidates</Text>
                 <Text style={styles.sponsorEmptySubtitle}>
                   Sponsor a role to start seeing applicants matched to it. Pick
                   one from the ATS feed or post your own.
@@ -1934,13 +2108,25 @@ export function HomeView({
                 <Text style={styles.sponsorEmptyTitle}>Out in the wild</Text>
                 <Text style={styles.sponsorEmptySubtitle}>
                   Your role is in front of candidates. New applicants surface
-                  here the moment they show interest — usually within a day of
+                  here the moment they show interest, usually within a day of
                   going live.
                 </Text>
 
                 <View style={styles.sponsorEmptyActions}>
                   <TouchableOpacity
-                    style={styles.sponsorEmptySecondary}
+                    style={styles.sponsorEmptyPrimary}
+                    onPress={() => {
+                      router.navigate("/(tabs)/jobs");
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.sponsorEmptyPrimaryText}>
+                      Sponsor Another
+                    </Text>
+                    <ChevronRight color={Colors.paper} size={18} strokeWidth={2.5} />
+                  </TouchableOpacity>
+                  <QuietAction
+                    label="Refresh"
                     onPress={() => {
                       // Reset both the list and the job-id tag so the
                       // empty-state check goes through the loading
@@ -1976,25 +2162,7 @@ export function HomeView({
                       };
                       loadData();
                     }}
-                    activeOpacity={0.85}
-                  >
-                    <RefreshCcw color={Colors.ink} size={16} strokeWidth={2.2} />
-                    <Text style={styles.sponsorEmptySecondaryText}>
-                      Refresh
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.sponsorEmptyPrimary}
-                    onPress={() => {
-                      router.navigate("/(tabs)/jobs");
-                    }}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.sponsorEmptyPrimaryText}>
-                      Sponsor Another
-                    </Text>
-                    <ChevronRight color={Colors.paper} size={18} strokeWidth={2.5} />
-                  </TouchableOpacity>
+                  />
                 </View>
               </Animated.View>
             </View>
@@ -2125,8 +2293,8 @@ export function HomeView({
                 </Text>
 
                 <View style={styles.sponsorEmptyActions}>
-                  <TouchableOpacity
-                    style={styles.sponsorEmptySecondary}
+                  <QuietAction
+                    label="Refresh"
                     onPress={() => {
                       (async () => {
                         try {
@@ -2149,13 +2317,7 @@ export function HomeView({
                         }
                       })();
                     }}
-                    activeOpacity={0.85}
-                  >
-                    <RefreshCcw color={Colors.ink} size={16} strokeWidth={2.2} />
-                    <Text style={styles.sponsorEmptySecondaryText}>
-                      Refresh
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 </View>
               </Animated.View>
             </View>
@@ -2397,8 +2559,8 @@ export function HomeView({
                 <Text style={styles.celebrationTitle}>Interest Sent!</Text>
                 <Text style={styles.celebrationSub}>
                   {userType === "sponsor"
-                    ? `You've shown interest in ${celebrationSubject} — we'll let you know if they connect back.`
-                    : `You've shown interest in ${celebrationSubject} — we'll let you know if the sponsor connects.`}
+                    ? `You've shown interest in ${celebrationSubject}. We'll let you know if they connect back.`
+                    : `You've shown interest in ${celebrationSubject}. We'll let you know if the sponsor connects.`}
                 </Text>
               </Animated.View>
             </View>
@@ -2520,6 +2682,40 @@ export function HomeView({
         isSubmitting={isReporting}
         onSubmit={handleSubmitReport}
         onClose={() => setReportSheetOpen(false)}
+      />
+
+      <LikeLimitGateModal
+        visible={likeLimitGateOpen}
+        onClose={() => setLikeLimitGateOpen(false)}
+        isPremium={isPremium}
+        userType={userType}
+        card={likeGateCard}
+        held={heldLikes}
+        heldFull={likeGateFull}
+        // The card is already held (or the queue is full) — either way
+        // move on without recording a Pass against something they wanted.
+        onHold={() => {
+          setLikeLimitGateOpen(false);
+          setActionPending(true);
+          nextProfile(false);
+        }}
+        // Purchase already justifies proceeding — re-running the same
+        // handleSwipe(true) re-checks the cap with fresh (post-purchase)
+        // state rather than replaying a stale pre-purchase decision (see
+        // the comment on the gate check itself). The current card sends
+        // first (with its celebration); everything else held follows.
+        onUnlocked={async () => {
+          await handleSwipe(true);
+          await sendHeldLikes("like_limit_gate");
+        }}
+      />
+
+      <PremiumSheet
+        visible={premiumSheetOpen}
+        trigger="deck_done"
+        heldLikes={heldLikes}
+        onClose={() => setPremiumSheetOpen(false)}
+        onUnlocked={() => sendHeldLikes("deck_done")}
       />
     </View>
   );
@@ -2947,11 +3143,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 999,
     backgroundColor: Colors.ink,
-    shadowColor: Colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 6,
   },
   sponsorEmptyPrimaryText: {
     color: Colors.paper,
@@ -2960,29 +3151,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   // Secondary action — outlined, lower visual weight.
-  sponsorEmptySecondary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: Colors.paper,
-    borderWidth: 1.5,
-    borderColor: Colors.ink,
-  },
-  sponsorEmptySecondaryText: {
-    color: Colors.ink,
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
   sponsorEmptyActions: {
-    flexDirection: "row",
-    gap: 10,
+    alignItems: "center",
+    gap: 14,
     width: "100%",
-    justifyContent: "center",
   },
 
   // ── "LIVE" status pill (pulsing dot) ──────────────────────────────
@@ -2993,7 +3165,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#0F0F11",
+    backgroundColor: Colors.ink,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
@@ -3027,11 +3199,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: 24,
-    shadowColor: Colors.ink,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
   },
   sponsorWaitingJobTitle: {
     fontSize: 16,

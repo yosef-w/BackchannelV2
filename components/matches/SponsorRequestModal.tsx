@@ -36,7 +36,7 @@ import {
 } from "./JobSheetKit";
 import { SponsorRequest } from "./matchesQueries";
 import { modalStyles, useModalSizing } from "./sharedModalStyles";
-import { Colors, Type } from "@/constants/theme";
+import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 interface SrJobDetailPreview {
   organization_logo?: string | null;
@@ -205,7 +205,7 @@ export function SponsorRequestModal({
                       professional backing behind{" "}
                       {request.applicantName.split(" ")[0]}&apos;s application.
                       Once you do, {request.applicantName.split(" ")[0]} will
-                      be able to connect with you directly — opening the door
+                      be able to connect with you directly, opening the door
                       to communicate and provide a referral.
                     </Text>
                   </SectionCard>
@@ -302,7 +302,7 @@ export function SponsorRequestModal({
                   <SectionCard title="Why This Matters">
                     <Text style={styles.srCalloutText}>
                       Unlike traditional job boards, BackChannel gives
-                      candidates real insider knowledge — which means better
+                      candidates real insider knowledge, which means better
                       applicants and fewer surprises on both sides.
                     </Text>
                   </SectionCard>
@@ -312,7 +312,7 @@ export function SponsorRequestModal({
                       label: "The Real Day-to-Day",
                       hint: "What does this role actually look like beyond the job description?",
                       placeholder:
-                        "Be honest about daily work — meetings, focus time, pace, autonomy...",
+                        "Be honest about daily work: meetings, focus time, pace, autonomy...",
                       value: dayToDay,
                       setter: onSetDayToDay,
                     },
@@ -375,14 +375,13 @@ export function SponsorRequestModal({
                   </Text>
                   <Text style={styles.srSuccessDesc}>
                     You&apos;re now sponsoring{" "}
-                    <Text style={{ fontWeight: "800" }}>
+                    <Text style={{ fontFamily: Fonts.sansBold }}>
                       {request.jobTitle}
                     </Text>
                     .{"\n\n"}
                     {request.applicantName.split(" ")[0]} will see you under
-                    &ldquo;Wants to Connect With You&rdquo; and can message
-                    you directly
-                    once they connect back.
+                    Your Move and can message you directly once they connect
+                    back.
                   </Text>
 
                   {/* Message now — only available if we already have a
@@ -455,23 +454,20 @@ export function SponsorRequestModal({
 }
 
 const styles = StyleSheet.create({
+  // A caps eyebrow, not a boxed red tag: status is information here.
   interestedModalTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: Colors.dangerLight,
-    borderWidth: 1,
-    borderColor: Colors.dangerLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
     alignSelf: "flex-start",
     marginBottom: 20,
   },
   interestedModalTagText: {
     fontSize: 12,
-    color: Colors.danger,
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: Colors.muted,
   },
   srCalloutText: { fontSize: 14, color: Colors.body, lineHeight: 22 },
   // Segmented progress — same language as the check-in stack's bars.
@@ -501,17 +497,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   srFormSection: { marginBottom: 24 },
-  // Form surfaces sit white on the Gallery canvas.
+  // Radio options are inputs, so they keep a hairline frame; the Docket
+  // radius (md) rather than the old Gallery card's 16.
   srHalfOption: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     padding: 18,
-    borderRadius: 16,
+    borderRadius: Radii.md,
     backgroundColor: Colors.paper,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
+    borderColor: Colors.border,
   },
   srRadioCircle: {
     width: 20,
@@ -525,9 +522,9 @@ const styles = StyleSheet.create({
   srRadioOption: {
     backgroundColor: Colors.paper,
     padding: 18,
-    borderRadius: 16,
+    borderRadius: Radii.md,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
+    borderColor: Colors.border,
     marginBottom: 12,
   },
   srRadioText: { fontSize: 15, color: Colors.body, fontWeight: "600" },
@@ -572,7 +569,7 @@ const styles = StyleSheet.create({
   srTextInput: {
     backgroundColor: Colors.paper,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
+    borderColor: Colors.border,
     borderRadius: 12,
     padding: 16,
     paddingTop: 16,

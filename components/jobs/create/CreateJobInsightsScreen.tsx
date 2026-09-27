@@ -83,7 +83,7 @@ export function CreateJobInsightsScreen({
             <Text style={styles.payoffSubtitle}>
               Every other field on {jobTitle || "this listing"} could come
               from the job posting. Answer a prompt or two about what it&apos;s
-              really like — that&apos;s what makes candidates apply.
+              really like. That&apos;s what makes candidates apply.
             </Text>
           </View>
 
@@ -119,7 +119,7 @@ export function CreateJobInsightsScreen({
               activeOpacity={0.7}
             >
               <Text style={styles.skipBtnText}>
-                Skip for now — I&apos;ll add these later
+                Skip for now and add these later
               </Text>
             </TouchableOpacity>
           )}
@@ -155,7 +155,7 @@ export function CreateJobSuccessScreen({
           { word: "is" },
           { word: "live.", accent: true },
         ]}
-        subtitle={`Applicants can start swiping on ${jobTitle || "it"} right now.`}
+        subtitle={`Applicants can start seeing ${jobTitle || "it"} today.`}
       />
       <View style={styles.footer}>
         <TouchableOpacity

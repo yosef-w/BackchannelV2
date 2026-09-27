@@ -136,14 +136,14 @@ export function WorkEmailVerificationModal({
       setIsEditingWorkEmail(false);
       setEditedWorkEmail("");
       setEmailVerifStatus({
-        text: `Sent! Check ${trimmed} — including your spam folder.`,
+        text: `Sent! Check ${trimmed}, including your spam folder.`,
         tone: "success",
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Couldn't send.";
       setEmailVerifStatus({
         text: msg.toLowerCase().includes("rate")
-          ? "Too many sends — please wait a bit and try again."
+          ? "Too many sends. Please wait a bit and try again."
           : "Couldn't send to that address. Please try again.",
         tone: "error",
       });
@@ -175,7 +175,7 @@ export function WorkEmailVerificationModal({
              before the gate closes itself. */
           <View style={styles.verifiedBeat}>
             <ConfirmPop size={72} />
-            <Text style={styles.emailVerifTitle}>Verified — you&apos;re in.</Text>
+            <Text style={styles.emailVerifTitle}>Verified. You&apos;re in.</Text>
             <Text style={styles.verifiedBeatSub}>
               Your applicant deck is unlocked.
             </Text>
@@ -261,14 +261,14 @@ export function WorkEmailVerificationModal({
         <View style={styles.emailVerifSpamHint}>
           <Info color={Colors.muted} size={13} strokeWidth={2} />
           <Text style={styles.emailVerifSpamHintText}>
-            Don&apos;t see it? Check your spam or junk folder — it can take a
+            Don&apos;t see it? Check your spam or junk folder. It can take a
             minute to arrive.
           </Text>
         </View>
 
         <View style={styles.emailVerifInfoBox}>
           <Text style={styles.emailVerifInfoText}>
-            This keeps the network trusted — every candidate knows they&apos;re
+            This keeps the network trusted. Every candidate knows they&apos;re
             talking to a real, verified professional.
           </Text>
         </View>
@@ -300,7 +300,7 @@ export function WorkEmailVerificationModal({
                 setTimeout(onClose, 1400);
               } else {
                 setEmailVerifStatus({
-                  text: "Still pending — please click the link in your inbox.",
+                  text: "Still pending. Click the link in your inbox to finish.",
                   tone: "info",
                 });
               }
@@ -375,7 +375,7 @@ export function WorkEmailVerificationModal({
               const msg = err instanceof Error ? err.message : "Couldn't resend.";
               setEmailVerifStatus({
                 text: msg.toLowerCase().includes("rate")
-                  ? "Too many resends — please wait a bit and try again."
+                  ? "Too many resends. Please wait a bit and try again."
                   : "Couldn't resend. Please try again.",
                 tone: "error",
               });

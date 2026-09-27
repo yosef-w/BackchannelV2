@@ -1,4 +1,4 @@
-import { Award, Heart } from "@/components/ui/icons";
+import { Award, Clock } from "@/components/ui/icons";
 import { getRelativeTime } from "@/utils/relativeTime";
 import React from "react";
 import { CompanyLogo } from "../ui/CompanyLogo";
@@ -128,7 +128,7 @@ export function ApplicantMatchesSections({
         meta={
           sponsor.likedAt ? (
             <MetaLine
-              icon={<Heart size={10} color={Colors.danger} />}
+              icon={<Clock size={10} color={Colors.muted} />}
               text={getRelativeTime(sponsor.likedAt)}
             />
           ) : undefined
@@ -274,7 +274,7 @@ export function ApplicantMatchesSections({
 
       <MatchSection
         title="Matched"
-        subtitle="You and the sponsor both said yes — start chatting"
+        subtitle="You and the sponsor both said yes. Start chatting"
         count={matches.length}
         loading={matchesLoading}
         error={matchesError}

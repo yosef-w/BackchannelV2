@@ -467,6 +467,31 @@ export const authApi = {
   },
 
   /**
+   * Deletes an account that has no password (Apple/Google-only) — the
+   * password form has nothing to confirm against. Backend contract per
+   * docs/BACKEND_CHANGES_NEEDED.md §W #3 (Apple Guideline 5.1.1(v)):
+   * re-verifies against a FRESH identity token from the same provider
+   * (must resolve to the same sso_identities row as the caller's
+   * user_id), then runs the same purge as the password path.
+   *
+   * Not yet implemented server-side as of this writing — the request
+   * shape matches the doc's contract exactly so this starts working the
+   * moment that backend endpoint ships, no frontend change required.
+   * Until then it 400s the same way the old "no password" path did.
+   */
+  deleteAccountWithSso: async (
+    provider: "apple" | "google",
+    identityToken: string,
+    refreshToken?: string | null,
+  ): Promise<{ message: string }> => {
+    return api.post<{ message: string }>("/api/account/delete/", {
+      provider,
+      identity_token: identityToken,
+      ...(refreshToken ? { refresh_token: refreshToken } : {}),
+    });
+  },
+
+  /**
    * Request password reset
    */
   forgotPassword: async (email: string): Promise<{ message: string }> => {

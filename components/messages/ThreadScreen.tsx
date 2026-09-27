@@ -50,7 +50,7 @@ import { ReferralSigningScreen } from "./ReferralSigningScreen";
 import { ThreadContextStrip } from "./ThreadContextStrip";
 import { ThreadMenuSheet } from "./ThreadMenuSheet";
 import { threadScreenStyles as styles } from "./threadScreenStyles";
-import { Colors, Fonts } from "@/constants/theme";
+import { Colors, Fonts, Radii } from "@/constants/theme";
 
 function getConversationStarters(
   conversation: Conversation | null | undefined,
@@ -83,7 +83,7 @@ function getConversationStarters(
       ? `What interests you about the ${jobTitle} role?`
       : "What are you looking for in your next role?",
     skill
-      ? `I noticed you know ${skill} — how have you used that day to day?`
+      ? `I noticed you know ${skill}. How have you used that day to day?`
       : "Tell me a bit about your background.",
     "What's most important to you in your next role?",
   ];
@@ -489,12 +489,21 @@ if (!conversation) {
         onPress={() => handleConversationSelect(null)}
         style={{
           marginTop: 16,
-          padding: 12,
+          height: 54,
+          paddingHorizontal: 24,
+          borderRadius: Radii.pill,
           backgroundColor: Colors.ink,
-          borderRadius: 12,
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <Text style={{ color: Colors.paper, fontWeight: "700" }}>
+        <Text
+          style={{
+            color: Colors.paper,
+            fontFamily: Fonts.sansSemiBold,
+            fontSize: 15.5,
+          }}
+        >
           Back to Messages
         </Text>
       </TouchableOpacity>

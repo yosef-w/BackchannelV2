@@ -100,8 +100,9 @@ export function ProfileActionSheet({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.whiteBtn, { width: "100%", justifyContent: "center" }]}
+              style={styles.whiteBtn}
               onPress={onSecondary}
+              hitSlop={hitSlopTo44(40, 12)}
             >
               {secondaryIcon}
               <Text style={styles.whiteBtnText}>{secondaryLabel}</Text>
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     // Gripper hugs the sheet edge (PM: it floated too far down) —
     // 12 matches the sheets that already looked right.
     paddingTop: 12,
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     paddingBottom: 32,
     // maxHeight is computed live from useWindowDimensions() (see render)
     // and passed inline — see the sheetMaxHeight comment above.
@@ -162,20 +163,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 14,
   },
+  // Quiet text, not a bordered pill — one filled action per surface.
   whiteBtn: {
     flexDirection: "row",
-    backgroundColor: Colors.paper,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+    justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
+    paddingVertical: 12,
   },
   whiteBtnText: {
-    color: Colors.ink,
-    fontWeight: "700",
+    color: Colors.muted,
+    fontWeight: "600",
     fontSize: 14,
   },
 });

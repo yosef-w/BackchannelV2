@@ -128,7 +128,7 @@ export function ApplicantProfileCard({
           <View style={cardStyles.likedYourRolePill}>
             <Heart size={11} color={Colors.paper} fill={Colors.paper} strokeWidth={2} />
             <Text style={cardStyles.likedYourRolePillText}>
-              LIKED YOUR ROLE
+              INTERESTED IN YOUR ROLE
             </Text>
           </View>
         </View>
@@ -318,9 +318,9 @@ export function ApplicantProfileCard({
                 <Text style={cardStyles.hingeTimelineMeta}>
                   {exp.startDate}
                   {exp.current
-                    ? " — Present"
+                    ? " · Present"
                     : exp.endDate
-                      ? ` — ${exp.endDate}`
+                      ? ` · ${exp.endDate}`
                       : ""}
                 </Text>
                 {!!exp.description && (

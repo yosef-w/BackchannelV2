@@ -637,7 +637,7 @@ export function AuthScreen({
                   </Text>
                   <Text style={styles.subtitle}>
                     {userType === "sponsor"
-                      ? "Help great people get in — and get rewarded for it."
+                      ? "Help great people get in, and get rewarded for it."
                       : "Your next job comes from someone already inside."}
                   </Text>
                 </View>
@@ -692,7 +692,7 @@ export function AuthScreen({
                 </Text>
                 <Text style={styles.subtitle}>
                   {userType === "sponsor"
-                    ? "Help great people get in — and get rewarded for it."
+                    ? "Help great people get in, and get rewarded for it."
                     : "Your next job comes from someone already inside."}
                 </Text>
               </View>
@@ -894,7 +894,7 @@ export function AuthScreen({
                   </Text>
 
                   <Text style={styles.modalSpamHint}>
-                    Don&apos;t see it? Check your spam or junk folder — it can take a
+                    Don&apos;t see it? Check your spam or junk folder. It can take a
                     minute to arrive.
                   </Text>
 

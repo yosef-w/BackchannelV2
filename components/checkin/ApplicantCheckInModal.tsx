@@ -142,7 +142,7 @@ export function ApplicantCheckInModal({
         recapSubtitle={(n) =>
           n === 1
             ? "Your sponsor will be notified of your progress."
-            : `${n} updates sent — your sponsors will be notified.`
+            : `${n} updates sent. Your sponsors will be notified.`
         }
         // The most common answer by far — lets a 10-referral pass finish in
         // one tap from the overview. stageIndex 0 = "Referred" (still
