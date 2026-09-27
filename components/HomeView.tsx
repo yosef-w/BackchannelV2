@@ -121,6 +121,7 @@ import {
   getDailyLikesUsed,
   incrementDailyLikesUsed,
 } from "@/lib/dailyLikeLimit";
+import { maybeRequestReview } from "@/lib/ratingPrompt";
 import {
   getHeldLikes,
   holdLike,
@@ -1627,6 +1628,15 @@ export function HomeView({
   const handleMatchModalDismiss = () => {
     setMatchedUser(null);
     nextProfile(true);
+    // A match is the clearest "just got value" moment in the app — the
+    // right time to spend one of iOS's few review prompts (lib/ratingPrompt
+    // throttles it, and skips brand-new installs). Only on "Continue
+    // Exploring": the Message Now path opens a chat, and a system dialog
+    // over the conversation they just chose would be the wrong moment.
+    // Delayed so the modal's fade-out finishes first.
+    setTimeout(() => {
+      maybeRequestReview("match").catch(() => {});
+    }, 1200);
   };
 
   // "Message Now" — actually opens the new conversation instead of just

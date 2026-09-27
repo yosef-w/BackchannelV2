@@ -1,10 +1,12 @@
 import { AppToast } from "@/components/ui/AppToast";
+import { OfflineBanner } from "@/components/ui/OfflineBanner";
 import { PremiumCelebration } from "@/components/cinema/PremiumCelebration";
 import {
   identifyUser,
   initAnalytics,
   trackAppOpened,
 } from "@/lib/analytics/mixpanel";
+import { recordFirstSeen } from "@/lib/ratingPrompt";
 import { initSentry, SentryErrorBoundary, sentryWrap } from "@/lib/sentry";
 import { AppErrorFallback } from "@/components/shell/AppErrorFallback";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -143,6 +145,7 @@ function RootLayout() {
       // Kick off analytics first; it's async but we don't await it because
       // nothing downstream depends on it.
       initAnalytics().then(() => trackAppOpened());
+      recordFirstSeen();
       // Boot RevenueCat in the background. The store is a no-op when
       // PREMIUM_ENABLED = false so this is safe to call unconditionally.
       initSubscriptions();
@@ -287,7 +290,8 @@ function RootLayout() {
               </Stack>
             </SentryErrorBoundary>
 
-            {/* Global toast — overlays all screens */}
+            {/* Global overlays — connectivity strip, then the toast above it */}
+            <OfflineBanner />
             <AppToast />
 
             {/* Post-purchase celebration — global so every paywall entry
