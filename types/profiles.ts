@@ -49,9 +49,28 @@ export interface EnrichedApplicantProfile {
   achievements: string;
   prompts: ProfilePrompt[];
   bio: string;
-  /** Not currently populated by the enrichment fetch — the card reads it
-   * defensively as a future-proof override of the pack row's skills. */
+  /** applicant_profile.SKILLS from the public profile — overrides the
+   * pack row's skills when non-empty. */
   skills?: string[];
+  // Sponsor deck v2 (components/home/sponsor/facts.ts). All optional so
+  // older cache entries and other screens are unaffected; most are not
+  // shipped by the backend yet (BACKEND_CHANGES_NEEDED §Sponsor deck v2).
+  /** YEARS_EXPERIENCE parsed as a number; null when absent/unparseable. */
+  yearsExperience?: number | null;
+  currentRole?: string | null;
+  /** WORK_PREFERENCES ("Remote", "Hybrid", "Full-time", …). */
+  workPreferences?: string[];
+  /** TARGET_COMP_* — shape mirrors CompRange in components/home/sponsor/model.ts
+   * (inlined to keep types/ free of component imports). */
+  targetComp?: {
+    min: number | null;
+    max: number | null;
+    currency: string | null;
+  } | null;
+  startAvailability?: string | null;
+  level?: string | null;
+  city?: string | null;
+  state?: string | null;
 }
 
 /**

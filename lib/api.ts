@@ -1462,6 +1462,12 @@ export interface PublicProfileExperience {
   endDate?: string;
   current: boolean;
   description: string;
+  /** "Full-time" / "Contract" — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+  employmentType?: string | null;
+  /** "New York, NY" — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+  location?: string | null;
+  /** Company logo URL (Logo.dev, like LOGO_URL) — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+  companyLogo?: string | null;
 }
 
 export interface PublicProfileEducation {
@@ -1470,6 +1476,12 @@ export interface PublicProfileEducation {
   university: string;
   graduationYear?: string;
   gpa?: string;
+  /** not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+  startYear?: string | null;
+  /** "Activities and societies: …" — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+  activities?: string | null;
+  /** School logo URL — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+  logo?: string | null;
 }
 
 export interface PublicProfileInsight {
@@ -1515,6 +1527,22 @@ export interface PublicProfileResponse {
     INSIGHTS: string | PublicProfileInsight[];
     /** Freeform achievements text — not in every row. */
     ACHIEVEMENTS?: string | null;
+    /**
+     * "Remote" / "Hybrid" / "On-site" / "Full-time" … — collected at signup
+     * (lib/auth-api.ts sends work_preferences, and GET /api/profile/ reads
+     * WORK_PREFERENCES back) but not confirmed on this public endpoint yet.
+     */
+    WORK_PREFERENCES?: string | string[];
+    /** Target comp floor — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+    TARGET_COMP_MIN?: number | null;
+    /** Target comp ceiling — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+    TARGET_COMP_MAX?: number | null;
+    /** ISO currency for TARGET_COMP_* — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+    TARGET_COMP_CURRENCY?: string | null;
+    /** "Immediately" / "2 weeks" — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+    START_AVAILABILITY?: string | null;
+    /** "Senior IC" / "Lead" — not shipped by the backend yet — see BACKEND_CHANGES_NEEDED §Sponsor deck v2. */
+    SENIORITY_LEVEL?: string | null;
   };
   sponsor_profile?: {
     COMPANY: string;

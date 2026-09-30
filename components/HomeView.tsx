@@ -40,6 +40,7 @@ import {
     type EnrichedApplicantProfile,
     type EnrichedSponsorProfile,
     type ProfileDeckCard,
+    type PublicProfileUserData,
 } from "@/types/profiles";
 import type { PublicProfileResponse } from "@/lib/api";
 import { BlurView } from "expo-blur";
@@ -80,6 +81,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "@/stores/useJobsStore";
+import { transformMyJobRow } from "@/components/jobs/jobTransforms";
 import { useToastStore } from "@/stores/useToastStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
@@ -117,8 +119,19 @@ import {
   DAILY_LIKE_LIMITS,
   PLATES_ENABLED,
   PREMIUM_ENABLED,
+  SPONSOR_CARD_LAYOUT,
+  SPONSOR_DECK_V2,
   getDailyLikeCap,
 } from "@/constants/config";
+import {
+  DecisionPills,
+  SponsorApplicantCard,
+} from "@/components/home/sponsor";
+import {
+  buildApplicantFacts,
+  buildFitSummary,
+  buildRoleContext,
+} from "@/components/home/sponsor/facts";
 import {
   getDailyLikesUsed,
   incrementDailyLikesUsed,
@@ -144,6 +157,25 @@ function parseVariant<T>(v: string | T[] | null | undefined): T[] {
     }
   }
   return Array.isArray(v) ? v : [];
+}
+
+/** Like parseVariant for string lists, but also accepts a plain
+ * comma-separated string ("Remote, Full-time") — WORK_PREFERENCES has
+ * arrived in all three shapes across endpoints. */
+function parseStringList(v: string | string[] | null | undefined): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) {
+    return v.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean);
+  }
+  const trimmed = v.trim();
+  if (trimmed.startsWith("[")) return parseStringList(parseVariant<string>(trimmed));
+  return trimmed.split(",").map((x) => x.trim()).filter(Boolean);
+}
+
+/** A finite number from a loose backend value ("7", "5+", 7), else null. */
+function looseNumber(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" ? parseFloat(v) : NaN;
+  return Number.isFinite(n) ? n : null;
 }
 
 interface HomeViewProps {
@@ -178,6 +210,11 @@ interface HomeViewProps {
    * to be notified, unlike the previous cold on-mount ask.
    */
   onMatchCreated?: () => void;
+  /**
+   * Opens the shell's public-profile overlay (ApplicantPublicProfileView on
+   * the sponsor side). Sponsor deck v2's "View profile" uses it.
+   */
+  onShowPublicProfile?: (userData: PublicProfileUserData) => void;
 }
 
 // Exported so MainApp can compute "cards remaining" for the unfinished-deck
@@ -201,6 +238,7 @@ export function HomeView({
   headerTranslateY,
   onNavigateToMessages,
   onMatchCreated,
+  onShowPublicProfile,
 }: HomeViewProps) {
   const router = useRouter();
   const profileData = useUserProfileStore((state) => state.data);
@@ -226,6 +264,7 @@ export function HomeView({
   // lightweight id/title list).
   const myJobs = useJobsStore((state) => state.myJobs);
   const addSponsoredJob = useJobsStore((state) => state.addSponsoredJob);
+  const setMyJobs = useJobsStore((state) => state.setMyJobs);
   const activeSponsoredJobId = useJobsStore(
     (state) => state.activeSponsoredJobId,
   );
@@ -660,8 +699,35 @@ export function HomeView({
     : null;
   // "Skim & Dive" plates for the current card (PLATES_ENABLED) — derived
   // from the same data the full read renders, so skim and dive never disagree.
+  // ── Sponsor deck v2 (Tori's redesign, components/home/sponsor) ──────
+  // One flag for the whole swap; the applicant-side job deck never sees it.
+  const sponsorV2 = userType === "sponsor" && SPONSOR_DECK_V2;
+  // The active role, enriched from myJobs (salary, arrangement, level,
+  // logo, skills) — falls back to the thin store entry until it hydrates,
+  // so the role row never blocks on it.
+  const sponsorRole = useMemo(() => {
+    if (!sponsorV2 || !activeSponsoredJob) return null;
+    const job = myJobs.find(
+      (j) => String(j.id) === String(activeSponsoredJob.jobId),
+    );
+    return buildRoleContext(job, {
+      jobId: activeSponsoredJob.jobId,
+      title: activeSponsoredJob.title,
+      company: activeSponsoredJob.company,
+    });
+  }, [sponsorV2, activeSponsoredJob, myJobs]);
+  const sponsorFacts = useMemo(() => {
+    if (!sponsorV2 || !currentData) return null;
+    const card = currentData as ProfileDeckCard;
+    const uid = card.USER_ID ? String(card.USER_ID) : "";
+    return buildApplicantFacts(card, (uid && fullProfileCache[uid]) || null);
+  }, [sponsorV2, currentData, fullProfileCache]);
+  const sponsorFit = useMemo(
+    () => (sponsorFacts ? buildFitSummary(sponsorFacts, sponsorRole) : null),
+    [sponsorFacts, sponsorRole],
+  );
   const plates = useMemo(() => {
-    if (!PLATES_ENABLED || !currentData) return [];
+    if (!PLATES_ENABLED || !currentData || sponsorV2) return [];
     if (userType === "sponsor") {
       const card = currentData as ProfileDeckCard;
       const uid = card.USER_ID ? String(card.USER_ID) : "";
@@ -686,6 +752,7 @@ export function HomeView({
     activeSponsoredJobId,
     myJobs,
     profileData?.skills,
+    sponsorV2,
   ]);
   const plateAnchor = useMemo(() => deriveAnchor(plates), [plates]);
 
@@ -717,6 +784,27 @@ export function HomeView({
     ) &&
     !(userType === "applicant" && jobsError != null && jobs.length === 0) &&
     !(userType === "applicant" && !jobsLoading && jobs.length === 0);
+
+  // Deck-header pieces (see the header render for why v2 changes them).
+  // The hero layout's role row replaces the header pill only while a live
+  // card is on screen and the role has resolved; empty/loading/done states
+  // keep the pill so the sponsor can always switch roles.
+  const showDeckGauge = !sponsorV2;
+  const showHeaderRolePill =
+    userType === "sponsor" &&
+    sponsoredJobs.length > 0 &&
+    !(
+      sponsorV2 &&
+      deckIsActive &&
+      SPONSOR_CARD_LAYOUT === "hero" &&
+      !!sponsorRole &&
+      // The role row only exists while the v2 card actually renders, and
+      // is untappable under the already-liked overlay (pointerEvents
+      // "none") — keep the header pill in both cases.
+      !!sponsorFacts &&
+      !isAlreadyLiked
+    );
+  const showDeckHeader = showDeckGauge || showHeaderRolePill;
 
   // ── Prefetch the hero image for upcoming cards ────────────────────────────
   // The hero photo (applicant avatar / job's sponsor avatar) used to be the
@@ -823,6 +911,12 @@ export function HomeView({
       try {
         const response = await getMyJobs();
         if (!response.jobs?.length) return;
+        // Full rows for the sponsor deck's role context (salary, remote,
+        // level, logo, skills). myJobs is otherwise only filled by
+        // JobsView — only seed it if JobsView hasn't already.
+        if (SPONSOR_DECK_V2 && useJobsStore.getState().myJobs.length === 0) {
+          setMyJobs(response.jobs.map(transformMyJobRow));
+        }
         response.jobs.forEach((j) => {
           addSponsoredJob({
             jobId: String(j.JOB_ID),
@@ -853,6 +947,32 @@ export function HomeView({
     };
     bootstrap();
   }, [userType]);
+
+  // The bootstrap above bails when activeSponsoredJobId is already set
+  // (persisted from an earlier session), which would leave myJobs empty
+  // until the sponsor opens the Jobs tab — and the sponsor deck's role
+  // context (comp, remote, level, skills) with it. Hydrate once here in
+  // that case. Skips when JobsView is mid-fetch or has already filled it;
+  // silent on failure like the bootstrap.
+  const myJobsHydrationAttempted = useRef(false);
+  useEffect(() => {
+    if (!SPONSOR_DECK_V2 || userType !== "sponsor") return;
+    if (!activeSponsoredJobId) return; // the bootstrap covers this case
+    if (myJobsHydrationAttempted.current) return;
+    const store = useJobsStore.getState();
+    if (store.myJobs.length > 0 || store.isMyJobsLoading) return;
+    myJobsHydrationAttempted.current = true;
+    (async () => {
+      try {
+        const response = await getMyJobs();
+        if (useJobsStore.getState().myJobs.length === 0) {
+          setMyJobs((response.jobs || []).map(transformMyJobRow));
+        }
+      } catch {
+        // silent — the card just shows fewer role-side fit rows
+      }
+    })();
+  }, [userType, activeSponsoredJobId]);
 
   // Fetch jobs/profiles on mount (only if we don't have recent data).
   //
@@ -1063,6 +1183,24 @@ export function HomeView({
             achievements: ap.ACHIEVEMENTS || "",
             prompts: parseVariant(ap.INSIGHTS),
             bio: pub.BIO || "",
+            skills: parseStringList(ap.SKILLS),
+            // Sponsor deck v2 — optional; most aren't shipped yet and read
+            // as null/[] until they are (the card omits those rows).
+            yearsExperience: looseNumber(ap.YEARS_EXPERIENCE),
+            currentRole: ap.CURRENT_ROLE || null,
+            workPreferences: parseStringList(ap.WORK_PREFERENCES),
+            targetComp:
+              ap.TARGET_COMP_MIN != null || ap.TARGET_COMP_MAX != null
+                ? {
+                    min: looseNumber(ap.TARGET_COMP_MIN),
+                    max: looseNumber(ap.TARGET_COMP_MAX),
+                    currency: ap.TARGET_COMP_CURRENCY || null,
+                  }
+                : null,
+            startAvailability: ap.START_AVAILABILITY || null,
+            level: ap.SENIORITY_LEVEL || null,
+            city: pub.CITY || null,
+            state: pub.STATE || null,
           },
         }));
       } catch {
@@ -1907,7 +2045,11 @@ export function HomeView({
             no matter where you are in a long profile. */}
         <View style={styles.pageContainer}>
           {/* Sticky header — outside the scroll so the progress and
-              role-switcher never leave the viewport. */}
+              role-switcher never leave the viewport. Sponsor deck v2
+              (Tori's redesign) drops the gauge, and while a card is live
+              in the hero layout its role row IS the switcher — so the
+              header only renders when it has something to show. */}
+          {showDeckHeader && (
           <Animated.View
             entering={FadeInDown}
             onLayout={(e) => {
@@ -1924,6 +2066,7 @@ export function HomeView({
           >
             {/* Progress indicator — hidden entirely (opacity 0, layout
                 preserved) when the deck isn't active; see deckIsActive. */}
+            {showDeckGauge && (
             <View
               style={[
                 styles.progressHeaderContainer,
@@ -1977,6 +2120,7 @@ export function HomeView({
                 })}
               </View>
             </View>
+            )}
             {/* Role switcher — sponsor-only. Hidden when the sponsor has
                 no sponsored jobs (deck shows the empty state). Always
                 tappable so the sponsor can change roles whenever, even
@@ -1986,7 +2130,7 @@ export function HomeView({
                 pending-applicants count badge inline when the active
                 role has unactioned interest, so the most important
                 signal lives right in the header. */}
-            {userType === "sponsor" && sponsoredJobs.length > 0 && (
+            {showHeaderRolePill && (
               <TouchableOpacity
                 onPress={() => {
                   // A swipe action still in flight for the CURRENT role
@@ -2028,6 +2172,7 @@ export function HomeView({
             )}
 
           </Animated.View>
+          )}
 
           {isDeckFinished ? (
             <View style={styles.fullEmptyContainer}>
@@ -2419,7 +2564,14 @@ export function HomeView({
                 ) : (
                   <Animated.ScrollView
                     ref={scrollRef as any}
-                    contentContainerStyle={styles.profileScrollContent}
+                    // v2's card owns its 16pt gutters (the Figma's), so its
+                    // scroll bleeds through the page padding like PlateDeck.
+                    style={sponsorV2 ? styles.sponsorV2Bleed : undefined}
+                    contentContainerStyle={
+                      sponsorV2
+                        ? styles.sponsorV2ScrollContent
+                        : styles.profileScrollContent
+                    }
                     showsVerticalScrollIndicator={false}
                     onScroll={scrollHandler}
                     scrollEventThrottle={16}
@@ -2428,7 +2580,36 @@ export function HomeView({
                         on-iPad issue as PlateDeck's read section, capped
                         the same way. */}
                     <ScreenContainer variant="content">
-                      {userType === "sponsor" ? (
+                      {sponsorV2 && sponsorFacts && sponsorFit ? (
+                        <SponsorApplicantCard
+                          key={String(currentItemId ?? "card")}
+                          facts={sponsorFacts}
+                          role={sponsorRole}
+                          fit={sponsorFit}
+                          layout={SPONSOR_CARD_LAYOUT}
+                          onOpenRoleSwitcher={() => {
+                            // Same in-flight guard as the header pill.
+                            if (isActionPending) return;
+                            setShowJobSwitcher(true);
+                          }}
+                          onViewProfile={
+                            onShowPublicProfile
+                              ? () =>
+                                  onShowPublicProfile({
+                                    USER_ID: sponsorFacts.userId,
+                                    name: sponsorFacts.name,
+                                    profileImageUrl: sponsorFacts.photoUrl,
+                                    appliedRole: sponsorRole?.title,
+                                  })
+                              : undefined
+                          }
+                          onReport={
+                            reportTarget?.userId
+                              ? () => setReportSheetOpen(true)
+                              : undefined
+                          }
+                        />
+                      ) : userType === "sponsor" ? (
                         <ApplicantProfileCard
                           currentData={currentData as ProfileDeckCard}
                           fullProfileCache={fullProfileCache}
@@ -2459,7 +2640,12 @@ export function HomeView({
                   advance/reverse boundary. Hidden during the "already
                   liked" dimmed state — that overlay's own Continue button
                   is the only interactive thing then. */}
-              {!!reportTarget?.userId && !isAlreadyLiked && (
+              {/* v2's card carries its own report affordances (a flag on
+                  the hero photo, a "Report <name>" link closing every
+                  layout), so the floating flag stays with the old card. */}
+              {!!reportTarget?.userId &&
+                !isAlreadyLiked &&
+                !(sponsorV2 && sponsorFacts) && (
                 <TouchableOpacity
                   style={styles.reportFlagBtn}
                   onPress={() => setReportSheetOpen(true)}
@@ -2529,6 +2715,18 @@ export function HomeView({
                       ~1000pt+, same phone-only oversight ScreenContainer
                       fixes for reading columns elsewhere. */}
                   <View style={styles.verdictBarWrap}>
+                    {sponsorV2 ? (
+                      /* Tori's pills: ink Pass, green Connect. */
+                      <DecisionPills
+                        passLabel="Pass"
+                        acceptLabel="Connect"
+                        onPass={() => handleSwipe(false)}
+                        onAccept={() => handleSwipe(true)}
+                        disabled={isActionPending}
+                        passAccessibilityLabel={`Pass on ${sponsorFacts?.firstName || "this applicant"}`}
+                        acceptAccessibilityLabel={`Connect with ${sponsorFacts?.firstName || "this applicant"}`}
+                      />
+                    ) : (
                     <VerdictBar
                       onPass={() => handleSwipe(false)}
                       onAccept={() => handleSwipe(true)}
@@ -2550,6 +2748,7 @@ export function HomeView({
                           : "Connect with this applicant"
                       }
                     />
+                    )}
                   </View>
                 </Animated.View>
               )}
@@ -2801,6 +3000,11 @@ const styles = StyleSheet.create({
   // Vertical scroll for the active profile. Bottom padding leaves room
   // for the sticky action bar so the last section isn't covered.
   profileScrollContent: { paddingBottom: 120, paddingTop: 4 },
+  // Sponsor deck v2: cancel the page padding (the card pads itself at the
+  // Figma's 16pt gutter) and drop the bottom pad — the card's own tail
+  // spacer already clears the floating pills.
+  sponsorV2Bleed: { marginHorizontal: -PAGE_PADDING },
+  sponsorV2ScrollContent: { paddingTop: 0, paddingBottom: 0 },
 
   // ── "Already liked" overlay (Review-again replay guard) ────────────
 

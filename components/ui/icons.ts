@@ -17,6 +17,7 @@ export { default as AlertCircle } from "lucide-react-native/dist/esm/icons/circl
 export { default as AlertTriangle } from "lucide-react-native/dist/esm/icons/triangle-alert.js";
 export { default as ArrowLeft } from "lucide-react-native/dist/esm/icons/arrow-left.js";
 export { default as ArrowRight } from "lucide-react-native/dist/esm/icons/arrow-right.js";
+export { default as ArrowUpRight } from "lucide-react-native/dist/esm/icons/arrow-up-right.js";
 export { default as Award } from "lucide-react-native/dist/esm/icons/award.js";
 export { default as Bell } from "lucide-react-native/dist/esm/icons/bell.js";
 export { default as BellRing } from "lucide-react-native/dist/esm/icons/bell-ring.js";
@@ -51,6 +52,7 @@ export { default as Home } from "lucide-react-native/dist/esm/icons/house.js";
 export { default as Image } from "lucide-react-native/dist/esm/icons/image.js";
 export { default as ImageIcon } from "lucide-react-native/dist/esm/icons/image.js";
 export { default as Info } from "lucide-react-native/dist/esm/icons/info.js";
+export { default as Lightbulb } from "lucide-react-native/dist/esm/icons/lightbulb.js";
 export { default as Link2 } from "lucide-react-native/dist/esm/icons/link-2.js";
 export { default as List } from "lucide-react-native/dist/esm/icons/list.js";
 export { default as Lock } from "lucide-react-native/dist/esm/icons/lock.js";

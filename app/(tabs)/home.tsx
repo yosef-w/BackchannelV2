@@ -21,6 +21,7 @@ export default function HomeTab() {
       headerTranslateY={shell.headerTranslateY}
       onNavigateToMessages={shell.navigateToMessages}
       onMatchCreated={shell.requestPushPermission}
+      onShowPublicProfile={shell.showPublicProfile}
     />
   );
 }

@@ -383,3 +383,21 @@ Phase 8's applicant job browse (**8.1**) is merged to main — `components/Appli
 ---
 
 *(Further entries for later UX-plan phases — agency/growth — will be appended here as those phases are implemented.)*
+
+---
+
+## Sponsor deck v2 (Tori's redesign) — fields the new card can use
+
+**Status (2026-09-29):** 🟢 Low priority, nothing blocking. The sponsor-side deck card is being rebuilt to Tori's "Home & Matches" Figma: a photo card with a stat grid, a "YOUR ROLE" fit table comparing the applicant to the sponsor's active role, and a LinkedIn-style experience timeline. The Figma assumes data the backend doesn't send (or doesn't collect) yet. **The client already reads every field below optionally and hides the row/stat when it's absent** — no placeholders, no "N/A" — so each one can ship independently and simply lights up on the card when it arrives. Types live in `lib/api.ts` (`PublicProfileResponse.applicant_profile`, `PublicProfileExperience`, `PublicProfileEducation`); derivations in `components/home/sponsor/facts.ts`.
+
+| Field | Where | Notes |
+|---|---|---|
+| `TARGET_COMP_MIN`, `TARGET_COMP_MAX` (numbers, annual), `TARGET_COMP_CURRENCY` (ISO code) | applicant — on both `/api/profiles/pack/` rows and `/api/profiles/<id>/public/` `applicant_profile` | **Not collected anywhere today.** Needs a signup/profile field AND an explicit opt-in consent ("show my target comp to sponsors") — only return it to sponsors when the applicant has opted in. Drives the "Comp" stat and fit row. |
+| `START_AVAILABILITY` (free text: "Immediately", "2 weeks", "Jan 2027") | applicant — pack + public | Not collected. Drives the "Start date" stat. (The fit row also needs a start date on the role side, which job postings don't have — no ask there yet.) |
+| `SENIORITY_LEVEL` (free text: "Senior IC", "Lead") | applicant — pack + public | Not collected. Compared against the role's `EXPERIENCE_LEVEL` for the "Level" fit row. |
+| `WORK_PREFERENCES` (string array) | applicant — pack + public | **Already collected at signup** (`work_preferences`, readable on `GET /api/profile/`) — just needs to be included on these two endpoints. Array or JSON string both fine. Drives "Work style" / "Seeking". |
+| `LIKED_AT` (ISO timestamp) | pack rows where `HAS_LIKED_JOB` is true | When the applicant liked the sponsor's role — drives the "2D AGO" label. The client also accepts `LIKE_CREATED_AT` / `LIKED_AT_TS`. |
+| `employmentType`, `location`, `companyLogo` | each object in `PROFESSIONAL_EXPERIENCES` | `employmentType` / `location` from the résumé parse when present; `companyLogo` resolved via Logo.dev the same way job `LOGO_URL` is (PR #62). |
+| `startYear`, `activities`, `logo` | each object in `EDUCATION_ENTRIES` | `startYear` turns "2019" into "2015 - 2019"; `activities` is the "Activities and societies" line; `logo` via Logo.dev like above. |
+
+**Frontend status:** done — fields are typed as optional, parsed defensively, and omitted from the card when missing. Nothing to change client-side when any of them ships.

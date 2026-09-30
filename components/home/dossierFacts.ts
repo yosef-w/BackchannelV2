@@ -34,6 +34,60 @@ export interface LedgerFact {
 }
 
 /**
+ * The current seat: an explicitly-current entry wins; else the most recent
+ * start year; else the first row as listed. Shared by the ledger below and
+ * the sponsor deck's facts (components/home/sponsor/facts.ts) so both name
+ * the same job.
+ */
+export function currentSeatEntry(
+  experiences: PublicProfileExperience[] | undefined | null,
+): PublicProfileExperience | null {
+  const list = Array.isArray(experiences)
+    ? experiences.filter((exp) => !!exp)
+    : [];
+  if (list.length === 0) return null;
+  return (
+    list.find((exp) => exp.current === true) ??
+    [...list].sort(
+      (a, b) =>
+        (yearFromDateString(b.startDate) ?? -1) -
+        (yearFromDateString(a.startDate) ?? -1),
+    )[0] ??
+    null
+  );
+}
+
+/**
+ * Whole years in the field: span from the earliest start year to the
+ * latest end year (today for a current role), clamped to today so a
+ * typo'd future date can't claim decades. null when no start year parses.
+ */
+export function experienceSpanYears(
+  experiences: PublicProfileExperience[] | undefined | null,
+  nowYear: number = new Date().getFullYear(),
+): number | null {
+  const list = Array.isArray(experiences)
+    ? experiences.filter((exp) => !!exp)
+    : [];
+  const startYears = list
+    .map((exp) => yearFromDateString(exp.startDate))
+    .filter((year): year is number => year !== null);
+  if (startYears.length === 0) return null;
+  const earliest = Math.min(...startYears);
+  const latest = Math.max(
+    ...list.map((exp) => {
+      if (exp.current) return nowYear;
+      return (
+        yearFromDateString(exp.endDate) ??
+        yearFromDateString(exp.startDate) ??
+        earliest
+      );
+    }),
+  );
+  return Math.max(0, Math.min(latest, nowYear) - earliest);
+}
+
+/**
  * "EXPERIENCE" ledger row: total years in the field (span from earliest
  * start to latest end / today) with the current seat as the sub-line.
  * Falls back gracefully — years without a seat, seat without years, or
@@ -48,39 +102,18 @@ export function deriveExperienceFact(
     : [];
   if (list.length === 0) return null;
 
-  // Current seat: an explicitly-current entry wins; else the most recent
-  // start year; else the first row as listed.
-  const seat_entry =
-    list.find((exp) => exp.current === true) ??
-    [...list].sort(
-      (a, b) =>
-        (yearFromDateString(b.startDate) ?? -1) -
-        (yearFromDateString(a.startDate) ?? -1),
-    )[0];
+  const seat_entry = currentSeatEntry(list);
   const seat = joinFacts([seat_entry?.jobTitle, seat_entry?.company]);
 
-  const startYears = list
-    .map((exp) => yearFromDateString(exp.startDate))
-    .filter((year): year is number => year !== null);
-
-  let years: string | null = null;
-  if (startYears.length > 0) {
-    const earliest = Math.min(...startYears);
-    const latest = Math.max(
-      ...list.map((exp) => {
-        if (exp.current) return nowYear;
-        return (
-          yearFromDateString(exp.endDate) ??
-          yearFromDateString(exp.startDate) ??
-          earliest
-        );
-      }),
-    );
-    // Clamp to today so a typo'd future date can't claim decades.
-    const span = Math.max(0, Math.min(latest, nowYear) - earliest);
-    years =
-      span <= 0 ? "Under a year" : span === 1 ? "1 year" : `${span} years`;
-  }
+  const span = experienceSpanYears(list, nowYear);
+  const years: string | null =
+    span === null
+      ? null
+      : span <= 0
+        ? "Under a year"
+        : span === 1
+          ? "1 year"
+          : `${span} years`;
 
   if (years && seat) return { value: years, sub: seat };
   if (years) return { value: years };
