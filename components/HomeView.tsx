@@ -2702,6 +2702,7 @@ export function HomeView({
                 <Animated.View
                   style={[
                     styles.floatingActionsRow,
+                    sponsorV2 && styles.floatingActionsRowV2,
                     floatingActionsAnimatedStyle,
                   ]}
                   pointerEvents="box-none"
@@ -3022,6 +3023,12 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: Platform.OS === "ios" ? 28 : 20,
     paddingHorizontal: 24,
+  },
+  // Sponsor deck v2: the pills span the Figma's 16pt gutters (370 wide on
+  // a 402 phone), so cancel the page padding the same way the card does.
+  floatingActionsRowV2: {
+    marginHorizontal: -PAGE_PADDING,
+    paddingHorizontal: 16,
   },
   // Caps the verdict bar to a control's width instead of the full page —
   // ~984pt in portrait, ~1328pt landscape on a 13" iPad otherwise. Same

@@ -275,8 +275,10 @@ export function MoreAboutSection({
 }
 
 const styles = StyleSheet.create({
-  section: { paddingHorizontal: 16, paddingTop: 16, marginTop: 24 },
-  sectionBody: { marginTop: 24 },
+  // Figma: sections abut (16 bottom + 16 top = 32 between the last item
+  // and the next eyebrow); eyebrow → content is 44.
+  section: { paddingHorizontal: 16, paddingTop: 16, marginTop: 16 },
+  sectionBody: { marginTop: 28 },
   about: {
     fontFamily: Fonts.sans,
     fontSize: 15,
