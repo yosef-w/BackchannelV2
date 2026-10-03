@@ -74,7 +74,7 @@ After the match
 BUILT FOR TRUST
 - Sponsors verify with a work email.
 - Sign in with Apple, or with email. Apple's Hide My Email works.
-- Report anyone from the feed, from a profile, or from a conversation. Reports go to a human, and we aim to act within 24 hours.
+- Report anyone from the feed, from a profile, or from a conversation. Reports go to a human, and we act on them promptly.
 - Unmatch at any time.
 - Delete your account and data from inside the app, under Account.
 
@@ -100,7 +100,7 @@ Notes on truthfulness (each claim mapped to code):
 | Report / unmatch | `components/ui/ReportUserSheet.tsx`, `ThreadMenuSheet.tsx`, `lib/api.ts` |
 | Delete account | `components/profile/PrivacySecurityScreen.tsx` |
 
-**[CONFIRM]** (1) `privacy.html` exists at that path (only `terms.html` is hardcoded in `constants/config.ts` next to `PRIVACY_POLICY_URL`; check the exact URL). (2) The "24 hours" language is a real, staffed commitment (see section 10). (3) "Waitlisted" is user-visible wording in Matches. (4) That the sponsor-side "Post the roles" and "browse applicants for them" matches current behavior (backend feed relevance is still open in `docs/BACKEND_CHANGES_NEEDED.md` §F, so do not promise "the right candidates," and this copy doesn't).
+Resolved 2026-10-03: `privacy.html` and `terms.html` both return 200 at the `PRIVACY_POLICY_URL` / `TERMS_URL` values in `constants/config.ts`; the moderation promise was softened to "promptly" everywhere (no staffed 24h inbox at launch). **[CONFIRM]** (1) "Waitlisted" is user-visible wording in Matches. (2) That the sponsor-side "Post the roles" and "browse applicants for them" matches current behavior (backend feed relevance is still open in `docs/BACKEND_CHANGES_NEEDED.md` §F, so do not promise "the right candidates," and this copy doesn't).
 
 ---
 
@@ -139,7 +139,7 @@ The first version of BackChannel.
 - Message once you match
 - Check-ins that keep every referral moving
 - Sign in with Apple or email
-- Report and unmatch tools, with reports reviewed within 24 hours
+- Report and unmatch tools, with every report reviewed by a person
 
 We're a small team and we read every message: support@backchannel.app
 ```
@@ -215,10 +215,10 @@ WHAT IT IS
 BackChannel is a two-sided job-referral marketplace. Applicants browse a daily deck of jobs and express interest. Sponsors (employees at a company) browse applicants and connect. A match unlocks messaging and a referral flow.
 
 DEMO ACCOUNTS (fully populated, no verification needed)
-Applicant: [email] / [password]
-Sponsor:   [email] / [password]
-The sponsor account's work email is pre-verified. Real sponsors must verify a work-email link, which our demo bypasses. [CONFIRM: seed both accounts with a pre-existing match, a job, an open check-in, and a message thread.]
-Both demo accounts are matched with each other so the Inbox, Matches, and referral flow can be tested without needing a second device.
+Applicant: sarah.chen@demo.backchannel.app / DemoPass123!
+Sponsor:   emily.rodriguez@demo.backchannel.app / DemoPass123!
+The sponsor account's work email is pre-verified. Real sponsors must verify a work-email link, which our demo bypasses.
+Both demo accounts are matched with each other on the sponsor's "Senior Backend Engineer" role, with a message thread and a completed referral, so the Inbox, Matches, check-in, and referral flow can be tested without needing a second device. The two roles see different home screens by design: the applicant browses a deck of jobs, the sponsor browses a deck of applicants.
 
 SIGN IN WITH APPLE
 Sign in with Apple is offered alongside email sign-in on the first screen. Hide My Email is supported: the account is created with the private-relay address Apple provides. Sponsors' work email is verified separately (Feed > "Verify your work email"), so a relay address as the login does not block sponsor verification. Transactional mail is sent from our domain so it reaches relay addresses. [CONFIRM: the domain is registered with Apple's private email relay service.]
@@ -227,10 +227,10 @@ REPORTING AND BLOCKING (Guideline 1.2)
 1. Feed: tap the small flag button over any card. Choose a reason (harassment, spam or scam, inappropriate content, fake profile, other), optionally add detail, and submit. Reporting also blocks the person server-side, so the card is removed from the deck immediately.
 2. Profile sheets: open a profile (Matches, Inbox, or a card) and choose Report.
 3. Messages: open a conversation, open the menu at the top right, and choose Report or Unmatch. Unmatching permanently ends the match.
-Users accept the Terms at signup (linked under the sign-up form). There is no separate stand-alone "block" button: report and unmatch are the block mechanisms. [CONFIRM: describe accurately once the backend behavior is verified; consider adding a dedicated Block action if the reviewer pushes back.]
+Users accept the Terms at signup (linked under the sign-up form). There is no separate stand-alone "block" button: reporting blocks the reported person for the reporter, and unmatching ends an existing match. Either one stops all further contact.
 
 MODERATION
-Every report is emailed to our moderation inbox and we review reports and act on them (removal of content and/or account) within 24 hours, seven days a week. Contact: support@backchannel.app. [CONFIRM: backend MODERATION_ALERT_EMAIL is set in production, per docs/BACKEND_CHANGES_NEEDED.md, and a named person covers the inbox.]
+Every report is emailed to our moderation inbox, where a person reviews it and acts on it promptly (removal of content and/or account, and the reporter is already protected from further contact the moment they report). Contact: support@backchannel.app. [CONFIRM before submitting: backend MODERATION_ALERT_EMAIL is set in production and support@backchannel.app receives mail, per docs/BACKEND_CHANGES_NEEDED.md §W #4–5.]
 
 ACCOUNT DELETION (Guideline 5.1.1(v))
 Account > Privacy & Security > Delete Account. This removes the account and its data, including for accounts created with Apple / Hide My Email. [CONFIRM: SSO-only deletion works end-to-end on the backend, see §W #3.]
@@ -241,10 +241,10 @@ This version has no in-app purchases or subscriptions.
 PERMISSIONS
 Photos (profile picture, résumé upload), and notifications (check-in reminders), each requested in context.
 
-Contact for questions during review: [name], [phone], [email].
+Contact for questions during review: Yosef Wolday, [phone], yosefwolday@yahoo.com.
 ```
 
-The 24 hour language in the store listing and review notes creates an obligation. If nobody is watching the inbox at launch, soften "within 24 hours" to "promptly" everywhere it appears.
+Decisions taken 2026-10-03: demo pair is Sarah Chen / Emily Rodriguez (the only seeded pair with a match, thread, and referral); the moderation promise is "promptly," not "within 24 hours" (keep `docs/ops/MODERATION_RUNBOOK.md`'s 24h target as the internal goal; tighten the public wording later without a review); ship without a stand-alone Block action and add one only if a reviewer asks. Remaining [CONFIRM] items depend on the backend (§W #3 SSO deletion, §W #4–5 moderation email and MX, Apple private-relay domain registration). Fill in the phone number, and switch the contact email to support@backchannel.app once it receives mail.
 
 ---
 
@@ -259,7 +259,7 @@ Computed by script when this file was generated:
 | Alt A subtitle | 29 | 30 |
 | Alt B name / subtitle | 25 / 30 | 30 |
 | Promotional text | 159 | 170 |
-| Description | 2391 | 4000 |
+| Description | 2388 | 4000 |
 | Keywords (primary) | 98 | 100 |
 | Keywords alt 1 | 100 | 100 |
 | Keywords alt 2 | 90 | 100 |
