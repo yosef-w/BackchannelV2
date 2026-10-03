@@ -36,11 +36,11 @@ Shorter: "Job referrals, without the awkward ask."
 >
 > When both sides say yes, it's a match, and a conversation opens in the Inbox. If the sponsor decides to refer someone, The Signing walks them through it: a few honest statements about the candidate, a signature, and a clean packet to submit through their company's own applicant-tracking process. From there, applicants and sponsors check in as the referral moves along, so neither side is left guessing about where things stand.
 >
-> Trust is a design constraint, not an afterthought. You can report anyone from the feed, from a profile, or from a conversation; reports go to a person and we aim to review within 24 hours. You can unmatch at any time and delete your account from inside the app. Sign in with Apple is supported, including Hide My Email.
+> Trust is a design constraint, not an afterthought. You can report anyone from the feed, from a profile, or from a conversation; reports go to a person and are acted on promptly. You can unmatch at any time and delete your account from inside the app. Sign in with Apple is supported, including Hide My Email.
 >
 > BackChannel doesn't guarantee offers, and it doesn't apply for you. Sponsors decide who they'll back and companies decide who they hire. What we can do is put a real person on the inside in front of you, and give you both a reason to talk. It's made by Bluejay Labs LLC in Austin, Texas. (Approx. 290 words)
 
-**[CONFIRM]** the "post the roles their company is hiring for" and "24 hours" claims hold on launch day.
+**[CONFIRM]** the "post the roles their company is hiring for" claim holds on launch day. (The moderation wording was softened to "promptly" on 2026-10-03; see `APP_STORE_LISTING.md` section 10.)
 
 ## Founder story skeleton
 
