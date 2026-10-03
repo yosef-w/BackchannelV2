@@ -1,10 +1,10 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-26 (added **§AB** — remote-config endpoint + https email links for the launch-readiness work; added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
+**Last updated:** 2026-09-27 (added **§AE** — pulled the `backchannel.it.com` universal-link checklist and the support-email domain decision out into their own section addressed to Nico specifically, so they don't get missed; added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§X** — two ready-to-apply fixes (🟠 medium, new, 2026-09-22), written up as full explanation + exact diff rather than pushed as a branch/PR since this is Nico's repo: transactional emails (verify/reset/welcome) link to the marketing website instead of deep-linking into the app, and a Daphne-proxy-timeout-vs-Anthropic-call race that produces false "resume couldn't be parsed" errors on requests that actually succeeded — see §X. **§W** — App Store submission alignment (🔴 high, new, 2026-09-22): the rewritten Privacy Policy/Terms going live at `backchannelapp.netlify.app` state things the backend has to keep true (résumé only after match → §V #1 is now launch-blocking), SSO-only accounts (Apple "Hide My Email") have no working path to delete their account (Apple 5.1.1(v)), and support/moderation email needs `Reply-To` + `MODERATION_ALERT_EMAIL` + Apple relay-domain registration — see §W. **§V** — security audit (🔴 high): a joint frontend+backend read-only audit ahead of App Store submission found no broken authorization or SQL injection (both clean), but the sponsor feed returns applicant phone/DOB/résumé before any match, uploaded images are public-read forever, and Django + a few libs are past their security-support window. Entirely backend-owned — see §V for the full breakdown and fix order. **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
+> **Open items:** **§AE** — for Nico specifically (🟠 medium, new, 2026-09-27): what `backchannel.it.com` needs before we switch email links to it (three items: serve an AASA file, a Cloudflare skip rule for `/.well-known/*`, and a fallback page — full checklist + copy-pasteable JSON in §AE), plus the support email domain having no MX record (blocks launch — pick a domain, add MX, tell us if the address changes). **§X** — two ready-to-apply fixes (🟠 medium, new, 2026-09-22), written up as full explanation + exact diff rather than pushed as a branch/PR since this is Nico's repo: transactional emails (verify/reset/welcome) link to the marketing website instead of deep-linking into the app, and a Daphne-proxy-timeout-vs-Anthropic-call race that produces false "resume couldn't be parsed" errors on requests that actually succeeded — see §X. **§W** — App Store submission alignment (🔴 high, new, 2026-09-22): the rewritten Privacy Policy/Terms going live at `backchannelapp.netlify.app` state things the backend has to keep true (résumé only after match → §V #1 is now launch-blocking), SSO-only accounts (Apple "Hide My Email") have no working path to delete their account (Apple 5.1.1(v)), and support/moderation email needs `Reply-To` + `MODERATION_ALERT_EMAIL` + Apple relay-domain registration — see §W. **§V** — security audit (🔴 high): a joint frontend+backend read-only audit ahead of App Store submission found no broken authorization or SQL injection (both clean), but the sponsor feed returns applicant phone/DOB/résumé before any match, uploaded images are public-read forever, and Django + a few libs are past their security-support window. Entirely backend-owned — see §V for the full breakdown and fix order. **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -172,12 +172,8 @@ The frontend now supports **universal links** (site PR: `BackChannel-Netlify` #2
 - **Use `https://backchannelapp.netlify.app/verify-email?token=…` and `/reset-password?token=…`** — i.e. keep the original `{FRONTEND_URL}/<path>?token=…` pattern, just make sure `FRONTEND_URL` points at that site. With the app installed, iOS opens the link *directly in the app* (route `app/verify-email.tsx`); without it (or on a laptop) the visitor lands on a real page with an App Store button instead of a dead end. The original bug was the marketing site having no page at those paths — that page now exists.
 - Why this beats the custom scheme `backchannelv2://` from §X #1: a custom scheme does **nothing** when the app isn't installed and Gmail/Outlook/many webviews refuse to open non-http links at all (a link that silently does nothing). `https` links work everywhere and degrade gracefully.
 - **Ordering:** don't switch emails until (a) the Netlify PR is merged and (b) an app build containing `associatedDomains` is on users' phones — before that, an `https` link would open the fallback page rather than the app. Until then §X #1's custom-scheme change is still a strict improvement over today.
-- **Which domain? (decision for you + Nico.)** There are two sites: `backchannelapp.netlify.app` (Yosef's; legal pages + beta hub; the universal-link files are already written for it in `BackChannel-Netlify` PR #2) and `https://backchannel.it.com` (the public marketing/waitlist site, hosted on DigitalOcean behind Cloudflare, controlled by Nico; the backend's `waitlist_confirmation.html` already links to it). **The app now trusts both** (`associatedDomains` lists both hosts, so no rebuild is needed to switch), and a host with no verification file yet is simply ignored by iOS. Recommended: launch on the Netlify host (works today, no dependency), and move email links to `backchannel.it.com` once Nico adds the following there, since it's the canonical brand domain:
-  1. Serve `/.well-known/apple-app-site-association` with `Content-Type: application/json`, **HTTP 200, no redirects**, contents identical to the Netlify copy (`ZWFR8LC25W.com.yosefwolday.backchannelv2`; paths `/verify-email`, `/reset-password`, `/job/*`, `/invite/*`).
-  2. Make sure **Cloudflare doesn't challenge or rewrite that path** (Bot Fight Mode / "Under Attack" / a WAF rule can return a 403 or interstitial to Apple's fetcher, which silently breaks universal links). Add a WAF skip rule for `/.well-known/*`.
-  3. Add fallback pages for the same four paths (what the Netlify `open.html` does: App Store button + `backchannelv2://` hand-off) for people without the app.
-  4. Note `backchannel.it.com` has **no MX record** either, so it can't receive support email today.
-- If the site later moves to `backchannel.app`, change `FRONTEND_URL` and tell us: the app's `associatedDomains` and the site's AASA file both need the new host (and, unlike the two above, that one needs a rebuild).
+- **Which domain?** We're launching on the Netlify host (works today, `FRONTEND_URL` should point there for now). `backchannel.it.com` — the site Nico runs — is the intended long-term home for these links, but it needs three things added first. **See §AE below: that's the checklist for Nico specifically, so it doesn't get missed inside this email-routing note.** The app already trusts both hosts (no rebuild needed to switch once §AE is done).
+- If the site later moves again (e.g. to `backchannel.app`), change `FRONTEND_URL` and tell us: the app's `associatedDomains` and the new site's AASA file both need the new host, and — unlike swapping between the two hosts already trusted — that one needs a rebuild.
 
 ---
 
@@ -207,6 +203,59 @@ Found by reading the code while writing `docs/ops/MODERATION_RUNBOOK.md` / `INCI
 10. **Lifecycle messaging (`docs/ops/LIFECYCLE_MESSAGING.md`) needs backend that doesn't exist:** a scheduler, `last_active_at`, and a user timezone (`last_login` is not "last active"), plus a new `reminders` notification type with its own toggle and an unsubscribe endpoint. The Privacy Policy discloses only transactional email; lifecycle email needs a policy update first. Not launch-blocking.
 
 **Fix order:** 1 → 3 → 5 → 2 → 4 → 7 → 6 (counsel, in parallel) → rest.
+
+---
+
+## §AE — For Nico: what `backchannel.it.com` needs before we can point the app at it, + the support email 🟠 Medium priority (new section, 2026-09-27 — for Nico specifically)
+
+Pulling this out on its own so it doesn't get lost inside §AB's email-routing note. This is about **your site** (`backchannel.it.com`, DigitalOcean + Cloudflare) and **the support inbox** — two things only you can act on.
+
+### 1. `backchannel.it.com` needs to serve universal-link files before we switch to it
+
+**Context:** email links (verify email, reset password) are moving from a dead-end website link to "universal links" — regular `https://` links that open directly in the app when it's installed, and fall back to a normal web page when it isn't. This fixes a real bug: those links currently go nowhere useful. We're launching on a temporary Netlify host (already built and live) precisely so this isn't blocking launch — but `backchannel.it.com` is the real, permanent home for them, since it's the actual BackChannel domain. **The app already trusts both hosts today, so switching later needs zero app rebuild — just these three things on your side:**
+
+1. **Serve `/.well-known/apple-app-site-association`** — a small JSON file (contents below) at exactly that path. Must return **HTTP 200**, `Content-Type: application/json`, **no redirects** (Apple's fetcher won't follow one). It has no file extension on purpose; that's normal.
+   This is copied verbatim from what's already live and working at `backchannelapp.netlify.app` (verified via `curl` just now), so it's proven correct, not just written from spec:
+   ```json
+   {
+     "applinks": {
+       "details": [
+         {
+           "appIDs": ["ZWFR8LC25W.com.yosefwolday.backchannelv2"],
+           "components": [
+             { "/": "/verify-email", "comment": "Email verification + work-email verification + email change" },
+             { "/": "/reset-password", "comment": "Password reset" },
+             { "/": "/job/*", "comment": "Shared job links (invite loop)" },
+             { "/": "/invite/*", "comment": "Invite links (invite loop)" }
+           ]
+         }
+       ]
+     },
+     "webcredentials": { "apps": ["ZWFR8LC25W.com.yosefwolday.backchannelv2"] }
+   }
+   ```
+   The `comment` keys are just documentation for anyone reading the file later; Apple ignores them.
+2. **Make sure Cloudflare doesn't intercept that path.** Bot Fight Mode, "Under Attack" mode, or a WAF rule can serve Apple's verification fetcher a challenge page or a 403 instead of the JSON above — which silently breaks the whole feature with no visible error on our side. Add an explicit WAF/firewall skip rule for `/.well-known/*`.
+3. **Add a real page at those four paths** (`/verify-email`, `/reset-password`, `/job/*`, `/invite/*`) for people who don't have the app installed yet — right now there's nothing there. It just needs: an "Open in the App Store" link, and ideally a hand-off to `backchannelv2://` + the same path/query for anyone who *does* have the app but arrived some other way (e.g. pasted the link on desktop, then opens it on their phone). We already built exactly this page for the Netlify host (`BackChannel-Netlify` repo, `open.html`) if you want to reuse/adapt it rather than build from scratch.
+
+**How to verify it's working, once done:**
+```
+curl -sI https://backchannel.it.com/.well-known/apple-app-site-association
+# expect: HTTP/2 200, content-type: application/json, no "location:" header
+```
+Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real device) rather than you needing to touch the app at all.
+
+**Not urgent for launch** — the Netlify host covers this until you're ready.
+
+### 2. Support email — `support@backchannel.app` currently bounces
+
+Every "contact us" surface in the app and on both websites (the in-app Help & Feedback button, the App Store review notes, the Privacy Policy, the moderation-report acknowledgment) points at `support@backchannel.app`. **That domain has no MX record**, so mail sent to it is undeliverable today — silently, from the sender's point of view (no bounce notice most of the time, it just vanishes).
+
+**This is separate from, and in addition to, the `MODERATION_ALERT_EMAIL` gap in §AD #1** (that one is about *us* getting notified when a report comes in; this one is about *users* being able to reach us at all, e.g. "I paid and lost Premium access," account issues, or general questions).
+
+**Ask:** pick which domain support mail should actually live on — `backchannel.app`, `backchannel.it.com`, or something else — and get an MX record pointed at a real inbox (Google Workspace, a forwarding rule, whatever's simplest). Once that's decided, tell us if the address itself needs to change from `support@backchannel.app` — it's a single constant (`constants/config.ts`'s `SUPPORT_EMAIL`) on our side, a one-line change.
+
+**This blocks launch** in the sense that App Review may test the support contact, and it's a bad first impression for a real user's first support request to vanish into the void.
 
 ---
 
